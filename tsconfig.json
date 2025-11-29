@@ -8,13 +8,21 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["dom", "esnext"],
-    "types": ["vite/client", "vue/ref-macros"],
+    "lib": [
+      "dom",
+      "esnext"
+    ],
+    "types": [
+      "vite/client"
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     },
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "noEmit": true
   },
   "include": [
     "src/**/*.ts",

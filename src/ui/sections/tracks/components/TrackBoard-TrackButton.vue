@@ -30,32 +30,44 @@ function handleTrackClick() {
 </template>
 
 <style scoped>
-/* 默认状态（白色） */
+/* 默认状态（深色橡胶按钮） */
 .track-button {
   padding: 0.6rem 1.1rem;
-  border: 2px solid #ccc;
+  border: 1px solid #222;
   border-radius: 4px;
 
-  background-color: white; /* 默认白色 */
-  color: black; /* 文字颜色 */
-
+  background-color: #333; /* 深灰色 */
+  color: #ddd; /* 浅灰文字 */
+  
   cursor: pointer;
   font-weight: bold;
   text-transform: uppercase;
-
-  /* 过渡动画 */
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  letter-spacing: 1px;
+  
+  box-shadow: 0 3px 0 #111; /* 3D 阴影 */
+  transition: all 0.1s ease;
+  
+  /* 禁止选中文字 */
+  user-select: none;
 }
 
-/* 点亮状态（红色） */
+/* 按下效果 */
+.track-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #111;
+}
+
+/* 点亮状态（高亮） */
 .track-button.active {
-  background-color: green; /* 变为红色 */
-  border-color: darkgreen;
-  color: white;
+  background-color: #e0e0e0; /* 亮白色/浅灰 */
+  color: #111; /* 深色文字 */
+  border-color: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 2px 0 #888;
 }
 
 /* 悬停时的轻微变化 */
-.track-button:hover {
-  opacity: 0.8;
+.track-button:hover:not(.active) {
+  background-color: #444;
+  color: #fff;
 }
 </style>

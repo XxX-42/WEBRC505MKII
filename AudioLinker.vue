@@ -135,7 +135,7 @@ export default {
       return osc;
     }
     onMounted(() => {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContext = new (window.AudioContext || window['webkitAudioContext'])();
       oscillatorNode = createOscillator();
       // 不自动启动振荡器
       phaserNode = createPhaser(audioContext, phaserParams.lfoFrequency, phaserParams.modDepth);

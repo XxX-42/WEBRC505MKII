@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import TrackBoardFxButton from '@/components/TrackBoard/TrackBoard-FxButton.vue'
-import TrackBoardTrackButton from '@/components/TrackBoard/TrackBoard-TrackButton.vue'
-import StopButton from '@/components/TrackBoard/StopButton.vue'
+import TrackBoardFxButton from '@/ui/sections/tracks/components/TrackBoard-FxButton.vue'
+import TrackBoardTrackButton from '@/ui/sections/tracks/components/TrackBoard-TrackButton.vue'
+import StopButton from '@/ui/sections/tracks/components/StopButton.vue'
 
 /**
  * 接收父组件传来的 props.buttonsHeight
@@ -42,7 +42,7 @@ function handleStop() { console.log('Stop button clicked!') }
     </TrackBoardTrackButton>
 
     <!-- 3. 自定义 StopButton，插入了图标的按钮 -->
-    <StopButton></StopButton>
+    <StopButton recordingMode="default" :waitingForDownbeat="false"></StopButton>
   </div>
 </template>
 

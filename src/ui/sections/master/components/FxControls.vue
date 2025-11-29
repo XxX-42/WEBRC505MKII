@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { ref, defineProps, onMounted, onBeforeUnmount } from 'vue';
-import CircularKnob from '@/components/knobs and fader/CircularKnob.vue';
+import CircularKnob from '@/ui/common/CircularKnob.vue';
 import { useAudioStore } from '@/stores/audio';
 
 // 通过 props 区分 fx 类型（此处 'inputFX' 表示用于麦克风输入处理）

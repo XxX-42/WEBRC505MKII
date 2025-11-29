@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import Keytomidi from "@/FX/keytomidi.vue";
+import Keytomidi from "@/ui/debug/playground/keytomidi.vue";
 
 // 创建音频上下文
 const audioContext = new AudioContext()

@@ -12,7 +12,7 @@
   >
     <img
         id="recordPlayImg"
-        src="../../assets/images/Stop.png"
+        src="@/assets/images/Mask.png"
         alt="Record/Play Icon"
     />
   </button>
@@ -42,8 +42,8 @@ button:active {
 button {
   /* 自定义按钮样式 */
   position: relative;
-  width: 6rem;
-  height: 6rem;
+  width: 10rem;
+  height: 10rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -94,8 +94,8 @@ button::before {
 #recordPlayImg {
   position: relative;
   z-index: 1;
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 9.3rem;
+  height: 9.3rem;
   display: block;
 }
 

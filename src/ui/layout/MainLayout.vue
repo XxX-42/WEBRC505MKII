@@ -33,11 +33,11 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 // 导入 组件
-import MasterBoard from '@/views/MasterBoard.vue'
-import TrackBoard from '@/views/TrackBoard.vue'
+import MasterBoard from '@/ui/sections/master/MasterBoard.vue'
+import TrackBoard from '@/ui/sections/tracks/TrackBoard.vue'
 import { useTrackStore } from '@/stores/trackStore'
 import { useAudioRecorder } from '@/composables/useAudioRecorder'
-import InterfaceBoard from '@/views/InterfaceBoard.vue'
+import InterfaceBoard from '@/ui/sections/inputs/InterfaceBoard.vue'
 
 const bpm = ref(120)
 const metronomeActive = ref(false)
@@ -59,9 +59,9 @@ const updateTrack = (index: number, updatedTrack: any) => {
 }
 
 
-import Test from "@/components/console/test.vue";
-import TestAudio from "@/components/console/TestAudio.vue";
-import TestAudio2 from "@/components/console/TestAudio2.vue";
+import Test from "@/ui/debug/console/test.vue";
+import TestAudio from "@/ui/debug/console/TestAudio.vue";
+import TestAudio2 from "@/ui/debug/console/TestAudio2.vue";
 
 console.log("成功打开rc505!");
 function emitLogs() {
@@ -76,7 +76,7 @@ function emitLogs() {
   grid-template-columns: repeat(5, 1fr);
   gap: min(5rem) ;
   justify-content: space-between; /* 左右分散对齐 */
-  margin-top: 2rem;
+  margin-top: 4rem;
 
 }
 .rc505-container {

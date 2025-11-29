@@ -13,11 +13,11 @@
 </template>
 
 <script setup lang="ts">
-import RC505 from './views/RC505.vue'
-import CustomConsole from "@/components/console/CustomConsole.vue";
-import AudioContainer from "@/views/AudioContainer.vue";
-import AudioLinker from "@/views/AudioLinker.vue";
-import New from "@/FX/new.vue";
+import RC505 from '@/ui/layout/MainLayout.vue'
+import CustomConsole from "@/ui/debug/console/CustomConsole.vue";
+import AudioContainer from "@/ui/components/wrappers/AudioContainer.vue";
+import AudioLinker from "@/ui/debug/AudioGraphDebugger.vue";
+import New from "@/ui/debug/playground/new.vue";
 
 
 </script>

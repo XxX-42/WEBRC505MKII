@@ -9,10 +9,10 @@
       <FxControls fxName="inputFX" />
     </div>
     <!-- 中央控制区域：包含BPM设置和节拍器控制 -->
-      <!-- 节拍器切换按钮：根据状态改变样式和文字 -->
-
+    <div class="center-controls">
       <!-- 节拍器指示器组件：传递当前BPM和激活状态 -->
       <BpmControls :bpm="bpm" :active="metronomeActive" />
+    </div>
 
     <!-- 右侧输出效果器区域 -->
     <div class="fx-side fx-right">
@@ -25,22 +25,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import FxControls from '@/components/MasterBoard/FxControls.vue'
-import BpmControls from '@/components/MasterBoard/BpmControls.vue'
+import { ref } from 'vue'
+import FxControls from '@/ui/sections/master/components/FxControls.vue'
+import BpmControls from '@/ui/sections/master/components/BpmControls.vue'
 
 // BPM相关逻辑 -------------------------------------------------
 // 从全局状态初始化BPM值
 const bpm = ref(window.myGlobalState.bpm)
 
-
 // 节拍器控制逻辑 -----------------------------------------------
 const metronomeActive = ref(false)
-
-/**
- * 切换节拍器状态
- * 使用stop修饰符阻止事件冒泡
- */
 
 </script>
 

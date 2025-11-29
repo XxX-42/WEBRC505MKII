@@ -12,7 +12,7 @@
         <div class="volume-meter">
           <div
               class="volume-level"
-              :style="{ width: volumeValue.toFixed(0) * 1 + '%' }">
+              :style="{ width: Math.round(volumeValue) + '%' }">
           </div>
         </div>
       </div>

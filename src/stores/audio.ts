@@ -10,11 +10,29 @@ export const useAudioStore = defineStore('audio', {
     state: () => ({
         // 处理后的音频流（经过 fx.vue 处理后输出），初始为空
         processedAudioStream: null as MediaStream | null,
+        bpm: 120,
+        metronomeStatus: 'OFF' as 'OFF' | 'READY' | 'PLAYING',
     }),
     actions: {
         // 设置全局处理后音频流
         setProcessedAudioStream(stream: MediaStream) {
             this.processedAudioStream = stream;
         },
+        setBpm(bpm: number) {
+            this.bpm = bpm;
+            // Update playback rate for all tracks
+            // We need to import AudioEngine dynamically or assume it's available globally or imported
+            // Since this is a store, importing the singleton is fine.
+            // But we need to be careful about circular dependencies if AudioEngine uses the store.
+            // AudioEngine does NOT use the store directly in its core logic usually.
+            // Let's try dynamic import or just import at top if safe.
+            // For now, let's assume we can access the singleton.
+            import('@/audio/core/AudioEngine').then(({ AudioEngine }) => {
+                AudioEngine.getInstance().updateAllTracksPlaybackRate(bpm);
+            });
+        },
+        setMetronomeStatus(status: 'OFF' | 'READY' | 'PLAYING') {
+            this.metronomeStatus = status;
+        }
     },
 });

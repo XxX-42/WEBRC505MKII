@@ -67,7 +67,7 @@ export function useAudioRecorder(trackState: any) {
             mediaRecorder.value = new MediaRecorder(globalStream.value)
 
             // 初始化音频上下文及分析节点
-            audioContext.value = new (window.AudioContext || window.webkitAudioContext)()
+            audioContext.value = new (window.AudioContext || window['webkitAudioContext'])()
             analyserNode.value = audioContext.value.createAnalyser()
             analyserNode.value.fftSize = 256
 

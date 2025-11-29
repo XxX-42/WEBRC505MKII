@@ -87,7 +87,7 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue';
-import { createPhaser } from '@/FX/phaser';
+import { createPhaser } from '@/audio/effects/phaser';
 
 
 export default {
@@ -150,7 +150,7 @@ export default {
     const masterVolume = ref(0.2);
 
     onMounted(() => {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContext = new (window.AudioContext || window['webkitAudioContext'])();
       // 创建振荡器（方波）
       oscillatorNode = audioContext.createOscillator();
       oscillatorNode.type = 'square';
