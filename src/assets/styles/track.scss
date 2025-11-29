@@ -1,0 +1,144 @@
+
+
+
+
+
+.track-background {
+  /* 设置背景颜色为白色 */
+
+
+  /* 限制元素的最大宽度为父容器的80%；
+     如果需要固定宽度，也可以设置为例如 150px */
+  max-width: 100%; /* 或者使用固定值，例如 max-width: 150px; */
+
+  /* 高度自适应内容 */
+  height: auto;
+
+  /* 将元素设置为块级元素，使其可以设置宽度并自动换行 */
+  display: block;
+
+  /* 水平居中对齐：上下边距为0，左右边距自动 */
+  margin: 0 auto;
+
+
+}
+
+
+.track-container {
+  background: #333; /* 设置背景颜色为深灰色 */
+
+  padding: 1rem; /* 设置内边距为 1rem，使内容与容器边缘保持间距 */
+
+  border-radius: 12px; /* 让容器四角呈现圆角，增加美观度 */
+
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  /* 添加阴影效果：
+     - 0px：水平方向偏移量（不偏移）
+     - 2px：垂直方向偏移量（向下偏移 2px）
+     - 4px：模糊半径（模糊程度）
+     - rgba(0, 0, 0, 0.2)：黑色透明度 20% 作为阴影颜色
+  */
+
+  display: flex; /* 使用 Flexbox 布局，使子元素按列排列 */
+
+  flex-direction: column; /* 使子元素垂直排列 */
+
+  justify-content: center;
+  align-items: center;
+
+  gap: 1rem; /* 设置子元素之间的间距为 1rem */
+
+  width: 190px; /* 限定容器宽度为 200px */
+}
+
+
+.track-header {
+  color: #bbb;               /* 浅灰色文字 */
+  font-weight: bold;         /* 粗体 */
+  font-size: 1.1rem;         /* 字体大小 */
+  text-transform: uppercase; /* 大写字母 */
+  margin-bottom: 0.6rem;
+}
+
+
+
+
+
+.volume-slider-container {
+  height: 150px;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  align-items: flex-start;
+}
+
+.volume-slider[type="range"] {
+  -webkit-appearance: slider-vertical;
+  width: 30px;
+  height: 100%;
+  padding: 0 5px;
+  margin-top: 0;
+}
+
+.control-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
+
+
+.flashing-blue {
+  animation: flash-blue 0.5s infinite;
+}
+
+
+
+
+
+@keyframes waitingFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.track-controls {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  justify-content: space-between;
+
+  /*
+   * align-items: 垂直（交叉轴）方向上的对齐方式
+   *   - stretch    (默认值，拉伸至容器高度)
+   *   - flex-start (交叉轴起点对齐)
+   *   - flex-end   (交叉轴终点对齐)
+   *   - center     (交叉轴居中对齐)
+   *   - baseline   (文字基线对齐)
+   */
+  /* align-items: center; */
+  gap: 1rem;
+  /*
+   * gap / row-gap / column-gap: Flex 布局中的项目间距 (现代浏览器支持)
+   *   - gap: 1rem;             (同时设置水平和垂直间距)
+   *   - row-gap: 0.5rem;       (仅设置行间距)
+   *   - column-gap: 1rem;      (仅设置列间距)
+   */
+  /* gap: 1rem; */
+
+  /*
+   * flex-wrap: 当一行/一列放不下时，是否换行
+   *   - nowrap (默认不换行)
+   *   - wrap   (换行)
+   *   - wrap-reverse (反向换行)
+   */
+  /* flex-wrap: nowrap; */
+
+  /*
+   * align-content: 多根轴线（换行后）在交叉轴上的对齐方式
+   *   - flex-start, flex-end, center, space-between, space-around, stretch
+   * 注意：只有在多行/列（wrap）时才会起作用
+   */
+  /* align-content: flex-start; */
+}

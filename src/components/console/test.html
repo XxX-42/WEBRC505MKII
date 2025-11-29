@@ -1,0 +1,97 @@
+<template>
+    <!-- Element UI 表单，用于选择麦克风并启动/取消录音 -->
+    <el-form
+            style="padding: 0 80px"
+            ref="mainFormRef"
+            :model="main_form"
+            label-width="100px"
+            :rules="rules"
+    >
+        <el-form-item label="声纹采集：" prop="file">
+            <!-- 麦克风下拉选择框，录音中禁用选择 -->
+            <el-select
+                    :disabled="voiceStatus"
+                    style="width: 200px;"
+                    v-model="main_form.chooseMicDeviceId"
+                    placeholder="请选择麦克风"
+            >
+                <el-option
+                        v-for="item in Mic"
+                        :key="item.deviceId"
+                        :label="item.label"
+                        :value="item.deviceId"
+                ></el-option>
+            </el-select>
+            <!-- 当已选择麦克风时显示录音按钮 -->
+            <div class="voiceGather" v-if="main_form.chooseMicDeviceId != ''">
+                <el-button style="margin-top: 20px;" @click="voiceInput">
+                    {{ voiceStatus ? '取消录音' : '开始录音' }}
+                </el-button>
+            </div>
+        </el-form-item>
+    </el-form>
+</template>
+
+<script setup lang="ts">
+    import { ref } from 'vue'
+    import { useMetronome } from '@/composables/useMetronome' // 导入自定义节拍器 composable
+
+    // ------------------------------
+    // 表单相关数据与验证规则
+    // ------------------------------
+
+    // 表单数据对象，包含选择的麦克风设备 ID
+    const main_form = ref({
+        chooseMicDeviceId: ''
+    })
+
+    // 模拟麦克风设备列表，实际应用中可通过接口获取设备信息
+    const Mic = ref([
+        { deviceId: 'mic1', label: '麦克风 1' },
+        { deviceId: 'mic2', label: '麦克风 2' }
+    ])
+
+    // 表单验证规则（如有需要，可自行扩展）
+    const rules = {}
+
+    // 保存表单引用
+    const mainFormRef = ref(null)
+
+    // ------------------------------
+    // 节拍器及录音相关状态和逻辑
+    // ------------------------------
+
+    // voiceStatus 用于标记录音状态，false 表示未录音
+    const voiceStatus = ref(false)
+
+    // 定义 onTick 回调函数，供节拍器每次节拍时调用
+    // 此处可扩展，例如更新视觉提示、节拍计数等
+    const onTick = () => {
+        console.log('Metronome tick')
+    }
+
+    // 使用 useMetronome composable，设置初始 BPM 为 120
+    // 从中获取 start 和 stop 方法，用于启动和停止节拍器
+    const { start: startMetronome, stop: stopMetronome } = useMetronome(120, onTick)
+
+    // voiceInput 函数：切换录音状态，同时启动或停止节拍器
+    function voiceInput() {
+        if (!voiceStatus.value) {
+            // 开始录音：将录音状态设为 true，并启动节拍器
+            voiceStatus.value = true
+            startMetronome() // 启动节拍器，立即播放第一拍并按 BPM 定时播放
+            console.log('开始录音')
+            // 在这里可加入启动录音的逻辑（如调用录音 API 等）
+        } else {
+            // 取消录音：将录音状态设为 false，并停止节拍器
+            voiceStatus.value = false
+            stopMetronome() // 停止节拍器
+            console.log('取消录音')
+            // 在这里可加入停止录音的逻辑
+        }
+    }
+</script>
+
+<style scoped>
+    /* 此处可添加或修改组件相关样式 */
+</style>
