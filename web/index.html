@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RC-505MK2 Memory Reader</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Orbitron:wght@500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1><span class="brand">BOSS</span> RC-505MK2 READER</h1>
+            <div class="header-controls" style="display: flex; gap: 10px; align-items: center;">
+                <div class="status-panel" id="statusPanel">
+                    <span class="label">MEMORY:</span>
+                    <span class="value" id="memoryName">--</span>
+                </div>
+                <button id="themeToggle" class="theme-toggle-btn">☀/☾</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <div class="drop-zone" id="dropZone">
+                    <p>DRAG & DROP .RC0 FILE HERE</p>
+                    <p class="sub-text">OR CLICK TO UPLOAD</p>
+                    <input type="file" id="fileInput" accept=".RC0,.rc0" hidden>
+                </div>
+            </section>
+
+            <nav class="tabs" id="tabs" style="display: none;">
+                <button class="tab-btn active" data-tab="tracks">TRACKS</button>
+                <button class="tab-btn" data-tab="assigns">ASSIGNS</button>
+                <button class="tab-btn" data-tab="effects">EFFECTS</button>
+                <button class="tab-btn" data-tab="system">SYSTEM</button>
+            </nav>
+
+            <section class="content-area" id="contentArea">
+                <!-- Data will be injected here -->
+                <div class="placeholder-text">Waiting for data...</div>
+            </section>
+        </main>
+
+        <footer>
+            <p>RC-505MK2 Web Parser &copy; 2026</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
