@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Debug XML Parser</title>
+</head>
+
+<body>
+    <h1>XML Parser Debug</h1>
+    <div id="output">Running...</div>
+    <script type="module">
+        import { XMLHelper } from './js/utils/XMLHelper.js';
+
+        const testXML = `<?xml version="1.0" encoding="utf-8"?>
+<root>
+    <valid>100</valid>
+    <0>ErrorTag</0>
+    <1>AnotherError</1>
+</root>`;
+
+        try {
+            console.log("Original XML:", testXML);
+            const doc = XMLHelper.parseXML(testXML);
+            const serializer = new XMLSerializer();
+            const result = serializer.serializeToString(doc);
+            console.log("Parsed XML:", result);
+            document.getElementById('output').textContent = "SUCCESS: " + result;
+        } catch (e) {
+            console.error("Parse Error:", e);
+            document.getElementById('output').textContent = "FAILURE: " + e.message;
+        }
+    </script>
+</body>
+
+</html>

@@ -6,8 +6,6 @@ export class XMLHelper {
         let sanitizedXml = xmlString.replace(/<(\/?)([0-9])(.*?)>/g, '<$1_$2$3>');
         // Fix for invalid XML tags starting with # (e.g. <#>)
         sanitizedXml = sanitizedXml.replace(/<(\/?)(#)(.*?)>/g, '<$1_HASH$3>');
-        // Fix for invalid XML tags starting with # (e.g. <#>)
-        sanitizedXml = sanitizedXml.replace(/<(\/?)(#)(.*?)>/g, '<$1_HASH$3>');
 
         // Fix for extra content after root element (e.g. <count> tag at the end)
         const rootEndIndex = sanitizedXml.lastIndexOf('</database>');

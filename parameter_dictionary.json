@@ -1,0 +1,109 @@
+{
+  "Track_Parameters": [
+    {
+      "name": "Reverse",
+      "range": ["ON", "OFF"],
+      "description": "Specifies whether to play back normally or in reverse."
+    },
+    {
+      "name": "1Shot",
+      "range": ["ON", "OFF"],
+      "description": "Specifies whether to play as a one-shot sample or as a normal loop."
+    },
+    {
+      "name": "Pan",
+      "range": "L50 - CENTER - R50",
+      "description": "Specifies the stereo position (pan) of the track."
+    },
+    {
+      "name": "Play Level",
+      "range": "0 - 100",
+      "description": "Adjusts the playback volume of the track."
+    },
+    {
+      "name": "Start Mode",
+      "range": ["Immediate", "Fade In"],
+      "description": "Specifies whether playback starts immediately or fades in."
+    },
+    {
+      "name": "Stop Mode",
+      "range": ["Immediate", "Fade Out", "Loop End"],
+      "description": "Specifies how the track stops."
+    },
+    {
+      "name": "Dub Mode",
+      "range": ["Replace", "Overdub"],
+      "description": "Specifies the overdubbing method."
+    },
+    {
+      "name": "Measure",
+      "range": ["Auto", "Free", "1..."],
+      "description": "Specifies the number of measures in the track. Available when Loop Sync is ON."
+    },
+    {
+      "name": "Loop Sync Switch",
+      "range": ["ON", "OFF"],
+      "description": "Specifies whether to use loop synchronization."
+    },
+    {
+      "name": "Tempo Sync Switch",
+      "range": ["ON", "OFF"],
+      "description": "Specifies whether to play at original tempo or synchronized tempo."
+    },
+    {
+      "name": "Input Routing",
+      "range": ["All", "Input A", "Input B", "Rhythm", "etc."],
+      "description": "Specifies which inputs are recorded to the track."
+    }
+  ],
+  "Rhythm_Parameters": [
+    {
+      "name": "Genre",
+      "range": "Check Machine",
+      "description": "Selects the genre of the rhythm pattern."
+    },
+    {
+      "name": "Pattern",
+      "range": "Check Machine",
+      "description": "Selects the specific rhythm pattern."
+    },
+    {
+      "name": "Variation",
+      "range": ["A", "B"],
+      "description": "Selects the pattern variation."
+    },
+    {
+      "name": "Kit",
+      "range": "Check Machine",
+      "description": "Selects the drum kit used for the rhythm."
+    },
+    {
+      "name": "Beat",
+      "range": "2/4 - 15/8",
+      "description": "Sets the time signature."
+    },
+    {
+      "name": "Fill",
+      "range": ["ON", "OFF"],
+      "description": "Specifies whether to play a fill-in."
+    },
+    {
+      "name": "Part 1-4 Level",
+      "range": "0 - 100",
+      "description": "Adjusts the volume of each rhythm part (Kick, Snare, Hi-Hat, Other)."
+    }
+  ],
+  "Memory_Parameters": [
+    {
+      "name": "Memory Level",
+      "range": "0 - 100",
+      "description": "Adjusts the overall volume of the memory."
+    },
+    {
+      "name": "Tempo",
+      "range": "40.0 - 300.0",
+      "description": "Sets the tempo for the memory."
+    }
+  ],
+  "Note": "Effect parameters are dependent on the specific effect type selected and are detailed in the 'Parameter Guide', not the User Manual."
+}
