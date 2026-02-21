@@ -410,8 +410,15 @@ export class UIManager {
 
         const header = document.createElement('div');
         header.className = 'lcd-header-bar';
-        // Format e.g., "INPUT FX: FX A-C" (We use current bank A-D and Slot 1-4)
-        header.textContent = `${title}: FX ${this.uxState[bankKey]}-${slotIndex} [${effectName}]`;
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = `${title}: FX ${this.uxState[bankKey]}-${slotIndex} [${effectName}]`;
+
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'lcd-header-icon';
+
+        header.appendChild(titleSpan);
+        header.appendChild(iconDiv);
         panel.appendChild(header);
 
         const grid = document.createElement('div');

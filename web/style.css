@@ -389,17 +389,21 @@ footer {
     background-size: 4px 4px;
     background-position: center top;
     color: #e0f2fe;
-    /* Force 5x7 or 8x8 pixel aesthetics */
-    font-family: 'VT323', var(--font-mono);
+    /* Force true 8-bit pixel aesthetics */
+    font-family: 'Press Start 2P', 'VT323', var(--font-mono);
     padding: 16px;
     border: 8px solid #000;
     border-radius: 0;
     /* NO rounded corners on the casing */
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -o-crisp-edges;
+    image-rendering: -webkit-optimize-contrast;
     image-rendering: pixelated;
-    /* NO Anti-aliasing */
+
+    /* ABSOLUTE NO Anti-aliasing */
     -webkit-font-smoothing: none;
-    font-size-adjust: none;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeSpeed;
 
     /* Absolute binary - no soft shadows, no bloom */
     text-shadow: 2px 2px 0px #1c2e4a;
@@ -414,15 +418,28 @@ footer {
 }
 
 .lcd-header-bar {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     /* Sharp binary pixel border, no bloom */
-    border-bottom: 4px dashed #e0f2fe;
+    border-bottom: 2px solid #e0f2fe;
     padding-bottom: 8px;
     margin-bottom: 20px;
-    font-size: 1.4rem;
-    letter-spacing: 2px;
+    font-size: 1rem;
+    /* Adjust down since Press Start 2P is a wide bitmap font */
+    letter-spacing: 0px;
     text-transform: uppercase;
-    font-weight: bold;
+    font-weight: normal;
+    /* Bitmap fonts don't need synthetic bolding */
+}
+
+.lcd-header-icon {
+    width: 24px;
+    height: 12px;
+    background-image: url('data:image/svg+xml;utf8,<svg width="24" height="12" viewBox="0 0 24 12" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><path fill="%23e0f2fe" d="M6 2h2v8H6z M4 4h2v4H4z M2 5h2v2H2z M10 1h4v10h-4z M16 2h2v8h-2z M18 4h2v4h-2z M20 5h2v2h-2z"/></svg>');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center right;
 }
 
 .lcd-params-grid {
@@ -442,10 +459,10 @@ footer {
 }
 
 .lcd-param-val {
-    font-size: 1.2rem;
+    font-size: 1rem;
     height: 1.2rem;
     line-height: 1.2rem;
-    font-weight: bold;
+    font-weight: normal;
     display: flex;
     align-items: flex-start;
     justify-content: center;
@@ -462,38 +479,44 @@ footer {
     margin: 8px 0;
 }
 
-/* 左侧物理限位点 */
+/* 左侧物理限位点：使用 8x8 SVG 像素块拒绝平滑 */
 .limit-dot-left {
     position: absolute;
-    bottom: -2px;
-    left: -4px;
-    width: 6px;
-    height: 6px;
-    background-color: #e0f2fe;
-    border-radius: 50%;
+    bottom: -3px;
+    left: -5px;
+    width: 8px;
+    height: 8px;
+    background-color: transparent;
+    border-radius: 0;
+    background-image: url('data:image/svg+xml;utf8,<svg width="8" height="8" viewBox="0 0 8 8" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><path fill="%23e0f2fe" d="M2 0 h4 v2 h2 v4 h-2 v2 H2 v-2 H0 V2 h2 z"/></svg>');
+    background-size: contain;
 }
 
-/* 右侧物理限位点 */
+/* 右侧物理限位点：同样使用 8x8 SVG 像素块 */
 .limit-dot-right {
     position: absolute;
-    bottom: -2px;
-    right: -4px;
-    width: 6px;
-    height: 6px;
-    background-color: #e0f2fe;
-    border-radius: 50%;
+    bottom: -3px;
+    right: -5px;
+    width: 8px;
+    height: 8px;
+    background-color: transparent;
+    border-radius: 0;
+    background-image: url('data:image/svg+xml;utf8,<svg width="8" height="8" viewBox="0 0 8 8" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><path fill="%23e0f2fe" d="M2 0 h4 v2 h2 v4 h-2 v2 H2 v-2 H0 V2 h2 z"/></svg>');
+    background-size: contain;
 }
 
-/* 旋钮表盘主体：唯一允许被 rotate 的层级 */
+/* 旋钮表盘主体：唯一允许被 rotate 的层级，使用 32x32 SVG 强硬像素绘制圆形 */
 .knob-dial {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: #e0f2fe;
-    /* 亮白色实心圆 */
-    border-radius: 50%;
+    background-color: transparent;
+    border-radius: 0;
+    /* 绝对禁止使用 border-radius 欺骗抗锯齿 */
+    background-image: url('data:image/svg+xml;utf8,<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><path fill="%23e0f2fe" d="M10 0 h12 v2 h4 v2 h2 v4 h2 v16 h-2 v4 h-2 v2 h-4 v2 H10 v-2 h-4 v-2 h-2 v-4 h-2 V8 h2 V4 h2 V2 h4 z"/></svg>');
+    background-size: contain;
 }
 
 /* 负空间视觉欺骗：使用底层颜色“挖”出镂空指针 */
@@ -518,19 +541,21 @@ footer {
 }
 
 .lcd-param-label {
-    font-size: 1rem;
+    font-size: 0.85rem;
+    /* Bitmap font adjusts */
     margin-top: 12px;
     text-transform: uppercase;
     /* 现在的标签绝不会折行了，因为全部是标准缩写 */
-    line-height: calc(1em + 1px);
+    line-height: calc(1em + 2px);
 
     /* 强行为可能出现的两行字预留物理空间，防止被网格挤没 */
-    min-height: calc(2em + 2px);
+    min-height: calc(2em + 4px);
 
     display: block;
     text-align: center;
     /* 禁止打断单词，超出的部分直接截断以防挤压 */
     white-space: nowrap;
     overflow: hidden;
-    font-weight: bold;
+    font-weight: normal;
+    /* Disable fake bolding */
 }
