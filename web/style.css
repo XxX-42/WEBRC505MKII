@@ -500,13 +500,20 @@ footer {
 .knob-dial::after {
     content: '';
     position: absolute;
-    top: 0;
+    /* 不占圆周：顶部下沉 2px，保留完整的白色边缘闭环 */
+    top: 2px;
     left: 50%;
     transform: translateX(-50%);
     width: 3px;
-    /* 约等于白圆半径(16px)的一半 = 8px */
-    height: 8px;
-    /* 硬编码屏幕底色 */
+    /* 不占圆心：高度 10px，加上 top 的 2px 等于 12px，严格小于半径 16px */
+    height: 10px;
+    /* 绝对二值化：必须与原本最底部的背景底色 #2b4570 一致，或者是制造底层网格！*/
+    background-color: transparent;
+    /* 这里的核心在于：我们需要透过圆环看到网格，因此用透明并带有和底层一样的网格背景。但在小尺寸下极难做到像素对齐网格，使用纯背景色或模拟网格 */
+    background-image:
+        linear-gradient(#1c2e4a 2px, transparent 2px),
+        linear-gradient(90deg, #1c2e4a 2px, transparent 2px);
+    background-size: 4px 4px;
     background-color: #2b4570;
 }
 
@@ -514,8 +521,7 @@ footer {
     font-size: 1rem;
     margin-top: 12px;
     text-transform: uppercase;
-
-    /* 保证行间距正好是 1px (字号大约 16px，行高可以设为 calc(1em + 1px) 或者绝对像素) */
+    /* 现在的标签绝不会折行了，因为全部是标准缩写 */
     line-height: calc(1em + 1px);
 
     /* 强行为可能出现的两行字预留物理空间，防止被网格挤没 */
@@ -523,6 +529,8 @@ footer {
 
     display: block;
     text-align: center;
-    word-break: break-all;
+    /* 禁止打断单词，超出的部分直接截断以防挤压 */
+    white-space: nowrap;
+    overflow: hidden;
     font-weight: bold;
 }
