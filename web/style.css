@@ -378,3 +378,130 @@ footer {
     color: var(--text-color);
     font-weight: bold;
 }
+
+/* --- RC-505MKII LCD Screen Replicas (Hardware Accurate) --- */
+.lcd-panel {
+    background-color: #2b4570;
+    /* Create a coarse, dark dot matrix behind the text */
+    background-image: radial-gradient(rgba(18, 29, 48, 0.4) 2px, transparent 2px);
+    background-size: 4px 4px;
+    color: #e0f2fe;
+    /* Force 5x7 or 8x8 pixel aesthetics */
+    font-family: 'VT323', var(--font-mono);
+    padding: 16px;
+    border: 8px solid #000;
+    border-radius: 2px;
+    image-rendering: pixelated;
+    /* NO Anti-aliasing */
+    -webkit-font-smoothing: none;
+    /* Simulate Bloom */
+    text-shadow: 0 0 4px rgba(224, 242, 254, 0.6), 0 0 8px rgba(224, 242, 254, 0.3);
+    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.9);
+    margin-top: 10px;
+    width: calc(100% + 10px);
+    margin-left: -5px;
+    /* 居中显示宽出来的 10px */
+    overflow: hidden;
+}
+
+.lcd-header-bar {
+    text-align: center;
+    border-bottom: 4px dotted #e0f2fe;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.lcd-params-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    row-gap: 24px;
+    column-gap: 8px;
+    text-align: center;
+}
+
+.lcd-param-col {
+    display: grid;
+    /* 上边显示值, 中间是旋钮, 下边是名称。无论字数如何都严格按照顶部对齐排列 */
+    grid-template-rows: 1.5rem 40px auto;
+    align-items: start;
+    justify-items: center;
+}
+
+.lcd-param-val {
+    font-size: 1.2rem;
+    height: 1.2rem;
+    line-height: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    text-align: center;
+    margin: 0;
+    overflow: hidden;
+}
+
+/* Simulate a blocky 8-bit knob ring instead of smooth border-radius */
+/* 建立 1x1 基点的宏大矩阵：锯齿状、底部带缺口的真正像素圆环 */
+.lcd-knob-container {
+    width: 2px;
+    height: 2px;
+    background-color: transparent;
+    position: relative;
+    top: 18px;
+    /* 运用 2px 精度的坐标准确绘制缺口圆环，并自带光晕 */
+    box-shadow:
+        /* 顶部弧线 */
+        -4px -14px 0 0 #e0f2fe, -2px -16px 0 0 #e0f2fe, 0px -16px 0 0 #e0f2fe, 2px -16px 0 0 #e0f2fe, 4px -14px 0 0 #e0f2fe,
+        /* 右上斜边 */
+        6px -14px 0 0 #e0f2fe, 8px -12px 0 0 #e0f2fe, 10px -10px 0 0 #e0f2fe, 12px -8px 0 0 #e0f2fe, 14px -6px 0 0 #e0f2fe,
+        /* 右侧垂直线 */
+        14px -4px 0 0 #e0f2fe, 16px -2px 0 0 #e0f2fe, 16px 0px 0 0 #e0f2fe, 16px 2px 0 0 #e0f2fe, 14px 4px 0 0 #e0f2fe,
+        /* 右下斜边 */
+        14px 6px 0 0 #e0f2fe, 12px 8px 0 0 #e0f2fe, 10px 10px 0 0 #e0f2fe, 8px 12px 0 0 #e0f2fe,
+        /* 左上斜边 */
+        -6px -14px 0 0 #e0f2fe, -8px -12px 0 0 #e0f2fe, -10px -10px 0 0 #e0f2fe, -12px -8px 0 0 #e0f2fe, -14px -6px 0 0 #e0f2fe,
+        /* 左侧垂直线 */
+        -14px -4px 0 0 #e0f2fe, -16px -2px 0 0 #e0f2fe, -16px 0px 0 0 #e0f2fe, -16px 2px 0 0 #e0f2fe, -14px 4px 0 0 #e0f2fe,
+        /* 左下斜边 */
+        -14px 6px 0 0 #e0f2fe, -12px 8px 0 0 #e0f2fe, -10px 10px 0 0 #e0f2fe, -8px 12px 0 0 #e0f2fe,
+        /* Bloom 漫反射光晕：在圆环位置叠一层模糊的发光阴影 */
+        0 0 10px 6px rgba(224, 242, 254, 0.4);
+    margin: 8px 0;
+    box-sizing: border-box;
+}
+
+/* 覆盖一层暗色的“橡皮擦长条”，充当挖空表针，且跟随旋钮旋转 */
+.lcd-knob-pointer {
+    position: absolute;
+    top: -14px;
+    left: -2px;
+    /* 居中于 2px 父级点 */
+    width: 6px;
+    height: 14px;
+    /* 底色与暗网格极接近，阻断圆环高光，制造挖空错觉 */
+    background-color: #2b4570;
+    transform-origin: 3px 14px;
+    /* 从表针底部中心旋转 */
+    transform: rotate(0deg);
+}
+
+.lcd-param-label {
+    font-size: 1rem;
+    margin-top: 12px;
+    text-transform: uppercase;
+
+    /* 保证行间距正好是 1px (字号大约 16px，行高可以设为 calc(1em + 1px) 或者绝对像素) */
+    line-height: calc(1em + 1px);
+
+    /* 强行为可能出现的两行字预留物理空间，防止被网格挤没 */
+    min-height: calc(2em + 2px);
+
+    display: block;
+    text-align: center;
+    word-break: break-all;
+    font-weight: bold;
+}

@@ -208,8 +208,8 @@ export class UIManager {
                 // Find effect params
                 const activeEffect = activeBankData ? activeBankData.find(f => f.type === select.value) : null;
                 if (activeEffect) {
-                    const table = this.createParamTable(activeEffect.params);
-                    slotDiv.appendChild(table);
+                    const lcdPanel = this.createLcdPanel(title, bankKey, select.value, i + 1, activeEffect.params);
+                    slotDiv.appendChild(lcdPanel);
                 } else {
                     const empty = document.createElement('div');
                     empty.textContent = "N/A";
@@ -402,6 +402,62 @@ export class UIManager {
             table.appendChild(tr);
         }
         return table;
+    }
+
+    createLcdPanel(title, bankKey, effectName, slotIndex, params) {
+        const panel = document.createElement('div');
+        panel.className = 'lcd-panel';
+
+        const header = document.createElement('div');
+        header.className = 'lcd-header-bar';
+        // Format e.g., "INPUT FX: FX A-C" (We use current bank A-D and Slot 1-4)
+        header.textContent = `${title}: FX ${this.uxState[bankKey]}-${slotIndex} [${effectName}]`;
+        panel.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'lcd-params-grid';
+
+        for (let [key, val] of Object.entries(params)) {
+            const col = document.createElement('div');
+            col.className = 'lcd-param-col';
+
+            const valDiv = document.createElement('div');
+            valDiv.className = 'lcd-param-val';
+            valDiv.textContent = val;
+
+            const knobCont = document.createElement('div');
+            knobCont.className = 'lcd-knob-container';
+            const pointer = document.createElement('div');
+            pointer.className = 'lcd-knob-pointer';
+
+            // Calculate knob rotation fake algorithm
+            let angle = -135;
+            const numVal = parseInt(val, 10);
+            if (!isNaN(numVal)) {
+                angle = -135 + (Math.min(100, Math.max(0, numVal)) / 100) * 270;
+            } else if (val === 'OFF') {
+                angle = -135;
+            } else if (val === 'ON') {
+                angle = 135;
+            } else {
+                let hash = 0;
+                for (let c = 0; c < val.length; c++) hash += val.charCodeAt(c);
+                angle = -135 + (hash % 271);
+            }
+            pointer.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+            knobCont.appendChild(pointer);
+
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'lcd-param-label';
+            labelDiv.textContent = key;
+
+            col.appendChild(valDiv);
+            col.appendChild(knobCont);
+            col.appendChild(labelDiv);
+            grid.appendChild(col);
+        }
+        panel.appendChild(grid);
+        return panel;
     }
 
     setupTabListeners() {
