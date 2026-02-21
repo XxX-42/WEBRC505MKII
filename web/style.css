@@ -382,21 +382,30 @@ footer {
 /* --- RC-505MKII LCD Screen Replicas (Hardware Accurate) --- */
 .lcd-panel {
     background-color: #2b4570;
-    /* Create a coarse, dark dot matrix behind the text */
-    background-image: radial-gradient(rgba(18, 29, 48, 0.4) 2px, transparent 2px);
+    /* Create a stark, binary dot matrix behind the text with NO transparency/gradients */
+    background-image:
+        linear-gradient(#1c2e4a 2px, transparent 2px),
+        linear-gradient(90deg, #1c2e4a 2px, transparent 2px);
     background-size: 4px 4px;
+    background-position: center top;
     color: #e0f2fe;
     /* Force 5x7 or 8x8 pixel aesthetics */
     font-family: 'VT323', var(--font-mono);
     padding: 16px;
     border: 8px solid #000;
-    border-radius: 2px;
+    border-radius: 0;
+    /* NO rounded corners on the casing */
     image-rendering: pixelated;
     /* NO Anti-aliasing */
     -webkit-font-smoothing: none;
-    /* Simulate Bloom */
-    text-shadow: 0 0 4px rgba(224, 242, 254, 0.6), 0 0 8px rgba(224, 242, 254, 0.3);
-    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.9);
+    font-size-adjust: none;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Absolute binary - no soft shadows, no bloom */
+    text-shadow: 2px 2px 0px #1c2e4a;
+    /* Hard-edged pixel shadow dropping to grid */
+    box-shadow: inset 0 0 0 16px #1c2e4a;
+    /* Hard dark inner border instead of gradient glow */
     margin-top: 10px;
     width: calc(100% + 10px);
     margin-left: -5px;
@@ -406,7 +415,8 @@ footer {
 
 .lcd-header-bar {
     text-align: center;
-    border-bottom: 4px dotted #e0f2fe;
+    /* Sharp binary pixel border, no bloom */
+    border-bottom: 4px dashed #e0f2fe;
     padding-bottom: 8px;
     margin-bottom: 20px;
     font-size: 1.4rem;
@@ -444,49 +454,60 @@ footer {
     overflow: hidden;
 }
 
-/* Simulate a blocky 8-bit knob ring instead of smooth border-radius */
-/* 建立 1x1 基点的宏大矩阵：锯齿状、底部带缺口的真正像素圆环 */
-.lcd-knob-container {
-    width: 2px;
-    height: 2px;
-    background-color: transparent;
+/* 物理级旋钮 DOM 解耦：固定外壳与旋转内盘 */
+.knob-wrapper {
     position: relative;
-    top: 18px;
-    /* 运用 2px 精度的坐标准确绘制缺口圆环，并自带光晕 */
-    box-shadow:
-        /* 顶部弧线 */
-        -4px -14px 0 0 #e0f2fe, -2px -16px 0 0 #e0f2fe, 0px -16px 0 0 #e0f2fe, 2px -16px 0 0 #e0f2fe, 4px -14px 0 0 #e0f2fe,
-        /* 右上斜边 */
-        6px -14px 0 0 #e0f2fe, 8px -12px 0 0 #e0f2fe, 10px -10px 0 0 #e0f2fe, 12px -8px 0 0 #e0f2fe, 14px -6px 0 0 #e0f2fe,
-        /* 右侧垂直线 */
-        14px -4px 0 0 #e0f2fe, 16px -2px 0 0 #e0f2fe, 16px 0px 0 0 #e0f2fe, 16px 2px 0 0 #e0f2fe, 14px 4px 0 0 #e0f2fe,
-        /* 右下斜边 */
-        14px 6px 0 0 #e0f2fe, 12px 8px 0 0 #e0f2fe, 10px 10px 0 0 #e0f2fe, 8px 12px 0 0 #e0f2fe,
-        /* 左上斜边 */
-        -6px -14px 0 0 #e0f2fe, -8px -12px 0 0 #e0f2fe, -10px -10px 0 0 #e0f2fe, -12px -8px 0 0 #e0f2fe, -14px -6px 0 0 #e0f2fe,
-        /* 左侧垂直线 */
-        -14px -4px 0 0 #e0f2fe, -16px -2px 0 0 #e0f2fe, -16px 0px 0 0 #e0f2fe, -16px 2px 0 0 #e0f2fe, -14px 4px 0 0 #e0f2fe,
-        /* 左下斜边 */
-        -14px 6px 0 0 #e0f2fe, -12px 8px 0 0 #e0f2fe, -10px 10px 0 0 #e0f2fe, -8px 12px 0 0 #e0f2fe,
-        /* Bloom 漫反射光晕：在圆环位置叠一层模糊的发光阴影 */
-        0 0 10px 6px rgba(224, 242, 254, 0.4);
+    width: 32px;
+    height: 32px;
     margin: 8px 0;
-    box-sizing: border-box;
 }
 
-/* 覆盖一层暗色的“橡皮擦长条”，充当挖空表针，且跟随旋钮旋转 */
-.lcd-knob-pointer {
+/* 左侧物理限位点 */
+.limit-dot-left {
     position: absolute;
-    top: -14px;
-    left: -2px;
-    /* 居中于 2px 父级点 */
+    bottom: -2px;
+    left: -4px;
     width: 6px;
-    height: 14px;
-    /* 底色与暗网格极接近，阻断圆环高光，制造挖空错觉 */
+    height: 6px;
+    background-color: #e0f2fe;
+    border-radius: 50%;
+}
+
+/* 右侧物理限位点 */
+.limit-dot-right {
+    position: absolute;
+    bottom: -2px;
+    right: -4px;
+    width: 6px;
+    height: 6px;
+    background-color: #e0f2fe;
+    border-radius: 50%;
+}
+
+/* 旋钮表盘主体：唯一允许被 rotate 的层级 */
+.knob-dial {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #e0f2fe;
+    /* 亮白色实心圆 */
+    border-radius: 50%;
+}
+
+/* 负空间视觉欺骗：使用底层颜色“挖”出镂空指针 */
+.knob-dial::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    /* 约等于白圆半径(16px)的一半 = 8px */
+    height: 8px;
+    /* 硬编码屏幕底色 */
     background-color: #2b4570;
-    transform-origin: 3px 14px;
-    /* 从表针底部中心旋转 */
-    transform: rotate(0deg);
 }
 
 .lcd-param-label {

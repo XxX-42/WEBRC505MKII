@@ -425,10 +425,17 @@ export class UIManager {
             valDiv.className = 'lcd-param-val';
             valDiv.textContent = val;
 
-            const knobCont = document.createElement('div');
-            knobCont.className = 'lcd-knob-container';
-            const pointer = document.createElement('div');
-            pointer.className = 'lcd-knob-pointer';
+            const knobWrapper = document.createElement('div');
+            knobWrapper.className = 'knob-wrapper';
+
+            const dotLeft = document.createElement('div');
+            dotLeft.className = 'limit-dot-left';
+
+            const dotRight = document.createElement('div');
+            dotRight.className = 'limit-dot-right';
+
+            const knobDial = document.createElement('div');
+            knobDial.className = 'knob-dial';
 
             // Calculate knob rotation fake algorithm
             let angle = -135;
@@ -444,8 +451,11 @@ export class UIManager {
                 for (let c = 0; c < val.length; c++) hash += val.charCodeAt(c);
                 angle = -135 + (hash % 271);
             }
-            pointer.style.transform = `translateX(-50%) rotate(${angle}deg)`;
-            knobCont.appendChild(pointer);
+            knobDial.style.transform = `rotate(${angle}deg)`;
+
+            knobWrapper.appendChild(dotLeft);
+            knobWrapper.appendChild(dotRight);
+            knobWrapper.appendChild(knobDial);
 
             const labelDiv = document.createElement('div');
             labelDiv.className = 'lcd-param-label';
