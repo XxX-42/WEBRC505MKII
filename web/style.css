@@ -290,3 +290,91 @@ footer {
     color: var(--accent-red);
     text-shadow: none;
 }
+
+/* FX Columns */
+.fx-container {
+    display: flex;
+    gap: 20px;
+    height: 100%;
+    overflow: hidden;
+    min-height: 400px;
+    /* Ensure height for scrolling */
+}
+
+.fx-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Scroll inside list */
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.fx-column h3 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent-red);
+    text-align: center;
+    color: var(--text-color);
+    font-family: var(--font-ui);
+}
+
+#inputFxList,
+#trackFxList {
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 5px;
+    margin-top: 10px;
+}
+
+.bank-header {
+    background-color: #333;
+    color: var(--accent-red);
+    padding: 5px 10px;
+    margin-top: 15px;
+    font-weight: bold;
+    border-left: 4px solid var(--accent-red);
+    font-family: var(--font-ui);
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.bank-header:first-child {
+    margin-top: 0;
+}
+
+.fx-block {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+.fx-block h4 {
+    margin: 0 0 8px 0;
+    color: var(--accent-green);
+    font-size: 0.9rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 4px;
+}
+
+.param-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.param-label {
+    color: #888;
+}
+
+.param-value {
+    color: var(--text-color);
+    font-weight: bold;
+}

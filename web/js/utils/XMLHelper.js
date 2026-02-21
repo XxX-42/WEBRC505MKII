@@ -11,7 +11,11 @@ export class XMLHelper {
         const rootEndIndex = sanitizedXml.lastIndexOf('</database>');
         if (rootEndIndex !== -1) {
             sanitizedXml = sanitizedXml.substring(0, rootEndIndex + 11);
+        } else {
+            console.warn("XMLHelper: </database> tag not found. Content might be truncated or invalid.");
         }
+
+        // (Removed incorrect truncation at </mem>)
 
         const xmlDoc = parser.parseFromString(sanitizedXml, "text/xml");
 

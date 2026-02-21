@@ -20,6 +20,8 @@
                     <span class="label">MEMORY:</span>
                     <span class="value" id="memoryName">--</span>
                 </div>
+                <button id="debugToggle" class="theme-toggle-btn active" style="color: var(--accent-red);"
+                    title="Toggle Debug Mode">DEBUG</button>
                 <button id="themeToggle" class="theme-toggle-btn">☀/☾</button>
             </div>
         </header>
@@ -37,12 +39,32 @@
                 <button class="tab-btn active" data-tab="tracks">TRACKS</button>
                 <button class="tab-btn" data-tab="assigns">ASSIGNS</button>
                 <button class="tab-btn" data-tab="effects">EFFECTS</button>
+                <button class="tab-btn" data-tab="fx">Effects (CTL)</button>
+                <button class="tab-btn" data-tab="input-track-fx">Input & Track FX</button>
                 <button class="tab-btn" data-tab="system">SYSTEM</button>
             </nav>
 
             <section class="content-area" id="contentArea">
                 <!-- Data will be injected here -->
                 <div class="placeholder-text">Waiting for data...</div>
+                <!-- Effects Tab -->
+                <div id="pane-fx" class="tab-pane">
+                    <div id="effectsList"></div>
+                </div>
+
+                <!-- Input & Track FX Tab -->
+                <div id="pane-input-track-fx" class="tab-pane">
+                    <div class="fx-container">
+                        <div class="fx-column">
+                            <h3>Input FX (A-D)</h3>
+                            <div id="inputFxList"></div>
+                        </div>
+                        <div class="fx-column">
+                            <h3>Track FX (A-D)</h3>
+                            <div id="trackFxList"></div>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
 
