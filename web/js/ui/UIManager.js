@@ -462,7 +462,7 @@ export class UIManager {
             labelDiv.textContent = key;
 
             col.appendChild(valDiv);
-            col.appendChild(knobCont);
+            col.appendChild(knobWrapper);
             col.appendChild(labelDiv);
             grid.appendChild(col);
         }
