@@ -72,4 +72,14 @@ export class DelayFX implements FXBase {
             this.applyMix(this.currentMix);
         }
     }
+
+    dispose() {
+        this.input.disconnect();
+        this.delay.disconnect();
+        this.feedback.disconnect();
+        this.wet.disconnect();
+        this.dry.disconnect();
+        this.filter.disconnect();
+        this.output.disconnect();
+    }
 }

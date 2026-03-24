@@ -72,4 +72,12 @@ export class ReverbFX implements FXBase {
             this.applyMix(this.currentMix);
         }
     }
+
+    dispose() {
+        this.input.disconnect();
+        this.convolver.disconnect();
+        this.wet.disconnect();
+        this.dry.disconnect();
+        this.output.disconnect();
+    }
 }

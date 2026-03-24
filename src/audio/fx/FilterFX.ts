@@ -58,4 +58,10 @@ export class FilterFX implements FXBase {
     setEnabled(enabled: boolean) {
         this.setBypass(!enabled);
     }
+
+    dispose() {
+        this.input.disconnect();
+        this.filter.disconnect();
+        this.output.disconnect();
+    }
 }

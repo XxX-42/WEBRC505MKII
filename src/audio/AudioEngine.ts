@@ -244,11 +244,13 @@ export class AudioEngine implements IAudioEngine {
 
         // Update Chain
         if (location === 'input') {
+            this.inputFxInstances[slotIndex]?.dispose();
             this.inputFxInstances[slotIndex] = newFx;
             this.inputFxTypes[slotIndex] = type;
             this.rebuildInputChain();
 
         } else {
+            this.trackFxInstances[slotIndex]?.dispose();
             this.trackFxInstances[slotIndex] = newFx;
             this.trackFxTypes[slotIndex] = type;
             this.rebuildOutputChain();

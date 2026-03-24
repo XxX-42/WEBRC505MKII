@@ -116,4 +116,15 @@ export class PhaserFX implements FXBase {
             this.wetNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.05);
         }
     }
+
+    public dispose() {
+        this.lfo.stop();
+        this.lfo.disconnect();
+        this.lfoGain.disconnect();
+        this.filters.forEach(filter => filter.disconnect());
+        this.dryNode.disconnect();
+        this.wetNode.disconnect();
+        this.input.disconnect();
+        this.output.disconnect();
+    }
 }

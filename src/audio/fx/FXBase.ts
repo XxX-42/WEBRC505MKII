@@ -4,4 +4,5 @@ export interface FXBase {
     output: AudioNode;
     setParam(key: string, value: number): void;
     setBypass(bypass: boolean): void;
+    dispose(): void;
 }

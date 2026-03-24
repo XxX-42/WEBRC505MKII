@@ -102,4 +102,13 @@ export class SlicerFX implements FXBase {
             this.updateDepth();
         }
     }
+
+    public dispose() {
+        this.lfo.stop();
+        this.lfo.disconnect();
+        this.lfoGain.disconnect();
+        this.vca.disconnect();
+        this.input.disconnect();
+        this.output.disconnect();
+    }
 }

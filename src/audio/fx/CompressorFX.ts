@@ -47,4 +47,10 @@ export class CompressorFX implements FXBase {
             this.input.connect(this.compressor);
         }
     }
+
+    dispose() {
+        this.input.disconnect();
+        this.compressor.disconnect();
+        this.output.disconnect();
+    }
 }
