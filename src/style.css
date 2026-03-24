@@ -1,0 +1,110 @@
+/* ==========================================
+   GLOBAL DESIGN SYSTEM (RC-505MKII Style)
+   ========================================== */
+
+:root {
+    /* --- COLORS: LED & STATE --- */
+    --led-red-recording: #ff0033;
+    --led-green-playing: #00ff66;
+    --led-yellow-overdub: #ffcc00;
+    --led-blue-accent: #0099ff;
+    --led-white-neutral: #f0f0f0;
+
+    /* --- GLOW EFFECTS (Refined) --- */
+    --glow-red-soft: 0 0 8px rgba(255, 0, 51, 0.4);
+    --glow-red-intense: 0 0 12px rgba(255, 0, 51, 0.6), 0 0 24px rgba(255, 0, 51, 0.4);
+
+    --glow-green-soft: 0 0 8px rgba(0, 255, 102, 0.4);
+    --glow-green-intense: 0 0 12px rgba(0, 255, 102, 0.6), 0 0 24px rgba(0, 255, 102, 0.4);
+
+    --glow-yellow-soft: 0 0 8px rgba(255, 204, 0, 0.4);
+    --glow-yellow-intense: 0 0 12px rgba(255, 204, 0, 0.6), 0 0 24px rgba(255, 204, 0, 0.4);
+
+    --glow-blue-soft: 0 0 8px rgba(0, 153, 255, 0.4);
+    --glow-blue-intense: 0 0 12px rgba(0, 153, 255, 0.6), 0 0 24px rgba(0, 153, 255, 0.4);
+
+    --glow-white-soft: 0 0 6px rgba(240, 240, 240, 0.3);
+    --glow-white-intense: 0 0 10px rgba(240, 240, 240, 0.5), 0 0 20px rgba(240, 240, 240, 0.3);
+
+    /* --- SURFACES & MATERIALS --- */
+    --bg-panel-main: #121212;
+    /* Deep matte black */
+    --bg-panel-secondary: #1a1a1a;
+    /* Slightly lighter panel */
+    --bg-groove-dark: #080808;
+    /* Deepest recesses */
+
+    /* Button Gradients (Matte Plastic) */
+    --bg-button-gradient: linear-gradient(180deg, #2a2a2a 0%, #222222 100%);
+    --bg-button-active: linear-gradient(180deg, #1a1a1a 0%, #222222 100%);
+    --gradient-plastic-dark: var(--bg-button-gradient);
+    --gradient-plastic-light: linear-gradient(180deg, #363636 0%, #282828 100%);
+
+    /* --- SHADOWS (Industrial Depth) --- */
+    --shadow-raised:
+        0 1px 0 rgba(255, 255, 255, 0.05) inset,
+        0 -1px 0 rgba(0, 0, 0, 0.5) inset,
+        0 2px 4px rgba(0, 0, 0, 0.5);
+
+    --shadow-pressed:
+        0 2px 4px rgba(0, 0, 0, 0.6) inset,
+        0 1px 0 rgba(255, 255, 255, 0.02);
+    --button-border-raised: var(--shadow-raised);
+    --button-border-pressed: var(--shadow-pressed);
+
+    /* --- DIMENSIONS --- */
+    --border-radius-button: 4px;
+    /* Sharper corners */
+    --border-radius-hardware: 4px;
+
+    --button-size-sm: 32px;
+    --button-size-md: 48px;
+    --button-size-lg: 64px;
+
+    /* --- FONTS --- */
+    --font-hardware: 'Rajdhani', sans-serif;
+    --font-mono: 'Roboto Mono', monospace;
+    --color-accent: var(--led-blue-accent);
+    --led-blue-active: var(--led-blue-accent);
+}
+
+/* Reset & Base */
+* {
+    box-sizing: border-box;
+    -webkit-user-drag: none;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-panel-main);
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    /* Prevent scroll bounce */
+    -webkit-font-smoothing: antialiased;
+}
+
+.hardware-interactive {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-panel-main);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}
