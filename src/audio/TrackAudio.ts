@@ -21,14 +21,16 @@ export class TrackAudio {
 
 
     private workletNode: AudioWorkletNode | null = null;
-    private inputStream: MediaStreamAudioSourceNode | null = null;
     private overdubProcessor: ScriptProcessorNode | null = null;
     private startTime: number = 0;
     private startOffset: number = 0;
+    private resumeAfterRecording = true;
 
     // Quantize state
     private waitingForQuantize = false;
     private waitingForQuantizeStop = false;
+    private quantizeStartListener: (() => void) | null = null;
+    private quantizeStopListener: (() => void) | null = null;
 
     // Shared State
     private trackIndex: number;
@@ -141,6 +143,23 @@ export class TrackAudio {
     }
 
     public triggerStop() {
+        this.cancelQuantizeWait();
+
+        if (this.state === TrackState.RECORDING || this.state === TrackState.REC_FINISHING) {
+            this.resumeAfterRecording = false;
+            this.stopRecording();
+            return;
+        }
+
+        if (this.state === TrackState.OVERDUBBING) {
+            this.stopOverdub();
+        }
+
+        if (this.state === TrackState.REC_STANDBY) {
+            this.state = TrackState.STOPPED;
+            return;
+        }
+
         this.stop();
         this.state = TrackState.STOPPED;
     }
@@ -181,10 +200,12 @@ export class TrackAudio {
 
                 this.waitingForQuantize = false;
                 this.transport.off('measure', onMeasure);
+                this.quantizeStartListener = null;
                 this.startRecording();
             }
         };
 
+        this.quantizeStartListener = onMeasure;
         this.transport.on('measure', onMeasure);
 
         console.log(`   Waiting for next measure event...\n`);
@@ -221,10 +242,12 @@ export class TrackAudio {
 
                 this.waitingForQuantizeStop = false;
                 this.transport.off('measure', onMeasureStop);
+                this.quantizeStopListener = null;
                 this.stopRecording();
             }
         };
 
+        this.quantizeStopListener = onMeasureStop;
         this.transport.on('measure', onMeasureStop);
 
         console.log(`   Waiting for next measure event to complete recording...\n`);
@@ -236,7 +259,8 @@ export class TrackAudio {
         if (this.isRecording) return;
 
         const ctx = this.engine.context;
-        const input = await this.engine.getInputStream();
+        const input = await this.engine.getProcessedInputNode();
+        this.resumeAfterRecording = true;
 
         const workletNode = new AudioWorkletNode(ctx, 'looper-processor');
 
@@ -253,7 +277,6 @@ export class TrackAudio {
         workletNode.connect(this.fxChain.input);
 
         this.workletNode = workletNode;
-        this.inputStream = input;
 
         this.isRecording = true;
         this.state = TrackState.RECORDING;
@@ -268,11 +291,8 @@ export class TrackAudio {
         this.workletNode.port.postMessage({ type: 'STOP_RECORD' });
 
         setTimeout(() => {
-            if (this.inputStream) {
-                this.inputStream.disconnect();
-                this.inputStream = null;
-            }
             if (this.workletNode) {
+                this.workletNode.port.onmessage = null;
                 this.workletNode.disconnect();
                 this.workletNode = null;
             }
@@ -350,9 +370,14 @@ export class TrackAudio {
         this.audioBuffer = ctx.createBuffer(1, finalBufferData.length, ctx.sampleRate);
         this.audioBuffer.copyToChannel(finalBufferData, 0);
 
-        // Transition to PLAYING state
-        this.state = TrackState.PLAYING;
-        this.play();
+        if (this.resumeAfterRecording) {
+            this.state = TrackState.PLAYING;
+            this.play();
+        } else {
+            this.state = TrackState.STOPPED;
+        }
+
+        this.resumeAfterRecording = true;
     }
 
     public play() {
@@ -387,6 +412,9 @@ export class TrackAudio {
     }
 
     public clear() {
+        this.cancelQuantizeWait();
+        this.abortRecording();
+        this.stopOverdub();
         this.stop();
         this.audioBuffer = null;
         this.state = TrackState.EMPTY;
@@ -470,7 +498,7 @@ export class TrackAudio {
         if (!this.audioBuffer) return;
 
         const ctx = this.engine.context;
-        const input = await this.engine.getInputStream();
+        const input = await this.engine.getProcessedInputNode();
 
         // Create ScriptProcessor for real-time buffer manipulation
         // Buffer size 4096 gives ~92ms latency, acceptable for overdub processing loop
@@ -549,6 +577,32 @@ export class TrackAudio {
         if (this.overdubProcessor) {
             this.overdubProcessor.disconnect();
             this.overdubProcessor = null;
+        }
+    }
+
+    private abortRecording() {
+        this.isRecording = false;
+        this.resumeAfterRecording = false;
+
+        if (this.workletNode) {
+            this.workletNode.port.onmessage = null;
+            this.workletNode.disconnect();
+            this.workletNode = null;
+        }
+    }
+
+    private cancelQuantizeWait() {
+        this.waitingForQuantize = false;
+        this.waitingForQuantizeStop = false;
+
+        if (this.quantizeStartListener) {
+            this.transport.off('measure', this.quantizeStartListener);
+            this.quantizeStartListener = null;
+        }
+
+        if (this.quantizeStopListener) {
+            this.transport.off('measure', this.quantizeStopListener);
+            this.quantizeStopListener = null;
         }
     }
 }

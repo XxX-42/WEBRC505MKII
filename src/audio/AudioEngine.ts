@@ -70,6 +70,7 @@ export class AudioEngine implements IAudioEngine {
         this.trackMixNode.connect(this.outputFxChain.input);
         this.outputFxChain.output.connect(this.masterGainNode);
         this.masterGainNode.connect(this.context.destination);
+        this.inputFxChain.output.connect(this.monitorGainNode);
 
         // Initialize Rhythm Engine
         this.rhythmEngine = new RhythmEngine(this.context);
@@ -439,6 +440,8 @@ export class AudioEngine implements IAudioEngine {
         } else {
             console.log('  ✓ Safe mode - no direct monitoring\n');
         }
+
+        this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
     }
 
     public onMonitoringChange(listener: (enabled: boolean) => void) {
@@ -513,6 +516,11 @@ export class AudioEngine implements IAudioEngine {
             await this.setInputDevice(this.selectedInputDeviceId || '');
         }
         return this.currentInputStream!;
+    }
+
+    public async getProcessedInputNode(): Promise<AudioNode> {
+        await this.getInputStream();
+        return this.inputFxChain.output;
     }
 
     // ========================================
@@ -627,6 +635,22 @@ export class AudioEngine implements IAudioEngine {
         if (this.tracks[trackIndex]) {
             this.tracks[trackIndex].clear();
         }
+    }
+
+    public stopAllTracks() {
+        this.tracks.forEach(track => {
+            if (track.state !== TrackState.EMPTY) {
+                track.triggerStop();
+            }
+        });
+    }
+
+    public playAllTracks() {
+        this.tracks.forEach(track => {
+            if (track.state === TrackState.STOPPED) {
+                track.play();
+            }
+        });
     }
 
     public toggleReverse(trackIndex: number) {

@@ -113,8 +113,10 @@ const adjustBpm = (delta: number) => {
 
 const toggleTransport = () => {
   if (transport.state === TransportState.PLAYING) {
+    engine.stopAllTracks();
     transport.stop();
   } else {
+    engine.playAllTracks();
     transport.start();
   }
   updateState();
