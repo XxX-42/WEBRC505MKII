@@ -2,11 +2,11 @@
   <div class="latency-tuner" :class="{ collapsed: isCollapsed }">
     <div class="tuner-header" @click="toggleCollapse">
       <div class="header-label">
-        <span class="label-icon">⚙</span>
+        <span class="label-icon">IO</span>
         <span>SYSTEM</span>
       </div>
       <button class="collapse-btn" :class="{ collapsed: isCollapsed }" aria-label="Toggle system panel">
-        {{ isCollapsed ? '▼' : '▲' }}
+        {{ isCollapsed ? 'OPEN' : 'CLOSE' }}
       </button>
     </div>
 
@@ -14,7 +14,7 @@
       <div class="lcd-panel">
         <div class="lcd-text">
           <div class="lcd-line">LOOPBACK TEST</div>
-          <div class="lcd-line small">Connect output → input</div>
+          <div class="lcd-line small">Connect output to input</div>
           <div class="lcd-line small">Mute speakers to avoid feedback</div>
         </div>
       </div>
@@ -38,7 +38,7 @@
       </div>
 
       <div v-if="error" class="error-panel">
-        <div class="error-icon">⚠</div>
+        <div class="error-icon">ERR</div>
         <div class="error-text">{{ error }}</div>
       </div>
     </div>
@@ -131,8 +131,8 @@ const runTest = async () => {
 }
 
 .label-icon {
-  font-size: 14px;
-  opacity: 0.6;
+  font-size: 11px;
+  opacity: 0.7;
 }
 
 .collapse-btn {
@@ -147,7 +147,7 @@ const runTest = async () => {
 
 .collapse-btn:hover {
   color: rgba(240, 240, 240, 0.7);
-  transform: scale(1.2);
+  transform: scale(1.05);
 }
 
 .collapse-btn:focus-visible {
@@ -253,7 +253,8 @@ const runTest = async () => {
 }
 
 .error-icon {
-  font-size: 16px;
+  font-size: 12px;
+  font-family: var(--font-hardware);
   color: var(--led-red-recording);
 }
 
