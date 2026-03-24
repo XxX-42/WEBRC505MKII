@@ -283,7 +283,7 @@ Added utility classes for forced font styling:
 ### TransportControls.vue:
 - **Lines:** ~320
 - **Components Used:** HardwareButton (2 instances)
-- **Event Listeners:** 4 (start, stop, bpm-change, tick)
+- **Event Listeners:** 4 (start, stop, bpm-change, beat)
 - **Computed Properties:** 1 (bpmDisplay)
 - **Functions:** 4 (adjustBpm, toggleTransport, handleTap, onTick)
 

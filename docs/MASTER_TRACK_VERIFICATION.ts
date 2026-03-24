@@ -139,7 +139,7 @@
  *     transport.on('start', updateState);
  *     transport.on('stop', updateState);
  *     transport.on('bpm-change', updateState);  // ← This updates the UI!
- *     transport.on('tick', onTick);
+ *     transport.on('beat', onTick);
  * });
  * 
  * const updateState = () => {
