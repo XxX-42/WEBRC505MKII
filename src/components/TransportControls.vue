@@ -96,6 +96,7 @@ const beatIndicator = ref(false);
 const tapActive = ref(false);
 const showSettings = ref(false);
 const isThruActive = ref(engine.monitoringEnabled);
+let unsubscribeMonitoring: (() => void) | null = null;
 
 const bpmDisplay = computed(() => bpm.value.toString().padStart(3, '0'));
 
@@ -215,6 +216,9 @@ onMounted(() => {
   transport.on('stop', updateState);
   transport.on('bpm-change', updateState);
   transport.on('beat', onTick);
+  unsubscribeMonitoring = engine.onMonitoringChange((enabled) => {
+    isThruActive.value = enabled;
+  });
 });
 
 onUnmounted(() => {
@@ -232,6 +236,7 @@ onUnmounted(() => {
   if (tapFlashTimer) {
     clearTimeout(tapFlashTimer);
   }
+  unsubscribeMonitoring?.();
 });
 </script>
 

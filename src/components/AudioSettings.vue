@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import HardwareButton from './ui/HardwareButton.vue';
 
@@ -120,6 +120,7 @@ const selectedInput = ref('');
 const selectedOutput = ref('');
 const monitoringEnabled = ref(false);
 const sinkIdSupported = ref(false);
+let unsubscribeMonitoring: (() => void) | null = null;
 
 watch(() => props.modelValue, (newVal) => {
   isOpen.value = newVal;
@@ -130,10 +131,17 @@ watch(() => props.modelValue, (newVal) => {
 
 onMounted(async () => {
   sinkIdSupported.value = typeof HTMLAudioElement !== 'undefined' && 'setSinkId' in HTMLAudioElement.prototype;
+  unsubscribeMonitoring = engine.onMonitoringChange((enabled) => {
+    monitoringEnabled.value = enabled;
+  });
 
   if (isOpen.value) {
     await loadDevices();
   }
+});
+
+onUnmounted(() => {
+  unsubscribeMonitoring?.();
 });
 
 const loadDevices = async () => {

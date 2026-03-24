@@ -42,6 +42,7 @@ export class AudioEngine implements IAudioEngine {
     public selectedInputDeviceId: string | null = null;
     public selectedOutputDeviceId: string | null = null;
     public monitoringEnabled: boolean = false; // DEFAULT: FALSE to prevent feedback!
+    private monitoringListeners = new Set<(enabled: boolean) => void>();
 
     private constructor() {
         this.context = new AudioContext({
@@ -180,6 +181,8 @@ export class AudioEngine implements IAudioEngine {
             console.error('Failed to set input device:', error);
             throw error;
         }
+
+        this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
     }
 
     // ========================================
@@ -436,6 +439,13 @@ export class AudioEngine implements IAudioEngine {
         } else {
             console.log('  ✓ Safe mode - no direct monitoring\n');
         }
+    }
+
+    public onMonitoringChange(listener: (enabled: boolean) => void) {
+        this.monitoringListeners.add(listener);
+        return () => {
+            this.monitoringListeners.delete(listener);
+        };
     }
 
     // ========================================
