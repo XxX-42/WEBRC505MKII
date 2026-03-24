@@ -6,7 +6,7 @@
         <div class="led-display">
           <span class="led-digits">{{ bpmDisplay }}</span>
         </div>
-        <div class="bpm-controls">
+        <div class="bpm-controls" :class="{ 'is-disabled': controlsDisabled }">
           <button @click="adjustBpm(-1)" class="bpm-adjust-btn" aria-label="Decrease BPM">
             <span>-</span>
           </button>
@@ -38,6 +38,7 @@
         aria-label="Tap tempo"
         @press="handleTap"
         class="tap-button"
+        :class="{ 'is-disabled': controlsDisabled }"
       />
     </div>
 
@@ -59,6 +60,7 @@
         aria-label="Toggle direct monitoring"
         @press="toggleThru"
         class="thru-button"
+        :class="{ 'is-disabled': controlsDisabled }"
       />
     </div>
 
@@ -72,6 +74,7 @@
         aria-label="Open audio settings"
         @press="openSettings"
         class="settings-button"
+        :class="{ 'is-disabled': !engine.isBridgeAvailable() }"
       />
     </div>
 
@@ -82,7 +85,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Transport } from '../core/Transport';
-import { TransportState } from '../core/types';
+import { TrackState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
@@ -96,37 +99,40 @@ const beatIndicator = ref(false);
 const tapActive = ref(false);
 const showSettings = ref(false);
 const isThruActive = ref(engine.monitoringEnabled);
+const nativeReady = ref(engine.isNativeReady());
 let unsubscribeMonitoring: (() => void) | null = null;
+let unsubscribeStatus: (() => void) | null = null;
 
 const bpmDisplay = computed(() => bpm.value.toString().padStart(3, '0'));
+const controlsDisabled = computed(() => !nativeReady.value);
 
 const updateState = () => {
   bpm.value = transport.bpm;
-  isPlaying.value = transport.state === TransportState.PLAYING;
 };
 
 const adjustBpm = (delta: number) => {
+  if (controlsDisabled.value) return;
   const newBpm = Math.max(40, Math.min(300, transport.bpm + delta));
   transport.setBpm(newBpm);
   updateState();
 };
 
 const toggleTransport = () => {
-  if (transport.state === TransportState.PLAYING) {
+  if (controlsDisabled.value) return;
+  if (isPlaying.value) {
     engine.stopAllTracks();
-    transport.stop();
   } else {
     engine.playAllTracks();
-    transport.start();
   }
-  updateState();
 };
 
 const openSettings = () => {
+  if (!engine.isBridgeAvailable()) return;
   showSettings.value = true;
 };
 
 const toggleThru = () => {
+  if (controlsDisabled.value) return;
   if (!isThruActive.value) {
     const confirmed = confirm(
       'WARNING: FEEDBACK RISK!\n\n' +
@@ -137,11 +143,11 @@ const toggleThru = () => {
     );
 
     if (confirmed) {
-      engine.setMonitoring(true);
+      void engine.setMonitoring(true);
       console.log('THRU ENABLED - Monitoring active (use headphones)');
     }
   } else {
-    engine.setMonitoring(false);
+    void engine.setMonitoring(false);
     console.log('THRU DISABLED - Monitoring off');
   }
 };
@@ -152,6 +158,7 @@ let beatFlashTimer: number | null = null;
 let tapFlashTimer: number | null = null;
 
 const handleTap = () => {
+  if (controlsDisabled.value) return;
   tapActive.value = true;
   if (tapFlashTimer) {
     clearTimeout(tapFlashTimer);
@@ -200,32 +207,24 @@ const handleTap = () => {
   }, 3000);
 };
 
-const onTick = () => {
-  beatIndicator.value = true;
-  if (beatFlashTimer) {
-    clearTimeout(beatFlashTimer);
-  }
-  beatFlashTimer = window.setTimeout(() => {
-    beatIndicator.value = false;
-    beatFlashTimer = null;
-  }, 100);
-};
-
 onMounted(() => {
-  transport.on('start', updateState);
-  transport.on('stop', updateState);
   transport.on('bpm-change', updateState);
-  transport.on('beat', onTick);
   unsubscribeMonitoring = engine.onMonitoringChange((enabled) => {
     isThruActive.value = enabled;
+  });
+  unsubscribeStatus = engine.onStatusChange((status) => {
+    nativeReady.value = status.ready;
+    const trackState = engine.tracks[0]?.state;
+    isPlaying.value =
+      trackState === TrackState.RECORDING ||
+      trackState === TrackState.PLAYING ||
+      trackState === TrackState.OVERDUBBING;
+    beatIndicator.value = false;
   });
 });
 
 onUnmounted(() => {
-  transport.off('start', updateState);
-  transport.off('stop', updateState);
   transport.off('bpm-change', updateState);
-  transport.off('beat', onTick);
 
   if (tapResetTimer) {
     clearTimeout(tapResetTimer);
@@ -237,13 +236,14 @@ onUnmounted(() => {
     clearTimeout(tapFlashTimer);
   }
   unsubscribeMonitoring?.();
+  unsubscribeStatus?.();
 });
 </script>
 
 <style scoped>
 .transport-bar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 24px;
   padding: 16px 24px;
   background: var(--bg-panel-secondary);
@@ -255,9 +255,23 @@ onUnmounted(() => {
     0 4px 12px rgba(0, 0, 0, 0.8);
 }
 
+.is-disabled {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.bpm-module,
+.transport-controls,
+.beat-indicator-module,
+.thru-module,
+.settings-module {
+  min-height: 92px;
+}
+
 .divider {
   width: 2px;
-  height: 48px;
+  align-self: center;
+  height: 64px;
   background: linear-gradient(
     180deg,
     transparent 0%,
@@ -269,7 +283,8 @@ onUnmounted(() => {
 .bpm-module {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .module-label {
@@ -351,15 +366,25 @@ onUnmounted(() => {
 
 .transport-controls {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 16px;
+  padding-bottom: 2px;
 }
 
 .beat-indicator-module {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.thru-module,
+.settings-module {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 2px;
 }
 
 .beat-led {

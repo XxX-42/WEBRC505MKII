@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "native:configure": "cmake -S native-mvp/engine-cpp -B native-mvp/build-v145 -G \"Visual Studio 17 2022\" -T v145 -A x64",
+    "native:build": "cmake --build native-mvp/build-v145 --config Release --target native_bridge_host"
   },
   "dependencies": {
     "vue": "^3.5.24"

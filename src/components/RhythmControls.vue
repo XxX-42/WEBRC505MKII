@@ -1,5 +1,5 @@
 <template>
-  <div class="rhythm-controls">
+  <div class="rhythm-controls" :class="{ disabled }">
     <div class="section-label">RHYTHM</div>
 
     <div class="main-row">
@@ -20,6 +20,7 @@
           v-model="selectedPattern"
           @change="updatePattern"
           class="pattern-select"
+          :disabled="disabled"
         >
           <option value="ROCK">ROCK</option>
           <option value="TECHNO">TECHNO</option>
@@ -36,15 +37,17 @@
             @input="updateVolume"
             class="level-slider hardware-interactive"
             aria-label="Rhythm volume"
+            :disabled="disabled"
           />
         </div>
       </div>
     </div>
+    <div v-if="disabled" class="native-note">Native v1 unavailable</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import type { RhythmPattern } from '../audio/RhythmEngine';
 import HardwareButton from './ui/HardwareButton.vue';
@@ -53,8 +56,10 @@ const engine = AudioEngine.getInstance();
 const isPlaying = ref(false);
 const selectedPattern = ref<RhythmPattern>('ROCK');
 const volume = ref(50);
+const disabled = computed(() => !engine.supportsRhythm());
 
 const toggleRhythm = () => {
+  if (disabled.value) return;
   if (isPlaying.value) {
     engine.rhythmEngine.stop();
     isPlaying.value = false;
@@ -65,10 +70,12 @@ const toggleRhythm = () => {
 };
 
 const updatePattern = () => {
+  if (disabled.value) return;
   engine.rhythmEngine.setPattern(selectedPattern.value);
 };
 
 const updateVolume = () => {
+  if (disabled.value) return;
   engine.rhythmEngine.setVolume(volume.value);
 };
 
@@ -83,10 +90,24 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 92px;
   padding: 0 12px;
   border-left: 1px solid #333;
   border-right: 1px solid #333;
+}
+
+.rhythm-controls.disabled {
+  opacity: 0.45;
+}
+
+.native-note {
+  font-size: 9px;
+  font-family: var(--font-hardware);
+  letter-spacing: 1px;
+  color: #777;
+  text-transform: uppercase;
 }
 
 .section-label {
@@ -100,7 +121,8 @@ onMounted(() => {
 .main-row {
   display: flex;
   gap: 12px;
-  align-items: center;
+  align-items: flex-end;
+  padding-bottom: 2px;
 }
 
 .params-col {

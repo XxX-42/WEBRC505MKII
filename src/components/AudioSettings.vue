@@ -4,50 +4,53 @@
       <div v-if="isOpen" class="modal-overlay" @click="handleOverlayClick">
         <div class="modal-container" @click.stop>
           <div class="modal-header">
-            <h2 class="modal-title">AUDIO SETTINGS</h2>
+            <h2 class="modal-title">NATIVE AUDIO SETTINGS</h2>
             <button class="close-btn" @click="close" aria-label="Close audio settings">×</button>
           </div>
 
           <div class="modal-content">
             <div class="setting-group">
-              <label class="setting-label" for="input-device">INPUT DEVICE (MICROPHONE)</label>
-              <select
-                id="input-device"
-                v-model="selectedInput"
-                @change="handleInputChange"
-                class="device-select"
-              >
-                <option value="">Default</option>
-                <option
-                  v-for="device in inputDevices"
-                  :key="device.deviceId"
-                  :value="device.deviceId"
-                >
-                  {{ device.label || `Microphone ${device.deviceId.slice(0, 8)}` }}
+              <label class="setting-label" for="backend">BACKEND</label>
+              <select id="backend" v-model="selectedBackend" @change="handleBackendChange" class="device-select" :disabled="!bridgeAvailable">
+                <option v-for="backend in backends" :key="backend" :value="backend">{{ backend }}</option>
+              </select>
+            </div>
+
+            <div class="setting-group">
+              <label class="setting-label" for="input-device">INPUT DEVICE</label>
+              <select id="input-device" v-model="selectedInput" @change="handleInputChange" class="device-select" :disabled="!bridgeAvailable">
+                <option v-for="device in inputDevices" :key="device.id" :value="device.id">
+                  {{ device.name }}
                 </option>
               </select>
             </div>
 
             <div class="setting-group">
-              <label class="setting-label" for="output-device">OUTPUT DEVICE (SPEAKERS/HEADPHONES)</label>
-              <select
-                id="output-device"
-                v-model="selectedOutput"
-                @change="handleOutputChange"
-                class="device-select"
-                :disabled="!sinkIdSupported"
-              >
-                <option value="">Default</option>
-                <option
-                  v-for="device in outputDevices"
-                  :key="device.deviceId"
-                  :value="device.deviceId"
-                >
-                  {{ device.label || `Speaker ${device.deviceId.slice(0, 8)}` }}
+              <label class="setting-label" for="output-device">OUTPUT DEVICE</label>
+              <select id="output-device" v-model="selectedOutput" @change="handleOutputChange" class="device-select" :disabled="!bridgeAvailable">
+                <option v-for="device in outputDevices" :key="device.id" :value="device.id">
+                  {{ device.name }}
                 </option>
               </select>
-              <div v-if="!sinkIdSupported" class="warning-text small">
-                Output device selection is not supported in this browser
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-group half">
+                <label class="setting-label" for="sample-rate">SAMPLE RATE</label>
+                <select id="sample-rate" v-model.number="selectedSampleRate" @change="handleSampleRateChange" class="device-select" :disabled="!bridgeAvailable">
+                  <option v-for="sampleRate in sampleRates" :key="sampleRate" :value="sampleRate">
+                    {{ sampleRate }} Hz
+                  </option>
+                </select>
+              </div>
+
+              <div class="setting-group half">
+                <label class="setting-label" for="buffer-frames">BUFFER</label>
+                <select id="buffer-frames" v-model.number="selectedBufferFrames" @change="handleBufferChange" class="device-select" :disabled="!bridgeAvailable">
+                  <option v-for="buffer in bufferOptions" :key="buffer" :value="buffer">
+                    {{ buffer }} frames
+                  </option>
+                </select>
               </div>
             </div>
 
@@ -58,6 +61,7 @@
                   v-model="monitoringEnabled"
                   @change="handleMonitoringChange"
                   class="monitoring-checkbox"
+                  :disabled="!bridgeAvailable"
                 >
                 <span class="checkbox-custom"></span>
                 <span>SOFTWARE MONITORING</span>
@@ -66,20 +70,16 @@
                 <div class="warning-icon">WARNING</div>
                 <div class="warning-content">
                   <strong>DANGER: FEEDBACK RISK</strong>
-                  <p>Only enable with headphones. Using speakers may cause loud feedback.</p>
+                  <p>Native monitoring is live passthrough. Use headphones only.</p>
                 </div>
               </div>
             </div>
 
             <div class="setting-group">
-              <HardwareButton
-                size="md"
-                color="blue"
-                label="PLAY TEST TONE (440Hz)"
-                aria-label="Play 440 hertz test tone"
-                @press="playTestTone"
-                class="test-button"
-              />
+              <div class="native-status" :class="{ offline: !bridgeAvailable }">
+                <span>{{ bridgeAvailable ? 'Native bridge connected' : 'Native bridge unavailable' }}</span>
+                <span v-if="lastError" class="native-status-error">{{ lastError }}</span>
+              </div>
             </div>
           </div>
 
@@ -101,6 +101,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
+import type { NativeBackend, NativeDeviceInfo } from '../audio/NativeBridgeClient';
 import HardwareButton from './ui/HardwareButton.vue';
 
 const props = defineProps<{
@@ -114,25 +115,36 @@ const emit = defineEmits<{
 const engine = AudioEngine.getInstance();
 
 const isOpen = ref(props.modelValue);
-const inputDevices = ref<MediaDeviceInfo[]>([]);
-const outputDevices = ref<MediaDeviceInfo[]>([]);
+const backends = ref<NativeBackend[]>([]);
+const inputDevices = ref<NativeDeviceInfo[]>([]);
+const outputDevices = ref<NativeDeviceInfo[]>([]);
+const sampleRates = ref<number[]>([]);
+const bufferOptions = ref<number[]>([]);
+const selectedBackend = ref<NativeBackend>('WASAPI');
 const selectedInput = ref('');
 const selectedOutput = ref('');
+const selectedSampleRate = ref(48000);
+const selectedBufferFrames = ref(128);
 const monitoringEnabled = ref(false);
-const sinkIdSupported = ref(false);
+const bridgeAvailable = ref(engine.isBridgeAvailable());
+const lastError = ref(engine.getUiStatus().lastError);
 let unsubscribeMonitoring: (() => void) | null = null;
+let unsubscribeStatus: (() => void) | null = null;
 
 watch(() => props.modelValue, (newVal) => {
   isOpen.value = newVal;
   if (newVal) {
-    loadDevices();
+    void loadDevices();
   }
 });
 
 onMounted(async () => {
-  sinkIdSupported.value = typeof HTMLAudioElement !== 'undefined' && 'setSinkId' in HTMLAudioElement.prototype;
   unsubscribeMonitoring = engine.onMonitoringChange((enabled) => {
     monitoringEnabled.value = enabled;
+  });
+  unsubscribeStatus = engine.onStatusChange((status) => {
+    bridgeAvailable.value = status.bridgeAvailable;
+    lastError.value = status.lastError;
   });
 
   if (isOpen.value) {
@@ -142,45 +154,74 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribeMonitoring?.();
+  unsubscribeStatus?.();
 });
 
 const loadDevices = async () => {
   try {
-    const devices = await engine.getDevices();
-    inputDevices.value = devices.inputs;
-    outputDevices.value = devices.outputs;
-
-    selectedInput.value = engine.selectedInputDeviceId || '';
-    selectedOutput.value = engine.selectedOutputDeviceId || '';
+    const selection = await engine.getDevices();
+    backends.value = selection.backends;
+    selectedBackend.value = selection.selectedBackend;
+    inputDevices.value = selection.inputs;
+    outputDevices.value = selection.outputs;
+    sampleRates.value = selection.sampleRates;
+    bufferOptions.value = selection.bufferOptions;
+    selectedInput.value = engine.selectedInputDeviceId || selection.inputs[0]?.id || '';
+    selectedOutput.value = engine.selectedOutputDeviceId || selection.outputs[0]?.id || '';
+    selectedSampleRate.value = engine.selectedSampleRate;
+    selectedBufferFrames.value = engine.selectedBufferFrames;
     monitoringEnabled.value = engine.monitoringEnabled;
   } catch (error) {
-    console.error('Failed to load devices:', error);
+    console.error('Failed to load native devices:', error);
+  }
+};
+
+const handleBackendChange = async () => {
+  try {
+    await engine.setBackend(selectedBackend.value);
+    await loadDevices();
+  } catch (error) {
+    alert(`Failed to change backend: ${error}`);
   }
 };
 
 const handleInputChange = async () => {
   try {
     await engine.setInputDevice(selectedInput.value);
-    selectedInput.value = engine.selectedInputDeviceId || '';
+    await loadDevices();
   } catch (error) {
-    console.error('Failed to change input device:', error);
-    selectedInput.value = engine.selectedInputDeviceId || '';
-    alert('Failed to change input device. Please check permissions.');
+    alert(`Failed to change input device: ${error}`);
   }
 };
 
 const handleOutputChange = async () => {
   try {
     await engine.setOutputDevice(selectedOutput.value);
-    selectedOutput.value = engine.selectedOutputDeviceId || '';
+    await loadDevices();
   } catch (error) {
-    console.error('Failed to change output device:', error);
-    selectedOutput.value = engine.selectedOutputDeviceId || '';
-    alert('Failed to change output device.');
+    alert(`Failed to change output device: ${error}`);
   }
 };
 
-const handleMonitoringChange = () => {
+const handleSampleRateChange = async () => {
+  try {
+    await engine.setSampleRate(selectedSampleRate.value);
+    await loadDevices();
+  } catch (error) {
+    alert(`Failed to change sample rate: ${error}`);
+  }
+};
+
+const handleBufferChange = async () => {
+  try {
+    await engine.setBufferFrames(selectedBufferFrames.value);
+    await loadDevices();
+  } catch (error) {
+    alert(`Failed to change buffer size: ${error}`);
+  }
+};
+
+const handleMonitoringChange = async () => {
   if (monitoringEnabled.value) {
     const confirmed = confirm(
       'WARNING: Enabling monitoring with speakers may cause loud feedback.\n\n' +
@@ -194,12 +235,13 @@ const handleMonitoringChange = () => {
     }
   }
 
-  engine.setMonitoring(monitoringEnabled.value);
-  monitoringEnabled.value = engine.monitoringEnabled;
-};
-
-const playTestTone = () => {
-  engine.playTestTone();
+  try {
+    await engine.setMonitoring(monitoringEnabled.value);
+    monitoringEnabled.value = engine.monitoringEnabled;
+  } catch (error) {
+    alert(`Failed to change monitoring: ${error}`);
+    monitoringEnabled.value = engine.monitoringEnabled;
+  }
 };
 
 const close = () => {
@@ -215,10 +257,7 @@ const handleOverlayClick = () => {
 <style scoped>
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
@@ -236,7 +275,7 @@ const handleOverlayClick = () => {
     inset 0 -1px 0 rgba(0, 0, 0, 0.8),
     0 8px 32px rgba(0, 0, 0, 0.9);
   width: 90%;
-  max-width: 600px;
+  max-width: 720px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
@@ -254,240 +293,134 @@ const handleOverlayClick = () => {
 
 .modal-title {
   font-family: var(--font-hardware);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--led-red-recording);
-  text-shadow: 0 0 8px rgba(255, 0, 51, 0.6);
-  margin: 0;
 }
 
 .close-btn {
-  width: 32px;
-  height: 32px;
+  appearance: none;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  font-size: 20px;
-  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 24px;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: rgba(255, 0, 51, 0.3);
-  color: var(--led-red-recording);
-}
-
-.close-btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
 }
 
 .modal-content {
-  flex: 1;
-  overflow-y: auto;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.setting-row {
+  display: flex;
+  gap: 16px;
 }
 
 .setting-group {
-  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-group.half {
+  flex: 1;
 }
 
 .setting-label {
-  display: block;
   font-family: var(--font-hardware);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 8px;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.8);
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  color: #888;
 }
 
 .device-select {
-  width: 100%;
-  padding: 12px 16px;
-  background: #0a0a0a;
-  border: 2px solid #1a1a1a;
-  border-radius: 4px;
-  color: #fff;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.8),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.02);
-}
-
-.device-select:hover:not(:disabled) {
-  border-color: #2a2a2a;
-  background: #0f0f0f;
-}
-
-.device-select:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.8),
-    0 0 8px rgba(0, 153, 255, 0.3);
-}
-
-.device-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.device-select option {
-  background: #0a0a0a;
-  color: #fff;
-  padding: 8px;
+  background: var(--bg-groove-dark);
+  color: var(--text-primary);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px 12px;
 }
 
 .monitoring-group {
-  background: rgba(255, 0, 51, 0.05);
-  border: 2px solid rgba(255, 0, 51, 0.2);
-  border-radius: 8px;
   padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
 }
 
 .monitoring-label {
   display: flex;
   align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: #fff;
+  gap: 10px;
 }
 
 .monitoring-checkbox {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .checkbox-custom {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #2a2a2a;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #555;
   border-radius: 4px;
-  background: #0a0a0a;
-  position: relative;
-  transition: all 0.2s;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .monitoring-checkbox:checked + .checkbox-custom {
   background: var(--led-red-recording);
-  border-color: var(--led-red-recording);
-  box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.4),
-    0 0 12px rgba(255, 0, 51, 0.6);
-}
-
-.monitoring-checkbox:checked + .checkbox-custom::after {
-  content: 'OK';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #fff;
-  font-size: 10px;
-  font-weight: bold;
+  box-shadow: var(--glow-red-soft);
 }
 
 .warning-box {
   display: flex;
   gap: 12px;
-  background: rgba(255, 0, 51, 0.1);
-  border: 1px solid rgba(255, 0, 51, 0.3);
-  border-radius: 4px;
+  margin-top: 12px;
   padding: 12px;
+  background: rgba(255, 0, 51, 0.08);
+  border: 1px solid rgba(255, 0, 51, 0.18);
+  border-radius: 8px;
 }
 
 .warning-icon {
-  font-size: 12px;
-  flex-shrink: 0;
   font-family: var(--font-hardware);
-  letter-spacing: 1px;
   color: var(--led-red-recording);
+  font-size: 11px;
 }
 
 .warning-content {
-  flex: 1;
-}
-
-.warning-content strong {
-  display: block;
-  color: var(--led-red-recording);
-  font-family: var(--font-hardware);
+  color: var(--text-primary);
   font-size: 12px;
-  letter-spacing: 1px;
-  margin-bottom: 4px;
 }
 
-.warning-content p {
-  margin: 0;
+.native-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 255, 102, 0.08);
+  border: 1px solid rgba(0, 255, 102, 0.14);
   font-size: 12px;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.8);
 }
 
-.warning-text.small {
-  font-size: 11px;
-  color: rgba(255, 204, 0, 0.8);
-  margin-top: 4px;
+.native-status.offline {
+  background: rgba(255, 0, 51, 0.08);
+  border-color: rgba(255, 0, 51, 0.18);
 }
 
-.test-button {
-  width: 100%;
+.native-status-error {
+  color: #ff8b8b;
 }
 
 .modal-footer {
-  padding: 16px 24px;
-  background: linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 100%);
-  border-top: 2px solid #0d0d0d;
+  padding: 18px 24px;
   display: flex;
-  justify-content: center;
-}
-
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-enter-active .modal-container,
-.modal-leave-active .modal-container {
-  transition: transform 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .modal-container,
-.modal-leave-to .modal-container {
-  transform: scale(0.9);
-}
-
-.modal-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.modal-content::-webkit-scrollbar-track {
-  background: #0a0a0a;
-  border-radius: 4px;
-}
-
-.modal-content::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
-  border-radius: 4px;
-}
-
-.modal-content::-webkit-scrollbar-thumb:hover {
-  background: #3a3a3a;
+  justify-content: flex-end;
+  border-top: 2px solid #0d0d0d;
 }
 </style>

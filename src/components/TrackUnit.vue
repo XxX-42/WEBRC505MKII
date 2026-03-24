@@ -1,93 +1,78 @@
 <template>
-  <div class="track-unit">
-    <!-- Header -->
+  <div class="track-unit" :class="{ disabled: !trackAvailable }">
     <div class="track-header">
       <span class="track-id">TRACK {{ trackId }}</span>
+      <span v-if="disabledReason" class="track-note">{{ disabledReason }}</span>
     </div>
 
-    <!-- Upper Deck: Grid Layout -->
-    <div class="upper-deck">
-      <!-- Left Controls: Knobs & Buttons -->
+    <div class="upper-deck disabled-block">
       <div class="left-controls">
-        <!-- Knobs Row -->
         <div class="knobs-row">
-            <HardwareKnob
-                v-model="filterFreq"
-                :min="0"
-                :max="100"
-                label="FREQ"
-                color="blue"
-                :size="40"
-                @update:modelValue="updateFilterFreq"
-            />
-            <HardwareKnob
-                v-model="filterRes"
-                :min="0"
-                :max="10"
-                label="RES"
-                color="blue"
-                :size="40"
-                @update:modelValue="updateFilterRes"
-            />
+          <HardwareKnob
+            v-model="filterFreq"
+            :min="0"
+            :max="100"
+            label="FREQ"
+            color="blue"
+            :size="40"
+          />
+          <HardwareKnob
+            v-model="filterRes"
+            :min="0"
+            :max="10"
+            label="RES"
+            color="blue"
+            :size="40"
+          />
         </div>
 
-        <!-- Buttons Row -->
         <div class="buttons-row">
-            <HardwareButton
+          <HardwareButton
             label="FX"
             shape="rect"
             size="sm"
             :color="isFilterActive ? 'blue' : 'neutral'"
             :active="isFilterActive"
-            aria-label="Toggle track filter"
-            @press="toggleFilterMode"
+            aria-label="Track FX unavailable in native v1"
             class="ctrl-btn"
-            />
-            <HardwareButton
+          />
+          <HardwareButton
             label="TRACK"
             shape="rect"
             size="sm"
             :color="isReverse ? 'purple' : 'neutral'"
             :active="isReverse"
-            aria-label="Toggle reverse playback"
-            @press="toggleReverse"
+            aria-label="Reverse unavailable in native v1"
             class="ctrl-btn"
-            />
+          />
         </div>
       </div>
 
-      <!-- Right Fader -->
       <div class="right-fader">
         <HardwareFader
           v-model="playLevel"
           :led-color="faderLedColor"
           label="LEVEL"
-          @update:modelValue="updateLevel"
         />
       </div>
     </div>
 
-    <!-- Lower Deck: Halo & Rec/Play -->
     <div class="lower-deck">
-        <!-- Stop Button (Now separate and below fader/knobs area, slightly overlapping halo area or just above it) -->
-        <!-- Actually, on RC-505 stop is usually near the main button. Let's place it carefully. -->
-        <!-- Based on previous layout, STOP was in left-controls. Let's keep it accessible. -->
-        
-        <div class="stop-wrapper">
-             <HardwareButton
-                label="STOP"
-                shape="rect"
-                size="sm"
-                color="red"
-                aria-label="Stop track (hold to clear)"
-                @mousedown="startStopPress"
-                @touchstart.prevent="startStopPress"
-                @mouseup="endStopPress"
-                @touchend.prevent="endStopPress"
-                @mouseleave="cancelStopPress"
-                class="ctrl-btn stop-btn"
-            />
-        </div>
+      <div class="stop-wrapper" :class="{ 'is-disabled': !trackTransportEnabled }">
+        <HardwareButton
+          label="STOP"
+          shape="rect"
+          size="sm"
+          color="red"
+          aria-label="Stop track (hold to clear)"
+          @mousedown="startStopPress"
+          @touchstart.prevent="startStopPress"
+          @mouseup="endStopPress"
+          @touchend.prevent="endStopPress"
+          @mouseleave="cancelStopPress"
+          class="ctrl-btn stop-btn"
+        />
+      </div>
 
       <div class="halo-wrapper">
         <LoopHalo :trackId="trackId" class="halo-layer" />
@@ -99,6 +84,7 @@
           aria-label="Record or play track"
           @press="handleRecPlay"
           class="main-btn"
+          :class="{ 'is-disabled': !trackTransportEnabled }"
         />
       </div>
     </div>
@@ -106,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { TrackState } from '../core/types';
 import LoopHalo from './LoopHalo.vue';
@@ -125,35 +111,18 @@ const trackState = ref(trackAudio.state);
 const playLevel = ref(trackAudio.track.playLevel);
 const isReverse = ref(trackAudio.isReverse);
 const isClearing = ref(false);
-
-// FX Params
-const filterFreq = ref(50); // Default middle
+const filterFreq = ref(50);
 const filterRes = ref(0);
+const fxState = ref({ filter: false });
 
-// ========================================
-// FX STATE MANAGEMENT
-// ========================================
-
-const fxState = ref({
-  filter: false,
-});
-
+const trackAvailable = computed(() => trackAudio.isAvailable);
+const trackTransportEnabled = computed(() => trackAudio.transportEnabled);
+const disabledReason = computed(() => trackAudio.disabledReason);
 const isFilterActive = computed(() => fxState.value.filter);
-
-// ========================================
-// POLLING FOR STATE
-// ========================================
 
 let pollInterval: number;
 
 onMounted(() => {
-  // Init Values
-  playLevel.value = trackAudio.track.playLevel;
-  // Initialize knobs to saved state if any, or defaults
-  // Current Track model doesn't store Freq/Res separately in a persisted way clearly,
-  // but 'filterValue' exists.
-  filterFreq.value = trackAudio.track.filterValue * 100; 
-
   pollInterval = window.setInterval(() => {
     trackState.value = trackAudio.state;
     isReverse.value = trackAudio.isReverse;
@@ -164,16 +133,10 @@ onUnmounted(() => {
   clearInterval(pollInterval);
 });
 
-// ========================================
-// LED COLORS
-// ========================================
-
 const buttonLedColor = computed(() => {
   if (isClearing.value) return 'white';
   switch (trackState.value) {
     case TrackState.RECORDING: return 'red';
-    case TrackState.REC_STANDBY: return 'red';
-    case TrackState.REC_FINISHING: return 'green';
     case TrackState.PLAYING: return 'green';
     case TrackState.OVERDUBBING: return 'yellow';
     default: return 'neutral';
@@ -181,8 +144,6 @@ const buttonLedColor = computed(() => {
 });
 
 const faderLedColor = computed(() => {
-  // Fader is now ALWAYS volume.
-  // Standard behaviors:
   switch (trackState.value) {
     case TrackState.RECORDING: return 'red';
     case TrackState.PLAYING: return 'green';
@@ -192,77 +153,43 @@ const faderLedColor = computed(() => {
 });
 
 const isRecordingOrPlaying = computed(() => {
-  return trackState.value === TrackState.RECORDING || 
-         trackState.value === TrackState.PLAYING || 
+  return trackState.value === TrackState.RECORDING ||
+         trackState.value === TrackState.PLAYING ||
          trackState.value === TrackState.OVERDUBBING;
 });
 
-// ========================================
-// ACTIONS
-// ========================================
-
-const handleRecPlay = () => trackAudio.triggerRecord();
-
-const toggleReverse = () => {
-  trackAudio.toggleReverse();
+const handleRecPlay = () => {
+  if (!trackTransportEnabled.value) return;
+  trackAudio.triggerRecord();
 };
 
-// Stop Button Logic
 let stopPressTimer: number | null = null;
 const LONG_PRESS_DURATION = 1500;
 
 const startStopPress = () => {
-    if (stopPressTimer) return;
-    stopPressTimer = window.setTimeout(() => {
-        isClearing.value = true;
-        trackAudio.clear();
-        setTimeout(() => { isClearing.value = false; }, 300);
-        stopPressTimer = null;
-    }, LONG_PRESS_DURATION);
+  if (!trackTransportEnabled.value || stopPressTimer) return;
+  stopPressTimer = window.setTimeout(() => {
+    isClearing.value = true;
+    trackAudio.clear();
+    setTimeout(() => { isClearing.value = false; }, 300);
+    stopPressTimer = null;
+  }, LONG_PRESS_DURATION);
 };
 
 const endStopPress = () => {
-    if (stopPressTimer) {
-        clearTimeout(stopPressTimer);
-        stopPressTimer = null;
-        trackAudio.triggerStop();
-    }
+  if (!trackTransportEnabled.value) return;
+  if (stopPressTimer) {
+    clearTimeout(stopPressTimer);
+    stopPressTimer = null;
+    trackAudio.triggerStop();
+  }
 };
 
 const cancelStopPress = () => {
-    if (stopPressTimer) {
-        clearTimeout(stopPressTimer);
-        stopPressTimer = null;
-    }
-};
-
-// FX Logic
-const toggleFilterMode = () => {
-  fxState.value.filter = !fxState.value.filter;
-  trackAudio.fxChain.setFilterEnabled(fxState.value.filter);
-  trackAudio.track.filterEnabled = fxState.value.filter;
-  
-  // No jumping logic needed for knobs! 
-  // Knobs maintain their physical position (modelValue)
-};
-
-const updateFilterFreq = (val: number) => {
-    filterFreq.value = val;
-    // Always update the engine parameter, even if bypassed (Ghost State)
-    // This allows pre-setting values before engaging FX
-    trackAudio.fxChain.setFilterParam('frequency', val / 100); 
-    trackAudio.track.filterValue = val / 100;
-};
-
-const updateFilterRes = (val: number) => {
-    filterRes.value = val;
-    trackAudio.fxChain.setFilterParam('resonance', val / 10); // Map 0-10 to 0-1 (or appropriate range)
-};
-
-const updateLevel = () => {
-    // Pure Volume Control
-    trackAudio.track.playLevel = playLevel.value;
-    trackAudio.updateSettings();
+  if (stopPressTimer) {
+    clearTimeout(stopPressTimer);
+    stopPressTimer = null;
+  }
 };
 </script>
 
@@ -270,7 +197,7 @@ const updateLevel = () => {
 .track-unit {
   display: flex;
   flex-direction: column;
-  width: 180px; 
+  width: 180px;
   height: 100%;
   background: var(--bg-panel-secondary);
   border-right: 1px solid #000;
@@ -278,9 +205,16 @@ const updateLevel = () => {
   gap: 12px;
 }
 
+.track-unit.disabled {
+  opacity: 0.72;
+}
+
 .track-header {
   text-align: center;
   margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .track-id {
@@ -291,12 +225,23 @@ const updateLevel = () => {
   color: #666;
 }
 
-/* === UPPER DECK === */
+.track-note {
+  font-family: var(--font-hardware);
+  font-size: 9px;
+  letter-spacing: 0.9px;
+  color: #8a8a8a;
+}
+
 .upper-deck {
   display: flex;
   flex-direction: row;
-  height: 240px; /* Specific height for upper control area */
+  height: 240px;
   gap: 8px;
+}
+
+.disabled-block {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .left-controls {
@@ -307,16 +252,16 @@ const updateLevel = () => {
 }
 
 .knobs-row {
-    display: flex;
-    justify-content: space-around;
-    padding-top: 8px;
+  display: flex;
+  justify-content: space-around;
+  padding-top: 8px;
 }
 
 .buttons-row {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
 }
 
 .ctrl-btn {
@@ -324,47 +269,41 @@ const updateLevel = () => {
 }
 
 .right-fader {
-  width: 50px; /* Fixed width for fader area */
+  width: 50px;
   height: 100%;
 }
 
-/* === LOWER DECK === */
 .lower-deck {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  flex-grow: 1; /* Fill remaining space */
+  flex-grow: 1;
 }
 
 .stop-wrapper {
-    width: 80%;
+  width: 100%;
 }
 
 .halo-wrapper {
+  position: relative;
   display: grid;
   place-items: center;
-  position: relative;
-  width: 110px;
-  height: 110px;
-}
-
-.halo-layer,
-.main-btn {
-  grid-area: 1 / 1;
-  transform: none;
+  margin-top: auto;
 }
 
 .halo-layer {
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  pointer-events: none;
+  position: absolute;
+  inset: 0;
 }
 
 .main-btn {
-  z-index: 10;
-  margin: 0;
   position: relative;
+  z-index: 1;
+}
+
+.is-disabled {
+  opacity: 0.42;
+  pointer-events: none;
 }
 </style>

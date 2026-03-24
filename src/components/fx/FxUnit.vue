@@ -1,11 +1,12 @@
 <template>
-  <div class="fx-unit">
+  <div class="fx-unit" :class="{ disabled: props.disabled }">
     <!-- FX Type Selector -->
     <div class="fx-select-container">
       <select 
         :value="selectedType"
         @change="handleTypeChange"
         class="fx-select"
+        :disabled="props.disabled"
       >
         <option v-for="opt in options" :key="opt" :value="opt">
           {{ opt }}
@@ -45,6 +46,7 @@ interface Props {
   selectedType: string;
   modelValue: number;
   active: boolean;
+  disabled?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -56,15 +58,18 @@ const emit = defineEmits<{
 }>();
 
 const handleTypeChange = (e: Event) => {
+  if (props.disabled) return;
   const target = e.target as HTMLSelectElement;
   emit('update:selectedType', target.value);
 };
 
 const toggleActive = () => {
+  if (props.disabled) return;
   emit('update:active', !props.active);
 };
 
 const updateFader = (val: number) => {
+  if (props.disabled) return;
   emit('update:modelValue', val);
 };
 </script>
@@ -80,6 +85,11 @@ const updateFader = (val: number) => {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.fx-unit.disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 .fx-select-container {

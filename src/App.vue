@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import LatencyTuner from './components/LatencyTuner.vue';
 import TopPanel from './components/TopPanel.vue';
 import TrackUnit from './components/TrackUnit.vue';
-import { AudioEngine } from './audio/AudioEngine';
+import { AudioEngine, type NativeUiStatus } from './audio/AudioEngine';
 
 const engine = AudioEngine.getInstance();
 const isInitialized = ref(false);
 const initError = ref('');
-const theme = ref<'night' | 'day'>('night');
+const theme = ref<'night' | 'day'>('day');
+const initInFlight = ref(false);
+const nativeUiStatus = ref<NativeUiStatus>(engine.getUiStatus());
+let unsubscribeStatus: (() => void) | null = null;
 
 const themeLabel = computed(() => theme.value === 'night' ? 'NIGHT' : 'DAY');
 
@@ -18,14 +21,29 @@ const applyTheme = (nextTheme: 'night' | 'day') => {
   localStorage.setItem('webrc505_theme', nextTheme);
 };
 
-const initAudio = async () => {
-  initError.value = '';
+const initAudio = async (silent = false) => {
+  if (isInitialized.value || initInFlight.value) {
+    return;
+  }
+
+  if (!silent) {
+    initError.value = '';
+  }
+
+  initInFlight.value = true;
   try {
     await engine.init();
     isInitialized.value = true;
+    nativeUiStatus.value = engine.getUiStatus();
+    initError.value = nativeUiStatus.value.lastError;
   } catch (error) {
     console.error('Failed to initialize audio engine:', error);
-    initError.value = 'Audio initialization failed. Please check microphone permissions and device settings.';
+    nativeUiStatus.value = engine.getUiStatus();
+    if (!silent) {
+      initError.value = nativeUiStatus.value.lastError || 'Native bridge is unavailable.';
+    }
+  } finally {
+    initInFlight.value = false;
   }
 };
 
@@ -37,10 +55,20 @@ onMounted(() => {
   const savedTheme = localStorage.getItem('webrc505_theme');
   if (savedTheme === 'day' || savedTheme === 'night') {
     applyTheme(savedTheme);
-    return;
+  } else {
+    document.documentElement.dataset.theme = theme.value;
   }
 
-  document.documentElement.dataset.theme = theme.value;
+  unsubscribeStatus = engine.onStatusChange((status) => {
+    nativeUiStatus.value = status;
+    isInitialized.value = status.ready;
+    initError.value = status.lastError;
+  });
+  initAudio();
+});
+
+onUnmounted(() => {
+  unsubscribeStatus?.();
 });
 </script>
 
@@ -51,19 +79,21 @@ onMounted(() => {
       <span class="theme-toggle-value">{{ themeLabel }}</span>
     </button>
 
-    <div v-if="!isInitialized" class="init-screen">
-      <div class="init-panel">
-        <div class="init-icon">RC</div>
-        <h1 class="init-title">WebRC-505MKII</h1>
-        <button @click="initAudio" class="init-button">
-          START AUDIO ENGINE
-        </button>
-        <p class="init-hint">Click to initialize AudioContext & Worklets</p>
-        <p v-if="initError" class="init-error">{{ initError }}</p>
-      </div>
+    <div class="engine-status" :class="{ ready: isInitialized, error: Boolean(initError) }">
+      <span class="engine-status-dot"></span>
+      <span class="engine-status-text">
+        {{ initInFlight ? 'CONNECTING NATIVE' : nativeUiStatus.message }}
+      </span>
+      <button v-if="!isInitialized" class="engine-status-action" type="button" @click="initAudio()">
+        RETRY
+      </button>
     </div>
 
-    <div v-else class="main-layout">
+    <p v-if="initError" class="engine-status-error">
+      {{ initError }}
+    </p>
+
+    <div class="main-layout">
       <div class="top-section">
         <TopPanel />
       </div>
@@ -145,86 +175,86 @@ onMounted(() => {
   opacity: 1;
 }
 
-.init-screen {
-  height: 100%;
-  width: 100%;
+.engine-status {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  z-index: 200;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: var(--app-init-background);
-}
-
-.init-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  padding: 48px 64px;
+  gap: 10px;
+  padding: 10px 14px;
   background: var(--panel-elevated);
-  border: 2px solid var(--panel-border-strong);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--panel-border-strong);
+  border-radius: 999px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
-.init-icon {
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
+.engine-status.ready .engine-status-dot {
+  background: var(--led-green-playing);
+  box-shadow: var(--glow-green-soft);
+}
+
+.engine-status.error .engine-status-dot {
+  background: var(--led-red-recording);
+  box-shadow: var(--glow-red-soft);
+}
+
+.engine-status-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 2px solid var(--panel-border);
-  background: var(--panel-elevated);
-  font-family: var(--font-hardware);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: #ffcc00;
+  background: var(--led-yellow-overdub);
+  box-shadow: var(--glow-yellow-soft);
 }
 
-.init-title {
+.engine-status-text {
   font-family: var(--font-hardware);
-  font-size: 24px;
-  letter-spacing: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
   color: var(--text-primary);
-  margin: 0;
 }
 
-.init-button {
-  padding: 16px 32px;
-  background: #cc0000;
-  color: white;
-  border: none;
-  border-radius: 4px;
+.engine-status-action {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border-strong);
+  background: transparent;
+  color: var(--color-accent);
   font-family: var(--font-hardware);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1.2px;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(204, 0, 0, 0.4);
+  transition: border-color 0.16s ease, transform 0.16s ease;
 }
 
-.init-button:hover {
-  background: #ff0033;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 0, 51, 0.5);
+.engine-status-action:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-accent);
 }
 
-.init-button:active {
-  transform: translateY(0);
+.engine-status-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
-.init-hint {
-  font-size: 12px;
-  color: var(--text-muted);
+.engine-status-error {
+  position: absolute;
+  top: 62px;
+  left: 20px;
+  z-index: 200;
+  max-width: 420px;
   margin: 0;
-}
-
-.init-error {
-  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 0, 51, 0.08);
+  border: 1px solid rgba(255, 0, 51, 0.18);
   color: #ff7a7a;
-  margin: 0;
-  max-width: 320px;
-  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .theme-toggle {
@@ -274,6 +304,18 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .engine-status {
+    top: 10px;
+    left: 12px;
+    max-width: calc(100vw - 150px);
+  }
+
+  .engine-status-error {
+    top: 56px;
+    left: 12px;
+    max-width: calc(100vw - 24px);
+  }
+
   .theme-toggle {
     top: 10px;
     right: 12px;

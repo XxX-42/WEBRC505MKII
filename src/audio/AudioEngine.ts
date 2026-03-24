@@ -1,747 +1,493 @@
-import { TrackAudio } from './TrackAudio';
-import { Track, TrackState } from '../core/types';
-import { Transport } from '../core/Transport';
-import { FXChain } from './FXChain';
-import type { FXBase } from './fx/FXBase';
-import { FilterFX } from './fx/FilterFX';
-import { DelayFX } from './fx/DelayFX';
-import { ReverbFX } from './fx/ReverbFX';
-import { SlicerFX } from './fx/SlicerFX';
-import { PhaserFX } from './fx/PhaserFX';
+import { TrackState } from '../core/types';
+import { NativeBridgeClient, type NativeBackend, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeStatus } from './NativeBridgeClient';
+import { NativeTrackProxy } from './NativeTrackProxy';
 
-import { RhythmEngine } from './RhythmEngine';
-import type { IAudioEngine } from './AudioEngineInterface';
-
-export interface LatencyInfo {
-    sampleRate: number;
-    baseLatencyMs: number | null;
-    outputLatencyMs: number | null;
-    estimatedMonitoringLatencyMs: number | null;
-    roundTripLatencyMs: number | null;
+export interface NativeDeviceSelection {
+  backends: NativeBackend[];
+  selectedBackend: NativeBackend;
+  inputs: NativeDeviceInfo[];
+  outputs: NativeDeviceInfo[];
+  sampleRates: number[];
+  bufferOptions: number[];
 }
 
-export class AudioEngine implements IAudioEngine {
-    private static instance: AudioEngine;
-    public context: AudioContext;
-    public workletNode: AudioWorkletNode | null = null;
-    public tracks: TrackAudio[] = [];
-    public sharedBuffer: SharedArrayBuffer | null = null;
-    public trackStates: Int32Array | null = null; // State enum
-    public trackPositions: Float32Array | null = null; // 0.0 to 1.0
-    public roundTripLatency: number = 0; // in seconds
+export interface LatencyInfo {
+  backend: NativeBackend | null;
+  sampleRate: number;
+  bufferFrames: number;
+  inputLatencyMs: number | null;
+  outputLatencyMs: number | null;
+  roundTripLatencyMs: number | null;
+  inputPeak: number;
+  outputPeak: number;
+  xrunsOrDropouts: number;
+  bridgeAvailable: boolean;
+  engineRunning: boolean;
+}
 
-    // ========================================
-    // AUDIO I/O MANAGEMENT (CRITICAL SAFETY)
-    // ========================================
+export interface NativeUiStatus {
+  bridgeAvailable: boolean;
+  engineRunning: boolean;
+  ready: boolean;
+  message: string;
+  lastError: string;
+}
 
-    private currentInputStream: MediaStreamAudioSourceNode | null = null;
-    private currentMediaStream: MediaStream | null = null;
-    private monitorGainNode: GainNode | null = null;
+type RhythmPattern = 'ROCK' | 'TECHNO' | 'METRONOME';
 
-    // FX Chains & Mixing
-    public inputFxChain: FXChain;
-    public outputFxChain: FXChain;
-    public trackMixNode: GainNode;
-    public masterGainNode: GainNode;
+class NativeRhythmStub {
+  public start() { return; }
+  public stop() { return; }
+  public setPattern(_pattern: RhythmPattern) { return; }
+  public setVolume(_volume: number) { return; }
+}
 
-    // Rhythm Engine
-    public rhythmEngine: RhythmEngine;
+const TRACK_STATE_VALUES = Object.values(TrackState);
 
-    public selectedInputDeviceId: string | null = null;
-    public selectedOutputDeviceId: string | null = null;
-    public monitoringEnabled: boolean = false; // DEFAULT: FALSE to prevent feedback!
-    private monitoringListeners = new Set<(enabled: boolean) => void>();
-    private latencyListeners = new Set<(info: LatencyInfo) => void>();
+export class AudioEngine {
+  private static instance: AudioEngine;
 
-    private constructor() {
-        this.context = new AudioContext({
-            latencyHint: 'interactive',
-            sampleRate: 44100,
-        });
+  public readonly tracks: NativeTrackProxy[];
+  public readonly rhythmEngine = new NativeRhythmStub();
+  public readonly trackStates: Int32Array;
+  public readonly trackPositions: Float32Array;
+  public readonly sharedBuffer: SharedArrayBuffer;
 
-        // Initialize SharedArrayBuffer
-        this.sharedBuffer = new SharedArrayBuffer(1024);
-        this.trackStates = new Int32Array(this.sharedBuffer, 0, 5);
-        this.trackPositions = new Float32Array(this.sharedBuffer, 20, 5);
+  public selectedInputDeviceId: string | null = null;
+  public selectedOutputDeviceId: string | null = null;
+  public selectedBackend: NativeBackend = 'WASAPI';
+  public selectedSampleRate = 48000;
+  public selectedBufferFrames = 128;
+  public monitoringEnabled = false;
 
-        // Create monitor gain node (for software monitoring)
-        this.monitorGainNode = this.context.createGain();
-        this.monitorGainNode.gain.value = 0; // MUTED by default (SAFETY!)
-        this.monitorGainNode.connect(this.context.destination);
+  private readonly bridge = new NativeBridgeClient();
+  private readonly monitoringListeners = new Set<(enabled: boolean) => void>();
+  private readonly latencyListeners = new Set<(info: LatencyInfo) => void>();
+  private readonly statusListeners = new Set<(status: NativeUiStatus) => void>();
 
-        // Initialize FX Chains & Mixing
-        this.inputFxChain = new FXChain(this.context);
-        this.outputFxChain = new FXChain(this.context);
-        this.trackMixNode = this.context.createGain();
-        this.masterGainNode = this.context.createGain();
+  private deviceCatalog: NativeDeviceCatalog | null = null;
+  private latestStatus: NativeStatus | null = null;
+  private bridgeAvailable = false;
+  private engineRunning = false;
+  private initInFlight: Promise<void> | null = null;
+  private pollHandle: number | null = null;
+  private lastError = '';
 
-        // Master Routing: TrackMix -> OutputFX -> MasterGain -> Destination
-        this.trackMixNode.connect(this.outputFxChain.input);
-        this.outputFxChain.output.connect(this.masterGainNode);
-        this.masterGainNode.connect(this.context.destination);
-        this.inputFxChain.output.connect(this.monitorGainNode);
+  private constructor() {
+    this.sharedBuffer = new SharedArrayBuffer(1024);
+    this.trackStates = new Int32Array(this.sharedBuffer, 0, 5);
+    this.trackPositions = new Float32Array(this.sharedBuffer, 20, 5);
+    this.tracks = Array.from({ length: 5 }, (_, index) => new NativeTrackProxy(this, index + 1));
+    this.resetAllTrackTelemetry();
+    this.loadPreferences();
+  }
 
-        // Initialize Rhythm Engine
-        this.rhythmEngine = new RhythmEngine(this.context);
-        this.rhythmEngine.connect(this.masterGainNode);
+  public static getInstance(): AudioEngine {
+    if (!AudioEngine.instance) {
+      AudioEngine.instance = new AudioEngine();
+    }
+    return AudioEngine.instance;
+  }
 
-        // Initialize 5 tracks
-        for (let i = 0; i < 5; i++) {
-            const trackData = new Track(i + 1);
-            this.tracks.push(new TrackAudio(this, trackData, i, this.trackStates, this.trackPositions));
-        }
-
-        // Load saved device preferences
-        this.loadDevicePreferences();
+  public async init() {
+    if (this.initInFlight) {
+      return this.initInFlight;
     }
 
-    public static getInstance(): AudioEngine {
-        if (!AudioEngine.instance) {
-            AudioEngine.instance = new AudioEngine();
-        }
-        return AudioEngine.instance;
+    this.initInFlight = this.initializeNative();
+    try {
+      await this.initInFlight;
+    } finally {
+      this.initInFlight = null;
+    }
+  }
+
+  public async getDevices(): Promise<NativeDeviceSelection> {
+    if (!this.deviceCatalog) {
+      await this.refreshCatalog();
     }
 
-    public async init() {
-        if (this.context.state === 'suspended') {
-            await this.context.resume();
-        }
-
-        try {
-            await this.context.audioWorklet.addModule('/worklets/looper-processor.js');
-            console.log('AudioWorklet module loaded');
-        } catch (e) {
-            console.error('Failed to load AudioWorklet module', e);
-        }
-
-        // Initialize with saved or default input device
-        if (this.selectedInputDeviceId) {
-            await this.setInputDevice(this.selectedInputDeviceId);
-        }
-
-        // Initialize output device
-        if (this.selectedOutputDeviceId) {
-            await this.setOutputDevice(this.selectedOutputDeviceId);
-        }
-
-        this.emitLatencyInfo();
+    if (!this.deviceCatalog) {
+      throw new Error('Native device catalog is unavailable.');
     }
 
-    // ========================================
-    // DEVICE ENUMERATION
-    // ========================================
+    return this.buildSelectionFromCatalog(this.deviceCatalog);
+  }
 
-    /**
-     * Get list of available audio input and output devices
-     */
-    public async getDevices(): Promise<{ inputs: MediaDeviceInfo[], outputs: MediaDeviceInfo[] }> {
-        try {
-            // Request permissions first
-            const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  public async setBackend(backend: NativeBackend) {
+    this.selectedBackend = backend;
+    const selection = await this.getDevices();
+    this.selectedInputDeviceId = this.selectedInputDeviceId || this.deviceCatalog?.defaultInputIdByBackend[backend] || selection.inputs[0]?.id || null;
+    this.selectedOutputDeviceId = this.selectedOutputDeviceId || this.deviceCatalog?.defaultOutputIdByBackend[backend] || selection.outputs[0]?.id || null;
 
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            permissionStream.getTracks().forEach(track => track.stop());
-
-            const inputs = devices.filter(d => d.kind === 'audioinput');
-            const outputs = devices.filter(d => d.kind === 'audiooutput');
-
-            console.log(`Found ${inputs.length} input devices, ${outputs.length} output devices`);
-
-            return { inputs, outputs };
-        } catch (error) {
-            console.error('Failed to enumerate devices:', error);
-            return { inputs: [], outputs: [] };
-        }
+    const supportedRates = this.deriveSampleRates(selection.inputs, selection.outputs);
+    if (!supportedRates.includes(this.selectedSampleRate)) {
+      this.selectedSampleRate = supportedRates[0] ?? 48000;
     }
 
-    // ========================================
-    // INPUT DEVICE MANAGEMENT
-    // ========================================
+    await this.applyAndStart();
+  }
 
-    /**
-     * Set input device (microphone)
-     * SAFETY: Automatically disconnects old stream to prevent feedback
-     */
-    public async setInputDevice(deviceId: string) {
-        console.log(`\n🎤 Switching input device to: ${deviceId}`);
+  public async setInputDevice(deviceId: string) {
+    this.selectedInputDeviceId = deviceId || null;
+    await this.applyAndStart();
+  }
 
-        try {
-            const stream = await this.requestInputStream(deviceId);
-            this.replaceInputStream(stream);
+  public async setOutputDevice(deviceId: string) {
+    this.selectedOutputDeviceId = deviceId || null;
+    await this.applyAndStart();
+  }
 
-            this.selectedInputDeviceId = deviceId || null;
-            this.saveDevicePreferences();
+  public async setSampleRate(sampleRate: number) {
+    this.selectedSampleRate = sampleRate;
+    await this.applyAndStart();
+  }
 
-            console.log('  ✓ New input device connected');
-            console.log(`  ⚠️  Monitoring: ${this.monitoringEnabled ? 'ENABLED' : 'DISABLED (SAFE)'}\n`);
+  public async setBufferFrames(bufferFrames: number) {
+    this.selectedBufferFrames = bufferFrames;
+    await this.applyAndStart();
+  }
 
-        } catch (error) {
-            if (deviceId && this.shouldFallbackToDefaultInput(error)) {
-                console.warn('  Requested input device is unavailable or overconstrained. Falling back to the default microphone.');
-                try {
-                    const fallbackStream = await this.requestInputStream('');
-                    this.replaceInputStream(fallbackStream);
-                    this.selectedInputDeviceId = null;
-                    this.saveDevicePreferences();
-                    console.log('  ✓ Default input device connected');
-                    return;
-                } catch (fallbackError) {
-                    console.error('Failed to set default input device after fallback:', fallbackError);
-                    throw fallbackError;
-                }
-            }
-            console.error('Failed to set input device:', error);
-            throw error;
-        }
+  public async setMonitoring(enabled: boolean) {
+    try {
+      const status = await this.bridge.setMonitoring(enabled);
+      this.applyStatus(status);
+    } catch (error) {
+      this.handleBridgeFailure(error);
+      throw error;
+    }
+  }
 
-        this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
-        this.emitLatencyInfo();
+  public onMonitoringChange(listener: (enabled: boolean) => void) {
+    this.monitoringListeners.add(listener);
+    listener(this.monitoringEnabled);
+    return () => {
+      this.monitoringListeners.delete(listener);
+    };
+  }
+
+  public onLatencyInfoChange(listener: (info: LatencyInfo) => void) {
+    this.latencyListeners.add(listener);
+    listener(this.getLatencyInfo());
+    return () => {
+      this.latencyListeners.delete(listener);
+    };
+  }
+
+  public onStatusChange(listener: (status: NativeUiStatus) => void) {
+    this.statusListeners.add(listener);
+    listener(this.getUiStatus());
+    return () => {
+      this.statusListeners.delete(listener);
+    };
+  }
+
+  public getLatencyInfo(): LatencyInfo {
+    return {
+      backend: this.latestStatus?.backend ?? null,
+      sampleRate: this.latestStatus?.sampleRate ?? this.selectedSampleRate,
+      bufferFrames: this.latestStatus?.bufferFrames ?? this.selectedBufferFrames,
+      inputLatencyMs: this.latestStatus?.inputLatencyMs ?? null,
+      outputLatencyMs: this.latestStatus?.outputLatencyMs ?? null,
+      roundTripLatencyMs: this.latestStatus?.roundTripEstimateMs ?? null,
+      inputPeak: this.latestStatus?.inputPeak ?? 0,
+      outputPeak: this.latestStatus?.outputPeak ?? 0,
+      xrunsOrDropouts: this.latestStatus?.xrunsOrDropouts ?? 0,
+      bridgeAvailable: this.bridgeAvailable,
+      engineRunning: this.engineRunning,
+    };
+  }
+
+  public getUiStatus(): NativeUiStatus {
+    if (!this.bridgeAvailable) {
+      return {
+        bridgeAvailable: false,
+        engineRunning: false,
+        ready: false,
+        message: 'NATIVE AUDIO UNAVAILABLE',
+        lastError: this.lastError || 'Start native_bridge_host on http://127.0.0.1:17755.',
+      };
     }
 
-    // ========================================
-    // OUTPUT DEVICE MANAGEMENT
-    // ========================================
-
-    /**
-     * Set output device (speakers/headphones)
-     */
-    public async setOutputDevice(deviceId: string) {
-        console.log(`\n🔊 Switching output device to: ${deviceId}`);
-
-        try {
-            // Use setSinkId if available (Chrome/Edge)
-            if ('setSinkId' in this.context) {
-                await (this.context as any).setSinkId(deviceId);
-                this.selectedOutputDeviceId = deviceId;
-                this.saveDevicePreferences();
-                console.log('  ✓ Output device changed\n');
-            } else {
-                console.warn('  ⚠️  setSinkId not supported in this browser\n');
-            }
-        } catch (error) {
-            console.error('Failed to set output device:', error);
-            throw error;
-        }
-
-        this.emitLatencyInfo();
+    if (!this.engineRunning) {
+      return {
+        bridgeAvailable: true,
+        engineRunning: false,
+        ready: false,
+        message: 'NATIVE ENGINE STOPPED',
+        lastError: this.lastError,
+      };
     }
 
-    // ========================================
-    // FX CONTROL INTERFACE
-    // ========================================
+    return {
+      bridgeAvailable: true,
+      engineRunning: true,
+      ready: true,
+      message: 'NATIVE AUDIO READY',
+      lastError: this.lastError,
+    };
+  }
 
-    // ========================================
-    // DYNAMIC FX ROUTING (Phase 5b)
-    // ========================================
+  public isNativeReady() {
+    return this.bridgeAvailable && this.engineRunning;
+  }
 
-    // FX Instances for Input and Track (4 slots each: A, B, C, D)
-    private inputFxInstances: (FXBase | null)[] = [null, null, null, null];
-    private trackFxInstances: (FXBase | null)[] = [null, null, null, null];
-    private inputFxTypes: (string | null)[] = [null, null, null, null];
-    private trackFxTypes: (string | null)[] = [null, null, null, null];
+  public isBridgeAvailable() {
+    return this.bridgeAvailable;
+  }
 
-    /**
-     * Set FX Type for a specific slot
-     * @param location 'input' or 'track'
-     * @param slotIndex 0-3 (A-D)
-     * @param type 'FILTER' | 'DELAY' | 'REVERB' | 'SLICER'
-     */
-    public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
-        if (slotIndex < 0 || slotIndex > 3) return;
+  public supportsFx() {
+    return false;
+  }
 
-        const fxTypes = location === 'input' ? this.inputFxTypes : this.trackFxTypes;
-        if (fxTypes[slotIndex] === type) {
-            return;
-        }
+  public supportsRhythm() {
+    return false;
+  }
 
-        const newFx = this.createFxInstance(type);
-        if (!newFx) {
-            console.warn(`Unknown FX type: ${type}`);
-            return;
-        }
+  public supportsReverse() {
+    return false;
+  }
 
-        // Update Chain
-        if (location === 'input') {
-            this.inputFxInstances[slotIndex]?.dispose();
-            this.inputFxInstances[slotIndex] = newFx;
-            this.inputFxTypes[slotIndex] = type;
-            this.rebuildInputChain();
+  public isTrackAvailable(trackId: number) {
+    return trackId === 1;
+  }
 
-        } else {
-            this.trackFxInstances[slotIndex]?.dispose();
-            this.trackFxInstances[slotIndex] = newFx;
-            this.trackFxTypes[slotIndex] = type;
-            this.rebuildOutputChain();
-        }
+  public async recordTrack() {
+    await this.dispatchStatusRequest(() => this.bridge.record());
+  }
 
-        console.log(`FX Set: ${location.toUpperCase()} [${['A', 'B', 'C', 'D'][slotIndex]}] -> ${type}`);
+  public async stopTrack() {
+    await this.dispatchStatusRequest(() => this.bridge.stopTransport());
+  }
+
+  public async playTrack() {
+    await this.dispatchStatusRequest(() => this.bridge.play());
+  }
+
+  public async toggleOverdub() {
+    await this.dispatchStatusRequest(() => this.bridge.toggleOverdub());
+  }
+
+  public async clearTrack() {
+    await this.dispatchStatusRequest(() => this.bridge.clear());
+  }
+
+  public stopAllTracks() {
+    void this.stopTrack();
+  }
+
+  public playAllTracks() {
+    void this.playTrack();
+  }
+
+  public setFxType(_location: 'input' | 'track', _slotIndex: number, _type: string) { return; }
+  public setFxParam(_location: 'input' | 'track', _slotIndex: number, _value: number) { return; }
+  public setFxActive(_location: 'input' | 'track', _slotIndex: number, _active: boolean) { return; }
+  public playTestTone() { return; }
+  public runLoopbackTest() { return Promise.reject(new Error('Loopback test is not implemented in native v1.')); }
+  public setLatency(_latencyMs: number) { return; }
+
+  public updateTrackTelemetry(trackId: number, state: TrackState, progress: number) {
+    const stateIndex = TRACK_STATE_VALUES.indexOf(state);
+    Atomics.store(this.trackStates, trackId - 1, Math.max(0, stateIndex));
+    this.trackPositions[trackId - 1] = progress;
+  }
+
+  private async initializeNative() {
+    try {
+      await this.bridge.health();
+      this.bridgeAvailable = true;
+      await this.refreshCatalog();
+      await this.applyAndStart();
+      await this.refreshStatus();
+      this.startPolling();
+      this.emitAll();
+    } catch (error) {
+      this.handleBridgeFailure(error, !this.bridgeAvailable);
+      throw error;
+    }
+  }
+
+  private async refreshCatalog() {
+    this.deviceCatalog = await this.bridge.getDevices();
+  }
+
+  private buildSelectionFromCatalog(catalog: NativeDeviceCatalog): NativeDeviceSelection {
+    const selectedBackend = catalog.backends.includes(this.selectedBackend) ? this.selectedBackend : (catalog.backends[0] ?? 'WASAPI');
+    const inputs = catalog.inputsByBackend[selectedBackend] ?? [];
+    const outputs = catalog.outputsByBackend[selectedBackend] ?? [];
+
+    if (!this.selectedInputDeviceId || !inputs.some((device) => device.id === this.selectedInputDeviceId)) {
+      this.selectedInputDeviceId = catalog.defaultInputIdByBackend[selectedBackend] || inputs[0]?.id || null;
+    }
+    if (!this.selectedOutputDeviceId || !outputs.some((device) => device.id === this.selectedOutputDeviceId)) {
+      this.selectedOutputDeviceId = catalog.defaultOutputIdByBackend[selectedBackend] || outputs[0]?.id || null;
     }
 
-    private createFxInstance(type: string): FXBase | null {
-        const context = this.context;
-
-        switch (type) {
-            case 'FILTER':
-                return new FilterFX(context);
-            case 'DELAY':
-                return new DelayFX(context);
-            case 'REVERB':
-                return new ReverbFX(context);
-            case 'SLICER':
-                return new SlicerFX(context);
-            case 'PHASER':
-                return new PhaserFX(context);
-            default:
-                return null;
-        }
+    const sampleRates = this.deriveSampleRates(inputs, outputs);
+    if (!sampleRates.includes(this.selectedSampleRate)) {
+      this.selectedSampleRate = sampleRates[0] ?? 48000;
     }
 
-    /**
-     * Rebuild the entire Input FX Chain
-     * Source -> Slot A -> Slot B -> Slot C -> Slot D -> Monitor/Tracks
-     */
-    private rebuildInputChain() {
-        // Disconnect everything first? 
-        // It's tricky to disconnect "everything" without tracking connections.
-        // Simplified approach: Re-connect the chain flow.
-
-        // 1. Disconnect Input Source
-        if (this.currentInputStream) {
-            this.currentInputStream.disconnect();
-        }
-
-        // 2. Chain nodes
-
-        // If no input, we can't connect, but we prepare the chain.
-        // Actually, we need a stable "Input Head" node.
-        // Let's use inputFxChain.input as the Head, and inputFxChain.output as the Tail.
-        // But wait, I want to replace the internal logic of inputFxChain.
-
-        // Let's use the existing `this.inputFxChain.input` and `this.inputFxChain.output` as anchors.
-        // We will disconnect `this.inputFxChain.input` from its internal hardcoded chain 
-        // and route it through our dynamic slots.
-
-        const head = this.inputFxChain.input;
-        const tail = this.inputFxChain.output;
-
-        // Break existing internal connections of FXChain if possible, 
-        // or just ignore FXChain's internal graph and repurpose the input/output nodes?
-        // FXChain constructor connects input->compressor->...->output.
-        // I should disconnect that.
-        head.disconnect();
-
-        let currentNode: AudioNode = head;
-
-        this.inputFxInstances.forEach((fx) => {
-            if (fx) {
-                currentNode.connect(fx.input);
-                currentNode = fx.output;
-            }
-        });
-
-        currentNode.connect(tail);
-
-        // Re-connect Input Source to Head if needed (it should already be connected to inputFxChain.input)
-        if (this.currentInputStream) {
-            this.currentInputStream.connect(head);
-        }
+    if (!(catalog.bufferOptions ?? []).includes(this.selectedBufferFrames)) {
+      this.selectedBufferFrames = catalog.bufferOptions[0] ?? 128;
     }
 
-    /**
-     * Rebuild the entire Output FX Chain
-     * TrackMix -> Slot A -> Slot B -> Slot C -> Slot D -> MasterGain
-     */
-    private rebuildOutputChain() {
-        const head = this.outputFxChain.input;
-        const tail = this.outputFxChain.output;
+    this.selectedBackend = selectedBackend;
 
-        head.disconnect();
+    return {
+      backends: catalog.backends,
+      selectedBackend,
+      inputs,
+      outputs,
+      sampleRates,
+      bufferOptions: catalog.bufferOptions,
+    };
+  }
 
-        let currentNode: AudioNode = head;
+  private deriveSampleRates(inputs: NativeDeviceInfo[], outputs: NativeDeviceInfo[]) {
+    const inputRates = new Set((inputs.find((device) => device.id === this.selectedInputDeviceId) ?? inputs[0])?.sampleRates ?? []);
+    const outputRates = new Set((outputs.find((device) => device.id === this.selectedOutputDeviceId) ?? outputs[0])?.sampleRates ?? []);
+    const overlap = [...inputRates].filter((rate) => outputRates.has(rate)).sort((a, b) => a - b);
+    return overlap.length > 0 ? overlap : [44100, 48000];
+  }
 
-        this.trackFxInstances.forEach((fx) => {
-            if (fx) {
-                currentNode.connect(fx.input);
-                currentNode = fx.output;
-            }
-        });
+  private currentConfig(): NativeConfig {
+    return {
+      backend: this.selectedBackend,
+      inputDeviceId: this.selectedInputDeviceId || '',
+      outputDeviceId: this.selectedOutputDeviceId || '',
+      sampleRate: this.selectedSampleRate,
+      bufferFrames: this.selectedBufferFrames,
+      monitoringEnabled: this.monitoringEnabled,
+    };
+  }
 
-        currentNode.connect(tail);
-
-        // Ensure TrackMix is connected to Head
-        this.trackMixNode.disconnect();
-        this.trackMixNode.connect(head);
+  private async applyAndStart() {
+    if (!this.deviceCatalog) {
+      await this.refreshCatalog();
     }
 
-    /**
-     * Set FX Parameter
-     * @param location 'input' | 'track'
-     * @param slotIndex 0-3
-     * @param value 0-100
-     */
-    public setFxParam(location: 'input' | 'track', slotIndex: number, value: number) {
-        // SAFETY CHECK: Ensure value is a finite number
-        if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
-            console.error(`FX Error: Invalid param value received for slot ${slotIndex}:`, value);
-            return;
-        }
+    try {
+      const applied = await this.bridge.applyConfig(this.currentConfig());
+      this.applyStatus(applied);
+      const started = await this.bridge.startEngine();
+      this.applyStatus(started);
+      this.savePreferences();
+    } catch (error) {
+      this.handleBridgeFailure(error, false);
+      throw error;
+    }
+  }
 
-        const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
-        const fx = instances[slotIndex];
-        if (fx) {
-            // Map 0-100 to 0-1 or appropriate range
-            // Most FX expect 0-1 for "amount" or "mix"
-            // Let's assume a generic 'amount' parameter for now, 
-            // or map based on FX type if we had access to it.
-            // FXBase interface has setParam(key, val).
+  private async dispatchStatusRequest(request: () => Promise<NativeStatus>) {
+    try {
+      const status = await request();
+      this.applyStatus(status);
+    } catch (error) {
+      this.handleBridgeFailure(error, false);
+      throw error;
+    }
+  }
 
-            // For now, we control the main parameter (e.g. Filter Frequency, Reverb Mix)
-            // We need to know WHAT parameter to control.
-            // Simplified: "amount" controls the most significant param.
+  private async refreshStatus() {
+    try {
+      const status = await this.bridge.getStatus();
+      this.applyStatus(status);
+    } catch (error) {
+      this.handleBridgeFailure(error);
+    }
+  }
 
-            // We can check the name or just pass 'amount' and let FX handle it?
-            // FXBase doesn't have a standardized 'amount'.
-            // Let's try to be smart.
+  private applyStatus(status: NativeStatus) {
+    this.latestStatus = status;
+    this.bridgeAvailable = true;
+    this.engineRunning = status.engineRunning;
+    this.monitoringEnabled = status.monitoringEnabled;
+    this.selectedBackend = status.backend;
+    this.selectedInputDeviceId = status.inputDeviceId || this.selectedInputDeviceId;
+    this.selectedOutputDeviceId = status.outputDeviceId || this.selectedOutputDeviceId;
+    this.selectedSampleRate = status.sampleRate || this.selectedSampleRate;
+    this.selectedBufferFrames = status.bufferFrames || this.selectedBufferFrames;
+    this.lastError = status.lastError || '';
 
-            if (fx instanceof FilterFX) {
-                fx.setParam('frequency', value); // 0-100 -> mapped inside
-            } else if (fx instanceof ReverbFX) {
-                fx.setParam('mix', value / 100);
-            } else if (fx instanceof DelayFX) {
-                fx.setParam('mix', value / 100);
-            } else if (fx instanceof SlicerFX) {
-                fx.setParam('rate', value);
-            } else if (fx instanceof PhaserFX) {
-                fx.setParam('rate', value);
-            }
-        }
+    this.tracks[0]?.syncNativeState(status.state, status.loopProgress);
+    for (let index = 1; index < this.tracks.length; index += 1) {
+      this.tracks[index]?.resetTelemetry();
     }
 
-    /**
-     * Set FX Active/Bypass
-     */
-    public setFxActive(location: 'input' | 'track', slotIndex: number, active: boolean) {
-        const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
-        const fx = instances[slotIndex];
-        if (fx) {
-            fx.setBypass(!active);
-        }
+    this.emitAll();
+  }
+
+  private handleBridgeFailure(error: unknown, markBridgeMissing = true) {
+    if (markBridgeMissing) {
+      this.bridgeAvailable = false;
+      this.engineRunning = false;
+      this.stopPolling();
     }
 
-    // ========================================
-    // MONITORING CONTROL (CRITICAL SAFETY)
-    // ========================================
+    this.lastError = error instanceof Error ? error.message : String(error);
+    this.latestStatus = null;
+    this.monitoringEnabled = false;
+    this.resetAllTrackTelemetry();
+    this.emitAll();
+  }
 
-    /**
-     * Enable/disable software monitoring
-     * WARNING: Only use with headphones to prevent feedback!
-     */
-    public setMonitoring(enabled: boolean) {
-        this.monitoringEnabled = enabled;
+  private resetAllTrackTelemetry() {
+    for (let trackId = 1; trackId <= 5; trackId += 1) {
+      this.updateTrackTelemetry(trackId, TrackState.EMPTY, 0);
+    }
+  }
 
-        if (this.monitorGainNode) {
-            // Smooth transition to prevent clicks
-            this.monitorGainNode.gain.setTargetAtTime(
-                enabled ? 1.0 : 0.0,
-                this.context.currentTime,
-                0.01
-            );
-        }
+  private startPolling() {
+    if (this.pollHandle !== null) {
+      return;
+    }
+    this.pollHandle = window.setInterval(() => {
+      void this.refreshStatus();
+    }, 100);
+  }
 
-        console.log(`\n🎧 Software Monitoring: ${enabled ? 'ENABLED ⚠️' : 'DISABLED (SAFE)'}`);
-        if (enabled) {
-            console.log('  ⚠️  WARNING: Use headphones only! Speakers will cause feedback!\n');
-        } else {
-            console.log('  ✓ Safe mode - no direct monitoring\n');
-        }
+  private stopPolling() {
+    if (this.pollHandle !== null) {
+      clearInterval(this.pollHandle);
+      this.pollHandle = null;
+    }
+  }
 
-        this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
+  private emitAll() {
+    const latency = this.getLatencyInfo();
+    const status = this.getUiStatus();
+    this.monitoringListeners.forEach((listener) => listener(this.monitoringEnabled));
+    this.latencyListeners.forEach((listener) => listener(latency));
+    this.statusListeners.forEach((listener) => listener(status));
+  }
+
+  private savePreferences() {
+    localStorage.setItem('nativeBackend', this.selectedBackend);
+    localStorage.setItem('nativeInputDeviceId', this.selectedInputDeviceId || '');
+    localStorage.setItem('nativeOutputDeviceId', this.selectedOutputDeviceId || '');
+    localStorage.setItem('nativeSampleRate', String(this.selectedSampleRate));
+    localStorage.setItem('nativeBufferFrames', String(this.selectedBufferFrames));
+  }
+
+  private loadPreferences() {
+    const backend = localStorage.getItem('nativeBackend');
+    if (backend === 'WASAPI' || backend === 'ASIO') {
+      this.selectedBackend = backend;
     }
 
-    public onMonitoringChange(listener: (enabled: boolean) => void) {
-        this.monitoringListeners.add(listener);
-        return () => {
-            this.monitoringListeners.delete(listener);
-        };
+    this.selectedInputDeviceId = localStorage.getItem('nativeInputDeviceId') || null;
+    this.selectedOutputDeviceId = localStorage.getItem('nativeOutputDeviceId') || null;
+
+    const sampleRate = Number(localStorage.getItem('nativeSampleRate') || '');
+    if (Number.isFinite(sampleRate) && sampleRate > 0) {
+      this.selectedSampleRate = sampleRate;
     }
 
-    public getLatencyInfo(): LatencyInfo {
-        const audioContext = this.context as AudioContext & { outputLatency?: number };
-        const baseLatencyMs = Number.isFinite(this.context.baseLatency)
-            ? this.context.baseLatency * 1000
-            : null;
-        const outputLatencyMs = Number.isFinite(audioContext.outputLatency)
-            ? (audioContext.outputLatency ?? 0) * 1000
-            : null;
-        const estimatedMonitoringLatencyMs = baseLatencyMs !== null
-            ? baseLatencyMs + (outputLatencyMs ?? baseLatencyMs)
-            : outputLatencyMs;
-
-        return {
-            sampleRate: this.context.sampleRate,
-            baseLatencyMs,
-            outputLatencyMs,
-            estimatedMonitoringLatencyMs,
-            roundTripLatencyMs: this.roundTripLatency > 0 ? this.roundTripLatency * 1000 : null,
-        };
+    const bufferFrames = Number(localStorage.getItem('nativeBufferFrames') || '');
+    if (Number.isFinite(bufferFrames) && bufferFrames > 0) {
+      this.selectedBufferFrames = bufferFrames;
     }
-
-    public onLatencyInfoChange(listener: (info: LatencyInfo) => void) {
-        this.latencyListeners.add(listener);
-        listener(this.getLatencyInfo());
-        return () => {
-            this.latencyListeners.delete(listener);
-        };
-    }
-
-    // ========================================
-    // DEVICE PREFERENCES (LOCALSTORAGE)
-    // ========================================
-
-    private saveDevicePreferences() {
-        try {
-            localStorage.setItem('audioInputDeviceId', this.selectedInputDeviceId || '');
-            localStorage.setItem('audioOutputDeviceId', this.selectedOutputDeviceId || '');
-            console.log('  💾 Device preferences saved');
-        } catch (error) {
-            console.warn('Failed to save device preferences:', error);
-        }
-    }
-
-    private loadDevicePreferences() {
-        try {
-            this.selectedInputDeviceId = localStorage.getItem('audioInputDeviceId') || null;
-            this.selectedOutputDeviceId = localStorage.getItem('audioOutputDeviceId') || null;
-
-            if (this.selectedInputDeviceId || this.selectedOutputDeviceId) {
-                console.log('📂 Loaded saved device preferences');
-            }
-        } catch (error) {
-            console.warn('Failed to load device preferences:', error);
-        }
-    }
-
-    // ========================================
-    // TEST AUDIO
-    // ========================================
-
-    /**
-     * Play a short test tone to verify output device
-     */
-    public playTestTone() {
-        const osc = this.context.createOscillator();
-        const gain = this.context.createGain();
-
-        osc.connect(gain);
-        gain.connect(this.context.destination);
-
-        osc.frequency.value = 440; // A4
-        gain.gain.value = 0.3;
-
-        const now = this.context.currentTime;
-        osc.start(now);
-        osc.stop(now + 0.2); // 200ms beep
-
-        console.log('🔔 Test tone played (440Hz, 200ms)');
-    }
-
-    // ========================================
-    // LEGACY METHODS (UPDATED FOR SAFETY)
-    // ========================================
-
-    /**
-     * Get input stream for recording
-     * SAFETY: Returns the managed input stream
-     */
-    public async getInputStream(): Promise<MediaStreamAudioSourceNode> {
-        if (!this.currentInputStream) {
-            // Initialize default input if not set
-            await this.setInputDevice(this.selectedInputDeviceId || '');
-        }
-        return this.currentInputStream!;
-    }
-
-    public async getProcessedInputNode(): Promise<AudioNode> {
-        await this.getInputStream();
-        return this.inputFxChain.output;
-    }
-
-    // ========================================
-    // LOOPBACK LATENCY TEST
-    // ========================================
-
-    private async getTestStream(): Promise<MediaStream> {
-        try {
-            return await this.requestInputStream(this.selectedInputDeviceId || '');
-        } catch (error) {
-            if (this.selectedInputDeviceId && this.shouldFallbackToDefaultInput(error)) {
-                return this.requestInputStream('');
-            }
-            throw error;
-        }
-    }
-
-    public async runLoopbackTest(): Promise<number> {
-        console.log('Starting Loopback Latency Test...');
-
-        let stream: MediaStream;
-        try {
-            stream = await this.getTestStream();
-        } catch (e) {
-            console.error('Failed to get test stream', e);
-            throw new Error('Could not access microphone. Check permissions.');
-        }
-
-        const source = this.context.createMediaStreamSource(stream);
-        const recorder = this.context.createScriptProcessor(4096, 1, 1);
-        const recordingBuffer = new Float32Array(this.context.sampleRate * 1.0);
-        let writeIndex = 0;
-
-        recorder.onaudioprocess = (e) => {
-            const input = e.inputBuffer.getChannelData(0);
-            if (writeIndex < recordingBuffer.length) {
-                const len = Math.min(input.length, recordingBuffer.length - writeIndex);
-                recordingBuffer.set(input.subarray(0, len), writeIndex);
-                writeIndex += len;
-            }
-        };
-
-        const mute = this.context.createGain();
-        mute.gain.value = 0;
-        source.connect(recorder);
-        recorder.connect(mute);
-        mute.connect(this.context.destination);
-
-        const osc = this.context.createOscillator();
-        const oscGain = this.context.createGain();
-        osc.frequency.value = 1000;
-        oscGain.gain.value = 0.8;
-        osc.connect(oscGain);
-        oscGain.connect(this.context.destination);
-
-        const now = this.context.currentTime;
-        const signalDelay = 0.1;
-        osc.start(now + signalDelay);
-        osc.stop(now + signalDelay + 0.05);
-
-        await new Promise(resolve => setTimeout(resolve, 1200));
-
-        osc.disconnect();
-        oscGain.disconnect();
-        source.disconnect();
-        recorder.disconnect();
-        mute.disconnect();
-        stream.getTracks().forEach(t => t.stop());
-
-        let peakIndex = -1;
-        const threshold = 0.05;
-        for (let i = 0; i < recordingBuffer.length; i++) {
-            const sample = recordingBuffer[i];
-            if (sample !== undefined && Math.abs(sample) > threshold) {
-                peakIndex = i;
-                break;
-            }
-        }
-
-        if (peakIndex === -1) {
-            throw new Error('Signal not detected. Increase volume/check loopback.');
-        }
-
-        const latencyMs = ((peakIndex / this.context.sampleRate) - signalDelay) * 1000;
-        console.log(`Latency Test: Peak at ${(peakIndex / this.context.sampleRate).toFixed(4)}s, Delay ${signalDelay}s, Result ${latencyMs.toFixed(2)}ms`);
-
-        return Math.max(0, latencyMs);
-    }
-
-    public setLatency(latencyMs: number) {
-        this.roundTripLatency = latencyMs / 1000;
-        console.log(`Latency compensation set to: ${this.roundTripLatency.toFixed(4)}s`);
-        this.emitLatencyInfo();
-    }
-
-    // ========================================
-    // TRACK EDITING (Phase 7)
-    // ========================================
-
-    public checkAndResetMaster(clearedTrackId: number) {
-        const transport = Transport.getInstance();
-        if (transport.masterTrackId !== clearedTrackId) return;
-
-        // Check if any other track is playing or has content
-        const hasContent = this.tracks.some(t => t.track.id !== clearedTrackId && t.state !== TrackState.EMPTY);
-
-        if (!hasContent) {
-            transport.resetMasterTrack();
-        }
-    }
-
-    public clearTrack(trackIndex: number) {
-        if (this.tracks[trackIndex]) {
-            this.tracks[trackIndex].clear();
-        }
-    }
-
-    public stopAllTracks() {
-        this.tracks.forEach(track => {
-            if (track.state !== TrackState.EMPTY) {
-                track.triggerStop();
-            }
-        });
-    }
-
-    public playAllTracks() {
-        this.tracks.forEach(track => {
-            if (track.state === TrackState.STOPPED) {
-                track.play();
-            }
-        });
-    }
-
-    public toggleReverse(trackIndex: number) {
-        if (this.tracks[trackIndex]) {
-            this.tracks[trackIndex].toggleReverse();
-        }
-    }
-
-    private createInputConstraints(deviceId: string): MediaStreamConstraints {
-        return {
-            audio: {
-                deviceId: deviceId ? { exact: deviceId } : undefined,
-                echoCancellation: false,
-                autoGainControl: false,
-                noiseSuppression: false
-            }
-        };
-    }
-
-    private async requestInputStream(deviceId: string): Promise<MediaStream> {
-        return navigator.mediaDevices.getUserMedia(this.createInputConstraints(deviceId));
-    }
-
-    private replaceInputStream(stream: MediaStream) {
-        if (this.currentInputStream) {
-            this.currentInputStream.disconnect();
-            this.currentInputStream = null;
-            console.log('  ✓ Disconnected old input node');
-        }
-
-        if (this.currentMediaStream) {
-            this.currentMediaStream.getTracks().forEach(track => track.stop());
-            console.log('  ✓ Stopped old input stream');
-        }
-
-        this.currentInputStream = this.context.createMediaStreamSource(stream);
-        this.currentMediaStream = stream;
-        this.currentInputStream.connect(this.inputFxChain.input);
-    }
-
-    private shouldFallbackToDefaultInput(error: unknown): boolean {
-        if (!(error instanceof DOMException)) return false;
-        return error.name === 'OverconstrainedError' || error.name === 'NotFoundError' || error.name === 'NotReadableError';
-    }
-
-    private emitLatencyInfo() {
-        const info = this.getLatencyInfo();
-        this.latencyListeners.forEach(listener => listener(info));
-    }
+  }
 }

@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+native-mvp/build/
+native-mvp/build-v145/

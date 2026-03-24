@@ -12,6 +12,7 @@
           v-model:selectedType="slot.type"
           v-model:modelValue="slot.value"
           v-model:active="slot.active"
+          :disabled="fxDisabled"
         />
       </div>
     </div>
@@ -34,6 +35,7 @@
           v-model:selectedType="slot.type"
           v-model:modelValue="slot.value"
           v-model:active="slot.active"
+          :disabled="fxDisabled"
         />
       </div>
     </div>
@@ -41,13 +43,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import FxUnit from './fx/FxUnit.vue';
 import TransportControls from './TransportControls.vue';
 import RhythmControls from './RhythmControls.vue';
 import { AudioEngine } from '../audio/AudioEngine';
 
 const engine = AudioEngine.getInstance();
+const fxDisabled = computed(() => !engine.supportsFx());
 const fxOptions = ['FILTER', 'DELAY', 'REVERB', 'SLICER', 'PHASER'];
 
 interface FxSlot {
