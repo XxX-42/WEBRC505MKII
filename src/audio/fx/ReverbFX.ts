@@ -8,6 +8,7 @@ export class ReverbFX implements FXBase {
     private convolver: ConvolverNode;
     private wet: GainNode;
     private dry: GainNode;
+    private currentMix = 0.5;
 
     constructor(context: AudioContext) {
         this.context = context;
@@ -27,7 +28,12 @@ export class ReverbFX implements FXBase {
         this.convolver.connect(this.wet);
         this.wet.connect(this.output);
 
-        this.wet.gain.value = 0.5;
+        this.applyMix(this.currentMix);
+    }
+
+    private applyMix(value: number) {
+        this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.1);
+        this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.1);
     }
 
     private generateImpulseResponse(duration: number) {
@@ -53,8 +59,8 @@ export class ReverbFX implements FXBase {
             const duration = 0.1 + (value * 4.0); // 0.1s to 4.1s
             this.generateImpulseResponse(duration);
         } else if (key === 'mix') {
-            this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.1);
-            this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.1);
+            this.currentMix = Math.max(0, Math.min(1, value));
+            this.applyMix(this.currentMix);
         }
     }
 
@@ -62,6 +68,8 @@ export class ReverbFX implements FXBase {
         if (bypass) {
             this.wet.gain.setTargetAtTime(0, this.context.currentTime, 0.1);
             this.dry.gain.setTargetAtTime(1, this.context.currentTime, 0.1);
+        } else {
+            this.applyMix(this.currentMix);
         }
     }
 }

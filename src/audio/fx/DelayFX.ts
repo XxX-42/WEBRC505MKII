@@ -10,6 +10,7 @@ export class DelayFX implements FXBase {
     private wet: GainNode;
     private dry: GainNode;
     private filter: BiquadFilterNode; // Tape simulation
+    private currentMix = 0.5;
 
     constructor(context: AudioContext) {
         this.context = context;
@@ -42,10 +43,14 @@ export class DelayFX implements FXBase {
         this.wet.connect(this.output);
 
         // Defaults
-        this.wet.gain.value = 0.5;
-        this.dry.gain.value = 1.0;
+        this.applyMix(this.currentMix);
         this.feedback.gain.value = 0.3;
         this.delay.delayTime.value = 0.3;
+    }
+
+    private applyMix(value: number) {
+        this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.1);
+        this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.1);
     }
 
     setParam(key: string, value: number) {
@@ -54,8 +59,8 @@ export class DelayFX implements FXBase {
         } else if (key === 'feedback') {
             this.feedback.gain.setTargetAtTime(value * 0.9, this.context.currentTime, 0.1);
         } else if (key === 'mix') {
-            this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.1);
-            this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.1);
+            this.currentMix = Math.max(0, Math.min(1, value));
+            this.applyMix(this.currentMix);
         }
     }
 
@@ -64,12 +69,7 @@ export class DelayFX implements FXBase {
             this.wet.gain.setTargetAtTime(0, this.context.currentTime, 0.1);
             this.dry.gain.setTargetAtTime(1, this.context.currentTime, 0.1);
         } else {
-            // We don't restore mix here because setParam handles it.
-            // But if we want to "un-bypass", we might need to know the previous mix.
-            // For simplicity, we assume the controller will set mix again or we just leave it as is if it wasn't touched.
-            // But wait, if we set wet to 0, we lose the state.
-            // Better approach: use a master wet gain for bypass?
-            // Or just rely on the fact that when active=true, the UI sends the mix value.
+            this.applyMix(this.currentMix);
         }
     }
 }
