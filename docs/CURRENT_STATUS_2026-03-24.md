@@ -25,6 +25,7 @@ Now:
 
 - `Transport` emits a dedicated `beat` event based on current BPM
 - `TransportControls` listens to `beat` instead of `tick`
+- The unused `tick` event has since been removed from the transport clock
 
 Result: the beat LED now reflects musical pulse rather than render-clock activity.
 

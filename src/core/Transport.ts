@@ -56,7 +56,6 @@ export class Transport {
                 }
             }
 
-            this.emit('tick'); // For UI updates (beat indicator)
         }, interval);
     }
 
