@@ -95,6 +95,33 @@ const syncSlotToEngine = (location: 'input' | 'track', index: number, slot: FxSl
   engine.setFxActive(location, index, slot.active);
 };
 
+const syncChangedSlots = (
+  location: 'input' | 'track',
+  newSlots: FxSlot[],
+  oldSlots?: FxSlot[]
+) => {
+  newSlots.forEach((slot, i) => {
+    const previous = oldSlots?.[i];
+    if (
+      previous &&
+      previous.type === slot.type &&
+      previous.value === slot.value &&
+      previous.active === slot.active
+    ) {
+      return;
+    }
+
+    syncSlotToEngine(location, i, slot);
+  });
+};
+
+const persistSlots = () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    inputSlots: inputSlots.value,
+    trackSlots: trackSlots.value
+  }));
+};
+
 onMounted(() => {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -113,33 +140,14 @@ onMounted(() => {
 });
 
 // Watchers for Real-time Updates
-watch(inputSlots, (newSlots) => {
-  newSlots.forEach((slot, i) => {
-    // We could optimize by checking what changed, but setting all is safe and fast enough for now
-    // Or we could watch deep and only update changed ones if needed.
-    // For simplicity, we just sync the one that changed if we could identify it, 
-    // but Vue deep watch gives the whole array.
-    // Let's just sync all for robustness or implement a smarter diff if performance issues arise.
-    syncSlotToEngine('input', i, slot);
-  });
-  
-  // Save to storage
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    inputSlots: inputSlots.value,
-    trackSlots: trackSlots.value
-  }));
+watch(inputSlots, (newSlots, oldSlots) => {
+  syncChangedSlots('input', newSlots, oldSlots);
+  persistSlots();
 }, { deep: true });
 
-watch(trackSlots, (newSlots) => {
-  newSlots.forEach((slot, i) => {
-    syncSlotToEngine('track', i, slot);
-  });
-
-  // Save to storage
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    inputSlots: inputSlots.value,
-    trackSlots: trackSlots.value
-  }));
+watch(trackSlots, (newSlots, oldSlots) => {
+  syncChangedSlots('track', newSlots, oldSlots);
+  persistSlots();
 }, { deep: true });
 
 </script>
