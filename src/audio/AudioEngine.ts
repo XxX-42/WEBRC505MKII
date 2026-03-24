@@ -12,6 +12,14 @@ import { PhaserFX } from './fx/PhaserFX';
 import { RhythmEngine } from './RhythmEngine';
 import type { IAudioEngine } from './AudioEngineInterface';
 
+export interface LatencyInfo {
+    sampleRate: number;
+    baseLatencyMs: number | null;
+    outputLatencyMs: number | null;
+    estimatedMonitoringLatencyMs: number | null;
+    roundTripLatencyMs: number | null;
+}
+
 export class AudioEngine implements IAudioEngine {
     private static instance: AudioEngine;
     public context: AudioContext;
@@ -43,6 +51,7 @@ export class AudioEngine implements IAudioEngine {
     public selectedOutputDeviceId: string | null = null;
     public monitoringEnabled: boolean = false; // DEFAULT: FALSE to prevent feedback!
     private monitoringListeners = new Set<(enabled: boolean) => void>();
+    private latencyListeners = new Set<(info: LatencyInfo) => void>();
 
     private constructor() {
         this.context = new AudioContext({
@@ -114,6 +123,8 @@ export class AudioEngine implements IAudioEngine {
         if (this.selectedOutputDeviceId) {
             await this.setOutputDevice(this.selectedOutputDeviceId);
         }
+
+        this.emitLatencyInfo();
     }
 
     // ========================================
@@ -184,6 +195,7 @@ export class AudioEngine implements IAudioEngine {
         }
 
         this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
+        this.emitLatencyInfo();
     }
 
     // ========================================
@@ -210,6 +222,8 @@ export class AudioEngine implements IAudioEngine {
             console.error('Failed to set output device:', error);
             throw error;
         }
+
+        this.emitLatencyInfo();
     }
 
     // ========================================
@@ -451,6 +465,35 @@ export class AudioEngine implements IAudioEngine {
         };
     }
 
+    public getLatencyInfo(): LatencyInfo {
+        const audioContext = this.context as AudioContext & { outputLatency?: number };
+        const baseLatencyMs = Number.isFinite(this.context.baseLatency)
+            ? this.context.baseLatency * 1000
+            : null;
+        const outputLatencyMs = Number.isFinite(audioContext.outputLatency)
+            ? (audioContext.outputLatency ?? 0) * 1000
+            : null;
+        const estimatedMonitoringLatencyMs = baseLatencyMs !== null
+            ? baseLatencyMs + (outputLatencyMs ?? baseLatencyMs)
+            : outputLatencyMs;
+
+        return {
+            sampleRate: this.context.sampleRate,
+            baseLatencyMs,
+            outputLatencyMs,
+            estimatedMonitoringLatencyMs,
+            roundTripLatencyMs: this.roundTripLatency > 0 ? this.roundTripLatency * 1000 : null,
+        };
+    }
+
+    public onLatencyInfoChange(listener: (info: LatencyInfo) => void) {
+        this.latencyListeners.add(listener);
+        listener(this.getLatencyInfo());
+        return () => {
+            this.latencyListeners.delete(listener);
+        };
+    }
+
     // ========================================
     // DEVICE PREFERENCES (LOCALSTORAGE)
     // ========================================
@@ -613,6 +656,7 @@ export class AudioEngine implements IAudioEngine {
     public setLatency(latencyMs: number) {
         this.roundTripLatency = latencyMs / 1000;
         console.log(`Latency compensation set to: ${this.roundTripLatency.toFixed(4)}s`);
+        this.emitLatencyInfo();
     }
 
     // ========================================
@@ -694,5 +738,10 @@ export class AudioEngine implements IAudioEngine {
     private shouldFallbackToDefaultInput(error: unknown): boolean {
         if (!(error instanceof DOMException)) return false;
         return error.name === 'OverconstrainedError' || error.name === 'NotFoundError' || error.name === 'NotReadableError';
+    }
+
+    private emitLatencyInfo() {
+        const info = this.getLatencyInfo();
+        this.latencyListeners.forEach(listener => listener(info));
     }
 }

@@ -66,6 +66,42 @@
     --font-mono: 'Roboto Mono', monospace;
     --color-accent: var(--led-blue-accent);
     --led-blue-active: var(--led-blue-accent);
+
+    /* --- APP SURFACE TOKENS --- */
+    --text-primary: #f2f2f2;
+    --text-muted: rgba(240, 240, 240, 0.55);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --panel-border-strong: rgba(255, 255, 255, 0.14);
+    --panel-elevated: linear-gradient(180deg, #1f1f1f 0%, #121212 100%);
+    --app-background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
+    --app-init-background: linear-gradient(180deg, #0a0a0a 0%, #060606 100%);
+    --track-list-background: rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme='day'] {
+    --bg-panel-main: #ebe4d7;
+    --bg-panel-secondary: #f7f1e3;
+    --bg-groove-dark: #d9cfbf;
+    --bg-button-gradient: linear-gradient(180deg, #fffdf7 0%, #e6dccb 100%);
+    --bg-button-active: linear-gradient(180deg, #ded3c1 0%, #efe5d6 100%);
+    --gradient-plastic-light: linear-gradient(180deg, #fffdf7 0%, #ece2d2 100%);
+    --shadow-raised:
+        0 1px 0 rgba(255, 255, 255, 0.7) inset,
+        0 -1px 0 rgba(94, 72, 42, 0.18) inset,
+        0 2px 4px rgba(94, 72, 42, 0.16);
+    --shadow-pressed:
+        0 2px 4px rgba(94, 72, 42, 0.2) inset,
+        0 1px 0 rgba(255, 255, 255, 0.45);
+    --text-primary: #2c2418;
+    --text-muted: rgba(76, 58, 35, 0.62);
+    --panel-border: rgba(94, 72, 42, 0.18);
+    --panel-border-strong: rgba(94, 72, 42, 0.28);
+    --panel-elevated: linear-gradient(180deg, #fffdf8 0%, #efe5d6 100%);
+    --app-background: radial-gradient(circle at top, #fff6e7 0%, #e7ddce 100%);
+    --app-init-background: linear-gradient(180deg, #fff9ee 0%, #ece2d4 100%);
+    --track-list-background: rgba(255, 255, 255, 0.46);
+    --glow-white-soft: 0 0 6px rgba(140, 118, 84, 0.16);
+    --glow-white-intense: 0 0 10px rgba(140, 118, 84, 0.24), 0 0 20px rgba(140, 118, 84, 0.14);
 }
 
 /* Reset & Base */
@@ -78,7 +114,7 @@ body {
     margin: 0;
     padding: 0;
     background-color: var(--bg-panel-main);
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overflow: hidden;
     /* Prevent scroll bounce */

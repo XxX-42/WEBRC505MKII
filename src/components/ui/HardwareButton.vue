@@ -118,7 +118,7 @@ const handleKeyUp = () => {
   cursor: pointer;
   
   /* === MATERIAL TEXTURE === */
-  background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
+  background: var(--bg-button-gradient);
   
   /* === 3D BORDERS === */
   border: none; /* Reset default */
@@ -135,7 +135,7 @@ const handleKeyUp = () => {
   border-radius: var(--border-radius-button);
   
   transition: all 0.05s ease-out;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
 }
 
 .hardware-button:focus-visible {
@@ -172,7 +172,7 @@ const handleKeyUp = () => {
 /* === ACTIVE STATE (Pressed In) === */
 .hardware-button:active,
 .hardware-button.active {
-  background: linear-gradient(180deg, #151515 0%, #222 100%);
+  background: var(--bg-button-active);
   
   /* Deep Inset Shadow */
   box-shadow: 
@@ -185,7 +185,7 @@ const handleKeyUp = () => {
   border-right: 1px solid rgba(0, 0, 0, 0.5);
   
   transform: translateY(1px);
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-primary);
 }
 
 /* === LED INDICATORS (Enhanced Glow) === */

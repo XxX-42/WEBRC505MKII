@@ -159,9 +159,9 @@ watch(trackSlots, (newSlots, oldSlots) => {
   align-items: center;
   gap: 20px;
   padding: 12px 24px;
-  background: #1a1a1a;
-  border-bottom: 4px solid #000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  background: var(--bg-panel-secondary);
+  border-bottom: 4px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 100;
   height: 180px; /* Fixed height for stability */
 }
@@ -176,7 +176,7 @@ watch(trackSlots, (newSlots, oldSlots) => {
 .section-label {
   font-family: var(--font-hardware);
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
   letter-spacing: 2px;
   font-weight: 700;
 }
