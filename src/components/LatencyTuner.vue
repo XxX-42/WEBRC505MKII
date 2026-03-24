@@ -13,16 +13,20 @@
     <div v-if="!isCollapsed" class="tuner-content">
       <div class="lcd-panel">
         <div class="lcd-text">
-          <div class="lcd-line">NATIVE AUDIO CORE</div>
-          <div class="lcd-line small">Bridge-backed realtime diagnostics</div>
-          <div class="lcd-line small">Web shell only, no browser audio fallback</div>
+          <div class="lcd-line">{{ latencyInfo.mode === 'browser' ? 'BROWSER WEB AUDIO' : 'NATIVE AUDIO CORE' }}</div>
+          <div class="lcd-line small">
+            {{ latencyInfo.mode === 'browser' ? 'Web Audio runtime diagnostics' : 'Bridge-backed realtime diagnostics' }}
+          </div>
+          <div class="lcd-line small">
+            {{ latencyInfo.mode === 'browser' ? 'TrackAudio path is active for recording' : 'Web shell driving native audio core' }}
+          </div>
         </div>
       </div>
 
       <div class="stats-panel">
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-label">Backend</div>
+            <div class="stat-label">{{ latencyInfo.mode === 'browser' ? 'Mode' : 'Backend' }}</div>
             <div class="stat-value">{{ latencyInfo.backend ?? '--' }}</div>
           </div>
           <div class="stat-card">
@@ -41,30 +45,34 @@
       </div>
 
       <div class="diagnostic-panel">
-        <div class="diagnostic-title">NATIVE DIAGNOSTICS</div>
+        <div class="diagnostic-title">{{ latencyInfo.mode === 'browser' ? 'BROWSER DIAGNOSTICS' : 'NATIVE DIAGNOSTICS' }}</div>
         <div class="diagnostic-list">
           <div class="diagnostic-row">
-            <span class="diagnostic-key">Bridge</span>
+            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Engine' : 'Bridge' }}</span>
             <span class="diagnostic-value" :class="{ warning: !latencyInfo.bridgeAvailable }">
-              {{ latencyInfo.bridgeAvailable ? 'ONLINE' : 'OFFLINE' }}
+              {{ latencyInfo.mode === 'browser' ? (latencyInfo.engineRunning ? 'READY' : 'WAITING') : (latencyInfo.bridgeAvailable ? 'ONLINE' : 'OFFLINE') }}
             </span>
           </div>
           <div class="diagnostic-row">
-            <span class="diagnostic-key">Engine</span>
+            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Base I/O' : 'Engine' }}</span>
             <span class="diagnostic-value" :class="{ warning: !latencyInfo.engineRunning }">
-              {{ latencyInfo.engineRunning ? 'RUNNING' : 'STOPPED' }}
+              {{ latencyInfo.mode === 'browser' ? formatLatency(latencyInfo.baseLatencyMs) : (latencyInfo.engineRunning ? 'RUNNING' : 'STOPPED') }}
             </span>
           </div>
           <div class="diagnostic-row">
-            <span class="diagnostic-key">Input Peak</span>
-            <span class="diagnostic-value">{{ formatPeak(latencyInfo.inputPeak) }}</span>
+            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Output I/O' : 'Input Peak' }}</span>
+            <span class="diagnostic-value">
+              {{ latencyInfo.mode === 'browser' ? formatLatency(latencyInfo.outputLatencyMs) : formatPeak(latencyInfo.inputPeak) }}
+            </span>
           </div>
           <div class="diagnostic-row">
-            <span class="diagnostic-key">Output Peak</span>
-            <span class="diagnostic-value">{{ formatPeak(latencyInfo.outputPeak) }}</span>
+            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Est. Monitor' : 'Output Peak' }}</span>
+            <span class="diagnostic-value">
+              {{ latencyInfo.mode === 'browser' ? formatLatency(latencyInfo.estimatedMonitoringLatencyMs) : formatPeak(latencyInfo.outputPeak) }}
+            </span>
           </div>
           <div class="diagnostic-row">
-            <span class="diagnostic-key">XRuns</span>
+            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'XRuns' : 'XRuns' }}</span>
             <span class="diagnostic-value">{{ latencyInfo.xrunsOrDropouts }}</span>
           </div>
         </div>
@@ -75,7 +83,7 @@
         color="blue"
         :active="isRefreshing"
         :label="isRefreshing ? 'REFRESHING...' : 'REFRESH STATUS'"
-        aria-label="Refresh native status"
+        :aria-label="latencyInfo.mode === 'browser' ? 'Refresh browser audio status' : 'Refresh native status'"
         @press="refreshStatus"
         class="test-button"
       />

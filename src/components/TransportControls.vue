@@ -74,11 +74,11 @@
         aria-label="Open audio settings"
         @press="openSettings"
         class="settings-button"
-        :class="{ 'is-disabled': !engine.isBridgeAvailable() }"
       />
     </div>
 
-    <AudioSettings v-model="showSettings" />
+    <AudioSettings v-if="audioMode === 'native'" v-model="showSettings" />
+    <BrowserAudioSettings v-else v-model="showSettings" />
   </div>
 </template>
 
@@ -89,6 +89,7 @@ import { TrackState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
+import BrowserAudioSettings from './BrowserAudioSettings.vue';
 
 const transport = Transport.getInstance();
 const engine = AudioEngine.getInstance();
@@ -100,6 +101,7 @@ const tapActive = ref(false);
 const showSettings = ref(false);
 const isThruActive = ref(engine.monitoringEnabled);
 const nativeReady = ref(engine.isNativeReady());
+const audioMode = ref(engine.getMode());
 let unsubscribeMonitoring: (() => void) | null = null;
 let unsubscribeStatus: (() => void) | null = null;
 
@@ -127,7 +129,6 @@ const toggleTransport = () => {
 };
 
 const openSettings = () => {
-  if (!engine.isBridgeAvailable()) return;
   showSettings.value = true;
 };
 
@@ -213,6 +214,7 @@ onMounted(() => {
     isThruActive.value = enabled;
   });
   unsubscribeStatus = engine.onStatusChange((status) => {
+    audioMode.value = status.mode;
     nativeReady.value = status.ready;
     const trackState = engine.tracks[0]?.state;
     isPlaying.value =

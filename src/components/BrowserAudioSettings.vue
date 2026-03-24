@@ -4,21 +4,14 @@
       <div v-if="isOpen" class="modal-overlay" @click="handleOverlayClick">
         <div class="modal-container" @click.stop>
           <div class="modal-header">
-            <h2 class="modal-title">NATIVE AUDIO SETTINGS</h2>
-            <button class="close-btn" @click="close" aria-label="Close audio settings">×</button>
+            <h2 class="modal-title">BROWSER AUDIO SETTINGS</h2>
+            <button class="close-btn" @click="close" aria-label="Close browser audio settings">×</button>
           </div>
 
           <div class="modal-content">
             <div class="setting-group">
-              <label class="setting-label" for="backend">BACKEND</label>
-              <select id="backend" v-model="selectedBackend" @change="handleBackendChange" class="device-select" :disabled="!bridgeAvailable">
-                <option v-for="backend in backends" :key="backend" :value="backend">{{ backend }}</option>
-              </select>
-            </div>
-
-            <div class="setting-group">
-              <label class="setting-label" for="input-device">INPUT DEVICE</label>
-              <select id="input-device" v-model="selectedInput" @change="handleInputChange" class="device-select" :disabled="!bridgeAvailable">
+              <label class="setting-label" for="browser-input-device">INPUT DEVICE</label>
+              <select id="browser-input-device" v-model="selectedInput" @change="handleInputChange" class="device-select">
                 <option v-for="device in inputDevices" :key="device.id" :value="device.id">
                   {{ device.name }}
                 </option>
@@ -26,32 +19,12 @@
             </div>
 
             <div class="setting-group">
-              <label class="setting-label" for="output-device">OUTPUT DEVICE</label>
-              <select id="output-device" v-model="selectedOutput" @change="handleOutputChange" class="device-select" :disabled="!bridgeAvailable">
+              <label class="setting-label" for="browser-output-device">OUTPUT DEVICE</label>
+              <select id="browser-output-device" v-model="selectedOutput" @change="handleOutputChange" class="device-select">
                 <option v-for="device in outputDevices" :key="device.id" :value="device.id">
                   {{ device.name }}
                 </option>
               </select>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-group half">
-                <label class="setting-label" for="sample-rate">SAMPLE RATE</label>
-                <select id="sample-rate" v-model.number="selectedSampleRate" @change="handleSampleRateChange" class="device-select" :disabled="!bridgeAvailable">
-                  <option v-for="sampleRate in sampleRates" :key="sampleRate" :value="sampleRate">
-                    {{ sampleRate }} Hz
-                  </option>
-                </select>
-              </div>
-
-              <div class="setting-group half">
-                <label class="setting-label" for="buffer-frames">BUFFER</label>
-                <select id="buffer-frames" v-model.number="selectedBufferFrames" @change="handleBufferChange" class="device-select" :disabled="!bridgeAvailable">
-                  <option v-for="buffer in bufferOptions" :key="buffer" :value="buffer">
-                    {{ buffer }} frames
-                  </option>
-                </select>
-              </div>
             </div>
 
             <div class="setting-group monitoring-group">
@@ -61,7 +34,6 @@
                   v-model="monitoringEnabled"
                   @change="handleMonitoringChange"
                   class="monitoring-checkbox"
-                  :disabled="!bridgeAvailable"
                 >
                 <span class="checkbox-custom"></span>
                 <span>SOFTWARE MONITORING</span>
@@ -69,16 +41,59 @@
               <div class="warning-box">
                 <div class="warning-icon">WARNING</div>
                 <div class="warning-content">
-                  <strong>DANGER: FEEDBACK RISK</strong>
-                  <p>Native monitoring is live passthrough. Use headphones only.</p>
+                  <strong>Browser monitoring affects live passthrough only.</strong>
+                  <p>Recording offset below corrects loop write position, not live monitoring feel.</p>
                 </div>
               </div>
             </div>
 
-            <div class="setting-group">
-              <div class="native-status" :class="{ offline: !bridgeAvailable }">
-                <span>{{ bridgeAvailable ? 'Native bridge connected' : 'Native bridge unavailable' }}</span>
-                <span v-if="lastError" class="native-status-error">{{ lastError }}</span>
+            <div class="setting-row">
+              <div class="setting-group half">
+                <label class="setting-label">SAMPLE RATE</label>
+                <div class="readonly-field">{{ sampleRate }} Hz</div>
+              </div>
+
+              <div class="setting-group half">
+                <label class="setting-label">ROUND TRIP COMP</label>
+                <div class="readonly-field">{{ roundTripDisplay }}</div>
+              </div>
+            </div>
+
+            <div class="action-row">
+              <HardwareButton
+                size="md"
+                color="blue"
+                label="TEST TONE"
+                aria-label="Play browser output test tone"
+                @press="playTestTone"
+              />
+              <HardwareButton
+                size="md"
+                color="white"
+                :label="isTesting ? 'TESTING...' : 'RUN LOOPBACK'"
+                aria-label="Run browser loopback latency test"
+                @press="runLoopback"
+              />
+            </div>
+
+            <BrowserRecordingOffsetSettings
+              :sample-rate="sampleRate"
+              :input-device-id="selectedInput || null"
+              :output-device-id="selectedOutput || null"
+              :buffer-frames="128"
+            />
+
+            <div class="status-box">
+              <div class="status-line">
+                <span>MODE</span>
+                <span>BROWSER WEB AUDIO</span>
+              </div>
+              <div class="status-line">
+                <span>STATUS</span>
+                <span>{{ uiStatus.message }}</span>
+              </div>
+              <div v-if="uiStatus.lastError" class="status-error">
+                {{ uiStatus.lastError }}
               </div>
             </div>
           </div>
@@ -88,7 +103,7 @@
               size="lg"
               color="white"
               label="CLOSE"
-              aria-label="Close audio settings"
+              aria-label="Close browser audio settings"
               @press="close"
             />
           </div>
@@ -99,8 +114,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { AudioEngine, type AudioBackend, type AudioDeviceInfo } from '../audio/AudioEngine';
+import { onMounted, onUnmounted, ref, watch, computed } from 'vue';
+import { AudioEngine, type AudioDeviceInfo, type AudioUiStatus } from '../audio/AudioEngine';
+import BrowserRecordingOffsetSettings from './BrowserRecordingOffsetSettings.vue';
 import HardwareButton from './ui/HardwareButton.vue';
 
 const props = defineProps<{
@@ -114,25 +130,26 @@ const emit = defineEmits<{
 const engine = AudioEngine.getInstance();
 
 const isOpen = ref(props.modelValue);
-const backends = ref<AudioBackend[]>([]);
 const inputDevices = ref<AudioDeviceInfo[]>([]);
 const outputDevices = ref<AudioDeviceInfo[]>([]);
-const sampleRates = ref<number[]>([]);
-const bufferOptions = ref<number[]>([]);
-const selectedBackend = ref<AudioBackend>('WASAPI');
 const selectedInput = ref('');
 const selectedOutput = ref('');
-const selectedSampleRate = ref(48000);
-const selectedBufferFrames = ref(128);
-const monitoringEnabled = ref(false);
-const bridgeAvailable = ref(engine.isBridgeAvailable());
-const lastError = ref(engine.getUiStatus().lastError);
+const monitoringEnabled = ref(engine.monitoringEnabled);
+const uiStatus = ref<AudioUiStatus>(engine.getUiStatus());
+const sampleRate = ref(engine.selectedSampleRate);
+const isTesting = ref(false);
 let unsubscribeMonitoring: (() => void) | null = null;
 let unsubscribeStatus: (() => void) | null = null;
+let unsubscribeLatency: (() => void) | null = null;
 
-watch(() => props.modelValue, (newVal) => {
-  isOpen.value = newVal;
-  if (newVal) {
+const roundTripDisplay = computed(() => {
+  const latency = engine.getLatencyInfo().roundTripLatencyMs;
+  return latency !== null ? `${latency.toFixed(2)} ms` : 'NOT SET';
+});
+
+watch(() => props.modelValue, (value) => {
+  isOpen.value = value;
+  if (value) {
     void loadDevices();
   }
 });
@@ -142,8 +159,10 @@ onMounted(async () => {
     monitoringEnabled.value = enabled;
   });
   unsubscribeStatus = engine.onStatusChange((status) => {
-    bridgeAvailable.value = status.bridgeAvailable;
-    lastError.value = status.lastError;
+    uiStatus.value = status;
+  });
+  unsubscribeLatency = engine.onLatencyInfoChange((latency) => {
+    sampleRate.value = latency.sampleRate;
   });
 
   if (isOpen.value) {
@@ -154,77 +173,44 @@ onMounted(async () => {
 onUnmounted(() => {
   unsubscribeMonitoring?.();
   unsubscribeStatus?.();
+  unsubscribeLatency?.();
 });
 
 const loadDevices = async () => {
   try {
     const selection = await engine.getDevices();
-    backends.value = selection.backends;
-    selectedBackend.value = selection.selectedBackend;
     inputDevices.value = selection.inputs;
     outputDevices.value = selection.outputs;
-    sampleRates.value = selection.sampleRates;
-    bufferOptions.value = selection.bufferOptions;
+    sampleRate.value = selection.sampleRates[0] ?? engine.selectedSampleRate;
     selectedInput.value = engine.selectedInputDeviceId || selection.inputs[0]?.id || '';
     selectedOutput.value = engine.selectedOutputDeviceId || selection.outputs[0]?.id || '';
-    selectedSampleRate.value = engine.selectedSampleRate;
-    selectedBufferFrames.value = engine.selectedBufferFrames;
     monitoringEnabled.value = engine.monitoringEnabled;
   } catch (error) {
-    console.error('Failed to load native devices:', error);
-  }
-};
-
-const handleBackendChange = async () => {
-  try {
-    await engine.setBackend(selectedBackend.value);
-    await loadDevices();
-  } catch (error) {
-    alert(`Failed to change backend: ${error}`);
+    console.error('Failed to load browser devices:', error);
   }
 };
 
 const handleInputChange = async () => {
   try {
     await engine.setInputDevice(selectedInput.value);
-    await loadDevices();
   } catch (error) {
-    alert(`Failed to change input device: ${error}`);
+    alert(`Failed to change browser input device: ${error}`);
   }
 };
 
 const handleOutputChange = async () => {
   try {
     await engine.setOutputDevice(selectedOutput.value);
-    await loadDevices();
   } catch (error) {
-    alert(`Failed to change output device: ${error}`);
-  }
-};
-
-const handleSampleRateChange = async () => {
-  try {
-    await engine.setSampleRate(selectedSampleRate.value);
-    await loadDevices();
-  } catch (error) {
-    alert(`Failed to change sample rate: ${error}`);
-  }
-};
-
-const handleBufferChange = async () => {
-  try {
-    await engine.setBufferFrames(selectedBufferFrames.value);
-    await loadDevices();
-  } catch (error) {
-    alert(`Failed to change buffer size: ${error}`);
+    alert(`Failed to change browser output device: ${error}`);
   }
 };
 
 const handleMonitoringChange = async () => {
   if (monitoringEnabled.value) {
     const confirmed = confirm(
-      'WARNING: Enabling monitoring with speakers may cause loud feedback.\n\n' +
-      'Only proceed if you are using headphones.\n\n' +
+      'WARNING: Enabling browser monitoring with speakers may cause loud feedback.\n\n' +
+      'Use headphones only.\n\n' +
       'Continue?'
     );
 
@@ -236,10 +222,25 @@ const handleMonitoringChange = async () => {
 
   try {
     await engine.setMonitoring(monitoringEnabled.value);
-    monitoringEnabled.value = engine.monitoringEnabled;
   } catch (error) {
-    alert(`Failed to change monitoring: ${error}`);
+    alert(`Failed to change browser monitoring: ${error}`);
     monitoringEnabled.value = engine.monitoringEnabled;
+  }
+};
+
+const playTestTone = () => {
+  engine.playTestTone();
+};
+
+const runLoopback = async () => {
+  isTesting.value = true;
+  try {
+    const latency = await engine.runLoopbackTest();
+    engine.setLatency(latency);
+  } catch (error) {
+    alert(`Loopback test failed: ${error}`);
+  } finally {
+    isTesting.value = false;
   }
 };
 
@@ -274,7 +275,7 @@ const handleOverlayClick = () => {
     inset 0 -1px 0 rgba(0, 0, 0, 0.8),
     0 8px 32px rgba(0, 0, 0, 0.9);
   width: 90%;
-  max-width: 720px;
+  max-width: 760px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
@@ -295,7 +296,7 @@ const handleOverlayClick = () => {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: var(--led-red-recording);
+  color: var(--led-blue-accent);
 }
 
 .close-btn {
@@ -312,11 +313,14 @@ const handleOverlayClick = () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  overflow-y: auto;
 }
 
-.setting-row {
+.setting-row,
+.action-row {
   display: flex;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .setting-group {
@@ -336,12 +340,14 @@ const handleOverlayClick = () => {
   color: #888;
 }
 
-.device-select {
+.device-select,
+.readonly-field {
   background: var(--bg-groove-dark);
   color: var(--text-primary);
   border: 1px solid #333;
   border-radius: 6px;
   padding: 10px 12px;
+  min-height: 42px;
 }
 
 .monitoring-group {
@@ -380,14 +386,14 @@ const handleOverlayClick = () => {
   gap: 12px;
   margin-top: 12px;
   padding: 12px;
-  background: rgba(255, 0, 51, 0.08);
-  border: 1px solid rgba(255, 0, 51, 0.18);
+  background: rgba(0, 153, 255, 0.08);
+  border: 1px solid rgba(0, 153, 255, 0.18);
   border-radius: 8px;
 }
 
 .warning-icon {
   font-family: var(--font-hardware);
-  color: var(--led-red-recording);
+  color: var(--led-blue-accent);
   font-size: 11px;
 }
 
@@ -396,24 +402,26 @@ const handleOverlayClick = () => {
   font-size: 12px;
 }
 
-.native-status {
+.status-box {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
+  gap: 8px;
+  padding: 14px;
   border-radius: 8px;
-  background: rgba(0, 255, 102, 0.08);
-  border: 1px solid rgba(0, 255, 102, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
   font-size: 12px;
 }
 
-.native-status.offline {
-  background: rgba(255, 0, 51, 0.08);
-  border-color: rgba(255, 0, 51, 0.18);
-}
-
-.native-status-error {
+.status-error {
   color: #ff8b8b;
+  font-size: 12px;
 }
 
 .modal-footer {

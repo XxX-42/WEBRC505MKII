@@ -1,22 +1,37 @@
-import { TrackState } from '../core/types';
-import { NativeBridgeClient, type NativeBackend, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeStatus } from './NativeBridgeClient';
-import { NativeTrackProxy } from './NativeTrackProxy';
+import type { TrackAudio } from './TrackAudio';
+import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus } from './BrowserAudioEngine';
+import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus } from './NativeAudioEngine';
+import type { NativeBackend, NativeDeviceInfo } from './NativeBridgeClient';
+import type { NativeTrackProxy } from './NativeTrackProxy';
 
-export interface NativeDeviceSelection {
-  backends: NativeBackend[];
-  selectedBackend: NativeBackend;
-  inputs: NativeDeviceInfo[];
-  outputs: NativeDeviceInfo[];
+export type AudioMode = 'native' | 'browser';
+export type AudioBackend = NativeBackend | 'BROWSER';
+export type EngineTrack = TrackAudio | NativeTrackProxy;
+
+export interface AudioDeviceInfo {
+  id: string;
+  name: string;
+  sampleRates: number[];
+}
+
+export interface AudioDeviceSelection {
+  backends: AudioBackend[];
+  selectedBackend: AudioBackend;
+  inputs: AudioDeviceInfo[];
+  outputs: AudioDeviceInfo[];
   sampleRates: number[];
   bufferOptions: number[];
 }
 
 export interface LatencyInfo {
-  backend: NativeBackend | null;
+  mode: AudioMode;
+  backend: AudioBackend | null;
   sampleRate: number;
   bufferFrames: number;
   inputLatencyMs: number | null;
   outputLatencyMs: number | null;
+  baseLatencyMs: number | null;
+  estimatedMonitoringLatencyMs: number | null;
   roundTripLatencyMs: number | null;
   inputPeak: number;
   outputPeak: number;
@@ -25,7 +40,8 @@ export interface LatencyInfo {
   engineRunning: boolean;
 }
 
-export interface NativeUiStatus {
+export interface AudioUiStatus {
+  mode: AudioMode;
   bridgeAvailable: boolean;
   engineRunning: boolean;
   ready: boolean;
@@ -33,54 +49,44 @@ export interface NativeUiStatus {
   lastError: string;
 }
 
-type RhythmPattern = 'ROCK' | 'TECHNO' | 'METRONOME';
+export type NativeUiStatus = AudioUiStatus;
 
-class NativeRhythmStub {
-  public start() { return; }
-  public stop() { return; }
-  public setPattern(_pattern: RhythmPattern) { return; }
-  public setVolume(_volume: number) { return; }
+const AUDIO_MODE_KEY = 'webrc505_audio_mode';
+
+function resolveInitialMode(): AudioMode {
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get('audio');
+  if (requested === 'browser' || requested === 'native') {
+    localStorage.setItem(AUDIO_MODE_KEY, requested);
+    return requested;
+  }
+
+  const stored = localStorage.getItem(AUDIO_MODE_KEY);
+  return stored === 'browser' ? 'browser' : 'native';
 }
 
-const TRACK_STATE_VALUES = Object.values(TrackState);
+function mapNativeDevices(devices: NativeDeviceInfo[]): AudioDeviceInfo[] {
+  return devices.map((device) => ({
+    id: device.id,
+    name: device.name,
+    sampleRates: [...device.sampleRates],
+  }));
+}
+
+function mapBrowserDevices(devices: MediaDeviceInfo[], sampleRate: number): AudioDeviceInfo[] {
+  return devices.map((device, index) => ({
+    id: device.deviceId || `${device.kind}-${index}`,
+    name: device.label || `Default ${device.kind === 'audioinput' ? 'Input' : 'Output'} ${index + 1}`,
+    sampleRates: [sampleRate],
+  }));
+}
 
 export class AudioEngine {
   private static instance: AudioEngine;
 
-  public readonly tracks: NativeTrackProxy[];
-  public readonly rhythmEngine = new NativeRhythmStub();
-  public readonly trackStates: Int32Array;
-  public readonly trackPositions: Float32Array;
-  public readonly sharedBuffer: SharedArrayBuffer;
-
-  public selectedInputDeviceId: string | null = null;
-  public selectedOutputDeviceId: string | null = null;
-  public selectedBackend: NativeBackend = 'WASAPI';
-  public selectedSampleRate = 48000;
-  public selectedBufferFrames = 128;
-  public monitoringEnabled = false;
-
-  private readonly bridge = new NativeBridgeClient();
-  private readonly monitoringListeners = new Set<(enabled: boolean) => void>();
-  private readonly latencyListeners = new Set<(info: LatencyInfo) => void>();
-  private readonly statusListeners = new Set<(status: NativeUiStatus) => void>();
-
-  private deviceCatalog: NativeDeviceCatalog | null = null;
-  private latestStatus: NativeStatus | null = null;
-  private bridgeAvailable = false;
-  private engineRunning = false;
-  private initInFlight: Promise<void> | null = null;
-  private pollHandle: number | null = null;
-  private lastError = '';
-
-  private constructor() {
-    this.sharedBuffer = new SharedArrayBuffer(1024);
-    this.trackStates = new Int32Array(this.sharedBuffer, 0, 5);
-    this.trackPositions = new Float32Array(this.sharedBuffer, 20, 5);
-    this.tracks = Array.from({ length: 5 }, (_, index) => new NativeTrackProxy(this, index + 1));
-    this.resetAllTrackTelemetry();
-    this.loadPreferences();
-  }
+  private readonly nativeEngine = NativeAudioEngine.getInstance();
+  private browserEngine: BrowserAudioEngine | null = null;
+  private currentMode: AudioMode = resolveInitialMode();
 
   public static getInstance(): AudioEngine {
     if (!AudioEngine.instance) {
@@ -89,405 +95,338 @@ export class AudioEngine {
     return AudioEngine.instance;
   }
 
+  public static getPreferredMode(): AudioMode {
+    return resolveInitialMode();
+  }
+
+  public static setPreferredMode(mode: AudioMode) {
+    localStorage.setItem(AUDIO_MODE_KEY, mode);
+  }
+
+  public getMode(): AudioMode {
+    return this.currentMode;
+  }
+
+  public setMode(mode: AudioMode) {
+    this.currentMode = mode;
+    AudioEngine.setPreferredMode(mode);
+  }
+
+  public get tracks(): EngineTrack[] {
+    return this.activeEngine.tracks as EngineTrack[];
+  }
+
+  public get rhythmEngine() {
+    return this.activeEngine.rhythmEngine;
+  }
+
+  public get trackStates(): Int32Array | null {
+    return this.activeEngine.trackStates ?? null;
+  }
+
+  public get trackPositions(): Float32Array | null {
+    return this.activeEngine.trackPositions ?? null;
+  }
+
+  public get sharedBuffer(): SharedArrayBuffer | null {
+    return this.activeEngine.sharedBuffer ?? null;
+  }
+
+  public get selectedInputDeviceId(): string | null {
+    return (this.activeEngine as { selectedInputDeviceId?: string | null }).selectedInputDeviceId ?? null;
+  }
+
+  public get selectedOutputDeviceId(): string | null {
+    return (this.activeEngine as { selectedOutputDeviceId?: string | null }).selectedOutputDeviceId ?? null;
+  }
+
+  public get selectedBackend(): AudioBackend {
+    if (this.currentMode === 'browser') {
+      return 'BROWSER';
+    }
+    return this.nativeEngine.selectedBackend;
+  }
+
+  public get selectedSampleRate(): number {
+    if (this.currentMode === 'browser') {
+      return this.browser.context.sampleRate;
+    }
+    return this.nativeEngine.selectedSampleRate;
+  }
+
+  public get selectedBufferFrames(): number {
+    if (this.currentMode === 'browser') {
+      return 128;
+    }
+    return this.nativeEngine.selectedBufferFrames;
+  }
+
+  public get monitoringEnabled(): boolean {
+    return (this.activeEngine as { monitoringEnabled?: boolean }).monitoringEnabled ?? false;
+  }
+
   public async init() {
-    if (this.initInFlight) {
-      return this.initInFlight;
-    }
-
-    this.initInFlight = this.initializeNative();
-    try {
-      await this.initInFlight;
-    } finally {
-      this.initInFlight = null;
-    }
+    await this.activeEngine.init();
   }
 
-  public async getDevices(): Promise<NativeDeviceSelection> {
-    if (!this.deviceCatalog) {
-      await this.refreshCatalog();
+  public async getDevices(): Promise<AudioDeviceSelection> {
+    if (this.currentMode === 'native') {
+      const selection: NativeDeviceSelection = await this.nativeEngine.getDevices();
+      return {
+        backends: selection.backends,
+        selectedBackend: selection.selectedBackend,
+        inputs: mapNativeDevices(selection.inputs),
+        outputs: mapNativeDevices(selection.outputs),
+        sampleRates: [...selection.sampleRates],
+        bufferOptions: [...selection.bufferOptions],
+      };
     }
 
-    if (!this.deviceCatalog) {
-      throw new Error('Native device catalog is unavailable.');
-    }
-
-    return this.buildSelectionFromCatalog(this.deviceCatalog);
+    const devices = await this.browser.getDevices();
+    const sampleRate = this.browser.context.sampleRate;
+    return {
+      backends: ['BROWSER'],
+      selectedBackend: 'BROWSER',
+      inputs: mapBrowserDevices(devices.inputs, sampleRate),
+      outputs: mapBrowserDevices(devices.outputs, sampleRate),
+      sampleRates: [sampleRate],
+      bufferOptions: [128],
+    };
   }
 
-  public async setBackend(backend: NativeBackend) {
-    this.selectedBackend = backend;
-    const selection = await this.getDevices();
-    this.selectedInputDeviceId = this.selectedInputDeviceId || this.deviceCatalog?.defaultInputIdByBackend[backend] || selection.inputs[0]?.id || null;
-    this.selectedOutputDeviceId = this.selectedOutputDeviceId || this.deviceCatalog?.defaultOutputIdByBackend[backend] || selection.outputs[0]?.id || null;
-
-    const supportedRates = this.deriveSampleRates(selection.inputs, selection.outputs);
-    if (!supportedRates.includes(this.selectedSampleRate)) {
-      this.selectedSampleRate = supportedRates[0] ?? 48000;
+  public async setBackend(backend: AudioBackend) {
+    if (this.currentMode === 'native' && backend !== 'BROWSER') {
+      await this.nativeEngine.setBackend(backend);
     }
-
-    await this.applyAndStart();
   }
 
   public async setInputDevice(deviceId: string) {
-    this.selectedInputDeviceId = deviceId || null;
-    await this.applyAndStart();
+    await this.activeEngine.setInputDevice(deviceId);
   }
 
   public async setOutputDevice(deviceId: string) {
-    this.selectedOutputDeviceId = deviceId || null;
-    await this.applyAndStart();
+    await this.activeEngine.setOutputDevice(deviceId);
   }
 
   public async setSampleRate(sampleRate: number) {
-    this.selectedSampleRate = sampleRate;
-    await this.applyAndStart();
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.setSampleRate(sampleRate);
+    }
   }
 
   public async setBufferFrames(bufferFrames: number) {
-    this.selectedBufferFrames = bufferFrames;
-    await this.applyAndStart();
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.setBufferFrames(bufferFrames);
+    }
   }
 
   public async setMonitoring(enabled: boolean) {
-    try {
-      const status = await this.bridge.setMonitoring(enabled);
-      this.applyStatus(status);
-    } catch (error) {
-      this.handleBridgeFailure(error);
-      throw error;
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.setMonitoring(enabled);
+      return;
     }
+    this.browser.setMonitoring(enabled);
   }
 
   public onMonitoringChange(listener: (enabled: boolean) => void) {
-    this.monitoringListeners.add(listener);
-    listener(this.monitoringEnabled);
-    return () => {
-      this.monitoringListeners.delete(listener);
-    };
+    return this.activeEngine.onMonitoringChange(listener);
   }
 
   public onLatencyInfoChange(listener: (info: LatencyInfo) => void) {
-    this.latencyListeners.add(listener);
-    listener(this.getLatencyInfo());
-    return () => {
-      this.latencyListeners.delete(listener);
-    };
+    if (this.currentMode === 'native') {
+      return this.nativeEngine.onLatencyInfoChange((info: NativeLatencyInfo) => {
+        listener(this.mapNativeLatency(info));
+      });
+    }
+
+    return this.browser.onLatencyInfoChange((info: BrowserAudioLatencyInfo) => {
+      listener(this.mapBrowserLatency(info));
+    });
   }
 
-  public onStatusChange(listener: (status: NativeUiStatus) => void) {
-    this.statusListeners.add(listener);
-    listener(this.getUiStatus());
-    return () => {
-      this.statusListeners.delete(listener);
-    };
+  public onStatusChange(listener: (status: AudioUiStatus) => void) {
+    if (this.currentMode === 'native') {
+      return this.nativeEngine.onStatusChange((status: NativeEngineUiStatus) => {
+        listener({
+          ...status,
+          mode: 'native',
+        });
+      });
+    }
+
+    return this.browser.onStatusChange((status: BrowserAudioUiStatus) => {
+      listener(status);
+    });
   }
 
   public getLatencyInfo(): LatencyInfo {
-    return {
-      backend: this.latestStatus?.backend ?? null,
-      sampleRate: this.latestStatus?.sampleRate ?? this.selectedSampleRate,
-      bufferFrames: this.latestStatus?.bufferFrames ?? this.selectedBufferFrames,
-      inputLatencyMs: this.latestStatus?.inputLatencyMs ?? null,
-      outputLatencyMs: this.latestStatus?.outputLatencyMs ?? null,
-      roundTripLatencyMs: this.latestStatus?.roundTripEstimateMs ?? null,
-      inputPeak: this.latestStatus?.inputPeak ?? 0,
-      outputPeak: this.latestStatus?.outputPeak ?? 0,
-      xrunsOrDropouts: this.latestStatus?.xrunsOrDropouts ?? 0,
-      bridgeAvailable: this.bridgeAvailable,
-      engineRunning: this.engineRunning,
-    };
+    if (this.currentMode === 'native') {
+      return this.mapNativeLatency(this.nativeEngine.getLatencyInfo());
+    }
+    return this.mapBrowserLatency(this.browser.getLatencyInfo());
   }
 
-  public getUiStatus(): NativeUiStatus {
-    if (!this.bridgeAvailable) {
+  public getUiStatus(): AudioUiStatus {
+    if (this.currentMode === 'native') {
       return {
-        bridgeAvailable: false,
-        engineRunning: false,
-        ready: false,
-        message: 'NATIVE AUDIO UNAVAILABLE',
-        lastError: this.lastError || 'Start native_bridge_host on http://127.0.0.1:17755.',
+        ...this.nativeEngine.getUiStatus(),
+        mode: 'native',
       };
     }
-
-    if (!this.engineRunning) {
-      return {
-        bridgeAvailable: true,
-        engineRunning: false,
-        ready: false,
-        message: 'NATIVE ENGINE STOPPED',
-        lastError: this.lastError,
-      };
-    }
-
-    return {
-      bridgeAvailable: true,
-      engineRunning: true,
-      ready: true,
-      message: 'NATIVE AUDIO READY',
-      lastError: this.lastError,
-    };
+    return this.browser.getUiStatus();
   }
 
   public isNativeReady() {
-    return this.bridgeAvailable && this.engineRunning;
+    return this.getUiStatus().ready;
   }
 
   public isBridgeAvailable() {
-    return this.bridgeAvailable;
+    return this.getUiStatus().bridgeAvailable;
   }
 
   public supportsFx() {
-    return false;
+    return this.activeEngine.supportsFx();
   }
 
   public supportsRhythm() {
-    return false;
+    return this.activeEngine.supportsRhythm();
   }
 
   public supportsReverse() {
-    return false;
+    return this.activeEngine.supportsReverse();
   }
 
   public isTrackAvailable(trackId: number) {
-    return trackId === 1;
+    if (this.currentMode === 'native') {
+      return this.nativeEngine.isTrackAvailable(trackId);
+    }
+    return this.browser.isTrackAvailable(trackId);
   }
 
   public async recordTrack() {
-    await this.dispatchStatusRequest(() => this.bridge.record());
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.recordTrack();
+      return;
+    }
+    this.browser.tracks[0]?.triggerRecord();
   }
 
   public async stopTrack() {
-    await this.dispatchStatusRequest(() => this.bridge.stopTransport());
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.stopTrack();
+      return;
+    }
+    this.browser.tracks[0]?.triggerStop();
   }
 
   public async playTrack() {
-    await this.dispatchStatusRequest(() => this.bridge.play());
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.playTrack();
+      return;
+    }
+    this.browser.tracks[0]?.play();
   }
 
   public async toggleOverdub() {
-    await this.dispatchStatusRequest(() => this.bridge.toggleOverdub());
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.toggleOverdub();
+      return;
+    }
+    this.browser.tracks[0]?.triggerRecord();
   }
 
   public async clearTrack() {
-    await this.dispatchStatusRequest(() => this.bridge.clear());
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.clearTrack();
+      return;
+    }
+    this.browser.tracks[0]?.clear();
   }
 
   public stopAllTracks() {
-    void this.stopTrack();
+    this.activeEngine.stopAllTracks();
   }
 
   public playAllTracks() {
-    void this.playTrack();
+    this.activeEngine.playAllTracks();
   }
 
-  public setFxType(_location: 'input' | 'track', _slotIndex: number, _type: string) { return; }
-  public setFxParam(_location: 'input' | 'track', _slotIndex: number, _value: number) { return; }
-  public setFxActive(_location: 'input' | 'track', _slotIndex: number, _active: boolean) { return; }
-  public playTestTone() { return; }
-  public runLoopbackTest() { return Promise.reject(new Error('Loopback test is not implemented in native v1.')); }
-  public setLatency(_latencyMs: number) { return; }
-
-  public updateTrackTelemetry(trackId: number, state: TrackState, progress: number) {
-    const stateIndex = TRACK_STATE_VALUES.indexOf(state);
-    Atomics.store(this.trackStates, trackId - 1, Math.max(0, stateIndex));
-    this.trackPositions[trackId - 1] = progress;
+  public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
+    this.activeEngine.setFxType(location, slotIndex, type);
   }
 
-  private async initializeNative() {
-    try {
-      await this.bridge.health();
-      this.bridgeAvailable = true;
-      await this.refreshCatalog();
-      await this.applyAndStart();
-      await this.refreshStatus();
-      this.startPolling();
-      this.emitAll();
-    } catch (error) {
-      this.handleBridgeFailure(error, !this.bridgeAvailable);
-      throw error;
+  public setFxParam(location: 'input' | 'track', slotIndex: number, value: number) {
+    this.activeEngine.setFxParam(location, slotIndex, value);
+  }
+
+  public setFxActive(location: 'input' | 'track', slotIndex: number, active: boolean) {
+    this.activeEngine.setFxActive(location, slotIndex, active);
+  }
+
+  public playTestTone() {
+    this.activeEngine.playTestTone();
+  }
+
+  public runLoopbackTest() {
+    return this.activeEngine.runLoopbackTest();
+  }
+
+  public setLatency(latencyMs: number) {
+    this.activeEngine.setLatency(latencyMs);
+  }
+
+  public toggleReverse(trackIndex: number) {
+    if ('toggleReverse' in this.activeEngine && typeof this.activeEngine.toggleReverse === 'function') {
+      this.activeEngine.toggleReverse(trackIndex);
     }
   }
 
-  private async refreshCatalog() {
-    this.deviceCatalog = await this.bridge.getDevices();
+  private get activeEngine() {
+    return this.currentMode === 'native' ? this.nativeEngine : this.browser;
   }
 
-  private buildSelectionFromCatalog(catalog: NativeDeviceCatalog): NativeDeviceSelection {
-    const selectedBackend = catalog.backends.includes(this.selectedBackend) ? this.selectedBackend : (catalog.backends[0] ?? 'WASAPI');
-    const inputs = catalog.inputsByBackend[selectedBackend] ?? [];
-    const outputs = catalog.outputsByBackend[selectedBackend] ?? [];
-
-    if (!this.selectedInputDeviceId || !inputs.some((device) => device.id === this.selectedInputDeviceId)) {
-      this.selectedInputDeviceId = catalog.defaultInputIdByBackend[selectedBackend] || inputs[0]?.id || null;
+  private get browser(): BrowserAudioEngine {
+    if (!this.browserEngine) {
+      this.browserEngine = new BrowserAudioEngine();
     }
-    if (!this.selectedOutputDeviceId || !outputs.some((device) => device.id === this.selectedOutputDeviceId)) {
-      this.selectedOutputDeviceId = catalog.defaultOutputIdByBackend[selectedBackend] || outputs[0]?.id || null;
-    }
+    return this.browserEngine;
+  }
 
-    const sampleRates = this.deriveSampleRates(inputs, outputs);
-    if (!sampleRates.includes(this.selectedSampleRate)) {
-      this.selectedSampleRate = sampleRates[0] ?? 48000;
-    }
-
-    if (!(catalog.bufferOptions ?? []).includes(this.selectedBufferFrames)) {
-      this.selectedBufferFrames = catalog.bufferOptions[0] ?? 128;
-    }
-
-    this.selectedBackend = selectedBackend;
-
+  private mapNativeLatency(info: NativeLatencyInfo): LatencyInfo {
     return {
-      backends: catalog.backends,
-      selectedBackend,
-      inputs,
-      outputs,
-      sampleRates,
-      bufferOptions: catalog.bufferOptions,
+      mode: 'native',
+      backend: info.backend,
+      sampleRate: info.sampleRate,
+      bufferFrames: info.bufferFrames,
+      inputLatencyMs: info.inputLatencyMs,
+      outputLatencyMs: info.outputLatencyMs,
+      baseLatencyMs: null,
+      estimatedMonitoringLatencyMs: info.roundTripLatencyMs,
+      roundTripLatencyMs: info.roundTripLatencyMs,
+      inputPeak: info.inputPeak,
+      outputPeak: info.outputPeak,
+      xrunsOrDropouts: info.xrunsOrDropouts,
+      bridgeAvailable: info.bridgeAvailable,
+      engineRunning: info.engineRunning,
     };
   }
 
-  private deriveSampleRates(inputs: NativeDeviceInfo[], outputs: NativeDeviceInfo[]) {
-    const inputRates = new Set((inputs.find((device) => device.id === this.selectedInputDeviceId) ?? inputs[0])?.sampleRates ?? []);
-    const outputRates = new Set((outputs.find((device) => device.id === this.selectedOutputDeviceId) ?? outputs[0])?.sampleRates ?? []);
-    const overlap = [...inputRates].filter((rate) => outputRates.has(rate)).sort((a, b) => a - b);
-    return overlap.length > 0 ? overlap : [44100, 48000];
-  }
-
-  private currentConfig(): NativeConfig {
+  private mapBrowserLatency(info: BrowserAudioLatencyInfo): LatencyInfo {
     return {
-      backend: this.selectedBackend,
-      inputDeviceId: this.selectedInputDeviceId || '',
-      outputDeviceId: this.selectedOutputDeviceId || '',
-      sampleRate: this.selectedSampleRate,
-      bufferFrames: this.selectedBufferFrames,
-      monitoringEnabled: this.monitoringEnabled,
+      mode: 'browser',
+      backend: 'BROWSER',
+      sampleRate: info.sampleRate,
+      bufferFrames: 128,
+      inputLatencyMs: info.baseLatencyMs,
+      outputLatencyMs: info.outputLatencyMs,
+      baseLatencyMs: info.baseLatencyMs,
+      estimatedMonitoringLatencyMs: info.estimatedMonitoringLatencyMs,
+      roundTripLatencyMs: info.roundTripLatencyMs,
+      inputPeak: 0,
+      outputPeak: 0,
+      xrunsOrDropouts: 0,
+      bridgeAvailable: true,
+      engineRunning: this.browser.getUiStatus().ready,
     };
-  }
-
-  private async applyAndStart() {
-    if (!this.deviceCatalog) {
-      await this.refreshCatalog();
-    }
-
-    try {
-      const applied = await this.bridge.applyConfig(this.currentConfig());
-      this.applyStatus(applied);
-      const started = await this.bridge.startEngine();
-      this.applyStatus(started);
-      this.savePreferences();
-    } catch (error) {
-      this.handleBridgeFailure(error, false);
-      throw error;
-    }
-  }
-
-  private async dispatchStatusRequest(request: () => Promise<NativeStatus>) {
-    try {
-      const status = await request();
-      this.applyStatus(status);
-    } catch (error) {
-      this.handleBridgeFailure(error, false);
-      throw error;
-    }
-  }
-
-  private async refreshStatus() {
-    try {
-      const status = await this.bridge.getStatus();
-      this.applyStatus(status);
-    } catch (error) {
-      this.handleBridgeFailure(error);
-    }
-  }
-
-  private applyStatus(status: NativeStatus) {
-    this.latestStatus = status;
-    this.bridgeAvailable = true;
-    this.engineRunning = status.engineRunning;
-    this.monitoringEnabled = status.monitoringEnabled;
-    this.selectedBackend = status.backend;
-    this.selectedInputDeviceId = status.inputDeviceId || this.selectedInputDeviceId;
-    this.selectedOutputDeviceId = status.outputDeviceId || this.selectedOutputDeviceId;
-    this.selectedSampleRate = status.sampleRate || this.selectedSampleRate;
-    this.selectedBufferFrames = status.bufferFrames || this.selectedBufferFrames;
-    this.lastError = status.lastError || '';
-
-    this.tracks[0]?.syncNativeState(status.state, status.loopProgress);
-    for (let index = 1; index < this.tracks.length; index += 1) {
-      this.tracks[index]?.resetTelemetry();
-    }
-
-    this.emitAll();
-  }
-
-  private handleBridgeFailure(error: unknown, markBridgeMissing = true) {
-    if (markBridgeMissing) {
-      this.bridgeAvailable = false;
-      this.engineRunning = false;
-      this.stopPolling();
-    }
-
-    this.lastError = error instanceof Error ? error.message : String(error);
-    this.latestStatus = null;
-    this.monitoringEnabled = false;
-    this.resetAllTrackTelemetry();
-    this.emitAll();
-  }
-
-  private resetAllTrackTelemetry() {
-    for (let trackId = 1; trackId <= 5; trackId += 1) {
-      this.updateTrackTelemetry(trackId, TrackState.EMPTY, 0);
-    }
-  }
-
-  private startPolling() {
-    if (this.pollHandle !== null) {
-      return;
-    }
-    this.pollHandle = window.setInterval(() => {
-      void this.refreshStatus();
-    }, 100);
-  }
-
-  private stopPolling() {
-    if (this.pollHandle !== null) {
-      clearInterval(this.pollHandle);
-      this.pollHandle = null;
-    }
-  }
-
-  private emitAll() {
-    const latency = this.getLatencyInfo();
-    const status = this.getUiStatus();
-    this.monitoringListeners.forEach((listener) => listener(this.monitoringEnabled));
-    this.latencyListeners.forEach((listener) => listener(latency));
-    this.statusListeners.forEach((listener) => listener(status));
-  }
-
-  private savePreferences() {
-    localStorage.setItem('nativeBackend', this.selectedBackend);
-    localStorage.setItem('nativeInputDeviceId', this.selectedInputDeviceId || '');
-    localStorage.setItem('nativeOutputDeviceId', this.selectedOutputDeviceId || '');
-    localStorage.setItem('nativeSampleRate', String(this.selectedSampleRate));
-    localStorage.setItem('nativeBufferFrames', String(this.selectedBufferFrames));
-  }
-
-  private loadPreferences() {
-    const backend = localStorage.getItem('nativeBackend');
-    if (backend === 'WASAPI' || backend === 'ASIO') {
-      this.selectedBackend = backend;
-    }
-
-    this.selectedInputDeviceId = localStorage.getItem('nativeInputDeviceId') || null;
-    this.selectedOutputDeviceId = localStorage.getItem('nativeOutputDeviceId') || null;
-
-    const sampleRate = Number(localStorage.getItem('nativeSampleRate') || '');
-    if (Number.isFinite(sampleRate) && sampleRate > 0) {
-      this.selectedSampleRate = sampleRate;
-    }
-
-    const bufferFrames = Number(localStorage.getItem('nativeBufferFrames') || '');
-    if (Number.isFinite(bufferFrames) && bufferFrames > 0) {
-      this.selectedBufferFrames = bufferFrames;
-    }
   }
 }

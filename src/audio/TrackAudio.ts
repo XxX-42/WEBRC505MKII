@@ -1,4 +1,9 @@
 import type { IAudioEngine } from './AudioEngineInterface';
+import {
+    applyRecordingOffset,
+    getBrowserRecordingOffsetConfig,
+    shiftBufferWithRecordingOffset,
+} from './browserRecordingOffset';
 import { FXChain } from './FXChain';
 import { Track, TrackState, TransportState } from '../core/types';
 import { Transport } from '../core/Transport';
@@ -66,6 +71,18 @@ export class TrackAudio {
 
         // Start position updater
         this.startPositionUpdater();
+    }
+
+    public get isAvailable(): boolean {
+        return true;
+    }
+
+    public get disabledReason(): string {
+        return '';
+    }
+
+    public get transportEnabled(): boolean {
+        return true;
     }
 
     private startPositionUpdater() {
@@ -301,17 +318,19 @@ export class TrackAudio {
 
     private processRecordedBuffer(rawBuffer: Float32Array) {
         const ctx = this.engine.context;
+        const browserOffset = getBrowserRecordingOffsetConfig(ctx.sampleRate);
         const latencySamples = Math.round(this.engine.roundTripLatency * ctx.sampleRate);
 
-        let startOffset = latencySamples;
+        let startOffset = Math.max(0, latencySamples);
         if (startOffset >= rawBuffer.length) startOffset = 0;
 
         const compensatedLength = rawBuffer.length - startOffset;
         const compensatedBuffer = new Float32Array(compensatedLength);
         compensatedBuffer.set(rawBuffer.subarray(startOffset));
+        const offsetCompensatedBuffer = shiftBufferWithRecordingOffset(compensatedBuffer, browserOffset.recordingOffsetSamples);
 
-        const durationSeconds = compensatedLength / ctx.sampleRate;
-        const lengthSamples = compensatedLength;
+        const durationSeconds = offsetCompensatedBuffer.length / ctx.sampleRate;
+        const lengthSamples = offsetCompensatedBuffer.length;
 
         console.log(`Track ${this.track.id} recorded: ${durationSeconds.toFixed(2)}s (${lengthSamples} samples)`);
 
@@ -319,7 +338,7 @@ export class TrackAudio {
         // MASTER / SLAVE LOGIC
         // ========================================
 
-        let finalBufferData = compensatedBuffer;
+        let finalBufferData = offsetCompensatedBuffer;
 
         if (!this.transport.hasMasterTrack()) {
             // This is the first track - it becomes the master
@@ -356,10 +375,10 @@ export class TrackAudio {
 
                 if (lengthSamples > perfectLength) {
                     // Slice (Truncate)
-                    resizedBuffer.set(compensatedBuffer.subarray(0, perfectLength));
+                    resizedBuffer.set(offsetCompensatedBuffer.subarray(0, perfectLength));
                 } else {
                     // Pad (Fill with zeros - default behavior of new Float32Array)
-                    resizedBuffer.set(compensatedBuffer);
+                    resizedBuffer.set(offsetCompensatedBuffer);
                 }
 
                 finalBufferData = resizedBuffer;
@@ -368,7 +387,7 @@ export class TrackAudio {
 
         // Create final AudioBuffer
         this.audioBuffer = ctx.createBuffer(1, finalBufferData.length, ctx.sampleRate);
-        this.audioBuffer.copyToChannel(finalBufferData, 0);
+        this.audioBuffer.copyToChannel(new Float32Array(finalBufferData), 0);
 
         if (this.resumeAfterRecording) {
             this.state = TrackState.PLAYING;
@@ -522,8 +541,10 @@ export class TrackAudio {
             const rawSampleOffset = Math.floor(elapsedTime * ctx.sampleRate);
             const startSampleOffset = Math.floor(this.startOffset * ctx.sampleRate);
 
-            // Latency Compensation
+            const browserOffset = getBrowserRecordingOffsetConfig(ctx.sampleRate);
+            // Existing browser path compensation plus user recording-offset trim.
             const latencySamples = Math.floor(this.engine.roundTripLatency * ctx.sampleRate);
+            const userOffsetSamples = browserOffset.recordingOffsetSamples;
 
             for (let i = 0; i < inputData.length; i++) {
                 let playIdx: number;
@@ -540,9 +561,8 @@ export class TrackAudio {
 
                     playIdx = pos;
 
-                    // Reverse Latency: We heard sound 'latency' ago (which was at pos + latency)
-                    writeIdx = playIdx + latencySamples;
-                    while (writeIdx >= bufferLen) writeIdx -= bufferLen;
+                    const baseWriteIdx = playIdx + latencySamples;
+                    writeIdx = applyRecordingOffset(baseWriteIdx, userOffsetSamples, bufferLen);
                 } else {
                     // Forward Playback Logic
                     // Pos = (StartOffset + (Elapsed + i))
@@ -550,9 +570,8 @@ export class TrackAudio {
 
                     playIdx = pos % bufferLen;
 
-                    // Forward Latency: We heard sound 'latency' ago (which was at pos - latency)
-                    writeIdx = playIdx - latencySamples;
-                    while (writeIdx < 0) writeIdx += bufferLen;
+                    const baseWriteIdx = playIdx - latencySamples;
+                    writeIdx = applyRecordingOffset(baseWriteIdx, userOffsetSamples, bufferLen);
                 }
 
                 // Add input to the past position

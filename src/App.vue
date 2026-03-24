@@ -3,17 +3,19 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import LatencyTuner from './components/LatencyTuner.vue';
 import TopPanel from './components/TopPanel.vue';
 import TrackUnit from './components/TrackUnit.vue';
-import { AudioEngine, type NativeUiStatus } from './audio/AudioEngine';
+import { AudioEngine, type AudioMode, type AudioUiStatus } from './audio/AudioEngine';
 
 const engine = AudioEngine.getInstance();
 const isInitialized = ref(false);
 const initError = ref('');
 const theme = ref<'night' | 'day'>('day');
 const initInFlight = ref(false);
-const nativeUiStatus = ref<NativeUiStatus>(engine.getUiStatus());
+const audioMode = ref<AudioMode>(engine.getMode());
+const uiStatus = ref<AudioUiStatus>(engine.getUiStatus());
 let unsubscribeStatus: (() => void) | null = null;
 
 const themeLabel = computed(() => theme.value === 'night' ? 'NIGHT' : 'DAY');
+const audioModeLabel = computed(() => audioMode.value === 'browser' ? 'BROWSER' : 'NATIVE');
 
 const applyTheme = (nextTheme: 'night' | 'day') => {
   theme.value = nextTheme;
@@ -34,13 +36,13 @@ const initAudio = async (silent = false) => {
   try {
     await engine.init();
     isInitialized.value = true;
-    nativeUiStatus.value = engine.getUiStatus();
-    initError.value = nativeUiStatus.value.lastError;
+    uiStatus.value = engine.getUiStatus();
+    initError.value = uiStatus.value.lastError;
   } catch (error) {
     console.error('Failed to initialize audio engine:', error);
-    nativeUiStatus.value = engine.getUiStatus();
+    uiStatus.value = engine.getUiStatus();
     if (!silent) {
-      initError.value = nativeUiStatus.value.lastError || 'Native bridge is unavailable.';
+      initError.value = uiStatus.value.lastError || `${audioModeLabel.value} audio is unavailable.`;
     }
   } finally {
     initInFlight.value = false;
@@ -49,6 +51,14 @@ const initAudio = async (silent = false) => {
 
 const toggleTheme = () => {
   applyTheme(theme.value === 'night' ? 'day' : 'night');
+};
+
+const toggleAudioMode = () => {
+  const nextMode: AudioMode = audioMode.value === 'browser' ? 'native' : 'browser';
+  AudioEngine.setPreferredMode(nextMode);
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set('audio', nextMode);
+  window.location.href = nextUrl.toString();
 };
 
 onMounted(() => {
@@ -60,7 +70,8 @@ onMounted(() => {
   }
 
   unsubscribeStatus = engine.onStatusChange((status) => {
-    nativeUiStatus.value = status;
+    audioMode.value = status.mode;
+    uiStatus.value = status;
     isInitialized.value = status.ready;
     initError.value = status.lastError;
   });
@@ -79,10 +90,15 @@ onUnmounted(() => {
       <span class="theme-toggle-value">{{ themeLabel }}</span>
     </button>
 
+    <button class="audio-mode-toggle" type="button" @click="toggleAudioMode" :aria-label="`Switch audio mode from ${audioModeLabel}`">
+      <span class="theme-toggle-label">AUDIO</span>
+      <span class="theme-toggle-value">{{ audioModeLabel }}</span>
+    </button>
+
     <div class="engine-status" :class="{ ready: isInitialized, error: Boolean(initError) }">
       <span class="engine-status-dot"></span>
       <span class="engine-status-text">
-        {{ initInFlight ? 'CONNECTING NATIVE' : nativeUiStatus.message }}
+        {{ initInFlight ? `CONNECTING ${audioModeLabel}` : uiStatus.message }}
       </span>
       <button v-if="!isInitialized" class="engine-status-action" type="button" @click="initAudio()">
         RETRY
@@ -275,6 +291,35 @@ onUnmounted(() => {
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
+.audio-mode-toggle {
+  position: absolute;
+  top: 68px;
+  right: 20px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border-strong);
+  background: var(--panel-elevated);
+  color: var(--text-primary);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.audio-mode-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  border-color: var(--color-accent);
+}
+
+.audio-mode-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .theme-toggle:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
@@ -318,6 +363,12 @@ onUnmounted(() => {
 
   .theme-toggle {
     top: 10px;
+    right: 12px;
+    padding: 8px 12px;
+  }
+
+  .audio-mode-toggle {
+    top: 56px;
     right: 12px;
     padding: 8px 12px;
   }
