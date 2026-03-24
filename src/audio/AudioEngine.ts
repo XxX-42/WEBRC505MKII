@@ -219,6 +219,8 @@ export class AudioEngine implements IAudioEngine {
     // FX Instances for Input and Track (4 slots each: A, B, C, D)
     private inputFxInstances: (FXBase | null)[] = [null, null, null, null];
     private trackFxInstances: (FXBase | null)[] = [null, null, null, null];
+    private inputFxTypes: (string | null)[] = [null, null, null, null];
+    private trackFxTypes: (string | null)[] = [null, null, null, null];
 
     /**
      * Set FX Type for a specific slot
@@ -229,67 +231,49 @@ export class AudioEngine implements IAudioEngine {
     public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
         if (slotIndex < 0 || slotIndex > 3) return;
 
-        const context = this.context;
-        let newFx: FXBase | null = null;
+        const fxTypes = location === 'input' ? this.inputFxTypes : this.trackFxTypes;
+        if (fxTypes[slotIndex] === type) {
+            return;
+        }
 
-        // Factory: Create new FX instance
-        switch (type) {
-            case 'FILTER':
-                newFx = new FilterFX(context);
-                break;
-            case 'DELAY':
-                newFx = new DelayFX(context);
-                break;
-            case 'REVERB':
-                newFx = new ReverbFX(context);
-                break;
-            case 'SLICER':
-                newFx = new SlicerFX(context);
-                break;
-            case 'PHASER':
-                newFx = new PhaserFX(context);
-                break;
-            default:
-                console.warn(`Unknown FX type: ${type}`);
-                return;
+        const newFx = this.createFxInstance(type);
+        if (!newFx) {
+            console.warn(`Unknown FX type: ${type}`);
+            return;
         }
 
         // Update Chain
         if (location === 'input') {
-            // 1. Remove old FX
-            const oldFx = this.inputFxInstances[slotIndex];
-            if (oldFx) {
-                // We need a way to remove it from the chain.
-                // Current FXChain is hardcoded. We need to update FXChain to be dynamic OR
-                // for this phase, let's use the existing FXChain slots if they match, 
-                // OR better: Refactor FXChain to be a container of 4 dynamic slots.
-
-                // WAIT. The requirement says "inputFxChain: FXChain instance (ensure FXChain supports replacing nodes)".
-                // My FXChain is currently hardcoded (Compressor->Filter->Delay->Reverb).
-                // To support "Input A = Reverb, Input B = Delay", I need a DynamicFXChain.
-
-                // Let's use the `DynamicFXChain` approach.
-                // But I cannot easily rewrite FXChain.ts right now without breaking other things.
-
-                // ALTERNATIVE: 
-                // The `inputFxChain` in AudioEngine is currently an instance of `FXChain`.
-                // Let's REPLACE `inputFxChain` with a new `DynamicFXChain` class, 
-                // OR modify `AudioEngine` to manage the chain manually using `inputFxInstances`.
-
-                // Let's go with MANUAL CHAIN MANAGEMENT in AudioEngine for maximum flexibility.
-                // I will bypass the old `inputFxChain` object and wire nodes directly.
-            }
-
             this.inputFxInstances[slotIndex] = newFx;
+            this.inputFxTypes[slotIndex] = type;
             this.rebuildInputChain();
 
         } else {
-            // Track FX (Output FX)
             this.trackFxInstances[slotIndex] = newFx;
+            this.trackFxTypes[slotIndex] = type;
             this.rebuildOutputChain();
         }
 
         console.log(`FX Set: ${location.toUpperCase()} [${['A', 'B', 'C', 'D'][slotIndex]}] -> ${type}`);
+    }
+
+    private createFxInstance(type: string): FXBase | null {
+        const context = this.context;
+
+        switch (type) {
+            case 'FILTER':
+                return new FilterFX(context);
+            case 'DELAY':
+                return new DelayFX(context);
+            case 'REVERB':
+                return new ReverbFX(context);
+            case 'SLICER':
+                return new SlicerFX(context);
+            case 'PHASER':
+                return new PhaserFX(context);
+            default:
+                return null;
+        }
     }
 
     /**
