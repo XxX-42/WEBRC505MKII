@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Transport } from '../core/Transport';
 import { TransportState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
@@ -146,10 +146,18 @@ const toggleThru = () => {
 };
 
 let tapTimes: number[] = [];
+let tapResetTimer: number | null = null;
+let beatFlashTimer: number | null = null;
+let tapFlashTimer: number | null = null;
+
 const handleTap = () => {
   tapActive.value = true;
-  setTimeout(() => {
+  if (tapFlashTimer) {
+    clearTimeout(tapFlashTimer);
+  }
+  tapFlashTimer = window.setTimeout(() => {
     tapActive.value = false;
+    tapFlashTimer = null;
   }, 100);
 
   const now = Date.now();
@@ -179,18 +187,26 @@ const handleTap = () => {
     }
   }
 
-  setTimeout(() => {
+  if (tapResetTimer) {
+    clearTimeout(tapResetTimer);
+  }
+  tapResetTimer = window.setTimeout(() => {
     const lastTap = tapTimes[tapTimes.length - 1];
     if (lastTap !== undefined && Date.now() - lastTap > 3000) {
       tapTimes = [];
     }
+    tapResetTimer = null;
   }, 3000);
 };
 
 const onTick = () => {
   beatIndicator.value = true;
-  setTimeout(() => {
+  if (beatFlashTimer) {
+    clearTimeout(beatFlashTimer);
+  }
+  beatFlashTimer = window.setTimeout(() => {
     beatIndicator.value = false;
+    beatFlashTimer = null;
   }, 100);
 };
 
@@ -199,6 +215,23 @@ onMounted(() => {
   transport.on('stop', updateState);
   transport.on('bpm-change', updateState);
   transport.on('beat', onTick);
+});
+
+onUnmounted(() => {
+  transport.off('start', updateState);
+  transport.off('stop', updateState);
+  transport.off('bpm-change', updateState);
+  transport.off('beat', onTick);
+
+  if (tapResetTimer) {
+    clearTimeout(tapResetTimer);
+  }
+  if (beatFlashTimer) {
+    clearTimeout(beatFlashTimer);
+  }
+  if (tapFlashTimer) {
+    clearTimeout(tapFlashTimer);
+  }
 });
 </script>
 
