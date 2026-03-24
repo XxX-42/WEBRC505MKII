@@ -57,6 +57,7 @@ export class BrowserAudioEngine implements IAudioEngine {
 
     public selectedInputDeviceId: string | null = null;
     public selectedOutputDeviceId: string | null = null;
+    public selectedBufferFrames: number = 128;
     public monitoringEnabled: boolean = false; // DEFAULT: FALSE to prevent feedback!
     private monitoringListeners = new Set<(enabled: boolean) => void>();
     private latencyListeners = new Set<(info: BrowserAudioLatencyInfo) => void>();

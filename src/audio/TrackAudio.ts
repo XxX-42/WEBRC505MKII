@@ -85,6 +85,15 @@ export class TrackAudio {
         return true;
     }
 
+    private getBrowserRecordingOffsetConfig() {
+        return getBrowserRecordingOffsetConfig(this.engine.context.sampleRate, {
+            inputDeviceId: this.engine.selectedInputDeviceId ?? null,
+            outputDeviceId: this.engine.selectedOutputDeviceId ?? null,
+            sampleRate: this.engine.context.sampleRate,
+            bufferFrames: this.engine.selectedBufferFrames ?? 128,
+        });
+    }
+
     private startPositionUpdater() {
         const update = () => {
             // Update State
@@ -318,7 +327,7 @@ export class TrackAudio {
 
     private processRecordedBuffer(rawBuffer: Float32Array) {
         const ctx = this.engine.context;
-        const browserOffset = getBrowserRecordingOffsetConfig(ctx.sampleRate);
+        const browserOffset = this.getBrowserRecordingOffsetConfig();
         const latencySamples = Math.round(this.engine.roundTripLatency * ctx.sampleRate);
 
         let startOffset = Math.max(0, latencySamples);
@@ -541,7 +550,7 @@ export class TrackAudio {
             const rawSampleOffset = Math.floor(elapsedTime * ctx.sampleRate);
             const startSampleOffset = Math.floor(this.startOffset * ctx.sampleRate);
 
-            const browserOffset = getBrowserRecordingOffsetConfig(ctx.sampleRate);
+            const browserOffset = this.getBrowserRecordingOffsetConfig();
             // Existing browser path compensation plus user recording-offset trim.
             const latencySamples = Math.floor(this.engine.roundTripLatency * ctx.sampleRate);
             const userOffsetSamples = browserOffset.recordingOffsetSamples;
