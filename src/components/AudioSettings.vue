@@ -5,12 +5,12 @@
         <div class="modal-container" @click.stop>
           <div class="modal-header">
             <h2 class="modal-title">⚙ AUDIO SETTINGS</h2>
-            <button class="close-btn" @click="close" aria-label="Close audio settings">✕</button>
+            <button class="close-btn" @click="close" aria-label="Close audio settings">×</button>
           </div>
 
           <div class="modal-content">
             <div class="setting-group">
-              <label class="setting-label" for="input-device">🎤 INPUT DEVICE (MICROPHONE)</label>
+              <label class="setting-label" for="input-device">INPUT DEVICE (MICROPHONE)</label>
               <select
                 id="input-device"
                 v-model="selectedInput"
@@ -29,7 +29,7 @@
             </div>
 
             <div class="setting-group">
-              <label class="setting-label" for="output-device">🔊 OUTPUT DEVICE (SPEAKERS/HEADPHONES)</label>
+              <label class="setting-label" for="output-device">OUTPUT DEVICE (SPEAKERS/HEADPHONES)</label>
               <select
                 id="output-device"
                 v-model="selectedOutput"
@@ -47,7 +47,7 @@
                 </option>
               </select>
               <div v-if="!sinkIdSupported" class="warning-text small">
-                ⚠️ Output device selection is not supported in this browser
+                Output device selection is not supported in this browser
               </div>
             </div>
 
@@ -63,7 +63,7 @@
                 <span>SOFTWARE MONITORING</span>
               </label>
               <div class="warning-box">
-                <div class="warning-icon">⚠️</div>
+                <div class="warning-icon">WARNING</div>
                 <div class="warning-content">
                   <strong>DANGER: FEEDBACK RISK</strong>
                   <p>Only enable with headphones. Using speakers may cause loud feedback.</p>
@@ -173,20 +173,21 @@ const handleOutputChange = async () => {
 };
 
 const handleMonitoringChange = () => {
-  engine.setMonitoring(monitoringEnabled.value);
-
   if (monitoringEnabled.value) {
     const confirmed = confirm(
-      '⚠️ WARNING: Enabling monitoring with speakers may cause loud feedback.\n\n' +
+      'WARNING: Enabling monitoring with speakers may cause loud feedback.\n\n' +
       'Only proceed if you are using headphones.\n\n' +
       'Continue?'
     );
 
     if (!confirmed) {
       monitoringEnabled.value = false;
-      engine.setMonitoring(false);
+      return;
     }
   }
+
+  engine.setMonitoring(monitoringEnabled.value);
+  monitoringEnabled.value = engine.monitoringEnabled;
 };
 
 const playTestTone = () => {
@@ -379,13 +380,13 @@ const handleOverlayClick = () => {
 }
 
 .monitoring-checkbox:checked + .checkbox-custom::after {
-  content: '✓';
+  content: 'OK';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   color: #fff;
-  font-size: 16px;
+  font-size: 10px;
   font-weight: bold;
 }
 
@@ -399,8 +400,11 @@ const handleOverlayClick = () => {
 }
 
 .warning-icon {
-  font-size: 24px;
+  font-size: 12px;
   flex-shrink: 0;
+  font-family: var(--font-hardware);
+  letter-spacing: 1px;
+  color: var(--led-red-recording);
 }
 
 .warning-content {
