@@ -4,7 +4,7 @@
       <div v-if="isOpen" class="modal-overlay" @click="handleOverlayClick">
         <div class="modal-container" @click.stop>
           <div class="modal-header">
-            <h2 class="modal-title">⚙ AUDIO SETTINGS</h2>
+            <h2 class="modal-title">AUDIO SETTINGS</h2>
             <button class="close-btn" @click="close" aria-label="Close audio settings">×</button>
           </div>
 

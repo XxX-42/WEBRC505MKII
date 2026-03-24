@@ -8,7 +8,7 @@
         </div>
         <div class="bpm-controls">
           <button @click="adjustBpm(-1)" class="bpm-adjust-btn" aria-label="Decrease BPM">
-            <span>−</span>
+            <span>-</span>
           </button>
           <button @click="adjustBpm(1)" class="bpm-adjust-btn" aria-label="Increase BPM">
             <span>+</span>
@@ -68,7 +68,7 @@
       <HardwareButton
         size="md"
         color="white"
-        label="⚙ SETTINGS"
+        label="SETTINGS"
         aria-label="Open audio settings"
         @press="openSettings"
         class="settings-button"
@@ -127,7 +127,7 @@ const openSettings = () => {
 const toggleThru = () => {
   if (!isThruActive.value) {
     const confirmed = confirm(
-      '⚠️ WARNING: FEEDBACK RISK!\n\n' +
+      'WARNING: FEEDBACK RISK!\n\n' +
       'Enabling THRU will route your microphone directly to speakers.\n\n' +
       'This will cause loud squealing/howling if you are using speakers.\n\n' +
       'Only proceed if you are using headphones.\n\n' +
@@ -136,13 +136,11 @@ const toggleThru = () => {
 
     if (confirmed) {
       engine.setMonitoring(true);
-      isThruActive.value = true;
-      console.log('🎧 THRU ENABLED - Monitoring active (use headphones)');
+      console.log('THRU ENABLED - Monitoring active (use headphones)');
     }
   } else {
     engine.setMonitoring(false);
-    isThruActive.value = false;
-    console.log('🔇 THRU DISABLED - Monitoring off');
+    console.log('THRU DISABLED - Monitoring off');
   }
 };
 

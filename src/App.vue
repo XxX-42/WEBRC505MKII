@@ -25,7 +25,7 @@ const initAudio = async () => {
   <div class="app-root">
     <div v-if="!isInitialized" class="init-screen">
       <div class="init-panel">
-        <div class="init-icon">🎛️</div>
+        <div class="init-icon">RC</div>
         <h1 class="init-title">WebRC-505MKII</h1>
         <button @click="initAudio" class="init-button">
           START AUDIO ENGINE
@@ -138,7 +138,18 @@ const initAudio = async () => {
 }
 
 .init-icon {
-  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, #2a2a2a 0%, #0d0d0d 100%);
+  font-family: var(--font-hardware);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ffcc00;
 }
 
 .init-title {
