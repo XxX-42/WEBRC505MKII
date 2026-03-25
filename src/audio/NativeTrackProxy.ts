@@ -2,8 +2,6 @@ import { Track, TrackState } from '../core/types';
 import type { NativeLooperState } from './NativeBridgeClient';
 import type { NativeAudioEngine } from './NativeAudioEngine';
 
-const noop = () => {};
-
 const stateMap: Record<NativeLooperState, TrackState> = {
   Empty: TrackState.EMPTY,
   Recording: TrackState.RECORDING,
@@ -20,9 +18,9 @@ export class NativeTrackProxy {
   public isReverse = false;
   public readonly isAvailable: boolean;
   public readonly fxChain = {
-    setFilterEnabled: noop,
-    setFilterParam: noop,
-    setFilterValue: noop,
+    setFilterEnabled: (_enabled: boolean) => { return; },
+    setFilterParam: (_paramName: string, _value: number) => { return; },
+    setFilterValue: (_value: number) => { return; },
   };
 
   constructor(engine: NativeAudioEngine, trackId: number) {

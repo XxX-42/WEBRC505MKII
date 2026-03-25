@@ -16,6 +16,10 @@ let unsubscribeStatus: (() => void) | null = null;
 
 const themeLabel = computed(() => theme.value === 'night' ? 'NIGHT' : 'DAY');
 const audioModeLabel = computed(() => audioMode.value === 'browser' ? 'BROWSER' : 'NATIVE');
+const capabilitySummary = computed(() => {
+  audioMode.value;
+  return engine.getCapabilities().modeSummary;
+});
 
 const applyTheme = (nextTheme: 'night' | 'day') => {
   theme.value = nextTheme;
@@ -108,6 +112,10 @@ onUnmounted(() => {
     <p v-if="initError" class="engine-status-error">
       {{ initError }}
     </p>
+
+    <div class="mode-summary">
+      {{ capabilitySummary }}
+    </div>
 
     <div class="main-layout">
       <div class="top-section">
@@ -273,6 +281,24 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
+.mode-summary {
+  position: absolute;
+  top: 118px;
+  right: 20px;
+  z-index: 200;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border-strong);
+  background: var(--panel-elevated);
+  color: var(--color-accent);
+  font-family: var(--font-hardware);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
 .theme-toggle {
   position: absolute;
   top: 18px;
@@ -358,6 +384,12 @@ onUnmounted(() => {
   .engine-status-error {
     top: 56px;
     left: 12px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .mode-summary {
+    top: 96px;
+    right: 12px;
     max-width: calc(100vw - 24px);
   }
 

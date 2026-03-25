@@ -3,6 +3,7 @@
     <!-- LEFT: INPUT FX -->
     <div class="fx-section input-fx">
       <div class="section-label">INPUT FX</div>
+      <div v-if="fxDisabled" class="section-note">{{ fxUnavailableReason }}</div>
       <div class="fx-row">
         <FxUnit
           v-for="slot in inputSlots"
@@ -26,6 +27,7 @@
     <!-- RIGHT: TRACK FX -->
     <div class="fx-section track-fx">
       <div class="section-label">TRACK FX</div>
+      <div v-if="fxDisabled" class="section-note">{{ fxUnavailableReason }}</div>
       <div class="fx-row">
         <FxUnit
           v-for="slot in trackSlots"
@@ -50,7 +52,9 @@ import RhythmControls from './RhythmControls.vue';
 import { AudioEngine } from '../audio/AudioEngine';
 
 const engine = AudioEngine.getInstance();
-const fxDisabled = computed(() => !engine.supportsFx());
+const capabilities = engine.getCapabilities();
+const fxDisabled = computed(() => !capabilities.supportsInputFx);
+const fxUnavailableReason = capabilities.fxReason;
 const fxOptions = ['FILTER', 'DELAY', 'REVERB', 'SLICER', 'PHASER'];
 
 interface FxSlot {
@@ -182,6 +186,15 @@ watch(trackSlots, (newSlots, oldSlots) => {
   color: var(--text-muted);
   letter-spacing: 2px;
   font-weight: 700;
+}
+
+.section-note {
+  min-height: 12px;
+  font-family: var(--font-hardware);
+  font-size: 9px;
+  letter-spacing: 0.9px;
+  color: #8d8d8d;
+  text-transform: uppercase;
 }
 
 .fx-row {

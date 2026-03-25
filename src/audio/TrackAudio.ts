@@ -150,6 +150,34 @@ export class TrackAudio {
         this.panNode.pan.value = panVal;
     }
 
+    private ensureTransportRunning() {
+        if (this.transport.state !== TransportState.PLAYING) {
+            this.transport.start();
+        }
+    }
+
+    private isActiveTransportState(state: TrackState) {
+        return state === TrackState.REC_STANDBY ||
+            state === TrackState.RECORDING ||
+            state === TrackState.REC_FINISHING ||
+            state === TrackState.PLAYING ||
+            state === TrackState.OVERDUBBING;
+    }
+
+    private syncTransportState() {
+        const trackEngine = this.engine as IAudioEngine & { tracks?: Array<{ state: TrackState }> };
+        const hasActiveTracks = trackEngine.tracks?.some((track) => this.isActiveTransportState(track.state)) ?? false;
+
+        if (hasActiveTracks) {
+            this.ensureTransportRunning();
+            return;
+        }
+
+        if (this.transport.state === TransportState.PLAYING) {
+            this.transport.stop();
+        }
+    }
+
     // --- Transport & State Logic ---
 
     public triggerRecord() {
@@ -159,6 +187,7 @@ export class TrackAudio {
             this.scheduleRecordingStop();
         } else if (this.state === TrackState.PLAYING) {
             this.state = TrackState.OVERDUBBING;
+            this.ensureTransportRunning();
             this.startOverdub();
         } else if (this.state === TrackState.OVERDUBBING) {
             this.state = TrackState.PLAYING;
@@ -183,11 +212,13 @@ export class TrackAudio {
 
         if (this.state === TrackState.REC_STANDBY) {
             this.state = TrackState.STOPPED;
+            this.syncTransportState();
             return;
         }
 
         this.stop();
         this.state = TrackState.STOPPED;
+        this.syncTransportState();
     }
 
     private scheduleRecordingStart() {
@@ -218,6 +249,7 @@ export class TrackAudio {
         // Set state to REC_STANDBY (will show red blinking LED in UI)
         this.state = TrackState.REC_STANDBY;
         this.waitingForQuantize = true;
+        this.ensureTransportRunning();
 
         // Listen for next measure boundary
         const onMeasure = () => {
@@ -260,6 +292,7 @@ export class TrackAudio {
         // Set state to REC_FINISHING (will show red/green blinking LED in UI)
         this.state = TrackState.REC_FINISHING;
         this.waitingForQuantizeStop = true;
+        this.ensureTransportRunning();
 
         // Listen for next measure boundary
         const onMeasureStop = () => {
@@ -403,6 +436,7 @@ export class TrackAudio {
             this.play();
         } else {
             this.state = TrackState.STOPPED;
+            this.syncTransportState();
         }
 
         this.resumeAfterRecording = true;
@@ -428,6 +462,7 @@ export class TrackAudio {
         this.startTime = ctx.currentTime;
 
         this.state = TrackState.PLAYING;
+        this.ensureTransportRunning();
     }
 
     public stop() {
@@ -463,6 +498,7 @@ export class TrackAudio {
         this.startTime = 0;
 
         console.log(`Track ${this.track.id} cleared`);
+        this.syncTransportState();
     }
 
     public toggleReverse() {

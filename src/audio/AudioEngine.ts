@@ -49,6 +49,34 @@ export interface AudioUiStatus {
   lastError: string;
 }
 
+export interface AudioCapabilities {
+  mode: AudioMode;
+  modeSummary: string;
+  supportedTrackCount: number;
+  supportsInputFx: boolean;
+  supportsTrackFx: boolean;
+  supportsReverse: boolean;
+  supportsRhythm: boolean;
+  supportsBeatFeedback: boolean;
+  fxReason: string;
+  reverseReason: string;
+  rhythmReason: string;
+  beatReason: string;
+  trackLevelReason: string;
+}
+
+export interface TrackCapabilities {
+  trackId: number;
+  isAvailable: boolean;
+  availabilityReason: string;
+  supportsTrackLevel: boolean;
+  levelReason: string;
+  supportsTrackFx: boolean;
+  trackFxReason: string;
+  supportsReverse: boolean;
+  reverseReason: string;
+}
+
 export type NativeUiStatus = AudioUiStatus;
 
 const AUDIO_MODE_KEY = 'webrc505_audio_mode';
@@ -294,6 +322,65 @@ export class AudioEngine {
 
   public supportsReverse() {
     return this.activeEngine.supportsReverse();
+  }
+
+  public getCapabilities(): AudioCapabilities {
+    if (this.currentMode === 'browser') {
+      return {
+        mode: 'browser',
+        modeSummary: 'BROWSER: FULL TRACK CONTROLS',
+        supportedTrackCount: 5,
+        supportsInputFx: true,
+        supportsTrackFx: true,
+        supportsReverse: true,
+        supportsRhythm: true,
+        supportsBeatFeedback: true,
+        fxReason: '',
+        reverseReason: '',
+        rhythmReason: '',
+        beatReason: '',
+        trackLevelReason: '',
+      };
+    }
+
+    return {
+      mode: 'native',
+      modeSummary: 'NATIVE V1: TRACK 1 ONLY',
+      supportedTrackCount: 1,
+      supportsInputFx: false,
+      supportsTrackFx: false,
+      supportsReverse: false,
+      supportsRhythm: false,
+      supportsBeatFeedback: false,
+      fxReason: 'NO FX IN NATIVE V1',
+      reverseReason: 'NO REVERSE IN NATIVE V1',
+      rhythmReason: 'NO RHYTHM IN NATIVE V1',
+      beatReason: 'NO BEAT IN NATIVE V1',
+      trackLevelReason: 'TRACK MIX IN BROWSER ONLY',
+    };
+  }
+
+  public getTrackCapabilities(trackId: number): TrackCapabilities {
+    const capabilities = this.getCapabilities();
+    const isAvailable = this.isTrackAvailable(trackId);
+    const availabilityReason = isAvailable || capabilities.mode === 'browser'
+      ? ''
+      : `TRACK ${trackId} UNAVAILABLE IN NATIVE V1`;
+    const controlReason = availabilityReason || capabilities.trackLevelReason;
+    const trackFxReason = availabilityReason || capabilities.fxReason;
+    const reverseReason = availabilityReason || capabilities.reverseReason;
+
+    return {
+      trackId,
+      isAvailable,
+      availabilityReason,
+      supportsTrackLevel: capabilities.mode === 'browser' && isAvailable,
+      levelReason: capabilities.mode === 'browser' && isAvailable ? '' : controlReason,
+      supportsTrackFx: capabilities.supportsTrackFx && isAvailable,
+      trackFxReason: capabilities.supportsTrackFx && isAvailable ? '' : trackFxReason,
+      supportsReverse: capabilities.supportsReverse && isAvailable,
+      reverseReason: capabilities.supportsReverse && isAvailable ? '' : reverseReason,
+    };
   }
 
   public isTrackAvailable(trackId: number) {

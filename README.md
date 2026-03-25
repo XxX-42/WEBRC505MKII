@@ -34,7 +34,16 @@ Production build:
 npm run build
 ```
 
+Test and verification:
+
+```bash
+npm run test:unit
+npm run test:e2e
+npm run test:ci
+```
+
 ## Notes
 
 - This repository snapshot is documentation-heavy; some older phase docs no longer match the latest UI implementation.
 - Audio behavior depends on browser support for Web Audio, microphone permissions, and output-device APIs such as `setSinkId`.
+- `test:e2e` uses mocked browser audio and native-bridge shims for repeatable UI verification. Real audio/device validation remains a manual check.

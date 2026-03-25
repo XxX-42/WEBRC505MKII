@@ -42,7 +42,7 @@
         </div>
       </div>
     </div>
-    <div v-if="disabled" class="native-note">Native v1 unavailable</div>
+    <div v-if="disabled" class="native-note">{{ unavailableReason }}</div>
   </div>
 </template>
 
@@ -53,10 +53,12 @@ import type { RhythmPattern } from '../audio/RhythmEngine';
 import HardwareButton from './ui/HardwareButton.vue';
 
 const engine = AudioEngine.getInstance();
+const capabilities = engine.getCapabilities();
 const isPlaying = ref(false);
 const selectedPattern = ref<RhythmPattern>('ROCK');
 const volume = ref(50);
-const disabled = computed(() => !engine.supportsRhythm());
+const disabled = computed(() => !capabilities.supportsRhythm);
+const unavailableReason = capabilities.rhythmReason;
 
 const toggleRhythm = () => {
   if (disabled.value) return;

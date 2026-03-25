@@ -44,9 +44,10 @@
 
     <div class="divider"></div>
 
-    <div class="beat-indicator-module">
+    <div class="beat-indicator-module" :class="{ 'is-disabled': beatDisabled }">
       <div class="module-label">BEAT</div>
       <div class="beat-led" :class="{ active: beatIndicator }"></div>
+      <div v-if="showBeatReason" class="module-note">{{ beatUnavailableReason }}</div>
     </div>
 
     <div class="divider"></div>
@@ -85,7 +86,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Transport } from '../core/Transport';
-import { TrackState } from '../core/types';
+import { TrackState, TransportState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
@@ -93,6 +94,7 @@ import BrowserAudioSettings from './BrowserAudioSettings.vue';
 
 const transport = Transport.getInstance();
 const engine = AudioEngine.getInstance();
+const capabilities = engine.getCapabilities();
 
 const bpm = ref(transport.bpm);
 const isPlaying = ref(false);
@@ -107,9 +109,39 @@ let unsubscribeStatus: (() => void) | null = null;
 
 const bpmDisplay = computed(() => bpm.value.toString().padStart(3, '0'));
 const controlsDisabled = computed(() => !nativeReady.value);
+const beatDisabled = computed(() => controlsDisabled.value || !capabilities.supportsBeatFeedback);
+const beatUnavailableReason = capabilities.beatReason;
+const showBeatReason = computed(() => !capabilities.supportsBeatFeedback);
 
 const updateState = () => {
   bpm.value = transport.bpm;
+};
+
+const clearBeatIndicator = () => {
+  beatIndicator.value = false;
+  if (beatFlashTimer) {
+    clearTimeout(beatFlashTimer);
+    beatFlashTimer = null;
+  }
+};
+
+const hasActiveTracks = () => {
+  return engine.tracks.some((track) => (
+    track.state === TrackState.RECORDING ||
+    track.state === TrackState.PLAYING ||
+    track.state === TrackState.OVERDUBBING ||
+    track.state === TrackState.REC_STANDBY ||
+    track.state === TrackState.REC_FINISHING
+  ));
+};
+
+const syncPlaybackState = () => {
+  if (audioMode.value === 'browser') {
+    isPlaying.value = transport.state === TransportState.PLAYING;
+    return;
+  }
+
+  isPlaying.value = hasActiveTracks();
 };
 
 const adjustBpm = (delta: number) => {
@@ -157,6 +189,34 @@ let tapTimes: number[] = [];
 let tapResetTimer: number | null = null;
 let beatFlashTimer: number | null = null;
 let tapFlashTimer: number | null = null;
+
+const handleBeat = () => {
+  if (beatDisabled.value || audioMode.value !== 'browser' || !isPlaying.value) {
+    return;
+  }
+
+  beatIndicator.value = true;
+  if (beatFlashTimer) {
+    clearTimeout(beatFlashTimer);
+  }
+  beatFlashTimer = window.setTimeout(() => {
+    beatIndicator.value = false;
+    beatFlashTimer = null;
+  }, 100);
+};
+
+const handleTransportStart = () => {
+  if (audioMode.value === 'browser') {
+    isPlaying.value = true;
+  }
+};
+
+const handleTransportStop = () => {
+  if (audioMode.value === 'browser') {
+    isPlaying.value = false;
+  }
+  clearBeatIndicator();
+};
 
 const handleTap = () => {
   if (controlsDisabled.value) return;
@@ -210,23 +270,28 @@ const handleTap = () => {
 
 onMounted(() => {
   transport.on('bpm-change', updateState);
+  transport.on('beat', handleBeat);
+  transport.on('start', handleTransportStart);
+  transport.on('stop', handleTransportStop);
+  syncPlaybackState();
   unsubscribeMonitoring = engine.onMonitoringChange((enabled) => {
     isThruActive.value = enabled;
   });
   unsubscribeStatus = engine.onStatusChange((status) => {
     audioMode.value = status.mode;
     nativeReady.value = status.ready;
-    const trackState = engine.tracks[0]?.state;
-    isPlaying.value =
-      trackState === TrackState.RECORDING ||
-      trackState === TrackState.PLAYING ||
-      trackState === TrackState.OVERDUBBING;
-    beatIndicator.value = false;
+    syncPlaybackState();
+    if (status.mode !== 'browser' || !status.ready) {
+      clearBeatIndicator();
+    }
   });
 });
 
 onUnmounted(() => {
   transport.off('bpm-change', updateState);
+  transport.off('beat', handleBeat);
+  transport.off('start', handleTransportStart);
+  transport.off('stop', handleTransportStop);
 
   if (tapResetTimer) {
     clearTimeout(tapResetTimer);
@@ -298,6 +363,16 @@ onUnmounted(() => {
   text-align: center;
   text-transform: uppercase;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.module-note {
+  min-height: 10px;
+  font-size: 8px;
+  font-family: var(--font-hardware);
+  letter-spacing: 0.8px;
+  color: #7f7f7f;
+  text-transform: uppercase;
+  text-align: center;
 }
 
 .led-display-container {

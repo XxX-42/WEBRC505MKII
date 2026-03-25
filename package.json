@@ -6,6 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "test": "npm run test:unit",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:ci": "npm run build && npm run test:unit && npm run test:e2e",
     "preview": "vite preview",
     "native:configure": "cmake -S native-mvp/engine-cpp -B native-mvp/build-v145 -G \"Visual Studio 17 2022\" -T v145 -A x64",
     "native:build": "cmake --build native-mvp/build-v145 --config Release --target native_bridge_host"
@@ -14,15 +19,19 @@
     "vue": "^3.5.24"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.8.1",
     "autoprefixer": "^10.4.22",
+    "jsdom": "^26.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
+    "vitest": "^3.2.4",
     "vue-tsc": "^3.1.4"
   }
 }

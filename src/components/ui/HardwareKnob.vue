@@ -1,31 +1,33 @@
 <template>
   <div class="hardware-knob-wrapper hardware-interactive" @mousedown="startDrag" @touchstart.prevent="startDrag">
-    <!-- LED Ring (SVG) -->
-    <svg class="led-ring" viewBox="0 0 100 100">
-      <!-- Background Track -->
-      <path
-        d="M 20,80 A 40,40 0 1 1 80,80"
-        fill="none"
-        stroke="#1a1a1a"
-        stroke-width="8"
-        stroke-linecap="round"
-      />
-      <!-- Active Value Arc -->
-      <path
-        d="M 20,80 A 40,40 0 1 1 80,80"
-        fill="none"
-        :stroke="activeColor"
-        stroke-width="8"
-        stroke-linecap="round"
-        :stroke-dasharray="dashArray"
-        class="value-arc"
-      />
-    </svg>
+    <div class="knob-stage">
+      <!-- LED Ring (SVG) -->
+      <svg class="led-ring" viewBox="0 0 100 100">
+        <!-- Background Track -->
+        <path
+          d="M 20,80 A 40,40 0 1 1 80,80"
+          fill="none"
+          stroke="#1a1a1a"
+          stroke-width="8"
+          stroke-linecap="round"
+        />
+        <!-- Active Value Arc -->
+        <path
+          d="M 20,80 A 40,40 0 1 1 80,80"
+          fill="none"
+          :stroke="activeColor"
+          stroke-width="8"
+          stroke-linecap="round"
+          :stroke-dasharray="dashArray"
+          class="value-arc"
+        />
+      </svg>
 
-    <!-- Knob Cap (css 3D) -->
-    <div class="knob-cap" :style="knobStyle">
-      <div class="knob-indicator"></div>
-      <div class="knob-texture"></div>
+      <!-- Knob Cap (css 3D) -->
+      <div class="knob-cap" :style="knobStyle">
+        <div class="knob-indicator"></div>
+        <div class="knob-texture"></div>
+      </div>
     </div>
 
     <!-- Label -->
@@ -161,28 +163,34 @@ const stopDrag = () => {
 
 <style scoped>
 .hardware-knob-wrapper {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
   cursor: grab;
   user-select: none;
-  width: 60px; /* Container slightly larger than knob for LED ring */
-  height: 70px; /* Include label space */
+  width: 64px;
+  min-height: 78px;
 }
 
 .hardware-knob-wrapper:active {
   cursor: grabbing;
 }
 
+.knob-stage {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+}
+
 /* === LED RING === */
 .led-ring {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 60px; /* Square aspect for SVG */
+  inset: 0;
+  width: 60px;
+  height: 60px;
   pointer-events: none;
   filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
 }
@@ -231,12 +239,6 @@ const stopDrag = () => {
 
 /* === LABEL === */
 .knob-label {
-  margin-top: 4px; /* Space from knob bottom (if LED ring is absolutely positioned) */
-  /* Actually with flex column, this will be below the 60px height content? */
-  /* Let's absolute position the label to be safe or ensure proper flow */
-  position: absolute;
-  bottom: 0;
-  
   font-family: var(--font-hardware, monospace);
   font-size: 9px;
   color: #888;

@@ -3,13 +3,19 @@
     <div class="track-header">
       <span class="track-id">TRACK {{ trackId }}</span>
       <span v-if="disabledReason" class="track-note">{{ disabledReason }}</span>
+      <div v-if="capabilityNotes.length > 0" class="track-capability-row">
+        <span v-for="note in capabilityNotes" :key="note" class="track-capability-chip">
+          {{ note }}
+        </span>
+      </div>
     </div>
 
-    <div class="upper-deck disabled-block">
+    <div class="upper-deck">
       <div class="left-controls">
-        <div class="knobs-row">
+        <div class="knobs-row" :class="{ 'is-disabled': !filterControlsEnabled }">
           <HardwareKnob
-            v-model="filterFreq"
+            :model-value="filterFreq"
+            @update:modelValue="handleFilterFreqChange"
             :min="0"
             :max="100"
             label="FREQ"
@@ -17,7 +23,8 @@
             :size="40"
           />
           <HardwareKnob
-            v-model="filterRes"
+            :model-value="filterRes"
+            @update:modelValue="handleFilterResChange"
             :min="0"
             :max="10"
             label="RES"
@@ -33,8 +40,10 @@
             size="sm"
             :color="isFilterActive ? 'blue' : 'neutral'"
             :active="isFilterActive"
-            aria-label="Track FX unavailable in native v1"
+            :aria-label="filterButtonAriaLabel"
+            @press="toggleFilter"
             class="ctrl-btn"
+            :class="{ 'is-disabled': !filterControlsEnabled }"
           />
           <HardwareButton
             label="TRACK"
@@ -42,15 +51,18 @@
             size="sm"
             :color="isReverse ? 'purple' : 'neutral'"
             :active="isReverse"
-            aria-label="Reverse unavailable in native v1"
+            :aria-label="reverseButtonAriaLabel"
+            @press="handleReverseToggle"
             class="ctrl-btn"
+            :class="{ 'is-disabled': !reverseControlEnabled }"
           />
         </div>
       </div>
 
-      <div class="right-fader">
+      <div class="right-fader" :class="{ 'is-disabled': !levelControlEnabled }">
         <HardwareFader
-          v-model="playLevel"
+          :model-value="playLevel"
+          @update:modelValue="handleLevelChange"
           :led-color="faderLedColor"
           label="LEVEL"
         />
@@ -106,26 +118,65 @@ const props = defineProps<{
 
 const engine = AudioEngine.getInstance();
 const trackAudio = engine.tracks[props.trackId - 1]!;
+const trackCapabilities = engine.getTrackCapabilities(props.trackId);
 
 const trackState = ref(trackAudio.state);
 const playLevel = ref(trackAudio.track.playLevel);
 const isReverse = ref(trackAudio.isReverse);
 const isClearing = ref(false);
-const filterFreq = ref(50);
-const filterRes = ref(0);
-const fxState = ref({ filter: false });
-
-const trackAvailable = computed(() => trackAudio.isAvailable);
-const trackTransportEnabled = computed(() => trackAudio.transportEnabled);
-const disabledReason = computed(() => trackAudio.disabledReason);
+const filterFreq = ref(Math.round(trackAudio.track.filterValue * 100));
+const filterRes = ref(Math.round(trackAudio.track.filterResonance * 10));
+const fxState = ref({ filter: trackAudio.track.filterEnabled });
+const trackAvailable = ref(trackAudio.isAvailable);
+const trackTransportEnabled = ref(trackAudio.transportEnabled);
+const disabledReason = ref(trackAudio.disabledReason);
 const isFilterActive = computed(() => fxState.value.filter);
+const levelControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.supportsTrackLevel);
+const filterControlsEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.supportsTrackFx);
+const reverseControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.supportsReverse);
+const filterButtonAriaLabel = computed(() => filterControlsEnabled.value ? 'Toggle track filter' : trackCapabilities.trackFxReason);
+const reverseButtonAriaLabel = computed(() => reverseControlEnabled.value ? 'Toggle reverse playback' : trackCapabilities.reverseReason);
+const capabilityNotes = computed(() => {
+  if (!trackAvailable.value) {
+    return [] as string[];
+  }
+
+  const notes: string[] = [];
+  if (!trackCapabilities.supportsTrackLevel && trackCapabilities.levelReason) {
+    notes.push(trackCapabilities.levelReason);
+  }
+  if (!trackCapabilities.supportsTrackFx && trackCapabilities.trackFxReason) {
+    notes.push(trackCapabilities.trackFxReason);
+  }
+  if (!trackCapabilities.supportsReverse && trackCapabilities.reverseReason) {
+    notes.push(trackCapabilities.reverseReason);
+  }
+
+  return Array.from(new Set(notes));
+});
 
 let pollInterval: number;
 
+const clamp = (value: number, min: number, max: number) => {
+  return Math.max(min, Math.min(max, value));
+};
+
+const syncTrackUi = () => {
+  trackState.value = trackAudio.state;
+  isReverse.value = trackAudio.isReverse;
+  trackAvailable.value = trackAudio.isAvailable;
+  trackTransportEnabled.value = trackAudio.transportEnabled;
+  disabledReason.value = trackAudio.disabledReason;
+};
+
 onMounted(() => {
+  trackAudio.fxChain.setFilterEnabled(trackAudio.track.filterEnabled);
+  trackAudio.fxChain.setFilterParam('frequency', trackAudio.track.filterValue);
+  trackAudio.fxChain.setFilterParam('resonance', trackAudio.track.filterResonance);
+  trackAudio.updateSettings();
+  syncTrackUi();
   pollInterval = window.setInterval(() => {
-    trackState.value = trackAudio.state;
-    isReverse.value = trackAudio.isReverse;
+    syncTrackUi();
   }, 50);
 });
 
@@ -161,6 +212,51 @@ const isRecordingOrPlaying = computed(() => {
 const handleRecPlay = () => {
   if (!trackTransportEnabled.value) return;
   trackAudio.triggerRecord();
+};
+
+const handleLevelChange = (value: number) => {
+  if (!levelControlEnabled.value) return;
+
+  const safeValue = clamp(Math.round(value), 0, 100);
+  playLevel.value = safeValue;
+  trackAudio.track.playLevel = safeValue;
+  trackAudio.updateSettings();
+};
+
+const toggleFilter = () => {
+  if (!filterControlsEnabled.value) return;
+
+  const nextState = !fxState.value.filter;
+  fxState.value.filter = nextState;
+  trackAudio.track.filterEnabled = nextState;
+  trackAudio.fxChain.setFilterEnabled(nextState);
+};
+
+const handleFilterFreqChange = (value: number) => {
+  if (!filterControlsEnabled.value) return;
+
+  const safeValue = clamp(Math.round(value), 0, 100);
+  filterFreq.value = safeValue;
+  const normalized = safeValue / 100;
+  trackAudio.track.filterValue = normalized;
+  trackAudio.fxChain.setFilterParam('frequency', normalized);
+};
+
+const handleFilterResChange = (value: number) => {
+  if (!filterControlsEnabled.value) return;
+
+  const safeValue = clamp(Math.round(value), 0, 10);
+  filterRes.value = safeValue;
+  const normalized = safeValue / 10;
+  trackAudio.track.filterResonance = normalized;
+  trackAudio.fxChain.setFilterParam('resonance', normalized);
+};
+
+const handleReverseToggle = () => {
+  if (!reverseControlEnabled.value) return;
+
+  trackAudio.toggleReverse();
+  isReverse.value = trackAudio.isReverse;
 };
 
 let stopPressTimer: number | null = null;
@@ -232,16 +328,30 @@ const cancelStopPress = () => {
   color: #8a8a8a;
 }
 
+.track-capability-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.track-capability-chip {
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.18);
+  font-family: var(--font-hardware);
+  font-size: 8px;
+  letter-spacing: 0.7px;
+  color: #8a8a8a;
+  text-transform: uppercase;
+}
+
 .upper-deck {
   display: flex;
   flex-direction: row;
   height: 240px;
   gap: 8px;
-}
-
-.disabled-block {
-  opacity: 0.4;
-  pointer-events: none;
 }
 
 .left-controls {

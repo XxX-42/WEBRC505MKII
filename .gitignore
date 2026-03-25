@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 native-mvp/build/
 native-mvp/build-v145/
+playwright-report/
+test-results/
+coverage/
