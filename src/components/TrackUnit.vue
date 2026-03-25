@@ -1,5 +1,5 @@
 <template>
-  <div class="track-unit" :class="{ disabled: !trackAvailable }">
+  <div class="track-unit" :class="{ disabled: !trackAvailable }" :data-track-id="trackId">
     <div class="track-header">
       <span class="track-id">TRACK {{ trackId }}</span>
       <span v-if="disabledReason" class="track-note">{{ disabledReason }}</span>
@@ -294,10 +294,10 @@ const cancelStopPress = () => {
   display: flex;
   flex-direction: column;
   width: 180px;
-  height: 100%;
+  min-height: 540px;
   background: var(--bg-panel-secondary);
   border-right: 1px solid #000;
-  padding: 12px 10px;
+  padding: 14px 10px 18px;
   gap: 12px;
 }
 
@@ -350,8 +350,9 @@ const cancelStopPress = () => {
 .upper-deck {
   display: flex;
   flex-direction: row;
-  height: 240px;
+  min-height: 240px;
   gap: 8px;
+  align-items: flex-start;
 }
 
 .left-controls {
@@ -380,15 +381,17 @@ const cancelStopPress = () => {
 
 .right-fader {
   width: 50px;
-  height: 100%;
+  align-self: stretch;
 }
 
 .lower-deck {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  flex-grow: 1;
+  justify-content: flex-end;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 196px;
 }
 
 .stop-wrapper {
@@ -399,7 +402,9 @@ const cancelStopPress = () => {
   position: relative;
   display: grid;
   place-items: center;
-  margin-top: auto;
+  width: 128px;
+  height: 128px;
+  flex: 0 0 128px;
 }
 
 .halo-layer {

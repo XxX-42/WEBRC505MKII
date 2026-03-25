@@ -6,7 +6,7 @@
       <div class="led-strip">
         <div 
           class="led-fill" 
-          :style="{ height: `${value}%` }"
+          :style="{ height: `${valuePercent}%` }"
           :class="ledColorClass"
         ></div>
       </div>
@@ -17,7 +17,7 @@
           type="range"
           :min="min"
           :max="max"
-          :value="value"
+          :value="liveValue"
           @input="handleInput"
           class="fader-input"
           orient="vertical"
@@ -26,7 +26,7 @@
         <!-- Fader Cap -->
         <div 
           class="fader-cap" 
-          :style="{ bottom: `${value}%` }"
+          :style="{ bottom: `${valuePercent}%` }"
         >
           <div class="cap-ridge"></div>
           <div class="cap-ridge"></div>
@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 interface Props {
   modelValue: number;
@@ -65,12 +65,18 @@ const emit = defineEmits<{
   'update:modelValue': [value: number];
 }>();
 
-const value = computed(() => {
-  return ((props.modelValue - props.min) / (props.max - props.min)) * 100;
+const liveValue = ref(props.modelValue);
+
+watch(() => props.modelValue, (value) => {
+  liveValue.value = value;
+});
+
+const valuePercent = computed(() => {
+  return ((liveValue.value - props.min) / (props.max - props.min)) * 100;
 });
 
 const displayValue = computed(() => {
-  return Math.round(props.modelValue);
+  return Math.round(liveValue.value);
 });
 
 const ledColorClass = computed(() => {
@@ -87,6 +93,7 @@ const ledColorClass = computed(() => {
 const handleInput = (event: Event) => {
   const target = event.target as HTMLInputElement;
   const rawValue = parseFloat(target.value);
+  liveValue.value = rawValue;
   emit('update:modelValue', rawValue);
 };
 </script>
@@ -126,8 +133,8 @@ const handleInput = (event: Event) => {
   position: absolute;
   bottom: 0;
   width: 100%;
-  transition: height 0.1s ease-out;
   border-radius: 2px;
+  will-change: height;
 }
 
 .led-strip-red { background: var(--led-red-recording); box-shadow: var(--glow-red-soft); }
@@ -174,6 +181,7 @@ const handleInput = (event: Event) => {
   justify-content: center;
   align-items: center;
   gap: 3px;
+  will-change: bottom;
 }
 
 .cap-ridge {

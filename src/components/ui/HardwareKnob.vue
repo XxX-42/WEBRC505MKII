@@ -1,26 +1,32 @@
 <template>
-  <div class="hardware-knob-wrapper hardware-interactive" @mousedown="startDrag" @touchstart.prevent="startDrag">
+  <div class="hardware-knob-wrapper hardware-interactive" @pointerdown="startDrag">
     <div class="knob-stage">
       <!-- LED Ring (SVG) -->
       <svg class="led-ring" viewBox="0 0 100 100">
-        <!-- Background Track -->
-        <path
-          d="M 20,80 A 40,40 0 1 1 80,80"
-          fill="none"
-          stroke="#1a1a1a"
-          stroke-width="8"
-          stroke-linecap="round"
-        />
-        <!-- Active Value Arc -->
-        <path
-          d="M 20,80 A 40,40 0 1 1 80,80"
-          fill="none"
-          :stroke="activeColor"
-          stroke-width="8"
-          stroke-linecap="round"
-          :stroke-dasharray="dashArray"
-          class="value-arc"
-        />
+        <g class="ring-group">
+          <circle
+            cx="50"
+            cy="50"
+            :r="ringRadius"
+            fill="none"
+            stroke="#1a1a1a"
+            :stroke-width="ringStrokeWidth"
+            stroke-linecap="round"
+            class="ring-track"
+            :stroke-dasharray="ringTrackDashArray"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            :r="ringRadius"
+            fill="none"
+            :stroke="activeColor"
+            :stroke-width="ringStrokeWidth"
+            stroke-linecap="round"
+            :stroke-dasharray="dashArray"
+            class="value-arc"
+          />
+        </g>
       </svg>
 
       <!-- Knob Cap (css 3D) -->
@@ -36,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = withDefaults(defineProps<{
   modelValue: number;
@@ -64,8 +70,16 @@ const emit = defineEmits<{
 const rotationRange = 270; // Degrees (Start at -135, End at +135)
 const startAngle = -135;
 
+const liveValue = ref(props.modelValue);
+
+watch(() => props.modelValue, (value) => {
+  if (!isDragging.value) {
+    liveValue.value = value;
+  }
+});
+
 const normalizedValue = computed(() => {
-  return (props.modelValue - props.min) / (props.max - props.min);
+  return (liveValue.value - props.min) / (props.max - props.min);
 });
 
 const rotation = computed(() => {
@@ -90,17 +104,15 @@ const activeColor = computed(() => {
 });
 
 // SVG Dash Array for Arc fill
-const ringCircumference = 2 * Math.PI * 40; // r=40
-const arcLength = ringCircumference * (270 / 360); // Total arc length (approx 188.5)
+const ringRadius = 38;
+const ringStrokeWidth = 8;
+const ringCircumference = 2 * Math.PI * ringRadius;
+const arcLength = ringCircumference * (rotationRange / 360);
+const ringTrackDashArray = `${arcLength} ${ringCircumference}`;
 
 const dashArray = computed(() => {
   const currentLen = arcLength * normalizedValue.value;
-  // Format: [filled, empty]
-  // Note: The path itself is limited to the arc shape, so we can just fill 'currentLen' then gap the rest
-  // But since the path is ALREADY an arc, stroke-dasharray works along that path.
-  // Wait, the path is hardcoded as the full 270 deg arc.
-  // So we just need: [currentLength, totalLength]
-  return `${currentLen} 1000`; // 1000 is just a large enough gap
+  return `${currentLen} ${ringCircumference}`;
 });
 
 // ========================================
@@ -108,28 +120,28 @@ const dashArray = computed(() => {
 // ========================================
 
 const isDragging = ref(false);
+const activePointerId = ref<number | null>(null);
 const startY = ref(0);
 const startValue = ref(0);
 
-const startDrag = (e: MouseEvent | TouchEvent) => {
-  const y = getPointerY(e);
-  if (y === null) return;
+const startDrag = (e: PointerEvent) => {
+  const y = e.clientY;
   isDragging.value = true;
+  activePointerId.value = e.pointerId;
   startY.value = y;
-  startValue.value = props.modelValue;
+  startValue.value = liveValue.value;
 
-  window.addEventListener('mousemove', onDrag);
-  window.addEventListener('touchmove', onDrag, { passive: false });
-  window.addEventListener('mouseup', stopDrag);
-  window.addEventListener('touchend', stopDrag);
+  (e.currentTarget as HTMLElement | null)?.setPointerCapture?.(e.pointerId);
+  window.addEventListener('pointermove', onDrag, { passive: true });
+  window.addEventListener('pointerup', stopDrag);
+  window.addEventListener('pointercancel', stopDrag);
 };
 
-const onDrag = (e: MouseEvent | TouchEvent) => {
+const onDrag = (e: PointerEvent) => {
   if (!isDragging.value) return;
-  if (e instanceof TouchEvent) e.preventDefault(); 
+  if (activePointerId.value !== null && e.pointerId !== activePointerId.value) return;
 
-  const currentY = getPointerY(e);
-  if (currentY === null) return;
+  const currentY = e.clientY;
   const dy = startY.value - currentY; // Up is positive
   const sensitivity = 0.5; // Pixels to Value ratio
 
@@ -142,21 +154,17 @@ const onDrag = (e: MouseEvent | TouchEvent) => {
   if (newValue < props.min) newValue = props.min;
   if (newValue > props.max) newValue = props.max;
 
+  liveValue.value = newValue;
   emit('update:modelValue', newValue);
 };
 
-const getPointerY = (e: MouseEvent | TouchEvent): number | null => {
-  if (e instanceof MouseEvent) return e.clientY;
-  const touch = e.touches[0] ?? e.changedTouches[0];
-  return touch ? touch.clientY : null;
-};
-
-const stopDrag = () => {
+const stopDrag = (e?: PointerEvent) => {
+  if (activePointerId.value !== null && e && e.pointerId !== activePointerId.value) return;
   isDragging.value = false;
-  window.removeEventListener('mousemove', onDrag);
-  window.removeEventListener('touchmove', onDrag);
-  window.removeEventListener('mouseup', stopDrag);
-  window.removeEventListener('touchend', stopDrag);
+  activePointerId.value = null;
+  window.removeEventListener('pointermove', onDrag);
+  window.removeEventListener('pointerup', stopDrag);
+  window.removeEventListener('pointercancel', stopDrag);
 };
 
 </script>
@@ -171,6 +179,7 @@ const stopDrag = () => {
   user-select: none;
   width: 64px;
   min-height: 78px;
+  touch-action: none;
 }
 
 .hardware-knob-wrapper:active {
@@ -195,8 +204,15 @@ const stopDrag = () => {
   filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
 }
 
+.ring-group {
+  transform-origin: 50px 50px;
+  transform: rotate(135deg);
+}
+
+.ring-track,
 .value-arc {
-  transition: stroke-dasharray 0.05s linear;
+  transition: none;
+  will-change: stroke-dasharray;
 }
 
 /* === KNOB CAP === */
@@ -208,7 +224,7 @@ const stopDrag = () => {
     0 4px 6px rgba(0,0,0,0.8),
     inset 0 1px 0 rgba(255,255,255,0.1);
   z-index: 10;
-  /* Size set by dynamic style */
+  will-change: transform;
 }
 
 /* Indicator Line */

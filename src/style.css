@@ -1,124 +1,112 @@
 /* ==========================================
-   GLOBAL DESIGN SYSTEM (RC-505MKII Style)
+   GLOBAL DESIGN TOKENS
    ========================================== */
 
 :root {
-    /* --- COLORS: LED & STATE --- */
     --led-red-recording: #ff0033;
     --led-green-playing: #00ff66;
     --led-yellow-overdub: #ffcc00;
     --led-blue-accent: #0099ff;
     --led-white-neutral: #f0f0f0;
 
-    /* --- GLOW EFFECTS (Refined) --- */
     --glow-red-soft: 0 0 8px rgba(255, 0, 51, 0.4);
-    --glow-red-intense: 0 0 12px rgba(255, 0, 51, 0.6), 0 0 24px rgba(255, 0, 51, 0.4);
-
     --glow-green-soft: 0 0 8px rgba(0, 255, 102, 0.4);
-    --glow-green-intense: 0 0 12px rgba(0, 255, 102, 0.6), 0 0 24px rgba(0, 255, 102, 0.4);
-
     --glow-yellow-soft: 0 0 8px rgba(255, 204, 0, 0.4);
-    --glow-yellow-intense: 0 0 12px rgba(255, 204, 0, 0.6), 0 0 24px rgba(255, 204, 0, 0.4);
-
     --glow-blue-soft: 0 0 8px rgba(0, 153, 255, 0.4);
-    --glow-blue-intense: 0 0 12px rgba(0, 153, 255, 0.6), 0 0 24px rgba(0, 153, 255, 0.4);
-
     --glow-white-soft: 0 0 6px rgba(240, 240, 240, 0.3);
-    --glow-white-intense: 0 0 10px rgba(240, 240, 240, 0.5), 0 0 20px rgba(240, 240, 240, 0.3);
 
-    /* --- SURFACES & MATERIALS --- */
-    --bg-panel-main: #121212;
-    /* Deep matte black */
-    --bg-panel-secondary: #1a1a1a;
-    /* Slightly lighter panel */
-    --bg-groove-dark: #080808;
-    /* Deepest recesses */
-
-    /* Button Gradients (Matte Plastic) */
     --bg-button-gradient: linear-gradient(180deg, #2a2a2a 0%, #222222 100%);
     --bg-button-active: linear-gradient(180deg, #1a1a1a 0%, #222222 100%);
     --gradient-plastic-dark: var(--bg-button-gradient);
     --gradient-plastic-light: linear-gradient(180deg, #363636 0%, #282828 100%);
 
-    /* --- SHADOWS (Industrial Depth) --- */
-    --shadow-raised:
-        0 1px 0 rgba(255, 255, 255, 0.05) inset,
-        0 -1px 0 rgba(0, 0, 0, 0.5) inset,
-        0 2px 4px rgba(0, 0, 0, 0.5);
-
-    --shadow-pressed:
-        0 2px 4px rgba(0, 0, 0, 0.6) inset,
-        0 1px 0 rgba(255, 255, 255, 0.02);
-    --button-border-raised: var(--shadow-raised);
-    --button-border-pressed: var(--shadow-pressed);
-
-    /* --- DIMENSIONS --- */
     --border-radius-button: 4px;
-    /* Sharper corners */
     --border-radius-hardware: 4px;
-
     --button-size-sm: 32px;
     --button-size-md: 48px;
     --button-size-lg: 64px;
 
-    /* --- FONTS --- */
     --font-hardware: 'Rajdhani', sans-serif;
     --font-mono: 'Roboto Mono', monospace;
-    --color-accent: var(--led-blue-accent);
-    --led-blue-active: var(--led-blue-accent);
 
-    /* --- APP SURFACE TOKENS --- */
     --text-primary: #f2f2f2;
     --text-muted: rgba(240, 240, 240, 0.55);
+    --color-accent: var(--led-blue-accent);
+
+    --bg-panel-main: #121212;
+    --bg-panel-secondary: #1a1a1a;
+    --bg-groove-dark: #080808;
+    --track-list-background: rgba(0, 0, 0, 0.2);
+    --app-background: radial-gradient(circle at center, #151515 0%, #050505 100%);
+
     --panel-border: rgba(255, 255, 255, 0.08);
     --panel-border-strong: rgba(255, 255, 255, 0.14);
-    --panel-elevated: linear-gradient(180deg, #1f1f1f 0%, #121212 100%);
-    --app-background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
-    --app-init-background: linear-gradient(180deg, #0a0a0a 0%, #060606 100%);
-    --track-list-background: rgba(0, 0, 0, 0.2);
+    --shell-divider: rgba(255, 255, 255, 0.12);
+    --shell-surface: rgba(7, 10, 16, 0.66);
+    --shell-status-background: rgba(8, 12, 18, 0.9);
+
+    --classic-panel-surface: linear-gradient(180deg, rgba(255, 250, 242, 0.96) 0%, rgba(236, 228, 214, 0.96) 100%);
+    --classic-panel-surface-strong: linear-gradient(180deg, rgba(247, 241, 230, 0.98) 0%, rgba(231, 222, 206, 0.98) 100%);
+    --classic-panel-border: rgba(78, 60, 35, 0.18);
+    --classic-panel-border-strong: rgba(78, 60, 35, 0.28);
+    --classic-panel-shadow: 0 18px 40px rgba(27, 19, 12, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-:root[data-theme='day'] {
-    --bg-panel-main: #ebe4d7;
-    --bg-panel-secondary: #f7f1e3;
-    --bg-groove-dark: #d9cfbf;
-    --bg-button-gradient: linear-gradient(180deg, #fffdf7 0%, #e6dccb 100%);
-    --bg-button-active: linear-gradient(180deg, #ded3c1 0%, #efe5d6 100%);
-    --gradient-plastic-light: linear-gradient(180deg, #fffdf7 0%, #ece2d2 100%);
-    --shadow-raised:
-        0 1px 0 rgba(255, 255, 255, 0.7) inset,
-        0 -1px 0 rgba(94, 72, 42, 0.18) inset,
-        0 2px 4px rgba(94, 72, 42, 0.16);
-    --shadow-pressed:
-        0 2px 4px rgba(94, 72, 42, 0.2) inset,
-        0 1px 0 rgba(255, 255, 255, 0.45);
+:root[data-ui-style='classic'] {
     --text-primary: #2c2418;
     --text-muted: rgba(76, 58, 35, 0.62);
+    --bg-panel-main: #ebe4d7;
+    --bg-panel-secondary: #f6efe2;
+    --bg-groove-dark: #d9cfbf;
+    --gradient-plastic-light: linear-gradient(180deg, #fffdf7 0%, #ece2d2 100%);
+    --app-background: radial-gradient(circle at top, #fff7eb 0%, #e4dacc 100%);
+    --track-list-background: rgba(255, 255, 255, 0.46);
     --panel-border: rgba(94, 72, 42, 0.18);
     --panel-border-strong: rgba(94, 72, 42, 0.28);
-    --panel-elevated: linear-gradient(180deg, #fffdf8 0%, #efe5d6 100%);
-    --app-background: radial-gradient(circle at top, #fff6e7 0%, #e7ddce 100%);
-    --app-init-background: linear-gradient(180deg, #fff9ee 0%, #ece2d4 100%);
-    --track-list-background: rgba(255, 255, 255, 0.46);
-    --glow-white-soft: 0 0 6px rgba(140, 118, 84, 0.16);
-    --glow-white-intense: 0 0 10px rgba(140, 118, 84, 0.24), 0 0 20px rgba(140, 118, 84, 0.14);
+    --shell-divider: rgba(94, 72, 42, 0.2);
+    --shell-surface: rgba(255, 252, 246, 0.7);
+    --shell-status-background: rgba(255, 250, 242, 0.86);
+    --bg-button-gradient: linear-gradient(180deg, #fffdf7 0%, #e6dccb 100%);
+    --bg-button-active: linear-gradient(180deg, #ded3c1 0%, #efe5d6 100%);
 }
 
-/* Reset & Base */
+:root[data-ui-style='tech'] {
+    --text-primary: #f2f2f2;
+    --text-muted: rgba(240, 240, 240, 0.55);
+    --bg-panel-main: #121212;
+    --bg-panel-secondary: #1a1a1a;
+    --bg-groove-dark: #080808;
+    --app-background: radial-gradient(circle at center, #151515 0%, #050505 100%);
+    --shell-divider: rgba(255, 255, 255, 0.12);
+    --shell-surface: rgba(7, 10, 16, 0.66);
+    --shell-status-background: rgba(8, 12, 18, 0.9);
+    --bg-button-gradient: linear-gradient(180deg, #2a2a2a 0%, #222222 100%);
+    --bg-button-active: linear-gradient(180deg, #1a1a1a 0%, #222222 100%);
+}
+
 * {
     box-sizing: border-box;
     -webkit-user-drag: none;
 }
 
-body {
+html,
+body,
+#app {
     margin: 0;
-    padding: 0;
+    min-height: 100%;
+}
+
+body {
     background-color: var(--bg-panel-main);
     color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    overflow: hidden;
-    /* Prevent scroll bounce */
     -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+    font: inherit;
 }
 
 .hardware-interactive {
@@ -126,7 +114,6 @@ body {
     -webkit-user-select: none;
 }
 
-/* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -137,10 +124,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #333;
+    background: rgba(51, 51, 51, 0.7);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #444;
+    background: rgba(68, 68, 68, 0.85);
 }
