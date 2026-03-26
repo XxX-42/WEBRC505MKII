@@ -136,8 +136,8 @@ const stateLabel = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 560px;
-  padding: 14px 12px 18px;
+  min-height: 612px;
+  padding: 12px 12px 20px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   border-right: 1px solid rgba(0, 0, 0, 0.8);
   background: linear-gradient(180deg, #18191e 0%, #0d0d11 100%);
@@ -185,15 +185,16 @@ const stateLabel = computed(() => {
 
 .track-top {
   display: grid;
-  grid-template-columns: 1fr 58px;
-  gap: 10px;
+  grid-template-columns: 78px 64px;
+  justify-content: space-between;
+  gap: 8px;
   align-items: start;
 }
 
 .track-button-stack {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
 }
 
@@ -216,8 +217,14 @@ const stateLabel = computed(() => {
 }
 
 .slider-column {
-  height: 228px;
-  padding-top: 4px;
+  height: 286px;
+  padding-top: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(0, 0, 0, 0.28) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 8px rgba(0, 0, 0, 0.18);
 }
 
 .main-button-column {
@@ -232,8 +239,27 @@ const stateLabel = computed(() => {
   position: relative;
   display: grid;
   place-items: center;
-  width: 160px;
-  height: 160px;
+  width: 178px;
+  height: 178px;
+}
+
+.halo-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 10px solid rgba(15, 15, 18, 0.96);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.08),
+    0 10px 18px rgba(0, 0, 0, 0.34);
+}
+
+.halo-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.06);
 }
 
 .halo-layer {
@@ -264,5 +290,46 @@ const stateLabel = computed(() => {
 .indicator-chip.active {
   color: var(--led-red-recording);
   box-shadow: 0 0 0 1px rgba(255, 0, 51, 0.18) inset;
+}
+
+:deep(.slider-column .hardware-fader) {
+  gap: 0;
+}
+
+:deep(.slider-column .fader-track-container) {
+  min-height: 248px;
+  gap: 6px;
+}
+
+:deep(.slider-column .led-strip) {
+  width: 2px;
+}
+
+:deep(.slider-column .fader-groove) {
+  width: 20px;
+  border-radius: 2px;
+  background: #06070a;
+  box-shadow:
+    inset 0 1px 6px rgba(0, 0, 0, 0.94),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+:deep(.slider-column .fader-cap) {
+  width: 34px;
+  height: 18px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #f8fbff 0%, #7d8494 100%);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+:deep(.slider-column .cap-ridge) {
+  width: 24px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+:deep(.slider-column .fader-value) {
+  display: none;
 }
 </style>
