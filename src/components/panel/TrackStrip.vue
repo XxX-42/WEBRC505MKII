@@ -5,74 +5,72 @@
     :data-track-id="trackId"
   >
     <header class="track-strip-header">
-      <span class="track-label">TRACK {{ trackId }}</span>
+      <span class="track-label">{{ trackId }}</span>
       <span class="track-state">{{ stateLabel }}</span>
       <span v-if="disabledReason" class="track-note">{{ disabledReason }}</span>
     </header>
 
-    <div class="track-button-stack">
-      <HardwareButton
-        shape="rect"
-        size="sm"
-        :color="isTrackFxApplied ? 'red' : 'neutral'"
-        :active="isTrackFxApplied"
-        label="FX"
-        :aria-label="fxButtonAriaLabel"
-        @press="toggleTrackFx"
-      />
-      <HardwareButton
-        shape="rect"
-        size="sm"
-        :color="isCurrentTrack ? 'blue' : 'neutral'"
-        :active="isCurrentTrack"
-        label="TRACK"
-        :aria-label="trackButtonAriaLabel"
-        @press="handleTrackSelect"
-      />
+    <div class="track-top">
+      <div class="track-button-stack">
+        <HardwareButton
+          shape="rect"
+          size="sm"
+          :color="isTrackFxApplied ? 'red' : 'neutral'"
+          :active="isTrackFxApplied"
+          label="FX"
+          :aria-label="fxButtonAriaLabel"
+          @press="toggleTrackFx"
+        />
+        <HardwareButton
+          shape="rect"
+          size="sm"
+          :color="isCurrentTrack ? 'green' : 'neutral'"
+          :active="isCurrentTrack"
+          label="TRACK"
+          :aria-label="trackButtonAriaLabel"
+          @press="handleTrackSelect"
+        />
+        <div class="clear-note">CLEAR: HOLD</div>
+        <button
+          class="stop-disc"
+          type="button"
+          aria-label="Stop track (hold to clear)"
+          @mousedown="startStopPress"
+          @touchstart.prevent="startStopPress"
+          @mouseup="endStopPress"
+          @touchend.prevent="endStopPress"
+          @mouseleave="cancelStopPress"
+        >
+          <span class="stop-square"></span>
+        </button>
+      </div>
+
+      <div class="slider-column">
+        <HardwareFader
+          :model-value="playLevel"
+          :led-color="faderLedColor"
+          label=""
+          @update:model-value="handleLevelChange"
+        />
+      </div>
     </div>
 
-    <div class="transport-stack">
-      <HardwareButton
-        label="STOP"
-        shape="rect"
-        size="sm"
-        color="red"
-        aria-label="Stop track (hold to clear)"
-        @mousedown="startStopPress"
-        @touchstart.prevent="startStopPress"
-        @mouseup="endStopPress"
-        @touchend.prevent="endStopPress"
-        @mouseleave="cancelStopPress"
-      />
-
-      <div class="main-transport">
-        <div class="slider-column">
-          <HardwareFader
-            :model-value="playLevel"
-            :led-color="faderLedColor"
-            label="LEVEL"
-            @update:model-value="handleLevelChange"
-          />
-        </div>
-
-        <div class="main-button-column">
-          <div class="halo-wrapper">
-            <LoopHalo :track-id="trackId" class="halo-layer" />
-            <HardwareButton
-              shape="circle"
-              size="lg"
-              :color="buttonLedColor"
-              :active="isRecordingOrPlaying"
-              aria-label="Record or play track"
-              @press="handleRecPlay"
-            />
-          </div>
-          <div class="loop-indicator-row">
-            <span class="indicator-chip" :class="{ active: trackState === TrackState.RECORDING }">REC</span>
-            <span class="indicator-chip" :class="{ active: trackState === TrackState.PLAYING }">PLAY</span>
-            <span class="indicator-chip" :class="{ active: trackState === TrackState.OVERDUBBING }">DUB</span>
-          </div>
-        </div>
+    <div class="main-button-column">
+      <div class="halo-wrapper">
+        <LoopHalo :track-id="trackId" class="halo-layer" />
+        <HardwareButton
+          shape="circle"
+          size="lg"
+          :color="buttonLedColor"
+          :active="isRecordingOrPlaying"
+          aria-label="Record or play track"
+          @press="handleRecPlay"
+        />
+      </div>
+      <div class="loop-indicator-row">
+        <span class="indicator-chip" :class="{ active: trackState === TrackState.RECORDING }">REC</span>
+        <span class="indicator-chip" :class="{ active: trackState === TrackState.PLAYING }">PLAY</span>
+        <span class="indicator-chip" :class="{ active: trackState === TrackState.OVERDUBBING }">DUB</span>
       </div>
     </div>
   </section>
@@ -137,9 +135,9 @@ const stateLabel = computed(() => {
 .track-strip {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-height: 560px;
-  padding: 16px 14px 18px;
+  padding: 14px 12px 18px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   border-right: 1px solid rgba(0, 0, 0, 0.8);
   background: linear-gradient(180deg, #18191e 0%, #0d0d11 100%);
@@ -158,62 +156,84 @@ const stateLabel = computed(() => {
 .track-strip-header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  min-height: 48px;
 }
 
 .track-label,
 .track-state,
 .track-note,
-.indicator-chip {
+.indicator-chip,
+.clear-note {
   font-family: var(--font-hardware);
   text-transform: uppercase;
 }
 
 .track-label {
-  font-size: 32px;
+  font-size: 40px;
   letter-spacing: 1px;
   line-height: 1;
 }
 
 .track-state,
-.track-note {
+.track-note,
+.clear-note {
   font-size: 10px;
   letter-spacing: 1.1px;
   color: rgba(255, 255, 255, 0.62);
 }
 
-.track-button-stack,
-.transport-stack {
+.track-top {
+  display: grid;
+  grid-template-columns: 1fr 58px;
+  gap: 10px;
+  align-items: start;
+}
+
+.track-button-stack {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-items: flex-start;
 }
 
-.main-transport {
-  display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 12px;
-  align-items: end;
-  flex: 1;
+.stop-disc {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid rgba(210, 220, 235, 0.82);
+  background: radial-gradient(circle at 35% 30%, #31343a 0%, #191b21 72%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  cursor: pointer;
+}
+
+.stop-square {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  background: #d7dee9;
 }
 
 .slider-column {
-  height: 250px;
+  height: 228px;
+  padding-top: 4px;
 }
 
 .main-button-column {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  margin-top: auto;
 }
 
 .halo-wrapper {
   position: relative;
   display: grid;
   place-items: center;
-  width: 132px;
-  height: 132px;
+  width: 160px;
+  height: 160px;
 }
 
 .halo-layer {

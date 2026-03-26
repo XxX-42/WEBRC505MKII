@@ -24,7 +24,7 @@
         :model-value="activeFx?.value ?? 0"
         label="INPUT FX"
         color="blue"
-        :size="72"
+        :size="118"
         @update:model-value="updateActiveValue"
       />
 
@@ -43,8 +43,8 @@
       <HardwareButton
         v-for="slot in slots"
         :key="slot.id"
-        shape="rect"
-        size="sm"
+        shape="circle"
+        size="md"
         :label="slot.id"
         :color="activeSlot === slot.id ? 'blue' : slot.active ? 'red' : 'neutral'"
         :active="activeSlot === slot.id || slot.active"
@@ -107,6 +107,10 @@ const updateActiveValue = (value: number) => {
   gap: 14px;
 }
 
+.fx-main {
+  align-items: center;
+}
+
 .panel-header h2,
 .eyebrow,
 .detail-chip,
@@ -151,7 +155,7 @@ const updateActiveValue = (value: number) => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .detail-chip {
@@ -184,7 +188,8 @@ const updateActiveValue = (value: number) => {
 
 .slot-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, 54px);
+  justify-content: flex-start;
   gap: 8px;
   margin-top: auto;
 }

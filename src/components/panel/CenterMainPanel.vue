@@ -1,99 +1,121 @@
 <template>
   <section class="center-main-panel" data-panel="center-main">
-    <div class="cluster column">
-      <div class="cluster-title">MASTER</div>
-      <HardwareButton
-        shape="rect"
-        size="md"
-        :color="isPlaying ? 'red' : 'green'"
-        :active="isPlaying"
-        :label="isPlaying ? 'ALL STOP' : 'ALL START'"
-        :aria-label="isPlaying ? 'Stop all tracks' : 'Start all tracks'"
-        @press="toggleAllTransport"
-      />
-      <HardwareButton
-        shape="rect"
-        size="sm"
-        color="yellow"
-        label="UNDO/REDO"
-        aria-label="Undo or redo placeholder"
-        @press="flashPlaceholder('UNDO/REDO is a placeholder in this web shell')"
-      />
-    </div>
-
-    <div class="cluster column">
-      <div class="cluster-title">SYSTEM</div>
-      <div class="system-buttons">
+    <div class="left-stack">
+      <div class="button-rail vertical">
         <HardwareButton shape="rect" size="sm" color="white" label="MENU" aria-label="Menu placeholder" @press="flashPlaceholder('MENU placeholder')" />
         <HardwareButton shape="rect" size="sm" color="white" label="LOOP" aria-label="Loop placeholder" @press="flashPlaceholder('LOOP placeholder')" />
       </div>
-      <div class="navigation-ring">
-        <button class="nav-btn up" type="button" @click="flashPlaceholder('Up navigation placeholder')">▲</button>
-        <button class="nav-btn left" type="button" @click="flashPlaceholder('Left navigation placeholder')">◀</button>
-        <button class="nav-btn right" type="button" @click="flashPlaceholder('Right navigation placeholder')">▶</button>
-        <button class="nav-btn down" type="button" @click="flashPlaceholder('Down navigation placeholder')">▼</button>
-        <button class="nav-btn center" type="button" @click="flashPlaceholder('Cursor center placeholder')">•</button>
-      </div>
-      <div class="system-buttons">
-        <HardwareButton shape="rect" size="sm" color="white" label="EXIT" aria-label="Exit placeholder" @press="flashPlaceholder('EXIT placeholder')" />
-        <HardwareButton shape="rect" size="sm" color="blue" label="ENTER" aria-label="Enter placeholder" @press="flashPlaceholder('ENTER placeholder')" />
+      <div class="button-rail">
+        <HardwareButton
+          shape="rect"
+          size="md"
+          :color="isPlaying ? 'red' : 'green'"
+          :active="isPlaying"
+          :label="isPlaying ? 'ALL STOP' : 'ALL START'"
+          :aria-label="isPlaying ? 'Stop all tracks' : 'Start all tracks'"
+          @press="toggleAllTransport"
+        />
+        <HardwareButton
+          shape="rect"
+          size="sm"
+          color="yellow"
+          label="UNDO/REDO"
+          aria-label="Undo or redo placeholder"
+          @press="flashPlaceholder('UNDO/REDO is a placeholder in this web shell')"
+        />
       </div>
     </div>
 
     <div class="display-cluster">
-      <div class="lcd-display">
-        <div class="lcd-row">
-          <span>MEMORY</span>
-          <span>WEBRC505</span>
-        </div>
-        <div class="lcd-main">{{ bpmDisplay }}</div>
-        <div class="lcd-row">
-          <span>TRACK {{ currentTrackId }}</span>
-          <span>{{ focusLabel }}</span>
-        </div>
-        <div class="lcd-row small">
-          <span>{{ statusHint }}</span>
+      <div class="screen-shell">
+        <div class="lcd-display">
+          <div class="lcd-row top">
+            <span>MEMORY</span>
+            <span>J={{ bpmDisplay }}.0</span>
+          </div>
+          <div class="lcd-main">01</div>
+          <div class="lcd-name">Memory01</div>
+          <div class="lcd-row">
+            <span>TRACK {{ currentTrackId }}</span>
+            <span>{{ focusLabel }}</span>
+          </div>
+          <div class="lcd-row small">
+            <span>{{ statusHint }}</span>
+          </div>
         </div>
       </div>
 
       <div class="knob-row">
-        <HardwareKnob v-for="knob in screenKnobs" :key="knob.label" v-model="knob.value" :label="knob.label" color="white" :size="48" />
-      </div>
-
-      <div class="output-block">
-        <HardwareKnob v-model="outputLevel" label="OUTPUT LEVEL" color="red" :size="60" />
+        <HardwareKnob v-for="knob in screenKnobs" :key="knob.label" v-model="knob.value" :label="knob.label" color="white" :size="58" />
       </div>
     </div>
 
-    <div class="cluster column">
-      <div class="cluster-title">RHYTHM</div>
-      <HardwareButton
-        shape="rect"
-        size="sm"
-        color="blue"
-        :active="tapActive"
-        label="TAP TEMPO"
-        aria-label="Tap tempo"
-        @press="handleTap"
-      />
-      <HardwareButton
-        shape="rect"
-        size="sm"
-        :color="isRhythmPlaying ? 'red' : 'white'"
-        :active="isRhythmPlaying"
-        :label="isRhythmPlaying ? 'RHYTHM STOP' : 'RHYTHM START'"
-        aria-label="Toggle rhythm"
-        @press="toggleRhythm"
-      />
+    <div class="nav-stack">
+      <div class="button-rail">
+        <HardwareButton shape="rect" size="sm" color="white" label="EXIT" aria-label="Exit placeholder" @press="flashPlaceholder('EXIT placeholder')" />
+        <HardwareButton shape="rect" size="sm" color="blue" label="ENTER" aria-label="Enter placeholder" @press="flashPlaceholder('ENTER placeholder')" />
+      </div>
+      <div class="navigation-ring">
+        <button class="nav-btn up" type="button" @click="flashPlaceholder('Up navigation placeholder')">^</button>
+        <button class="nav-btn left" type="button" @click="flashPlaceholder('Left navigation placeholder')">&lt;</button>
+        <button class="nav-btn right" type="button" @click="flashPlaceholder('Right navigation placeholder')">&gt;</button>
+        <button class="nav-btn down" type="button" @click="flashPlaceholder('Down navigation placeholder')">v</button>
+        <button class="nav-btn center" type="button" @click="flashPlaceholder('Cursor center placeholder')">o</button>
+      </div>
+    </div>
+
+    <div class="right-stack">
+      <div class="output-shell">
+        <div class="cluster-title">OUTPUT LEVEL</div>
+        <div class="output-block">
+          <HardwareKnob v-model="outputLevel" label="" color="red" :size="84" />
+        </div>
+      </div>
+
+      <div class="rhythm-shell">
+        <div class="cluster-title">RHYTHM</div>
+        <HardwareButton
+          shape="rect"
+          size="sm"
+          color="white"
+          label="EDIT"
+          aria-label="Rhythm edit placeholder"
+          @press="flashPlaceholder('RHYTHM EDIT placeholder')"
+        />
+      </div>
+
+      <div class="button-rail">
+        <HardwareButton
+          shape="rect"
+          size="sm"
+          color="blue"
+          :active="tapActive"
+          label="TAP TEMPO"
+          aria-label="Tap tempo"
+          @press="handleTap"
+        />
+        <HardwareButton
+          shape="rect"
+          size="sm"
+          :color="isRhythmPlaying ? 'red' : 'white'"
+          :active="isRhythmPlaying"
+          :label="isRhythmPlaying ? 'START/STOP' : 'START/STOP'"
+          aria-label="Toggle rhythm"
+          @press="toggleRhythm"
+        />
+      </div>
+
       <select v-model="selectedPattern" class="pattern-select" @change="updatePattern">
         <option value="ROCK">ROCK</option>
         <option value="TECHNO">TECHNO</option>
         <option value="METRONOME">METRO</option>
       </select>
+
       <div class="rhythm-level">
         <span>VOL</span>
         <input v-model.number="rhythmVolume" type="range" min="0" max="100" @input="updateVolume">
       </div>
+
       <div v-if="rhythmUnavailableReason" class="rhythm-note">{{ rhythmUnavailableReason }}</div>
     </div>
   </section>
@@ -274,32 +296,33 @@ onUnmounted(() => {
 <style scoped>
 .center-main-panel {
   display: grid;
-  grid-template-columns: 156px 156px minmax(320px, 1fr) 180px;
-  gap: 16px;
-  padding: 14px 16px 10px;
+  grid-template-columns: 164px minmax(360px, 1fr) 140px 182px;
+  gap: 14px;
+  padding: 14px 14px 10px;
   color: #f3f3f5;
 }
 
-.cluster,
-.display-cluster {
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.cluster {
-  padding: 14px;
-}
-
-.cluster.column {
+.left-stack,
+.nav-stack,
+.right-stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+}
+
+.button-rail {
+  display: flex;
+  gap: 8px;
+}
+
+.button-rail.vertical {
+  flex-direction: column;
 }
 
 .cluster-title,
 .lcd-row,
 .lcd-main,
+.lcd-name,
 .pattern-select,
 .rhythm-level,
 .nav-btn {
@@ -310,13 +333,70 @@ onUnmounted(() => {
 .cluster-title {
   font-size: 11px;
   letter-spacing: 1.4px;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.68);
 }
 
-.system-buttons {
+.display-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.screen-shell {
+  padding: 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #e9edf3 0%, #bfc8d3 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.lcd-display {
+  min-width: 300px;
+  min-height: 142px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #323cbf 0%, #172166 100%);
+  color: #f3fbff;
+  box-shadow: inset 0 0 0 1px rgba(220, 240, 255, 0.16);
+}
+
+.lcd-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+}
+
+.lcd-row.top {
+  color: rgba(243, 251, 255, 0.76);
+}
+
+.lcd-main {
+  font-size: 70px;
+  line-height: 0.9;
+  text-align: center;
+}
+
+.lcd-name {
+  text-align: center;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.lcd-row.small {
+  justify-content: center;
+  color: rgba(243, 251, 255, 0.74);
+}
+
+.knob-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, 62px);
+  gap: 14px;
 }
 
 .navigation-ring {
@@ -343,61 +423,26 @@ onUnmounted(() => {
 .nav-btn.right { right: 0; top: 42px; }
 .nav-btn.center { left: 42px; top: 42px; }
 
-.display-cluster {
-  display: grid;
-  grid-template-rows: auto auto auto;
-  gap: 16px;
-  padding: 16px;
-}
-
-.lcd-display {
+.output-shell,
+.rhythm-shell {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #2d3724 0%, #18200f 100%);
-  color: #d7ff9f;
-  box-shadow: inset 0 0 0 1px rgba(200, 255, 140, 0.16);
-}
-
-.lcd-main {
-  font-size: 64px;
-  line-height: 1;
-  letter-spacing: 6px;
-}
-
-.lcd-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
-  letter-spacing: 1.4px;
-}
-
-.lcd-row.small {
-  justify-content: flex-start;
-  color: rgba(215, 255, 159, 0.76);
-}
-
-.knob-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  align-items: flex-start;
 }
 
 .output-block {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .pattern-select {
-  min-height: 38px;
+  min-height: 36px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.08);
   color: #f3f3f5;
-  padding: 0 12px;
+  padding: 0 10px;
 }
 
 .rhythm-level {
@@ -418,7 +463,7 @@ onUnmounted(() => {
 
 @media (max-width: 1400px) {
   .center-main-panel {
-    min-width: 680px;
+    min-width: 760px;
   }
 }
 </style>

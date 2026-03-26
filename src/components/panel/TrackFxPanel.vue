@@ -24,7 +24,7 @@
         :model-value="activeFx?.value ?? 0"
         label="TRACK FX"
         color="red"
-        :size="72"
+        :size="118"
         @update:model-value="updateActiveValue"
       />
 
@@ -43,8 +43,8 @@
       <HardwareButton
         v-for="slot in slots"
         :key="slot.id"
-        shape="rect"
-        size="sm"
+        shape="circle"
+        size="md"
         :label="slot.id"
         :color="activeSlot === slot.id ? 'red' : slot.active ? 'yellow' : 'neutral'"
         :active="activeSlot === slot.id || slot.active"
@@ -110,6 +110,10 @@ const updateActiveValue = (value: number) => {
   display: flex;
   justify-content: space-between;
   gap: 14px;
+}
+
+.fx-main {
+  align-items: center;
 }
 
 .panel-header h2,
@@ -190,7 +194,8 @@ const updateActiveValue = (value: number) => {
 
 .slot-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, 54px);
+  justify-content: flex-end;
   gap: 8px;
   margin-top: auto;
 }
