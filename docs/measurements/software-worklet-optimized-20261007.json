@@ -1,0 +1,309 @@
+{
+  "schema": "webrc.instrument-grade-audio",
+  "schemaVersion": 1,
+  "reportId": "node-worklet-phase-1791387696319",
+  "run": {
+    "startedAt": "2026-10-07T15:40:11.375Z",
+    "endedAt": "2026-10-07T15:41:36.319Z",
+    "durationSeconds": 84.944,
+    "gateVersion": "instrument-grade-gate/1.0.0",
+    "systemUnderTest": "webrc505-project-worklet",
+    "assertionVersions": {
+      "importer": "audio-benchmark-import-worklet/1.0.0",
+      "source": "public/worklets/looper-processor.js process() via Node VM; synthetic preallocated buffers",
+      "phase": "accelerated-30-minute-sample-timeline/1.0.0",
+      "coverage": "sample timeline 1800 s; wall time 84.944 s; 675000 process() samples",
+      "loopPhase": "3375000 phase assertions across loop lengths 127, 131, 137, 139, 149 frames; max error 0 frames; low-word wraps 1",
+      "nodeProcessP99Ms": "0.020899999999528518",
+      "nodeProcessMaxMs": "1.1235000000015134",
+      "nodeDeadlineBudgetMs": "2.6666666666666665",
+      "nodeProcessDeadlineMissesSynthetic": "0",
+      "xrunInterpretation": "Node VM processDeadlineMisses are retained as an assertion only, not mapped to the report XRUN metric. Hardware XRUN remains unknown; this is not a browser, driver, device XRUN count, or physical dropout measurement.",
+      "evidenceRetention": "TEMP/webrc-optimized-final-five-track-30m/raw-results.json points to a raw trace in system TEMP. The raw file is not copied with this report; missing trace means the diagnostic cannot be independently rechecked and never upgrades an unknown physical gate."
+    }
+  },
+  "hardware": {
+    "inputDevice": {
+      "id": "software:none",
+      "label": "No physical input opened (Node VM)"
+    },
+    "outputDevice": {
+      "id": "software:none",
+      "label": "No physical output opened (Node VM)"
+    },
+    "hardwareSampleRateHz": null,
+    "processingSampleRateHz": 48000,
+    "renderQuantumFrames": null
+  },
+  "pathEvidence": {
+    "physicalLoopbackConfirmed": false,
+    "loopbackDescription": "Accelerated Node VM benchmark of the actual project Worklet processor source with synthetic buffers. No Chromium callback, live input, render device, DAC, analog loop, or physical sample marker was used.",
+    "loopbackEvidenceRef": null,
+    "independentInputAnchorRef": null,
+    "independentOutputAnchorRef": null,
+    "adcToBrowserEvidenceRef": null,
+    "browserToDspEvidenceRef": null,
+    "dspToDacEvidenceRef": null,
+    "dacToAdcEvidenceRef": null
+  },
+  "metrics": {
+    "hardwareRtl": {
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "unit": "ms",
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "input": {
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "unit": "ms",
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "output": {
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "unit": "ms",
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "jitter": {
+      "value": null,
+      "unit": "ms",
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "trigger": {
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "unit": "ms",
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "triggerByAction": {
+      "REC": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "unit": "ms",
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      },
+      "PLAY": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "unit": "ms",
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      },
+      "STOP": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "unit": "ms",
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      },
+      "FX": {
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "unit": "ms",
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      }
+    },
+    "overdubAlignment": {
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "unit": "ms",
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "renderQuantum": {
+      "value": 128,
+      "unit": "frames",
+      "provenance": "software-diagnostic",
+      "sampleCount": 675000,
+      "measuredAt": "2026-10-07T15:41:36.319Z",
+      "device": "Node v24.19.0 VM; actual Worklet process() source with synthetic buffers",
+      "sampleRateHz": 48000,
+      "evidenceRef": "TEMP/webrc-optimized-final-five-track-30m/raw-results.json",
+      "anchorRef": null
+    },
+    "fxLatency": [],
+    "callback": {
+      "p50": 0.009399999999004649,
+      "p95": 0.01620000000548316,
+      "p99": 0.020899999999528518,
+      "max": 1.1235000000015134,
+      "maxAbs": 1.1235000000015134,
+      "unit": "ms",
+      "provenance": "software-diagnostic",
+      "sampleCount": 675000,
+      "measuredAt": "2026-10-07T15:41:36.319Z",
+      "device": "Node v24.19.0 VM; actual Worklet process() source with synthetic buffers",
+      "sampleRateHz": 48000,
+      "evidenceRef": "TEMP/webrc-optimized-final-five-track-30m/raw-results.json",
+      "anchorRef": null
+    },
+    "xrun": {
+      "value": null,
+      "unit": "count",
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null,
+      "coverageSeconds": null,
+      "coverageScope": "unknown",
+      "callbackDeadlineMs": null,
+      "physicalSampleMarkerContinuous": null,
+      "hardwareDropoutEvidenceRef": null
+    },
+    "loopDrift": {
+      "unit": "ms",
+      "maxAbs": 0,
+      "slopeMsPerMinute": 0,
+      "nonAccumulating": true,
+      "provenance": "software-diagnostic",
+      "sampleCount": 3375000,
+      "measuredAt": "2026-10-07T15:41:36.319Z",
+      "device": "Node VM phase simulation at 48000 Hz; loop frame lengths 127, 131, 137, 139, 149",
+      "sampleRateHz": 48000,
+      "evidenceRef": "TEMP/webrc-optimized-final-five-track-30m/raw-results.json",
+      "anchorRef": null
+    }
+  },
+  "software": {
+    "runtimeSnapshot": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 8676334336,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        127,
+        131,
+        137,
+        139,
+        149
+      ],
+      "recordingFrames": [
+        127,
+        131,
+        137,
+        139,
+        149
+      ],
+      "trackStates": [
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "trackPositions": [
+        0.960629940032959,
+        0.9847328066825867,
+        0.9343065619468689,
+        0.7338129281997681,
+        0.7718120813369751
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 0,
+      "commandOverruns": 0,
+      "processDeadlineMisses": 0,
+      "deadlineMetricAvailable": true,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 149,
+      "trackCapacityFrames": [
+        149,
+        149,
+        149,
+        149,
+        149
+      ]
+    },
+    "callback96kProfile": null
+  }
+}

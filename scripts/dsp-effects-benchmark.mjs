@@ -62,7 +62,14 @@ const caseBuilders = {
     const fx = new CompressorFX(context);
     fx.setParam('amount', uiPercent(55));
     fx.setBypass(false);
-    return { input: fx.input, output: fx.output, dispose: () => fx.dispose(), params: { amountUi: 55 } };
+    return {
+      input: fx.input, output: fx.output, dispose: () => fx.dispose(),
+      initialize: async () => {
+        await fx.initialize();
+        if (!fx.isReady || !fx.active) throw new Error('Compressor DSP must be active before benchmarking.');
+      },
+      params: { amountUi: 55 },
+    };
   },
   DELAY: (context) => {
     const fx = new DelayFX(context);
@@ -110,6 +117,10 @@ const caseBuilders = {
     return {
       input: chain.input,
       output: chain.output,
+      initialize: async () => {
+        await chain.initialize();
+        if (!chain.compressor.isReady || !chain.compressor.active) throw new Error('Full-chain compressor DSP is not active.');
+      },
       dispose: () => {
         chain.input.disconnect();
         chain.compressor.dispose();
@@ -178,6 +189,7 @@ async function renderOne(caseName, repeat) {
   pulse.getChannelData(0)[0] = 1;
   source.buffer = pulse;
   const fx = caseBuilders[caseName](context);
+  await fx.initialize?.();
   const inputFrame = Math.round(INPUT_TIME_SECONDS * SAMPLE_RATE);
   source.connect(fx.input);
   fx.output.connect(context.destination);

@@ -1,0 +1,651 @@
+{
+  "startedAt": "2026-10-07T15:38:16.987Z",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "status": "PASS",
+  "assertions": [
+    {
+      "name": "all audio output is redirected away from physical devices",
+      "passed": true,
+      "contexts": [
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        },
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        }
+      ]
+    },
+    {
+      "name": "browser realtime engine is initialized",
+      "passed": true
+    },
+    {
+      "name": "48 kHz / 128-frame AudioWorklet backend",
+      "passed": true,
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 72576,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "recordingFrames": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackStates": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackPositions": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 4,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 8640000,
+        "trackCapacityFrames": [
+          8640000,
+          8640000,
+          8640000,
+          8640000,
+          8640000
+        ]
+      }
+    },
+    {
+      "name": "all five tracks have preallocated loop storage",
+      "passed": true,
+      "capacities": [
+        8640000,
+        8640000,
+        8640000,
+        8640000,
+        8640000
+      ]
+    },
+    {
+      "name": "browser loop recording/playback channel limit is explicit",
+      "passed": true,
+      "loopRecordingChannelCount": 1,
+      "loopPlaybackOutputChannelCount": 2,
+      "loopChannelLayout": "mono input downmix, duplicated to stereo playback"
+    },
+    {
+      "name": "AudioEngine reports the software-only sink type",
+      "passed": true,
+      "outputSinkType": "none"
+    },
+    {
+      "name": "record path starts with software monitor disabled",
+      "passed": true
+    },
+    {
+      "name": "monitor ON carries synthetic input through the persistent Worklet",
+      "passed": true,
+      "monitorRms": 0.03492193373301254
+    },
+    {
+      "name": "monitor OFF is silent at its sample-gated output",
+      "passed": true,
+      "monitorRms": 0
+    },
+    {
+      "name": "track 1 records and loops non-silent samples",
+      "passed": true,
+      "loopFrames": 6016,
+      "exportedFrames": 6016,
+      "rms": 0.07064904690065849
+    },
+    {
+      "name": "track 2 records and loops non-silent samples",
+      "passed": true,
+      "loopFrames": 5888,
+      "exportedFrames": 5888,
+      "rms": 0.07070789111588527
+    },
+    {
+      "name": "track 3 records and loops non-silent samples",
+      "passed": true,
+      "loopFrames": 5760,
+      "exportedFrames": 5760,
+      "rms": 0.07058543886414836
+    },
+    {
+      "name": "track 4 records and loops non-silent samples",
+      "passed": true,
+      "loopFrames": 6016,
+      "exportedFrames": 6016,
+      "rms": 0.07066757291291273
+    },
+    {
+      "name": "track 5 records and loops non-silent samples",
+      "passed": true,
+      "loopFrames": 6016,
+      "exportedFrames": 6016,
+      "rms": 0.07075034523229759
+    },
+    {
+      "name": "overdub runs inside persistent loop storage",
+      "passed": true,
+      "changedSamples": 6016,
+      "loopFrames": 6016
+    },
+    {
+      "name": "clear releases the loop state without reallocating track storage",
+      "passed": true,
+      "loopFrames": 0,
+      "capacityFrames": 8640000
+    },
+    {
+      "name": "dynamic Filter UI endpoint 100 maps to the normalized 20 kHz endpoint",
+      "passed": true,
+      "filterHighCutoffRms": 0.5818858302631155,
+      "filterLowCutoffRms": 0.03619400076437223,
+      "ratio": 16.076858539382528
+    },
+    {
+      "name": "unverified browser route calibration is not reported as physical round-trip",
+      "passed": true,
+      "roundTripLatencyMs": 8,
+      "physicalRoundTripMs": null,
+      "note": "Measured by scheduled output tone and AudioWorklet capture for the active route; the signal path is not independently verified as analog hardware."
+    },
+    {
+      "name": "input device change invalidates device-scoped latency calibration",
+      "passed": true,
+      "calibratedBeforeSwitchMs": 8,
+      "calibratedAfterSwitchMs": null,
+      "selectedInputDeviceId": "WebAudio-6b3214c9-8d0c-4444-b282-becafbee4e5d"
+    }
+  ],
+  "browserConsoleErrors": [
+    "console: Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep"
+  ],
+  "note": "Synthetic oscillator input and software taps only; no physical input/output or hardware latency certification.",
+  "chromiumVersion": "149.0.7827.55",
+  "executablePath": "C:\\Users\\user1000\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+  "crossOriginIsolated": true,
+  "sharedArrayBufferAvailable": true,
+  "engineStatus": {
+    "ready": true,
+    "lastError": "",
+    "message": "BROWSER AUDIO READY"
+  },
+  "softwareSmoke": {
+    "assertions": [
+      {
+        "name": "all audio output is redirected away from physical devices",
+        "passed": true,
+        "contexts": [
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          },
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          }
+        ]
+      },
+      {
+        "name": "browser realtime engine is initialized",
+        "passed": true
+      },
+      {
+        "name": "48 kHz / 128-frame AudioWorklet backend",
+        "passed": true,
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 72576,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackStates": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 4,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 8640000,
+          "trackCapacityFrames": [
+            8640000,
+            8640000,
+            8640000,
+            8640000,
+            8640000
+          ]
+        }
+      },
+      {
+        "name": "all five tracks have preallocated loop storage",
+        "passed": true,
+        "capacities": [
+          8640000,
+          8640000,
+          8640000,
+          8640000,
+          8640000
+        ]
+      },
+      {
+        "name": "browser loop recording/playback channel limit is explicit",
+        "passed": true,
+        "loopRecordingChannelCount": 1,
+        "loopPlaybackOutputChannelCount": 2,
+        "loopChannelLayout": "mono input downmix, duplicated to stereo playback"
+      },
+      {
+        "name": "AudioEngine reports the software-only sink type",
+        "passed": true,
+        "outputSinkType": "none"
+      },
+      {
+        "name": "record path starts with software monitor disabled",
+        "passed": true
+      },
+      {
+        "name": "monitor ON carries synthetic input through the persistent Worklet",
+        "passed": true,
+        "monitorRms": 0.03492193373301254
+      },
+      {
+        "name": "monitor OFF is silent at its sample-gated output",
+        "passed": true,
+        "monitorRms": 0
+      },
+      {
+        "name": "track 1 records and loops non-silent samples",
+        "passed": true,
+        "loopFrames": 6016,
+        "exportedFrames": 6016,
+        "rms": 0.07064904690065849
+      },
+      {
+        "name": "track 2 records and loops non-silent samples",
+        "passed": true,
+        "loopFrames": 5888,
+        "exportedFrames": 5888,
+        "rms": 0.07070789111588527
+      },
+      {
+        "name": "track 3 records and loops non-silent samples",
+        "passed": true,
+        "loopFrames": 5760,
+        "exportedFrames": 5760,
+        "rms": 0.07058543886414836
+      },
+      {
+        "name": "track 4 records and loops non-silent samples",
+        "passed": true,
+        "loopFrames": 6016,
+        "exportedFrames": 6016,
+        "rms": 0.07066757291291273
+      },
+      {
+        "name": "track 5 records and loops non-silent samples",
+        "passed": true,
+        "loopFrames": 6016,
+        "exportedFrames": 6016,
+        "rms": 0.07075034523229759
+      },
+      {
+        "name": "overdub runs inside persistent loop storage",
+        "passed": true,
+        "changedSamples": 6016,
+        "loopFrames": 6016
+      },
+      {
+        "name": "clear releases the loop state without reallocating track storage",
+        "passed": true,
+        "loopFrames": 0,
+        "capacityFrames": 8640000
+      },
+      {
+        "name": "dynamic Filter UI endpoint 100 maps to the normalized 20 kHz endpoint",
+        "passed": true,
+        "filterHighCutoffRms": 0.5818858302631155,
+        "filterLowCutoffRms": 0.03619400076437223,
+        "ratio": 16.076858539382528
+      },
+      {
+        "name": "unverified browser route calibration is not reported as physical round-trip",
+        "passed": true,
+        "roundTripLatencyMs": 8,
+        "physicalRoundTripMs": null,
+        "note": "Measured by scheduled output tone and AudioWorklet capture for the active route; the signal path is not independently verified as analog hardware."
+      },
+      {
+        "name": "input device change invalidates device-scoped latency calibration",
+        "passed": true,
+        "calibratedBeforeSwitchMs": 8,
+        "calibratedAfterSwitchMs": null,
+        "selectedInputDeviceId": "WebAudio-6b3214c9-8d0c-4444-b282-becafbee4e5d"
+      }
+    ],
+    "status": "PASS",
+    "contextSampleRate": 48000,
+    "contextState": "running",
+    "contextSafety": [
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": false,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      }
+    ],
+    "initialMetrics": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 72576,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordingFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackStates": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackPositions": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 4,
+      "commandOverruns": 0,
+      "processDeadlineMisses": null,
+      "deadlineMetricAvailable": false,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 8640000,
+      "trackCapacityFrames": [
+        8640000,
+        8640000,
+        8640000,
+        8640000,
+        8640000
+      ]
+    },
+    "finalMetrics": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 126720,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        6016,
+        5888,
+        5760,
+        6016,
+        0
+      ],
+      "recordingFrames": [
+        6016,
+        5888,
+        5760,
+        6016,
+        0
+      ],
+      "trackStates": [
+        4,
+        4,
+        4,
+        4,
+        0
+      ],
+      "trackPositions": [
+        0.978723406791687,
+        0.08695652335882187,
+        0.17777778208255768,
+        0.914893627166748,
+        0
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 30,
+      "commandOverruns": 0,
+      "processDeadlineMisses": null,
+      "deadlineMetricAvailable": false,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 8640000,
+      "trackCapacityFrames": [
+        8640000,
+        8640000,
+        8640000,
+        8640000,
+        8640000
+      ]
+    },
+    "ioSnapshot": {
+      "contextSampleRate": 48000,
+      "contextBaseLatencyMs": 10,
+      "contextOutputLatencyMs": 24,
+      "loopRecordingChannelCount": 1,
+      "loopPlaybackOutputChannelCount": 2,
+      "loopChannelLayout": "mono input downmix, duplicated to stereo playback",
+      "inputDeviceId": "WebAudio-6b3214c9-8d0c-4444-b282-becafbee4e5d",
+      "inputLabel": "MediaStreamAudioDestinationNode",
+      "inputSampleRate": 48000,
+      "inputChannelCount": 2,
+      "inputLatencyMs": 10,
+      "echoCancellation": null,
+      "noiseSuppression": null,
+      "autoGainControl": null,
+      "outputDeviceId": null,
+      "outputLabel": null,
+      "outputSinkType": "none"
+    },
+    "latencyInfo": {
+      "mode": "browser",
+      "backend": "BROWSER",
+      "sampleRate": 48000,
+      "bufferFrames": 128,
+      "inputLatencyMs": null,
+      "outputLatencyMs": 24,
+      "baseLatencyMs": 10,
+      "estimatedMonitoringLatencyMs": null,
+      "roundTripLatencyMs": null,
+      "physicalRoundTripMs": null,
+      "inputLatencySource": null,
+      "outputLatencySource": "AudioContext.outputLatency API",
+      "driverReportedStreamLatencyMs": null,
+      "driverReportedStreamLatencySource": null,
+      "roundTripLatencyNote": "No correlated output-to-input loopback calibration is stored for the active device route and capture format.",
+      "inputPeak": 0,
+      "outputPeak": 0,
+      "xrunsOrDropouts": null,
+      "callbackStatusFaults": null,
+      "inputQueueOverruns": null,
+      "outputQueueUnderruns": null,
+      "callbackFrameLimitViolations": null,
+      "droppedCommands": null,
+      "outputQueueDepthBlocks": null,
+      "outputQueueCapacityBlocks": null,
+      "callbackTicks": null,
+      "inputCallbackTicks": null,
+      "outputCallbackTicks": null,
+      "callbackCountSkew": null,
+      "bridgeAvailable": true,
+      "engineRunning": true
+    },
+    "trackResults": [
+      {
+        "track": 1,
+        "loopFrames": 6016,
+        "exportedRms": 0.07064904690065849
+      },
+      {
+        "track": 2,
+        "loopFrames": 5888,
+        "exportedRms": 0.07070789111588527
+      },
+      {
+        "track": 3,
+        "loopFrames": 5760,
+        "exportedRms": 0.07058543886414836
+      },
+      {
+        "track": 4,
+        "loopFrames": 6016,
+        "exportedRms": 0.07066757291291273
+      },
+      {
+        "track": 5,
+        "loopFrames": 6016,
+        "exportedRms": 0.07075034523229759
+      }
+    ],
+    "changedOverdubSamples": 6016,
+    "filterOutputRms": {
+      "ui100": 0.5818858302631155,
+      "ui1": 0.03619400076437223
+    },
+    "monitorOnRms": 0.03492193373301254,
+    "monitorOffRms": 0,
+    "calibration": {
+      "beforeDeviceSwitchMs": 8,
+      "afterDeviceSwitchMs": null
+    },
+    "softwareTaps": {
+      "masterStreamTracks": 1,
+      "monitorStreamTracks": 1
+    }
+  },
+  "completedAt": "2026-10-07T15:38:26.020Z",
+  "softwareContexts": [
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    },
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    },
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    }
+  ],
+  "syntheticInputContextCount": 2,
+  "outputFile": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc505-browser-realtime-smoke-2026-10-07T15-38-16-987Z.json"
+}

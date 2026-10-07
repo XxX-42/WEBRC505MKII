@@ -6,6 +6,7 @@ import { ReverbFX } from './fx/ReverbFX';
 export class FXChain {
     public input: GainNode;
     public output: GainNode;
+    public onProcessorError: ((error: Error) => void) | null = null;
 
     // Modules
     public compressor: CompressorFX;
@@ -19,6 +20,7 @@ export class FXChain {
 
         // Instantiate Modules
         this.compressor = new CompressorFX(context);
+        this.compressor.onFailure = (error) => this.onProcessorError?.(error);
         this.filter = new FilterFX(context);
         this.delay = new DelayFX(context);
         this.reverb = new ReverbFX(context);
@@ -35,6 +37,11 @@ export class FXChain {
         this.filter.setBypass(true);
         this.delay.setBypass(true);
         this.reverb.setBypass(true);
+    }
+
+    /** Resolve after the asynchronous compressor processor is ready. */
+    public initialize(): Promise<void> {
+        return this.compressor.initialize();
     }
 
     // Unified Control Method

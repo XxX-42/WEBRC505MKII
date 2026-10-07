@@ -93,7 +93,34 @@ class MockBufferSourceNode extends MockAudioNode {
 
 // UI fixtures do not run DSP and must never supply acceptance measurements.
 export class MockAudioWorkletNode extends MockAudioNode {
-  public readonly parameters = new Map<string, MockAudioParam>();
+  public readonly parameters = new Map<string, MockAudioParam>([
+    ['thresholdDb', new MockAudioParam(-24)],
+    ['ratio', new MockAudioParam(12)],
+    ['kneeDb', new MockAudioParam(30)],
+    ['attackSeconds', new MockAudioParam(0.003)],
+    ['releaseSeconds', new MockAudioParam(0.25)],
+  ]);
+  public onprocessorerror: ((event: Event) => void) | null = null;
+  private readonly listeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
+
+  public addEventListener(type: string, listener: EventListenerOrEventListenerObject | null) {
+    if (!listener) return;
+    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+    this.listeners.get(type)!.add(listener);
+  }
+
+  public removeEventListener(type: string, listener: EventListenerOrEventListenerObject | null) {
+    if (listener) this.listeners.get(type)?.delete(listener);
+  }
+
+  public dispatchEvent(event: Event) {
+    for (const listener of this.listeners.get(event.type) ?? []) {
+      if (typeof listener === 'function') listener.call(this, event);
+      else listener.handleEvent(event);
+    }
+    if (event.type === 'processorerror') this.onprocessorerror?.(event);
+    return true;
+  }
   public readonly port = {
     onmessage: null as ((event: MessageEvent) => void) | null,
     postMessage: (_message: unknown) => {},

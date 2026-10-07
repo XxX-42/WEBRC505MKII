@@ -1,0 +1,520 @@
+{
+  "createdAt": "2026-10-07T15:29:38.639Z",
+  "note": "Historical V1 before/after process-call timing evidence remains unchanged. V2 extends the fast path for 1-5 active PLAYING tracks plus a 119 BPM clock; only the short validation run is listed for V2. No measurement is hardware qualified.",
+  "sources": {
+    "baseline": {
+      "savedPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\looper-processor-b12ae2f.js",
+      "reference": "git:b12ae2f1236a3051d790c14c8a0ce166f826a966:public/worklets/looper-processor.js",
+      "sha256": "f1295156101cecf7bd5ccc8b6d3cea0b10d6f0cde52eeda35b4d4a3ffd72f0a6",
+      "bytes": 25599,
+      "label": "Unchanged baseline at b12ae2f"
+    },
+    "fastpathV1": {
+      "savedPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-30m\\looper-processor-fastpath.js",
+      "reference": "worktree source used for the historical V1 fast-path runs",
+      "sha256": "f00ecd06412fd20b1303fd5683525b319adec651ae89da2b7d8f0ecc83abb0a7",
+      "bytes": 28514,
+      "label": "V1 fast path: all five tracks PLAYING, clock inactive"
+    },
+    "fastpathV2": {
+      "savedPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-v2-clock-phase-smoke\\looper-processor-fastpath-v2.js",
+      "reference": "current V2 worktree source after adding clock/empty/stopped support",
+      "sha256": "f960e6212baf045a4155d066355d6fa289468517c4a168e3d94f081b30de7d5a",
+      "bytes": 29051,
+      "label": "V2 fast path: clock-running single-track playback and silent empty/stopped tracks"
+    }
+  },
+  "runs": [
+    {
+      "group": "baseline",
+      "label": "b12ae2f unchanged processor",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\looper-processor-b12ae2f.js",
+      "workletSourceSha256": "f1295156101cecf7bd5ccc8b6d3cea0b10d6f0cde52eeda35b4d4a3ffd72f0a6",
+      "workletSourceBytes": 25599,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 5 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 5,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 112500,
+          "p50Ms": 0.014599999998608837,
+          "p95Ms": 0.02900000000045111,
+          "p99Ms": 0.03679999999985739,
+          "maxMs": 0.9670999999998457
+        },
+        "deadlineMisses": 0,
+        "gcEvents": 38,
+        "gcTotalDurationMs": 11.226299971342087,
+        "gcMaxPauseMs": 2.983799993991852,
+        "gcOverlappingCallbackCount": 0,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 1044,
+        "maximumSampleElapsedMs": 0.9670999999998457,
+        "actualWallTimeSeconds": 13.587415599999998,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.01630000000000109,
+          "p95Ms": 0.017800000000079308,
+          "p99Ms": 0.02760000000000673,
+          "maxMs": 0.11069999999995161
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-5m-1\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-5m-1\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    },
+    {
+      "group": "baseline",
+      "label": "b12ae2f unchanged processor",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\looper-processor-b12ae2f.js",
+      "workletSourceSha256": "f1295156101cecf7bd5ccc8b6d3cea0b10d6f0cde52eeda35b4d4a3ffd72f0a6",
+      "workletSourceBytes": 25599,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 5 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 5,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 112500,
+          "p50Ms": 0.014600000000427826,
+          "p95Ms": 0.0294000000003507,
+          "p99Ms": 0.035799999999653664,
+          "maxMs": 0.5846000000001368
+        },
+        "deadlineMisses": 0,
+        "gcEvents": 38,
+        "gcTotalDurationMs": 10.3490000218153,
+        "gcMaxPauseMs": 2.572500005364418,
+        "gcOverlappingCallbackCount": 0,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 61734,
+        "maximumSampleElapsedMs": 0.5846000000001368,
+        "actualWallTimeSeconds": 13.5765526,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.016800000000102955,
+          "p95Ms": 0.024099999999975807,
+          "p99Ms": 0.029199999999946158,
+          "maxMs": 0.09600000000000364
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-5m-2\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-5m-2\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    },
+    {
+      "group": "baseline",
+      "label": "b12ae2f unchanged processor",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\looper-processor-b12ae2f.js",
+      "workletSourceSha256": "f1295156101cecf7bd5ccc8b6d3cea0b10d6f0cde52eeda35b4d4a3ffd72f0a6",
+      "workletSourceBytes": 25599,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 5 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 5,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 112500,
+          "p50Ms": 0.01570000000174332,
+          "p95Ms": 0.034299999999348074,
+          "p99Ms": 0.04820000000108848,
+          "maxMs": 3.2549999999991996
+        },
+        "deadlineMisses": 1,
+        "gcEvents": 38,
+        "gcTotalDurationMs": 11.63260006904602,
+        "gcMaxPauseMs": 2.549800008535385,
+        "gcOverlappingCallbackCount": 0,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 81168,
+        "maximumSampleElapsedMs": 3.2549999999991996,
+        "actualWallTimeSeconds": 13.714921700000001,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.015800000000012915,
+          "p95Ms": 0.016200000000026193,
+          "p99Ms": 0.027899999999931424,
+          "maxMs": 0.117999999999995
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-5m-3\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-5m-3\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    },
+    {
+      "group": "baseline",
+      "label": "b12ae2f unchanged processor",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\looper-processor-b12ae2f.js",
+      "workletSourceSha256": "f1295156101cecf7bd5ccc8b6d3cea0b10d6f0cde52eeda35b4d4a3ffd72f0a6",
+      "workletSourceBytes": 25599,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 30 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 30,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 675000,
+          "p50Ms": 0.015200000008917414,
+          "p95Ms": 0.03250000000116415,
+          "p99Ms": 0.04110000000218861,
+          "maxMs": 7.832000000000335
+        },
+        "deadlineMisses": 2,
+        "gcEvents": 221,
+        "gcTotalDurationMs": 53.68730013072491,
+        "gcMaxPauseMs": 2.5974999964237213,
+        "gcOverlappingCallbackCount": 2,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 28195,
+        "maximumSampleElapsedMs": 7.832000000000335,
+        "actualWallTimeSeconds": 81.7393934,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.017200000000002547,
+          "p95Ms": 0.018000000000029104,
+          "p99Ms": 0.029600000000073123,
+          "maxMs": 0.13959999999997308
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    },
+    {
+      "group": "fastpath",
+      "label": "steady playback block fast path",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-30m\\looper-processor-fastpath.js",
+      "workletSourceSha256": "f00ecd06412fd20b1303fd5683525b319adec651ae89da2b7d8f0ecc83abb0a7",
+      "workletSourceBytes": 28514,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 5 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 5,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 112500,
+          "p50Ms": 0.008699999998498242,
+          "p95Ms": 0.01569999999992433,
+          "p99Ms": 0.020300000000133878,
+          "maxMs": 0.7183999999997468
+        },
+        "deadlineMisses": 0,
+        "gcEvents": 15,
+        "gcTotalDurationMs": 12.811899989843369,
+        "gcMaxPauseMs": 5.68129999935627,
+        "gcOverlappingCallbackCount": 0,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 51573,
+        "maximumSampleElapsedMs": 0.7183999999997468,
+        "actualWallTimeSeconds": 13.6204087,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.009900000000016007,
+          "p95Ms": 0.01410000000009859,
+          "p99Ms": 0.017699999999990723,
+          "maxMs": 0.21040000000004966
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-5m-1\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-5m-1\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    },
+    {
+      "group": "fastpath",
+      "label": "steady playback block fast path",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-30m\\looper-processor-fastpath.js",
+      "workletSourceSha256": "f00ecd06412fd20b1303fd5683525b319adec651ae89da2b7d8f0ecc83abb0a7",
+      "workletSourceBytes": 28514,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 5 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 5,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 112500,
+          "p50Ms": 0.011700000000928412,
+          "p95Ms": 0.021300000000337604,
+          "p99Ms": 0.05799999999908323,
+          "maxMs": 14.000899999999092
+        },
+        "deadlineMisses": 16,
+        "gcEvents": 15,
+        "gcTotalDurationMs": 21.695199966430664,
+        "gcMaxPauseMs": 7.925599992275238,
+        "gcOverlappingCallbackCount": 0,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 70879,
+        "maximumSampleElapsedMs": 14.000899999999092,
+        "actualWallTimeSeconds": 14.0965037,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.011099999999942156,
+          "p95Ms": 0.01370000000008531,
+          "p99Ms": 0.01880000000005566,
+          "maxMs": 0.24930000000006203
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-5m-2\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-5m-2\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    },
+    {
+      "group": "fastpath",
+      "label": "steady playback block fast path",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-30m\\looper-processor-fastpath.js",
+      "workletSourceSha256": "f00ecd06412fd20b1303fd5683525b319adec651ae89da2b7d8f0ecc83abb0a7",
+      "workletSourceBytes": 28514,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 5 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 5,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 112500,
+          "p50Ms": 0.009100000000216824,
+          "p95Ms": 0.016700000000128057,
+          "p99Ms": 0.022100000000136788,
+          "maxMs": 0.9935999999997875
+        },
+        "deadlineMisses": 0,
+        "gcEvents": 15,
+        "gcTotalDurationMs": 14.779100000858307,
+        "gcMaxPauseMs": 6.0782999992370605,
+        "gcOverlappingCallbackCount": 1,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 44361,
+        "maximumSampleElapsedMs": 0.9935999999997875,
+        "actualWallTimeSeconds": 13.5218639,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.010999999999967258,
+          "p95Ms": 0.01599999999996271,
+          "p99Ms": 0.019000000000005457,
+          "maxMs": 0.21270000000004075
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-5m-3\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-5m-3\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    },
+    {
+      "group": "fastpath",
+      "label": "steady playback block fast path",
+      "gitHead": "b12ae2f1236a3051d790c14c8a0ce166f826a966",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-30m\\looper-processor-fastpath.js",
+      "workletSourceSha256": "f00ecd06412fd20b1303fd5683525b319adec651ae89da2b7d8f0ecc83abb0a7",
+      "workletSourceBytes": 28514,
+      "measurementCommand": "node scripts/worklet-benchmark.mjs --phase-minutes 30 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc",
+      "configuration": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "warmupBlocks": 1000,
+        "measuredIterations": 10000,
+        "phaseMinutes": 30,
+        "yieldBlocks": 256,
+        "yieldMs": 20,
+        "gcObserver": true
+      },
+      "phase": {
+        "processMs": {
+          "samples": 675000,
+          "p50Ms": 0.009400000009918585,
+          "p95Ms": 0.01909999999043066,
+          "p99Ms": 0.028599999999642023,
+          "maxMs": 12.02719999999681
+        },
+        "deadlineMisses": 9,
+        "gcEvents": 112,
+        "gcTotalDurationMs": 28.41380000114441,
+        "gcMaxPauseMs": 5.5673999935388565,
+        "gcOverlappingCallbackCount": 1,
+        "maximumSampleGcOverlapCount": 0,
+        "maximumSampleIndex": 518933,
+        "maximumSampleElapsedMs": 12.02719999999681,
+        "actualWallTimeSeconds": 81.85572080000001,
+        "phaseDriftFrames": 0,
+        "assertionErrors": 0
+      },
+      "playback": {
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.00980000000004111,
+          "p95Ms": 0.01490000000001146,
+          "p99Ms": 0.019900000000006912,
+          "maxMs": 0.28729999999995925
+        },
+        "deadlineMisses": 0
+      },
+      "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-30m\\raw-results.json",
+      "phaseSamplesCsvPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-post-30m\\phase-process-samples.csv",
+      "note": "All callback samples retained. Synthetic Node/V8 VM results only; deadline misses are Node timer values, not Chromium XRUNs.",
+      "sourceHashProvenance": "Verified against the separately archived processor snapshot. Historical raw-results.json predates source-hash fields and does not itself contain this hash."
+    }
+  ],
+  "schemaVersion": 2,
+  "validationRuns": [
+    {
+      "name": "webrc-worklet-fastpath-v2-clock-phase-smoke",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-v2-clock-phase-smoke\\raw-results.json",
+      "workletSourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\public\\worklets\\looper-processor.js",
+      "workletSourceSha256": "f960e6212baf045a4155d066355d6fa289468517c4a168e3d94f081b30de7d5a",
+      "sourceHashProvenance": "Captured in raw-results.json by the benchmark source-hash feature.",
+      "diagnosticStatus": "PASS",
+      "phaseMode": "one PLAYING track, four EMPTY tracks, 119 BPM clock",
+      "phase": {
+        "processMs": {
+          "samples": 22500,
+          "p50Ms": 0.007299999999759166,
+          "p95Ms": 0.013300000000072032,
+          "p99Ms": 0.018999999999778083,
+          "maxMs": 1.187099999999873
+        },
+        "clockBpm": 119,
+        "clockTickCount": 119,
+        "expectedClockTickCount": 119,
+        "clockTickMismatchCount": 0,
+        "maxAbsolutePhaseDriftFrames": 0,
+        "processDeadlineMisses": 0
+      },
+      "assertions": {
+        "clockFrames": [
+          4294967232,
+          4294991434,
+          4295015635
+        ],
+        "clock119BpmSampleAccuracyAcrossLowWordWrapPassed": true,
+        "fastPathAvailable": true,
+        "onePlayingFourEmptyClockFastPathBlocks": 378,
+        "stoppedTrackRetainedPcmNoGhostOutputPassed": true
+      }
+    },
+    {
+      "name": "webrc-worklet-fastpath-v2-old-source-smoke",
+      "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-fastpath-v2-old-source-smoke\\raw-results.json",
+      "workletSourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-worklet-base-b12-gc-30m\\looper-processor-b12ae2f.js",
+      "workletSourceSha256": "f1295156101cecf7bd5ccc8b6d3cea0b10d6f0cde52eeda35b4d4a3ffd72f0a6",
+      "sourceHashProvenance": "Captured in raw-results.json by the benchmark source-hash feature.",
+      "diagnosticStatus": "PASS",
+      "phaseMode": "five-track PLAYING, clock inactive",
+      "phase": null,
+      "assertions": {
+        "clockFrames": [
+          4294967232,
+          4294991434,
+          4295015635
+        ],
+        "clock119BpmSampleAccuracyAcrossLowWordWrapPassed": true,
+        "fastPathAvailable": false,
+        "onePlayingFourEmptyClockFastPathBlocks": 0,
+        "stoppedTrackRetainedPcmNoGhostOutputPassed": true
+      }
+    }
+  ]
+}

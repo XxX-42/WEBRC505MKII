@@ -189,7 +189,13 @@
   class MockAudioWorkletNode extends MockAudioNode {
     constructor(_context, _name, options = {}) {
       super();
-      this.parameters = new Map();
+      this.parameters = new Map(Object.entries({
+        thresholdDb: -24, ratio: 12, kneeDb: 30, attackSeconds: 0.003,
+        releaseSeconds: 0.25, ...options.parameterData,
+      }).map(([name, value]) => [name, new MockAudioParam(value)]));
+      this.onprocessorerror = null;
+      this.addEventListener = () => {};
+      this.removeEventListener = () => {};
       const buffer = options.processorOptions?.controlBuffer;
       const control = buffer ? new Int32Array(buffer) : null;
       this.port = {

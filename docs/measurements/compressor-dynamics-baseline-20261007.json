@@ -1,0 +1,1028 @@
+{
+  "schema": "webrc.instrument-grade-audio",
+  "schemaVersion": 1,
+  "reportId": "offline-fx-1791386022662",
+  "run": {
+    "startedAt": "2026-10-07T15:13:34.594Z",
+    "endedAt": "2026-10-07T15:13:42.662Z",
+    "durationSeconds": 8.068,
+    "gateVersion": "instrument-grade-gate/1.0.0",
+    "systemUnderTest": "offline-fx-benchmark",
+    "assertionVersions": {
+      "benchmark": "audio-benchmark-software/1.0.0",
+      "fxLatency": "offline-impulse/relative-1e-4-peak/1.0.0"
+    }
+  },
+  "hardware": {
+    "inputDevice": {
+      "id": "offline:none",
+      "label": "No hardware input (OfflineAudioContext)"
+    },
+    "outputDevice": {
+      "id": "offline:none",
+      "label": "No hardware output (OfflineAudioContext)"
+    },
+    "hardwareSampleRateHz": null,
+    "processingSampleRateHz": null,
+    "renderQuantumFrames": null
+  },
+  "pathEvidence": {
+    "physicalLoopbackConfirmed": false,
+    "loopbackDescription": "Software-only OfflineAudioContext render of project FX classes at 44.1, 48, and 96 kHz; no hardware capture, DAC, or analog path was opened.",
+    "loopbackEvidenceRef": null,
+    "independentInputAnchorRef": null,
+    "independentOutputAnchorRef": null,
+    "adcToBrowserEvidenceRef": null,
+    "browserToDspEvidenceRef": null,
+    "dspToDacEvidenceRef": null,
+    "dacToAdcEvidenceRef": null
+  },
+  "metrics": {
+    "hardwareRtl": {
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "input": {
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "output": {
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "jitter": {
+      "unit": "ms",
+      "value": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "trigger": {
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "triggerByAction": {
+      "REC": {
+        "unit": "ms",
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      },
+      "PLAY": {
+        "unit": "ms",
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      },
+      "STOP": {
+        "unit": "ms",
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      },
+      "FX": {
+        "unit": "ms",
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null,
+        "maxAbs": null,
+        "provenance": "unknown",
+        "sampleCount": 0,
+        "measuredAt": null,
+        "device": null,
+        "sampleRateHz": null,
+        "evidenceRef": null,
+        "anchorRef": null
+      }
+    },
+    "overdubAlignment": {
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "renderQuantum": {
+      "unit": "frames",
+      "value": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "fxLatency": [
+      {
+        "effectId": "dry-44100hz",
+        "effectName": "Dry path @ 44100 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "compressorAmount50-44100hz",
+        "effectName": "Compressor (amount 50%) @ 44100 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 5.98639455782313,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 5.98639455782313,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 5.98639455782313,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "filterUiValue50-44100hz",
+        "effectName": "Filter (UI value 50) @ 44100 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 1.4285714285714286,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "filterLowCutoffProbe-44100hz",
+        "effectName": "Filter (low-cutoff probe) @ 44100 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 2.8117913832199544,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 34.625850340136054,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "delayMixedDefault300ms-44100hz",
+        "effectName": "Delay (mixed, 300 ms) @ 44100 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 2118.5487528344675,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "delayFullyWet300ms-44100hz",
+        "effectName": "Delay (fully wet, 300 ms) @ 44100 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 300,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 300.0680272108844,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 2421.7233560090704,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "reverbFullyWetDefault2s-44100hz",
+        "effectName": "Reverb (fully wet, 2 s) @ 44100 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 6.258503401360544,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 1978.140589569161,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 44100,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "dry-48000hz",
+        "effectName": "Dry path @ 48000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "compressorAmount50-48000hz",
+        "effectName": "Compressor (amount 50%) @ 48000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 6,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 6,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 6,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "filterUiValue50-48000hz",
+        "effectName": "Filter (UI value 50) @ 48000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 0.75,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "filterLowCutoffProbe-48000hz",
+        "effectName": "Filter (low-cutoff probe) @ 48000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 2.8125,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 34.645833333333336,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "delayMixedDefault300ms-48000hz",
+        "effectName": "Delay (mixed, 300 ms) @ 48000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 2116.979166666667,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "delayFullyWet300ms-48000hz",
+        "effectName": "Delay (fully wet, 300 ms) @ 48000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 300,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 300.0625,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 2420.0833333333335,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "reverbFullyWetDefault2s-48000hz",
+        "effectName": "Reverb (fully wet, 2 s) @ 48000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 5.916666666666666,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 1978.1875,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 48000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "dry-96000hz",
+        "effectName": "Dry path @ 96000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "compressorAmount50-96000hz",
+        "effectName": "Compressor (amount 50%) @ 96000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 6,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 6,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 6,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "filterUiValue50-96000hz",
+        "effectName": "Filter (UI value 50) @ 96000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0.010416666666666666,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 0.21875,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "filterLowCutoffProbe-96000hz",
+        "effectName": "Filter (low-cutoff probe) @ 96000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 2.8229166666666665,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 27.989583333333336,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "delayMixedDefault300ms-96000hz",
+        "effectName": "Delay (mixed, 300 ms) @ 96000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 2108.75,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "delayFullyWet300ms-96000hz",
+        "effectName": "Delay (fully wet, 300 ms) @ 96000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 300,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 300.0625,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 2410.604166666667,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      },
+      {
+        "effectId": "reverbFullyWetDefault2s-96000hz",
+        "effectName": "Reverb (fully wet, 2 s) @ 96000 Hz",
+        "firstArrival": {
+          "unit": "ms",
+          "value": 0,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "peak": {
+          "unit": "ms",
+          "value": 6.083333333333333,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        },
+        "tail": {
+          "unit": "ms",
+          "value": 1978.6041666666667,
+          "provenance": "software-diagnostic",
+          "sampleCount": 5,
+          "measuredAt": "2026-10-07T15:13:42.662Z",
+          "device": "OfflineAudioContext (software only)",
+          "sampleRateHz": 96000,
+          "evidenceRef": "compressor-dynamics-baseline-20261007.trace.json",
+          "anchorRef": null
+        }
+      }
+    ],
+    "callback": {
+      "unit": "ms",
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "maxAbs": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    },
+    "xrun": {
+      "unit": "count",
+      "value": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null,
+      "coverageSeconds": null,
+      "coverageScope": "unknown",
+      "callbackDeadlineMs": null,
+      "physicalSampleMarkerContinuous": null,
+      "hardwareDropoutEvidenceRef": null
+    },
+    "loopDrift": {
+      "unit": "ms",
+      "maxAbs": null,
+      "slopeMsPerMinute": null,
+      "nonAccumulating": null,
+      "provenance": "unknown",
+      "sampleCount": 0,
+      "measuredAt": null,
+      "device": null,
+      "sampleRateHz": null,
+      "evidenceRef": null,
+      "anchorRef": null
+    }
+  },
+  "software": {
+    "runtimeSnapshot": null,
+    "callback96kProfile": null
+  }
+}

@@ -91,7 +91,6 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
     Atomics.store(this.control, DEADLINE_METRIC_AVAILABLE, this.deadlineMetricAvailable ? 1 : 0);
     this.trackMeta = new Array(TRACK_COUNT).fill(null);
     this.trackData = new Array(TRACK_COUNT).fill(null);
-    this.steadyTrackMeta = new Array(TRACK_COUNT).fill(null);
     this.steadyTrackData = new Array(TRACK_COUNT).fill(null);
     this.steadyTrackLeft = new Array(TRACK_COUNT).fill(null);
     this.steadyTrackRight = new Array(TRACK_COUNT).fill(null);
@@ -183,7 +182,7 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
 
     let inputWasMissingWhileRecording = false;
     if (this.prepareSteadyPlayback(outputs)) {
-      this.processSteadyPlaybackBlock(outputs, frames, blockStartFrame);
+      this.processSteadyPlaybackBlock(outputs, frames);
     } else {
       for (let offset = 0; offset < frames; offset += 1) {
         const frame = blockStartFrame + offset;
@@ -311,7 +310,7 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
   }
 
   prepareSteadyPlayback(outputs) {
-    if (this.pendingCommandCount > 0 || this.calibrationActive || this.outputMonitorEnabled || this.rhythmRunning) return false;
+    if (this.pendingCommandCount > 0 || this.calibrationActive || this.outputMonitorEnabled || this.rhythmRunning || this.clockRunning) return false;
 
     for (let track = 0; track < TRACK_COUNT; track += 1) {
       const meta = this.trackMeta[track];
@@ -319,26 +318,22 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
       const output = outputs[track];
       const left = output && output[0] ? output[0] : null;
       const right = output && output[1] ? output[1] : null;
-      if (!meta) return false;
-      const state = meta[TRACK_STATE];
       const length = meta ? meta[LOOP_FRAMES] : 0;
-      if (state !== STATE_PLAYING && state !== STATE_EMPTY && state !== STATE_STOPPED) return false;
-      if (state === STATE_PLAYING && (!data || (!left && !right) || length <= 0)) return false;
+      if (!meta || !data || (!left && !right) || meta[TRACK_STATE] !== STATE_PLAYING || length <= 0) return false;
 
       const rawPosition = meta[PLAY_POSITION];
-      this.steadyTrackMeta[track] = meta;
-      this.steadyTrackData[track] = state === STATE_PLAYING ? data : null;
+      this.steadyTrackData[track] = data;
       this.steadyTrackLeft[track] = left;
       this.steadyTrackRight[track] = right;
-      this.steadyTrackLengths[track] = state === STATE_PLAYING ? length : 0;
-      this.steadyTrackPositions[track] = state !== STATE_PLAYING || rawPosition < 0 || rawPosition >= length ? 0 : rawPosition;
-      this.steadyTrackSteps[track] = state === STATE_PLAYING && meta[REVERSE] !== 0 ? -1 : 1;
+      this.steadyTrackLengths[track] = length;
+      this.steadyTrackPositions[track] = rawPosition < 0 || rawPosition >= length ? 0 : rawPosition;
+      this.steadyTrackSteps[track] = meta[REVERSE] !== 0 ? -1 : 1;
     }
 
     return true;
   }
 
-  processSteadyPlaybackBlock(outputs, frames, blockStartFrame) {
+  processSteadyPlaybackBlock(outputs, frames) {
     const monitor = outputs[5];
     const rhythm = outputs[6];
     if (monitor && monitor[0]) monitor[0].fill(0, 0, frames);
@@ -348,24 +343,20 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
 
     for (let offset = 0; offset < frames; offset += 1) {
       for (let track = 0; track < TRACK_COUNT; track += 1) {
-        const length = this.steadyTrackLengths[track];
-        let sample = 0;
-        if (length > 0) {
-          const position = this.steadyTrackPositions[track];
-          sample = this.steadyTrackData[track][position] || 0;
-          let nextPosition = position + this.steadyTrackSteps[track];
-          if (nextPosition >= length) nextPosition = 0;
-          else if (nextPosition < 0) nextPosition = length - 1;
-          this.steadyTrackPositions[track] = nextPosition;
-          this.steadyTrackMeta[track][PLAY_POSITION] = nextPosition;
-        }
-
+        const position = this.steadyTrackPositions[track];
+        const sample = this.steadyTrackData[track][position] || 0;
         const left = this.steadyTrackLeft[track];
         const right = this.steadyTrackRight[track];
         if (left) left[offset] = sample;
         if (right) right[offset] = sample;
+
+        const length = this.steadyTrackLengths[track];
+        let nextPosition = position + this.steadyTrackSteps[track];
+        if (nextPosition >= length) nextPosition = 0;
+        else if (nextPosition < 0) nextPosition = length - 1;
+        this.steadyTrackPositions[track] = nextPosition;
+        this.trackMeta[track][PLAY_POSITION] = nextPosition;
       }
-      if (this.clockRunning) this.renderClockTick(blockStartFrame + offset);
     }
   }
 

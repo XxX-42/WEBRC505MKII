@@ -117,7 +117,16 @@ npm run audio:report:worklet -- --input <raw-results.json> --out <report.json>
 The [software measurement snapshot](docs/AUDIO_SOFTWARE_RESULTS_20261007.md)
 records measured values, current limits, and the decision to omit hardware tests.
 
+The [second software optimization measurements](docs/WORKLET_OPTIMIZATION_20261007.md)
+record the zero-lookahead compressor and optimized Looper results. Use
+`--phase-clock` for one playing track, four empty tracks, and a 119 BPM clock;
+`--observe-gc` records GC intervals, and `--worklet-source <path>` permits the
+same harness to compare an archived processor. Defaults retain the five-track
+phase with the clock inactive. CPU execution times are separate from signal delay.
+
 ## Notes
+
+- Compressor now uses a linked-stereo AudioWorklet with no look-ahead buffer. When constructing an FX or FXChain directly, await `initialize()` before measuring or using its compressor; BrowserAudioEngine does this for all seven chains. Processor failures report degradation and switch to dry bypass while keeping track STOP/CLEAR available. The compression curve has no automatic makeup gain and differs from the previous built-in node; see the [software compressor measurements](docs/SOFTWARE_OPTIMIZATION_20261007.md).
 
 - This repository snapshot is documentation-heavy; some older phase docs no longer match the latest UI implementation.
 - Audio behavior depends on browser support for Web Audio, microphone permissions, and output-device APIs such as `setSinkId`.

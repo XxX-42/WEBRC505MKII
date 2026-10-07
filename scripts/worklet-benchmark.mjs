@@ -4,13 +4,14 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { performance } from 'node:perf_hooks';
-import { randomBytes } from 'node:crypto';
+import { performance, PerformanceObserver } from 'node:perf_hooks';
+import { createHash, randomBytes } from 'node:crypto';
+import { once } from 'node:events';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
 if (args.help) {
-  process.stdout.write(`Synthetic Node/V8 benchmark for the actual AudioWorklet processor source. No hardware or browser callback is opened.\n\nUsage:\n  node scripts/worklet-benchmark.mjs [--iterations 10000] [--warmup 1000] [--burst-samples 100] [--phase-minutes 30]\n\nDefault runs five-track 48 kHz / 128-frame REC, PLAY, overdub, Clear, Record, command-burst and protocol assertions.\n--phase-minutes opts into an actual accelerated VM process-loop simulation; it is still not a real 30-minute device run.\nOutputs are written below the system TEMP directory.\n`);
+  process.stdout.write(`Synthetic Node/V8 benchmark for the actual AudioWorklet processor source. No hardware or browser callback is opened.\n\nUsage:\n  node scripts/worklet-benchmark.mjs [--iterations 10000] [--warmup 1000] [--burst-samples 100] [--phase-minutes 30] [--phase-clock] [--observe-gc] [--worklet-source <path>]\n\nDefault runs five-track 48 kHz / 128-frame REC, PLAY, overdub, Clear, Record, command-burst and protocol assertions.\n--phase-minutes opts into an actual accelerated VM process-loop simulation; it is still not a real 30-minute device run.\n--phase-clock changes only that optional phase to one playing track, four empty tracks, and a 119 BPM clock.\n--observe-gc adds perf_hooks GC event timestamps for correlation with unfiltered phase samples.\n--worklet-source permits a saved processor source for controlled comparisons; its path and SHA-256 are recorded and protocol-audited.\nOutputs are written below the system TEMP directory.\n`);
   process.exit(0);
 }
 
@@ -21,8 +22,15 @@ const warmup = parsePositiveInt(args.warmup ?? '1000', '--warmup', 100_000);
 const burstSamples = parsePositiveInt(args.burstSamples ?? '100', '--burst-samples', 10_000);
 const burstWarmup = parsePositiveInt(args.burstWarmup ?? '10', '--burst-warmup', 1_000);
 const phaseMinutes = parseNonNegativeInt(args.phaseMinutes ?? '0', '--phase-minutes', 120);
+const phaseClock = Boolean(args.phaseClock);
 const phaseYieldBlocks = parsePositiveInt(args.phaseYieldBlocks ?? '256', '--phase-yield-blocks', 100_000);
 const phaseYieldMs = parseNonNegativeInt(args.phaseYieldMs ?? '5', '--phase-yield-ms', 60_000);
+if (phaseClock && phaseMinutes === 0) throw new Error('--phase-clock requires --phase-minutes greater than zero.');
+const gcEventsObserved = [];
+const gcObserver = args.observeGc
+  ? new PerformanceObserver((list) => recordGcEntries(list, gcEventsObserved))
+  : null;
+if (gcObserver) gcObserver.observe({ entryTypes: ['gc'] });
 const tempRoot = path.resolve(os.tmpdir());
 const outputRoot = path.resolve(args.outputDir ?? path.join(
   tempRoot,
@@ -34,14 +42,16 @@ fs.mkdirSync(outputRoot, { recursive: true });
 const require = createRequire(pathToFileURL(path.join(repoRoot, 'package.json')));
 const typescript = require('typescript');
 const protocolSourcePath = path.join(repoRoot, 'src', 'audio', 'browserRealtimeProtocol.ts');
-const workletSourcePath = path.join(repoRoot, 'public', 'worklets', 'looper-processor.js');
+const defaultWorkletSourcePath = path.join(repoRoot, 'public', 'worklets', 'looper-processor.js');
+const workletSourcePath = path.resolve(args.workletSource ?? defaultWorkletSourcePath);
 const protocolSource = fs.readFileSync(protocolSourcePath, 'utf8');
 const workletSource = fs.readFileSync(workletSourcePath, 'utf8');
+const workletSourceSha256 = createHash('sha256').update(workletSource).digest('hex');
 const protocol = loadProtocolExports(protocolSource, protocolSourcePath, typescript);
 const protocolAudit = auditProtocolMirror(protocol, workletSource, workletSourcePath);
 
 if (args.auditOnly) {
-  process.stdout.write(JSON.stringify({ protocolAudit, workletSourcePath, protocolSourcePath }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({ protocolAudit, workletSourcePath, workletSourceSha256, protocolSourcePath }, null, 2) + '\n');
   process.exit(0);
 }
 
@@ -72,6 +82,7 @@ const runStartedAt = new Date().toISOString();
 const scenarioResults = [];
 const rawSamples = [];
 const diagnostics = [];
+let phaseDiagnostic = null;
 
 scenarioResults.push(runSteadyScenario('five_track_record', 'record', iterations, warmup));
 scenarioResults.push(runSteadyScenario('five_track_playback', 'play', iterations, warmup));
@@ -81,7 +92,14 @@ scenarioResults.push(runCommandScenario('record_start_five_tracks', opcode.START
 scenarioResults.push(runCommandBurstScenario(burstSamples, burstWarmup));
 diagnostics.push(runProtocolBehaviorAssertions());
 if (phaseMinutes > 0) {
-  diagnostics.push(await runLongPlaybackPhaseSimulation(phaseMinutes, phaseYieldBlocks, phaseYieldMs));
+  phaseDiagnostic = await runLongPlaybackPhaseSimulation(phaseMinutes, phaseYieldBlocks, phaseYieldMs, phaseClock);
+  diagnostics.push(phaseDiagnostic);
+}
+if (gcObserver) {
+  await new Promise((resolve) => setImmediate(resolve));
+  recordGcEntries({ getEntries: () => gcObserver.takeRecords() }, gcEventsObserved);
+  gcObserver.disconnect();
+  if (phaseDiagnostic) correlateGcEventsWithPhase(phaseDiagnostic, gcEventsObserved);
 }
 
 for (const result of scenarioResults) {
@@ -97,6 +115,7 @@ for (const result of scenarioResults) {
   }
 }
 
+const compactDiagnostics = diagnostics.map(({ processSamplesMs: _samples, processStartTimesMs: _starts, gcOverlapCounts: _overlaps, ...summary }) => summary);
 const report = {
   diagnosticStatus: diagnostics.some((item) => Number(item.assertionErrors ?? 0) > 0) ? 'FAILED' : 'PASS',
   diagnosticStatusScope: 'PASS/FAILED reflects source/protocol/state/phase assertions only; Node deadline counters are reported separately and no hardware qualification is implied.',
@@ -112,7 +131,9 @@ const report = {
   commandBurstSamples: burstSamples,
   commandBurstWarmupBlocks: burstWarmup,
   loopFramesForPhaseChecks: loopLengths,
+  phaseMode: phaseClock ? 'one PLAYING track, four EMPTY tracks, 119 BPM clock' : 'five-track PLAYING, clock inactive',
   timer: 'Node perf_hooks.performance.now() around processor.process(); includes vm call edge, excludes queue/setup, verification and host-yield time',
+  gcObservation: args.observeGc ? 'Enabled with perf_hooks PerformanceObserver; correlates pause intervals to raw phase callback intervals.' : 'Disabled; use --observe-gc to capture GC events.',
   limitations: [
     'This is accelerated/synthetic Node V8 execution, not a Chromium AudioWorklet callback measurement.',
     'The processor-reported deadline counter uses Node performance.now() and does not represent device XRUNs.',
@@ -120,27 +141,34 @@ const report = {
     'No microphone, render endpoint, loopback, or physical audio stream is opened.',
   ],
   protocolAudit,
+  workletSourcePath,
+  workletSourceSha256,
   scenarios: scenarioResults.map(({ samplesMs: _samplesMs, ...summary }) => summary),
-  diagnostics,
+  diagnostics: compactDiagnostics,
 };
 
 const rawPath = path.join(outputRoot, 'raw-results.json');
 const samplesCsvPath = path.join(outputRoot, 'process-samples.csv');
 const summaryCsvPath = path.join(outputRoot, 'summary.csv');
-const phaseSummary = diagnostics.find((item) => item.name === 'accelerated_vm_playback_phase') ?? null;
+const phaseSummary = compactDiagnostics.find((item) => item.name === 'accelerated_vm_playback_phase') ?? null;
 const phaseSummaryCsvPath = phaseSummary ? path.join(outputRoot, 'phase-summary.csv') : null;
+const phaseSamplesCsvPath = phaseDiagnostic ? path.join(outputRoot, 'phase-process-samples.csv') : null;
 const reproPath = path.join(outputRoot, 'repro-command.ps1');
 fs.writeFileSync(rawPath, JSON.stringify({ ...report, processSampleCount: rawSamples.length, processSamplesMs: scenarioResults.map((scenario) => ({ scenario: scenario.scenario, samplesMs: scenario.samplesMs })) }, null, 2), 'utf8');
 fs.writeFileSync(samplesCsvPath, toCsv(rawSamples), 'utf8');
 fs.writeFileSync(summaryCsvPath, toCsv(report.scenarios), 'utf8');
 if (phaseSummaryCsvPath) fs.writeFileSync(phaseSummaryCsvPath, toCsv([phaseSummary]), 'utf8');
+if (phaseSamplesCsvPath) await writePhaseSamplesCsv(phaseSamplesCsvPath, phaseDiagnostic);
 const phaseArgs = phaseMinutes > 0 ? ` --phase-minutes ${phaseMinutes} --phase-yield-blocks ${phaseYieldBlocks} --phase-yield-ms ${phaseYieldMs}` : '';
+const phaseClockArgs = phaseClock ? ' --phase-clock' : '';
+const gcArgs = args.observeGc ? ' --observe-gc' : '';
+const workletSourceArgs = args.workletSource ? ` --worklet-source '${path.resolve(args.workletSource).replaceAll("'", "''")}'` : '';
 const escapedRoot = repoRoot.replaceAll("'", "''");
 fs.writeFileSync(reproPath,
-  `Set-Location '${escapedRoot}'\nnode scripts/worklet-benchmark.mjs --iterations ${iterations} --warmup ${warmup} --burst-samples ${burstSamples} --burst-warmup ${burstWarmup}${phaseArgs}\n`,
+  `Set-Location '${escapedRoot}'\nnode scripts/worklet-benchmark.mjs --iterations ${iterations} --warmup ${warmup} --burst-samples ${burstSamples} --burst-warmup ${burstWarmup}${phaseArgs}${phaseClockArgs}${gcArgs}${workletSourceArgs}\n`,
   'utf8',
 );
-process.stdout.write(JSON.stringify({ diagnosticStatus: report.diagnosticStatus, diagnosticStatusScope: report.diagnosticStatusScope, qualificationStatus: report.qualificationStatus, outputRoot, rawPath, samplesCsvPath, summaryCsvPath, phaseSummaryCsvPath, reproPath, protocolAudit, scenarios: report.scenarios, diagnostics }, null, 2) + '\n');
+process.stdout.write(JSON.stringify({ diagnosticStatus: report.diagnosticStatus, diagnosticStatusScope: report.diagnosticStatusScope, qualificationStatus: report.qualificationStatus, outputRoot, rawPath, samplesCsvPath, summaryCsvPath, phaseSummaryCsvPath, phaseSamplesCsvPath, reproPath, protocolAudit, scenarios: report.scenarios, diagnostics: compactDiagnostics }, null, 2) + '\n');
 if (report.diagnosticStatus !== 'PASS') process.exitCode = 1;
 
 function loadProtocolExports(source, filename, ts) {
@@ -633,6 +661,10 @@ function runProtocolBehaviorAssertions() {
     throw new Error('Clear did not reset loop length/playhead while old storage remained allocated.');
   }
 
+  const steadyPlaybackAssertions = runSteadyPlaybackAssertions();
+  const clockPlaybackAssertions = runClockSteadyPlaybackAssertions();
+  const stoppedTrackAssertions = runStoppedTrackSilenceAssertion();
+
   return {
     name: 'protocol_and_state_assertions',
     onTimeLateInvalidMissingAckCounts: {
@@ -650,11 +682,262 @@ function runProtocolBehaviorAssertions() {
     capacityOverrunCount: capacityMetrics.trackCapacityOverruns,
     capacityNotificationCount: capacityHarness.counters.capacityEvents,
     clearPointerResetAndNoGhostPlayback: true,
+    steadyPlaybackFastPathBlocks: steadyPlaybackAssertions.fastPathBlocks,
+    steadyPlaybackFastPathAvailable: steadyPlaybackAssertions.fastPathAvailable,
+    steadyPlaybackSamplesAndPhasePassed: true,
+    monitorOffBoundaryAndNextBlockSilencePassed: true,
+    rhythmStopBoundaryAndNextBlockSilencePassed: true,
+    clock119BpmSampleAccuracyAcrossLowWordWrapPassed: true,
+    onePlayingFourEmptyClockFastPathBlocks: clockPlaybackAssertions.fastPathBlocks,
+    clockTickFrames: clockPlaybackAssertions.clockTickFrames,
+    emptyTrackNoGhostOutputPassed: true,
+    stoppedTrackRetainedPcmNoGhostOutputPassed: true,
     assertionErrors: missingStorageAckOk ? 0 : 1,
   };
 }
 
-async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs) {
+function runSteadyPlaybackAssertions() {
+  const harness = createHarness(Math.max(...loopLengths));
+  initializeLoopTracks(harness, loopLengths, processorState.PLAYING);
+  const initialPositions = loopLengths.map((length, track) => (length - 1 - track) % length);
+  for (let track = 0; track < trackCount; track += 1) {
+    const { meta } = harness.tracks[track];
+    Atomics.store(meta, trackWord.PLAY_POSITION, initialPositions[track]);
+    Atomics.store(meta, trackWord.REVERSE, track === 1 ? 1 : 0);
+  }
+
+  let fastPathBlocks = 0;
+  const processFastPlayback = harness.processor.processSteadyPlaybackBlock;
+  const fastPathAvailable = typeof processFastPlayback === 'function';
+  if (fastPathAvailable) {
+    harness.processor.processSteadyPlaybackBlock = function(outputs, frames, blockStartFrame) {
+      fastPathBlocks += 1;
+      return processFastPlayback.call(this, outputs, frames, blockStartFrame);
+    };
+  }
+  harness.outputs[5][0].fill(1);
+  harness.outputs[5][1].fill(1);
+  harness.outputs[6][0].fill(1);
+  harness.outputs[6][1].fill(1);
+  harness.processBlock();
+
+  for (let track = 0; track < trackCount; track += 1) {
+    let position = initialPositions[track];
+    const step = track === 1 ? -1 : 1;
+    for (let frame = 0; frame < quantumFrames; frame += 1) {
+      const expected = harness.tracks[track].data[position] || 0;
+      if (harness.outputs[track][0][frame] !== expected || harness.outputs[track][1][frame] !== expected) {
+        throw new Error(`Steady playback fast path changed track ${track + 1} sample ${frame}.`);
+      }
+      position += step;
+      if (position >= loopLengths[track]) position = 0;
+      else if (position < 0) position = loopLengths[track] - 1;
+    }
+    if (Atomics.load(harness.tracks[track].meta, trackWord.PLAY_POSITION) !== position) {
+      throw new Error(`Steady playback fast path changed track ${track + 1} end position.`);
+    }
+  }
+  assertSilent(harness.outputs[5][0], 'steady playback monitor left');
+  assertSilent(harness.outputs[5][1], 'steady playback monitor right');
+  assertSilent(harness.outputs[6][0], 'steady playback rhythm left');
+  assertSilent(harness.outputs[6][1], 'steady playback rhythm right');
+
+  queueCommand(harness, opcode.SET_MONITOR, -1, { arg0: 1 });
+  harness.processBlock();
+  for (let frame = 0; frame < quantumFrames; frame += 1) {
+    if (harness.outputs[5][0][frame] !== harness.inputs[0][0][frame] || harness.outputs[5][1][frame] !== harness.inputs[0][1][frame]) {
+      throw new Error(`Monitor-on command boundary changed sample ${frame}.`);
+    }
+  }
+
+  const boundary = quantumFrames >> 1;
+  queueCommand(harness, opcode.SET_MONITOR, -1, { arg0: 0, targetFrame: harness.frame + boundary });
+  harness.processBlock();
+  for (let frame = 0; frame < boundary; frame += 1) {
+    if (harness.outputs[5][0][frame] !== harness.inputs[0][0][frame] || harness.outputs[5][1][frame] !== harness.inputs[0][1][frame]) {
+      throw new Error(`Monitor-off command took effect before its target sample ${frame}.`);
+    }
+  }
+  for (let frame = boundary; frame < quantumFrames; frame += 1) {
+    if (harness.outputs[5][0][frame] !== 0 || harness.outputs[5][1][frame] !== 0) {
+      throw new Error(`Monitor-off command boundary leaked sample ${frame}.`);
+    }
+  }
+
+  harness.outputs[5][0].fill(1);
+  harness.outputs[5][1].fill(1);
+  harness.outputs[6][0].fill(1);
+  harness.outputs[6][1].fill(1);
+  harness.processBlock();
+  assertSilent(harness.outputs[5][0], 'monitor disabled next-block left');
+  assertSilent(harness.outputs[5][1], 'monitor disabled next-block right');
+  assertSilent(harness.outputs[6][0], 'rhythm inactive next-block left');
+  assertSilent(harness.outputs[6][1], 'rhythm inactive next-block right');
+
+  queueCommand(harness, opcode.SET_RHYTHM, -1, { arg0: 1, arg1: 0 });
+  harness.processBlock();
+  if (!harness.outputs[6][0].some((sample) => sample !== 0)) throw new Error('Rhythm start did not produce the expected pattern output.');
+  queueCommand(harness, opcode.SET_RHYTHM, -1, { arg0: 0, arg1: 0, targetFrame: harness.frame + boundary });
+  harness.processBlock();
+  let activeRhythmSample = false;
+  for (let frame = 0; frame < boundary; frame += 1) activeRhythmSample ||= harness.outputs[6][0][frame] !== 0;
+  if (!activeRhythmSample) throw new Error('Rhythm-stop command boundary did not preserve samples before its target.');
+  for (let frame = boundary; frame < quantumFrames; frame += 1) {
+    if (harness.outputs[6][0][frame] !== 0 || harness.outputs[6][1][frame] !== 0) {
+      throw new Error(`Rhythm-stop command boundary leaked sample ${frame}.`);
+    }
+  }
+
+  harness.outputs[5][0].fill(1);
+  harness.outputs[5][1].fill(1);
+  harness.outputs[6][0].fill(1);
+  harness.outputs[6][1].fill(1);
+  harness.processBlock();
+  assertSilent(harness.outputs[5][0], 'post-monitor/rhythm fast block monitor left');
+  assertSilent(harness.outputs[5][1], 'post-monitor/rhythm fast block monitor right');
+  assertSilent(harness.outputs[6][0], 'post-rhythm-stop fast block rhythm left');
+  assertSilent(harness.outputs[6][1], 'post-rhythm-stop fast block rhythm right');
+  const expectedFastPathBlocks = fastPathAvailable ? 3 : 0;
+  if (fastPathBlocks !== expectedFastPathBlocks) throw new Error(`Expected ${expectedFastPathBlocks} steady playback fast-path blocks, got ${fastPathBlocks}.`);
+
+  return { fastPathBlocks, fastPathAvailable };
+}
+
+function runClockSteadyPlaybackAssertions() {
+  const harness = createHarness(Math.max(...loopLengths));
+  initializeLoopTracks(harness, loopLengths, processorState.PLAYING);
+  for (let track = 1; track < trackCount; track += 1) {
+    const { meta } = harness.tracks[track];
+    Atomics.store(meta, trackWord.STATE, processorState.EMPTY);
+    // Leave old loop data and positions behind to prove that an empty track stays silent.
+    Atomics.store(meta, trackWord.PLAY_POSITION, loopLengths[track] - 1);
+  }
+
+  const originFrame = 0x1_0000_0000 - 64;
+  harness.frame = originFrame;
+  const clockTicks = [];
+  const originalPostMessage = harness.processor.port.postMessage;
+  harness.processor.port.postMessage = (message) => {
+    if (message && message.type === 'CLOCK_TICK') clockTicks.push({ frame: message.frame, beatOrdinal: message.beatOrdinal });
+    originalPostMessage(message);
+  };
+  let fastPathBlocks = 0;
+  const processFastPlayback = harness.processor.processSteadyPlaybackBlock;
+  const fastPathAvailable = typeof processFastPlayback === 'function';
+  if (fastPathAvailable) {
+    harness.processor.processSteadyPlaybackBlock = function(outputs, frames, blockStartFrame) {
+      fastPathBlocks += 1;
+      return processFastPlayback.call(this, outputs, frames, blockStartFrame);
+    };
+  }
+
+  queueCommand(harness, opcode.SET_BPM, -1, { arg0: 119, targetFrame: originFrame });
+  queueCommand(harness, opcode.SET_CLOCK, -1, { arg0: 1, targetFrame: originFrame });
+  let relativeFrames = 0;
+  processAndAssertClockPlaybackBlock(harness, loopLengths[0], 0);
+  relativeFrames += quantumFrames;
+  if (fastPathBlocks !== 0) throw new Error('A block with pending BPM/clock commands entered the steady playback path.');
+
+  const expectedTicks = [0, 1, 2].map((beatOrdinal) => ({
+    frame: originFrame + Math.round(beatOrdinal * sampleRate * 60 / 119),
+    beatOrdinal,
+  }));
+  while (relativeFrames <= expectedTicks[2].frame - originFrame) {
+    processAndAssertClockPlaybackBlock(harness, loopLengths[0], relativeFrames);
+    relativeFrames += quantumFrames;
+  }
+
+  if (fastPathAvailable && fastPathBlocks < 2) throw new Error(`Clock-running single-track playback missed the fast path (${fastPathBlocks} blocks).`);
+  if (!fastPathAvailable && fastPathBlocks !== 0) throw new Error('The baseline source unexpectedly reported fast-path blocks.');
+  if (harness.processor.bpm !== 119) throw new Error(`Clock BPM did not remain 119: ${harness.processor.bpm}`);
+  if (JSON.stringify(clockTicks) !== JSON.stringify(expectedTicks)) {
+    throw new Error(`119 BPM clock ticks were not sample-accurate across the 32-bit wrap: expected ${JSON.stringify(expectedTicks)}, got ${JSON.stringify(clockTicks)}.`);
+  }
+  const renderedFrame = protocol.loadSharedFrame(
+    harness.control,
+    controlWord.RENDER_FRAME_SEQUENCE,
+    controlWord.RENDER_FRAME_LOW,
+    controlWord.RENDER_FRAME_HIGH,
+  );
+  if (renderedFrame !== harness.frame) throw new Error('Clock-running single-track phase lost its 64-bit rendered-frame position.');
+
+  return { fastPathBlocks, clockTickFrames: clockTicks.map((tick) => tick.frame) };
+}
+
+function runStoppedTrackSilenceAssertion() {
+  const harness = createHarness(Math.max(...loopLengths));
+  initializeLoopTracks(harness, loopLengths, processorState.PLAYING);
+  for (let track = 1; track < trackCount; track += 1) {
+    Atomics.store(harness.tracks[track].meta, trackWord.STATE, processorState.EMPTY);
+  }
+  const hasFastPath = typeof harness.processor.processSteadyPlaybackBlock === 'function';
+  let fastPathBlocks = 0;
+  if (hasFastPath) {
+    const processFastPlayback = harness.processor.processSteadyPlaybackBlock;
+    harness.processor.processSteadyPlaybackBlock = function(outputs, frames, blockStartFrame) {
+      fastPathBlocks += 1;
+      return processFastPlayback.call(this, outputs, frames, blockStartFrame);
+    };
+  }
+
+  const boundary = quantumFrames >> 1;
+  queueCommand(harness, opcode.STOP, 0, { targetFrame: harness.frame + boundary });
+  harness.processBlock();
+  for (let frame = boundary; frame < quantumFrames; frame += 1) {
+    if (harness.outputs[0][0][frame] !== 0 || harness.outputs[0][1][frame] !== 0) {
+      throw new Error(`STOP command boundary leaked old loop PCM at sample ${frame}.`);
+    }
+  }
+  if (Atomics.load(harness.tracks[0].meta, trackWord.STATE) !== processorState.STOPPED) {
+    throw new Error('Sample-accurate STOP command did not leave the track stopped.');
+  }
+  if (!harness.tracks[0].data.some((sample) => sample !== 0)) throw new Error('STOP test did not retain nonzero loop PCM.');
+
+  harness.outputs[0][0].fill(0.75);
+  harness.outputs[0][1].fill(0.75);
+  harness.processBlock();
+  assertSilent(harness.outputs[0][0], 'stopped track with retained loop PCM left output');
+  assertSilent(harness.outputs[0][1], 'stopped track with retained loop PCM right output');
+  if (hasFastPath && fastPathBlocks !== 1) throw new Error(`Stopped/empty steady block did not enter the fast path exactly once: ${fastPathBlocks}.`);
+  return { fastPathBlocks, hasFastPath };
+}
+
+function processAndAssertClockPlaybackBlock(harness, loopLength, relativeStartFrame) {
+  for (let track = 1; track < trackCount; track += 1) {
+    harness.outputs[track][0].fill(0.75);
+    harness.outputs[track][1].fill(0.75);
+  }
+  harness.outputs[5][0].fill(0.75);
+  harness.outputs[5][1].fill(0.75);
+  harness.outputs[6][0].fill(0.75);
+  harness.outputs[6][1].fill(0.75);
+  harness.processBlock();
+
+  let position = relativeStartFrame % loopLength;
+  for (let frame = 0; frame < quantumFrames; frame += 1) {
+    const expected = harness.tracks[0].data[position] || 0;
+    if (harness.outputs[0][0][frame] !== expected || harness.outputs[0][1][frame] !== expected) {
+      throw new Error(`Clock-running playback changed the active track sample at offset ${relativeStartFrame + frame}.`);
+    }
+    position = (position + 1) % loopLength;
+  }
+  if (Atomics.load(harness.tracks[0].meta, trackWord.PLAY_POSITION) !== position) {
+    throw new Error(`Clock-running active track playhead drifted at relative frame ${relativeStartFrame + quantumFrames}.`);
+  }
+  for (let track = 1; track < trackCount; track += 1) {
+    assertSilent(harness.outputs[track][0], `empty track ${track + 1} left output`);
+    assertSilent(harness.outputs[track][1], `empty track ${track + 1} right output`);
+    if (Atomics.load(harness.tracks[track].meta, trackWord.PLAY_POSITION) !== loopLengths[track] - 1) {
+      throw new Error(`Empty track ${track + 1} playhead changed during clock-running playback.`);
+    }
+  }
+  assertSilent(harness.outputs[5][0], 'clock test monitor left');
+  assertSilent(harness.outputs[5][1], 'clock test monitor right');
+  assertSilent(harness.outputs[6][0], 'clock test rhythm left');
+  assertSilent(harness.outputs[6][1], 'clock test rhythm right');
+}
+
+async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs, phaseClock = false) {
   const totalFrames = sampleRate * 60 * minutes;
   if (totalFrames % quantumFrames !== 0) throw new Error('Requested phase duration must end on a 128-frame boundary.');
   const blocks = totalFrames / quantumFrames;
@@ -666,7 +949,19 @@ async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs
   const originWords = protocol.frameToWords(originFrame);
   harness.frame = originFrame;
   initializeLoopTracks(harness, loopLengths, processorState.PLAYING);
+  if (phaseClock) {
+    for (let track = 1; track < trackCount; track += 1) {
+      Atomics.store(harness.tracks[track].meta, trackWord.STATE, processorState.EMPTY);
+    }
+    harness.processor.bpm = 119;
+    Atomics.store(harness.control, controlWord.BPM, 119);
+    harness.processor.clockRunning = true;
+    harness.processor.clockOriginFrame = originFrame;
+    harness.processor.clockNextBeatFrame = originFrame;
+    harness.processor.clockBeatOrdinal = 0;
+  }
   const samplesMs = new Float64Array(blocks);
+  const processStartTimesMs = new Float64Array(blocks);
   const started = performance.now();
   let activeProcessMs = 0;
   let phaseAssertions = 0;
@@ -678,11 +973,20 @@ async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs
   const maxAbsolutePhaseDriftFramesByTrack = Array(trackCount).fill(0);
   let firstPhaseMismatch = null;
   let firstFrameCounterMismatch = null;
+  let maximumSampleIndex = 0;
+  let maximumSampleStartTimeMs = 0;
+  let maximumSampleElapsedMs = 0;
   for (let block = 0; block < blocks; block += 1) {
     const tick = performance.now();
     harness.processBlock();
     const elapsed = performance.now() - tick;
     samplesMs[block] = elapsed;
+    processStartTimesMs[block] = tick;
+    if (elapsed > maximumSampleElapsedMs) {
+      maximumSampleIndex = block + 1;
+      maximumSampleStartTimeMs = tick;
+      maximumSampleElapsedMs = elapsed;
+    }
     activeProcessMs += elapsed;
     const processedFrames = (block + 1) * quantumFrames;
     const expectedAbsoluteFrame = originFrame + processedFrames;
@@ -701,7 +1005,7 @@ async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs
     }
     lowWordWrapCount = Math.floor(expectedAbsoluteFrame / 0x1_0000_0000) - Math.floor(originFrame / 0x1_0000_0000);
     for (let track = 0; track < trackCount; track += 1) {
-      const expected = processedFrames % loopLengths[track];
+      const expected = phaseClock && track > 0 ? 0 : processedFrames % loopLengths[track];
       const actual = Atomics.load(harness.tracks[track].meta, trackWord.PLAY_POSITION);
       const drift = actual - expected;
       const absoluteDrift = Math.abs(drift);
@@ -722,6 +1026,7 @@ async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs
     }
   }
   const wallMs = performance.now() - started;
+  const phaseEndTimeMs = performance.now();
   const metrics = readRuntimeMetrics(harness);
   const expectedFinalAbsoluteFrame = originFrame + totalFrames;
   if (metrics.renderedFrame !== expectedFinalAbsoluteFrame) {
@@ -735,9 +1040,16 @@ async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs
       };
     }
   }
-  const assertionErrors = phaseMismatchCountByTrack.reduce((sum, count) => sum + count, 0) + frameCounterMismatchCount;
+  const expectedClockTickCount = phaseClock ? countExpectedClockTicks(totalFrames, 119) : null;
+  const clockTickCount = phaseClock ? harness.counters.otherMessages : null;
+  const clockTickMismatchCount = phaseClock && clockTickCount !== expectedClockTickCount ? 1 : 0;
+  const assertionErrors = phaseMismatchCountByTrack.reduce((sum, count) => sum + count, 0) + frameCounterMismatchCount + clockTickMismatchCount;
   return {
     name: 'accelerated_vm_playback_phase',
+    phaseMode: phaseClock ? 'one_PLAYING_four_EMPTY_clock_119_BPM' : 'five_track_PLAYING_clock_inactive',
+    clockBpm: phaseClock ? 119 : null,
+    phaseStartTimeMs: started,
+    phaseEndTimeMs,
     requestedMinutes: minutes,
     simulatedFrames: totalFrames,
     sampleTimelineSeconds: totalFrames / sampleRate,
@@ -759,8 +1071,13 @@ async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs
     assertionErrors,
     loopFrames: loopLengths,
     finalPlayPositions: harness.tracks.map((track) => Atomics.load(track.meta, trackWord.PLAY_POSITION)),
-    expectedPlayPositions: loopLengths.map((length) => totalFrames % length),
+    expectedPlayPositions: loopLengths.map((length, track) => phaseClock && track > 0 ? 0 : totalFrames % length),
     processMs: distribution(samplesMs),
+    maximumSampleIndex,
+    maximumSampleRelativeStartFrame: (maximumSampleIndex - 1) * quantumFrames,
+    maximumSampleAbsoluteStartFrame: originFrame + (maximumSampleIndex - 1) * quantumFrames,
+    maximumSampleStartTimeMs,
+    maximumSampleElapsedMs,
     accumulatedProcessCallMs: activeProcessMs,
     actualWallTimeSeconds: wallMs / 1000,
     wallElapsedMs: wallMs,
@@ -769,8 +1086,101 @@ async function runLongPlaybackPhaseSimulation(minutes, yieldEveryBlocks, yieldMs
     estimatedActiveFraction: wallMs > 0 ? activeProcessMs / wallMs : null,
     finalRuntimeMetrics: metrics,
     messageCounts: { ...harness.counters },
+    clockTickCount,
+    expectedClockTickCount,
+    clockTickMismatchCount,
+    processSamplesMs: samplesMs,
+    processStartTimesMs,
     caveat: 'This invokes the actual JS process() against preallocated synthetic buffers at an accelerated 64-bit VM currentFrame origin crossing the low 32-bit word; sampleTimelineSeconds is simulated audio time, not wall time. This is not a hardware or Chromium realtime soak.',
   };
+}
+
+function countExpectedClockTicks(totalFrames, bpm) {
+  let tickCount = 0;
+  for (let ordinal = 0; ; ordinal += 1) {
+    const targetOffset = Math.round(ordinal * sampleRate * 60 / bpm);
+    if (targetOffset >= totalFrames) return tickCount;
+    tickCount += 1;
+  }
+}
+
+function recordGcEntries(list, target) {
+  for (const entry of list.getEntries()) {
+    const detail = entry.detail && typeof entry.detail === 'object' ? entry.detail : {};
+    const kind = Number.isFinite(detail.kind) ? detail.kind : null;
+    const kindNames = { 1: 'minor', 2: 'minor-weak-callback', 4: 'major', 8: 'incremental', 16: 'weak-callback' };
+    target.push({
+      startTimeMs: entry.startTime,
+      durationMs: entry.duration,
+      kind,
+      kindName: kindNames[kind] ?? 'unknown',
+      flags: Number.isFinite(detail.flags) ? detail.flags : null,
+    });
+  }
+}
+
+function correlateGcEventsWithPhase(phase, allGcEvents) {
+  const events = allGcEvents
+    .filter((event) => event.startTimeMs <= phase.phaseEndTimeMs && event.startTimeMs + event.durationMs >= phase.phaseStartTimeMs)
+    .sort((left, right) => left.startTimeMs - right.startTimeMs)
+    .map((event) => ({ ...event, overlappingCallbackCount: 0, overlappingCallbackIndexes: [] }));
+  const overlapCounts = new Uint16Array(phase.processSamplesMs.length);
+  let firstCandidate = 0;
+  let totalOverlaps = 0;
+  let overlappedSampleCount = 0;
+  for (let sample = 0; sample < phase.processSamplesMs.length; sample += 1) {
+    const start = phase.processStartTimesMs[sample];
+    const end = start + phase.processSamplesMs[sample];
+    while (firstCandidate < events.length && events[firstCandidate].startTimeMs + events[firstCandidate].durationMs < start) {
+      firstCandidate += 1;
+    }
+    for (let eventIndex = firstCandidate; eventIndex < events.length && events[eventIndex].startTimeMs <= end; eventIndex += 1) {
+      const event = events[eventIndex];
+      if (event.startTimeMs + event.durationMs < start) continue;
+      if (overlapCounts[sample] === 0) overlappedSampleCount += 1;
+      overlapCounts[sample] += 1;
+      totalOverlaps += 1;
+      event.overlappingCallbackCount += 1;
+      if (event.overlappingCallbackIndexes.length < 32) event.overlappingCallbackIndexes.push(sample + 1);
+    }
+  }
+  const maxSampleOverlapCount = overlapCounts[phase.maximumSampleIndex - 1] ?? 0;
+  phase.gcEventCount = events.length;
+  phase.gcEventTotalDurationMs = events.reduce((sum, event) => sum + event.durationMs, 0);
+  phase.gcMaxPauseMs = events.reduce((max, event) => Math.max(max, event.durationMs), 0);
+  phase.gcOverlappingCallbackCount = overlappedSampleCount;
+  phase.gcOverlapEventPairCount = totalOverlaps;
+  phase.maximumSampleGcOverlapCount = maxSampleOverlapCount;
+  phase.gcEvents = events;
+  phase.gcOverlapCounts = overlapCounts;
+}
+
+async function writePhaseSamplesCsv(csvPath, phase) {
+  const stream = fs.createWriteStream(csvPath, { encoding: 'utf8' });
+  const finished = once(stream, 'finish');
+  const write = async (line) => {
+    if (!stream.write(line)) await once(stream, 'drain');
+  };
+  await write('sampleIndex,relativeStartFrame,absoluteStartFrame,absoluteEndFrame,startTimeMs,elapsedMs,gcOverlapCount,overBudgetByMeasuredCall\r\n');
+  const gcOverlapCounts = phase.gcOverlapCounts ?? new Uint16Array(phase.processSamplesMs.length);
+  for (let index = 0; index < phase.processSamplesMs.length; index += 1) {
+    const relativeStartFrame = index * quantumFrames;
+    const absoluteStartFrame = phase.originFrame + relativeStartFrame;
+    const elapsedMs = phase.processSamplesMs[index];
+    const fields = [
+      index + 1,
+      relativeStartFrame,
+      absoluteStartFrame,
+      absoluteStartFrame + quantumFrames,
+      phase.processStartTimesMs[index],
+      elapsedMs,
+      gcOverlapCounts[index],
+      elapsedMs > quantumFrames / sampleRate * 1000,
+    ];
+    await write(`${fields.join(',')}\r\n`);
+  }
+  stream.end();
+  await finished;
 }
 
 function readRuntimeMetrics(harness) {
@@ -895,12 +1305,15 @@ function parseArgs(argv) {
   const names = {
     '--iterations': 'iterations', '--warmup': 'warmup', '--burst-samples': 'burstSamples',
     '--burst-warmup': 'burstWarmup', '--phase-minutes': 'phaseMinutes',
-    '--phase-yield-blocks': 'phaseYieldBlocks', '--phase-yield-ms': 'phaseYieldMs', '--output-dir': 'outputDir',
+  '--phase-yield-blocks': 'phaseYieldBlocks', '--phase-yield-ms': 'phaseYieldMs', '--output-dir': 'outputDir',
+  '--worklet-source': 'workletSource',
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--help' || arg === '-h') parsed.help = true;
     else if (arg === '--audit-only') parsed.auditOnly = true;
+    else if (arg === '--observe-gc') parsed.observeGc = true;
+    else if (arg === '--phase-clock') parsed.phaseClock = true;
     else if (names[arg]) {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) throw new Error(`Missing value for ${arg}`);

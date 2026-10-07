@@ -116,6 +116,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     private latencyListeners = new Set<(info: BrowserAudioLatencyInfo) => void>();
     private statusListeners = new Set<(status: BrowserAudioUiStatus) => void>();
     private initialized = false;
+    private compressorFailure: Error | null = null;
     private lastError = '';
     private transportListenersInstalled = false;
 
@@ -167,6 +168,15 @@ export class BrowserAudioEngine implements IAudioEngine {
             this.tracks.push(new TrackAudio(this, trackData, i, this.trackStates, this.trackPositions));
         }
 
+        const compressorFailureHandler = (error: Error) => {
+            this.compressorFailure = error;
+            this.lastError = `Compressor AudioWorklet failed and the affected FX chain is in dry bypass: ${error.message}`;
+            this.emitStatus();
+        };
+        for (const chain of this.getFxChains()) {
+            chain.onProcessorError = compressorFailureHandler;
+        }
+
         // Load saved device preferences
         this.loadDevicePreferences();
     }
@@ -194,6 +204,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             }
 
             await this.context.audioWorklet.addModule(BROWSER_REALTIME_WORKLET_URL);
+            await Promise.all(this.getFxChains().map((chain) => chain.initialize()));
 
             if (!this.workletNode || !this.realtimeRuntime) {
                 const controlBuffer = this.sharedBuffer;
@@ -698,6 +709,10 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.transportListenersInstalled = true;
     }
 
+    private getFxChains(): FXChain[] {
+        return [this.inputFxChain, this.outputFxChain, ...this.tracks.map((track) => track.fxChain)];
+    }
+
     private handleRuntimeMessage(message: BrowserRealtimeRuntimeMessage) {
         if (message.type === 'CLOCK_TICK' && typeof message.beatOrdinal === 'number' && typeof message.frame === 'number') {
             Transport.getInstance().emitWorkletBeat(message.beatOrdinal, message.frame);
@@ -757,7 +772,9 @@ export class BrowserAudioEngine implements IAudioEngine {
             bridgeAvailable: true,
             engineRunning: this.initialized,
             ready: this.initialized,
-            message: this.initialized ? 'BROWSER AUDIO READY' : 'BROWSER AUDIO NOT INITIALIZED',
+            message: this.compressorFailure
+                ? 'BROWSER AUDIO DEGRADED: COMPRESSOR DISABLED'
+                : this.initialized ? 'BROWSER AUDIO READY' : 'BROWSER AUDIO NOT INITIALIZED',
             lastError: this.lastError,
         };
     }
@@ -775,6 +792,8 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     public get isReady() {
+        // A failed effect is bypassed and reported as degraded, but the
+        // sample-clock engine remains controllable so users can stop or clear.
         return this.initialized;
     }
 

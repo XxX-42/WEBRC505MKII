@@ -14,10 +14,7 @@ const RELATIVE_ONSET_THRESHOLD = 1e-4;
 const builders = {
   dry: (context) => null,
   compressorAmount50: (context) => {
-    const fx = new CompressorFX(context);
-    fx.setParam('amount', 0.5);
-    fx.setBypass(false);
-    return fx;
+    return new CompressorFX(context);
   },
   filterUiValue50: (context) => {
     const fx = new FilterFX(context);
@@ -54,6 +51,12 @@ async function renderOne(sampleRate, caseName) {
 
   const fx = builders[caseName](context);
   if (fx) {
+    if (caseName === 'compressorAmount50') {
+      await initializeCompressor(fx);
+      fx.setParam('amount', 0.5);
+      fx.setBypass(false);
+      assertCompressorActive(fx);
+    }
     source.connect(fx.input);
     fx.output.connect(context.destination);
   } else {
@@ -87,7 +90,7 @@ async function renderOne(sampleRate, caseName) {
 
   const expectedInputSample = Math.round(PULSE_TIME * sampleRate);
   const fxFrequencyAfterRender = fx && fx.filter ? fx.filter.frequency.value : null;
-  return {
+  const result = {
     sampleRate,
     caseName,
     onsetSample,
@@ -103,6 +106,8 @@ async function renderOne(sampleRate, caseName) {
     offlineRenderCpuMs,
     filterFrequencyValueAfterRender: fxFrequencyAfterRender,
   };
+  if (fx && caseName === 'compressorAmount50') result.compressorBackend = compressorState(fx);
+  return result;
 }
 
 window.runFxBench = async () => {
@@ -147,8 +152,528 @@ window.runFxBench = async () => {
       filterFrequencyValueAfterRender: values.find((v) => v.filterFrequencyValueAfterRender !== null)?.filterFrequencyValueAfterRender ?? null,
     };
   });
-  return { runs, summaries };
+  const compressorDiagnostics = await runCompressorDiagnostics(48000);
+  let compressorRealtimeDiagnostics;
+  try {
+    compressorRealtimeDiagnostics = await runCompressorRealtimeDiagnostics();
+  } catch (error) {
+    compressorRealtimeDiagnostics = { status: 'FAIL', error: error instanceof Error ? error.message : String(error) };
+  }
+  return { runs, summaries, compressorDiagnostics, compressorRealtimeDiagnostics };
 };
+
+async function runCompressorRealtimeDiagnostics() {
+  const sampleRate = 48000;
+  const durationSeconds = 4;
+  const context = new AudioContext({ sampleRate, latencyHint: 'interactive' });
+  let silentDestination = null;
+  let outputSinkType = 'unknown';
+  let sinkError = null;
+  let setSinkIdSucceeded = false;
+  if (typeof context.setSinkId === 'function') {
+    try {
+      await context.setSinkId({ type: 'none' });
+      setSinkIdSucceeded = true;
+      outputSinkType = 'none';
+    } catch (error) {
+      sinkError = String(error);
+    }
+  }
+  if (outputSinkType === 'unknown') {
+    silentDestination = context.createMediaStreamDestination();
+    Object.defineProperty(context, 'destination', {
+      configurable: true,
+      get: () => silentDestination,
+    });
+    if (context.destination !== silentDestination) throw new Error('Could not redirect real-time compressor measurement to a software-only MediaStreamDestination.');
+    outputSinkType = 'media-stream-destination';
+  }
+  if (![ 'none', 'none-requested', 'media-stream-destination' ].includes(outputSinkType)) {
+    throw new Error(`Refusing to run without a confirmed silent software sink: ${outputSinkType}`);
+  }
+
+  const captureModule = URL.createObjectURL(new Blob([`
+    class CompressorCaptureTap extends AudioWorkletProcessor {
+      process(inputs, outputs) {
+        const input = inputs[0] || [];
+        const output = outputs[0] || [];
+        if (!output[0]) return true;
+        const frames = output[0].length;
+        const leftIn = input[0];
+        const rightIn = input[1] || leftIn;
+        const left = new Float32Array(frames);
+        const right = new Float32Array(frames);
+        for (let frame = 0; frame < frames; frame += 1) {
+          const l = leftIn && frame < leftIn.length && Number.isFinite(leftIn[frame]) ? leftIn[frame] : 0;
+          const r = rightIn && frame < rightIn.length && Number.isFinite(rightIn[frame]) ? rightIn[frame] : l;
+          left[frame] = l;
+          right[frame] = r;
+          output[0][frame] = l;
+          if (output[1]) output[1][frame] = r;
+        }
+        this.port.postMessage({ startFrame: currentFrame, left, right }, [left.buffer, right.buffer]);
+        return true;
+      }
+    }
+    registerProcessor('webrc-compressor-capture-tap', CompressorCaptureTap);
+  `], { type: 'text/javascript' }));
+  const chunks = [];
+  let compressor = null;
+  let capture = null;
+  let source = null;
+  try {
+    await context.audioWorklet.addModule(captureModule);
+    compressor = new CompressorFX(context);
+    await compressor.initialize();
+    if (!compressor.isReady || compressor.backend !== 'audio-worklet') {
+      throw new Error(`Real-time compressor is not ready on its AudioWorklet backend: ${JSON.stringify(compressorState(compressor))}`);
+    }
+    compressor.setParam('amount', 0.5);
+    compressor.setBypass(false);
+    if (!compressor.active) throw new Error('Real-time compressor did not become active after initialization.');
+
+    capture = new AudioWorkletNode(context, 'webrc-compressor-capture-tap', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+      channelCount: 2,
+      channelCountMode: 'explicit',
+      channelInterpretation: 'discrete',
+    });
+    capture.port.onmessage = (event) => chunks.push(event.data);
+    compressor.output.connect(capture);
+    capture.connect(context.destination);
+
+    const frameCount = Math.round(durationSeconds * sampleRate);
+    const input = context.createBuffer(2, frameCount, sampleRate);
+    const channels = [input.getChannelData(0), input.getChannelData(1)];
+    const pulseFrame = Math.round(0.5 * sampleRate);
+    channels[0][pulseFrame] = 0.5;
+    channels[1][pulseFrame] = 0.5;
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const seconds = frame / sampleRate;
+      let leftAmplitude = 0;
+      let rightAmplitude = 0;
+      if ((seconds >= 0.8 && seconds < 1.5) || seconds >= 1.9) {
+        leftAmplitude = 0.01;
+        rightAmplitude = 0.01;
+      }
+      if (seconds >= 1.5 && seconds < 1.9) {
+        leftAmplitude = 0.6;
+        rightAmplitude = 0.02;
+      }
+      if (seconds !== 0.5) {
+        const sample = Math.sin(2 * Math.PI * 1000 * frame / sampleRate);
+        channels[0][frame] = sample * leftAmplitude;
+        channels[1][frame] = sample * rightAmplitude;
+      }
+    }
+    source = context.createBufferSource();
+    source.buffer = input;
+    source.connect(compressor.input);
+    await context.resume();
+    const scheduledStartTime = context.currentTime + 0.25;
+    const scheduledStartFrame = Math.round(scheduledStartTime * sampleRate);
+    source.start(scheduledStartTime);
+    const until = scheduledStartTime + durationSeconds + 0.15;
+    while (context.currentTime < until) await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const firstCaptureFrame = Math.min(...chunks.map((chunk) => chunk.startFrame));
+    const lastCaptureFrame = Math.max(...chunks.map((chunk) => chunk.startFrame + chunk.left.length));
+    const captureLength = lastCaptureFrame - firstCaptureFrame;
+    const capturedLeft = new Float32Array(captureLength);
+    const capturedRight = new Float32Array(captureLength);
+    const frameWritten = new Uint8Array(captureLength);
+    for (const chunk of chunks) {
+      const offset = chunk.startFrame - firstCaptureFrame;
+      capturedLeft.set(chunk.left, offset);
+      capturedRight.set(chunk.right, offset);
+      frameWritten.fill(1, offset, offset + chunk.left.length);
+    }
+    let missingFrames = 0;
+    for (const covered of frameWritten) if (covered === 0) missingFrames += 1;
+    const expectedPulseFrame = scheduledStartFrame + pulseFrame;
+    const pulsePeak = 0.5;
+    const threshold = pulsePeak * 1e-4;
+    let firstArrivalFrame = null;
+    for (let frame = expectedPulseFrame; frame < expectedPulseFrame + Math.round(0.05 * sampleRate); frame += 1) {
+      const capturedIndex = frame - firstCaptureFrame;
+      if (capturedIndex >= 0 && Math.abs(capturedLeft[capturedIndex]) >= threshold) {
+        firstArrivalFrame = frame;
+        break;
+      }
+    }
+    const sampleRms = (channel, absoluteFrame, lengthFrames) => {
+      const samples = channel === 0 ? capturedLeft : capturedRight;
+      const offset = absoluteFrame - firstCaptureFrame;
+      if (offset < 0 || offset + lengthFrames > samples.length) return null;
+      return rms(samples, offset, lengthFrames);
+    };
+    const gainDb = (channel, sourceOffsetSeconds, lengthSeconds = 0.01) => {
+      const inputOffset = Math.round(sourceOffsetSeconds * sampleRate);
+      const lengthFrames = Math.round(lengthSeconds * sampleRate);
+      const inputRms = rms(channels[channel], inputOffset, lengthFrames);
+      const outputRms = sampleRms(channel, scheduledStartFrame + inputOffset, lengthFrames);
+      return inputRms > 0 && outputRms > 0 ? 20 * Math.log10(outputRms / inputRms) : null;
+    };
+    const baselineDb = gainDb(0, 1.2);
+    const steadyLeftDb = gainDb(0, 1.75);
+    const steadyRightDb = gainDb(1, 1.75);
+    const attackCurve = [];
+    for (let seconds = 1.5; seconds <= 1.75; seconds += 0.001) {
+      const value = gainDb(0, seconds, 0.001);
+      if (value !== null) attackCurve.push({ milliseconds: (seconds - 1.5) * 1000, value });
+    }
+    const releaseCurve = [];
+    for (let seconds = 1.9; seconds <= 3.0; seconds += 0.001) {
+      const value = gainDb(0, seconds, 0.001);
+      if (value !== null) releaseCurve.push({ milliseconds: (seconds - 1.9) * 1000, value });
+    }
+    const attack = responseTimes(attackCurve, baselineDb, steadyLeftDb, 'attack');
+    const release = responseTimes(releaseCurve, steadyLeftDb, baselineDb, 'release');
+    const integrity = { nonFiniteSamples: 0, clippedSamples: 0, outputPeak: 0 };
+    for (const channel of [capturedLeft, capturedRight]) {
+      for (const value of channel) {
+        if (!Number.isFinite(value)) integrity.nonFiniteSamples += 1;
+        if (Math.abs(value) >= 1) integrity.clippedSamples += 1;
+        integrity.outputPeak = Math.max(integrity.outputPeak, Math.abs(value));
+      }
+    }
+    const result = {
+      mode: 'AudioContext realtime AudioWorklet with synthetic AudioBufferSourceNode input and a worklet sample capture tap; no media devices',
+      sampleRateHz: context.sampleRate,
+      sampleRateRequestedHz: sampleRate,
+      contextState: context.state,
+      outputSinkType,
+      contextSinkId: context.sinkId ?? null,
+      setSinkIdSucceeded,
+      sinkError,
+      workletReadiness: compressorState(compressor),
+      capture: {
+        firstFrame: firstCaptureFrame,
+        lastFrameExclusive: lastCaptureFrame,
+        chunks: chunks.length,
+        missingFrames,
+        expectedFrames: Math.round((until - firstCaptureFrame / sampleRate) * sampleRate),
+      },
+      activePath: {
+        pulseFrame: expectedPulseFrame,
+        firstArrivalFrame,
+        firstArrivalFrames: firstArrivalFrame === null ? null : firstArrivalFrame - expectedPulseFrame,
+        firstArrivalMs: firstArrivalFrame === null ? null : (firstArrivalFrame - expectedPulseFrame) / sampleRate * 1000,
+        maximumPulseResponse: threshold,
+      },
+      gainReduction: {
+        baselineGainDb: baselineDb,
+        steadyLeftGainDb: steadyLeftDb,
+        steadyRightGainDb: steadyRightDb,
+        leftDb: baselineDb === null || steadyLeftDb === null ? null : baselineDb - steadyLeftDb,
+        rightDb: baselineDb === null || steadyRightDb === null ? null : baselineDb - steadyRightDb,
+      },
+      attack,
+      release,
+      stereoLink: {
+        absoluteDifferenceDb: steadyLeftDb === null || steadyRightDb === null ? null : Math.abs(steadyLeftDb - steadyRightDb),
+        linkedGainDeltaDb: steadyLeftDb === null || steadyRightDb === null ? null : steadyRightDb - steadyLeftDb,
+      },
+      outputIntegrity: integrity,
+      acceptance: {
+        workletReadyAndActive: compressor.isReady && compressor.backend === 'audio-worklet' && compressor.active,
+        noneOrSoftwareStreamSink: (setSinkIdSucceeded && outputSinkType === 'none') || outputSinkType === 'media-stream-destination',
+        sampleRate48k: context.sampleRate === 48000,
+        captureContinuous: missingFrames === 0 && lastCaptureFrame - firstCaptureFrame >= Math.round((scheduledStartTime + durationSeconds - firstCaptureFrame / sampleRate) * sampleRate),
+        firstSampleNoLookahead: firstArrivalFrame === expectedPulseFrame,
+        steadyCompression: Number.isFinite(baselineDb) && Number.isFinite(steadyLeftDb) && baselineDb - steadyLeftDb > 0.1,
+        stereoLinkedWithin1dB: Number.isFinite(steadyLeftDb) && Number.isFinite(steadyRightDb) && Math.abs(steadyLeftDb - steadyRightDb) <= 1,
+        finiteOutput: integrity.nonFiniteSamples === 0,
+        noClip: integrity.clippedSamples === 0,
+        attack63ms: inRange(attack.t63Ms, 0.5, 10),
+        release63ms: inRange(release.t63Ms, 100, 500),
+      },
+    };
+    result.status = Object.values(result.acceptance).every(Boolean) ? 'PASS' : 'FAIL';
+    return result;
+  } finally {
+    if (source) { try { source.stop(); } catch { /* already ended */ } }
+    if (compressor) compressor.dispose();
+    if (capture) { capture.port.close(); capture.disconnect(); }
+    if (context.state !== 'closed') await context.close();
+    URL.revokeObjectURL(captureModule);
+  }
+}
+
+async function initializeCompressor(fx) {
+  if (typeof fx.initialize === 'function') {
+    await fx.initialize();
+    if (fx.isReady !== true || fx.backend !== 'audio-worklet') {
+      throw new Error(`Compressor initialization did not complete on the AudioWorklet backend: ${JSON.stringify(compressorState(fx))}`);
+    }
+  }
+}
+
+function assertCompressorActive(fx) {
+  if (typeof fx.initialize === 'function' && (fx.isReady !== true || fx.backend !== 'audio-worklet' || fx.active !== true)) {
+    throw new Error(`Refusing to benchmark compressor while it is dry, bypassed, or not ready: ${JSON.stringify(compressorState(fx))}`);
+  }
+}
+
+function compressorState(fx) {
+  return {
+    initializeAvailable: typeof fx.initialize === 'function',
+    isReady: typeof fx.isReady === 'boolean' ? fx.isReady : null,
+    backend: typeof fx.backend === 'string' ? fx.backend : 'legacy-DynamicsCompressorNode',
+    active: typeof fx.active === 'boolean' ? fx.active : null,
+  };
+}
+
+async function runCompressorDiagnostics(sampleRate) {
+  const amount = 0.5;
+  const impulseResult = await renderCompressorImpulse(sampleRate, amount, false);
+  const dynamicsResult = await renderCompressorDynamics(sampleRate, amount, impulseResult.latencyFrames);
+  const bypassResult = await renderCompressorImpulse(sampleRate, amount, true);
+  const amountZero = await renderCompressorSteadyGain(sampleRate, 0, 0.6);
+  const belowKnee = await renderCompressorSteadyGain(sampleRate, amount, 0.001);
+  const usesNewWorklet = impulseResult.readiness.backend === 'audio-worklet';
+  const report = {
+    sampleRate,
+    amount,
+    source: 'OfflineAudioContext with the actual CompressorFX class; synthetic stereo input; no device streams',
+    readiness: impulseResult.readiness,
+    activePath: {
+      firstArrivalFrames: impulseResult.latencyFrames,
+      firstArrivalMs: impulseResult.latencyFrames / sampleRate * 1000,
+      peakOffsetFrames: impulseResult.peakOffsetFrames,
+      peakOffsetMs: impulseResult.peakOffsetFrames / sampleRate * 1000,
+      peakAmplitude: impulseResult.peakAmplitude,
+    },
+    gainReduction: dynamicsResult.gainReduction,
+    attack: dynamicsResult.attack,
+    release: dynamicsResult.release,
+    staticResponse: { amountZeroHighLevel: amountZero, amount50BelowKnee: belowKnee },
+    outputIntegrity: dynamicsResult.outputIntegrity,
+    stereoLink: dynamicsResult.stereoLink,
+    bypassExport: bypassResult,
+    acceptance: {
+      measurableCompression: dynamicsResult.gainReduction.leftDb > 0.1,
+      stereoLinkedWithin1dB: dynamicsResult.stereoLink.absoluteDifferenceDb <= 1,
+      bypassSampleIdentity: bypassResult.maxAbsError <= 1e-6 && bypassResult.firstArrivalMs === 0,
+      finiteOutput: dynamicsResult.outputIntegrity.nonFiniteSamples === 0,
+      noClip: dynamicsResult.outputIntegrity.clippedSamples === 0,
+      attack63ms: inRange(dynamicsResult.attack.t63Ms, 0.5, 10),
+      release63ms: inRange(dynamicsResult.release.t63Ms, 100, 500),
+      amountZeroNearUnity: usesNewWorklet ? amountZero.absoluteGainDb !== null && Math.abs(amountZero.absoluteGainDb) <= 0.25 : null,
+      belowKneeNearUnity: usesNewWorklet ? belowKnee.absoluteGainDb !== null && Math.abs(belowKnee.absoluteGainDb) <= 0.5 : null,
+    },
+  };
+  return report;
+}
+
+async function renderCompressorImpulse(sampleRate, amount, bypass) {
+  const durationSeconds = 2.25;
+  const expectedOffsetSeconds = 2;
+  const context = new OfflineAudioContext(2, Math.round(durationSeconds * sampleRate), sampleRate);
+  const fx = new CompressorFX(context);
+  await initializeCompressor(fx);
+  fx.setParam('amount', amount);
+  fx.setBypass(bypass);
+  if (!bypass) assertCompressorActive(fx);
+  const readiness = compressorState(fx);
+  const input = context.createBuffer(2, context.length, sampleRate);
+  input.getChannelData(0)[Math.round(expectedOffsetSeconds * sampleRate)] = 1;
+  input.getChannelData(1)[Math.round(expectedOffsetSeconds * sampleRate)] = 1;
+  const source = context.createBufferSource();
+  source.buffer = input;
+  source.connect(fx.input);
+  fx.output.connect(context.destination);
+  source.start();
+  const output = await context.startRendering();
+  const expectedFrame = Math.round(expectedOffsetSeconds * sampleRate);
+  const left = output.getChannelData(0);
+  let peakAmplitude = 0;
+  let peakFrame = -1;
+  for (let frame = 0; frame < left.length; frame += 1) {
+    const magnitude = Math.abs(left[frame]);
+    if (magnitude > peakAmplitude) { peakAmplitude = magnitude; peakFrame = frame; }
+  }
+  const threshold = peakAmplitude * 1e-4;
+  let onsetFrame = -1;
+  for (let frame = 0; frame < left.length; frame += 1) {
+    if (Math.abs(left[frame]) >= threshold && threshold > 0) { onsetFrame = frame; break; }
+  }
+  const latencyFrames = onsetFrame < 0 ? 0 : onsetFrame - expectedFrame;
+  const inputLeft = input.getChannelData(0);
+  let errorSquareSum = 0;
+  let inputSquareSum = 0;
+  let maxAbsError = 0;
+  for (let frame = expectedFrame; frame < Math.min(expectedFrame + 64, left.length); frame += 1) {
+    const error = left[frame] - inputLeft[frame];
+    errorSquareSum += error * error;
+    inputSquareSum += inputLeft[frame] * inputLeft[frame];
+    maxAbsError = Math.max(maxAbsError, Math.abs(error));
+  }
+  fx.dispose?.();
+  return {
+    readiness,
+    latencyFrames,
+    peakOffsetFrames: peakFrame < 0 ? null : peakFrame - expectedFrame,
+    peakAmplitude,
+    firstArrivalMs: latencyFrames / sampleRate * 1000,
+    maxAbsError: bypass ? maxAbsError : null,
+    bypassRmsError: bypass ? Math.sqrt(errorSquareSum / Math.max(1, Math.min(64, left.length - expectedFrame))) : null,
+    bypassRmsSignal: bypass ? Math.sqrt(inputSquareSum / Math.max(1, Math.min(64, inputLeft.length - expectedFrame))) : null,
+  };
+}
+
+async function renderCompressorDynamics(sampleRate, amount, latencyFrames) {
+  const highStartSeconds = 2.25;
+  const highEndSeconds = 2.70;
+  const duration = 4.5;
+  const frames = Math.round(duration * sampleRate);
+  const context = new OfflineAudioContext(2, frames, sampleRate);
+  const fx = new CompressorFX(context);
+  await initializeCompressor(fx);
+  fx.setParam('amount', amount);
+  fx.setBypass(false);
+  assertCompressorActive(fx);
+  const input = context.createBuffer(2, frames, sampleRate);
+  const inputChannels = [input.getChannelData(0), input.getChannelData(1)];
+  for (let frame = 0; frame < frames; frame += 1) {
+    const time = frame / sampleRate;
+    const loud = time >= highStartSeconds && time < highEndSeconds;
+    const phase = 2 * Math.PI * 1000 * frame / sampleRate;
+    inputChannels[0][frame] = Math.sin(phase) * (loud ? 0.6 : 0.01);
+    inputChannels[1][frame] = Math.sin(phase) * (loud ? 0.02 : 0.01);
+  }
+  const source = context.createBufferSource();
+  source.buffer = input;
+  source.connect(fx.input);
+  fx.output.connect(context.destination);
+  source.start();
+  const output = await context.startRendering();
+  const outputChannels = [output.getChannelData(0), output.getChannelData(1)];
+  const windowFrames = Math.max(1, Math.round(sampleRate * 0.001));
+  const alignedGainDb = (channel, inputFrame) => {
+    const sourceStart = Math.max(0, Math.min(frames - windowFrames, inputFrame));
+    const outputStart = Math.max(0, Math.min(frames - windowFrames, sourceStart + latencyFrames));
+    const inRms = rms(inputChannels[channel], sourceStart, windowFrames);
+    const outRms = rms(outputChannels[channel], outputStart, windowFrames);
+    return inRms > 0 && outRms > 0 ? 20 * Math.log10(outRms / inRms) : null;
+  };
+  const highStart = Math.round(highStartSeconds * sampleRate);
+  const highEnd = Math.round(highEndSeconds * sampleRate);
+  const baselineDb = medianDbRange(alignedGainDb, Math.round(2.00 * sampleRate), Math.round(2.20 * sampleRate), windowFrames, 0);
+  const steadyLeftDb = medianDbRange(alignedGainDb, Math.round(2.55 * sampleRate), Math.round(2.65 * sampleRate), windowFrames, 0);
+  const steadyRightDb = medianDbRange(alignedGainDb, Math.round(2.55 * sampleRate), Math.round(2.65 * sampleRate), windowFrames, 1);
+  const reductionDb = baselineDb - steadyLeftDb;
+  const attackCurve = [];
+  for (let frame = highStart; frame <= Math.round(2.55 * sampleRate); frame += windowFrames) {
+    const value = alignedGainDb(0, frame);
+    if (value !== null) attackCurve.push({ milliseconds: (frame - highStart) / sampleRate * 1000, value });
+  }
+  const releaseCurve = [];
+  for (let frame = highEnd; frame <= Math.round(4.40 * sampleRate); frame += windowFrames) {
+    const value = alignedGainDb(0, frame);
+    if (value !== null) releaseCurve.push({ milliseconds: (frame - highEnd) / sampleRate * 1000, value });
+  }
+  const attack = responseTimes(attackCurve, baselineDb, steadyLeftDb, 'attack');
+  const release = responseTimes(releaseCurve, steadyLeftDb, baselineDb, 'release');
+  let nonFiniteSamples = 0;
+  let clippedSamples = 0;
+  let peak = 0;
+  for (const channel of outputChannels) {
+    for (const value of channel) {
+      if (!Number.isFinite(value)) nonFiniteSamples += 1;
+      if (Math.abs(value) >= 1) clippedSamples += 1;
+      peak = Math.max(peak, Math.abs(value));
+    }
+  }
+  fx.dispose?.();
+  return {
+    gainReduction: { leftDb: reductionDb, rightDb: baselineDb - steadyRightDb, baselineGainDb: baselineDb, steadyLeftGainDb: steadyLeftDb, steadyRightGainDb: steadyRightDb },
+    attack,
+    release,
+    stereoLink: { absoluteDifferenceDb: Math.abs(steadyLeftDb - steadyRightDb), linkedGainDeltaDb: steadyRightDb - steadyLeftDb },
+    outputIntegrity: { peak, nonFiniteSamples, clippedSamples },
+  };
+}
+
+async function renderCompressorSteadyGain(sampleRate, amount, amplitude) {
+  const durationSeconds = 2.5;
+  const frames = Math.round(durationSeconds * sampleRate);
+  const context = new OfflineAudioContext(2, frames, sampleRate);
+  const fx = new CompressorFX(context);
+  await initializeCompressor(fx);
+  fx.setParam('amount', amount);
+  fx.setBypass(false);
+  assertCompressorActive(fx);
+  const input = context.createBuffer(2, frames, sampleRate);
+  const channels = [input.getChannelData(0), input.getChannelData(1)];
+  for (let frame = 0; frame < frames; frame += 1) {
+    const sample = amplitude * Math.sin(2 * Math.PI * 1000 * frame / sampleRate);
+    channels[0][frame] = sample;
+    channels[1][frame] = sample;
+  }
+  const source = context.createBufferSource();
+  source.buffer = input;
+  source.connect(fx.input);
+  fx.output.connect(context.destination);
+  source.start();
+  const output = await context.startRendering();
+  const start = Math.round(1.5 * sampleRate);
+  const length = Math.round(0.5 * sampleRate);
+  const inputRms = rms(channels[0], start, length);
+  const outputRms = rms(output.getChannelData(0), start, length);
+  fx.dispose?.();
+  return {
+    amount,
+    inputPeakAmplitude: amplitude,
+    inputPeakDbfs: 20 * Math.log10(amplitude),
+    inputRms,
+    outputRms,
+    absoluteGainDb: inputRms > 0 && outputRms > 0 ? 20 * Math.log10(outputRms / inputRms) : null,
+  };
+}
+
+function rms(samples, start, length) {
+  let squareSum = 0;
+  for (let frame = start; frame < start + length; frame += 1) squareSum += samples[frame] * samples[frame];
+  return Math.sqrt(squareSum / length);
+}
+
+function medianDbRange(gainFunction, start, end, step, channel) {
+  const values = [];
+  for (let frame = start; frame + step <= end; frame += step) {
+    const value = gainFunction(channel, frame);
+    if (Number.isFinite(value)) values.push(value);
+  }
+  values.sort((a, b) => a - b);
+  return values.length ? values[Math.floor(values.length / 2)] : 0;
+}
+
+function responseTimes(curve, startDb, endDb, phase) {
+  const magnitude = Math.abs(endDb - startDb);
+  if (magnitude <= 1e-6) return { t10Ms: null, t63Ms: null, t90Ms: null, t10To90Ms: null };
+  const points = {
+    10: startDb + (endDb - startDb) * 0.1,
+    63: startDb + (endDb - startDb) * 0.632,
+    90: startDb + (endDb - startDb) * 0.9,
+  };
+  const crossings = {};
+  for (const key of ['10', '63', '90']) {
+    const threshold = points[key];
+    const found = curve.find((point) => phase === 'attack'
+      ? point.value <= threshold
+      : point.value >= threshold);
+    crossings[key] = found?.milliseconds ?? null;
+  }
+  return { t10Ms: crossings['10'], t63Ms: crossings['63'], t90Ms: crossings['90'], t10To90Ms: crossings['10'] === null || crossings['90'] === null ? null : Math.abs(crossings['90'] - crossings['10']) };
+}
+
+function inRange(value, min, max) {
+  return Number.isFinite(value) && value >= min && value <= max;
+}
+
 window.fxBenchReady = true;
 </script>
 </body></html>

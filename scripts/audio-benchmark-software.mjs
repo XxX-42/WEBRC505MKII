@@ -2,6 +2,7 @@
 // Offline diagnostics for the project's actual FX classes. This runner never
 // opens live input/output devices and its report cannot satisfy physical gates.
 import { chromium } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { createServer } from 'vite';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -90,22 +91,22 @@ try {
       endedAt,
       durationSeconds: (Date.parse(endedAt) - Date.parse(sessionStartedAt)) / 1000,
       gateVersion: 'instrument-grade-gate/1.0.0',
-      systemUnderTest: 'offline-fx-benchmark',
+      systemUnderTest: 'software-fx-offline-and-compressor-realtime',
       assertionVersions: {
-        benchmark: 'audio-benchmark-software/1.0.0',
-        fxLatency: 'offline-impulse/relative-1e-4-peak/1.0.0',
+        benchmark: 'audio-benchmark-software/2.0.0',
+        fxLatency: 'offline-impulse/relative-1e-4-peak/1.1.0',
       },
     },
     hardware: {
-      inputDevice: { id: 'offline:none', label: 'No hardware input (OfflineAudioContext)' },
-      outputDevice: { id: 'offline:none', label: 'No hardware output (OfflineAudioContext)' },
+      inputDevice: { id: 'offline:none', label: 'No hardware input (synthetic/offline software only)' },
+      outputDevice: { id: 'software:none', label: 'No hardware output (silent software sink)' },
       hardwareSampleRateHz: null,
       processingSampleRateHz: null,
       renderQuantumFrames: null,
     },
     pathEvidence: {
       physicalLoopbackConfirmed: false,
-      loopbackDescription: 'Software-only OfflineAudioContext render of project FX classes at 44.1, 48, and 96 kHz; no hardware capture, DAC, or analog path was opened.',
+      loopbackDescription: 'Software-only OfflineAudioContext renders of project FX at 44.1, 48, and 96 kHz, plus a synthetic-input live AudioContext compressor check at 48 kHz redirected to a silent software sink; no hardware capture, DAC, or analog path was opened.',
       loopbackEvidenceRef: null,
       independentInputAnchorRef: null,
       independentOutputAnchorRef: null,
@@ -143,19 +144,27 @@ try {
       repeatsPerCase: 5,
       cpuTimeDefinition: 'wall-clock time spent awaiting OfflineAudioContext.startRendering(); not realtime/device latency',
       browserExecutable: browserPathString,
+      browserVersion: browser.version(),
       liveDeviceAccess: false,
       processingSampleRatesHz: [44100, 48000, 96000],
       inputChannelsOpened: false,
       outputMonitorEnabled: false,
+      liveCompressorCapture: 'AudioContext at 48 kHz, sample capture in a second AudioWorklet tap, synthetic AudioBufferSourceNode, output set to sinkId none or a private MediaStreamDestination; no getUserMedia/enumerateDevices calls',
     },
     summaries: result.summaries,
+    compressorDiagnostics: result.compressorDiagnostics,
+    compressorRealtimeDiagnostics: result.compressorRealtimeDiagnostics,
     runs: result.runs,
+    sourceSha256: {
+      compressorFxTs: createHash('sha256').update(await readFile(join(ROOT, 'src', 'audio', 'fx', 'CompressorFX.ts'))).digest('hex'),
+      compressorProcessorJs: createHash('sha256').update(await readFile(join(ROOT, 'public', 'worklets', 'compressor-processor.js'))).digest('hex'),
+    },
   };
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   await writeFile(tracePath, `${JSON.stringify(trace, null, 2)}\n`, 'utf8');
-  process.stdout.write(`${JSON.stringify({ reportPath: outputPath, tracePath, effectCount: metrics.length, runs: result.runs.length, compressorAt48k: metrics.find((fx) => fx.effectId === 'compressorAmount50-48000hz') }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ reportPath: outputPath, tracePath, effectCount: metrics.length, runs: result.runs.length, compressorAt48k: metrics.find((fx) => fx.effectId === 'compressorAmount50-48000hz'), compressorRealtimeDiagnostics: result.compressorRealtimeDiagnostics }, null, 2)}\n`);
 } finally {
   if (browser) await browser.close();
   if (server) await server.close();
