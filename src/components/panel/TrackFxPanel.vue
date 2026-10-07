@@ -96,13 +96,14 @@ const updateActiveValue = (value: number) => {
 
 <style scoped>
 .panel-shell {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
   gap: 14px;
   min-height: 292px;
-  padding: 12px 10px 12px 14px;
+  padding: 12px 12px 12px 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   color: #f3f3f5;
+  overflow: hidden;
 }
 
 .panel-header,
@@ -114,6 +115,8 @@ const updateActiveValue = (value: number) => {
 
 .fx-main {
   align-items: center;
+  display: grid;
+  grid-template-columns: 124px minmax(0, 1fr);
 }
 
 .panel-header h2,
@@ -161,7 +164,8 @@ const updateActiveValue = (value: number) => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-items: flex-end;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .detail-chip {
@@ -184,7 +188,8 @@ const updateActiveValue = (value: number) => {
 
 .fx-select {
   min-height: 38px;
-  min-width: 140px;
+  width: 100%;
+  min-width: 0;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -195,15 +200,15 @@ const updateActiveValue = (value: number) => {
 .slot-row {
   display: grid;
   grid-template-columns: repeat(4, 54px);
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: auto;
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .apply-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
+  max-width: 100%;
 }
 
 .apply-chip {
@@ -213,7 +218,8 @@ const updateActiveValue = (value: number) => {
   background: rgba(255, 255, 255, 0.06);
   color: #f3f3f5;
   letter-spacing: 1px;
-  font-size: 10px;
+  font-size: 9px;
+  min-width: 0;
 }
 
 .apply-chip.active {

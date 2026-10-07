@@ -157,7 +157,7 @@ onBeforeUnmount(() => {
 
 .classic-upper {
   display: grid;
-  grid-template-columns: 280px minmax(520px, 1fr) 280px;
+  grid-template-columns: 292px 656px 292px;
   gap: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-bottom: 8px solid #babdc5;

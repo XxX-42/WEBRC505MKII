@@ -91,13 +91,14 @@ const updateActiveValue = (value: number) => {
 
 <style scoped>
 .panel-shell {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
   gap: 14px;
   min-height: 292px;
-  padding: 12px 14px 12px 10px;
+  padding: 12px 16px 12px 12px;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   color: #f3f3f5;
+  overflow: hidden;
 }
 
 .panel-header,
@@ -109,6 +110,8 @@ const updateActiveValue = (value: number) => {
 
 .fx-main {
   align-items: center;
+  grid-template-columns: 124px minmax(0, 1fr);
+  display: grid;
 }
 
 .panel-header h2,
@@ -156,6 +159,7 @@ const updateActiveValue = (value: number) => {
   flex-direction: column;
   gap: 8px;
   align-items: flex-start;
+  min-width: 0;
 }
 
 .detail-chip {
@@ -178,7 +182,8 @@ const updateActiveValue = (value: number) => {
 
 .fx-select {
   min-height: 38px;
-  min-width: 136px;
+  width: 100%;
+  min-width: 0;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -190,8 +195,7 @@ const updateActiveValue = (value: number) => {
   display: grid;
   grid-template-columns: repeat(4, 54px);
   justify-content: flex-start;
-  gap: 8px;
-  margin-top: auto;
+  gap: 10px;
 }
 
 .slot-toggle {

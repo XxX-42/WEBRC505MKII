@@ -296,10 +296,11 @@ onUnmounted(() => {
 <style scoped>
 .center-main-panel {
   display: grid;
-  grid-template-columns: 164px minmax(360px, 1fr) 140px 182px;
-  gap: 14px;
-  padding: 14px 14px 10px;
+  grid-template-columns: 142px minmax(320px, 1fr) 108px 150px;
+  gap: 10px;
+  padding: 12px 12px 10px;
   color: #f3f3f5;
+  overflow: hidden;
 }
 
 .left-stack,
@@ -307,7 +308,8 @@ onUnmounted(() => {
 .right-stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .button-rail {
@@ -339,8 +341,9 @@ onUnmounted(() => {
 .display-cluster {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
+  min-width: 0;
 }
 
 .screen-shell {
@@ -351,8 +354,9 @@ onUnmounted(() => {
 }
 
 .lcd-display {
-  min-width: 300px;
-  min-height: 142px;
+  min-width: 0;
+  width: 100%;
+  min-height: 136px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -377,14 +381,14 @@ onUnmounted(() => {
 }
 
 .lcd-main {
-  font-size: 70px;
+  font-size: 62px;
   line-height: 0.9;
   text-align: center;
 }
 
 .lcd-name {
   text-align: center;
-  font-size: 28px;
+  font-size: 24px;
   line-height: 1;
 }
 
@@ -396,7 +400,7 @@ onUnmounted(() => {
 .knob-row {
   display: grid;
   grid-template-columns: repeat(4, 62px);
-  gap: 14px;
+  gap: 10px;
 }
 
 .navigation-ring {
@@ -427,8 +431,9 @@ onUnmounted(() => {
 .rhythm-shell {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
+  min-width: 0;
 }
 
 .output-block {
@@ -438,6 +443,7 @@ onUnmounted(() => {
 
 .pattern-select {
   min-height: 36px;
+  width: 100%;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.08);
@@ -451,6 +457,7 @@ onUnmounted(() => {
   gap: 6px;
   font-size: 11px;
   letter-spacing: 1.1px;
+  width: 100%;
 }
 
 .rhythm-note {

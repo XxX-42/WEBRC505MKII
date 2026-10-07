@@ -58,14 +58,19 @@
     <div class="main-button-column">
       <div class="halo-wrapper">
         <LoopHalo :track-id="trackId" class="halo-layer" />
-        <HardwareButton
-          shape="circle"
-          size="lg"
-          :color="buttonLedColor"
-          :active="isRecordingOrPlaying"
+        <button
+          class="main-recplay-button"
+          :class="[`state-${buttonLedColor}`, { active: isRecordingOrPlaying }]"
+          type="button"
           aria-label="Record or play track"
-          @press="handleRecPlay"
-        />
+          @click="handleRecPlay"
+        >
+          <span class="main-recplay-core">
+            <span class="main-recplay-icon">
+              {{ transportGlyph }}
+            </span>
+          </span>
+        </button>
       </div>
       <div class="loop-indicator-row">
         <span class="indicator-chip" :class="{ active: trackState === TrackState.RECORDING }">REC</span>
@@ -128,6 +133,13 @@ const stateLabel = computed(() => {
     default:
       return trackState.value;
   }
+});
+
+const transportGlyph = computed(() => {
+  if (trackState.value === TrackState.PLAYING || trackState.value === TrackState.OVERDUBBING) {
+    return '▶';
+  }
+  return '●';
 });
 </script>
 
@@ -237,8 +249,6 @@ const stateLabel = computed(() => {
 
 .halo-wrapper {
   position: relative;
-  display: grid;
-  place-items: center;
   width: 178px;
   height: 178px;
 }
@@ -264,7 +274,105 @@ const stateLabel = computed(() => {
 
 .halo-layer {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 138px;
+  height: 138px;
+  transform: translate(-50%, -50%);
+}
+
+.main-recplay-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 92px;
+  height: 92px;
+  transform: translate(-50%, -50%);
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.main-recplay-button::before {
+  content: '';
+  position: absolute;
   inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #f7f2e9 0%, #e8dfd0 55%, #c3b9a8 100%);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.32),
+    inset 0 2px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.main-recplay-button::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.08);
+}
+
+.main-recplay-button.state-red::after {
+  border-color: rgba(255, 0, 51, 0.42);
+  box-shadow: 0 0 18px rgba(255, 0, 51, 0.24);
+}
+
+.main-recplay-button.state-green::after {
+  border-color: rgba(0, 255, 102, 0.42);
+  box-shadow: 0 0 18px rgba(0, 255, 102, 0.24);
+}
+
+.main-recplay-button.state-yellow::after {
+  border-color: rgba(255, 204, 0, 0.42);
+  box-shadow: 0 0 18px rgba(255, 204, 0, 0.22);
+}
+
+.main-recplay-button.active::before {
+  transform: scale(0.985);
+}
+
+.main-recplay-core {
+  position: absolute;
+  inset: 10px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 6px solid rgba(33, 255, 157, 0.88);
+  background: radial-gradient(circle at center, #202226 0%, #1b1d21 100%);
+  box-shadow:
+    0 0 14px rgba(0, 255, 102, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  z-index: 1;
+}
+
+.main-recplay-button.state-red .main-recplay-core {
+  border-color: rgba(255, 92, 110, 0.9);
+  box-shadow: 0 0 14px rgba(255, 0, 51, 0.24);
+}
+
+.main-recplay-button.state-yellow .main-recplay-core {
+  border-color: rgba(255, 214, 87, 0.9);
+  box-shadow: 0 0 14px rgba(255, 204, 0, 0.22);
+}
+
+.main-recplay-icon {
+  font-family: var(--font-hardware);
+  font-size: 34px;
+  line-height: 1;
+  color: #b4f7cb;
+  text-shadow: 0 0 8px rgba(180, 247, 203, 0.28);
+}
+
+.main-recplay-button.state-red .main-recplay-icon {
+  color: #ffd6dd;
+}
+
+.main-recplay-button.state-yellow .main-recplay-icon {
+  color: #fff1b2;
 }
 
 .loop-indicator-row {
