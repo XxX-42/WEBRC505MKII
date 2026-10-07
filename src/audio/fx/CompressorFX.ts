@@ -31,8 +31,8 @@ export class CompressorFX implements FXBase {
             // Map 0-1 to Threshold (-60 to 0) and Ratio (1 to 20)
             const threshold = -60 * value;
             const ratio = 1 + (19 * value);
-            this.compressor.threshold.setTargetAtTime(threshold, this.context.currentTime, 0.1);
-            this.compressor.ratio.setTargetAtTime(ratio, this.context.currentTime, 0.1);
+            this.compressor.threshold.setTargetAtTime(threshold, this.context.currentTime, 0.003);
+            this.compressor.ratio.setTargetAtTime(ratio, this.context.currentTime, 0.003);
         }
     }
 

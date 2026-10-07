@@ -2,6 +2,7 @@
 
 #include "looper_core.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <map>
@@ -57,12 +58,28 @@ struct EngineStatus {
     unsigned int bufferFrames = 0;
     bool monitoringEnabled = false;
     LooperState state = LooperState::Empty;
-    double inputLatencyMs = 0.0;
-    double outputLatencyMs = 0.0;
-    double roundTripEstimateMs = 0.0;
+    std::optional<double> inputLatencyMs;
+    std::optional<double> outputLatencyMs;
+    std::optional<double> roundTripEstimateMs;
+    std::optional<double> physicalRoundTripMs;
+    std::optional<double> driverReportedStreamLatencyMs;
+    std::string inputLatencySource;
+    std::string outputLatencySource;
+    std::string driverReportedStreamLatencySource;
+    std::string roundTripLatencyNote = "Physical round-trip latency has not been measured.";
     float inputPeak = 0.0f;
     float outputPeak = 0.0f;
     unsigned int xrunsOrDropouts = 0;
+    unsigned int callbackStatusFaults = 0;
+    unsigned int inputQueueOverruns = 0;
+    unsigned int outputQueueUnderruns = 0;
+    unsigned int callbackFrameLimitViolations = 0;
+    std::size_t droppedCommands = 0;
+    std::size_t outputQueueDepthBlocks = 0;
+    std::size_t outputQueueCapacityBlocks = 0;
+    unsigned long long inputCallbackTicks = 0;
+    unsigned long long outputCallbackTicks = 0;
+    long long callbackCountSkew = 0;
     std::string lastError;
     float loopProgress = 0.0f;
     double streamTimeSeconds = 0.0;
@@ -99,6 +116,10 @@ public:
         return write >= read ? write - read : Capacity - (read - write);
     }
 
+    [[nodiscard]] static constexpr std::size_t usableCapacity() noexcept {
+        return Capacity - 1;
+    }
+
     void clear() noexcept {
         readIndex_.store(0, std::memory_order_release);
         writeIndex_.store(0, std::memory_order_release);
@@ -112,6 +133,52 @@ private:
     std::array<T, Capacity> buffer_{};
     std::atomic<std::size_t> readIndex_{0};
     std::atomic<std::size_t> writeIndex_{0};
+};
+
+// Serializes only control-thread producers. The callback remains a lock-free
+// single consumer; clear() is for use only after the stream has stopped.
+template <typename T, std::size_t Capacity>
+class SerializedProducerRingQueue {
+public:
+    bool push(const T& value) noexcept {
+        std::lock_guard<std::mutex> lock(producerMutex_);
+        if (queue_.push(value)) {
+            return true;
+        }
+        dropped_.fetch_add(1, std::memory_order_relaxed);
+        return false;
+    }
+
+    bool pop(T& value) noexcept {
+        return queue_.pop(value);
+    }
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return queue_.size();
+    }
+
+    [[nodiscard]] static constexpr std::size_t usableCapacity() noexcept {
+        return SpscRingQueue<T, Capacity>::usableCapacity();
+    }
+
+    [[nodiscard]] std::size_t dropped() const noexcept {
+        return dropped_.load(std::memory_order_relaxed);
+    }
+
+    // Only call after the consumer callback has stopped.
+    void clear() noexcept {
+        std::lock_guard<std::mutex> lock(producerMutex_);
+        queue_.clear();
+    }
+
+    void resetDropped() noexcept {
+        dropped_.store(0, std::memory_order_relaxed);
+    }
+
+private:
+    SpscRingQueue<T, Capacity> queue_;
+    mutable std::mutex producerMutex_;
+    std::atomic<std::size_t> dropped_{0};
 };
 
 class NativeAudioCore {
@@ -139,7 +206,16 @@ private:
 
     struct AudioBlock {
         unsigned int frames = 0;
-        std::array<float, kMaxCallbackFrames * 2> samples{};
+        std::array<float, kMaxCallbackFrames * 2> samples;
+
+        AudioBlock& operator=(const AudioBlock& other) noexcept {
+            if (this != &other) {
+                frames = other.frames;
+                const auto validSamples = static_cast<std::size_t>(other.frames) * 2;
+                std::copy_n(other.samples.data(), validSamples, samples.data());
+            }
+            return *this;
+        }
     };
 
     DeviceCatalog buildCatalog() const;
@@ -147,6 +223,7 @@ private:
     bool ensureAudioInstanceLocked(std::unique_ptr<RtAudio>& instance, Backend backend, std::string& error);
     bool validateConfigLocked(EngineConfig& config, std::string& error) const;
     bool openStreamLocked(std::string& error);
+    bool enqueueCommand(const Command& command, std::string& error);
     void closeStreamLocked() noexcept;
     void resetRuntimeStateLocked() noexcept;
     void updateLastErrorLocked(const std::string& error) const;
@@ -199,6 +276,7 @@ private:
     );
 
     mutable std::mutex controlMutex_;
+    std::mutex commandProducerMutex_;
     mutable std::string lastError_;
     std::unique_ptr<RtAudio> audio_;
     std::unique_ptr<RtAudio> captureAudio_;
@@ -208,7 +286,7 @@ private:
     unsigned int inputChannels_ = 1;
     unsigned int outputChannels_ = 2;
 
-    SpscRingQueue<Command, 64> commandQueue_;
+    SerializedProducerRingQueue<Command, 64> commandQueue_;
     SpscRingQueue<AudioBlock, 8> outputQueue_;
     std::atomic<bool> engineRunning_{false};
     std::atomic<int> looperState_{static_cast<int>(LooperState::Empty)};
@@ -216,7 +294,13 @@ private:
     std::atomic<float> inputPeak_{0.0f};
     std::atomic<float> outputPeak_{0.0f};
     std::atomic<unsigned int> xrunsOrDropouts_{0};
+    std::atomic<unsigned int> callbackStatusFaults_{0};
+    std::atomic<unsigned int> inputQueueOverruns_{0};
+    std::atomic<unsigned int> outputQueueUnderruns_{0};
+    std::atomic<unsigned int> callbackFrameLimitViolations_{0};
     std::atomic<unsigned long long> callbackTicks_{0};
+    std::atomic<unsigned long long> inputCallbackTicks_{0};
+    std::atomic<unsigned long long> outputCallbackTicks_{0};
     std::atomic<bool> renderPrimed_{false};
 };
 

@@ -49,15 +49,15 @@ export class DelayFX implements FXBase {
     }
 
     private applyMix(value: number) {
-        this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.1);
-        this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.1);
+        this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.003);
+        this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.003);
     }
 
     setParam(key: string, value: number) {
         if (key === 'time') {
-            this.delay.delayTime.setTargetAtTime(value, this.context.currentTime, 0.1);
+            this.delay.delayTime.setTargetAtTime(value, this.context.currentTime, 0.003);
         } else if (key === 'feedback') {
-            this.feedback.gain.setTargetAtTime(value * 0.9, this.context.currentTime, 0.1);
+            this.feedback.gain.setTargetAtTime(value * 0.9, this.context.currentTime, 0.003);
         } else if (key === 'mix') {
             this.currentMix = Math.max(0, Math.min(1, value));
             this.applyMix(this.currentMix);
@@ -66,8 +66,8 @@ export class DelayFX implements FXBase {
 
     setBypass(bypass: boolean) {
         if (bypass) {
-            this.wet.gain.setTargetAtTime(0, this.context.currentTime, 0.1);
-            this.dry.gain.setTargetAtTime(1, this.context.currentTime, 0.1);
+            this.wet.gain.setTargetAtTime(0, this.context.currentTime, 0.003);
+            this.dry.gain.setTargetAtTime(1, this.context.currentTime, 0.003);
         } else {
             this.applyMix(this.currentMix);
         }

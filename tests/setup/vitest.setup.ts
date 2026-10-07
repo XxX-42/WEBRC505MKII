@@ -1,5 +1,24 @@
 import { afterEach, vi } from 'vitest';
-import { createMockAudioContext } from '../helpers/audioTestUtils';
+import { createMockAudioContext, MockAudioWorkletNode } from '../helpers/audioTestUtils';
+
+Object.defineProperty(globalThis, 'crossOriginIsolated', {
+  configurable: true,
+  value: true,
+});
+Object.defineProperty(globalThis, 'AudioWorkletNode', {
+  configurable: true,
+  writable: true,
+  value: MockAudioWorkletNode,
+});
+Object.defineProperty(window, 'crossOriginIsolated', {
+  configurable: true,
+  value: true,
+});
+Object.defineProperty(window, 'AudioWorkletNode', {
+  configurable: true,
+  writable: true,
+  value: MockAudioWorkletNode,
+});
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -31,8 +50,8 @@ Object.defineProperty(window, 'cancelAnimationFrame', {
 });
 
 class MockAudioContext {
-  constructor() {
-    return createMockAudioContext();
+  constructor(options: AudioContextOptions = {}) {
+    return createMockAudioContext(options);
   }
 }
 
@@ -51,7 +70,9 @@ Object.defineProperty(globalThis.navigator, 'mediaDevices', {
   value: {
     getUserMedia: vi.fn(async () => ({
       getTracks: () => [],
+      getAudioTracks: () => [],
     })),
+    getSupportedConstraints: vi.fn(() => ({ latency: true, sampleRate: true, channelCount: true })),
     enumerateDevices: vi.fn(async () => []),
   },
 });

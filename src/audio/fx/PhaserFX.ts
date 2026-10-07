@@ -85,7 +85,7 @@ export class PhaserFX implements FXBase {
             case 'rate':
                 // 0.1Hz to 5Hz
                 this.rate = 0.1 + (normValue * 4.9);
-                this.lfo.frequency.setTargetAtTime(this.rate, this.context.currentTime, 0.05);
+                this.lfo.frequency.setTargetAtTime(this.rate, this.context.currentTime, 0.003);
                 break;
 
             case 'depth':
@@ -94,13 +94,13 @@ export class PhaserFX implements FXBase {
                 this.depth = normValue;
                 // Depth controls LFO gain (frequency sweep range)
                 // Range: 0 to 2000Hz sweep
-                this.lfoGain.gain.setTargetAtTime(this.depth * 2000, this.context.currentTime, 0.05);
+                this.lfoGain.gain.setTargetAtTime(this.depth * 2000, this.context.currentTime, 0.003);
                 break;
 
             case 'resonance':
                 // Q value
                 const q = 0.5 + (normValue * 5);
-                this.filters.forEach(f => f.Q.setTargetAtTime(q, this.context.currentTime, 0.05));
+                this.filters.forEach(f => f.Q.setTargetAtTime(q, this.context.currentTime, 0.003));
                 break;
         }
     }
@@ -108,12 +108,12 @@ export class PhaserFX implements FXBase {
     public setBypass(bypass: boolean) {
         if (bypass) {
             // Bypass: Only Dry signal, full volume
-            this.dryNode.gain.setTargetAtTime(1, this.context.currentTime, 0.05);
-            this.wetNode.gain.setTargetAtTime(0, this.context.currentTime, 0.05);
+            this.dryNode.gain.setTargetAtTime(1, this.context.currentTime, 0.003);
+            this.wetNode.gain.setTargetAtTime(0, this.context.currentTime, 0.003);
         } else {
             // Active: 50/50 Mix for Phasing
-            this.dryNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.05);
-            this.wetNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.05);
+            this.dryNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.003);
+            this.wetNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.003);
         }
     }
 

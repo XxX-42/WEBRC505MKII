@@ -58,4 +58,16 @@ describe('AudioEngine capabilities', () => {
       reverseReason: 'TRACK 2 UNAVAILABLE IN NATIVE V1',
     });
   });
+
+  it('keeps an unverified browser route calibration separate from physical round-trip latency', async () => {
+    const engine = await loadEngineForSearch('/?audio=browser');
+
+    engine.setLatency(8);
+
+    expect(engine.getLatencyInfo()).toMatchObject({
+      roundTripLatencyMs: 8,
+      physicalRoundTripMs: null,
+      roundTripLatencyNote: expect.stringContaining('not independently verified as analog hardware'),
+    });
+  });
 });

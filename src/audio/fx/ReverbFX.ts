@@ -32,8 +32,8 @@ export class ReverbFX implements FXBase {
     }
 
     private applyMix(value: number) {
-        this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.1);
-        this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.1);
+        this.wet.gain.setTargetAtTime(value, this.context.currentTime, 0.003);
+        this.dry.gain.setTargetAtTime(1 - value, this.context.currentTime, 0.003);
     }
 
     private generateImpulseResponse(duration: number) {
@@ -66,8 +66,8 @@ export class ReverbFX implements FXBase {
 
     setBypass(bypass: boolean) {
         if (bypass) {
-            this.wet.gain.setTargetAtTime(0, this.context.currentTime, 0.1);
-            this.dry.gain.setTargetAtTime(1, this.context.currentTime, 0.1);
+            this.wet.gain.setTargetAtTime(0, this.context.currentTime, 0.003);
+            this.dry.gain.setTargetAtTime(1, this.context.currentTime, 0.003);
         } else {
             this.applyMix(this.currentMix);
         }

@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(ENABLE_ASIO "Enable ASIO backend support when the local SDK is available" OFF)
 set(ASIOSDK_DIR "" CACHE PATH "Path to the Steinberg ASIO SDK root")
+set(NATIVE_BENCH_LOOPER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/looper_core.cpp" CACHE FILEPATH "LooperCore source used by the standalone benchmark")
 
 include(FetchContent)
 
@@ -66,6 +67,10 @@ target_link_libraries(native_bridge_host PRIVATE native_audio_core httplib::http
 
 add_executable(looper_core_tests tests/looper_core_tests.cpp src/looper_core.cpp)
 target_include_directories(looper_core_tests PRIVATE include)
+target_link_libraries(looper_core_tests PRIVATE rtaudio)
+
+add_executable(native_looper_bench benchmarks/native_looper_bench.cpp "${NATIVE_BENCH_LOOPER_SOURCE}")
+target_include_directories(native_looper_bench PRIVATE include)
 
 enable_testing()
 add_test(NAME looper_core_tests COMMAND looper_core_tests)

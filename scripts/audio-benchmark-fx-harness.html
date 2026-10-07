@@ -1,0 +1,154 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Offline FX bench</title></head><body>
+<script type="module">
+import { FilterFX } from '/src/audio/fx/FilterFX.ts';
+import { CompressorFX } from '/src/audio/fx/CompressorFX.ts';
+import { DelayFX } from '/src/audio/fx/DelayFX.ts';
+import { ReverbFX } from '/src/audio/fx/ReverbFX.ts';
+
+const PULSE_TIME = 2;
+const RENDER_SECONDS = 4.5;
+const REPEATS = 5;
+const RELATIVE_ONSET_THRESHOLD = 1e-4;
+
+const builders = {
+  dry: (context) => null,
+  compressorAmount50: (context) => {
+    const fx = new CompressorFX(context);
+    fx.setParam('amount', 0.5);
+    fx.setBypass(false);
+    return fx;
+  },
+  filterUiValue50: (context) => {
+    const fx = new FilterFX(context);
+    fx.setParam('frequency', 50);
+    fx.setBypass(false);
+    return fx;
+  },
+  filterLowCutoffProbe: (context) => {
+    const fx = new FilterFX(context);
+    fx.setParam('frequency', 0.05);
+    fx.setBypass(false);
+    return fx;
+  },
+  delayMixedDefault300ms: (context) => new DelayFX(context),
+  delayFullyWet300ms: (context) => {
+    const fx = new DelayFX(context);
+    fx.setParam('mix', 1);
+    return fx;
+  },
+  reverbFullyWetDefault2s: (context) => {
+    const fx = new ReverbFX(context);
+    fx.setParam('mix', 1);
+    return fx;
+  },
+};
+
+async function renderOne(sampleRate, caseName) {
+  const frameCount = Math.round(sampleRate * RENDER_SECONDS);
+  const context = new OfflineAudioContext(1, frameCount, sampleRate);
+  const source = context.createBufferSource();
+  const impulse = context.createBuffer(1, 1, sampleRate);
+  impulse.getChannelData(0)[0] = 1;
+  source.buffer = impulse;
+
+  const fx = builders[caseName](context);
+  if (fx) {
+    source.connect(fx.input);
+    fx.output.connect(context.destination);
+  } else {
+    source.connect(context.destination);
+  }
+  source.start(PULSE_TIME);
+
+  const renderStarted = performance.now();
+  const outputBuffer = await context.startRendering();
+  const offlineRenderCpuMs = performance.now() - renderStarted;
+  const samples = outputBuffer.getChannelData(0);
+  let peakAmplitude = 0;
+  let peakSample = -1;
+  for (let i = 0; i < samples.length; i += 1) {
+    const magnitude = Math.abs(samples[i]);
+    if (magnitude > peakAmplitude) {
+      peakAmplitude = magnitude;
+      peakSample = i;
+    }
+  }
+
+  const threshold = peakAmplitude * RELATIVE_ONSET_THRESHOLD;
+  let onsetSample = -1;
+  let tailLastSample = -1;
+  for (let i = 0; i < samples.length; i += 1) {
+    if (Math.abs(samples[i]) >= threshold && threshold > 0) {
+      if (onsetSample < 0) onsetSample = i;
+      tailLastSample = i;
+    }
+  }
+
+  const expectedInputSample = Math.round(PULSE_TIME * sampleRate);
+  const fxFrequencyAfterRender = fx && fx.filter ? fx.filter.frequency.value : null;
+  return {
+    sampleRate,
+    caseName,
+    onsetSample,
+    onsetOffsetSamples: onsetSample < 0 ? null : onsetSample - expectedInputSample,
+    onsetOffsetMs: onsetSample < 0 ? null : (onsetSample - expectedInputSample) / sampleRate * 1000,
+    peakSample,
+    peakOffsetSamples: peakSample < 0 ? null : peakSample - expectedInputSample,
+    peakOffsetMs: peakSample < 0 ? null : (peakSample - expectedInputSample) / sampleRate * 1000,
+    peakAmplitude,
+    relativeOnsetThreshold: RELATIVE_ONSET_THRESHOLD,
+    absoluteOnsetThreshold: threshold,
+    tailEndAfterPulseMs: tailLastSample < 0 ? null : (tailLastSample - expectedInputSample) / sampleRate * 1000,
+    offlineRenderCpuMs,
+    filterFrequencyValueAfterRender: fxFrequencyAfterRender,
+  };
+}
+
+window.runFxBench = async () => {
+  const sampleRates = [44100, 48000, 96000];
+  const caseNames = Object.keys(builders);
+  const runs = [];
+  for (const sampleRate of sampleRates) {
+    for (const caseName of caseNames) {
+      for (let repeat = 0; repeat < REPEATS; repeat += 1) {
+        runs.push({ repeat: repeat + 1, ...(await renderOne(sampleRate, caseName)) });
+      }
+    }
+  }
+
+  const groups = {};
+  for (const run of runs) {
+    const key = run.sampleRate + ':' + run.caseName;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(run);
+  }
+  const summaries = Object.entries(groups).map(([key, values]) => {
+    const sorted = (field) => values.map((v) => v[field]).filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+    const median = (items) => items.length ? items[Math.floor(items.length / 2)] : null;
+    const onsetMs = sorted('onsetOffsetMs');
+    const peakMs = sorted('peakOffsetMs');
+    const peakAmplitude = sorted('peakAmplitude');
+    const tailMs = sorted('tailEndAfterPulseMs');
+    const cpuMs = sorted('offlineRenderCpuMs');
+    return {
+      key,
+      sampleRate: values[0].sampleRate,
+      caseName: values[0].caseName,
+      repeats: values.length,
+      medianOnsetOffsetMs: median(onsetMs),
+      onsetOffsetMsAll: onsetMs,
+      medianPeakOffsetMs: median(peakMs),
+      peakOffsetMsAll: peakMs,
+      medianPeakAmplitude: median(peakAmplitude),
+      tailEndAfterPulseMsAll: tailMs,
+      offlineRenderCpuMsMedian: median(cpuMs),
+      offlineRenderCpuMsAll: cpuMs,
+      filterFrequencyValueAfterRender: values.find((v) => v.filterFrequencyValueAfterRender !== null)?.filterFrequencyValueAfterRender ?? null,
+    };
+  });
+  return { runs, summaries };
+};
+window.fxBenchReady = true;
+</script>
+</body></html>

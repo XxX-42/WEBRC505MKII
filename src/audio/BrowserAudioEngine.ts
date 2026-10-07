@@ -1,5 +1,5 @@
 import { TrackAudio } from './TrackAudio';
-import { Track, TrackState } from '../core/types';
+import { Track, TrackState, TransportState } from '../core/types';
 import { Transport } from '../core/Transport';
 import { FXChain } from './FXChain';
 import type { FXBase } from './fx/FXBase';
@@ -11,13 +11,59 @@ import { PhaserFX } from './fx/PhaserFX';
 
 import { RhythmEngine } from './RhythmEngine';
 import type { IAudioEngine } from './AudioEngineInterface';
+import { BrowserRealtimeRuntime, type BrowserRealtimeRuntimeMessage } from './BrowserRealtimeRuntime';
+import {
+    BROWSER_REALTIME_QUANTUM_FRAMES,
+    BROWSER_REALTIME_SAMPLE_RATE,
+    BROWSER_REALTIME_TRACK_COUNT,
+    BROWSER_REALTIME_WORKLET_NAME,
+    BROWSER_REALTIME_WORKLET_URL,
+    CONTROL_TRACK_POSITIONS_BYTE_OFFSET,
+    CONTROL_TRACK_STATES_BYTE_OFFSET,
+    BrowserRealtimeOpcode,
+    createControlSharedBuffer,
+    type BrowserRealtimeMetrics,
+} from './browserRealtimeProtocol';
+import {
+    getBrowserLatencyCalibration,
+    setBrowserLatencyCalibration,
+    type BrowserLatencyCalibration,
+    type BrowserLatencyCalibrationScope,
+} from './browserLatencyCalibration';
 
 export interface BrowserAudioLatencyInfo {
     sampleRate: number;
     baseLatencyMs: number | null;
     outputLatencyMs: number | null;
+    inputLatencyMs: null;
     estimatedMonitoringLatencyMs: number | null;
     roundTripLatencyMs: number | null;
+    inputLatencySource: null;
+    outputLatencySource: string | null;
+    driverReportedStreamLatencyMs: null;
+    driverReportedStreamLatencySource: null;
+    roundTripLatencyNote: string;
+    xrunsOrDropouts: null;
+}
+
+export interface BrowserAudioIoSnapshot {
+  contextSampleRate: number;
+  contextBaseLatencyMs: number | null;
+  contextOutputLatencyMs: number | null;
+  loopRecordingChannelCount: 1;
+  loopPlaybackOutputChannelCount: 2;
+  loopChannelLayout: 'mono input downmix, duplicated to stereo playback';
+  inputDeviceId: string | null;
+  inputLabel: string | null;
+  inputSampleRate: number | null;
+  inputChannelCount: number | null;
+  inputLatencyMs: number | null;
+  echoCancellation: boolean | null;
+  noiseSuppression: boolean | null;
+  autoGainControl: boolean | null;
+  outputDeviceId: string | null;
+  outputLabel: string | null;
+  outputSinkType: string | null;
 }
 
 export interface BrowserAudioUiStatus {
@@ -36,7 +82,9 @@ export class BrowserAudioEngine implements IAudioEngine {
     public sharedBuffer: SharedArrayBuffer | null = null;
     public trackStates: Int32Array | null = null; // State enum
     public trackPositions: Float32Array | null = null; // 0.0 to 1.0
-    public roundTripLatency: number = 0; // in seconds
+    public roundTripLatency = 0; // Compatibility field; zero means no current measured calibration.
+    public measuredRoundTripLatencyMs: number | null = null;
+    public realtimeRuntime: BrowserRealtimeRuntime | null = null;
 
     // ========================================
     // AUDIO I/O MANAGEMENT (CRITICAL SAFETY)
@@ -45,6 +93,11 @@ export class BrowserAudioEngine implements IAudioEngine {
     private currentInputStream: MediaStreamAudioSourceNode | null = null;
     private currentMediaStream: MediaStream | null = null;
     private monitorGainNode: GainNode | null = null;
+    private currentInputSettings: MediaTrackSettings | null = null;
+    private currentInputLabel: string | null = null;
+    private currentOutputLabel: string | null = null;
+    private currentCalibration: BrowserLatencyCalibration | null = null;
+    private loopbackCaptureResolve: (() => void) | null = null;
 
     // FX Chains & Mixing
     public inputFxChain: FXChain;
@@ -64,21 +117,33 @@ export class BrowserAudioEngine implements IAudioEngine {
     private statusListeners = new Set<(status: BrowserAudioUiStatus) => void>();
     private initialized = false;
     private lastError = '';
+    private transportListenersInstalled = false;
+
+    private readonly handleTransportStart = () => {
+        void this.realtimeRuntime?.setClock(true).catch((error) => this.recordRuntimeError(error));
+    };
+    private readonly handleTransportStop = () => {
+        void this.realtimeRuntime?.setClock(false).catch((error) => this.recordRuntimeError(error));
+    };
+    private readonly handleTransportBpmChange = () => {
+        void this.realtimeRuntime?.setBpm(Transport.getInstance().bpm).catch((error) => this.recordRuntimeError(error));
+    };
 
     public constructor() {
         this.context = new AudioContext({
             latencyHint: 'interactive',
-            sampleRate: 44100,
+            sampleRate: BROWSER_REALTIME_SAMPLE_RATE,
         });
 
-        // Initialize SharedArrayBuffer
-        this.sharedBuffer = new SharedArrayBuffer(1024);
-        this.trackStates = new Int32Array(this.sharedBuffer, 0, 5);
-        this.trackPositions = new Float32Array(this.sharedBuffer, 20, 5);
+        if (typeof SharedArrayBuffer !== 'undefined' && typeof window !== 'undefined' && window.crossOriginIsolated) {
+            this.sharedBuffer = createControlSharedBuffer();
+            this.trackStates = new Int32Array(this.sharedBuffer, CONTROL_TRACK_STATES_BYTE_OFFSET, BROWSER_REALTIME_TRACK_COUNT);
+            this.trackPositions = new Float32Array(this.sharedBuffer, CONTROL_TRACK_POSITIONS_BYTE_OFFSET, BROWSER_REALTIME_TRACK_COUNT);
+        }
 
         // Create monitor gain node (for software monitoring)
         this.monitorGainNode = this.context.createGain();
-        this.monitorGainNode.gain.value = 0; // MUTED by default (SAFETY!)
+        this.monitorGainNode.gain.value = 1; // The worklet gates monitoring at the target sample; silence is its default.
         this.monitorGainNode.connect(this.context.destination);
 
         // Initialize FX Chains & Mixing
@@ -91,7 +156,6 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.trackMixNode.connect(this.outputFxChain.input);
         this.outputFxChain.output.connect(this.masterGainNode);
         this.masterGainNode.connect(this.context.destination);
-        this.inputFxChain.output.connect(this.monitorGainNode);
 
         // Initialize Rhythm Engine
         this.rhythmEngine = new RhythmEngine(this.context);
@@ -108,23 +172,81 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     public async init() {
+        if (this.initialized) return;
         try {
+            if (typeof SharedArrayBuffer === 'undefined' || typeof window === 'undefined' || !window.crossOriginIsolated) {
+                throw new Error('Browser realtime audio requires cross-origin isolation. Serve with COOP: same-origin and COEP: require-corp headers.');
+            }
+            if (this.context.sampleRate >= 96_000) {
+                throw new Error('96 kHz browser audio is gated until the real-time path has been qualified at that rate.');
+            }
+            if (this.context.sampleRate !== BROWSER_REALTIME_SAMPLE_RATE) {
+                throw new Error(`Browser realtime audio requires a ${BROWSER_REALTIME_SAMPLE_RATE} Hz AudioContext; this device opened at ${this.context.sampleRate} Hz.`);
+            }
+            if (!this.sharedBuffer) {
+                this.sharedBuffer = createControlSharedBuffer();
+                this.trackStates = new Int32Array(this.sharedBuffer, CONTROL_TRACK_STATES_BYTE_OFFSET, BROWSER_REALTIME_TRACK_COUNT);
+                this.trackPositions = new Float32Array(this.sharedBuffer, CONTROL_TRACK_POSITIONS_BYTE_OFFSET, BROWSER_REALTIME_TRACK_COUNT);
+            }
+
             if (this.context.state === 'suspended') {
                 await this.context.resume();
             }
 
-            await this.context.audioWorklet.addModule('/worklets/looper-processor.js');
+            await this.context.audioWorklet.addModule(BROWSER_REALTIME_WORKLET_URL);
 
-            if (this.selectedInputDeviceId) {
-                await this.setInputDevice(this.selectedInputDeviceId);
+            if (!this.workletNode || !this.realtimeRuntime) {
+                const controlBuffer = this.sharedBuffer;
+                const workletNode = new AudioWorkletNode(this.context, BROWSER_REALTIME_WORKLET_NAME, {
+                    numberOfInputs: 1,
+                    numberOfOutputs: 7,
+                    outputChannelCount: [2, 2, 2, 2, 2, 2, 2],
+                    channelCount: 2,
+                    channelCountMode: 'explicit',
+                    processorOptions: { controlBuffer },
+                });
+                this.workletNode = workletNode;
+                this.realtimeRuntime = new BrowserRealtimeRuntime(workletNode, controlBuffer, this.context.sampleRate);
+                this.realtimeRuntime.setMessageHandler((message) => this.handleRuntimeMessage(message));
+
+                this.inputFxChain.output.connect(workletNode, 0, 0);
+                for (let track = 0; track < this.tracks.length; track += 1) {
+                    workletNode.connect(this.tracks[track]!.fxChain.input, track, 0);
+                }
+                workletNode.connect(this.monitorGainNode!, 5, 0);
+                workletNode.connect(this.rhythmEngine.outputNode, 6, 0);
+                await this.realtimeRuntime.prepareAllTracks();
+                this.rhythmEngine.setRealtimeControl((running, pattern) => {
+                    void this.realtimeRuntime?.setRhythm(running, pattern).catch((error) => this.recordRuntimeError(error));
+                });
             }
 
             if (this.selectedOutputDeviceId) {
                 await this.setOutputDevice(this.selectedOutputDeviceId);
             }
 
+            await this.setInputDevice(this.selectedInputDeviceId || '');
+            this.installTransportListeners();
+
+            await this.realtimeRuntime.enqueue(
+                BrowserRealtimeOpcode.SET_MONITOR,
+                -1,
+                this.monitoringEnabled ? 1 : 0,
+                0,
+                this.realtimeRuntime.getImmediateTargetFrame(),
+            );
+
+            const transport = Transport.getInstance();
+            void this.realtimeRuntime.setBpm(transport.bpm).catch((error) => this.recordRuntimeError(error));
+            if (transport.state === TransportState.PLAYING) {
+                void this.realtimeRuntime.setClock(true).catch((error) => this.recordRuntimeError(error));
+            }
+            void this.realtimeRuntime.setRhythm(this.rhythmEngine.isRunning, this.rhythmEngine.patternIndex)
+                .catch((error) => this.recordRuntimeError(error));
+
             this.initialized = true;
             this.lastError = '';
+            this.syncCurrentCalibration();
             this.emitLatencyInfo();
             this.emitStatus();
         } catch (error) {
@@ -175,10 +297,10 @@ export class BrowserAudioEngine implements IAudioEngine {
 
         try {
             const stream = await this.requestInputStream(deviceId);
-            this.replaceInputStream(stream);
-
-            this.selectedInputDeviceId = deviceId || null;
+            this.replaceInputStream(stream, deviceId || null);
+            this.selectedInputDeviceId = this.currentInputSettings?.deviceId || deviceId || null;
             this.saveDevicePreferences();
+            this.syncCurrentCalibration();
 
             console.log('  ? New input device connected');
             console.log(`  ??  Monitoring: ${this.monitoringEnabled ? 'ENABLED' : 'DISABLED (SAFE)'}\n`);
@@ -188,10 +310,13 @@ export class BrowserAudioEngine implements IAudioEngine {
                 console.warn('  Requested input device is unavailable or overconstrained. Falling back to the default microphone.');
                 try {
                     const fallbackStream = await this.requestInputStream('');
-                    this.replaceInputStream(fallbackStream);
+                    this.replaceInputStream(fallbackStream, null);
                     this.selectedInputDeviceId = null;
                     this.saveDevicePreferences();
+                    this.syncCurrentCalibration();
                     console.log('  ? Default input device connected');
+                    this.emitLatencyInfo();
+                    this.emitStatus();
                     return;
                 } catch (fallbackError) {
                     console.error('Failed to set default input device after fallback:', fallbackError);
@@ -217,15 +342,17 @@ export class BrowserAudioEngine implements IAudioEngine {
         console.log(`\n?? Switching output device to: ${deviceId}`);
 
         try {
-            // Use setSinkId if available (Chrome/Edge)
-            if ('setSinkId' in this.context) {
-                await (this.context as any).setSinkId(deviceId);
-                this.selectedOutputDeviceId = deviceId;
-                this.saveDevicePreferences();
-                console.log('  ? Output device changed\n');
-            } else {
-                console.warn('  ??  setSinkId not supported in this browser\n');
+            const contextWithSink = this.context as AudioContext & { setSinkId?: (sinkId: string) => Promise<void> };
+            if (typeof contextWithSink.setSinkId !== 'function') {
+                throw new Error('This browser does not support selecting an AudioContext output device.');
             }
+            await contextWithSink.setSinkId(deviceId);
+            this.selectedOutputDeviceId = deviceId || null;
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            this.currentOutputLabel = devices.find((device) => device.kind === 'audiooutput' && device.deviceId === deviceId)?.label || null;
+            this.saveDevicePreferences();
+            this.syncCurrentCalibration();
+            console.log('  ? Output device changed\n');
         } catch (error) {
             console.error('Failed to set output device:', error);
             throw error;
@@ -412,7 +539,9 @@ export class BrowserAudioEngine implements IAudioEngine {
             // Let's try to be smart.
 
             if (fx instanceof FilterFX) {
-                fx.setParam('frequency', value); // 0-100 -> mapped inside
+                fx.setParam('frequency', value / 100);
+            } else if (fx.name === 'COMPRESSOR') {
+                fx.setParam('amount', value / 100);
             } else if (fx instanceof ReverbFX) {
                 fx.setParam('mix', value / 100);
             } else if (fx instanceof DelayFX) {
@@ -447,13 +576,9 @@ export class BrowserAudioEngine implements IAudioEngine {
     public setMonitoring(enabled: boolean) {
         this.monitoringEnabled = enabled;
 
-        if (this.monitorGainNode) {
-            // Smooth transition to prevent clicks
-            this.monitorGainNode.gain.setTargetAtTime(
-                enabled ? 1.0 : 0.0,
-                this.context.currentTime,
-                0.01
-            );
+        if (this.realtimeRuntime) {
+            void this.realtimeRuntime.enqueue(BrowserRealtimeOpcode.SET_MONITOR, -1, enabled ? 1 : 0)
+                .catch((error) => this.recordRuntimeError(error));
         }
 
         console.log(`\n?? Software Monitoring: ${enabled ? 'ENABLED ??' : 'DISABLED (SAFE)'}`);
@@ -483,17 +608,139 @@ export class BrowserAudioEngine implements IAudioEngine {
         const outputLatencyMs = Number.isFinite(audioContext.outputLatency)
             ? (audioContext.outputLatency ?? 0) * 1000
             : null;
-        const estimatedMonitoringLatencyMs = baseLatencyMs !== null
-            ? baseLatencyMs + (outputLatencyMs ?? baseLatencyMs)
-            : outputLatencyMs;
 
         return {
             sampleRate: this.context.sampleRate,
             baseLatencyMs,
             outputLatencyMs,
-            estimatedMonitoringLatencyMs,
-            roundTripLatencyMs: this.roundTripLatency > 0 ? this.roundTripLatency * 1000 : null,
+            inputLatencyMs: null,
+            estimatedMonitoringLatencyMs: null,
+            roundTripLatencyMs: this.measuredRoundTripLatencyMs,
+            inputLatencySource: null,
+            outputLatencySource: outputLatencyMs === null ? null : 'AudioContext.outputLatency API',
+            driverReportedStreamLatencyMs: null,
+            driverReportedStreamLatencySource: null,
+            roundTripLatencyNote: this.measuredRoundTripLatencyMs === null
+                ? 'No correlated output-to-input loopback calibration is stored for the active device route and capture format.'
+                : 'Measured by scheduled output tone and AudioWorklet capture for the active route; the signal path is not independently verified as analog hardware.',
+            xrunsOrDropouts: null,
         };
+    }
+
+    public getRealtimeMetrics(): BrowserRealtimeMetrics {
+        if (this.realtimeRuntime) return this.realtimeRuntime.getMetrics();
+        return {
+            sampleRate: this.context.sampleRate,
+            quantumFrames: BROWSER_REALTIME_QUANTUM_FRAMES,
+            renderedFrame: 0,
+            underruns: 0,
+            commandQueueDepth: 0,
+            loopFrames: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
+            recordingFrames: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
+            trackStates: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
+            trackPositions: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
+            outputMonitorEnabled: false,
+            backendMode: 'sab-worklet',
+            lastAckSequence: 0,
+            commandOverruns: 0,
+            processDeadlineMisses: null,
+            deadlineMetricAvailable: false,
+            inputDropoutBlocks: 0,
+            trackCapacityOverruns: 0,
+            maxTrackFrames: 0,
+            trackCapacityFrames: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
+        };
+    }
+
+    public getIoSnapshot(): BrowserAudioIoSnapshot {
+        const contextWithSink = this.context as AudioContext & {
+            outputLatency?: number;
+            sinkId?: string | { id?: string; type?: string };
+        };
+        const inputSettings = this.currentInputSettings as (MediaTrackSettings & { latency?: number }) | null;
+        const contextSink = typeof contextWithSink.sinkId === 'string'
+            ? contextWithSink.sinkId
+            : contextWithSink.sinkId?.id || null;
+        const outputSinkType = typeof contextWithSink.sinkId === 'string'
+            ? (contextWithSink.sinkId ? 'device' : 'default')
+            : contextWithSink.sinkId?.type || null;
+        const requestedLatency = inputSettings?.latency;
+
+        return {
+            contextSampleRate: this.context.sampleRate,
+            contextBaseLatencyMs: Number.isFinite(this.context.baseLatency) ? this.context.baseLatency * 1000 : null,
+            contextOutputLatencyMs: Number.isFinite(contextWithSink.outputLatency)
+                ? (contextWithSink.outputLatency ?? 0) * 1000
+                : null,
+            loopRecordingChannelCount: 1,
+            loopPlaybackOutputChannelCount: 2,
+            loopChannelLayout: 'mono input downmix, duplicated to stereo playback',
+            inputDeviceId: inputSettings?.deviceId || this.selectedInputDeviceId,
+            inputLabel: this.currentInputLabel,
+            inputSampleRate: Number.isFinite(inputSettings?.sampleRate) ? inputSettings!.sampleRate! : null,
+            inputChannelCount: Number.isFinite(inputSettings?.channelCount) ? inputSettings!.channelCount! : null,
+            inputLatencyMs: Number.isFinite(requestedLatency) ? requestedLatency! * 1000 : null,
+            echoCancellation: typeof inputSettings?.echoCancellation === 'boolean' ? inputSettings.echoCancellation : null,
+            noiseSuppression: typeof inputSettings?.noiseSuppression === 'boolean' ? inputSettings.noiseSuppression : null,
+            autoGainControl: typeof inputSettings?.autoGainControl === 'boolean' ? inputSettings.autoGainControl : null,
+            outputDeviceId: contextSink || this.selectedOutputDeviceId,
+            outputLabel: this.currentOutputLabel,
+            outputSinkType,
+        };
+    }
+
+    private installTransportListeners() {
+        if (this.transportListenersInstalled) return;
+        const transport = Transport.getInstance();
+        transport.on('start', this.handleTransportStart);
+        transport.on('stop', this.handleTransportStop);
+        transport.on('bpm-change', this.handleTransportBpmChange);
+        this.transportListenersInstalled = true;
+    }
+
+    private handleRuntimeMessage(message: BrowserRealtimeRuntimeMessage) {
+        if (message.type === 'CLOCK_TICK' && typeof message.beatOrdinal === 'number' && typeof message.frame === 'number') {
+            Transport.getInstance().emitWorkletBeat(message.beatOrdinal, message.frame);
+        } else if (message.type === 'TRACK_CAPACITY_REACHED' && typeof message.track === 'number') {
+            const track = this.tracks[message.track];
+            track?.handleCapacityReached(message.frame ?? this.realtimeRuntime?.getCurrentFrame() ?? 0);
+        } else if (message.type === 'LOOPBACK_CAPTURE_COMPLETE') {
+            this.loopbackCaptureResolve?.();
+            this.loopbackCaptureResolve = null;
+        } else if (message.type === 'BOOT_ERROR') {
+            this.initialized = false;
+            this.lastError = message.message || 'Browser realtime worklet failed to start.';
+            this.emitStatus();
+        }
+    }
+
+    private recordRuntimeError(error: unknown) {
+        this.lastError = error instanceof Error ? error.message : String(error);
+        this.emitStatus();
+    }
+
+    private getLatencyCalibrationScope(): BrowserLatencyCalibrationScope {
+        const contextWithSink = this.context as AudioContext & { sinkId?: string | { id?: string; type?: string } };
+        const contextSinkId = typeof contextWithSink.sinkId === 'string'
+            ? contextWithSink.sinkId
+            : contextWithSink.sinkId?.id || null;
+        return {
+            inputDeviceId: this.currentInputSettings?.deviceId || this.selectedInputDeviceId,
+            outputDeviceId: contextSinkId || this.selectedOutputDeviceId,
+            contextSampleRate: this.context.sampleRate,
+            inputSampleRate: Number.isFinite(this.currentInputSettings?.sampleRate)
+                ? this.currentInputSettings!.sampleRate!
+                : null,
+            inputChannelCount: Number.isFinite(this.currentInputSettings?.channelCount)
+                ? this.currentInputSettings!.channelCount!
+                : null,
+        };
+    }
+
+    private syncCurrentCalibration() {
+        this.currentCalibration = getBrowserLatencyCalibration(this.getLatencyCalibrationScope());
+        this.measuredRoundTripLatencyMs = this.currentCalibration?.roundTripLatencyMs ?? null;
+        this.roundTripLatency = this.measuredRoundTripLatencyMs === null ? 0 : this.measuredRoundTripLatencyMs / 1000;
     }
 
     public onLatencyInfoChange(listener: (info: BrowserAudioLatencyInfo) => void) {
@@ -524,6 +771,10 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     public isNativeReady() {
+        return this.initialized;
+    }
+
+    public get isReady() {
         return this.initialized;
     }
 
@@ -623,93 +874,115 @@ export class BrowserAudioEngine implements IAudioEngine {
     // LOOPBACK LATENCY TEST
     // ========================================
 
-    private async getTestStream(): Promise<MediaStream> {
-        try {
-            return await this.requestInputStream(this.selectedInputDeviceId || '');
-        } catch (error) {
-            if (this.selectedInputDeviceId && this.shouldFallbackToDefaultInput(error)) {
-                return this.requestInputStream('');
-            }
-            throw error;
-        }
-    }
-
     public async runLoopbackTest(): Promise<number> {
-        console.log('Starting Loopback Latency Test...');
-
-        let stream: MediaStream;
-        try {
-            stream = await this.getTestStream();
-        } catch (e) {
-            console.error('Failed to get test stream', e);
-            throw new Error('Could not access microphone. Check permissions.');
+        if (!this.initialized || !this.realtimeRuntime || !this.workletNode) {
+            throw new Error('Initialize browser audio and select input/output devices before running loopback calibration.');
+        }
+        if (this.loopbackCaptureResolve) {
+            throw new Error('A browser loopback calibration is already running.');
         }
 
-        const source = this.context.createMediaStreamSource(stream);
-        const recorder = this.context.createScriptProcessor(4096, 1, 1);
-        const recordingBuffer = new Float32Array(this.context.sampleRate * 1.0);
-        let writeIndex = 0;
+        await this.getInputStream();
+        if (this.context.state === 'suspended') await this.context.resume();
 
-        recorder.onaudioprocess = (e) => {
-            const input = e.inputBuffer.getChannelData(0);
-            if (writeIndex < recordingBuffer.length) {
-                const len = Math.min(input.length, recordingBuffer.length - writeIndex);
-                recordingBuffer.set(input.subarray(0, len), writeIndex);
-                writeIndex += len;
-            }
-        };
+        const captureFrames = Math.round(this.context.sampleRate * 1.5);
+        const captureBuffer = this.realtimeRuntime.createLoopbackCaptureBuffer(captureFrames);
+        const captureStartFrame = this.realtimeRuntime.getSafeTargetFrame();
+        const signalFrame = captureStartFrame + Math.round(this.context.sampleRate * 0.25);
+        const signalIndex = signalFrame - captureStartFrame;
+        let captureTimeout: ReturnType<typeof setTimeout> | null = null;
+        const captureComplete = new Promise<void>((resolve, reject) => {
+            this.loopbackCaptureResolve = () => {
+                if (captureTimeout) clearTimeout(captureTimeout);
+                this.loopbackCaptureResolve = null;
+                resolve();
+            };
+            captureTimeout = setTimeout(() => {
+                this.loopbackCaptureResolve = null;
+                reject(new Error('The AudioWorklet did not finish the loopback capture in time.'));
+            }, 2_500);
+        });
 
-        const mute = this.context.createGain();
-        mute.gain.value = 0;
-        source.connect(recorder);
-        recorder.connect(mute);
-        mute.connect(this.context.destination);
-
+        await this.realtimeRuntime.armLoopbackCapture(captureBuffer, captureStartFrame, captureFrames);
         const osc = this.context.createOscillator();
         const oscGain = this.context.createGain();
+        osc.type = 'sine';
         osc.frequency.value = 1000;
-        oscGain.gain.value = 0.8;
+        oscGain.gain.value = 0.05;
         osc.connect(oscGain);
         oscGain.connect(this.context.destination);
-
-        const now = this.context.currentTime;
-        const signalDelay = 0.1;
-        osc.start(now + signalDelay);
-        osc.stop(now + signalDelay + 0.05);
-
-        await new Promise(resolve => setTimeout(resolve, 1200));
-
-        osc.disconnect();
-        oscGain.disconnect();
-        source.disconnect();
-        recorder.disconnect();
-        mute.disconnect();
-        stream.getTracks().forEach(t => t.stop());
-
-        let peakIndex = -1;
-        const threshold = 0.05;
-        for (let i = 0; i < recordingBuffer.length; i++) {
-            const sample = recordingBuffer[i];
-            if (sample !== undefined && Math.abs(sample) > threshold) {
-                peakIndex = i;
-                break;
-            }
+        const signalTime = signalFrame / this.context.sampleRate;
+        try {
+            osc.start(signalTime);
+            osc.stop(signalTime + 0.12);
+            await captureComplete;
+        } finally {
+            try { osc.disconnect(); } catch { /* already disconnected */ }
+            try { oscGain.disconnect(); } catch { /* already disconnected */ }
+            if (captureTimeout) clearTimeout(captureTimeout);
+            this.loopbackCaptureResolve = null;
         }
 
-        if (peakIndex === -1) {
-            throw new Error('Signal not detected. Increase volume/check loopback.');
+        const captureMeta = new Int32Array(captureBuffer, 0, 16);
+        const capturedFrames = Atomics.load(captureMeta, 2);
+        const capturedAudio = new Float32Array(captureBuffer, 64, capturedFrames);
+        const latencyMs = this.detectLoopbackLatency(capturedAudio, signalIndex);
+        if (latencyMs === null) {
+            throw new Error('The low-level 1 kHz loopback probe was not detected on the selected input route. Check the route and signal level.');
         }
 
-        const latencyMs = ((peakIndex / this.context.sampleRate) - signalDelay) * 1000;
-        console.log(`Latency Test: Peak at ${(peakIndex / this.context.sampleRate).toFixed(4)}s, Delay ${signalDelay}s, Result ${latencyMs.toFixed(2)}ms`);
-
-        return Math.max(0, latencyMs);
+        console.log(`Output-to-input loopback correlation measured ${latencyMs.toFixed(2)} ms on the active route (${this.context.sampleRate} Hz context, ${this.currentInputSettings?.sampleRate ?? 'unknown'} Hz input); route is unverified as analog hardware.`);
+        return latencyMs;
     }
 
     public setLatency(latencyMs: number) {
-        this.roundTripLatency = latencyMs / 1000;
-        console.log(`Latency compensation set to: ${this.roundTripLatency.toFixed(4)}s`);
+        const calibration = setBrowserLatencyCalibration(this.getLatencyCalibrationScope(), latencyMs);
+        this.currentCalibration = calibration;
+        this.measuredRoundTripLatencyMs = calibration?.roundTripLatencyMs ?? null;
+        this.roundTripLatency = this.measuredRoundTripLatencyMs === null ? 0 : this.measuredRoundTripLatencyMs / 1000;
+        console.log(`Unverified active-route loopback calibration: ${this.measuredRoundTripLatencyMs === null ? 'unknown' : `${this.measuredRoundTripLatencyMs.toFixed(2)} ms`}`);
         this.emitLatencyInfo();
+    }
+
+    private detectLoopbackLatency(samples: Float32Array, signalIndex: number): number | null {
+        const sampleRate = this.context.sampleRate;
+        const correlationFrames = Math.max(48, Math.round(sampleRate * 0.002));
+        const maxDelayFrames = Math.min(Math.round(sampleRate * 0.5), samples.length - signalIndex - correlationFrames);
+        if (maxDelayFrames <= 0 || signalIndex < correlationFrames) return null;
+
+        let noiseSquareSum = 0;
+        let noiseSampleCount = 0;
+        const noiseStart = Math.max(0, signalIndex - Math.round(sampleRate * 0.1));
+        for (let index = noiseStart; index < signalIndex; index += 1) {
+            const sample = samples[index] ?? 0;
+            noiseSquareSum += sample * sample;
+            noiseSampleCount += 1;
+        }
+        const noiseRms = noiseSampleCount > 0 ? Math.sqrt(noiseSquareSum / noiseSampleCount) : 0;
+        const threshold = Math.max(1.5, noiseRms * correlationFrames * 0.35);
+        const sineTemplate = new Float32Array(correlationFrames);
+        const cosineTemplate = new Float32Array(correlationFrames);
+        for (let index = 0; index < correlationFrames; index += 1) {
+            const phase = (2 * Math.PI * 1000 * index) / sampleRate;
+            sineTemplate[index] = Math.sin(phase);
+            cosineTemplate[index] = Math.cos(phase);
+        }
+
+        for (let delayFrames = 0; delayFrames < maxDelayFrames; delayFrames += 1) {
+            const start = signalIndex + delayFrames;
+            let sineSum = 0;
+            let cosineSum = 0;
+            for (let index = 0; index < correlationFrames; index += 1) {
+                const sample = samples[start + index] ?? 0;
+                sineSum += sample * sineTemplate[index]!;
+                cosineSum += sample * cosineTemplate[index]!;
+            }
+            if (Math.sqrt(sineSum * sineSum + cosineSum * cosineSum) >= threshold) {
+                return (delayFrames / sampleRate) * 1000;
+            }
+        }
+
+        return null;
     }
 
     // ========================================
@@ -757,13 +1030,20 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     private createInputConstraints(deviceId: string): MediaStreamConstraints {
+        const supported = navigator.mediaDevices.getSupportedConstraints?.() as (MediaTrackSupportedConstraints & { latency?: boolean }) | undefined;
+        const audio: MediaTrackConstraints & { latency?: ConstrainDouble } = {
+            deviceId: deviceId ? { exact: deviceId } : undefined,
+            sampleRate: { ideal: this.context.sampleRate },
+            channelCount: { ideal: 1 },
+            echoCancellation: false,
+            autoGainControl: false,
+            noiseSuppression: false,
+        };
+        if (supported?.latency) {
+            audio.latency = { ideal: BROWSER_REALTIME_QUANTUM_FRAMES / this.context.sampleRate };
+        }
         return {
-            audio: {
-                deviceId: deviceId ? { exact: deviceId } : undefined,
-                echoCancellation: false,
-                autoGainControl: false,
-                noiseSuppression: false
-            }
+            audio,
         };
     }
 
@@ -771,7 +1051,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         return navigator.mediaDevices.getUserMedia(this.createInputConstraints(deviceId));
     }
 
-    private replaceInputStream(stream: MediaStream) {
+    private replaceInputStream(stream: MediaStream, requestedDeviceId: string | null) {
         if (this.currentInputStream) {
             this.currentInputStream.disconnect();
             this.currentInputStream = null;
@@ -785,6 +1065,10 @@ export class BrowserAudioEngine implements IAudioEngine {
 
         this.currentInputStream = this.context.createMediaStreamSource(stream);
         this.currentMediaStream = stream;
+        const track = stream.getAudioTracks()[0];
+        this.currentInputSettings = track?.getSettings() ?? null;
+        this.currentInputLabel = track?.label || null;
+        this.selectedInputDeviceId = this.currentInputSettings?.deviceId || requestedDeviceId;
         this.currentInputStream.connect(this.inputFxChain.input);
     }
 

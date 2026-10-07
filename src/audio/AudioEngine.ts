@@ -1,8 +1,9 @@
 import type { TrackAudio } from './TrackAudio';
-import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus } from './BrowserAudioEngine';
+import { BrowserAudioEngine, type BrowserAudioIoSnapshot, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus } from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus } from './NativeAudioEngine';
 import type { NativeBackend, NativeDeviceInfo } from './NativeBridgeClient';
 import type { NativeTrackProxy } from './NativeTrackProxy';
+import type { BrowserRealtimeMetrics } from './browserRealtimeProtocol';
 
 export type AudioMode = 'native' | 'browser';
 export type AudioBackend = NativeBackend | 'BROWSER';
@@ -33,9 +34,26 @@ export interface LatencyInfo {
   baseLatencyMs: number | null;
   estimatedMonitoringLatencyMs: number | null;
   roundTripLatencyMs: number | null;
+  physicalRoundTripMs: number | null;
+  inputLatencySource: string | null;
+  outputLatencySource: string | null;
+  driverReportedStreamLatencyMs: number | null;
+  driverReportedStreamLatencySource: string | null;
+  roundTripLatencyNote: string;
   inputPeak: number;
   outputPeak: number;
-  xrunsOrDropouts: number;
+  xrunsOrDropouts: number | null;
+  callbackStatusFaults: number | null;
+  inputQueueOverruns: number | null;
+  outputQueueUnderruns: number | null;
+  callbackFrameLimitViolations: number | null;
+  droppedCommands: number | null;
+  outputQueueDepthBlocks: number | null;
+  outputQueueCapacityBlocks: number | null;
+  callbackTicks: number | null;
+  inputCallbackTicks: number | null;
+  outputCallbackTicks: number | null;
+  callbackCountSkew: number | null;
   bridgeAvailable: boolean;
   engineRunning: boolean;
 }
@@ -158,6 +176,14 @@ export class AudioEngine {
 
   public get sharedBuffer(): SharedArrayBuffer | null {
     return this.activeEngine.sharedBuffer ?? null;
+  }
+
+  public getRealtimeMetrics(): BrowserRealtimeMetrics | null {
+    return this.currentMode === 'browser' ? this.browser.getRealtimeMetrics() : null;
+  }
+
+  public getBrowserIoSnapshot(): BrowserAudioIoSnapshot | null {
+    return this.currentMode === 'browser' ? this.browser.getIoSnapshot() : null;
   }
 
   public get selectedInputDeviceId(): string | null {
@@ -490,9 +516,26 @@ export class AudioEngine {
       baseLatencyMs: null,
       estimatedMonitoringLatencyMs: info.roundTripLatencyMs,
       roundTripLatencyMs: info.roundTripLatencyMs,
+      physicalRoundTripMs: info.physicalRoundTripMs,
+      inputLatencySource: info.inputLatencySource,
+      outputLatencySource: info.outputLatencySource,
+      driverReportedStreamLatencyMs: info.driverReportedStreamLatencyMs,
+      driverReportedStreamLatencySource: info.driverReportedStreamLatencySource,
+      roundTripLatencyNote: info.roundTripLatencyNote,
       inputPeak: info.inputPeak,
       outputPeak: info.outputPeak,
       xrunsOrDropouts: info.xrunsOrDropouts,
+      callbackStatusFaults: info.callbackStatusFaults,
+      inputQueueOverruns: info.inputQueueOverruns,
+      outputQueueUnderruns: info.outputQueueUnderruns,
+      callbackFrameLimitViolations: info.callbackFrameLimitViolations,
+      droppedCommands: info.droppedCommands,
+      outputQueueDepthBlocks: info.outputQueueDepthBlocks,
+      outputQueueCapacityBlocks: info.outputQueueCapacityBlocks,
+      callbackTicks: info.callbackTicks,
+      inputCallbackTicks: info.inputCallbackTicks,
+      outputCallbackTicks: info.outputCallbackTicks,
+      callbackCountSkew: info.callbackCountSkew,
       bridgeAvailable: info.bridgeAvailable,
       engineRunning: info.engineRunning,
     };
@@ -504,14 +547,31 @@ export class AudioEngine {
       backend: 'BROWSER',
       sampleRate: info.sampleRate,
       bufferFrames: 128,
-      inputLatencyMs: info.baseLatencyMs,
+      inputLatencyMs: info.inputLatencyMs,
       outputLatencyMs: info.outputLatencyMs,
       baseLatencyMs: info.baseLatencyMs,
-      estimatedMonitoringLatencyMs: info.estimatedMonitoringLatencyMs,
+      estimatedMonitoringLatencyMs: null,
       roundTripLatencyMs: info.roundTripLatencyMs,
+      physicalRoundTripMs: null,
+      inputLatencySource: info.inputLatencySource,
+      outputLatencySource: info.outputLatencySource,
+      driverReportedStreamLatencyMs: info.driverReportedStreamLatencyMs,
+      driverReportedStreamLatencySource: info.driverReportedStreamLatencySource,
+      roundTripLatencyNote: info.roundTripLatencyNote,
       inputPeak: 0,
       outputPeak: 0,
-      xrunsOrDropouts: 0,
+      xrunsOrDropouts: null,
+      callbackStatusFaults: null,
+      inputQueueOverruns: null,
+      outputQueueUnderruns: null,
+      callbackFrameLimitViolations: null,
+      droppedCommands: null,
+      outputQueueDepthBlocks: null,
+      outputQueueCapacityBlocks: null,
+      callbackTicks: null,
+      inputCallbackTicks: null,
+      outputCallbackTicks: null,
+      callbackCountSkew: null,
       bridgeAvailable: true,
       engineRunning: this.browser.getUiStatus().ready,
     };

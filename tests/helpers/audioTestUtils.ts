@@ -16,6 +16,12 @@ class MockAudioParam {
   public exponentialRampToValueAtTime(value: number) {
     this.value = value;
   }
+
+  public linearRampToValueAtTime(value: number) {
+    this.value = value;
+  }
+
+  public cancelScheduledValues() {}
 }
 
 class MockAudioNode {
@@ -85,8 +91,15 @@ class MockBufferSourceNode extends MockAudioNode {
   }
 }
 
-class MockScriptProcessorNode extends MockAudioNode {
-  public onaudioprocess: ((event: unknown) => void) | null = null;
+// UI fixtures do not run DSP and must never supply acceptance measurements.
+export class MockAudioWorkletNode extends MockAudioNode {
+  public readonly parameters = new Map<string, MockAudioParam>();
+  public readonly port = {
+    onmessage: null as ((event: MessageEvent) => void) | null,
+    postMessage: (_message: unknown) => {},
+    start: () => {},
+    close: () => {},
+  };
 }
 
 class MockMediaStreamSourceNode extends MockAudioNode {}
@@ -117,8 +130,8 @@ class MockAudioBuffer {
   }
 }
 
-export function createMockAudioContext() {
-  const sampleRate = 44_100;
+export function createMockAudioContext(options: AudioContextOptions = {}) {
+  const sampleRate = options.sampleRate ?? 48_000;
 
   return {
     state: 'running',
@@ -130,6 +143,8 @@ export function createMockAudioContext() {
       addModule: async () => undefined,
     },
     resume: async () => undefined,
+    close: async () => undefined,
+    setSinkId: async (_sinkId: string) => undefined,
     createGain: () => new MockGainNode() as unknown as GainNode,
     createStereoPanner: () => new MockStereoPannerNode() as unknown as StereoPannerNode,
     createDelay: () => new MockDelayNode() as unknown as DelayNode,
@@ -138,7 +153,6 @@ export function createMockAudioContext() {
     createConvolver: () => new MockConvolverNode() as unknown as ConvolverNode,
     createOscillator: () => new MockOscillatorNode() as unknown as OscillatorNode,
     createBufferSource: () => new MockBufferSourceNode() as unknown as AudioBufferSourceNode,
-    createScriptProcessor: () => new MockScriptProcessorNode() as unknown as ScriptProcessorNode,
     createMediaStreamSource: () => new MockMediaStreamSourceNode() as unknown as MediaStreamAudioSourceNode,
     createBuffer: (channels: number, length: number, rate: number) =>
       new MockAudioBuffer(channels, length, rate) as unknown as AudioBuffer,

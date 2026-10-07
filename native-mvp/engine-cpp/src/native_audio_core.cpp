@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <limits>
 #include <sstream>
 #include <thread>
 
@@ -100,17 +101,53 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.inputPeak = inputPeak_.load(std::memory_order_acquire);
     status.outputPeak = outputPeak_.load(std::memory_order_acquire);
     status.xrunsOrDropouts = xrunsOrDropouts_.load(std::memory_order_acquire);
+    status.callbackStatusFaults = callbackStatusFaults_.load(std::memory_order_acquire);
+    status.inputQueueOverruns = inputQueueOverruns_.load(std::memory_order_acquire);
+    status.outputQueueUnderruns = outputQueueUnderruns_.load(std::memory_order_acquire);
+    status.callbackFrameLimitViolations = callbackFrameLimitViolations_.load(std::memory_order_acquire);
+    status.droppedCommands = commandQueue_.dropped();
+    status.outputQueueDepthBlocks = outputQueue_.size();
+    status.outputQueueCapacityBlocks = SpscRingQueue<AudioBlock, 8>::usableCapacity();
     status.callbackTicks = callbackTicks_.load(std::memory_order_acquire);
+    status.inputCallbackTicks = inputCallbackTicks_.load(std::memory_order_acquire);
+    status.outputCallbackTicks = outputCallbackTicks_.load(std::memory_order_acquire);
+    status.callbackCountSkew = static_cast<long long>(status.inputCallbackTicks) - static_cast<long long>(status.outputCallbackTicks);
     if (audio_ && audio_->isStreamOpen()) {
         status.streamTimeSeconds = audio_->getStreamTime();
     } else if (captureAudio_ && captureAudio_->isStreamOpen()) {
         status.streamTimeSeconds = captureAudio_->getStreamTime();
     }
-    status.inputLatencyMs = status.sampleRate > 0
-        ? (static_cast<double>(status.bufferFrames) / static_cast<double>(status.sampleRate)) * 1000.0
-        : 0.0;
-    status.outputLatencyMs = status.inputLatencyMs;
-    status.roundTripEstimateMs = status.inputLatencyMs + status.outputLatencyMs;
+    if (status.sampleRate > 0) {
+        constexpr auto kDriverLatencySource = "RtAudio driver-reported stream buffering; not a physical loopback measurement.";
+        const auto framesToMs = [sampleRate = status.sampleRate](long frames) -> std::optional<double> {
+            if (frames <= 0) {
+                return std::nullopt;
+            }
+            return static_cast<double>(frames) * 1000.0 / static_cast<double>(sampleRate);
+        };
+
+        if (status.backend == Backend::Wasapi) {
+            if (captureAudio_ && captureAudio_->isStreamOpen()) {
+                status.inputLatencyMs = framesToMs(captureAudio_->getStreamLatency());
+                if (status.inputLatencyMs) {
+                    status.inputLatencySource = kDriverLatencySource;
+                }
+            }
+            if (audio_ && audio_->isStreamOpen()) {
+                status.outputLatencyMs = framesToMs(audio_->getStreamLatency());
+                if (status.outputLatencyMs) {
+                    status.outputLatencySource = kDriverLatencySource;
+                }
+            }
+        } else if (audio_ && audio_->isStreamOpen()) {
+            // RtAudio reports one aggregate value for a duplex stream. Keep it
+            // visible as a driver report without inventing per-direction data.
+            status.driverReportedStreamLatencyMs = framesToMs(audio_->getStreamLatency());
+            if (status.driverReportedStreamLatencyMs) {
+                status.driverReportedStreamLatencySource = kDriverLatencySource;
+            }
+        }
+    }
     status.lastError = lastError_;
     return status;
 }
@@ -193,64 +230,39 @@ bool NativeAudioCore::stop(std::string& error) {
     return true;
 }
 
-bool NativeAudioCore::record(std::string& error) {
+bool NativeAudioCore::enqueueCommand(const Command& command, std::string& error) {
+    // httplib can invoke routes concurrently. Serialize producers here while
+    // leaving the audio callback as the queue's single lock-free consumer.
+    std::lock_guard<std::mutex> lock(commandProducerMutex_);
     if (!engineRunning_.load(std::memory_order_acquire)) {
         error = "Engine is not running.";
         return false;
     }
-    if (!commandQueue_.push({CommandType::Record, false})) {
-        error = "Command queue is full.";
+    if (!commandQueue_.push(command)) {
+        error = "Command queue is full; the command was dropped.";
         return false;
     }
     return true;
+}
+
+bool NativeAudioCore::record(std::string& error) {
+    return enqueueCommand({CommandType::Record, false}, error);
 }
 
 bool NativeAudioCore::stopRecordOrPlayback(std::string& error) {
-    if (!engineRunning_.load(std::memory_order_acquire)) {
-        error = "Engine is not running.";
-        return false;
-    }
-    if (!commandQueue_.push({CommandType::StopRecordOrPlayback, false})) {
-        error = "Command queue is full.";
-        return false;
-    }
-    return true;
+    return enqueueCommand({CommandType::StopRecordOrPlayback, false}, error);
 }
 
 bool NativeAudioCore::play(std::string& error) {
-    if (!engineRunning_.load(std::memory_order_acquire)) {
-        error = "Engine is not running.";
-        return false;
-    }
-    if (!commandQueue_.push({CommandType::Play, false})) {
-        error = "Command queue is full.";
-        return false;
-    }
-    return true;
+    return enqueueCommand({CommandType::Play, false}, error);
 }
 
 bool NativeAudioCore::toggleOverdub(std::string& error) {
-    if (!engineRunning_.load(std::memory_order_acquire)) {
-        error = "Engine is not running.";
-        return false;
-    }
-    if (!commandQueue_.push({CommandType::ToggleOverdub, false})) {
-        error = "Command queue is full.";
-        return false;
-    }
-    return true;
+    return enqueueCommand({CommandType::ToggleOverdub, false}, error);
 }
 
 bool NativeAudioCore::clear(std::string& error) {
-    if (!engineRunning_.load(std::memory_order_acquire)) {
-        error = "Engine is not running.";
-        return false;
-    }
-    if (!commandQueue_.push({CommandType::Clear, false})) {
-        error = "Command queue is full.";
-        return false;
-    }
-    return true;
+    return enqueueCommand({CommandType::Clear, false}, error);
 }
 
 bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
@@ -264,11 +276,7 @@ bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
         looper_.applyCommand({CommandType::SetMonitoring, enabled});
         return true;
     }
-    if (!commandQueue_.push({CommandType::SetMonitoring, enabled})) {
-        error = "Command queue is full.";
-        return false;
-    }
-    return true;
+    return enqueueCommand({CommandType::SetMonitoring, enabled}, error);
 }
 
 DeviceCatalog NativeAudioCore::buildCatalog() const {
@@ -386,6 +394,11 @@ bool NativeAudioCore::validateConfigLocked(EngineConfig& config, std::string& er
 
     if (config.bufferFrames == 0) {
         error = "bufferFrames must be greater than 0.";
+        return false;
+    }
+
+    if (config.sampleRate == 96000) {
+        error = "96000 Hz is disabled until the native 96 kHz performance gate has a validated P99 callback measurement below the buffer deadline with zero XRUNs.";
         return false;
     }
 
@@ -534,7 +547,9 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
     constexpr auto callbackPollStep = std::chrono::milliseconds(20);
     auto waited = std::chrono::milliseconds(0);
     while (waited < callbackStartTimeout) {
-        const auto callbacksStarted = callbackTicks_.load(std::memory_order_acquire) > 0;
+        const auto callbacksStarted = currentConfig_->backend == Backend::Wasapi
+            ? inputCallbackTicks_.load(std::memory_order_acquire) > 0 && outputCallbackTicks_.load(std::memory_order_acquire) > 0
+            : callbackTicks_.load(std::memory_order_acquire) > 0;
         const auto duplexTimeStarted = audio_ && audio_->isStreamRunning() && audio_->getStreamTime() > 0.0;
         if (callbacksStarted || (currentConfig_->backend != Backend::Wasapi && duplexTimeStarted)) {
             break;
@@ -543,7 +558,10 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
         waited += callbackPollStep;
     }
 
-    if (callbackTicks_.load(std::memory_order_acquire) == 0 &&
+    const bool requiredCallbacksStarted = currentConfig_->backend == Backend::Wasapi
+        ? inputCallbackTicks_.load(std::memory_order_acquire) > 0 && outputCallbackTicks_.load(std::memory_order_acquire) > 0
+        : callbackTicks_.load(std::memory_order_acquire) > 0;
+    if (!requiredCallbacksStarted &&
         (currentConfig_->backend == Backend::Wasapi ||
          !audio_ || !audio_->isStreamRunning() || audio_->getStreamTime() <= 0.0)) {
         error = "WASAPI stream opened but callback never became active. This device input/output combination is not producing a running duplex callback.";
@@ -559,8 +577,12 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
 }
 
 void NativeAudioCore::closeStreamLocked() noexcept {
-    outputQueue_.clear();
-    commandQueue_.clear();
+    // Prevent a producer from enqueueing after the callback has stopped and
+    // the queue is cleared below.
+    {
+        std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+        engineRunning_.store(false, std::memory_order_release);
+    }
     if (captureAudio_) {
         if (captureAudio_->isStreamRunning()) {
             captureAudio_->stopStream();
@@ -577,18 +599,26 @@ void NativeAudioCore::closeStreamLocked() noexcept {
             audio_->closeStream();
         }
     }
-    engineRunning_.store(false, std::memory_order_release);
+    outputQueue_.clear();
+    commandQueue_.clear();
 }
 
 void NativeAudioCore::resetRuntimeStateLocked() noexcept {
     commandQueue_.clear();
+    commandQueue_.resetDropped();
     outputQueue_.clear();
     looperState_.store(static_cast<int>(LooperState::Empty), std::memory_order_release);
     loopProgress_.store(0.0f, std::memory_order_release);
     inputPeak_.store(0.0f, std::memory_order_release);
     outputPeak_.store(0.0f, std::memory_order_release);
     xrunsOrDropouts_.store(0, std::memory_order_release);
+    callbackStatusFaults_.store(0, std::memory_order_release);
+    inputQueueOverruns_.store(0, std::memory_order_release);
+    outputQueueUnderruns_.store(0, std::memory_order_release);
+    callbackFrameLimitViolations_.store(0, std::memory_order_release);
     callbackTicks_.store(0, std::memory_order_release);
+    inputCallbackTicks_.store(0, std::memory_order_release);
+    outputCallbackTicks_.store(0, std::memory_order_release);
     renderPrimed_.store(false, std::memory_order_release);
 }
 
@@ -643,10 +673,13 @@ int NativeAudioCore::handleAudioCallback(
     RtAudioStreamStatus status
 ) {
     if (status != 0) {
-    xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
-  }
+        callbackStatusFaults_.fetch_add(1, std::memory_order_relaxed);
+        xrunsOrDropouts_.fetch_add(1, std::memory_order_relaxed);
+    }
 
     callbackTicks_.fetch_add(1, std::memory_order_acq_rel);
+    inputCallbackTicks_.fetch_add(1, std::memory_order_relaxed);
+    outputCallbackTicks_.fetch_add(1, std::memory_order_relaxed);
 
     Command command{};
     while (commandQueue_.pop(command)) {
@@ -674,10 +707,12 @@ int NativeAudioCore::handleInputAudioCallback(
     RtAudioStreamStatus status
 ) {
     if (status != 0) {
-        xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
+        callbackStatusFaults_.fetch_add(1, std::memory_order_relaxed);
+        xrunsOrDropouts_.fetch_add(1, std::memory_order_relaxed);
     }
 
     callbackTicks_.fetch_add(1, std::memory_order_acq_rel);
+    inputCallbackTicks_.fetch_add(1, std::memory_order_relaxed);
 
     Command command{};
     while (commandQueue_.pop(command)) {
@@ -685,11 +720,12 @@ int NativeAudioCore::handleInputAudioCallback(
     }
 
     if (nBufferFrames > kMaxCallbackFrames) {
-        xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
+        callbackFrameLimitViolations_.fetch_add(1, std::memory_order_relaxed);
+        xrunsOrDropouts_.fetch_add(1, std::memory_order_relaxed);
         return 0;
     }
 
-    AudioBlock block{};
+    AudioBlock block;
     block.frames = nBufferFrames;
 
     const auto stats = looper_.process(
@@ -701,7 +737,8 @@ int NativeAudioCore::handleInputAudioCallback(
     );
 
     if (!outputQueue_.push(block)) {
-        xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
+        inputQueueOverruns_.fetch_add(1, std::memory_order_relaxed);
+        xrunsOrDropouts_.fetch_add(1, std::memory_order_relaxed);
     }
 
     looperState_.store(static_cast<int>(stats.state), std::memory_order_release);
@@ -717,11 +754,25 @@ int NativeAudioCore::handleOutputAudioCallback(
     RtAudioStreamStatus status
 ) {
     if (status != 0) {
-        xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
+        callbackStatusFaults_.fetch_add(1, std::memory_order_relaxed);
+        xrunsOrDropouts_.fetch_add(1, std::memory_order_relaxed);
     }
+
+    callbackTicks_.fetch_add(1, std::memory_order_acq_rel);
+    outputCallbackTicks_.fetch_add(1, std::memory_order_relaxed);
 
     auto* output = static_cast<float*>(outputBuffer);
     if (output == nullptr) {
+        return 0;
+    }
+
+    if (nBufferFrames > kMaxCallbackFrames) {
+        const auto maxFrames = std::numeric_limits<std::size_t>::max() / outputChannels_;
+        if (nBufferFrames <= maxFrames) {
+            std::fill_n(output, static_cast<std::size_t>(nBufferFrames) * outputChannels_, 0.0f);
+        }
+        callbackFrameLimitViolations_.fetch_add(1, std::memory_order_relaxed);
+        xrunsOrDropouts_.fetch_add(1, std::memory_order_relaxed);
         return 0;
     }
 
@@ -735,9 +786,10 @@ int NativeAudioCore::handleOutputAudioCallback(
         renderPrimed_.store(true, std::memory_order_release);
     }
 
-    AudioBlock block{};
+    AudioBlock block;
     if (!outputQueue_.pop(block)) {
         if (callbackTicks_.load(std::memory_order_acquire) > 0) {
+            outputQueueUnderruns_.fetch_add(1, std::memory_order_relaxed);
             xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
         }
         renderPrimed_.store(false, std::memory_order_release);

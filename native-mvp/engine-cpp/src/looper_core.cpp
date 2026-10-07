@@ -149,7 +149,9 @@ unsigned int LooperCore::sampleRate() const noexcept {
 }
 
 void LooperCore::clearLoop() {
-    std::fill(loopBuffer_.begin(), loopBuffer_.end(), 0.0f);
+    // The buffer contents become unreachable when the published lengths are
+    // reset. Recording overwrites every sample before it can be played, so a
+    // full-capacity clear here only adds unbounded work to the audio callback.
     state_ = LooperState::Empty;
     recordedFrames_ = 0;
     finalizedFrames_ = 0;

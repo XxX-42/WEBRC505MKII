@@ -15,6 +15,12 @@
     exponentialRampToValueAtTime(value) {
       this.value = value;
     }
+
+    linearRampToValueAtTime(value) {
+      this.value = value;
+    }
+
+    cancelScheduledValues() {}
   }
 
   class MockAudioNode {
@@ -98,13 +104,6 @@
     stop() {}
   }
 
-  class MockScriptProcessorNode extends MockAudioNode {
-    constructor() {
-      super();
-      this.onaudioprocess = null;
-    }
-  }
-
   class MockAudioBuffer {
     constructor(channels, length, sampleRate) {
       this.numberOfChannels = channels;
@@ -124,9 +123,9 @@
   }
 
   class MockAudioContext {
-    constructor() {
+    constructor(options = {}) {
       this.state = 'running';
-      this.sampleRate = 44100;
+      this.sampleRate = options.sampleRate || 48000;
       this.currentTime = 0;
       this.baseLatency = 0.01;
       this.destination = new MockAudioNode();
@@ -139,6 +138,10 @@
       this.state = 'running';
       return Promise.resolve();
     }
+
+    async close() { this.state = 'closed'; }
+
+    async setSinkId() {}
 
     createGain() {
       return new MockGainNode();
@@ -172,10 +175,6 @@
       return new MockBufferSourceNode();
     }
 
-    createScriptProcessor() {
-      return new MockScriptProcessorNode();
-    }
-
     createMediaStreamSource() {
       return new MockAudioNode();
     }
@@ -185,22 +184,45 @@
     }
   }
 
+  // UI-only control acknowledgements. This fixture renders no samples and must
+  // never be used by a latency, dropout, or instrument-grade benchmark.
   class MockAudioWorkletNode extends MockAudioNode {
-    constructor() {
+    constructor(_context, _name, options = {}) {
       super();
+      this.parameters = new Map();
+      const buffer = options.processorOptions?.controlBuffer;
+      const control = buffer ? new Int32Array(buffer) : null;
       this.port = {
         onmessage: null,
+        start() {},
+        close: () => window.clearInterval(this.controlTimer),
         postMessage: (message) => {
-          if (message && message.type === 'STOP_RECORD' && this.port.onmessage) {
-            this.port.onmessage({
-              data: {
-                type: 'RECORD_COMPLETE',
-                buffer: new Float32Array(44100),
-              },
+          if (message?.type === 'ATTACH_TRACK') {
+            queueMicrotask(() => {
+              this.port.onmessage?.({ data: { type: 'TRACK_ATTACHED', track: message.track } });
             });
           }
         },
       };
+      if (control) {
+        this.controlTimer = window.setInterval(() => {
+          let read = Atomics.load(control, 0);
+          const write = Atomics.load(control, 1);
+          while (read !== write) {
+            // Protocol header: 96 bytes; each command: eight Int32 words.
+            const offset = 24 + (read % 256) * 8;
+            const executedFrame = (control[offset + 4] >>> 0) * 4294967296 + (control[offset + 3] >>> 0);
+            const sequence = control[offset] >>> 0;
+            Atomics.store(control, 6, sequence);
+            this.port.onmessage?.({ data: {
+              type: 'ACK', sequence, opcode: control[offset + 1], track: control[offset + 2],
+              executedFrame, targetFrame: executedFrame, status: 0, loopFrames: 0, recordingFrames: 0,
+            } });
+            read += 1;
+          }
+          Atomics.store(control, 0, read);
+        }, 10);
+      }
     }
   }
 
@@ -227,8 +249,10 @@
 
   const mediaDevices = {
     getUserMedia: async () => ({
-      getTracks: () => [{ stop() {} }],
+      getTracks: () => [{ stop() {}, getSettings() { return { sampleRate: 48000, channelCount: 1, deviceId: 'mic-1' }; } }],
+      getAudioTracks: () => [{ stop() {}, getSettings() { return { sampleRate: 48000, channelCount: 1, deviceId: 'mic-1' }; } }],
     }),
+    getSupportedConstraints: () => ({ latency: true, sampleRate: true, channelCount: true }),
     enumerateDevices: async () => ([
       { deviceId: 'mic-1', kind: 'audioinput', label: 'Mock Input' },
       { deviceId: 'out-1', kind: 'audiooutput', label: 'Mock Output' },

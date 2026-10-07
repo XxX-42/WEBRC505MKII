@@ -28,16 +28,18 @@ export class FilterFX implements FXBase {
             const minValue = 20;
             const maxValue = 20000;
             // Ensure value is in [0, 1]
+            // The FX class contract is normalized 0..1. UI controls that are
+            // expressed as 0..100 must be normalized at their call site.
             const clampedValue = Math.min(1, Math.max(0, value));
 
             // Recommended safe mapping (Quadratic approximation of log)
             const v = Math.pow(clampedValue, 2) * (maxValue - minValue) + minValue;
 
             if (isFinite(v) && !isNaN(v)) {
-                this.filter.frequency.setTargetAtTime(v, this.context.currentTime, 0.1);
+                this.filter.frequency.setTargetAtTime(v, this.context.currentTime, 0.003);
             }
         } else if (key === 'resonance') {
-            this.filter.Q.setTargetAtTime(value * 20, this.context.currentTime, 0.1);
+            this.filter.Q.setTargetAtTime(Math.max(0.1, Math.min(20, value * 20)), this.context.currentTime, 0.003);
         }
     }
 

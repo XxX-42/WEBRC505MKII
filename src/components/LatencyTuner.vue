@@ -3,80 +3,21 @@
     <div class="tuner-header" @click="toggleCollapse">
       <div class="header-label">
         <span class="label-icon">IO</span>
-        <span>SYSTEM</span>
+        <span>AUDIO TEST</span>
       </div>
-      <button class="collapse-btn" :class="{ collapsed: isCollapsed }" aria-label="Toggle system panel">
+      <button class="collapse-btn" :class="{ collapsed: isCollapsed }" aria-label="Toggle audio performance panel">
         {{ isCollapsed ? 'OPEN' : 'CLOSE' }}
       </button>
     </div>
 
     <div v-if="!isCollapsed" class="tuner-content">
-      <div class="lcd-panel">
-        <div class="lcd-text">
-          <div class="lcd-line">{{ latencyInfo.mode === 'browser' ? 'BROWSER WEB AUDIO' : 'NATIVE AUDIO CORE' }}</div>
-          <div class="lcd-line small">
-            {{ latencyInfo.mode === 'browser' ? 'Web Audio runtime diagnostics' : 'Bridge-backed realtime diagnostics' }}
-          </div>
-          <div class="lcd-line small">
-            {{ latencyInfo.mode === 'browser' ? 'TrackAudio path is active for recording' : 'Web shell driving native audio core' }}
-          </div>
-        </div>
+      <div class="legacy-summary">
+        <div class="summary-title">{{ latencyInfo.mode === 'browser' ? 'BROWSER AUDIO' : 'NATIVE AUDIO' }} · {{ latencyInfo.backend ?? '--' }}</div>
+        <div class="summary-line">{{ latencyInfo.sampleRate }} Hz graph · {{ latencyInfo.bufferFrames }} frames</div>
+        <div class="summary-line">{{ latencyInfo.engineRunning ? 'ENGINE READY' : 'ENGINE WAITING' }} · {{ latencyInfo.xrunsOrDropouts ?? 'UNKNOWN' }} reported XRUNs</div>
       </div>
 
-      <div class="stats-panel">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">{{ latencyInfo.mode === 'browser' ? 'Mode' : 'Backend' }}</div>
-            <div class="stat-value">{{ latencyInfo.backend ?? '--' }}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Sample Rate</div>
-            <div class="stat-value">{{ latencyInfo.sampleRate }} Hz</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Buffer</div>
-            <div class="stat-value">{{ latencyInfo.bufferFrames }} fr</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Round Trip</div>
-            <div class="stat-value">{{ formatLatency(latencyInfo.roundTripLatencyMs) }}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="diagnostic-panel">
-        <div class="diagnostic-title">{{ latencyInfo.mode === 'browser' ? 'BROWSER DIAGNOSTICS' : 'NATIVE DIAGNOSTICS' }}</div>
-        <div class="diagnostic-list">
-          <div class="diagnostic-row">
-            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Engine' : 'Bridge' }}</span>
-            <span class="diagnostic-value" :class="{ warning: !latencyInfo.bridgeAvailable }">
-              {{ latencyInfo.mode === 'browser' ? (latencyInfo.engineRunning ? 'READY' : 'WAITING') : (latencyInfo.bridgeAvailable ? 'ONLINE' : 'OFFLINE') }}
-            </span>
-          </div>
-          <div class="diagnostic-row">
-            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Base I/O' : 'Engine' }}</span>
-            <span class="diagnostic-value" :class="{ warning: !latencyInfo.engineRunning }">
-              {{ latencyInfo.mode === 'browser' ? formatLatency(latencyInfo.baseLatencyMs) : (latencyInfo.engineRunning ? 'RUNNING' : 'STOPPED') }}
-            </span>
-          </div>
-          <div class="diagnostic-row">
-            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Output I/O' : 'Input Peak' }}</span>
-            <span class="diagnostic-value">
-              {{ latencyInfo.mode === 'browser' ? formatLatency(latencyInfo.outputLatencyMs) : formatPeak(latencyInfo.inputPeak) }}
-            </span>
-          </div>
-          <div class="diagnostic-row">
-            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'Est. Monitor' : 'Output Peak' }}</span>
-            <span class="diagnostic-value">
-              {{ latencyInfo.mode === 'browser' ? formatLatency(latencyInfo.estimatedMonitoringLatencyMs) : formatPeak(latencyInfo.outputPeak) }}
-            </span>
-          </div>
-          <div class="diagnostic-row">
-            <span class="diagnostic-key">{{ latencyInfo.mode === 'browser' ? 'XRuns' : 'XRuns' }}</span>
-            <span class="diagnostic-value">{{ latencyInfo.xrunsOrDropouts }}</span>
-          </div>
-        </div>
-      </div>
+      <AudioPerformanceDashboard />
 
       <HardwareButton
         size="md"
@@ -88,7 +29,7 @@
         class="test-button"
       />
 
-      <div v-if="uiError" class="error-panel">
+      <div v-if="uiError" class="error-panel" role="alert">
         <div class="error-icon">ERR</div>
         <div class="error-text">{{ uiError }}</div>
       </div>
@@ -99,6 +40,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { AudioEngine, type LatencyInfo } from '../audio/AudioEngine';
+import AudioPerformanceDashboard from './AudioPerformanceDashboard.vue';
 import HardwareButton from './ui/HardwareButton.vue';
 
 const isCollapsed = ref(true);
@@ -111,12 +53,6 @@ let unsubscribeStatus: (() => void) | null = null;
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value;
 };
-
-const formatLatency = (value: number | null) => {
-  return value !== null ? `${value.toFixed(2)} ms` : 'N/A';
-};
-
-const formatPeak = (value: number) => `${Math.round(value * 100)}%`;
 
 const refreshStatus = async () => {
   isRefreshing.value = true;
@@ -152,6 +88,7 @@ onUnmounted(() => {
 .latency-tuner {
   position: relative;
   width: 360px;
+  max-height: min(72vh, 780px);
   background: var(--bg-panel-secondary);
   border: 2px solid #0d0d0d;
   border-radius: var(--border-radius-hardware);
@@ -185,7 +122,7 @@ onUnmounted(() => {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
-  color: rgba(240, 240, 240, 0.5);
+  color: rgba(240, 240, 240, 0.65);
   font-family: var(--font-hardware);
   text-transform: uppercase;
 }
@@ -193,85 +130,48 @@ onUnmounted(() => {
 .collapse-btn {
   background: transparent;
   border: none;
-  color: rgba(240, 240, 240, 0.4);
+  color: rgba(240, 240, 240, 0.55);
   font-size: 10px;
   cursor: pointer;
 }
 
 .tuner-content {
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  max-height: calc(min(72vh, 780px) - 48px);
+  overflow-y: auto;
 }
 
-.lcd-panel,
-.diagnostic-panel,
-.stats-panel,
+.legacy-summary,
 .error-panel {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.12);
 }
 
-.lcd-line {
+.summary-title {
   font-family: var(--font-hardware);
-  font-size: 12px;
-  letter-spacing: 1.3px;
+  font-size: 9px;
+  letter-spacing: 0.7px;
 }
 
-.lcd-line.small {
-  font-size: 10px;
-  color: #8c8c8c;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.stat-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  padding: 10px;
-}
-
-.stat-label,
-.diagnostic-key {
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: #8c8c8c;
-  text-transform: uppercase;
-  font-family: var(--font-hardware);
-}
-
-.stat-value,
-.diagnostic-value {
-  margin-top: 4px;
+.summary-line {
+  margin-top: 3px;
+  color: #9ca3aa;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 9px;
 }
 
-.diagnostic-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.diagnostic-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.warning {
-  color: #ff8b8b;
+.test-button {
+  width: 100%;
 }
 
 .error-panel {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   background: rgba(255, 0, 51, 0.08);
   border-color: rgba(255, 0, 51, 0.18);
@@ -283,6 +183,8 @@ onUnmounted(() => {
 }
 
 .error-text {
-  font-size: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
 }
 </style>

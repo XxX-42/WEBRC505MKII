@@ -130,7 +130,7 @@ onUnmounted(() => {
   right: 18px;
   top: 72px;
   bottom: auto;
-  max-width: 230px;
+  max-width: min(100vw - 36px, 380px);
 }
 
 .tool-dock.classic :deep(.latency-tuner) {
@@ -138,7 +138,7 @@ onUnmounted(() => {
 }
 
 .tool-dock.classic :deep(.latency-tuner:not(.collapsed)) {
-  width: 230px;
+  width: min(360px, calc(100vw - 36px));
 }
 
 @media (max-width: 900px) {

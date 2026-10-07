@@ -42,6 +42,81 @@ npm run test:e2e
 npm run test:ci
 ```
 
+If Playwright's expected browser is unavailable, `WEBRC_CHROMIUM_PATH` can point
+to an existing Chrome/Chromium executable. `WEBRC_E2E_PORT` changes the dedicated
+UI test server port (default 5175).
+
+Native build verification and CPU benchmarks (Windows/MSVC):
+
+```powershell
+npm run native:verify
+npm run native:benchmark
+```
+
+The verification scripts write builds, objects, and benchmark results under the
+Windows temporary directory. CPU benchmark results do not certify physical audio
+latency or hardware stability.
+
+## Realtime hosting requirements
+
+The browser realtime engine uses `AudioWorklet` and `SharedArrayBuffer`. Serve it
+over HTTPS (localhost is suitable for development) and return both headers on the
+document:
+
+```http
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+Vite development and preview servers include these headers. A production host
+must configure them independently; the generated static files cannot set HTTP
+headers. Check `window.crossOriginIsolated === true` before testing audio. External
+resources also need permission compatible with the embedder policy.
+
+The performance dashboard distinguishes physical measurements, driver reports,
+software diagnostics, and unknown values. UI tests use audio mocks; their results
+cannot establish `INSTRUMENT_GRADE_PASS`.
+
+Run the actual browser engine with a synthetic source and silent software sinks:
+
+```powershell
+npm run audio:smoke:browser
+npm run audio:benchmark:software
+```
+
+The smoke checks five-track recording, playback, overdub, monitoring, filter
+mapping, and calibration invalidation. The offline benchmark writes a report
+that the dashboard can import. Neither run measures hardware RTL. See
+[measurement gates and current evidence](docs/INSTRUMENT_GRADE_AUDIO.md).
+
+With the development server running, reproduce the separate effect benchmark:
+
+```powershell
+npm run audio:benchmark:fx -- --base-url http://127.0.0.1:5173 --repeats 5
+```
+
+It imports the project's actual effects into independent offline audio contexts.
+First arrival, peak, tail, and render duration are separate columns; offline
+render duration does not measure realtime callbacks or hardware latency.
+
+```powershell
+npm run audio:benchmark:worklet
+```
+
+This runs the real processor source in a synthetic Node/V8 host and checks the
+shared protocol, frame scheduling, and CPU cost. Its optional accelerated
+sample-timeline test cannot certify a 30-minute physical run or hardware XRUNs.
+The converter requires a completed accelerated phase run. Save that run's raw
+JSON and import it as a software diagnostic dashboard report:
+
+```powershell
+npm run audio:benchmark:worklet -- --phase-minutes 30 --phase-yield-blocks 256 --phase-yield-ms 20
+npm run audio:report:worklet -- --input <raw-results.json> --out <report.json>
+```
+
+The [software measurement snapshot](docs/AUDIO_SOFTWARE_RESULTS_20261007.md)
+records measured values, current limits, and the decision to omit hardware tests.
+
 ## Notes
 
 - This repository snapshot is documentation-heavy; some older phase docs no longer match the latest UI implementation.

@@ -58,7 +58,7 @@ export class SlicerFX implements FXBase {
             case 'frequency':
                 // Map 0-100 to 1Hz - 20Hz
                 this.rate = 1 + (normValue * 19);
-                this.lfo.frequency.setTargetAtTime(this.rate, this.context.currentTime, 0.05);
+                this.lfo.frequency.setTargetAtTime(this.rate, this.context.currentTime, 0.003);
                 break;
 
             case 'depth':
@@ -86,8 +86,8 @@ export class SlicerFX implements FXBase {
         const lfoAmp = this.depth * 0.5;
         const baseGain = 1 - lfoAmp;
 
-        this.vca.gain.setTargetAtTime(baseGain, this.context.currentTime, 0.05);
-        this.lfoGain.gain.setTargetAtTime(lfoAmp, this.context.currentTime, 0.05);
+        this.vca.gain.setTargetAtTime(baseGain, this.context.currentTime, 0.003);
+        this.lfoGain.gain.setTargetAtTime(lfoAmp, this.context.currentTime, 0.003);
     }
 
     public setBypass(bypass: boolean) {
@@ -95,8 +95,8 @@ export class SlicerFX implements FXBase {
 
         if (bypass) {
             // Bypass: Gain fixed at 1, LFO disconnected (effectively)
-            this.vca.gain.setTargetAtTime(1, this.context.currentTime, 0.05);
-            this.lfoGain.gain.setTargetAtTime(0, this.context.currentTime, 0.05);
+            this.vca.gain.setTargetAtTime(1, this.context.currentTime, 0.003);
+            this.lfoGain.gain.setTargetAtTime(0, this.context.currentTime, 0.003);
         } else {
             // Active: Restore depth settings
             this.updateDepth();

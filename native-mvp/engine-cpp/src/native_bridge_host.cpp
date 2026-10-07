@@ -53,6 +53,10 @@ json catalogToJson(const DeviceCatalog& catalog) {
     };
 }
 
+json optionalNumber(const std::optional<double>& value) {
+    return value.has_value() ? json(*value) : json(nullptr);
+}
+
 json statusToJson(const EngineStatus& status) {
     return json{
         {"ok", true},
@@ -67,16 +71,32 @@ json statusToJson(const EngineStatus& status) {
         {"bufferFrames", status.bufferFrames},
         {"monitoringEnabled", status.monitoringEnabled},
         {"state", looperStateToString(status.state)},
-        {"inputLatencyMs", status.inputLatencyMs},
-        {"outputLatencyMs", status.outputLatencyMs},
-        {"roundTripEstimateMs", status.roundTripEstimateMs},
+        {"inputLatencyMs", optionalNumber(status.inputLatencyMs)},
+        {"outputLatencyMs", optionalNumber(status.outputLatencyMs)},
+        {"roundTripEstimateMs", optionalNumber(status.roundTripEstimateMs)},
+        {"physicalRoundTripMs", optionalNumber(status.physicalRoundTripMs)},
+        {"driverReportedStreamLatencyMs", optionalNumber(status.driverReportedStreamLatencyMs)},
+        {"inputLatencySource", status.inputLatencySource},
+        {"outputLatencySource", status.outputLatencySource},
+        {"driverReportedStreamLatencySource", status.driverReportedStreamLatencySource},
+        {"roundTripLatencyNote", status.roundTripLatencyNote},
         {"inputPeak", status.inputPeak},
         {"outputPeak", status.outputPeak},
         {"xrunsOrDropouts", status.xrunsOrDropouts},
+        {"callbackStatusFaults", status.callbackStatusFaults},
+        {"inputQueueOverruns", status.inputQueueOverruns},
+        {"outputQueueUnderruns", status.outputQueueUnderruns},
+        {"callbackFrameLimitViolations", status.callbackFrameLimitViolations},
+        {"droppedCommands", status.droppedCommands},
+        {"outputQueueDepthBlocks", status.outputQueueDepthBlocks},
+        {"outputQueueCapacityBlocks", status.outputQueueCapacityBlocks},
         {"lastError", status.lastError},
         {"loopProgress", status.loopProgress},
         {"streamTimeSeconds", status.streamTimeSeconds},
         {"callbackTicks", status.callbackTicks},
+        {"inputCallbackTicks", status.inputCallbackTicks},
+        {"outputCallbackTicks", status.outputCallbackTicks},
+        {"callbackCountSkew", status.callbackCountSkew},
     };
 }
 

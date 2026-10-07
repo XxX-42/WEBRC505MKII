@@ -18,9 +18,26 @@ export interface LatencyInfo {
   inputLatencyMs: number | null;
   outputLatencyMs: number | null;
   roundTripLatencyMs: number | null;
+  physicalRoundTripMs: number | null;
+  driverReportedStreamLatencyMs: number | null;
+  inputLatencySource: string | null;
+  outputLatencySource: string | null;
+  driverReportedStreamLatencySource: string | null;
+  roundTripLatencyNote: string;
   inputPeak: number;
   outputPeak: number;
   xrunsOrDropouts: number;
+  callbackStatusFaults: number;
+  inputQueueOverruns: number;
+  outputQueueUnderruns: number;
+  callbackFrameLimitViolations: number;
+  droppedCommands: number;
+  outputQueueDepthBlocks: number;
+  outputQueueCapacityBlocks: number;
+  callbackTicks: number;
+  inputCallbackTicks: number;
+  outputCallbackTicks: number;
+  callbackCountSkew: number;
   bridgeAvailable: boolean;
   engineRunning: boolean;
 }
@@ -189,10 +206,27 @@ export class NativeAudioEngine {
       bufferFrames: this.latestStatus?.bufferFrames ?? this.selectedBufferFrames,
       inputLatencyMs: this.latestStatus?.inputLatencyMs ?? null,
       outputLatencyMs: this.latestStatus?.outputLatencyMs ?? null,
-      roundTripLatencyMs: this.latestStatus?.roundTripEstimateMs ?? null,
+      roundTripLatencyMs: this.latestStatus?.physicalRoundTripMs ?? null,
+      physicalRoundTripMs: this.latestStatus?.physicalRoundTripMs ?? null,
+      driverReportedStreamLatencyMs: this.latestStatus?.driverReportedStreamLatencyMs ?? null,
+      inputLatencySource: this.latestStatus?.inputLatencySource || null,
+      outputLatencySource: this.latestStatus?.outputLatencySource || null,
+      driverReportedStreamLatencySource: this.latestStatus?.driverReportedStreamLatencySource || null,
+      roundTripLatencyNote: this.latestStatus?.roundTripLatencyNote || 'Physical round-trip latency has not been measured.',
       inputPeak: this.latestStatus?.inputPeak ?? 0,
       outputPeak: this.latestStatus?.outputPeak ?? 0,
       xrunsOrDropouts: this.latestStatus?.xrunsOrDropouts ?? 0,
+      callbackStatusFaults: this.latestStatus?.callbackStatusFaults ?? 0,
+      inputQueueOverruns: this.latestStatus?.inputQueueOverruns ?? 0,
+      outputQueueUnderruns: this.latestStatus?.outputQueueUnderruns ?? 0,
+      callbackFrameLimitViolations: this.latestStatus?.callbackFrameLimitViolations ?? 0,
+      droppedCommands: this.latestStatus?.droppedCommands ?? 0,
+      outputQueueDepthBlocks: this.latestStatus?.outputQueueDepthBlocks ?? 0,
+      outputQueueCapacityBlocks: this.latestStatus?.outputQueueCapacityBlocks ?? 0,
+      callbackTicks: this.latestStatus?.callbackTicks ?? 0,
+      inputCallbackTicks: this.latestStatus?.inputCallbackTicks ?? 0,
+      outputCallbackTicks: this.latestStatus?.outputCallbackTicks ?? 0,
+      callbackCountSkew: this.latestStatus?.callbackCountSkew ?? 0,
       bridgeAvailable: this.bridgeAvailable,
       engineRunning: this.engineRunning,
     };
