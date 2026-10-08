@@ -1,3 +1,9 @@
+import {
+  BROWSER_REALTIME_LAYOUT_PLANAR_LR,
+  BROWSER_REALTIME_LAYOUT_VERSION,
+  BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
+} from '../../src/audio/browserRealtimeProtocol';
+
 class MockAudioParam {
   public value: number;
 
@@ -123,7 +129,21 @@ export class MockAudioWorkletNode extends MockAudioNode {
   }
   public readonly port = {
     onmessage: null as ((event: MessageEvent) => void) | null,
-    postMessage: (_message: unknown) => {},
+    postMessage: (message: unknown) => {
+      if (!message || typeof message !== 'object') return;
+      const request = message as { type?: string; track?: number };
+      if (request.type === 'ATTACH_TRACK' && typeof request.track === 'number') {
+        queueMicrotask(() => this.port.onmessage?.({ data: {
+          type: 'TRACK_ATTACHED',
+          track: request.track,
+          channelCount: BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
+          layoutVersion: BROWSER_REALTIME_LAYOUT_VERSION,
+          storageLayout: BROWSER_REALTIME_LAYOUT_PLANAR_LR,
+        } } as MessageEvent));
+      } else if (request.type === 'ARM_LOOPBACK') {
+        queueMicrotask(() => this.port.onmessage?.({ data: { type: 'LOOPBACK_ARMED' } } as MessageEvent));
+      }
+    },
     start: () => {},
     close: () => {},
   };

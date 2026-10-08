@@ -1,0 +1,814 @@
+{
+  "startedAt": "2026-10-08T07:31:09.666Z",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "status": "PASS",
+  "assertions": [
+    {
+      "name": "all audio output is redirected away from physical devices",
+      "passed": true,
+      "contexts": [
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        },
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        }
+      ]
+    },
+    {
+      "name": "browser realtime engine is initialized",
+      "passed": true
+    },
+    {
+      "name": "48 kHz / 128-frame AudioWorklet backend",
+      "passed": true,
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 84224,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "recordingFrames": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackStates": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackPositions": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 4,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 8640000,
+        "trackCapacityFrames": [
+          8640000,
+          8640000,
+          8640000,
+          8640000,
+          8640000
+        ]
+      }
+    },
+    {
+      "name": "all five tracks have preallocated loop storage",
+      "passed": true,
+      "capacities": [
+        8640000,
+        8640000,
+        8640000,
+        8640000,
+        8640000
+      ]
+    },
+    {
+      "name": "browser loop recording/playback channel limit is explicit",
+      "passed": true,
+      "loopRecordingChannelCount": 2,
+      "loopPlaybackOutputChannelCount": 2,
+      "loopChannelLayout": "stereo planar LR; stereo input preserved and mono input duplicated to LR"
+    },
+    {
+      "name": "AudioEngine reports the software-only sink type",
+      "passed": true,
+      "outputSinkType": "none"
+    },
+    {
+      "name": "record path starts with software monitor disabled",
+      "passed": true
+    },
+    {
+      "name": "monitor ON carries synthetic input through the persistent Worklet",
+      "passed": true,
+      "monitorRms": 0.021721015083935848
+    },
+    {
+      "name": "monitor OFF is silent at its sample-gated output",
+      "passed": true,
+      "monitorRms": 0
+    },
+    {
+      "name": "track 1 exports two active planar LR channels",
+      "passed": true,
+      "loopFrames": 6016,
+      "exportedFrames": 6016,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.07055502844251563,
+        0.05663061519034068
+      ]
+    },
+    {
+      "name": "exported channel 0 keeps the 250 Hz left tone and rejects 500 Hz right leakage",
+      "passed": true,
+      "left250": 0.09956025377630523,
+      "left500": 0.0008798392217365289,
+      "leakageRatio": 0.008837253706819353
+    },
+    {
+      "name": "exported channel 1 keeps the 500 Hz right tone and rejects 250 Hz left leakage",
+      "passed": true,
+      "right250": 0.0007038544840591041,
+      "right500": 0.08017568720133844,
+      "leakageRatio": 0.00877890179215519
+    },
+    {
+      "name": "track 2 exports two active planar LR channels",
+      "passed": true,
+      "loopFrames": 6400,
+      "exportedFrames": 6400,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.07056437645802947,
+        0.05662689187316761
+      ]
+    },
+    {
+      "name": "track 3 exports two active planar LR channels",
+      "passed": true,
+      "loopFrames": 6016,
+      "exportedFrames": 6016,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.07079273817620087,
+        0.05654096459183816
+      ]
+    },
+    {
+      "name": "track 4 exports two active planar LR channels",
+      "passed": true,
+      "loopFrames": 6016,
+      "exportedFrames": 6016,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.07055502802728206,
+        0.05663061512527116
+      ]
+    },
+    {
+      "name": "track 5 exports two active planar LR channels",
+      "passed": true,
+      "loopFrames": 5888,
+      "exportedFrames": 5888,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.07086934103227473,
+        0.05650501800455644
+      ]
+    },
+    {
+      "name": "centered stereo playback preserves left/right frequency separation through the master output",
+      "passed": true,
+      "playbackTones": {
+        "left250": 0.2990892925690013,
+        "left500": 0.004476565076939352,
+        "right250": 0.003581084677648258,
+        "right500": 0.23785673965561
+      }
+    },
+    {
+      "name": "overdub updates both planar channels inside persistent loop storage",
+      "passed": true,
+      "changedSamples": 6016,
+      "changedRightSamples": 6016,
+      "loopFrames": 6016
+    },
+    {
+      "name": "clear releases the loop state without reallocating track storage",
+      "passed": true,
+      "loopFrames": 0,
+      "capacityFrames": 8640000
+    },
+    {
+      "name": "unverified browser route calibration is not reported as physical round-trip",
+      "passed": true,
+      "roundTripLatencyMs": 8,
+      "physicalRoundTripMs": null,
+      "note": "Measured by scheduled output tone and AudioWorklet capture for the active route; the signal path is not independently verified as analog hardware."
+    },
+    {
+      "name": "input device change invalidates device-scoped latency calibration",
+      "passed": true,
+      "calibratedBeforeSwitchMs": 8,
+      "calibratedAfterSwitchMs": null,
+      "selectedInputDeviceId": "WebAudio-72f1e4ab-3b82-487a-82ad-a885ec7643b5"
+    },
+    {
+      "name": "mono capture remains a separate supported path and duplicates into both loop channels",
+      "passed": true,
+      "numberOfChannels": 2,
+      "frames": 6016,
+      "monoChannelMaxDifference": 0,
+      "inputChannelCount": 2
+    },
+    {
+      "name": "dynamic Filter UI endpoint 100 maps to the normalized 20 kHz endpoint",
+      "passed": true,
+      "filterHighCutoffRms": 0.19236924860090646,
+      "filterLowCutoffRms": 0.005871692871234768,
+      "ratio": 32.76214420943526
+    }
+  ],
+  "browserConsoleErrors": [
+    "console: Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep"
+  ],
+  "note": "Synthetic oscillator input and software taps only; no physical input/output or hardware latency certification.",
+  "chromiumVersion": "149.0.7827.55",
+  "executablePath": "C:\\Users\\user1000\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+  "crossOriginIsolated": true,
+  "sharedArrayBufferAvailable": true,
+  "engineStatus": {
+    "ready": true,
+    "lastError": "",
+    "message": "BROWSER AUDIO READY"
+  },
+  "softwareSmoke": {
+    "assertions": [
+      {
+        "name": "all audio output is redirected away from physical devices",
+        "passed": true,
+        "contexts": [
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          },
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          }
+        ]
+      },
+      {
+        "name": "browser realtime engine is initialized",
+        "passed": true
+      },
+      {
+        "name": "48 kHz / 128-frame AudioWorklet backend",
+        "passed": true,
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 84224,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackStates": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 4,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 8640000,
+          "trackCapacityFrames": [
+            8640000,
+            8640000,
+            8640000,
+            8640000,
+            8640000
+          ]
+        }
+      },
+      {
+        "name": "all five tracks have preallocated loop storage",
+        "passed": true,
+        "capacities": [
+          8640000,
+          8640000,
+          8640000,
+          8640000,
+          8640000
+        ]
+      },
+      {
+        "name": "browser loop recording/playback channel limit is explicit",
+        "passed": true,
+        "loopRecordingChannelCount": 2,
+        "loopPlaybackOutputChannelCount": 2,
+        "loopChannelLayout": "stereo planar LR; stereo input preserved and mono input duplicated to LR"
+      },
+      {
+        "name": "AudioEngine reports the software-only sink type",
+        "passed": true,
+        "outputSinkType": "none"
+      },
+      {
+        "name": "record path starts with software monitor disabled",
+        "passed": true
+      },
+      {
+        "name": "monitor ON carries synthetic input through the persistent Worklet",
+        "passed": true,
+        "monitorRms": 0.021721015083935848
+      },
+      {
+        "name": "monitor OFF is silent at its sample-gated output",
+        "passed": true,
+        "monitorRms": 0
+      },
+      {
+        "name": "track 1 exports two active planar LR channels",
+        "passed": true,
+        "loopFrames": 6016,
+        "exportedFrames": 6016,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07055502844251563,
+          0.05663061519034068
+        ]
+      },
+      {
+        "name": "exported channel 0 keeps the 250 Hz left tone and rejects 500 Hz right leakage",
+        "passed": true,
+        "left250": 0.09956025377630523,
+        "left500": 0.0008798392217365289,
+        "leakageRatio": 0.008837253706819353
+      },
+      {
+        "name": "exported channel 1 keeps the 500 Hz right tone and rejects 250 Hz left leakage",
+        "passed": true,
+        "right250": 0.0007038544840591041,
+        "right500": 0.08017568720133844,
+        "leakageRatio": 0.00877890179215519
+      },
+      {
+        "name": "track 2 exports two active planar LR channels",
+        "passed": true,
+        "loopFrames": 6400,
+        "exportedFrames": 6400,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07056437645802947,
+          0.05662689187316761
+        ]
+      },
+      {
+        "name": "track 3 exports two active planar LR channels",
+        "passed": true,
+        "loopFrames": 6016,
+        "exportedFrames": 6016,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07079273817620087,
+          0.05654096459183816
+        ]
+      },
+      {
+        "name": "track 4 exports two active planar LR channels",
+        "passed": true,
+        "loopFrames": 6016,
+        "exportedFrames": 6016,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07055502802728206,
+          0.05663061512527116
+        ]
+      },
+      {
+        "name": "track 5 exports two active planar LR channels",
+        "passed": true,
+        "loopFrames": 5888,
+        "exportedFrames": 5888,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07086934103227473,
+          0.05650501800455644
+        ]
+      },
+      {
+        "name": "centered stereo playback preserves left/right frequency separation through the master output",
+        "passed": true,
+        "playbackTones": {
+          "left250": 0.2990892925690013,
+          "left500": 0.004476565076939352,
+          "right250": 0.003581084677648258,
+          "right500": 0.23785673965561
+        }
+      },
+      {
+        "name": "overdub updates both planar channels inside persistent loop storage",
+        "passed": true,
+        "changedSamples": 6016,
+        "changedRightSamples": 6016,
+        "loopFrames": 6016
+      },
+      {
+        "name": "clear releases the loop state without reallocating track storage",
+        "passed": true,
+        "loopFrames": 0,
+        "capacityFrames": 8640000
+      },
+      {
+        "name": "unverified browser route calibration is not reported as physical round-trip",
+        "passed": true,
+        "roundTripLatencyMs": 8,
+        "physicalRoundTripMs": null,
+        "note": "Measured by scheduled output tone and AudioWorklet capture for the active route; the signal path is not independently verified as analog hardware."
+      },
+      {
+        "name": "input device change invalidates device-scoped latency calibration",
+        "passed": true,
+        "calibratedBeforeSwitchMs": 8,
+        "calibratedAfterSwitchMs": null,
+        "selectedInputDeviceId": "WebAudio-72f1e4ab-3b82-487a-82ad-a885ec7643b5"
+      },
+      {
+        "name": "mono capture remains a separate supported path and duplicates into both loop channels",
+        "passed": true,
+        "numberOfChannels": 2,
+        "frames": 6016,
+        "monoChannelMaxDifference": 0,
+        "inputChannelCount": 2
+      },
+      {
+        "name": "dynamic Filter UI endpoint 100 maps to the normalized 20 kHz endpoint",
+        "passed": true,
+        "filterHighCutoffRms": 0.19236924860090646,
+        "filterLowCutoffRms": 0.005871692871234768,
+        "ratio": 32.76214420943526
+      }
+    ],
+    "status": "PASS",
+    "contextSampleRate": 48000,
+    "contextState": "running",
+    "contextSafety": [
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      }
+    ],
+    "initialMetrics": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 84224,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordingFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackStates": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackPositions": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 4,
+      "commandOverruns": 0,
+      "processDeadlineMisses": null,
+      "deadlineMetricAvailable": false,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 8640000,
+      "trackCapacityFrames": [
+        8640000,
+        8640000,
+        8640000,
+        8640000,
+        8640000
+      ]
+    },
+    "finalMetrics": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 171776,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        0,
+        0,
+        0,
+        0,
+        6016
+      ],
+      "recordingFrames": [
+        0,
+        0,
+        0,
+        0,
+        6016
+      ],
+      "trackStates": [
+        0,
+        0,
+        0,
+        0,
+        4
+      ],
+      "trackPositions": [
+        0,
+        0,
+        0,
+        0,
+        0.8936170339584351
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 43,
+      "commandOverruns": 0,
+      "processDeadlineMisses": null,
+      "deadlineMetricAvailable": false,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 8640000,
+      "trackCapacityFrames": [
+        8640000,
+        8640000,
+        8640000,
+        8640000,
+        8640000
+      ]
+    },
+    "ioSnapshot": {
+      "contextSampleRate": 48000,
+      "contextBaseLatencyMs": 10,
+      "contextOutputLatencyMs": 24,
+      "loopRecordingChannelCount": 2,
+      "loopPlaybackOutputChannelCount": 2,
+      "loopChannelLayout": "stereo planar LR; stereo input preserved and mono input duplicated to LR",
+      "inputDeviceId": "WebAudio-72f1e4ab-3b82-487a-82ad-a885ec7643b5",
+      "inputLabel": "MediaStreamAudioDestinationNode",
+      "inputSampleRate": 48000,
+      "inputChannelCount": 2,
+      "inputLatencyMs": 10,
+      "echoCancellation": null,
+      "noiseSuppression": null,
+      "autoGainControl": null,
+      "outputDeviceId": null,
+      "outputLabel": null,
+      "outputSinkType": "none"
+    },
+    "latencyInfo": {
+      "mode": "browser",
+      "backend": "BROWSER",
+      "sampleRate": 48000,
+      "bufferFrames": 128,
+      "inputLatencyMs": null,
+      "outputLatencyMs": 24,
+      "baseLatencyMs": 10,
+      "estimatedMonitoringLatencyMs": null,
+      "roundTripLatencyMs": null,
+      "physicalRoundTripMs": null,
+      "inputLatencySource": null,
+      "outputLatencySource": "AudioContext.outputLatency API",
+      "driverReportedStreamLatencyMs": null,
+      "driverReportedStreamLatencySource": null,
+      "roundTripLatencyNote": "No correlated output-to-input loopback calibration is stored for the active device route and capture format.",
+      "inputPeak": 0,
+      "outputPeak": 0,
+      "xrunsOrDropouts": null,
+      "callbackStatusFaults": null,
+      "inputQueueOverruns": null,
+      "outputQueueUnderruns": null,
+      "callbackFrameLimitViolations": null,
+      "droppedCommands": null,
+      "outputQueueDepthBlocks": null,
+      "outputQueueCapacityBlocks": null,
+      "callbackTicks": null,
+      "inputCallbackTicks": null,
+      "outputCallbackTicks": null,
+      "callbackCountSkew": null,
+      "bridgeAvailable": true,
+      "engineRunning": true
+    },
+    "trackResults": [
+      {
+        "track": 1,
+        "loopFrames": 6016,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07055502844251563,
+          0.05663061519034068
+        ]
+      },
+      {
+        "track": 2,
+        "loopFrames": 6400,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07056437645802947,
+          0.05662689187316761
+        ]
+      },
+      {
+        "track": 3,
+        "loopFrames": 6016,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07079273817620087,
+          0.05654096459183816
+        ]
+      },
+      {
+        "track": 4,
+        "loopFrames": 6016,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07055502802728206,
+          0.05663061512527116
+        ]
+      },
+      {
+        "track": 5,
+        "loopFrames": 5888,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.07086934103227473,
+          0.05650501800455644
+        ]
+      }
+    ],
+    "stereoPlayback": {
+      "left250": 0.2990892925690013,
+      "left500": 0.004476565076939352,
+      "right250": 0.003581084677648258,
+      "right500": 0.23785673965561
+    },
+    "changedOverdubSamples": 6016,
+    "changedOverdubRightSamples": 6016,
+    "monoCompatibility": {
+      "frames": 6016,
+      "maxChannelDifference": 0
+    },
+    "filterOutputRms": {
+      "ui100": 0.19236924860090646,
+      "ui1": 0.005871692871234768
+    },
+    "monitorOnRms": 0.021721015083935848,
+    "monitorOffRms": 0,
+    "calibration": {
+      "beforeDeviceSwitchMs": 8,
+      "afterDeviceSwitchMs": null
+    },
+    "softwareTaps": {
+      "masterStreamTracks": 1,
+      "monitorStreamTracks": 1
+    }
+  },
+  "completedAt": "2026-10-08T07:31:21.469Z",
+  "softwareContexts": [
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    },
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    },
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    }
+  ],
+  "syntheticInputContextCount": 2,
+  "syntheticInputLayouts": [
+    {
+      "requestedDeviceId": "",
+      "mono": false,
+      "sourceChannels": 2,
+      "trackSettings": {
+        "channelCount": 2,
+        "deviceId": "WebAudio-eb8bc1c0-9b88-4a5e-879c-eef81f862254",
+        "latency": 0.01,
+        "sampleRate": 48000,
+        "sampleSize": 16
+      }
+    },
+    {
+      "requestedDeviceId": "smoke-mono-input",
+      "mono": true,
+      "sourceChannels": 1,
+      "trackSettings": {
+        "channelCount": 1,
+        "deviceId": "WebAudio-72f1e4ab-3b82-487a-82ad-a885ec7643b5",
+        "latency": 0.01,
+        "sampleRate": 48000,
+        "sampleSize": 16
+      }
+    }
+  ],
+  "outputFile": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc505-browser-realtime-smoke-2026-10-08T07-31-09-666Z.json"
+}

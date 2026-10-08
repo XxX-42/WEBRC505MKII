@@ -50,9 +50,9 @@ export interface BrowserAudioIoSnapshot {
   contextSampleRate: number;
   contextBaseLatencyMs: number | null;
   contextOutputLatencyMs: number | null;
-  loopRecordingChannelCount: 1;
+  loopRecordingChannelCount: 2;
   loopPlaybackOutputChannelCount: 2;
-  loopChannelLayout: 'mono input downmix, duplicated to stereo playback';
+  loopChannelLayout: 'stereo planar LR; stereo input preserved and mono input duplicated to LR';
   inputDeviceId: string | null;
   inputLabel: string | null;
   inputSampleRate: number | null;
@@ -683,9 +683,9 @@ export class BrowserAudioEngine implements IAudioEngine {
             contextOutputLatencyMs: Number.isFinite(contextWithSink.outputLatency)
                 ? (contextWithSink.outputLatency ?? 0) * 1000
                 : null,
-            loopRecordingChannelCount: 1,
+            loopRecordingChannelCount: 2,
             loopPlaybackOutputChannelCount: 2,
-            loopChannelLayout: 'mono input downmix, duplicated to stereo playback',
+            loopChannelLayout: 'stereo planar LR; stereo input preserved and mono input duplicated to LR',
             inputDeviceId: inputSettings?.deviceId || this.selectedInputDeviceId,
             inputLabel: this.currentInputLabel,
             inputSampleRate: Number.isFinite(inputSettings?.sampleRate) ? inputSettings!.sampleRate! : null,
@@ -909,6 +909,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         const captureStartFrame = this.realtimeRuntime.getSafeTargetFrame();
         const signalFrame = captureStartFrame + Math.round(this.context.sampleRate * 0.25);
         const signalIndex = signalFrame - captureStartFrame;
+        await this.realtimeRuntime.armLoopbackCapture(captureBuffer, captureStartFrame, captureFrames);
+
         let captureTimeout: ReturnType<typeof setTimeout> | null = null;
         const captureComplete = new Promise<void>((resolve, reject) => {
             this.loopbackCaptureResolve = () => {
@@ -922,22 +924,23 @@ export class BrowserAudioEngine implements IAudioEngine {
             }, 2_500);
         });
 
-        await this.realtimeRuntime.armLoopbackCapture(captureBuffer, captureStartFrame, captureFrames);
-        const osc = this.context.createOscillator();
-        const oscGain = this.context.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = 1000;
-        oscGain.gain.value = 0.05;
-        osc.connect(oscGain);
-        oscGain.connect(this.context.destination);
-        const signalTime = signalFrame / this.context.sampleRate;
+        let osc: OscillatorNode | null = null;
+        let oscGain: GainNode | null = null;
         try {
+            osc = this.context.createOscillator();
+            oscGain = this.context.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 1000;
+            oscGain.gain.value = 0.05;
+            osc.connect(oscGain);
+            oscGain.connect(this.context.destination);
+            const signalTime = signalFrame / this.context.sampleRate;
             osc.start(signalTime);
             osc.stop(signalTime + 0.12);
             await captureComplete;
         } finally {
-            try { osc.disconnect(); } catch { /* already disconnected */ }
-            try { oscGain.disconnect(); } catch { /* already disconnected */ }
+            try { osc?.disconnect(); } catch { /* already disconnected */ }
+            try { oscGain?.disconnect(); } catch { /* already disconnected */ }
             if (captureTimeout) clearTimeout(captureTimeout);
             this.loopbackCaptureResolve = null;
         }
@@ -1053,7 +1056,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         const audio: MediaTrackConstraints & { latency?: ConstrainDouble } = {
             deviceId: deviceId ? { exact: deviceId } : undefined,
             sampleRate: { ideal: this.context.sampleRate },
-            channelCount: { ideal: 1 },
+            channelCount: { ideal: 2 },
             echoCancellation: false,
             autoGainControl: false,
             noiseSuppression: false,

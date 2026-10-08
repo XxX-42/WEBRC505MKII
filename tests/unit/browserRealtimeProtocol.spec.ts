@@ -19,6 +19,9 @@ import {
   TrackMetaWord,
   createControlSharedBuffer,
   createTrackSharedBuffer,
+  BROWSER_REALTIME_LAYOUT_PLANAR_LR,
+  BROWSER_REALTIME_LAYOUT_VERSION,
+  BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
   frameFromWords,
   frameToWords,
   loadSharedFrame,
@@ -92,9 +95,15 @@ function attachTrack(processor: WorkletHarnessBase & { handlePortMessage: (messa
   const buffer = createTrackSharedBuffer(capacity);
   const meta = new Int32Array(buffer, 0, TRACK_META_BYTES / Int32Array.BYTES_PER_ELEMENT);
   const samples = new Float32Array(buffer, TRACK_META_BYTES, capacity);
+  const samplesRight = new Float32Array(buffer, TRACK_META_BYTES + capacity * Float32Array.BYTES_PER_ELEMENT, capacity);
   Atomics.store(meta, TrackMetaWord.CAPACITY_FRAMES, capacity);
-  processor.handlePortMessage({ type: 'ATTACH_TRACK', track, buffer });
-  return { buffer, meta, samples };
+  processor.handlePortMessage({
+    type: 'ATTACH_TRACK', track, buffer,
+    channelCount: BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
+    layoutVersion: BROWSER_REALTIME_LAYOUT_VERSION,
+    storageLayout: BROWSER_REALTIME_LAYOUT_PLANAR_LR,
+  });
+  return { buffer, meta, samples, samplesRight };
 }
 
 describe('browser real-time shared protocol', () => {

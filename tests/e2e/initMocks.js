@@ -205,7 +205,10 @@
         postMessage: (message) => {
           if (message?.type === 'ATTACH_TRACK') {
             queueMicrotask(() => {
-              this.port.onmessage?.({ data: { type: 'TRACK_ATTACHED', track: message.track } });
+              this.port.onmessage?.({ data: {
+                type: 'TRACK_ATTACHED', track: message.track,
+                channelCount: 2, layoutVersion: 2, storageLayout: 1,
+              } });
             });
           }
         },

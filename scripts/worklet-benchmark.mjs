@@ -11,7 +11,7 @@ import { once } from 'node:events';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
 if (args.help) {
-  process.stdout.write(`Synthetic Node/V8 benchmark for the actual AudioWorklet processor source. No hardware or browser callback is opened.\n\nUsage:\n  node scripts/worklet-benchmark.mjs [--iterations 10000] [--warmup 1000] [--burst-samples 100] [--phase-minutes 30] [--phase-clock] [--observe-gc] [--worklet-source <path>]\n\nDefault runs five-track 48 kHz / 128-frame REC, PLAY, overdub, Clear, Record, command-burst and protocol assertions.\n--phase-minutes opts into an actual accelerated VM process-loop simulation; it is still not a real 30-minute device run.\n--phase-clock changes only that optional phase to one playing track, four empty tracks, and a 119 BPM clock.\n--observe-gc adds perf_hooks GC event timestamps for correlation with unfiltered phase samples.\n--worklet-source permits a saved processor source for controlled comparisons; its path and SHA-256 are recorded and protocol-audited.\nOutputs are written below the system TEMP directory.\n`);
+  process.stdout.write(`Synthetic Node/V8 benchmark for the actual AudioWorklet processor source. No hardware or browser callback is opened.\n\nUsage:\n  node scripts/worklet-benchmark.mjs [--iterations 10000] [--warmup 1000] [--burst-samples 100] [--phase-minutes 30] [--phase-clock] [--observe-gc] [--worklet-source <path>]\n\nDefault runs five-track 48 kHz / 128-frame REC, PLAY, overdub, Clear, Record, command-burst and protocol assertions.\n--phase-minutes opts into an actual accelerated VM process-loop simulation; it is still not a real 30-minute device run.\n--phase-clock changes only that optional phase to one playing track, four empty tracks, and a 119 BPM clock.\n--observe-gc adds perf_hooks GC event timestamps for correlation with unfiltered phase samples.\n--worklet-source permits saved stereo planar-LR v2 sources for controlled comparisons; legacy mono sources are rejected.\nTrack buffers use two independent planar channels, and both channel outputs are asserted.\nOutputs are written below the system TEMP directory.\n`);
   process.exit(0);
 }
 
@@ -191,6 +191,11 @@ function loadProtocolExports(source, filename, ts) {
 }
 
 function auditProtocolMirror(exports, source, filename) {
+  if (!/\bconst\s+LAYOUT_VERSION\s*=\s*2\s*;/.test(source) ||
+      !/\bconst\s+TRACK_CHANNEL_COUNT\s*=\s*2\s*;/.test(source) ||
+      !/\bconst\s+LAYOUT_PLANAR_LR\s*=\s*1\s*;/.test(source)) {
+    throw new Error(`The selected Worklet source ${filename} is not stereo planar-LR layout v2; legacy mono snapshots are rejected for this benchmark.`);
+  }
   const constantPairs = [
     ['TRACK_COUNT', exports.BROWSER_REALTIME_TRACK_COUNT],
     ['OUTPUT_COUNT', exports.BROWSER_REALTIME_TRACK_COUNT + 2],
@@ -200,6 +205,9 @@ function auditProtocolMirror(exports, source, filename) {
     ['CONTROL_HEADER_BYTES', exports.CONTROL_HEADER_BYTES],
     ['TRACK_META_BYTES', exports.TRACK_META_BYTES],
     ['TRACK_META_WORDS', exports.TRACK_META_WORDS],
+    ['LAYOUT_VERSION', exports.BROWSER_REALTIME_LAYOUT_VERSION],
+    ['TRACK_CHANNEL_COUNT', exports.BROWSER_REALTIME_TRACK_CHANNEL_COUNT],
+    ['LAYOUT_PLANAR_LR', exports.BROWSER_REALTIME_LAYOUT_PLANAR_LR],
     ['FRAME_WORD_MODULUS', 0x1_0000_0000],
   ];
   const mirrored = [];
@@ -228,6 +236,7 @@ function auditProtocolMirror(exports, source, filename) {
     TRACK_STATE: 'STATE', LOOP_FRAMES: 'LOOP_FRAMES', RECORDING_FRAMES: 'RECORDING_FRAMES',
     PLAY_POSITION: 'PLAY_POSITION', CAPACITY_FRAMES: 'CAPACITY_FRAMES',
     RECORD_START_LOW: 'RECORD_START_LOW', RECORD_START_HIGH: 'RECORD_START_HIGH', REVERSE: 'REVERSE',
+    CHANNEL_COUNT: 'CHANNEL_COUNT', STORAGE_LAYOUT_VERSION: 'LAYOUT_VERSION', STORAGE_LAYOUT: 'STORAGE_LAYOUT',
   };
   auditNamedValues(source, filename, trackMetaPairs, exports.TrackMetaWord, 'track-meta-word');
 
@@ -263,7 +272,13 @@ function auditProtocolMirror(exports, source, filename) {
   const controlBuffer = exports.createControlSharedBuffer();
   if (controlBuffer.byteLength !== exports.CONTROL_BUFFER_BYTE_LENGTH) throw new Error('Protocol createControlSharedBuffer() size mismatch.');
   const trackBuffer = exports.createTrackSharedBuffer(31);
-  if (trackBuffer.byteLength !== exports.TRACK_META_BYTES + 31 * Float32Array.BYTES_PER_ELEMENT) throw new Error('Protocol createTrackSharedBuffer() size mismatch.');
+  if (trackBuffer.byteLength !== exports.TRACK_META_BYTES + 31 * 2 * Float32Array.BYTES_PER_ELEMENT) throw new Error('Protocol createTrackSharedBuffer() stereo size mismatch.');
+  const trackMeta = new Int32Array(trackBuffer, 0, exports.TRACK_META_WORDS);
+  if (Atomics.load(trackMeta, exports.TrackMetaWord.CHANNEL_COUNT) !== 2 ||
+      Atomics.load(trackMeta, exports.TrackMetaWord.LAYOUT_VERSION) !== 2 ||
+      Atomics.load(trackMeta, exports.TrackMetaWord.STORAGE_LAYOUT) !== exports.BROWSER_REALTIME_LAYOUT_PLANAR_LR) {
+    throw new Error('Protocol createTrackSharedBuffer() metadata does not identify stereo planar LR.');
+  }
   const highFrame = 0x1_0000_0000 + 123;
   const [lowWord, highWord] = exports.frameToWords(highFrame);
   if (exports.frameFromWords(lowWord, highWord) !== highFrame) throw new Error('Protocol frame word round-trip mismatch.');
@@ -281,6 +296,8 @@ function auditProtocolMirror(exports, source, filename) {
     commandWords: exports.BROWSER_REALTIME_COMMAND_WORDS,
     controlBufferBytes: controlBuffer.byteLength,
     trackMetaBytes: exports.TRACK_META_BYTES,
+    trackLayout: 'stereo planar LR v2',
+    trackChannelCount: exports.BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
     commandBaseWordOffset: exports.CONTROL_COMMANDS_WORD_OFFSET,
     trackStatesByteOffset: exports.CONTROL_TRACK_STATES_BYTE_OFFSET,
     trackPositionsByteOffset: exports.CONTROL_TRACK_POSITIONS_BYTE_OFFSET,
@@ -348,11 +365,19 @@ function createHarness(capacityFrames = sampleRate * 35, attachedTrackCount = tr
   for (let track = 0; track < trackCount; track += 1) {
     const buffer = protocol.createTrackSharedBuffer(capacityFrames);
     const meta = new Int32Array(buffer, 0, protocol.TRACK_META_WORDS);
-    const data = new Float32Array(buffer, protocol.TRACK_META_BYTES, capacityFrames);
+    const dataLeft = new Float32Array(buffer, protocol.TRACK_META_BYTES, capacityFrames);
+    const dataRight = new Float32Array(
+      buffer,
+      protocol.TRACK_META_BYTES + capacityFrames * Float32Array.BYTES_PER_ELEMENT,
+      capacityFrames,
+    );
     Atomics.store(meta, trackWord.STATE, processorState.EMPTY);
     Atomics.store(meta, trackWord.CAPACITY_FRAMES, capacityFrames);
     Atomics.store(meta, trackWord.ALIGNMENT_SAMPLES, 0);
-    tracks.push({ buffer, meta, data });
+    Atomics.store(meta, trackWord.CHANNEL_COUNT, protocol.BROWSER_REALTIME_TRACK_CHANNEL_COUNT);
+    Atomics.store(meta, trackWord.LAYOUT_VERSION, protocol.BROWSER_REALTIME_LAYOUT_VERSION);
+    Atomics.store(meta, trackWord.STORAGE_LAYOUT, protocol.BROWSER_REALTIME_LAYOUT_PLANAR_LR);
+    tracks.push({ buffer, meta, dataLeft, dataRight });
   }
 
   const counters = emptyMessageCounters();
@@ -378,7 +403,12 @@ function createHarness(capacityFrames = sampleRate * 35, attachedTrackCount = tr
   if (!registration || registration.name !== protocol.BROWSER_REALTIME_WORKLET_NAME) throw new Error('Actual worklet registration was not captured.');
   const processor = new registration.constructor({ processorOptions: { controlBuffer } });
   for (let track = 0; track < attachedTrackCount; track += 1) {
-    processor.handlePortMessage({ type: 'ATTACH_TRACK', track, buffer: tracks[track].buffer });
+    processor.handlePortMessage({
+      type: 'ATTACH_TRACK', track, buffer: tracks[track].buffer,
+      channelCount: protocol.BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
+      layoutVersion: protocol.BROWSER_REALTIME_LAYOUT_VERSION,
+      storageLayout: protocol.BROWSER_REALTIME_LAYOUT_PLANAR_LR,
+    });
   }
 
   const inputLeft = new Float32Array(quantumFrames);
@@ -426,14 +456,17 @@ function queueCommand(harness, op, track, args = {}) {
 
 function initializeLoopTracks(harness, lengths = loopLengths, stateValue = processorState.STOPPED) {
   for (let track = 0; track < trackCount; track += 1) {
-    const { meta, data } = harness.tracks[track];
+    const { meta, dataLeft, dataRight } = harness.tracks[track];
     const length = lengths[track];
     Atomics.store(meta, trackWord.STATE, stateValue);
     Atomics.store(meta, trackWord.LOOP_FRAMES, length);
     Atomics.store(meta, trackWord.RECORDING_FRAMES, length);
     Atomics.store(meta, trackWord.PLAY_POSITION, 0);
     Atomics.store(meta, trackWord.REVERSE, 0);
-    for (let frame = 0; frame < length; frame += 1) data[frame] = (track + 1) * 0.125 + frame * 0.00001;
+    for (let frame = 0; frame < length; frame += 1) {
+      dataLeft[frame] = (track + 1) * 0.125 + frame * 0.00001;
+      dataRight[frame] = -(track + 1) * 0.0625 - frame * 0.00002;
+    }
   }
 }
 
@@ -476,6 +509,14 @@ function runSteadyScenario(name, mode, sampleCount, warmupCount) {
     }
     if (metrics.trackCapacityOverruns !== 0) throw new Error('Unexpected recording capacity overrun.');
     if (metrics.inputDropoutBlocks !== 0) throw new Error('Unexpected input dropout in synthetic input test.');
+    for (const [trackIndex, track] of harness.tracks.entries()) {
+      for (let frame = 0; frame < expectedRecordFrames; frame += 1) {
+        const offset = frame % quantumFrames;
+        if (track.dataLeft[frame] !== harness.inputs[0][0][offset] || track.dataRight[frame] !== harness.inputs[0][1][offset]) {
+          throw new Error(`Stereo REC ${trackIndex + 1} changed LR source samples at frame ${frame}.`);
+        }
+      }
+    }
   } else {
     const expectedElapsedFrames = (sampleCount + warmupCount + 1) * quantumFrames;
     for (let track = 0; track < trackCount; track += 1) {
@@ -645,7 +686,8 @@ function runProtocolBehaviorAssertions() {
   const clearHarness = createHarness(128);
   const clearLength = 64;
   const track = clearHarness.tracks[0];
-  track.data.fill(0.75, 0, clearLength);
+  track.dataLeft.fill(0.75, 0, clearLength);
+  track.dataRight.fill(-0.5, 0, clearLength);
   Atomics.store(track.meta, trackWord.STATE, processorState.PLAYING);
   Atomics.store(track.meta, trackWord.LOOP_FRAMES, clearLength);
   Atomics.store(track.meta, trackWord.RECORDING_FRAMES, clearLength);
@@ -725,9 +767,10 @@ function runSteadyPlaybackAssertions() {
     let position = initialPositions[track];
     const step = track === 1 ? -1 : 1;
     for (let frame = 0; frame < quantumFrames; frame += 1) {
-      const expected = harness.tracks[track].data[position] || 0;
-      if (harness.outputs[track][0][frame] !== expected || harness.outputs[track][1][frame] !== expected) {
-        throw new Error(`Steady playback fast path changed track ${track + 1} sample ${frame}.`);
+      const expectedLeft = harness.tracks[track].dataLeft[position] || 0;
+      const expectedRight = harness.tracks[track].dataRight[position] || 0;
+      if (harness.outputs[track][0][frame] !== expectedLeft || harness.outputs[track][1][frame] !== expectedRight) {
+        throw new Error(`Steady playback fast path changed track ${track + 1} LR sample ${frame}.`);
       }
       position += step;
       if (position >= loopLengths[track]) position = 0;
@@ -891,7 +934,10 @@ function runStoppedTrackSilenceAssertion() {
   if (Atomics.load(harness.tracks[0].meta, trackWord.STATE) !== processorState.STOPPED) {
     throw new Error('Sample-accurate STOP command did not leave the track stopped.');
   }
-  if (!harness.tracks[0].data.some((sample) => sample !== 0)) throw new Error('STOP test did not retain nonzero loop PCM.');
+  if (!harness.tracks[0].dataLeft.some((sample) => sample !== 0) ||
+      !harness.tracks[0].dataRight.some((sample) => sample !== 0)) {
+    throw new Error('STOP test did not retain nonzero PCM on both stereo channels.');
+  }
 
   harness.outputs[0][0].fill(0.75);
   harness.outputs[0][1].fill(0.75);
@@ -915,9 +961,10 @@ function processAndAssertClockPlaybackBlock(harness, loopLength, relativeStartFr
 
   let position = relativeStartFrame % loopLength;
   for (let frame = 0; frame < quantumFrames; frame += 1) {
-    const expected = harness.tracks[0].data[position] || 0;
-    if (harness.outputs[0][0][frame] !== expected || harness.outputs[0][1][frame] !== expected) {
-      throw new Error(`Clock-running playback changed the active track sample at offset ${relativeStartFrame + frame}.`);
+    const expectedLeft = harness.tracks[0].dataLeft[position] || 0;
+    const expectedRight = harness.tracks[0].dataRight[position] || 0;
+    if (harness.outputs[0][0][frame] !== expectedLeft || harness.outputs[0][1][frame] !== expectedRight) {
+      throw new Error(`Clock-running playback changed the active track LR sample at offset ${relativeStartFrame + frame}.`);
     }
     position = (position + 1) % loopLength;
   }

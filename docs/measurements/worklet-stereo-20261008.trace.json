@@ -1,0 +1,1003 @@
+{
+  "softwareOnly": true,
+  "unfiltered": true,
+  "rawResultsPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-stereo-final-five-track-30m-20261008\\raw-results.json",
+  "rawResultsSha256": "1794F37267739F033136B2455B663303E8D6BCF5B40A217CC07D7CC235D8E900",
+  "phaseSamplesPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-stereo-final-five-track-30m-20261008\\phase-process-samples.csv",
+  "phaseSamplesSha256": "7923833392258C16850B0D02D3DA736E637F93601FE2716CF90456D917473AAB",
+  "reproductionCommand": "Set-Location 'D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2'\nnode scripts/worklet-benchmark.mjs --iterations 10000 --warmup 1000 --burst-samples 100 --burst-warmup 10 --phase-minutes 30 --phase-yield-blocks 256 --phase-yield-ms 20 --observe-gc\n",
+  "report": {
+    "diagnosticStatus": "PASS",
+    "diagnosticStatusScope": "PASS/FAILED reflects source/protocol/state/phase assertions only; Node deadline counters are reported separately and no hardware qualification is implied.",
+    "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+    "benchmark": "Actual public/worklets/looper-processor.js process() in a Node vm AudioWorkletProcessor stub; synthetic V8 only",
+    "startedAt": "2026-10-08T07:35:01.504Z",
+    "completedAt": "2026-10-08T07:36:27.585Z",
+    "sampleRate": 48000,
+    "quantumFrames": 128,
+    "blockBudgetMs": 2.6666666666666665,
+    "measuredIterationsPerSteadyScenario": 10000,
+    "warmupBlocksPerSteadyScenario": 1000,
+    "commandBurstSamples": 100,
+    "commandBurstWarmupBlocks": 10,
+    "loopFramesForPhaseChecks": [
+      127,
+      131,
+      137,
+      139,
+      149
+    ],
+    "phaseMode": "five-track PLAYING, clock inactive",
+    "timer": "Node perf_hooks.performance.now() around processor.process(); includes vm call edge, excludes queue/setup, verification and host-yield time",
+    "gcObservation": "Enabled with perf_hooks PerformanceObserver; correlates pause intervals to raw phase callback intervals.",
+    "limitations": [
+      "This is accelerated/synthetic Node V8 execution, not a Chromium AudioWorklet callback measurement.",
+      "The processor-reported deadline counter uses Node performance.now() and does not represent device XRUNs.",
+      "A 30-minute phase run, when requested, processes the real worklet callback against synthetic sample buffers with sampleFrame advanced rapidly; it is not 30 minutes of wall time or a hardware stability test.",
+      "No microphone, render endpoint, loopback, or physical audio stream is opened."
+    ],
+    "protocolAudit": {
+      "ok": true,
+      "workletName": "webrc505-realtime",
+      "trackCount": 5,
+      "commandCapacity": 256,
+      "commandWords": 8,
+      "controlBufferBytes": 8328,
+      "trackMetaBytes": 64,
+      "trackLayout": "stereo planar LR v2",
+      "trackChannelCount": 2,
+      "commandBaseWordOffset": 24,
+      "trackStatesByteOffset": 8288,
+      "trackPositionsByteOffset": 8308,
+      "mirroredConstants": [
+        {
+          "name": "TRACK_COUNT",
+          "value": 5
+        },
+        {
+          "name": "OUTPUT_COUNT",
+          "value": 7
+        },
+        {
+          "name": "COMMAND_CAPACITY",
+          "value": 256
+        },
+        {
+          "name": "COMMAND_WORDS",
+          "value": 8
+        },
+        {
+          "name": "COMMAND_WORD_OFFSET",
+          "value": 24
+        },
+        {
+          "name": "CONTROL_HEADER_BYTES",
+          "value": 96
+        },
+        {
+          "name": "TRACK_META_BYTES",
+          "value": 64
+        },
+        {
+          "name": "TRACK_META_WORDS",
+          "value": 16
+        },
+        {
+          "name": "LAYOUT_VERSION",
+          "value": 2
+        },
+        {
+          "name": "TRACK_CHANNEL_COUNT",
+          "value": 2
+        },
+        {
+          "name": "LAYOUT_PLANAR_LR",
+          "value": 1
+        },
+        {
+          "name": "FRAME_WORD_MODULUS",
+          "value": 4294967296
+        }
+      ],
+      "mirroredControlWordCount": 22,
+      "mirroredTrackMetaWordCount": 11,
+      "mirroredOpcodeCount": 15,
+      "mirroredStatusCount": 8,
+      "workletStateValuesChecked": 7,
+      "highFrameWordRoundTrip": 4294967419
+    },
+    "workletSourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\public\\worklets\\looper-processor.js",
+    "workletSourceSha256": "5a95359d4c028b73f997bfb15ee18535515b71aba87d8e7ca049950e00db14fe",
+    "scenarios": [
+      {
+        "scenario": "five_track_record",
+        "sampleCount": 10000,
+        "warmupBlocks": 1000,
+        "callbacks": 11000,
+        "framesPerCallback": 128,
+        "firstMeasuredFrame": 128128,
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.017600000000015825,
+          "p95Ms": 0.029899999999997817,
+          "p99Ms": 0.03879999999998063,
+          "maxMs": 1.1689000000000078
+        },
+        "phaseChecksPerTrack": 0,
+        "loopFrames": [],
+        "finalRuntimeMetrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 1408128,
+          "underruns": 0,
+          "inputDropoutBlocks": 0,
+          "commandQueueDepth": 0,
+          "commandOverruns": 0,
+          "processDeadlineMisses": 0,
+          "deadlineMetricAvailable": true,
+          "trackCapacityOverruns": 0,
+          "trackStates": [
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "trackPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "loopFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            1408128,
+            1408128,
+            1408128,
+            1408128,
+            1408128
+          ],
+          "playPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackCapacityFrames": [
+            1680000,
+            1680000,
+            1680000,
+            1680000,
+            1680000
+          ]
+        },
+        "messageCounts": {
+          "attachCount": 5,
+          "ackCount": 5,
+          "ackOk": 5,
+          "ackLate": 0,
+          "ackMissingStorage": 0,
+          "ackCapacity": 0,
+          "ackInvalidState": 0,
+          "ackCommandOverflow": 0,
+          "ackCancelled": 0,
+          "ackInvalidTrack": 0,
+          "capacityEvents": 0,
+          "bootErrors": 0,
+          "otherMessages": 0
+        }
+      },
+      {
+        "scenario": "five_track_playback",
+        "sampleCount": 10000,
+        "warmupBlocks": 1000,
+        "callbacks": 11000,
+        "framesPerCallback": 128,
+        "firstMeasuredFrame": 128128,
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.012600000000020373,
+          "p95Ms": 0.021600000000034925,
+          "p99Ms": 0.02800000000002001,
+          "maxMs": 1.4979000000000724
+        },
+        "phaseChecksPerTrack": 11001,
+        "loopFrames": [
+          127,
+          131,
+          137,
+          139,
+          149
+        ],
+        "finalRuntimeMetrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 1408128,
+          "underruns": 0,
+          "inputDropoutBlocks": 0,
+          "commandQueueDepth": 0,
+          "commandOverruns": 0,
+          "processDeadlineMisses": 0,
+          "deadlineMetricAvailable": true,
+          "trackCapacityOverruns": 0,
+          "trackStates": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trackPositions": [
+            0.6220472455024719,
+            0.06870228797197342,
+            0.30656933784484863,
+            0.41726619005203247,
+            0.5234899520874023
+          ],
+          "loopFrames": [
+            127,
+            131,
+            137,
+            139,
+            149
+          ],
+          "recordingFrames": [
+            127,
+            131,
+            137,
+            139,
+            149
+          ],
+          "playPositions": [
+            79,
+            9,
+            42,
+            58,
+            78
+          ],
+          "trackCapacityFrames": [
+            1680000,
+            1680000,
+            1680000,
+            1680000,
+            1680000
+          ]
+        },
+        "messageCounts": {
+          "attachCount": 5,
+          "ackCount": 5,
+          "ackOk": 5,
+          "ackLate": 0,
+          "ackMissingStorage": 0,
+          "ackCapacity": 0,
+          "ackInvalidState": 0,
+          "ackCommandOverflow": 0,
+          "ackCancelled": 0,
+          "ackInvalidTrack": 0,
+          "capacityEvents": 0,
+          "bootErrors": 0,
+          "otherMessages": 0
+        }
+      },
+      {
+        "scenario": "five_track_overdub",
+        "sampleCount": 10000,
+        "warmupBlocks": 1000,
+        "callbacks": 11000,
+        "framesPerCallback": 128,
+        "firstMeasuredFrame": 128128,
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.1675000000000182,
+          "p95Ms": 0.28589999999985594,
+          "p99Ms": 0.33150000000000546,
+          "maxMs": 2.5843999999999596
+        },
+        "phaseChecksPerTrack": 11001,
+        "loopFrames": [
+          127,
+          131,
+          137,
+          139,
+          149
+        ],
+        "finalRuntimeMetrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 1408128,
+          "underruns": 0,
+          "inputDropoutBlocks": 0,
+          "commandQueueDepth": 0,
+          "commandOverruns": 0,
+          "processDeadlineMisses": 0,
+          "deadlineMetricAvailable": true,
+          "trackCapacityOverruns": 0,
+          "trackStates": [
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "trackPositions": [
+            0.6220472455024719,
+            0.06870228797197342,
+            0.30656933784484863,
+            0.41726619005203247,
+            0.5234899520874023
+          ],
+          "loopFrames": [
+            127,
+            131,
+            137,
+            139,
+            149
+          ],
+          "recordingFrames": [
+            127,
+            131,
+            137,
+            139,
+            149
+          ],
+          "playPositions": [
+            79,
+            9,
+            42,
+            58,
+            78
+          ],
+          "trackCapacityFrames": [
+            1680000,
+            1680000,
+            1680000,
+            1680000,
+            1680000
+          ]
+        },
+        "messageCounts": {
+          "attachCount": 5,
+          "ackCount": 5,
+          "ackOk": 5,
+          "ackLate": 0,
+          "ackMissingStorage": 0,
+          "ackCapacity": 0,
+          "ackInvalidState": 0,
+          "ackCommandOverflow": 0,
+          "ackCancelled": 0,
+          "ackInvalidTrack": 0,
+          "capacityEvents": 0,
+          "bootErrors": 0,
+          "otherMessages": 0
+        }
+      },
+      {
+        "scenario": "clear_five_tracks",
+        "sampleCount": 10000,
+        "warmupBlocks": 1000,
+        "commandsPerCallback": 5,
+        "commandQueueSubmissionTiming": "excluded; only actual vm processor.process() call is timed",
+        "framesPerCallback": 128,
+        "firstMeasuredFrame": 128000,
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.02760000000034779,
+          "p95Ms": 0.051199999999880674,
+          "p99Ms": 0.07480000000032305,
+          "maxMs": 1.0933999999997468
+        },
+        "finalRuntimeMetrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 1408000,
+          "underruns": 0,
+          "inputDropoutBlocks": 0,
+          "commandQueueDepth": 0,
+          "commandOverruns": 0,
+          "processDeadlineMisses": 0,
+          "deadlineMetricAvailable": true,
+          "trackCapacityOverruns": 0,
+          "trackStates": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "loopFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "playPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackCapacityFrames": [
+            149,
+            149,
+            149,
+            149,
+            149
+          ]
+        },
+        "messageCounts": {
+          "attachCount": 5,
+          "ackCount": 55000,
+          "ackOk": 55000,
+          "ackLate": 0,
+          "ackMissingStorage": 0,
+          "ackCapacity": 0,
+          "ackInvalidState": 0,
+          "ackCommandOverflow": 0,
+          "ackCancelled": 0,
+          "ackInvalidTrack": 0,
+          "capacityEvents": 0,
+          "bootErrors": 0,
+          "otherMessages": 0
+        }
+      },
+      {
+        "scenario": "record_start_five_tracks",
+        "sampleCount": 10000,
+        "warmupBlocks": 1000,
+        "commandsPerCallback": 5,
+        "commandQueueSubmissionTiming": "excluded; only actual vm processor.process() call is timed",
+        "framesPerCallback": 128,
+        "firstMeasuredFrame": 128000,
+        "processMs": {
+          "samples": 10000,
+          "p50Ms": 0.03000000000020009,
+          "p95Ms": 0.05510000000003856,
+          "p99Ms": 0.06420000000025539,
+          "maxMs": 0.69399999999996
+        },
+        "finalRuntimeMetrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 1408000,
+          "underruns": 0,
+          "inputDropoutBlocks": 0,
+          "commandQueueDepth": 0,
+          "commandOverruns": 0,
+          "processDeadlineMisses": 0,
+          "deadlineMetricAvailable": true,
+          "trackCapacityOverruns": 0,
+          "trackStates": [
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "trackPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "loopFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            128,
+            128,
+            128,
+            128,
+            128
+          ],
+          "playPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackCapacityFrames": [
+            1680000,
+            1680000,
+            1680000,
+            1680000,
+            1680000
+          ]
+        },
+        "messageCounts": {
+          "attachCount": 5,
+          "ackCount": 55000,
+          "ackOk": 55000,
+          "ackLate": 0,
+          "ackMissingStorage": 0,
+          "ackCapacity": 0,
+          "ackInvalidState": 0,
+          "ackCommandOverflow": 0,
+          "ackCancelled": 0,
+          "ackInvalidTrack": 0,
+          "capacityEvents": 0,
+          "bootErrors": 0,
+          "otherMessages": 0
+        }
+      },
+      {
+        "scenario": "command_burst_256",
+        "sampleCount": 100,
+        "warmupBlocks": 10,
+        "commandsPerCallback": 256,
+        "commandQueueSubmissionTiming": "excluded; only actual vm processor.process() call is timed",
+        "framesPerCallback": 128,
+        "firstMeasuredFrame": 1280,
+        "processMs": {
+          "samples": 100,
+          "p50Ms": 0.8699999999998909,
+          "p95Ms": 1.6804000000001906,
+          "p99Ms": 1.9835000000002765,
+          "maxMs": 1.9835000000002765
+        },
+        "finalRuntimeMetrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 14080,
+          "underruns": 0,
+          "inputDropoutBlocks": 0,
+          "commandQueueDepth": 0,
+          "commandOverruns": 0,
+          "processDeadlineMisses": 0,
+          "deadlineMetricAvailable": true,
+          "trackCapacityOverruns": 0,
+          "trackStates": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "loopFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "playPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackCapacityFrames": [
+            149,
+            149,
+            149,
+            149,
+            149
+          ]
+        },
+        "messageCounts": {
+          "attachCount": 5,
+          "ackCount": 28160,
+          "ackOk": 28160,
+          "ackLate": 0,
+          "ackMissingStorage": 0,
+          "ackCapacity": 0,
+          "ackInvalidState": 0,
+          "ackCommandOverflow": 0,
+          "ackCancelled": 0,
+          "ackInvalidTrack": 0,
+          "capacityEvents": 0,
+          "bootErrors": 0,
+          "otherMessages": 0
+        }
+      }
+    ],
+    "diagnostics": [
+      {
+        "name": "protocol_and_state_assertions",
+        "onTimeLateInvalidMissingAckCounts": {
+          "onTime": 1,
+          "late": 1,
+          "invalidState": 1,
+          "missingTrackStorage": 1,
+          "invalidTrack": 1
+        },
+        "missingTrackStorageAcknowledgementPassed": true,
+        "missingTrackStorageProcessorError": null,
+        "producerQueueCapacity": 256,
+        "producerAcceptedCommandsAtOverflow": 256,
+        "producerDropCounter": 1,
+        "capacityOverrunCount": 1,
+        "capacityNotificationCount": 1,
+        "clearPointerResetAndNoGhostPlayback": true,
+        "steadyPlaybackFastPathBlocks": 3,
+        "steadyPlaybackFastPathAvailable": true,
+        "steadyPlaybackSamplesAndPhasePassed": true,
+        "monitorOffBoundaryAndNextBlockSilencePassed": true,
+        "rhythmStopBoundaryAndNextBlockSilencePassed": true,
+        "clock119BpmSampleAccuracyAcrossLowWordWrapPassed": true,
+        "onePlayingFourEmptyClockFastPathBlocks": 378,
+        "clockTickFrames": [
+          4294967232,
+          4294991434,
+          4295015635
+        ],
+        "emptyTrackNoGhostOutputPassed": true,
+        "stoppedTrackRetainedPcmNoGhostOutputPassed": true,
+        "assertionErrors": 0
+      },
+      {
+        "name": "accelerated_vm_playback_phase",
+        "phaseMode": "five_track_PLAYING_clock_inactive",
+        "clockBpm": null,
+        "phaseStartTimeMs": 4330.6345,
+        "phaseEndTimeMs": 86254.6213,
+        "requestedMinutes": 30,
+        "simulatedFrames": 86400000,
+        "sampleTimelineSeconds": 1800,
+        "simulatedAudioSeconds": 1800,
+        "originFrame": 8589934336,
+        "originFrameWords": {
+          "low": 4294967040,
+          "high": 1
+        },
+        "expectedFinalAbsoluteFrame": 8676334336,
+        "expectedFinalFrameWords": [
+          86399744,
+          2
+        ],
+        "processorCallbacks": 675000,
+        "phaseAssertions": 3375000,
+        "frameCounterAssertions": 675000,
+        "lowWordWrapCount": 1,
+        "frameCounterMismatchCount": 0,
+        "firstFrameCounterMismatch": null,
+        "phaseMismatchCountByTrack": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxAbsolutePhaseDriftFramesByTrack": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "maxAbsolutePhaseDriftFrames": 0,
+        "firstPhaseMismatch": null,
+        "assertionErrors": 0,
+        "loopFrames": [
+          127,
+          131,
+          137,
+          139,
+          149
+        ],
+        "finalPlayPositions": [
+          122,
+          129,
+          128,
+          102,
+          115
+        ],
+        "expectedPlayPositions": [
+          122,
+          129,
+          128,
+          102,
+          115
+        ],
+        "processMs": {
+          "samples": 675000,
+          "p50Ms": 0.010699999998905696,
+          "p95Ms": 0.019499999994877726,
+          "p99Ms": 0.027600000001257285,
+          "maxMs": 4.890599999998813
+        },
+        "maximumSampleIndex": 266799,
+        "maximumSampleRelativeStartFrame": 34150144,
+        "maximumSampleAbsoluteStartFrame": 8624084480,
+        "maximumSampleStartTimeMs": 36708.8174,
+        "maximumSampleElapsedMs": 4.890599999998813,
+        "accumulatedProcessCallMs": 8339.667700001522,
+        "actualWallTimeSeconds": 81.9239848,
+        "wallElapsedMs": 81923.9848,
+        "yieldEveryBlocks": 256,
+        "yieldMs": 20,
+        "estimatedActiveFraction": 0.10179763252924096,
+        "finalRuntimeMetrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 8676334336,
+          "underruns": 0,
+          "inputDropoutBlocks": 0,
+          "commandQueueDepth": 0,
+          "commandOverruns": 0,
+          "processDeadlineMisses": 3,
+          "deadlineMetricAvailable": true,
+          "trackCapacityOverruns": 0,
+          "trackStates": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trackPositions": [
+            0.960629940032959,
+            0.9847328066825867,
+            0.9343065619468689,
+            0.7338129281997681,
+            0.7718120813369751
+          ],
+          "loopFrames": [
+            127,
+            131,
+            137,
+            139,
+            149
+          ],
+          "recordingFrames": [
+            127,
+            131,
+            137,
+            139,
+            149
+          ],
+          "playPositions": [
+            122,
+            129,
+            128,
+            102,
+            115
+          ],
+          "trackCapacityFrames": [
+            149,
+            149,
+            149,
+            149,
+            149
+          ]
+        },
+        "messageCounts": {
+          "attachCount": 5,
+          "ackCount": 0,
+          "ackOk": 0,
+          "ackLate": 0,
+          "ackMissingStorage": 0,
+          "ackCapacity": 0,
+          "ackInvalidState": 0,
+          "ackCommandOverflow": 0,
+          "ackCancelled": 0,
+          "ackInvalidTrack": 0,
+          "capacityEvents": 0,
+          "bootErrors": 0,
+          "otherMessages": 0
+        },
+        "clockTickCount": null,
+        "expectedClockTickCount": null,
+        "clockTickMismatchCount": 0,
+        "caveat": "This invokes the actual JS process() against preallocated synthetic buffers at an accelerated 64-bit VM currentFrame origin crossing the low 32-bit word; sampleTimelineSeconds is simulated audio time, not wall time. This is not a hardware or Chromium realtime soak.",
+        "gcEventCount": 18,
+        "gcEventTotalDurationMs": 7.24619996547699,
+        "gcMaxPauseMs": 3.0842999815940857,
+        "gcOverlappingCallbackCount": 1,
+        "gcOverlapEventPairCount": 1,
+        "maximumSampleGcOverlapCount": 0,
+        "gcEvents": [
+          {
+            "startTimeMs": 4332.0466,
+            "durationMs": 0.28360000252723694,
+            "kind": 8,
+            "kindName": "incremental",
+            "flags": 0,
+            "overlappingCallbackCount": 1,
+            "overlappingCallbackIndexes": [
+              9
+            ]
+          },
+          {
+            "startTimeMs": 4341.7074,
+            "durationMs": 3.0842999815940857,
+            "kind": 4,
+            "kindName": "major",
+            "flags": 64,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 8126.4488,
+            "durationMs": 0.46369999647140503,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 12980.9792,
+            "durationMs": 0.34450000524520874,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 17865.478,
+            "durationMs": 0.2323000133037567,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 22778.0435,
+            "durationMs": 0.21570000052452087,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 27655.5786,
+            "durationMs": 0.27309998869895935,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 32594.1528,
+            "durationMs": 0.20010000467300415,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 37408.3424,
+            "durationMs": 0.2556999921798706,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 42344.6573,
+            "durationMs": 0.22609999775886536,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 47219.0705,
+            "durationMs": 0.22299998998641968,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 52120.9431,
+            "durationMs": 0.1835000216960907,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 57026.3614,
+            "durationMs": 0.2549999952316284,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 61954.3901,
+            "durationMs": 0.1770000159740448,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 66860.4536,
+            "durationMs": 0.2612999975681305,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 71731.8991,
+            "durationMs": 0.2046000063419342,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 76638.7514,
+            "durationMs": 0.1792999804019928,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          },
+          {
+            "startTimeMs": 81517.6356,
+            "durationMs": 0.1833999752998352,
+            "kind": 1,
+            "kindName": "minor",
+            "flags": 0,
+            "overlappingCallbackCount": 0,
+            "overlappingCallbackIndexes": []
+          }
+        ]
+      }
+    ],
+    "processSampleCount": 50100
+  }
+}

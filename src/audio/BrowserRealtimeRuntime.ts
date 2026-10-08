@@ -3,6 +3,10 @@ import {
   BROWSER_REALTIME_QUANTUM_FRAMES,
   BROWSER_REALTIME_SAMPLE_RATE,
   BROWSER_REALTIME_TRACK_COUNT,
+  BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
+  BROWSER_REALTIME_LAYOUT_VERSION,
+  BROWSER_REALTIME_LAYOUT_MONO,
+  BROWSER_REALTIME_LAYOUT_PLANAR_LR,
   BrowserRealtimeOpcode,
   BrowserRealtimeStatus,
   ControlWord,
@@ -10,6 +14,7 @@ import {
   CONTROL_TRACK_STATES_BYTE_OFFSET,
   TRACK_META_BYTES,
   TrackMetaWord,
+  createMonoLoopbackSharedBuffer,
   createTrackSharedBuffer,
   loadSharedFrame,
   queueSharedCommand,
@@ -25,6 +30,9 @@ export type BrowserRealtimeRuntimeMessage = {
   message?: string;
   beatOrdinal?: number;
   frame?: number;
+  channelCount?: number;
+  layoutVersion?: number;
+  storageLayout?: number;
   } & Partial<BrowserRealtimeAck>;
 
 type AckWaiter = {
@@ -47,9 +55,12 @@ export class BrowserRealtimeRuntime {
   private readonly sampleRate: number;
   private readonly trackBuffers: Array<SharedArrayBuffer | null> = new Array(BROWSER_REALTIME_TRACK_COUNT).fill(null);
   private readonly trackMetadata: Array<Int32Array | null> = new Array(BROWSER_REALTIME_TRACK_COUNT).fill(null);
-  private readonly trackSamples: Array<Float32Array | null> = new Array(BROWSER_REALTIME_TRACK_COUNT).fill(null);
+  private readonly trackSamplesLeft: Array<Float32Array | null> = new Array(BROWSER_REALTIME_TRACK_COUNT).fill(null);
+  private readonly trackSamplesRight: Array<Float32Array | null> = new Array(BROWSER_REALTIME_TRACK_COUNT).fill(null);
   private readonly attachWaiters = new Map<number, { resolve: () => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout> }>();
+  private readonly trackPreparationPromises: Array<Promise<void> | null> = new Array(BROWSER_REALTIME_TRACK_COUNT).fill(null);
   private readonly ackWaiters = new Map<number, AckWaiter>();
+  private loopbackArmWaiter: { resolve: () => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout> } | null = null;
   private sequence = 0;
   private messageHandler: ((message: BrowserRealtimeRuntimeMessage) => void) | null = null;
   private disposed = false;
@@ -89,28 +100,62 @@ export class BrowserRealtimeRuntime {
 
   public async prepareTrack(track: number): Promise<void> {
     this.assertTrackIndex(track);
+    const existingPreparation = this.trackPreparationPromises[track];
+    if (existingPreparation) return await existingPreparation;
     if (this.trackBuffers[track]) return;
     if (this.disposed) throw new Error('Browser realtime runtime is closed.');
 
     const buffer = createTrackSharedBuffer(BROWSER_REALTIME_MAX_TRACK_FRAMES);
     const metadata = new Int32Array(buffer, 0, TRACK_META_BYTES / Int32Array.BYTES_PER_ELEMENT);
-    const samples = new Float32Array(buffer, TRACK_META_BYTES, BROWSER_REALTIME_MAX_TRACK_FRAMES);
+    const samplesLeft = new Float32Array(buffer, TRACK_META_BYTES, BROWSER_REALTIME_MAX_TRACK_FRAMES);
+    const samplesRight = new Float32Array(
+      buffer,
+      TRACK_META_BYTES + BROWSER_REALTIME_MAX_TRACK_FRAMES * Float32Array.BYTES_PER_ELEMENT,
+      BROWSER_REALTIME_MAX_TRACK_FRAMES,
+    );
     Atomics.store(metadata, TrackMetaWord.STATE, 0);
     Atomics.store(metadata, TrackMetaWord.CAPACITY_FRAMES, BROWSER_REALTIME_MAX_TRACK_FRAMES);
     Atomics.store(metadata, TrackMetaWord.ALIGNMENT_SAMPLES, 0);
+    Atomics.store(metadata, TrackMetaWord.CHANNEL_COUNT, BROWSER_REALTIME_TRACK_CHANNEL_COUNT);
+    Atomics.store(metadata, TrackMetaWord.LAYOUT_VERSION, BROWSER_REALTIME_LAYOUT_VERSION);
+    Atomics.store(metadata, TrackMetaWord.STORAGE_LAYOUT, BROWSER_REALTIME_LAYOUT_PLANAR_LR);
 
     this.trackBuffers[track] = buffer;
     this.trackMetadata[track] = metadata;
-    this.trackSamples[track] = samples;
+    this.trackSamplesLeft[track] = samplesLeft;
+    this.trackSamplesRight[track] = samplesRight;
 
-    await new Promise<void>((resolve, reject) => {
+    const preparation = new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.attachWaiters.delete(track);
         reject(new Error(`Realtime worklet did not attach storage for track ${track + 1}.`));
       }, 2_000);
       this.attachWaiters.set(track, { resolve, reject, timeout });
-      this.node.port.postMessage({ type: 'ATTACH_TRACK', track, buffer });
+      this.node.port.postMessage({
+        type: 'ATTACH_TRACK',
+        track,
+        buffer,
+        channelCount: BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
+        layoutVersion: BROWSER_REALTIME_LAYOUT_VERSION,
+        storageLayout: BROWSER_REALTIME_LAYOUT_PLANAR_LR,
+      });
     });
+    this.trackPreparationPromises[track] = preparation;
+    try {
+      await preparation;
+    } catch (error) {
+      if (this.trackBuffers[track] === buffer) {
+        this.trackBuffers[track] = null;
+        this.trackMetadata[track] = null;
+        this.trackSamplesLeft[track] = null;
+        this.trackSamplesRight[track] = null;
+      }
+      throw error;
+    } finally {
+      if (this.trackPreparationPromises[track] === preparation) {
+        this.trackPreparationPromises[track] = null;
+      }
+    }
   }
 
   public getCurrentFrame(): number {
@@ -192,14 +237,30 @@ export class BrowserRealtimeRuntime {
 
   public async armLoopbackCapture(buffer: SharedArrayBuffer, startFrame: number, frames: number): Promise<void> {
     const meta = new Int32Array(buffer, 0, TRACK_META_BYTES / Int32Array.BYTES_PER_ELEMENT);
-    Atomics.store(meta, TrackMetaWord.CAPACITY_FRAMES, frames);
+    const capacityFrames = Atomics.load(meta, TrackMetaWord.CAPACITY_FRAMES);
+    const validMonoLoopback = Atomics.load(meta, TrackMetaWord.CHANNEL_COUNT) === 1 &&
+      Atomics.load(meta, TrackMetaWord.LAYOUT_VERSION) === BROWSER_REALTIME_LAYOUT_VERSION &&
+      Atomics.load(meta, TrackMetaWord.STORAGE_LAYOUT) === BROWSER_REALTIME_LAYOUT_MONO &&
+      buffer.byteLength === TRACK_META_BYTES + capacityFrames * Float32Array.BYTES_PER_ELEMENT &&
+      Number.isInteger(frames) && frames > 0 && frames <= capacityFrames;
+    if (!validMonoLoopback) {
+      throw new Error('Loopback capture storage must use the versioned mono layout with sufficient capacity.');
+    }
+    if (this.loopbackArmWaiter) throw new Error('A loopback capture request is already awaiting worklet acknowledgement.');
     Atomics.store(meta, TrackMetaWord.RECORDING_FRAMES, 0);
     Atomics.store(meta, TrackMetaWord.LOOP_FRAMES, 0);
-    this.node.port.postMessage({ type: 'ARM_LOOPBACK', buffer, startFrame, frames });
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.loopbackArmWaiter = null;
+        reject(new Error('Realtime worklet did not acknowledge loopback capture storage.'));
+      }, 2_000);
+      this.loopbackArmWaiter = { resolve, reject, timeout };
+      this.node.port.postMessage({ type: 'ARM_LOOPBACK', buffer, startFrame, frames });
+    });
   }
 
   public createLoopbackCaptureBuffer(frames: number): SharedArrayBuffer {
-    return createTrackSharedBuffer(frames);
+    return createMonoLoopbackSharedBuffer(frames);
   }
 
   public async exportTrack(track: number, context: AudioContext): Promise<AudioBuffer> {
@@ -212,10 +273,12 @@ export class BrowserRealtimeRuntime {
       throw new Error(`Track ${track + 1} has no recorded audio.`);
     }
 
-    const samples = this.trackSamples[track];
-    if (!samples) throw new Error(`Track ${track + 1} storage is unavailable.`);
-    const audioBuffer = context.createBuffer(1, ack.loopFrames, context.sampleRate);
-    audioBuffer.getChannelData(0).set(samples.subarray(0, ack.loopFrames));
+    const samplesLeft = this.trackSamplesLeft[track];
+    const samplesRight = this.trackSamplesRight[track];
+    if (!samplesLeft || !samplesRight) throw new Error(`Track ${track + 1} storage is unavailable.`);
+    const audioBuffer = context.createBuffer(BROWSER_REALTIME_TRACK_CHANNEL_COUNT, ack.loopFrames, context.sampleRate);
+    audioBuffer.getChannelData(0).set(samplesLeft.subarray(0, ack.loopFrames));
+    audioBuffer.getChannelData(1).set(samplesRight.subarray(0, ack.loopFrames));
     return audioBuffer;
   }
 
@@ -269,9 +332,13 @@ export class BrowserRealtimeRuntime {
     return this.trackMetadata[track] ?? null;
   }
 
-  public getTrackSamples(track: number): Float32Array | null {
+  public getTrackSamples(track: number, channel: 0 | 1 = 0): Float32Array | null {
     this.assertTrackIndex(track);
-    return this.trackSamples[track] ?? null;
+    return (channel === 0 ? this.trackSamplesLeft[track] : this.trackSamplesRight[track]) ?? null;
+  }
+
+  public getTrackChannelSamples(track: number, channel: 0 | 1): Float32Array | null {
+    return this.getTrackSamples(track, channel);
   }
 
   public dispose() {
@@ -289,7 +356,36 @@ export class BrowserRealtimeRuntime {
       if (waiter) {
         clearTimeout(waiter.timeout);
         this.attachWaiters.delete(message.track);
+        if (message.channelCount !== BROWSER_REALTIME_TRACK_CHANNEL_COUNT ||
+            message.layoutVersion !== BROWSER_REALTIME_LAYOUT_VERSION ||
+            message.storageLayout !== BROWSER_REALTIME_LAYOUT_PLANAR_LR) {
+          waiter.reject(new Error(
+            `Track ${message.track + 1} storage handshake mismatch: expected ${BROWSER_REALTIME_TRACK_CHANNEL_COUNT}-channel planar LR layout v${BROWSER_REALTIME_LAYOUT_VERSION}.`,
+          ));
+        } else {
+          waiter.resolve();
+        }
+      }
+    } else if (message.type === 'LOOPBACK_ARMED') {
+      const waiter = this.loopbackArmWaiter;
+      if (waiter) {
+        clearTimeout(waiter.timeout);
+        this.loopbackArmWaiter = null;
         waiter.resolve();
+      }
+    } else if (message.type === 'LOOPBACK_ARM_ERROR') {
+      const waiter = this.loopbackArmWaiter;
+      if (waiter) {
+        clearTimeout(waiter.timeout);
+        this.loopbackArmWaiter = null;
+        waiter.reject(new Error(message.message || 'Loopback capture storage was rejected by the worklet.'));
+      }
+    } else if (message.type === 'TRACK_ATTACH_ERROR' && typeof message.track === 'number') {
+      const waiter = this.attachWaiters.get(message.track);
+      if (waiter) {
+        clearTimeout(waiter.timeout);
+        this.attachWaiters.delete(message.track);
+        waiter.reject(new Error(message.message || `Track ${message.track + 1} storage layout was rejected by the worklet.`));
       }
     } else if (message.type === 'ACK' && typeof message.sequence === 'number') {
       const sequence = message.sequence >>> 0;
@@ -345,5 +441,10 @@ export class BrowserRealtimeRuntime {
       waiter.reject(error);
     }
     this.ackWaiters.clear();
+    if (this.loopbackArmWaiter) {
+      clearTimeout(this.loopbackArmWaiter.timeout);
+      this.loopbackArmWaiter.reject(error);
+      this.loopbackArmWaiter = null;
+    }
   }
 }

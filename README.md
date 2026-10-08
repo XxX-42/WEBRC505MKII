@@ -6,7 +6,7 @@ Browser-based loop station prototype inspired by the BOSS RC-505MKII. The projec
 
 The prototype is buildable and the main interaction flow is present:
 
-- 5-track looper UI with per-track record, stop, reverse, level, and filter controls
+- 5-track stereo looper with independent left/right recording, playback, overdub and AudioBuffer export, plus per-track stop, reverse, level, and filter controls
 - Master/slave loop logic with BPM inference from the first recorded track
 - Quantized slave recording start/stop aligned to measure boundaries
 - Input FX and Track FX slot routing from the top panel
@@ -123,6 +123,15 @@ record the zero-lookahead compressor and optimized Looper results. Use
 `--observe-gc` records GC intervals, and `--worklet-source <path>` permits the
 same harness to compare an archived processor. Defaults retain the five-track
 phase with the clock inactive. CPU execution times are separate from signal delay.
+
+The [stereo recording implementation and verification](docs/STEREO_RECORDING_20261008.md)
+describe the current two-channel loop path. Each track keeps separate planar
+left/right Float32 storage with one shared frame cursor; mono sources feed both
+channels. Five 180-second tracks at 48 kHz reserve 345,600,000 PCM bytes (about
+329.6 MiB), plus metadata. Stereo storage uses a versioned attachment handshake;
+an old mono processor is rejected instead of being reported as stereo-ready.
+Loopback calibration retains separate mono storage. Historical mono benchmark
+reports require their original source and protocol revision for reproduction.
 
 ## Notes
 

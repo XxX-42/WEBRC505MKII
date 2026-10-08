@@ -16,6 +16,9 @@
                   {{ device.name }}
                 </option>
               </select>
+              <p class="channel-layout-note">
+                Loops record and play true stereo. Stereo input stays independent left/right; mono input is copied to both channels.
+              </p>
             </div>
 
             <div class="setting-group">
@@ -348,6 +351,13 @@ const handleOverlayClick = () => {
   border-radius: 6px;
   padding: 10px 12px;
   min-height: 42px;
+}
+
+.channel-layout-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .monitoring-group {

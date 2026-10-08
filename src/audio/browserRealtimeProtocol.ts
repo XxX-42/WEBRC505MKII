@@ -1,8 +1,12 @@
 export const BROWSER_REALTIME_WORKLET_NAME = 'webrc505-realtime';
-export const BROWSER_REALTIME_WORKLET_URL = '/worklets/looper-processor.js';
 export const BROWSER_REALTIME_SAMPLE_RATE = 48_000;
 export const BROWSER_REALTIME_QUANTUM_FRAMES = 128;
 export const BROWSER_REALTIME_TRACK_COUNT = 5;
+export const BROWSER_REALTIME_LAYOUT_VERSION = 2;
+export const BROWSER_REALTIME_WORKLET_URL = `/worklets/looper-processor.js?layout=${BROWSER_REALTIME_LAYOUT_VERSION}`;
+export const BROWSER_REALTIME_TRACK_CHANNEL_COUNT = 2;
+export const BROWSER_REALTIME_LAYOUT_MONO = 0;
+export const BROWSER_REALTIME_LAYOUT_PLANAR_LR = 1;
 export const BROWSER_REALTIME_MAX_TRACK_SECONDS = 180;
 export const BROWSER_REALTIME_MAX_TRACK_FRAMES =
   BROWSER_REALTIME_SAMPLE_RATE * BROWSER_REALTIME_MAX_TRACK_SECONDS;
@@ -58,6 +62,9 @@ export const TrackMetaWord = {
   RECORD_START_HIGH: 6,
   REVERSE: 7,
   ALIGNMENT_SAMPLES: 8,
+  CHANNEL_COUNT: 9,
+  LAYOUT_VERSION: 10,
+  STORAGE_LAYOUT: 11,
 } as const;
 
 export const BrowserRealtimeOpcode = {
@@ -147,7 +154,34 @@ export function createTrackSharedBuffer(
   if (!Number.isSafeInteger(capacityFrames) || capacityFrames <= 0) {
     throw new RangeError('Track storage capacity must be a positive safe integer.');
   }
-  return new SharedArrayBuffer(TRACK_META_BYTES + capacityFrames * Float32Array.BYTES_PER_ELEMENT);
+  const buffer = new SharedArrayBuffer(
+    TRACK_META_BYTES + capacityFrames * BROWSER_REALTIME_TRACK_CHANNEL_COUNT * Float32Array.BYTES_PER_ELEMENT,
+  );
+  initializeTrackStorageMetadata(buffer, capacityFrames, BROWSER_REALTIME_TRACK_CHANNEL_COUNT, BROWSER_REALTIME_LAYOUT_PLANAR_LR);
+  return buffer;
+}
+
+/** Mono capture storage is reserved for loopback calibration and is never attached as a loop track. */
+export function createMonoLoopbackSharedBuffer(capacityFrames: number): SharedArrayBuffer {
+  if (!Number.isSafeInteger(capacityFrames) || capacityFrames <= 0) {
+    throw new RangeError('Loopback capture capacity must be a positive safe integer.');
+  }
+  const buffer = new SharedArrayBuffer(TRACK_META_BYTES + capacityFrames * Float32Array.BYTES_PER_ELEMENT);
+  initializeTrackStorageMetadata(buffer, capacityFrames, 1, BROWSER_REALTIME_LAYOUT_MONO);
+  return buffer;
+}
+
+function initializeTrackStorageMetadata(
+  buffer: SharedArrayBuffer,
+  capacityFrames: number,
+  channelCount: number,
+  layout: number,
+): void {
+  const metadata = new Int32Array(buffer, 0, TRACK_META_WORDS);
+  Atomics.store(metadata, TrackMetaWord.CAPACITY_FRAMES, capacityFrames);
+  Atomics.store(metadata, TrackMetaWord.CHANNEL_COUNT, channelCount);
+  Atomics.store(metadata, TrackMetaWord.LAYOUT_VERSION, BROWSER_REALTIME_LAYOUT_VERSION);
+  Atomics.store(metadata, TrackMetaWord.STORAGE_LAYOUT, layout);
 }
 
 export function frameToWords(frame: number): [low: number, high: number] {

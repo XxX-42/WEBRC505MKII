@@ -28,6 +28,10 @@ const INPUT_DROPOUT_BLOCKS = 21;
 const TRACK_STATES_WORD_OFFSET = 24 + COMMAND_CAPACITY * COMMAND_WORDS;
 const TRACK_POSITIONS_WORD_OFFSET = TRACK_STATES_WORD_OFFSET + TRACK_COUNT;
 const TRACK_META_WORDS = 16;
+const LAYOUT_VERSION = 2;
+const TRACK_CHANNEL_COUNT = 2;
+const LAYOUT_MONO = 0;
+const LAYOUT_PLANAR_LR = 1;
 const TRACK_STATE = 0;
 const LOOP_FRAMES = 1;
 const RECORDING_FRAMES = 2;
@@ -36,6 +40,9 @@ const CAPACITY_FRAMES = 4;
 const RECORD_START_LOW = 5;
 const RECORD_START_HIGH = 6;
 const REVERSE = 7;
+const CHANNEL_COUNT = 9;
+const STORAGE_LAYOUT_VERSION = 10;
+const STORAGE_LAYOUT = 11;
 
 const OPCODE_START_RECORD = 1;
 const OPCODE_STOP_RECORD = 2;
@@ -90,9 +97,11 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
     this.deadlineMetricAvailable = typeof performance !== 'undefined' && typeof performance.now === 'function';
     Atomics.store(this.control, DEADLINE_METRIC_AVAILABLE, this.deadlineMetricAvailable ? 1 : 0);
     this.trackMeta = new Array(TRACK_COUNT).fill(null);
-    this.trackData = new Array(TRACK_COUNT).fill(null);
+    this.trackDataLeft = new Array(TRACK_COUNT).fill(null);
+    this.trackDataRight = new Array(TRACK_COUNT).fill(null);
     this.steadyTrackMeta = new Array(TRACK_COUNT).fill(null);
-    this.steadyTrackData = new Array(TRACK_COUNT).fill(null);
+    this.steadyTrackDataLeft = new Array(TRACK_COUNT).fill(null);
+    this.steadyTrackDataRight = new Array(TRACK_COUNT).fill(null);
     this.steadyTrackLeft = new Array(TRACK_COUNT).fill(null);
     this.steadyTrackRight = new Array(TRACK_COUNT).fill(null);
     this.steadyTrackLengths = new Int32Array(TRACK_COUNT);
@@ -141,26 +150,74 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
     if (message.type === 'ATTACH_TRACK') {
       const track = message.track | 0;
       const buffer = message.buffer;
-      if (track < 0 || track >= TRACK_COUNT || !(buffer instanceof SharedArrayBuffer)) return;
+      if (track < 0 || track >= TRACK_COUNT) return;
+      const rejectAttach = (reason) => this.port.postMessage({
+        type: 'TRACK_ATTACH_ERROR',
+        track,
+        message: reason,
+        channelCount: message.channelCount ?? null,
+        layoutVersion: message.layoutVersion ?? null,
+        storageLayout: message.storageLayout ?? null,
+      });
+      if (!(buffer instanceof SharedArrayBuffer) || buffer.byteLength < TRACK_META_BYTES) {
+        rejectAttach('Track storage is not a valid shared buffer with a complete metadata header.');
+        return;
+      }
       const meta = new Int32Array(buffer, 0, TRACK_META_WORDS);
+      const capacity = Atomics.load(meta, CAPACITY_FRAMES);
+      const channelCount = Atomics.load(meta, CHANNEL_COUNT);
+      const layoutVersion = Atomics.load(meta, STORAGE_LAYOUT_VERSION);
+      const storageLayout = Atomics.load(meta, STORAGE_LAYOUT);
+      const expectedBytes = TRACK_META_BYTES + capacity * TRACK_CHANNEL_COUNT * Float32Array.BYTES_PER_ELEMENT;
+      if (channelCount !== TRACK_CHANNEL_COUNT || layoutVersion !== LAYOUT_VERSION || storageLayout !== LAYOUT_PLANAR_LR ||
+          capacity <= 0 || buffer.byteLength !== expectedBytes ||
+          message.channelCount !== TRACK_CHANNEL_COUNT || message.layoutVersion !== LAYOUT_VERSION ||
+          message.storageLayout !== LAYOUT_PLANAR_LR) {
+        rejectAttach(`Track layout mismatch: requires ${TRACK_CHANNEL_COUNT}-channel planar LR storage v${LAYOUT_VERSION}.`);
+        return;
+      }
       this.trackMeta[track] = meta;
-      this.trackData[track] = new Float32Array(buffer, TRACK_META_BYTES, Atomics.load(meta, CAPACITY_FRAMES));
-      this.port.postMessage({ type: 'TRACK_ATTACHED', track });
+      this.trackDataLeft[track] = new Float32Array(buffer, TRACK_META_BYTES, capacity);
+      this.trackDataRight[track] = new Float32Array(
+        buffer,
+        TRACK_META_BYTES + capacity * Float32Array.BYTES_PER_ELEMENT,
+        capacity,
+      );
+      this.port.postMessage({
+        type: 'TRACK_ATTACHED',
+        track,
+        channelCount,
+        layoutVersion,
+        storageLayout,
+      });
       return;
     }
 
     if (message.type === 'ARM_LOOPBACK') {
       const buffer = message.buffer;
-      if (!(buffer instanceof SharedArrayBuffer)) return;
+      if (!(buffer instanceof SharedArrayBuffer) || buffer.byteLength < TRACK_META_BYTES) {
+        this.port.postMessage({ type: 'LOOPBACK_ARM_ERROR', message: 'Loopback storage is not a valid shared buffer.' });
+        return;
+      }
       const meta = new Int32Array(buffer, 0, TRACK_META_WORDS);
+      const capacity = Atomics.load(meta, CAPACITY_FRAMES);
+      const requestedFrames = Number(message.frames);
+      if (Atomics.load(meta, CHANNEL_COUNT) !== 1 || Atomics.load(meta, STORAGE_LAYOUT_VERSION) !== LAYOUT_VERSION ||
+          Atomics.load(meta, STORAGE_LAYOUT) !== LAYOUT_MONO ||
+          buffer.byteLength !== TRACK_META_BYTES + capacity * Float32Array.BYTES_PER_ELEMENT ||
+          !Number.isInteger(requestedFrames) || requestedFrames <= 0 || requestedFrames > capacity) {
+        this.port.postMessage({ type: 'LOOPBACK_ARM_ERROR', message: 'Loopback storage must use the versioned mono layout.' });
+        return;
+      }
       this.calibrationMeta = meta;
-      this.calibrationData = new Float32Array(buffer, TRACK_META_BYTES, Atomics.load(meta, CAPACITY_FRAMES));
+      this.calibrationData = new Float32Array(buffer, TRACK_META_BYTES, capacity);
       this.calibrationStartFrame = Number(message.startFrame) || 0;
-      this.calibrationFrames = Math.min(Number(message.frames) | 0, this.calibrationData.length);
+      this.calibrationFrames = requestedFrames;
       this.calibrationWriteIndex = 0;
       this.calibrationActive = this.calibrationFrames > 0;
       Atomics.store(meta, RECORDING_FRAMES, 0);
       Atomics.store(meta, LOOP_FRAMES, 0);
+      this.port.postMessage({ type: 'LOOPBACK_ARMED', frames: requestedFrames });
     }
   }
 
@@ -176,7 +233,7 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
     const rightChannel = inputRight && inputRight.length >= frames;
     const leftChannel = inputLeft && inputLeft.length >= frames;
     const hasInput = Boolean(leftChannel || rightChannel);
-    const monoInput = inputLeft;
+    const inputLeftSamples = inputLeft;
 
     this.quantumFrames = frames;
     this.drainCommands();
@@ -189,16 +246,16 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
         const frame = blockStartFrame + offset;
         if (this.pendingCommandCount > 0) this.executeDueCommands(frame);
 
-        let inputMono = 0;
+        let inputSampleLeft = 0;
+        let inputSampleRight = 0;
         if (hasInput) {
-          const left = leftChannel ? monoInput[offset] : inputRight[offset];
-          const right = rightChannel ? inputRight[offset] : left;
-          inputMono = (left + right) * 0.5;
+          inputSampleLeft = leftChannel ? inputLeftSamples[offset] : inputRight[offset];
+          inputSampleRight = rightChannel ? inputRight[offset] : inputSampleLeft;
         }
 
         if (this.calibrationActive && frame >= this.calibrationStartFrame) {
           if (this.calibrationWriteIndex < this.calibrationFrames) {
-            this.calibrationData[this.calibrationWriteIndex] = inputMono;
+            this.calibrationData[this.calibrationWriteIndex] = (inputSampleLeft + inputSampleRight) * 0.5;
             this.calibrationWriteIndex += 1;
             this.calibrationMeta[RECORDING_FRAMES] = this.calibrationWriteIndex;
           }
@@ -215,24 +272,27 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
 
         const monitorLeft = outputs[5] && outputs[5][0];
         const monitorRight = outputs[5] && outputs[5][1];
-        if (monitorLeft) monitorLeft[offset] = this.outputMonitorEnabled && leftChannel ? monoInput[offset] : 0;
-        if (monitorRight) monitorRight[offset] = this.outputMonitorEnabled && rightChannel ? inputRight[offset] : (this.outputMonitorEnabled && leftChannel ? monoInput[offset] : 0);
+        if (monitorLeft) monitorLeft[offset] = this.outputMonitorEnabled ? inputSampleLeft : 0;
+        if (monitorRight) monitorRight[offset] = this.outputMonitorEnabled ? inputSampleRight : 0;
 
         for (let track = 0; track < TRACK_COUNT; track += 1) {
           const meta = this.trackMeta[track];
-          const data = this.trackData[track];
+          const dataLeft = this.trackDataLeft[track];
+          const dataRight = this.trackDataRight[track];
           const leftOut = outputs[track] && outputs[track][0];
           const rightOut = outputs[track] && outputs[track][1];
           if (!leftOut && !rightOut) continue;
 
-          let sample = 0;
-          if (meta && data) {
+          let sampleLeft = 0;
+          let sampleRight = 0;
+          if (meta && dataLeft && dataRight) {
             const state = meta[TRACK_STATE];
             if (state === STATE_RECORDING) {
               const writeIndex = meta[RECORDING_FRAMES];
               const capacity = meta[CAPACITY_FRAMES];
               if (writeIndex < capacity) {
-                data[writeIndex] = inputMono;
+                dataLeft[writeIndex] = inputSampleLeft;
+                dataRight[writeIndex] = inputSampleRight;
                 meta[RECORDING_FRAMES] = writeIndex + 1;
                 if (!hasInput) inputWasMissingWhileRecording = true;
               } else {
@@ -248,14 +308,16 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
             if ((playbackState === STATE_PLAYING || playbackState === STATE_OVERDUBBING) && length > 0) {
               let position = meta[PLAY_POSITION];
               if (position < 0 || position >= length) position = 0;
-              sample = data[position] || 0;
+              sampleLeft = dataLeft[position] || 0;
+              sampleRight = dataRight[position] || 0;
 
               if (playbackState === STATE_OVERDUBBING && hasInput) {
                 const correction = Math.round(meta[8] || 0);
                 let writePosition = position + (meta[REVERSE] !== 0 ? correction : -correction);
                 writePosition %= length;
                 if (writePosition < 0) writePosition += length;
-                data[writePosition] += inputMono;
+                dataLeft[writePosition] += inputSampleLeft;
+                dataRight[writePosition] += inputSampleRight;
               }
               if (playbackState === STATE_OVERDUBBING && !hasInput) inputWasMissingWhileRecording = true;
 
@@ -266,8 +328,8 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
             }
           }
 
-          if (leftOut) leftOut[offset] = sample;
-          if (rightOut) rightOut[offset] = sample;
+          if (leftOut) leftOut[offset] = sampleLeft;
+          if (rightOut) rightOut[offset] = sampleRight;
         }
 
         const rhythmSample = this.renderRhythmSample(frame);
@@ -315,7 +377,8 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
 
     for (let track = 0; track < TRACK_COUNT; track += 1) {
       const meta = this.trackMeta[track];
-      const data = this.trackData[track];
+      const dataLeft = this.trackDataLeft[track];
+      const dataRight = this.trackDataRight[track];
       const output = outputs[track];
       const left = output && output[0] ? output[0] : null;
       const right = output && output[1] ? output[1] : null;
@@ -323,11 +386,12 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
       const state = meta[TRACK_STATE];
       const length = meta ? meta[LOOP_FRAMES] : 0;
       if (state !== STATE_PLAYING && state !== STATE_EMPTY && state !== STATE_STOPPED) return false;
-      if (state === STATE_PLAYING && (!data || (!left && !right) || length <= 0)) return false;
+      if (state === STATE_PLAYING && (!dataLeft || !dataRight || (!left && !right) || length <= 0)) return false;
 
       const rawPosition = meta[PLAY_POSITION];
       this.steadyTrackMeta[track] = meta;
-      this.steadyTrackData[track] = state === STATE_PLAYING ? data : null;
+      this.steadyTrackDataLeft[track] = state === STATE_PLAYING ? dataLeft : null;
+      this.steadyTrackDataRight[track] = state === STATE_PLAYING ? dataRight : null;
       this.steadyTrackLeft[track] = left;
       this.steadyTrackRight[track] = right;
       this.steadyTrackLengths[track] = state === STATE_PLAYING ? length : 0;
@@ -349,10 +413,12 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
     for (let offset = 0; offset < frames; offset += 1) {
       for (let track = 0; track < TRACK_COUNT; track += 1) {
         const length = this.steadyTrackLengths[track];
-        let sample = 0;
+        let sampleLeft = 0;
+        let sampleRight = 0;
         if (length > 0) {
           const position = this.steadyTrackPositions[track];
-          sample = this.steadyTrackData[track][position] || 0;
+          sampleLeft = this.steadyTrackDataLeft[track][position] || 0;
+          sampleRight = this.steadyTrackDataRight[track][position] || 0;
           let nextPosition = position + this.steadyTrackSteps[track];
           if (nextPosition >= length) nextPosition = 0;
           else if (nextPosition < 0) nextPosition = length - 1;
@@ -362,8 +428,8 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
 
         const left = this.steadyTrackLeft[track];
         const right = this.steadyTrackRight[track];
-        if (left) left[offset] = sample;
-        if (right) right[offset] = sample;
+        if (left) left[offset] = sampleLeft;
+        if (right) right[offset] = sampleRight;
       }
       if (this.clockRunning) this.renderClockTick(blockStartFrame + offset);
     }
@@ -474,10 +540,11 @@ class BrowserLooperProcessor extends AudioWorkletProcessor {
       } else {
         const validTrack = track >= 0 && track < TRACK_COUNT;
         const meta = validTrack ? this.trackMeta[track] : null;
-        const data = validTrack ? this.trackData[track] : null;
+        const dataLeft = validTrack ? this.trackDataLeft[track] : null;
+        const dataRight = validTrack ? this.trackDataRight[track] : null;
         if (!validTrack) {
           status = STATUS_INVALID_TRACK;
-        } else if (!meta || !data) {
+        } else if (!meta || !dataLeft || !dataRight) {
           status = STATUS_MISSING_TRACK_STORAGE;
         } else if (opcode === OPCODE_START_RECORD) {
           meta[TRACK_STATE] = STATE_RECORDING;
