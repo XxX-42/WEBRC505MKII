@@ -1,0 +1,10 @@
+{
+  "status": "provisional-history-note",
+  "firstObservedManifestSha256": "8d714875d0ab20d5603f3d3b108bb8ba0e67605ab9caeb8f3a3571715940d2aa",
+  "firstManifestBytesRetained": false,
+  "firstManifestBytesStatus": "Not retained before the first rewrite; SHA is recorded from the generated-tool output.",
+  "secondManifestFile": "manifest.provisional-ec74.json",
+  "thirdProvisionalArchive": "bench/results/native-psola-ratio-parity-20261009T185336Z",
+  "finalManifestFile": "manifest.json",
+  "finalCorrection": "Whole-buffer records use processCallFrames. Source file rows are ordinal-sorted and sourceTreeSha256 is recomputed from UTF-8 path=lowercase_sha256 LF records."
+}

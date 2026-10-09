@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "nativeManifest": {
+    "path": "native/manifest.json",
+    "sha256": "cc0952380bd9054fae2058fc222c6d9c150b6a7593251d37410ef61868489589",
+    "sourceTreeSha256": "934b257a560b2c2328ab2c0a288806c1f080ea95bdc86a02a4c7f16d6adb0971",
+    "sourceFileManifestSha256": "afce9deb1eb13ece0e00612596bde695c985e088139f424f8e8f5ef038c9bece",
+    "sourceFileCount": 7,
+    "frozenCoreBaselineSourceSetSha256": "a3a46e139a16d3fa77ddeb213c0c57fa4c912d53543774787f2fa3038b3d5f4d",
+    "toolchain": {
+      "compiler": "MSVC cl.exe",
+      "visualStudio": "Visual Studio 2019 BuildTools 16.11.58",
+      "msvcToolset": "14.29.30133",
+      "compilerVersion": "19.29.30159.0",
+      "linkerVersion": "14.29.30159.0",
+      "target": "x64",
+      "flags": [
+        "/std:c++17",
+        "/EHsc",
+        "/O2",
+        "/MD",
+        "/W4",
+        "/permissive-",
+        "/fp:precise"
+      ],
+      "buildLog": "logs/native-build.log",
+      "toolchainLog": "logs/toolchain.txt",
+      "generatorExecutableSha256": "b9266886440e030b46910c183c16628c71a7289fd469263b6c350dcc72041224"
+    }
+  },
+  "wasm": {
+    "modulePath": "artifacts/webrc-dsp.wasm",
+    "sha256": "45e9cb35064cef526730c0f3ca0ac11b164a9c20a03766291182a0019755af04",
+    "buildManifestPath": "artifacts/webrc-dsp.build.json",
+    "buildManifestSha256": "8538cb79fcb7d39b0db7f4703c49cb483ee6df86310def75d51d33a8b3310652",
+    "pinPath": "artifacts/browser-build-pin.json",
+    "pinSha256": "f863d62718a65d0c50549db31dd2ce232a4c84f9f4bc28a2c24c7a9924033612",
+    "sourceSetSha256": "674fe623e2c1edcb1502ddbaeb87d29a4c654138bbfe90b42a75b746a4250522",
+    "sourceFileCount": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "emsdkCommit": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
+    "compilerIdentity": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)"
+  },
+  "comparator": {
+    "path": "multimodule-pcm-parity-v2.mjs",
+    "sha256": "8850bdfa7ecba762dc45bedfcee1dbad130a7d1048ff5ca206980130e5a79da2",
+    "comparisonPath": "native-web-compare.json",
+    "comparisonSha256": "64976155a73b7312af80185c36e3236e56611c570ddcfd42e0d4caa4968f88d6",
+    "matchingNativeWasmSources": [
+      {
+        "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+        "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+        "sha256": "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+      },
+      {
+        "path": "shared/dsp/src/fft.cpp",
+        "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+      },
+      {
+        "path": "shared/dsp/src/pitch.cpp",
+        "sha256": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6"
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+      }
+    ]
+  },
+  "parity": {
+    "fixtureCount": 36,
+    "offlineBufferCount": 6,
+    "streamingCount": 30,
+    "sampleRateHz": 48000,
+    "framesPerFixture": 15360,
+    "channels": 1,
+    "transposeRatios": [
+      0.5,
+      0.75,
+      1,
+      1.25,
+      1.5,
+      2
+    ],
+    "streamingPartitionProfiles": [
+      "mixed_64_128_256_512",
+      "uniform_128",
+      "uniform_256",
+      "uniform_512",
+      "uniform_64"
+    ],
+    "maxAbsError": 0.0,
+    "rmsError": 0.0,
+    "nonFiniteSamples": 0.0,
+    "streamingReportedLatencySamples": {
+      "input": 0,
+      "output": 1200
+    },
+    "wasiCalls": {
+      "fd_close": 0,
+      "fd_write": 0,
+      "fd_seek": 0
+    }
+  },
+  "limitations": [
+    "Cross-build PCM parity only for listed clean-room PSOLA fixtures.",
+    "Does not qualify listening quality, combined LIVE_MONO detector-to-output latency, realtime deadlines, or full application graph."
+  ]
+}

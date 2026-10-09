@@ -1,0 +1,2 @@
+{"schemaVersion":1,"suite":"vocoder-fx","sampleRate":48000,"bands":16,"fixedVocoderWetRms":0.172633684,"midiNote48Rms":0.0974441657,"midiNote72Rms":0.0857770607,"partitionMaxRmsDifference":0,"callbackAllocations":0,"callbackFrees":0,"failures":0}
+OSC VOC harmonic ratios saw/vintage/detune/square/rect = 1.1157/0.8720 0.8011/0.6262 1.0177/0.8045 0.6956/0.0009 1.2491/1.0366

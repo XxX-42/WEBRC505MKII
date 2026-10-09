@@ -1,0 +1,15 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: streaming ratio 0.5, phase 0.37: expected 110 Hz projection 0.0022487446847490543
+    at file:///C:/Users/user1000/AppData/Local/Temp/webrc-browser32-root-staged-20261009T183028Z/shared/dsp/wasm/tests/extended-smoke.mjs:302:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

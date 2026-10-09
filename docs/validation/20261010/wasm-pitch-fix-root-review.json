@@ -1,0 +1,42 @@
+{
+  "reviewedAtUtc": "2026-10-09T18:47:29.150096+00:00",
+  "currentWasmSha256": "45e9cb35064cef526730c0f3ca0ac11b164a9c20a03766291182a0019755af04",
+  "currentWasmSourceSetSha256": "674fe623e2c1edcb1502ddbaeb87d29a4c654138bbfe90b42a75b746a4250522",
+  "exactSourceInputsVerified": 60,
+  "fixedCoreInputs": {
+    "shared/dsp/include/webrc/dsp/pitch.hpp": "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784",
+    "shared/dsp/src/pitch.cpp": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6"
+  },
+  "wasmRegression": {
+    "manualF0Hz": 220,
+    "inputPeak": 0.3,
+    "sampleRateHz": 48000,
+    "inputFramesPerCase": 48000,
+    "blockFrames": 128,
+    "measurementWindowFrames": [
+      32000,
+      44000
+    ],
+    "ratios": [
+      0.5,
+      0.75,
+      1,
+      1.25,
+      1.5,
+      2
+    ],
+    "phaseCases": 2,
+    "testScriptSha256": "b60904270e540047b36042c68cddf8192aececabe8ffd12d35b44359d5235800",
+    "result": "12/12 PASS",
+    "metricsFile": "docs/validation/20261010/wasm-pitch-fix-root-smoke.json"
+  },
+  "negativeControl": {
+    "moduleSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+    "sourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+    "testScript": "Same new regression copied into the prior exact index export; old module/source guard passed before DSP assertion failed",
+    "exitCode": 1,
+    "failure": "ratio 0.5 expected 110Hz projection was 0.0022487446847490543 (<0.25)",
+    "log": "docs/validation/20261010/wasm-pitch-fix-old-module-negative-control.log"
+  },
+  "scope": "Manual-F0 sine functionality and old-module negative control. Does not establish formant preservation, full-band alias quality, three Browser product profiles, realtime full-graph acceptance or end-to-end latency."
+}

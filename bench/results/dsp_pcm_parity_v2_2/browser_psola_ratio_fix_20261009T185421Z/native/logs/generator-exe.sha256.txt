@@ -1,0 +1,6 @@
+
+Algorithm : SHA256
+Hash      : 8970DD06C38031474F2CDBEF63FFE5AB68C7E25225D0E545BCFB6CF2FD1922DC
+Path      : C:\Users\user1000\AppData\Local\Temp\webrc-native-psola-parity-build-20261010\native_streaming_psola_ratio_fixture.exe
+
+

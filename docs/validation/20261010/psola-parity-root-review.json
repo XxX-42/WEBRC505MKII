@@ -1,0 +1,14 @@
+{
+  "reviewedAtUtc": "2026-10-09T19:00:06.207202+00:00",
+  "archive": "bench/results/dsp_pcm_parity_v2_2/browser_psola_ratio_fix_20261009T185421Z",
+  "indexedHashesVerified": 141,
+  "copiedNativeSourcesVerified": 7,
+  "nativeSourceTreeSha256": "934b257a560b2c2328ab2c0a288806c1f080ea95bdc86a02a4c7f16d6adb0971",
+  "sharedInputsExactlyMatchingWasmManifest": 6,
+  "fixtureCount": 36,
+  "independentRawPcmByteComparisons": "36/36 identical and finite",
+  "reportedMaximumAbsoluteError": 0,
+  "reportedRmsError": 0,
+  "wasmSha256": "45e9cb35064cef526730c0f3ca0ac11b164a9c20a03766291182a0019755af04",
+  "scope": "Offline kind109 and streaming kind110, six ratios and callback partitions. Parity only; does not establish timbre/transient quality, formant preservation, KeepPitch product integration, full graph latency or realtime admission."
+}

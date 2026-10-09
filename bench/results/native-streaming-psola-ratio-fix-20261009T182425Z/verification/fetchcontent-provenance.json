@@ -1,0 +1,29 @@
+{
+  "schema": "fetchcontent-provenance-v1",
+  "dependencies": [
+    {
+      "name": "rtaudio_src-src",
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\native-mvp\\build-v145\\_deps\\rtaudio_src-src",
+      "gitHead": "b4f04903312e0e0efffbe77655172e0f060dc085",
+      "dirty": false,
+      "status": "",
+      "fileCount": 88
+    },
+    {
+      "name": "httplib_src-src",
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\native-mvp\\build-v145\\_deps\\httplib_src-src",
+      "gitHead": "af56b7ec0ba9d18b788ed064f76d936eb52c5db5",
+      "dirty": false,
+      "status": "",
+      "fileCount": 81
+    },
+    {
+      "name": "json_src-src",
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\native-mvp\\build-v145\\_deps\\json_src-src",
+      "gitHead": "9cca280a4d0ccf0c08f47a99aa71d1b0e52f8d03",
+      "dirty": false,
+      "status": "",
+      "fileCount": 1090
+    }
+  ]
+}

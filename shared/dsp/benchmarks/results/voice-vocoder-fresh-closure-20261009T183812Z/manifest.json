@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "captureId": "voice-vocoder-fresh-closure-20261009T183812Z",
+  "builtAtUtc": "2026-10-09T18:38:12Z",
+  "captureScope": "Fresh standalone Release builds of the current voice and vocoder source closures; not a product integration or final quality gate.",
+  "toolchain": {
+    "compiler": "MSVC 19.29.30159.0",
+    "linker": "14.29.30159.0",
+    "toolset": "14.29.30133",
+    "target": "x64",
+    "flags": "/nologo /std:c++17 /O2 /EHsc /W4 /permissive- /fp:precise",
+    "environment": "Visual Studio 2019 BuildTools v16.11.58"
+  },
+  "build": {
+    "script": "build.cmd",
+    "compiledFrom": "source/ archived snapshot",
+    "builtObjects": [
+      "voice_fx.obj",
+      "vocoder_fx.obj",
+      "pitch.obj",
+      "streaming_yin.obj",
+      "primitives.obj",
+      "fft.obj",
+      "control_dynamics.obj",
+      "voice_fx_tests.obj",
+      "vocoder_fx_tests.obj"
+    ],
+    "freshSourceBuild": true,
+    "liveInputsUnchangedDuringBuild": true,
+    "snapshotInputsUnchangedDuringBuild": true,
+    "sourceInputCount": 16
+  },
+  "tests": {
+    "voice": {
+      "exitCode": 0,
+      "result": {
+        "schemaVersion": 1,
+        "suite": "voice-fx",
+        "failures": 0,
+        "callbacksAllocations": 0,
+        "callbacksFrees": 0
+      },
+      "rawLog": "logs/voice_fx-tests.log",
+      "assemblyEvidence": "build/voice_fx_tests.asm",
+      "focusedResult": "No stack overflow; callbacksAllocations=0 and callbacksFrees=0; YIN work 4096/4096 per channel, 10 completed analyses per channel, active estimate age 4992 frames."
+    },
+    "vocoder": {
+      "exitCode": 0,
+      "result": {
+        "schemaVersion": 1,
+        "suite": "vocoder-fx",
+        "sampleRate": 48000,
+        "bands": 16,
+        "fixedVocoderWetRms": 0.172633684,
+        "midiNote48Rms": 0.0974441657,
+        "midiNote72Rms": 0.0857770607,
+        "partitionMaxRmsDifference": 0,
+        "callbackAllocations": 0,
+        "callbackFrees": 0,
+        "failures": 0
+      },
+      "rawLog": "logs/vocoder_fx-tests.log",
+      "assemblyEvidence": "build/vocoder_fx.asm",
+      "focusedResult": "Five oscillator waveform harmonic feature assertions passed; external carrier and sample-accurate partitions passed."
+    }
+  },
+  "stackFrameBytes": {
+    "electricScaleTest": 696,
+    "electricPrepare": 1312,
+    "yinPsolaPathPrepare": 128,
+    "sourceListing": "build/voice_fx_tests.asm and build/voice_fx.asm",
+    "measurement": "MSVC /FAs listing prologues; no /STACK override."
+  },
+  "audioEvidence": {
+    "oscBot": {
+      "allHarmonics2to10": [
+        0.8021,
+        1.3191,
+        0.7775,
+        0.4778,
+        0.9258
+      ],
+      "evenHarmonics2to10": [
+        0.6442,
+        1.0597,
+        0.6277,
+        0.0002,
+        0.793
+      ],
+      "waveformOrder": [
+        "Saw",
+        "VintageSaw",
+        "DetuneSaw",
+        "Square",
+        "Rect"
+      ]
+    },
+    "electricScaleProjections": {
+      "inputHz": 408.0,
+      "yinHz": 408.0085,
+      "cMajorOutputG4Amplitude": 0.3536,
+      "cMajorGSharpAmplitude": 0.0092,
+      "aMajorOutputGSharp4Amplitude": 0.3474,
+      "aMajorG4Amplitude": 0.0107
+    },
+    "directPsolaRatios": "Per-ratio target-vs-subharmonic projections are in voice test log; normalized autocorrelation candidate may choose a repeated subharmonic at ratio 1.5, while target projection and Native independent positive-crossing confirm 330 Hz."
+  },
+  "diagnostics": {
+    "compileDiagnostics": "MSVC /FAs reports an inability to open the compiler-internal predefined-types pseudo-source while generating comments; each compile and link returned 0. One C4244 float-conversion warning remains in the diagnostic tone generator at voice_fx_tests.cpp:460."
+  },
+  "qualification": {
+    "readyForRootReview": true,
+    "standaloneBuildAndTestsPassed": true,
+    "runtimeDeadlinePass": false,
+    "finalSoundQualityPass": false,
+    "browserIntegration": false,
+    "nativeRegistryIntegration": false,
+    "hardwareE2E": false,
+    "gates1to7Passed": false
+  },
+  "linkedFailureFixture": "shared/dsp/benchmarks/results/streaming-psola-ratio2-failure-20261009T180747Z/",
+  "sourceInputs": [
+    {
+      "path": "shared/dsp/include/webrc/dsp/voice_fx.hpp",
+      "sha256": "318F7E43E624439193B8090FC33EEFC29B50F718057AFEF8C3A2E749219D8315"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/vocoder_fx.hpp",
+      "sha256": "A986DF401507D0C2CDACF299BE51AD53D60DA5D0D108199E6367580DF178DDEF"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "sha256": "85EC1533939D8524019135DE1C4A13D18567A1C758E0A68AD5929B2E6542B784"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/streaming_yin.hpp",
+      "sha256": "BD780750E77BDDA94BF6CB28A181E4A60EA5A40775555D7845FC8CDD21CBA697"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "sha256": "E5362575061F18031CEFAA611D9B5794F8426634A3BC0B34699A396CE8B4A43C"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "sha256": "03F76865B9CFEDA60CD18CCE44D94DC43F9B099957D3477D11D01396FF8F9B40"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "sha256": "53BBB6345B69B77B01384FB4309D69E21E9A0C6D4B29164D72BD78B2E86300EB"
+    },
+    {
+      "path": "shared/dsp/src/voice_fx.cpp",
+      "sha256": "8EBA57DF21FA619BED8B0173959854E5919FD79FFAB550B503E04B25C39828E5"
+    },
+    {
+      "path": "shared/dsp/src/vocoder_fx.cpp",
+      "sha256": "F3A136CF88D680585DEF47528991922808AE58597C62DF4CFF6B1A2531745F66"
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "sha256": "1652F7BEEB15410EFABAC97C9A5C0DD5D417026D799984FBC5C7BA0FA92B46E6"
+    },
+    {
+      "path": "shared/dsp/src/streaming_yin.cpp",
+      "sha256": "09D75EA4C26F9DF826C97C839A091984959587470A9F4FD56ADCAA6757DE7A8F"
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "sha256": "7DD29804DEC3FF4EE668C8BB05C6AE21016A8D62D080D795694A186DE2AF31BC"
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "sha256": "5F32FE928D85E1C94B8CD23C8A3337114BDEDAD8C06ED82164093E20A98E0F57"
+    },
+    {
+      "path": "shared/dsp/src/control_dynamics.cpp",
+      "sha256": "5315FFB62FD04F5E3A4F09803B5422B6BE4AB6F36DADD689CC2ED4CB48E12A8A"
+    },
+    {
+      "path": "shared/dsp/tests/voice_fx_tests.cpp",
+      "sha256": "3CBEB6A9529C6AF1474B398C0A4711F1CA698322169BBBCCBE9C288AEE4FED35"
+    },
+    {
+      "path": "shared/dsp/tests/vocoder_fx_tests.cpp",
+      "sha256": "939D39E250FE2FCC625FA31ACAE9B337BF04CFBB4BD186918DD56B302C32741E"
+    }
+  ]
+}

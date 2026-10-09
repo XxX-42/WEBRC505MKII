@@ -1,0 +1,9 @@
+# Native TD-PSOLA parity vectors
+
+This corrected, sealed archive contains 36 Native reference records for whole-buffer TD-PSOLA (kind 109) and streaming TD-PSOLA (kind 110): ratios 0.5, 0.75, 1.0, 1.25, 1.5, and 2.0, with five streaming partition schedules (uniform 64/128/256/512 and mixed). All records use the same 15,360-frame mono input sidecar. The archive establishes only numerical Native/WASM parity; it does not qualify YIN detection, formant preservation, broad audio quality, callback deadlines, graph performance, or hardware behavior.
+
+The offline renderer is one whole-buffer call recorded as `processCallFrames=15360`. The fixture `maxBlockFrames=512` remains the ProcessSpec setup block limit. Streaming latency is the processor getter (0 input, 1,200 output samples = 3 × 400-sample prepared maximum period), not end-to-end route latency.
+
+`source-files.manifest.json` contains seven exact copied compiler source/header inputs. Its `sourceTreeSha256` is SHA-256 over UTF-8 `path=lowercase_sha256` lines, paths sorted ordinal ascending, each terminated by LF including the final line. `rebuild.cmd` rebuilds copied sources with VS2019 BuildTools 16.11.58, toolset 14.29.30133 / compiler 19.29.30159.0; binaries and objects go under `%TEMP%` and output vectors under `reproduction/`. The six DSP source/header files match the prior frozen ratio-fix archive in `manifest.json`.
+
+Evidence correction is explicit: the first provisional manifest SHA `8d7148…` was observed but its bytes were not retained before it was rewritten. Exact bytes for the next provisional manifest are preserved as `manifest.provisional-ec74.json`; its source digest was wrong. A third provisional archive at `20261009T185336Z` also had an unsorted digest while claiming sorted order. This final manifest recomputes the sorted digest and uses correct offline call metadata. See `provisional-history.json`; none of the provisional manifests is treated as final evidence.

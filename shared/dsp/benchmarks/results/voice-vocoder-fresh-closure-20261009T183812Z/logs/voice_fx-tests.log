@@ -1,0 +1,13 @@
+electric shift outputs 439.9993 / 659.2323, yin 220.0018 / 330.0031
+electric output rms 0.337678 / 0.259235
+electric scale targets C(G/G#)=0.3536/0.0092 A(G/G#)=0.0107/0.3474, YIN 408.0085/408.0085 Hz
+electric scale output rms 0.353623 / 0.347533
+OSC harmonic ratios: all 0.8021 1.3191 0.7775 0.4778 0.9258, even 0.6442 1.0597 0.6277 0.0002 0.7930
+incremental YIN max work=4096/4096 budget=4096, counts=10/10, active age=4992/4992 frames, promotions=10
+direct PSOLA ratio 0.50 rms 0.212128 autocorrCandidate 109.990 projection(target/subharmonic)=0.2121/0.0046
+direct PSOLA ratio 0.75 rms 0.212537 autocorrCandidate 165.010 projection(target/subharmonic)=0.2129/0.0026
+direct PSOLA ratio 0.94 rms 0.212269 autocorrCandidate 206.813 projection(target/subharmonic)=0.2124/0.0011
+direct PSOLA ratio 1.00 rms 0.212132 autocorrCandidate 220.000 projection(target/subharmonic)=0.2121/0.0033
+direct PSOLA ratio 1.50 rms 0.212130 autocorrCandidate 165.004 projection(target/subharmonic)=0.2121/0.0015
+direct PSOLA ratio 2.00 rms 0.212104 autocorrCandidate 440.001 projection(target/subharmonic)=0.2121/0.0000
+{"schemaVersion":1,"suite":"voice-fx","failures":0,"callbacksAllocations":0,"callbacksFrees":0}

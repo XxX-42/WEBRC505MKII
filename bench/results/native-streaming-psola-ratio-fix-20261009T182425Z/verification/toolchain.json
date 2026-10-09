@@ -1,0 +1,23 @@
+{
+  "schema": "native-toolchain-v1",
+  "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe",
+  "compilerVersion": "19.29.30159.0",
+  "toolset": "14.29.30133",
+  "compilerSha256": "8e4352b523f4ff37b429aea1d340094be1e17bbdf4f687247fc0be92d6eb9440",
+  "generator": "NMake Makefiles",
+  "makeProgram": "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/nmake.exe",
+  "makeProgramSha256": "14fd5963ddb048030e8a3f6b41a6cabbe8700e9a0897b530beaf72d7c81f88a8",
+  "cmakePath": "C:\\Program Files\\CMake\\bin\\cmake.exe",
+  "cmakeSha256": "414ad2a5dcabbb2a49ba1514e6651523865ae306b73a0e769f18e14cab1570e8",
+  "ctestPath": "C:\\Program Files\\CMake\\bin\\ctest.exe",
+  "ctestSha256": "1692fa27fa742b3c77ef900ce1fcfff68975c3ef3c44c2f04f586b5057981c4e",
+  "configuration": "Release",
+  "architecture": "x64",
+  "buildRoot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-psola-ratio-fix-20261009T182425Z",
+  "cmakeCacheSha256": "0cbf6e1056e28b806081740b51eea3f7b23568781b1d5470639ee64971dbe29a",
+  "nativeVerifyScriptSha256": "12988907c0bcb7156e35a0e7b3a464cf5b0068537ac3b99b43e35a32077180a3",
+  "nativeBuildCommonSha256": "aa58d312bb9283cd9c0a051ba4be48e8a0f3cebe5b314e841b6bbc0446832ad3",
+  "sourceManifestSha256": "ee497186e912fa4bcad4ba1690273d1fa79cbc6011a5e18f72d5f4c47335a3d5",
+  "compilerIdentity": "MSVC 19.29.30159.0",
+  "compilerBannerLine": "-- The CXX compiler identification is MSVC 19.29.30159.0"
+}

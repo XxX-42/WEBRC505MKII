@@ -1,0 +1,583 @@
+{
+  "schema": "native-snapshot-postbuild-check-v1",
+  "sourceSnapshotStable": true,
+  "fileCount": 115,
+  "liveFilesDifferFromSnapshot": [],
+  "files": [
+    {
+      "path": "native-mvp/engine-cpp/benchmarks/native_looper_bench.cpp",
+      "bytes": 9365,
+      "sha256": "eded4f7ed47e2943850e38fb2abde9d0091b1b6982f21b4d9361880d20ddc3ba"
+    },
+    {
+      "path": "native-mvp/engine-cpp/CMakeLists.txt",
+      "bytes": 4199,
+      "sha256": "ea38de0c505e6121610268f6c4c5525117dd149e6ed021bfde38eaa548ee4463"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/looper_core.hpp",
+      "bytes": 1611,
+      "sha256": "cc74e02f732331d605c2ac6852dfa4feba37da4a5eb368a1c12aab9d175e72f2"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/multitrack_looper_core.hpp",
+      "bytes": 7706,
+      "sha256": "d9a4d191f844689ef02a4e7772c7b4ca19a8c2db0de2fbf3e248d1e80b228221"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/native_audio_core.hpp",
+      "bytes": 11312,
+      "sha256": "39183500becc4d6aefcc1a5ef1570267449a75e353c8f97cdc95cb8826309610"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/native_fx_graph.hpp",
+      "bytes": 16932,
+      "sha256": "1d43eeb0268a01884145173ab8c7af4ce6f771cb34a6814b805f9c80cada5e13"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/native_track_host.hpp",
+      "bytes": 6142,
+      "sha256": "a07121d5a738daf995955e60c0d7856d02db99c2e8bfed1f7c405128b31fb619"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/looper_core.cpp",
+      "bytes": 5638,
+      "sha256": "0a7e7a0f217cefa3071fa44971991272b4aab2cff26ec991eef9987352f21ec4"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/multitrack_looper_core.cpp",
+      "bytes": 24156,
+      "sha256": "d66efc7d94ece27982e5f7e0735f7bfb89e66e564547258ca50b67c54a32a949"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_audio_core.cpp",
+      "bytes": 37320,
+      "sha256": "7ba31020ca21a645167a1c587ef436de35edddfec7fd7facff0a2f036480bcc5"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_bridge_host.cpp",
+      "bytes": 13948,
+      "sha256": "a6ba9cf1ab93e2aad3ef2438f93c95abda98cbb1d68fc2fb516f274fe076749e"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_fx_graph.cpp",
+      "bytes": 58647,
+      "sha256": "5d3c83a7f767d65b4287e9b585dddd0748b77214e8402cb86b874eda7df9cc57"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_track_host.cpp",
+      "bytes": 22339,
+      "sha256": "1228968a00a7a8915d8f35f353da2d1a155036494b910b35f5552e3979b9ff9a"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/looper_core_tests.cpp",
+      "bytes": 5941,
+      "sha256": "06df554165322d90f094da35d04f2157ca86a639652727fe0d313d6345b3f977"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp",
+      "bytes": 16855,
+      "sha256": "b074a25776ca05f4f3ccf7547d02e2591ef001fd9c7065a55da2d25035b9b600"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/native_fx_graph_tests.cpp",
+      "bytes": 64957,
+      "sha256": "77b77049cea8adaa9250c23951beccdc4fc8f30579608ade24ec5415e644e387"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/native_track_host_tests.cpp",
+      "bytes": 19282,
+      "sha256": "a9c01dcf56cb7646d4018b4f7eac51320a4a061bbbe54257aeb091e6023eb5a0"
+    },
+    {
+      "path": "scripts/native-build-common.ps1",
+      "bytes": 8776,
+      "sha256": "aa58d312bb9283cd9c0a051ba4be48e8a0f3cebe5b314e841b6bbc0446832ad3"
+    },
+    {
+      "path": "scripts/native-dsp-verify.ps1",
+      "bytes": 10669,
+      "sha256": "e6daa1fe8d0a361389405f87bad9c6d1a0acb2ec4de0462ebb4df8c424cf1f88"
+    },
+    {
+      "path": "scripts/native-verify.ps1",
+      "bytes": 4660,
+      "sha256": "12988907c0bcb7156e35a0e7b3a464cf5b0068537ac3b99b43e35a32077180a3"
+    },
+    {
+      "path": "shared/dsp/benchmarks/modulated_delay_callback_bench.cpp",
+      "bytes": 5984,
+      "sha256": "8ade26a059afedbc75d39ade3a641781f2e2751978b977701f2814ccf5ddae57"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_parity_v21_generator.cpp",
+      "bytes": 44482,
+      "sha256": "b4217088141b5e15b6930cc22d223881be16a2233311b8199fc9dfc63d14193d"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_pcm_fixture_generator.cpp",
+      "bytes": 19603,
+      "sha256": "3c5fcf360748e2d675da0f44e05398e36398165ad3ca13a1e9191daec059a9a1"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_primitives_bench.cpp",
+      "bytes": 10381,
+      "sha256": "44d39c7d5f4fe2a8c51c9710c753356fe3dd3fa9396b0edd02879129a56b9188"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_primitives_golden.cpp",
+      "bytes": 5349,
+      "sha256": "e75e8811e6418f501363575c90dc9ad81359321141bf2b4cf62b95625e9afcea"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_sustained_bench.cpp",
+      "bytes": 57004,
+      "sha256": "2e8973685236527f7d8a96ff5ad77d41a753a852e31eb6e7d262a74303f1ed17"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp",
+      "bytes": 9165,
+      "sha256": "29378ad35a9590639a575719b78d9c1ac2eef1c3d49a1e382d74b23db603276f"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+      "bytes": 38401,
+      "sha256": "f937741268a2ea6f3c337f3e518bc488fa65ce946eb4051a1a0bd218d72648ed"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_spatial_temporal_bench.cpp",
+      "bytes": 20977,
+      "sha256": "8c586481c6bbd8a5439321b4f93d8181bc4c6748067e0470ddc37701ecd00795"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_streaming_yin_bench.cpp",
+      "bytes": 9583,
+      "sha256": "113ef3094defc414a80b6c435e93aa7b8115418d1b570387d16687822eac9565"
+    },
+    {
+      "path": "shared/dsp/benchmarks/octave_impulse_audit.cpp",
+      "bytes": 8250,
+      "sha256": "6ae0a3f5a21c0d585ec083f49b08b0727e4718367abbfacbe3dabf0b95a29efb"
+    },
+    {
+      "path": "shared/dsp/CMakeLists.txt",
+      "bytes": 6048,
+      "sha256": "cad9660551b91d417ad0fd2345c874e04703510db4a355d6d1f3b04c8365ca92"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+      "bytes": 392,
+      "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/composite_fx.hpp",
+      "bytes": 6360,
+      "sha256": "158843f620cc17debaac0015263e30921eb801c8f91eb018c6415bf97da4917b"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "bytes": 6746,
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/distortion_fx.hpp",
+      "bytes": 3627,
+      "sha256": "a8f073e3718c1ba057d3142fd5ad39505c38b53d8e6066ae009fc9ecd0402474"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "bytes": 548,
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "bytes": 7863,
+      "sha256": "85d2f23fc029ddc0696b6ecd0b8be59bf077134da73bb2aeaf2bd5f7dd169028"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/live_mono_pitch.hpp",
+      "bytes": 3109,
+      "sha256": "55dddf6a8b0263d3ba1bfb68752b78b08476f33287f34290c4c5949ebf2bcf34"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/modulated_delay_fx.hpp",
+      "bytes": 4879,
+      "sha256": "8bb7c51ffd70461e45064cca7f4b8f46da394c6fd2c98971c307a4cccda3af73"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/modulation_fx.hpp",
+      "bytes": 5101,
+      "sha256": "ea5667f70bfc56a8ec001656c200e33fb83683c2fa18ec6a991f666806dc50b6"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "bytes": 4181,
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/octave_fx.hpp",
+      "bytes": 4139,
+      "sha256": "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+      "bytes": 8438,
+      "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch_profiles.hpp",
+      "bytes": 4104,
+      "sha256": "89d8f959eeccb6c50f24ec4c2fa31ab768f15ee4dfc4703bf5139317136a19c0"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "bytes": 9802,
+      "sha256": "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/preamp_fx.hpp",
+      "bytes": 5638,
+      "sha256": "0ac1777795635cf0637d1dd853ff71a7ea6a4b379a9183cdaa95f6b6890c2f2d"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+      "bytes": 9386,
+      "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythmic_fx.hpp",
+      "bytes": 6656,
+      "sha256": "40ce7b8cc8fb5b31ff8d062baedc72d0224588dae2aebfc6819a9757bb8fe94c"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+      "bytes": 3415,
+      "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_fx_adapters.hpp",
+      "bytes": 5301,
+      "sha256": "c550d1aa7cfd4b93c000e1eec5236542044a5647e941da01888730f0df05db23"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "bytes": 23156,
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/streaming_yin.hpp",
+      "bytes": 5066,
+      "sha256": "bd780750e77bdda94bf6cb28a181e4a60ea5a40775555d7845fc8cdd21cba697"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/temporal_fx_adapters.hpp",
+      "bytes": 7366,
+      "sha256": "e524dd57116023d6dbd32b23833b2b37d6e8cc88ecfdb5dbb30c51ac0b81bfbc"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/vocoder_fx.hpp",
+      "bytes": 8963,
+      "sha256": "a986df401507d0c2cdacf299be51ad53d60da5d0d108199e6367580df178ddef"
+    },
+    {
+      "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "bytes": 1035520,
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885"
+    },
+    {
+      "path": "shared/dsp/src/composite_fx.cpp",
+      "bytes": 22560,
+      "sha256": "77009dbb0dba1cc90cc2da1e6b42aee2106bff4b2d8f81d70f96eacb86bb95c1"
+    },
+    {
+      "path": "shared/dsp/src/control_dynamics.cpp",
+      "bytes": 18208,
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "shared/dsp/src/distortion_fx.cpp",
+      "bytes": 9975,
+      "sha256": "51e6cec0e1be392478ea68ae63c570eb6c966d792154a5a1a87cab7ae7346b19"
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "bytes": 3129,
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "shared/dsp/src/fx_registry.cpp",
+      "bytes": 119240,
+      "sha256": "13362047237cfd9de4cffd9040a93b25cb48b6dc6fa6f655c5bd3b3c522bec54"
+    },
+    {
+      "path": "shared/dsp/src/live_mono_pitch.cpp",
+      "bytes": 4473,
+      "sha256": "c1589c4df2b5d14f79a680e78b8681d3d4a89ee3fdccb9c9336d16da1b5f5b64"
+    },
+    {
+      "path": "shared/dsp/src/modulated_delay_fx.cpp",
+      "bytes": 19793,
+      "sha256": "aac4540053f5f281280085d7c8876ea8d79176dbe9969fd3aa70ca236883e68b"
+    },
+    {
+      "path": "shared/dsp/src/modulation_fx.cpp",
+      "bytes": 11816,
+      "sha256": "8b9368db27cd7934d9eb6a7005a4088b7585ffafd1d641a2e7e8cc02e3a3b685"
+    },
+    {
+      "path": "shared/dsp/src/nonlinear.cpp",
+      "bytes": 10185,
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85"
+    },
+    {
+      "path": "shared/dsp/src/octave_fx.cpp",
+      "bytes": 13804,
+      "sha256": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292"
+    },
+    {
+      "path": "shared/dsp/src/performance_fx.cpp",
+      "bytes": 34156,
+      "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+    },
+    {
+      "path": "shared/dsp/src/pitch_profiles.cpp",
+      "bytes": 7378,
+      "sha256": "29ebe95edebaa8bb90a4798b81acc2c9204bf483626a5ec334e80cba04b90fa0"
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "bytes": 41764,
+      "sha256": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6"
+    },
+    {
+      "path": "shared/dsp/src/preamp_fx.cpp",
+      "bytes": 18163,
+      "sha256": "84fd4eed5c2c630e7e896c90d9b0f8af745b9617758f7cd452d6952a9e299047"
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "bytes": 38017,
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "shared/dsp/src/rhythm.cpp",
+      "bytes": 27973,
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1"
+    },
+    {
+      "path": "shared/dsp/src/rhythmic_fx.cpp",
+      "bytes": 30316,
+      "sha256": "58ba3849b3c75ec8aeef65e93133cedcf38149650750844b7fde36fdc3f0df58"
+    },
+    {
+      "path": "shared/dsp/src/signalsmith_adapter.cpp",
+      "bytes": 8333,
+      "sha256": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a"
+    },
+    {
+      "path": "shared/dsp/src/spatial_fx_adapters.cpp",
+      "bytes": 17011,
+      "sha256": "e9be597c12760c6824be141f6c6c794d45200bf59fcda78d881b66899680abd6"
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "bytes": 88577,
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "shared/dsp/src/streaming_yin.cpp",
+      "bytes": 16989,
+      "sha256": "09d75ea4c26f9df826c97c839a091984959587470a9f4fd56adcaa6757de7a8f"
+    },
+    {
+      "path": "shared/dsp/src/temporal_fx_adapters.cpp",
+      "bytes": 36152,
+      "sha256": "9a1857af252019f45459e9aa6e32dcd0b769e1d581a09534af1ca101c5c9a8b4"
+    },
+    {
+      "path": "shared/dsp/tests/composite_fx_tests.cpp",
+      "bytes": 37952,
+      "sha256": "30b63684b6f11500f92a5c1d9d7327945d856cf29c62a634c932a4a5bf3fdbd3"
+    },
+    {
+      "path": "shared/dsp/tests/control_dynamics_tests.cpp",
+      "bytes": 16890,
+      "sha256": "d4bcde0c6b3f467fee27969ae1da6f1310ba4c3e8c5fcd0a6cd196e6ec78ef54"
+    },
+    {
+      "path": "shared/dsp/tests/distortion_fx_tests.cpp",
+      "bytes": 19990,
+      "sha256": "f40c23d10fd3a087489a0d967616928c9c6cb17c1854a136ccb14c6d8df18fb2"
+    },
+    {
+      "path": "shared/dsp/tests/dsp_primitives_tests.cpp",
+      "bytes": 25336,
+      "sha256": "e2789ef2e2f3c0176218e5296fe32c7b636ec591c95fe7e65a343315808afdd3"
+    },
+    {
+      "path": "shared/dsp/tests/fx_registry_tests.cpp",
+      "bytes": 35590,
+      "sha256": "1ae0df57c1e7ad22a54d424a108bee67dd9aee6fa25d8cadf72df5cab241db21"
+    },
+    {
+      "path": "shared/dsp/tests/live_mono_pitch_tests.cpp",
+      "bytes": 6892,
+      "sha256": "adde7eb4b6ead88bfc1b25213c45ed714065ee49901aa22400876876452cdbad"
+    },
+    {
+      "path": "shared/dsp/tests/modulated_delay_fx_tests.cpp",
+      "bytes": 22732,
+      "sha256": "dadc3a6c1dfb1f054f72697efdb3d661baf8a0bc5b1eb6b7214dd7225c09af28"
+    },
+    {
+      "path": "shared/dsp/tests/modulation_fx_tests.cpp",
+      "bytes": 16346,
+      "sha256": "45685053034741ed7b32fd58ce5239e77001fc7c1cda71b52b268da2d101eae6"
+    },
+    {
+      "path": "shared/dsp/tests/nonlinear_tests.cpp",
+      "bytes": 33033,
+      "sha256": "de0c5b395d74d57adbe6c88310fec15de9615aba95eabe92bedca0f228ac11e3"
+    },
+    {
+      "path": "shared/dsp/tests/octave_fx_tests.cpp",
+      "bytes": 19842,
+      "sha256": "8fb4f3616e48111ca2b73de853d13fbf05b63b6d900ae6dcf0aba72534cffddf"
+    },
+    {
+      "path": "shared/dsp/tests/performance_fx_tests.cpp",
+      "bytes": 26494,
+      "sha256": "fec1015e34f1cf8b6b6c56f187102c58c258447e545b1b256cb9c872f30f6962"
+    },
+    {
+      "path": "shared/dsp/tests/pitch_profiles_tests.cpp",
+      "bytes": 14141,
+      "sha256": "b5cc9e08fb9f0983f607fecdec2d1e235e93ddb83538db8fafb3216cd3a3afe2"
+    },
+    {
+      "path": "shared/dsp/tests/pitch_tests.cpp",
+      "bytes": 39077,
+      "sha256": "60b324c2d2da304a9383056307670a0261b5959a4897baea68036ea8099b694a"
+    },
+    {
+      "path": "shared/dsp/tests/preamp_fx_tests.cpp",
+      "bytes": 22045,
+      "sha256": "f761a8ca8dc3903f9fc13365d206ccf55b0cea490442602245ac3eb5042e7f50"
+    },
+    {
+      "path": "shared/dsp/tests/rhythm_tests.cpp",
+      "bytes": 41653,
+      "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7"
+    },
+    {
+      "path": "shared/dsp/tests/rhythmic_fx_edge_automation_review.cpp",
+      "bytes": 6807,
+      "sha256": "e8f689e317ec72eb9f333c61460a192c2d879c508f527546d7e2a21203d5136a"
+    },
+    {
+      "path": "shared/dsp/tests/rhythmic_fx_tests.cpp",
+      "bytes": 20508,
+      "sha256": "0b8ef7218ee3d5a15b65bc0f64bbe9d79e21f02872c0e9c40fe221661fc7f76e"
+    },
+    {
+      "path": "shared/dsp/tests/spatial_fx_adapters_tests.cpp",
+      "bytes": 30998,
+      "sha256": "36dd67e7fdb4e73c8dfe5a10e14fe6982be9550b8cd3dd9ff7eba4baf305348a"
+    },
+    {
+      "path": "shared/dsp/tests/spatial_temporal_tests.cpp",
+      "bytes": 62226,
+      "sha256": "773bb40c41ada0046ec5282b85c00358a7e291b6eed17f0f7916fb1d9c1ec751"
+    },
+    {
+      "path": "shared/dsp/tests/streaming_yin_tests.cpp",
+      "bytes": 7248,
+      "sha256": "baabddae1472bd18a5e15f24c42c46ca5560f4d410b4822dcf294872300234eb"
+    },
+    {
+      "path": "shared/dsp/tests/temporal_fx_adapters_tests.cpp",
+      "bytes": 40453,
+      "sha256": "56e77795e518e6ba4bf4de297ddb88c541348225dd1a37a215754a3d2fddb841"
+    },
+    {
+      "path": "third_party/SIGNALSMITH_PINS.md",
+      "bytes": 1112,
+      "sha256": "ae068d32b2c525ec15afe825b015608d18ff0951cdfe1d7816a496456818dd41"
+    },
+    {
+      "path": "third_party/signalsmith-linear/approx.h",
+      "bytes": 5147,
+      "sha256": "bc3e6dfb911ac50fb5841784b5633751fc14ae9b0f881a88b427c60c7a628cf1"
+    },
+    {
+      "path": "third_party/signalsmith-linear/fft.h",
+      "bytes": 46628,
+      "sha256": "af0df3ff84c6f69ec00f09e0e53634b7ccacd3198a4acb2b482cb7d93854d207"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/approx.h",
+      "bytes": 27,
+      "sha256": "eac208cc0e94556dde10e1d9bb0d53d8df9453aa8d2157421073f0497649ec3b"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/fft.h",
+      "bytes": 24,
+      "sha256": "30e4054a9df4f1f31318ffefb43b52d69378788a344fb09c8995a36d5bc28148"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/linear.h",
+      "bytes": 27,
+      "sha256": "38560f893be3ecbd18e6ce45b17dc7c3f3d3e4e6ed2890572b4aba385e36c03d"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/stft.h",
+      "bytes": 25,
+      "sha256": "db40c535f6554daf2f0a12540730dc22bce71c5007210e515f463a0cbd1a16b7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/LICENSE.txt",
+      "bytes": 1095,
+      "sha256": "a91f5703b0f5fa22e8c14a8bd854559a7c512bbe58656ea8bdcd4964e923ab2f"
+    },
+    {
+      "path": "third_party/signalsmith-linear/linear.h",
+      "bytes": 37714,
+      "sha256": "fe7fb1c944950487f0744dcdd2fb067a098ad3597a86385c6a3f4bae1d31eb55"
+    },
+    {
+      "path": "third_party/signalsmith-linear/README.md",
+      "bytes": 5254,
+      "sha256": "961d35d216e5972551711996aaf01f3eb022fefb3a92808031f5d06dca0e57c7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/stft.h",
+      "bytes": 25013,
+      "sha256": "0fc36186c3f892d068fff4108536b0f2132552f5a450b1e1ea5657e2899c6df3"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h",
+      "bytes": 38,
+      "sha256": "869facc1853189bec91fb54960da2f59333284963d6b52a242d55a399d305e4d"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/LICENSE.txt",
+      "bytes": 1113,
+      "sha256": "16bf62d475af149d96a24853e77c9e0d939259a9d55b23b41da7f9939db85085"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/README.md",
+      "bytes": 8382,
+      "sha256": "268df6b2053832a3ae43df2c1e7b4e6a957e3e4cc30766870dcd9846ecbaec39"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/signalsmith-stretch.h",
+      "bytes": 36506,
+      "sha256": "45a0b93b1e00257014d48e7ae494ec4e604f56b4ee15189a355cd9794653a37d"
+    }
+  ]
+}

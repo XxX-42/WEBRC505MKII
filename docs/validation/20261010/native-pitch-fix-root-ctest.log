@@ -1,0 +1,47 @@
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-native-psola-ratio-fix-20261009T182425Z
+      Start  1: looper_core_tests
+ 1/21 Test  #1: looper_core_tests ................   Passed    0.08 sec
+      Start  2: native_multitrack_core_tests
+ 2/21 Test  #2: native_multitrack_core_tests .....   Passed    0.08 sec
+      Start  3: native_track_host_tests
+ 3/21 Test  #3: native_track_host_tests ..........   Passed    0.14 sec
+      Start  4: native_fx_graph_tests
+ 4/21 Test  #4: native_fx_graph_tests ............   Passed    0.15 sec
+      Start  5: dsp_primitives_tests
+ 5/21 Test  #5: dsp_primitives_tests .............   Passed    0.13 sec
+      Start  6: control_dynamics_tests
+ 6/21 Test  #6: control_dynamics_tests ...........   Passed    0.10 sec
+      Start  7: nonlinear_tests
+ 7/21 Test  #7: nonlinear_tests ..................   Passed    0.32 sec
+      Start  8: spatial_temporal_tests
+ 8/21 Test  #8: spatial_temporal_tests ...........   Passed    0.99 sec
+      Start  9: pitch_tests
+ 9/21 Test  #9: pitch_tests ......................   Passed    0.94 sec
+      Start 10: pitch_profiles_tests
+10/21 Test #10: pitch_profiles_tests .............   Passed    0.41 sec
+      Start 11: streaming_yin_tests
+11/21 Test #11: streaming_yin_tests ..............   Passed    0.21 sec
+      Start 12: live_mono_pitch_tests
+12/21 Test #12: live_mono_pitch_tests ............   Passed    0.37 sec
+      Start 13: fx_registry_tests
+13/21 Test #13: fx_registry_tests ................   Passed    0.21 sec
+      Start 14: performance_fx_tests
+14/21 Test #14: performance_fx_tests .............   Passed    0.36 sec
+      Start 15: modulation_fx_tests
+15/21 Test #15: modulation_fx_tests ..............   Passed    0.24 sec
+      Start 16: rhythm_tests
+16/21 Test #16: rhythm_tests .....................   Passed    1.09 sec
+      Start 17: composite_fx_tests
+17/21 Test #17: composite_fx_tests ...............   Passed    0.44 sec
+      Start 18: modulated_delay_fx_tests
+18/21 Test #18: modulated_delay_fx_tests .........   Passed    0.70 sec
+      Start 19: rhythmic_fx_tests
+19/21 Test #19: rhythmic_fx_tests ................   Passed    0.25 sec
+      Start 20: spatial_fx_adapters_tests
+20/21 Test #20: spatial_fx_adapters_tests ........   Passed    0.17 sec
+      Start 21: apinames
+21/21 Test #21: apinames .........................   Passed    0.09 sec
+
+100% tests passed out of 21
+
+Total Test time (real) =   7.63 sec

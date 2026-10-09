@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "canonicalization": "UTF-8; ordinal path sort; each line path=lowercase_sha256 followed by LF",
+  "sourceTreeSha256": "2cf6f17ddf917ceecf59b2aa4ec154ed5c45d0db6e06100c4e7efe8cb12d0e5a",
+  "fileCount": 7,
+  "files": [
+    {
+      "path": "shared/dsp/benchmarks/native_streaming_psola_ratio_fixture.cpp",
+      "bytes": 11159,
+      "sha256": "011ed376cb8f04e9c375724f22f817d048ea9d5dff4f09d212c3fa8d595f8358"
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "bytes": 41764,
+      "sha256": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6"
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "bytes": 3129,
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "bytes": 38017,
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "bytes": 9802,
+      "sha256": "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "bytes": 548,
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    }
+  ]
+}

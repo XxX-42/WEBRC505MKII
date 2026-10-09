@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-10-09T18:38:59.335328+00:00",
+  "archive": "bench/results/native-streaming-psola-ratio-fix-20261009T182425Z",
+  "archiveIndexSha256": "fa1d3611fc00daba337c3438eb0244cf1df42093b535e31447d641c512bad323",
+  "indexedFiles": 393,
+  "archiveIntegrity": "PASS",
+  "copiedSourceFiles": 115,
+  "sourceSetSha256": "a3a46e139a16d3fa77ddeb213c0c57fa4c912d53543774787f2fa3038b3d5f4d",
+  "compiledTranslationUnitRecords": 52,
+  "uniqueCompiledTranslationUnits": 50,
+  "compilerInputs": 457,
+  "compilerInputOriginCounts": {
+    "external": 329,
+    "snapshot-workspace": 76,
+    "fetchcontent-source": 52
+  },
+  "liveCanonicalInputHashMatches": 76,
+  "rootUnfilteredCTest": "21/21 PASS",
+  "rootCTestSeconds": 7.63,
+  "rootCTestLog": "docs/validation/20261010/native-pitch-fix-root-ctest.log",
+  "scope": "Software core and selected product tests. Three profiles are algorithm/configuration wrappers, not integrated/qualified Native+Browser product routes. No realtime load, formant preservation, full-band alias quality, or hardware latency acceptance.",
+  "knownLiveMonoRateLimit": "Fixed analysisWindowFrames=4096/minimumHz=40: 192kHz settings builder returns settings but requiredPrepareBytes returns0 and prepare rejects because lag4800 exceeds4093. LIVE_POLY/HQ_RENDER settings may accept192kHz; no 192kHz quality claim. Builder/preflight consistency needs a subsequent fix."
+}

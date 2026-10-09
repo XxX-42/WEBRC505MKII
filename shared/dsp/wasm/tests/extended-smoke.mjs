@@ -263,6 +263,48 @@ assert.equal(wasm.webrc_dsp_extended_process_mono(streamingPsola,
   pitchInput.address, outputLeft.address, 512), Status.ok);
 assert.ok(outputLeft.f32.subarray(0, 512).every(Number.isFinite));
 
+// Rendering less than the lookahead only proves finite startup silence. Keep
+// a warmed manual-F0 regression independent of the detector and of ambiguous
+// autocorrelation peaks at multiples of the output period.
+const streamingRatioProbe = [];
+const ratioInput = allocate(128);
+const ratioOutput = allocate(128);
+for (const ratio of [0.5, 0.75, 1, 1.25, 1.5, 2]) {
+  for (const phase of [0.37, 0.37 + Math.PI]) {
+    const handle = create(Kind.streamingPsola, [739]);
+    configure(handle, Control.streamingPitch, [sampleRate / 220, ratio, 1]);
+    let energy = 0;
+    let real = 0;
+    let imaginary = 0;
+    let measuredFrames = 0;
+    for (let start = 0; start < sampleRate; start += 128) {
+      for (let frame = 0; frame < 128; frame += 1) {
+        ratioInput.f32[frame] = 0.3 * Math.sin(2 * Math.PI * 220 * (start + frame) / sampleRate + phase);
+      }
+      assert.equal(wasm.webrc_dsp_extended_process_mono(handle,
+        ratioInput.address, ratioOutput.address, 128), Status.ok);
+      for (let frame = 0; frame < 128; frame += 1) {
+        const absolute = start + frame;
+        const value = ratioOutput.f32[frame];
+        assert.ok(Number.isFinite(value));
+        if (absolute >= 32000 && absolute < 44000) {
+          const angle = 2 * Math.PI * 220 * ratio * absolute / sampleRate;
+          energy += value * value;
+          real += value * Math.cos(angle);
+          imaginary += value * Math.sin(angle);
+          measuredFrames += 1;
+        }
+      }
+    }
+    const rms = Math.sqrt(energy / measuredFrames);
+    const targetProjectionPeak = 2 * Math.hypot(real, imaginary) / measuredFrames;
+    assert.ok(rms >= 0.16 && rms <= 0.24, `streaming ratio ${ratio}, phase ${phase}: RMS ${rms}`);
+    assert.ok(targetProjectionPeak >= 0.25 && targetProjectionPeak <= 0.35,
+      `streaming ratio ${ratio}, phase ${phase}: expected ${220 * ratio} Hz projection ${targetProjectionPeak}`);
+    streamingRatioProbe.push({ ratio, phaseRad: phase, expectedHz: 220 * ratio, rms, targetProjectionPeak });
+  }
+}
+
 // Incremental F10 and the measured-input LIVE_MONO F10->F11 adapter.
 const incrementalFrames = 16384;
 const incrementalInput = allocate(incrementalFrames);
@@ -627,6 +669,7 @@ console.log(JSON.stringify({
   wasmSha256: manifest.artifact.sha256,
   sourceSetSha256: manifest.sourceSetSha256,
   extendedKindsCreated: Object.values(Kind),
+  streamingRatioProbe,
   pitchProbe: {
     incrementalYinInputHz: 220,
     incrementalYinEstimatedHz: incrementalEstimate.f32[0],

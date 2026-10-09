@@ -1,0 +1,6 @@
+{
+  "compilerExe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe",
+  "flags": "/nologo /std:c++17 /O2 /EHsc /W4 /permissive- /fp:precise",
+  "target": "x64 Release standalone from archived clean source",
+  "linkerExe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe"
+}

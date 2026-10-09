@@ -1,0 +1,201 @@
+{
+  "schema": "native-psola-fix-result-v1",
+  "capturedAtUtc": "2026-10-09T18:33:24Z",
+  "archiveRoot": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\native-streaming-psola-ratio-fix-20261009T182425Z",
+  "sourceManifest": "source-manifest.json",
+  "sourceFileCount": 115,
+  "sourceSetSha256": "a3a46e139a16d3fa77ddeb213c0c57fa4c912d53543774787f2fa3038b3d5f4d",
+  "buildRoot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-psola-ratio-fix-20261009T182425Z",
+  "compiler": "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe",
+  "compilerVersion": "19.29.30159.0",
+  "toolset": "14.29.30133",
+  "generator": "NMake Makefiles",
+  "filteredCTest": "PASS 21/21",
+  "unfilteredCTest": "PASS 21/21",
+  "testCount": 21,
+  "testFailures": 0,
+  "sourceSnapshotStableAfterBuild": true,
+  "liveFilesDifferFromSnapshot": [],
+  "objectDependencyFileCount": 52,
+  "translationUnitRecordCount": 52,
+  "uniqueTranslationUnitCount": 50,
+  "uniqueCompilerInputCount": 457,
+  "compilerInputOrigins": {
+    "snapshotWorkspace": 76,
+    "fetchContentSource": 52,
+    "external": 329
+  },
+  "buildArtifactCount": 32,
+  "buildArtifacts": [
+    {
+      "path": "verification/build-artifacts/looper_core_tests.exe",
+      "bytes": 24576,
+      "sha256": "8b12a215655df3382c6ea69fc66801f9d6fa2b0bfa7e383ab8676d90503e539c"
+    },
+    {
+      "path": "verification/build-artifacts/native_audio_core.lib",
+      "bytes": 1365248,
+      "sha256": "c1525e88f4accaf2ab662dbf74d3fdaef436c8a3b6157b0169ceed74865c0131"
+    },
+    {
+      "path": "verification/build-artifacts/native_bridge_host.exe",
+      "bytes": 535552,
+      "sha256": "837bc93672a87e2a4ed6e7821621303d9fc983105c83cef11f72a675351a0817"
+    },
+    {
+      "path": "verification/build-artifacts/native_bridge_host.lib",
+      "bytes": 28026,
+      "sha256": "1882298af5ac5fe6c7162ecc1e59a92c2e526d989c0d67f28d29dbb20f7c23f0"
+    },
+    {
+      "path": "verification/build-artifacts/native_fx_graph_tests.exe",
+      "bytes": 278016,
+      "sha256": "a484a5a788ab1f552a2a8c8c6faa90e5375635b96d33e9e18a5533c1015373da"
+    },
+    {
+      "path": "verification/build-artifacts/native_looper_bench.exe",
+      "bytes": 29184,
+      "sha256": "b2c517495bb367444d81ca9b71d6b54dc146c0cc0e51de1c42839b35048b2d6f"
+    },
+    {
+      "path": "verification/build-artifacts/native_multitrack_core_tests.exe",
+      "bytes": 41472,
+      "sha256": "518fdfaa4cba6a393e53315a9fcd05981a15b86ad47a45fdf920614463ff253f"
+    },
+    {
+      "path": "verification/build-artifacts/native_multitrack_core.lib",
+      "bytes": 101444,
+      "sha256": "1a74a40a46562f5e3230eb9227b3a917e8b33bdf3adab82e588f0439ff8c1501"
+    },
+    {
+      "path": "verification/build-artifacts/native_track_host_tests.exe",
+      "bytes": 237568,
+      "sha256": "78d36bf9304f92eb9c0cad46b3e9eac28923aad8b7afd3ef394e1b24e12aad8e"
+    },
+    {
+      "path": "verification/build-artifacts/native_track_host.lib",
+      "bytes": 299506,
+      "sha256": "24e8ea20c63dda4f43326c127bca09482d046827f61fc5aec1407564d4be0827"
+    },
+    {
+      "path": "verification/build-artifacts/CMakeFiles/4.4.2/CompilerIdCXX/CMakeCXXCompilerId.exe",
+      "bytes": 96256,
+      "sha256": "82cd2bae35f1d0471bfbe2b8fceeaec48ae9d9e37645023c2bf12142ccaffb7a"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/composite_fx_tests.exe",
+      "bytes": 74240,
+      "sha256": "7382ef1090cfeb8b2be4d13f9c47bb82f45fdacbf4b0c947b9cf6e55636b6941"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/control_dynamics_tests.exe",
+      "bytes": 38912,
+      "sha256": "3ce1ab53d9b549f5232f0eafcf6dded9a92d72254ed5ee2f8f47e2f6b3b0563f"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/dsp_primitives_tests.exe",
+      "bytes": 54784,
+      "sha256": "02aaedca61576f05e33668959d91dedf18068596bd9f24eee8157862e2b87bfb"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/fx_registry_tests.exe",
+      "bytes": 210944,
+      "sha256": "8e8968bf78e0b5208d78a2c61611cf56eaedaabea1e8be9ce8c79f10976ed770"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/live_mono_pitch_tests.exe",
+      "bytes": 53760,
+      "sha256": "555f85f50c2fab2fc768a47f48e5284d44fcfe8540b26b600e3c5e0bc9b9b218"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/modulated_delay_fx_tests.exe",
+      "bytes": 38912,
+      "sha256": "bc2243138c0bb6a8a1799007cd97cfd4eab02ea11883731f932d71a723eabe8d"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/modulation_fx_tests.exe",
+      "bytes": 43520,
+      "sha256": "ee7e0030dea55269c44ce23671edcf0f09df5a0bdd882bca683bc9b0e410a9bb"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/native_dsp_primitives_bench.exe",
+      "bytes": 60416,
+      "sha256": "30183c2ba08626b3cfb98b92733137234225f27cce81924c75d8feb302dd5e0f"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/nonlinear_tests.exe",
+      "bytes": 53760,
+      "sha256": "d721e1db24c1d4b9a2bc92c3b87bf003d83d7cce5e98552498f3ec5cb28eb8bc"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/performance_fx_tests.exe",
+      "bytes": 60928,
+      "sha256": "088ccb6496b026c1762f20bfc1af887450ba626396983ab6b248909514675146"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/pitch_profiles_tests.exe",
+      "bytes": 129024,
+      "sha256": "47a584243d169aa689c9ff32375da0b629591122c3ce612f0a5dcbbd47727651"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/pitch_tests.exe",
+      "bytes": 147456,
+      "sha256": "d1f163e61c0e0005c4204e967cc1747288e03e2dd5a19b673929d00603e7140b"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/rhythm_tests.exe",
+      "bytes": 322560,
+      "sha256": "43e7986875bbdc11dfc8f69b9d1715f4890e3f637d92ec4003663bc8f18427a4"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/rhythmic_fx_tests.exe",
+      "bytes": 46080,
+      "sha256": "f339e862ece5259ce3f7c6ea660089e1871f98747341ce4b82b8bcc441d9c8b3"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/spatial_fx_adapters_tests.exe",
+      "bytes": 59392,
+      "sha256": "015d20656594f509bdd6a1347a53bdc5ac6a0dad3924541a52c838e37c4d3abb"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/spatial_temporal_tests.exe",
+      "bytes": 131072,
+      "sha256": "c114c9ecc443ad573ad7a138ca99e20e46e915cc7c6b64be54f77a67e740ee84"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/streaming_yin_tests.exe",
+      "bytes": 38400,
+      "sha256": "547c2e4acdd2bd372277d962c0d837b38bbba9251e99ec831d3131a947116484"
+    },
+    {
+      "path": "verification/build-artifacts/shared_dsp/webrc_dsp.lib",
+      "bytes": 3721500,
+      "sha256": "df30e12d37627001d7aa17f771cb04539ba9f6f27a87a4afb98c6151d153ed99"
+    },
+    {
+      "path": "verification/build-artifacts/_deps/rtaudio_src-build/rtaudio.lib",
+      "bytes": 1011692,
+      "sha256": "ce5d49393d0f69d8014a99efdd4fa90d5d4971267ef6552aba246b9a6b9e1ae6"
+    },
+    {
+      "path": "verification/build-artifacts/_deps/rtaudio_src-build/tests/apinames.exe",
+      "bytes": 97792,
+      "sha256": "f5a883e5ff58792d50b9beb2e9c09119b21347bbc69c680dff6a49b1cd937685"
+    },
+    {
+      "path": "verification/build-artifacts/_deps/rtaudio_src-build/tests/apinames.lib",
+      "bytes": 33784,
+      "sha256": "c91ac2db801aa2c46f9452ad20bb1d2fea8b2870f986b8f14e1a52a538920957"
+    }
+  ],
+  "hardwareOutputOpened": false,
+  "scope": "Copied-source Native Release bridge build and filtered plus unfiltered CTest only; no audio-device output, 64-frame callback or hardware realtime qualification.",
+  "compilerIdentity": "MSVC 19.29.30159.0",
+  "ratioDiagnostic": {
+    "file": "verification/ratio-diagnostic.json",
+    "driverSha256": "82c1e7d74c648768e5c506de5f6d82941225985873eabe3bb275c6c426634637",
+    "exeSha256": "cc816d04027c77a12c2642f6d038244180206559250916be6e7de55120920257",
+    "jsonSha256": "74375afe803f7ca42bca8b9b686ca8828e8eb3b78dd4d971db0a22dfa878a50b",
+    "caseCount": 12
+  }
+}
