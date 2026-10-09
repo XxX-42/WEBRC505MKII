@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "reviewer": "root",
+  "reviewedAt": "2026-10-10",
+  "sourcePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+  "sourceUrl": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+  "printedPagesReviewed": [
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43
+  ],
+  "method": "Root inspected full rendered pages 34-43 at 160 DPI, checking value/default cells, variants and placement note.",
+  "renderCommand": "pdftoppm -f 34 -l 43 -r 160 -png <verified-source.pdf> <prefix>",
+  "popplerVersion": "pdftoppm version 26.07.0\nCopyright 2005-2026 The Poppler Developers - http://poppler.freedesktop.org\nCopyright 1996-2011, 2022 Glyph & Cog, LLC",
+  "renderedPageSha256": {
+    "guide-34.png": "e3210f063ecdfe9bcc5a8d370c391a856c0ab8fa114b634da7620fa56c337a99",
+    "guide-35.png": "4be3e51dbd6495b6af0b772c9afa71581d4627955606743197a3aad9214ecf02",
+    "guide-36.png": "0ba7921cbc3d49b64afac13b8b4f1623441d89fd9538e43b6aa065044fd4969f",
+    "guide-37.png": "e2c169605dccf50643b77f9802a6b60ad12555b1b5bde3438841d1adfa4a86a5",
+    "guide-38.png": "b1721b2ec9f88a4a5060e3d3633336a13471f8fb999ec9d554232e2203a4cc68",
+    "guide-39.png": "a290e614eaf9295fafe5d3fa2135daef88684110eba9ad6ee4b03473cc23cf17",
+    "guide-40.png": "3c73dc415edc0801737cec37595d96532f649e0f91f35b49827819731cfebea9",
+    "guide-41.png": "d21fe24f9be32db8913debab4ee7d0d6b6bdb0dceb44c5a6feda03b17b7e0c86",
+    "guide-42.png": "c9853cc2a8d41333ba76259c1595eccafa192390d116ed7bddd8fc28b1b2d070",
+    "guide-43.png": "bd10d6bac9bec374d0cf6efdc7057e65587a3da4365e05414e815f65923ac507"
+  },
+  "artifactHashes": {
+    "dsp/spec/build_native_fx_ui_contracts.py": "999f935e76c470da9e726697952a4c96b0f9fb91bbd15a26078c2d830aa55221",
+    "dsp/spec/validate_native_fx_ui_contracts.py": "5f8fb803fb7f0ebb3316a7348bccc2391b86c0ffff9250a5253aa03086269f80",
+    "dsp/spec/official_fx_ui_contracts.json": "3615e2d18adc18237c0429cc29b8bfe04cdacd73efb1ce033fd52576a29ee7c6",
+    "dsp/spec/official_fx_parameters_candidate_visual_glyphs.json": "e2c2fe997d1687e683eeeed9104c9c54a9649417c73c1723aa3a59248bd052fe"
+  },
+  "verifiedCounts": {
+    "contractFxFamilies": 53,
+    "inputFxFamilies": 49,
+    "trackFxFamilies": 53,
+    "printedVariantSections": 55,
+    "parameterRows": 267
+  },
+  "qualification": "Published source facts only; DSP mappings, implemented controls and runtime UI qualification remain pending.",
+  "stagedExportValidation": {
+    "exportDirectory": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-official-fx-ui-staged-967xkm7q",
+    "pythonVersion": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+    "exactRegenerationSha256": "3615e2d18adc18237c0429cc29b8bfe04cdacd73efb1ce033fd52576a29ee7c6",
+    "candidateChange": "Only preserved original CRLF source bytes using -text; normalized content equals HEAD.",
+    "results": [
+      {
+        "script": "build_native_fx_ui_contracts.py",
+        "exitCode": 0,
+        "stdout": "wrote dsp\\spec\\official_fx_ui_contracts.json (53 FX, 267 reviewed parameter rows)\n",
+        "stderr": ""
+      },
+      {
+        "script": "validate_native_fx_ui_contracts.py",
+        "exitCode": 0,
+        "stdout": "PASS: 53 reviewed source-fact FX families, 267 source rows, input=49, track=53; DSP runtime mapping remains separate\n",
+        "stderr": ""
+      },
+      {
+        "script": "validate_official_fx_candidate.py",
+        "exitCode": 0,
+        "stdout": "Official FX parameter candidate structure PASS (non-normative; unresolved raw enum/domain review remains): {\"effects\": 53, \"fxSequenceSettings\": 7, \"inputFx\": 49, \"musicalGlyphs\": 5, \"parameterRows\": 267, \"rootConfirmedFxMusicalGlyphDefaults\": 14, \"sections\": 55, \"trackFx\": 53}\n",
+        "stderr": ""
+      }
+    ]
+  }
+}

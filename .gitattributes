@@ -231,3 +231,9 @@
 /shared/dsp/benchmarks/results/octave-fx-release-20261009T165148885Z/** -text -whitespace
 /shared/dsp/benchmarks/results/octave-impulse-audit-20261010T010455014/** -text -whitespace
 /shared/dsp/benchmarks/results/preamp-fx-frozen-20261010T010016808/** -text -whitespace
+
+/dsp/spec/build_native_fx_ui_contracts.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/dsp/spec/validate_native_fx_ui_contracts.py -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/dsp/spec/official_fx_ui_contracts.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/docs/validation/20261010/official-fx-ui-root-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/dsp/spec/official_fx_parameters_candidate_visual_glyphs.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
