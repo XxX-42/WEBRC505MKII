@@ -1,0 +1,27 @@
+{
+  "suite": "shared-dsp-wasm-golden",
+  "apiVersion": 1,
+  "abiVersion": 2,
+  "wasmMemoryBytes": 67108864,
+  "maxBlockFramesTested": [
+    64,
+    128,
+    256,
+    512
+  ],
+  "nativeGoldenFixturesCompared": [
+    "biquad_lowpass",
+    "allpass1",
+    "tpt_svf",
+    "adaa_cubic",
+    "dual_detector_compressor",
+    "polyblep_triangle"
+  ],
+  "wasiIoCalls": {
+    "fd_close": 0,
+    "fd_write": 0,
+    "fd_seek": 0
+  },
+  "maxDelayRingsBeforeBudgetRejection": 26,
+  "result": "PASS"
+}

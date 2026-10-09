@@ -1,0 +1,34 @@
+
+> webrc505mkii-v2@0.0.0 test:unit
+> vitest run --maxWorkers=1 tests/unit/coreAudioBehaviors.spec.ts
+
+
+ RUN  v3.2.4 D:/Documents/Codes/2024_1_WebRC505MKII/2025_WebRC505MKII_v2/bench/results/browser-fx41-appcheck-20261009T214000Z/repo
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > keeps master PCM and the phase-aligned slave in sync across a quarter-phase 1x→2x speed change
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > keeps master PCM and the phase-aligned slave in sync across a quarter-phase 1x→2x speed change
+BPM updated to: 120
+
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > uses the reverse 1.3x master anchor for real PCM wrap and slave phase targeting
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > uses the reverse 1.3x master anchor for real PCM wrap and slave phase targeting
+BPM updated to: 120
+
+ ✓ tests/unit/coreAudioBehaviors.spec.ts (14 tests) 110665ms
+   ✓ integrated browser worklet audio behavior > uses variable speed, tempo factors with effective clamp, and executes scheduled commands on their sample frame  324ms
+   ✓ integrated browser worklet audio behavior > keeps fractional-BPM external-clock phase continuous across multiple measures  2066ms
+   ✓ integrated browser worklet audio behavior > starts global clock ticks on the configured master sample epoch  705ms
+   ✓ integrated browser worklet audio behavior > records 185 accelerated seconds through real chunk growth and exports the final stereo PCM without overruns  22856ms
+   ✓ integrated browser worklet audio behavior > records 185 accelerated seconds at 48 kHz through real chunk growth and exports the final stereo PCM  83230ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  06:03:07
+   Duration  113.08s (transform 244ms, setup 112ms, collect 202ms, tests 110.66s, environment 1.15s, prepare 202ms)
+

@@ -1,0 +1,30 @@
+{
+  "result": "VERIFIED",
+  "payloadCount": 260,
+  "productPathCount": 236,
+  "wasmSourceCount": 77,
+  "overlayCount": 33,
+  "captureProductFiles": 187,
+  "captureExplanationFiles": 1,
+  "wasmSha256": "eb567831965c6194890e602f12a0999773e04eb46f8e22b4330d1424b13017dc",
+  "wholeUnitSuite": "34 files / 223 PASS (archived agent execution)",
+  "realBrowserSmoke": "74 PASS (archived agent execution)",
+  "hardwareCertified": false,
+  "fullTaskQualified": false,
+  "gitRevision": "INDEX",
+  "gitRawMatches": 131,
+  "gitEolOnlyMatches": 105,
+  "archiveIndexSha256": "d5f19900ccb61554b6380b90b3c2f55eb1e0556d848d23d663b73c492f9fa83e",
+  "rootScope": "Independent hashes, closure, Git index, and asset guard; archived full suite/browser execution by Browser agent",
+  "userChangesExcluded": [
+    "aggregate.py",
+    "2025_WebRC505MKII_v2_code_only.md"
+  ],
+  "native50LiveChangesPreserved": true,
+  "rootIndependentIndexAssetGuard": {
+    "result": "VERIFIED",
+    "inputCount": 81,
+    "method": "81 Git index blobs extracted into a separate directory; Node raw-source guard executed there",
+    "directory": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-browser41-root-index-guard-20261010-r1"
+  }
+}

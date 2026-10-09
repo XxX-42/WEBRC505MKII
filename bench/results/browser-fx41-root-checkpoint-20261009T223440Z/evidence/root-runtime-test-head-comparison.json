@@ -1,0 +1,877 @@
+{
+  "checkedPaths": [
+    "eslint.config.js",
+    "index.html",
+    "package-lock.json",
+    "package.json",
+    "playwright.config.ts",
+    "postcss.config.js",
+    "public/dsp/webrc-dsp.build.json",
+    "public/dsp/webrc-dsp.wasm",
+    "public/vite.svg",
+    "public/worklets/bounce-capture-processor.js",
+    "public/worklets/compressor-processor.js",
+    "public/worklets/looper-processor.js",
+    "public/worklets/master-fx-processor.js",
+    "public/worklets/time-stretch-core.js",
+    "scripts/browser-realtime-smoke.mjs",
+    "scripts/browser-stress-32fx.mjs",
+    "scripts/capture-browser-graph-snapshot.mjs",
+    "scripts/install-shared-dsp-assets.mjs",
+    "scripts/verify-shared-dsp-assets.mjs",
+    "shared/dsp/CMakeLists.txt",
+    "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+    "shared/dsp/include/webrc/dsp/composite_fx.hpp",
+    "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+    "shared/dsp/include/webrc/dsp/distortion_fx.hpp",
+    "shared/dsp/include/webrc/dsp/fft.hpp",
+    "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+    "shared/dsp/include/webrc/dsp/live_mono_pitch.hpp",
+    "shared/dsp/include/webrc/dsp/modulated_delay_fx.hpp",
+    "shared/dsp/include/webrc/dsp/modulation_fx.hpp",
+    "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+    "shared/dsp/include/webrc/dsp/octave_fx.hpp",
+    "shared/dsp/include/webrc/dsp/octave_models.hpp",
+    "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+    "shared/dsp/include/webrc/dsp/pitch.hpp",
+    "shared/dsp/include/webrc/dsp/pitch_profiles.hpp",
+    "shared/dsp/include/webrc/dsp/preamp_fx.hpp",
+    "shared/dsp/include/webrc/dsp/preamp_models.hpp",
+    "shared/dsp/include/webrc/dsp/primitives.hpp",
+    "shared/dsp/include/webrc/dsp/reconstruction_fx_adapter.hpp",
+    "shared/dsp/include/webrc/dsp/rhythm.hpp",
+    "shared/dsp/include/webrc/dsp/rhythmic_fx.hpp",
+    "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+    "shared/dsp/include/webrc/dsp/spatial_fx_adapters.hpp",
+    "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+    "shared/dsp/include/webrc/dsp/streaming_yin.hpp",
+    "shared/dsp/include/webrc/dsp/temporal_fx_adapters.hpp",
+    "shared/dsp/src/cleanroom_rhythm_data.cpp",
+    "shared/dsp/src/composite_fx.cpp",
+    "shared/dsp/src/control_dynamics.cpp",
+    "shared/dsp/src/distortion_fx.cpp",
+    "shared/dsp/src/fft.cpp",
+    "shared/dsp/src/fx_registry.cpp",
+    "shared/dsp/src/live_mono_pitch.cpp",
+    "shared/dsp/src/modulated_delay_fx.cpp",
+    "shared/dsp/src/modulation_fx.cpp",
+    "shared/dsp/src/nonlinear.cpp",
+    "shared/dsp/src/octave_fx.cpp",
+    "shared/dsp/src/octave_models.cpp",
+    "shared/dsp/src/performance_fx.cpp",
+    "shared/dsp/src/pitch.cpp",
+    "shared/dsp/src/pitch_profiles.cpp",
+    "shared/dsp/src/preamp_fx.cpp",
+    "shared/dsp/src/preamp_models.cpp",
+    "shared/dsp/src/primitives.cpp",
+    "shared/dsp/src/reconstruction_fx_adapter.cpp",
+    "shared/dsp/src/rhythm.cpp",
+    "shared/dsp/src/rhythmic_fx.cpp",
+    "shared/dsp/src/signalsmith_adapter.cpp",
+    "shared/dsp/src/spatial_fx_adapters.cpp",
+    "shared/dsp/src/spatial_temporal.cpp",
+    "shared/dsp/src/streaming_yin.cpp",
+    "shared/dsp/src/temporal_fx_adapters.cpp",
+    "shared/dsp/wasm/browser-build-pin.json",
+    "shared/dsp/wasm/build-wasm.ps1",
+    "shared/dsp/wasm/handle_registry.cpp",
+    "shared/dsp/wasm/handle_registry.hpp",
+    "shared/dsp/wasm/webrc_dsp_extended.cpp",
+    "shared/dsp/wasm/webrc_dsp_extended.h",
+    "shared/dsp/wasm/webrc_dsp_fx.cpp",
+    "shared/dsp/wasm/webrc_dsp_fx.h",
+    "shared/dsp/wasm/webrc_dsp_wasm.cpp",
+    "shared/dsp/wasm/webrc_dsp_wasm.h",
+    "src/App.vue",
+    "src/assets/vue.svg",
+    "src/audio/AudioEngine.ts",
+    "src/audio/AudioEngineInterface.ts",
+    "src/audio/BrowserAudioEngine.ts",
+    "src/audio/BrowserRealtimeRuntime.ts",
+    "src/audio/FXChain.ts",
+    "src/audio/NativeAudioEngine.ts",
+    "src/audio/NativeBridgeClient.ts",
+    "src/audio/NativeTrackProxy.ts",
+    "src/audio/RhythmEngine.ts",
+    "src/audio/TrackAudio.ts",
+    "src/audio/browserLatencyCalibration.ts",
+    "src/audio/browserRealtimeProtocol.ts",
+    "src/audio/browserRecordingOffset.ts",
+    "src/audio/browserRouting.ts",
+    "src/audio/cleanroomRhythmCatalog.ts",
+    "src/audio/fx/CompressorFX.ts",
+    "src/audio/fx/DelayFX.ts",
+    "src/audio/fx/FXBase.ts",
+    "src/audio/fx/FXRegistry.ts",
+    "src/audio/fx/FilterFX.ts",
+    "src/audio/fx/PhaserFX.ts",
+    "src/audio/fx/ReverbFX.ts",
+    "src/audio/fx/SlicerFX.ts",
+    "src/audio/instrumentGradeMetrics.ts",
+    "src/audio/loopSettings.ts",
+    "src/audio/nativeFxProtocol.ts",
+    "src/audio/rhythmTypes.ts",
+    "src/audio/sharedDspGraph.ts",
+    "src/components/AudioPerformanceDashboard.vue",
+    "src/components/AudioSettings.vue",
+    "src/components/BrowserAudioSettings.vue",
+    "src/components/BrowserRecordingOffsetSettings.vue",
+    "src/components/ComponentShowcase.vue",
+    "src/components/ControlAssignPanel.vue",
+    "src/components/ControlSurfaceHost.vue",
+    "src/components/HelloWorld.vue",
+    "src/components/LatencyTuner.vue",
+    "src/components/LoopHalo.vue",
+    "src/components/LoopSettingsPanel.vue",
+    "src/components/MemoryControls.vue",
+    "src/components/RhythmControls.vue",
+    "src/components/RhythmEditorPanel.vue",
+    "src/components/RoutingMatrixPanel.vue",
+    "src/components/TopPanel.vue",
+    "src/components/TopStatusStrip.vue",
+    "src/components/TrackSettingsPanel.vue",
+    "src/components/TrackUnit.vue",
+    "src/components/TransportControls.vue",
+    "src/components/WebToolLayer.vue",
+    "src/components/fx/FxUnit.vue",
+    "src/components/panel/CenterMainPanel.vue",
+    "src/components/panel/InputFxPanel.vue",
+    "src/components/panel/TrackBay.vue",
+    "src/components/panel/TrackFxPanel.vue",
+    "src/components/panel/TrackStrip.vue",
+    "src/components/shells/ClassicShell.vue",
+    "src/components/shells/TechShell.vue",
+    "src/components/ui/HardwareButton.vue",
+    "src/components/ui/HardwareFader.vue",
+    "src/components/ui/HardwareKnob.vue",
+    "src/composables/useControlDispatcher.ts",
+    "src/composables/useFxPanelState.ts",
+    "src/composables/useMemorySlot.ts",
+    "src/composables/usePanelFocus.ts",
+    "src/composables/useTrackStripState.ts",
+    "src/composables/useUiStyle.ts",
+    "src/controls/commandDispatcher.ts",
+    "src/controls/rhythmDocuments.ts",
+    "src/core/Transport.ts",
+    "src/core/types.ts",
+    "src/main.ts",
+    "src/project/BrowserProjectAdapter.ts",
+    "src/project/IndexedDbProjectMemoryStore.ts",
+    "src/project/ProjectService.ts",
+    "src/project/blobUtils.ts",
+    "src/project/bounceCaptureProtocol.ts",
+    "src/project/projectArchive.ts",
+    "src/project/projectMixRenderer.ts",
+    "src/project/projectTypes.ts",
+    "src/project/projectValidation.ts",
+    "src/project/sharedPitchRender.ts",
+    "src/project/sharedPitchRender.worker.ts",
+    "src/project/sharedPitchRenderWorkerRuntime.ts",
+    "src/project/wavCodec.ts",
+    "src/style.css",
+    "src/types/time-stretch-core.d.ts",
+    "tests/e2e/app.spec.ts",
+    "tests/e2e/initMocks.js",
+    "tests/e2e/project-memory.spec.ts",
+    "tests/helpers/audioTestUtils.ts",
+    "tests/helpers/coreAudioHarness.ts",
+    "tests/helpers/evaluateRealtimeWorklet.ts",
+    "tests/setup/vitest.setup.ts",
+    "tests/unit/audioEngine.spec.ts",
+    "tests/unit/bounceCaptureProcessor.spec.ts",
+    "tests/unit/browserBulkTransport.spec.ts",
+    "tests/unit/browserCompressorFailure.spec.ts",
+    "tests/unit/browserFxTransactions.spec.ts",
+    "tests/unit/browserProjectAdapter.spec.ts",
+    "tests/unit/browserRealtimeProtocol.spec.ts",
+    "tests/unit/browserRouting.spec.ts",
+    "tests/unit/compressorWorklet.spec.ts",
+    "tests/unit/controlDispatcher.spec.ts",
+    "tests/unit/coreAudioBehaviors.spec.ts",
+    "tests/unit/historyCompaction.spec.ts",
+    "tests/unit/instrumentGradeMetrics.spec.ts",
+    "tests/unit/loadTrackState.spec.ts",
+    "tests/unit/masterClockAtomicStart.spec.ts",
+    "tests/unit/masterClockEpoch.spec.ts",
+    "tests/unit/masterFxWorklet.spec.ts",
+    "tests/unit/nativeBridgeClient.spec.ts",
+    "tests/unit/nativeFxProtocol.spec.ts",
+    "tests/unit/pitchCompositeCache.spec.ts",
+    "tests/unit/projectArchive.spec.ts",
+    "tests/unit/projectMixRenderer.spec.ts",
+    "tests/unit/projectService.spec.ts",
+    "tests/unit/projectWavCodec.spec.ts",
+    "tests/unit/rhythmDocuments.spec.ts",
+    "tests/unit/sharedDspGraph.spec.ts",
+    "tests/unit/sharedPitchRender.spec.ts",
+    "tests/unit/stereoWorklet.spec.ts",
+    "tests/unit/takeStoragePreflight.spec.ts",
+    "tests/unit/timeStretch.spec.ts",
+    "tests/unit/trackAudio.spec.ts",
+    "tests/unit/trackUnit.spec.ts",
+    "tests/unit/transport.spec.ts",
+    "tests/unit/useFxPanelState.spec.ts",
+    "third_party/SIGNALSMITH_PINS.md",
+    "third_party/signalsmith-linear/LICENSE.txt",
+    "third_party/signalsmith-linear/README.md",
+    "third_party/signalsmith-linear/approx.h",
+    "third_party/signalsmith-linear/fft.h",
+    "third_party/signalsmith-linear/include/signalsmith-linear/approx.h",
+    "third_party/signalsmith-linear/include/signalsmith-linear/fft.h",
+    "third_party/signalsmith-linear/include/signalsmith-linear/linear.h",
+    "third_party/signalsmith-linear/include/signalsmith-linear/stft.h",
+    "third_party/signalsmith-linear/linear.h",
+    "third_party/signalsmith-linear/stft.h",
+    "third_party/signalsmith-stretch/LICENSE.txt",
+    "third_party/signalsmith-stretch/README.md",
+    "third_party/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h",
+    "third_party/signalsmith-stretch/signalsmith-stretch.h",
+    "tsconfig.app.json",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "vite.config.ts"
+  ],
+  "differences": [
+    {
+      "path": "eslint.config.js",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "index.html",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "package-lock.json",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "playwright.config.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "postcss.config.js",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "public/dsp/webrc-dsp.build.json",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "public/dsp/webrc-dsp.wasm",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "public/worklets/bounce-capture-processor.js",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "public/worklets/compressor-processor.js",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "public/worklets/looper-processor.js",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "public/worklets/master-fx-processor.js",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "public/worklets/time-stretch-core.js",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "scripts/browser-stress-32fx.mjs",
+      "coveredByStage": true,
+      "kind": "add"
+    },
+    {
+      "path": "scripts/install-shared-dsp-assets.mjs",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "shared/dsp/wasm/browser-build-pin.json",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "shared/dsp/wasm/build-wasm.ps1",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.cpp",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.h",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "src/App.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/AudioEngineInterface.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/BrowserAudioEngine.ts",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "src/audio/FXChain.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/RhythmEngine.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/TrackAudio.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/browserLatencyCalibration.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/browserRecordingOffset.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/CompressorFX.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/DelayFX.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/FXBase.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/FXRegistry.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/FilterFX.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/PhaserFX.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/ReverbFX.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/fx/SlicerFX.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/loopSettings.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/audio/nativeFxProtocol.ts",
+      "coveredByStage": true,
+      "kind": "add"
+    },
+    {
+      "path": "src/audio/sharedDspGraph.ts",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "src/components/AudioSettings.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/BrowserAudioSettings.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/BrowserRecordingOffsetSettings.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/ComponentShowcase.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/ControlAssignPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/ControlSurfaceHost.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/HelloWorld.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/LatencyTuner.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/LoopHalo.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/LoopSettingsPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/MemoryControls.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/RhythmControls.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/RoutingMatrixPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/TopPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/TopStatusStrip.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/TrackSettingsPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/TrackUnit.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/TransportControls.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/WebToolLayer.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/fx/FxUnit.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/panel/CenterMainPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/panel/InputFxPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/panel/TrackBay.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/panel/TrackFxPanel.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/panel/TrackStrip.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/shells/ClassicShell.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/shells/TechShell.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/ui/HardwareButton.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/ui/HardwareFader.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/components/ui/HardwareKnob.vue",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/composables/useMemorySlot.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/composables/usePanelFocus.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/composables/useTrackStripState.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/composables/useUiStyle.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/controls/commandDispatcher.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/core/Transport.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/core/types.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/main.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/BrowserProjectAdapter.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/IndexedDbProjectMemoryStore.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/ProjectService.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/blobUtils.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/bounceCaptureProtocol.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/projectArchive.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/projectMixRenderer.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/projectTypes.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/projectValidation.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/project/sharedPitchRender.ts",
+      "coveredByStage": true,
+      "kind": "add"
+    },
+    {
+      "path": "src/project/sharedPitchRender.worker.ts",
+      "coveredByStage": true,
+      "kind": "add"
+    },
+    {
+      "path": "src/project/sharedPitchRenderWorkerRuntime.ts",
+      "coveredByStage": true,
+      "kind": "add"
+    },
+    {
+      "path": "src/project/wavCodec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/style.css",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "src/types/time-stretch-core.d.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/e2e/app.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/e2e/initMocks.js",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/e2e/project-memory.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/helpers/audioTestUtils.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/helpers/evaluateRealtimeWorklet.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/setup/vitest.setup.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/bounceCaptureProcessor.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/browserBulkTransport.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/browserCompressorFailure.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/browserFxTransactions.spec.ts",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "tests/unit/browserProjectAdapter.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/compressorWorklet.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/controlDispatcher.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/coreAudioBehaviors.spec.ts",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "tests/unit/historyCompaction.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/loadTrackState.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/masterClockAtomicStart.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/masterClockEpoch.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/masterFxWorklet.spec.ts",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "tests/unit/nativeFxProtocol.spec.ts",
+      "coveredByStage": true,
+      "kind": "add"
+    },
+    {
+      "path": "tests/unit/pitchCompositeCache.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/projectArchive.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/projectMixRenderer.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/projectService.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/projectWavCodec.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/rhythmDocuments.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/sharedDspGraph.spec.ts",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "tests/unit/sharedPitchRender.spec.ts",
+      "coveredByStage": true,
+      "kind": "add"
+    },
+    {
+      "path": "tests/unit/stereoWorklet.spec.ts",
+      "coveredByStage": true,
+      "kind": "semantic-change"
+    },
+    {
+      "path": "tests/unit/takeStoragePreflight.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/timeStretch.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/trackAudio.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/trackUnit.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tests/unit/transport.spec.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tsconfig.app.json",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tsconfig.json",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "tsconfig.node.json",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    },
+    {
+      "path": "vite.config.ts",
+      "coveredByStage": false,
+      "kind": "eol-only"
+    }
+  ],
+  "uncoveredCount": 105
+}

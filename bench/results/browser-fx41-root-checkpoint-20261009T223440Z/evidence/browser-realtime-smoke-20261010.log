@@ -1,0 +1,24 @@
+
+> webrc505mkii-v2@0.0.0 audio:smoke:browser
+> node scripts/browser-realtime-smoke.mjs
+
+node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-appcheck-20261009T214000Z\repo\scripts\browser-stress-32fx.mjs' imported from D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-appcheck-20261009T214000Z\repo\scripts\browser-realtime-smoke.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///D:/Documents/Codes/2024_1_WebRC505MKII/2025_WebRC505MKII_v2/bench/results/browser-fx41-appcheck-20261009T214000Z/repo/scripts/browser-stress-32fx.mjs'
+}
+
+Node.js v24.19.0

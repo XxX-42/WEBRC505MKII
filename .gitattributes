@@ -407,3 +407,21 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /docs/validation/20261010/browser-graph-trace-window01-root-v2.json -text
 /bench/native-fx-event-admission-root-repro.cpp -text
 /bench/results/native-fx-event-admission-root-repro-20261009T221100Z/** -text -whitespace
+
+# Preserve exact new Browser 41 capture inputs and immutable evidence.
+/scripts/browser-stress-32fx.mjs -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/wasm/tests/dsp-wasm-worklet-processor.js -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/wasm/tests/worklet-smoke-page.js -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/wasm/tests/worklet-smoke.html -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/wasm/tests/worklet-smoke.mjs -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/src/audio/nativeFxProtocol.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/src/project/sharedPitchRender.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/src/project/sharedPitchRender.worker.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/src/project/sharedPitchRenderWorkerRuntime.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/coreAudioBehaviors.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/nativeFxProtocol.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/sharedPitchRender.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/bench/results/browser-fx41-root-checkpoint-20261009T223440Z/** -text -whitespace
+/scripts/review-browser-fx41-checkpoint.py -text
+/docs/dsp/BROWSER_FX41_ROOT_REVIEW.md -text
+/docs/validation/20261010/browser-fx41-root-review.json -text

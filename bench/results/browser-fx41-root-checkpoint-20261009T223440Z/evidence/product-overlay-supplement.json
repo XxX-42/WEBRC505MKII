@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "supersedesForCompleteness": "product-overlay-manifest.json is retained unchanged as the original 27-row record.",
+  "additionalFiles": [
+    {
+      "path": "src/audio/nativeFxProtocol.ts",
+      "baseSha256": null,
+      "currentSha256": "cda8edd0e8ab244b14e5cd93143481fcf2eb673d2e669c3a4a348fe3187091f7",
+      "bytes": 9125
+    },
+    {
+      "path": "src/project/sharedPitchRender.ts",
+      "baseSha256": null,
+      "currentSha256": "577ca828a574f8f83b945bf51bf09f5b5bbbde2287739cac9b1dd1523590ad0a",
+      "bytes": 19847
+    },
+    {
+      "path": "src/project/sharedPitchRender.worker.ts",
+      "baseSha256": null,
+      "currentSha256": "3ea7e6e05cd9ac3254823b6358a06c50a0ec31f47e6beb3dca9e3a27fa22336e",
+      "bytes": 16510
+    },
+    {
+      "path": "src/project/sharedPitchRenderWorkerRuntime.ts",
+      "baseSha256": null,
+      "currentSha256": "204b420b12f08b28e7e528a283fbaabe342d3179ed1cdd28e2e3646d6ec9394e",
+      "bytes": 11384
+    },
+    {
+      "path": "tests/unit/nativeFxProtocol.spec.ts",
+      "baseSha256": null,
+      "currentSha256": "32f265125de25ccf4fed5f1470a5977fd001781615068fe5ccb22cbb3810fac6",
+      "bytes": 4446
+    },
+    {
+      "path": "tests/unit/sharedPitchRender.spec.ts",
+      "baseSha256": null,
+      "currentSha256": "32e8ce3cf31d14db803c37661d9f0eea44296b3402ab16fcbc517bd8af08badc",
+      "bytes": 16267
+    }
+  ],
+  "combinedOverlayCount": 33,
+  "combinedOverlayDigestSha256": "ddd1855cee0144e8bd88b066d46c427be5f32105ac30e11007eb15ab76f525ba"
+}

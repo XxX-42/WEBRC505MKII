@@ -1,0 +1,9 @@
+
+> webrc505mkii-v2@0.0.0 audio:smoke:browser
+> node scripts/browser-realtime-smoke.mjs
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+{"status":"PASS","outputFile":"D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\browser-fx41-appcheck-20261009T214000Z\\repo\\browser-realtime-smoke-20261010.json","error":null}

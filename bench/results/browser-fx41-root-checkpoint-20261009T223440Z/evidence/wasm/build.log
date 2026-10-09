@@ -1,0 +1,34 @@
+emsdk=C:\Users\user1000\AppData\Local\CodexBuildTools\emsdk-6.0.10
+emsdkCommit=35ff8a6d150541276abbc6bae512ca90bcfbe220
+compiler=emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)
+output=D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\test-results\dsp-wasm-r3-preampfix2\webrc-dsp.wasm
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\src\preamp_fx.cpp:24:18: warning: unused variable 'kPi' [-Wunused-const-variable]
+   24 | constexpr double kPi = 3.141592653589793238462643383279502884;
+      |                  ^~~
+1 warning generated.
+In file included from D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\src\temporal_fx_adapters.cpp:1:
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\include\webrc/dsp/temporal_fx_adapters.hpp:172:11: warning: private field 'tempoBpm_' is not used [-Wunused-private-field]
+  172 |     float tempoBpm_ = 120.0f;
+      |           ^
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\include\webrc/dsp/temporal_fx_adapters.hpp:173:11: warning: private field 'subdivisionBeats_' is not used [-Wunused-private-field]
+  173 |     float subdivisionBeats_ = 0.25f;
+      |           ^
+2 warnings generated.
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\src\performance_fx.cpp:11:18: warning: unused variable 'kMaxExactFrame' [-Wunused-const-variable]
+   11 | constexpr double kMaxExactFrame = 9007199254740992.0; // 2^53
+      |                  ^~~~~~~~~~~~~~
+1 warning generated.
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\src\composite_fx.cpp:10:18: warning: unused variable 'kPi' [-Wunused-const-variable]
+   10 | constexpr double kPi = 3.141592653589793238462643383279502884;
+      |                  ^~~
+1 warning generated.
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\src\fx_registry.cpp:499:17: warning: 83 enumeration values not handled in switch: 'RateHz', 'Depth', 'Feedback'... [-Wswitch]
+  499 |         switch (id) {
+      |                 ^~
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\shared\dsp\src\fx_registry.cpp:512:17: warning: 83 enumeration values not handled in switch: 'RateHz', 'Depth', 'Feedback'... [-Wswitch]
+  512 |         switch (id) {
+      |                 ^~
+2 warnings generated.
+manifest=D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\browser-fx41-wasm-r3_20261009T213000Z_preampfix2\source-snapshot\test-results\dsp-wasm-r3-preampfix2\webrc-dsp.build.json
+wasmSha256=eb567831965c6194890e602f12a0999773e04eb46f8e22b4330d1424b13017dc
+sourceSetSha256=44afa10f105ef624066ff762173e33e2caf33013d343789462faa8e043f34e0d

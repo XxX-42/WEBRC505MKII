@@ -1,0 +1,9 @@
+{
+  "result": "VERIFIED",
+  "byteLength": 743642,
+  "wasmSha256": "eb567831965c6194890e602f12a0999773e04eb46f8e22b4330d1424b13017dc",
+  "sourceSetSha256": "44afa10f105ef624066ff762173e33e2caf33013d343789462faa8e043f34e0d",
+  "sourceCount": 77,
+  "emsdkCommit": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
+  "compilerIdentity": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)"
+}

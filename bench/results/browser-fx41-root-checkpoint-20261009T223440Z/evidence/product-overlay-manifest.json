@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "7b5623822947fdd0c11f46c246c3e974dec1feab",
+  "baseArchive": {
+    "path": "source-head-7b56238.zip",
+    "sha256": "bcbeb7209c9ea5600c662afc8fd1f6111cb2542574046cc9ba0edc29ff5c09f2"
+  },
+  "overlayCount": 27,
+  "canonicalAlgorithm": "UTF-8, paths sorted by ordinal Unicode code point; each line is relative/path=lowercase-current-SHA256 followed by LF; SHA-256 over concatenated lines. baseSha256 is recorded per changed tracked file, and null for additions.",
+  "overlayDigestSha256": "46c03751d8b724e88495eec3d5dad5e76752789fa6840fdc81836daf95553ea8",
+  "overlays": [
+    {
+      "path": "public/dsp/webrc-dsp.build.json",
+      "baseSha256": "8538cb79fcb7d39b0db7f4703c49cb483ee6df86310def75d51d33a8b3310652",
+      "currentSha256": "656064487d6543d989e8986b92c8d1271858eafc022d3b30898e40c433246897",
+      "bytes": 20489
+    },
+    {
+      "path": "public/dsp/webrc-dsp.wasm",
+      "baseSha256": "45e9cb35064cef526730c0f3ca0ac11b164a9c20a03766291182a0019755af04",
+      "currentSha256": "eb567831965c6194890e602f12a0999773e04eb46f8e22b4330d1424b13017dc",
+      "bytes": 743642
+    },
+    {
+      "path": "public/worklets/looper-processor.js",
+      "baseSha256": "22a6db3835974891e2e263591238ec0652cc10973eddd2d916e3bff1c5d85dfc",
+      "currentSha256": "46a280176bdbc67644f095ce712df309418cabc842b21fd371b307bf3d12ffa9",
+      "bytes": 198982
+    },
+    {
+      "path": "public/worklets/master-fx-processor.js",
+      "baseSha256": "767ea407b79ec9c1c7d23809d9fe617eef30bcdfadba0c8079cd779d97a30c2c",
+      "currentSha256": "79156ff7c3f6d8231b505342ba9c308d1bf2b64fe2616771c1415ae12e0dd38b",
+      "bytes": 29634
+    },
+    {
+      "path": "scripts/browser-stress-32fx.mjs",
+      "baseSha256": null,
+      "currentSha256": "ea9dd5e8d39ee4fc9d250df4245dcf0f87230471003d3316440ffd948005a0a2",
+      "bytes": 36605
+    },
+    {
+      "path": "scripts/install-shared-dsp-assets.mjs",
+      "baseSha256": "5fd1c25112bc36be175ba7846cf7328cf98c926e22f7842c41417d0fb2cd8d56",
+      "currentSha256": "b48fe8a4e7468eb7a2ac35632013f3e7725ddaa7a54d9129775307e7970788e1",
+      "bytes": 4837
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "baseSha256": "2a7d1f00d5039dce1cdf05ea2a3c208822ed9b35262207489c0e235e8964808a",
+      "currentSha256": "d3da6168322bf65f7307a7fa4a6e5b703387393841ea92e04707ff01b24a471e",
+      "bytes": 9862
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+      "baseSha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803",
+      "currentSha256": "18bca738855f417a4fcd7b3a8202409aad48c87806d7ec8b41453b03a909f905",
+      "bytes": 8889
+    },
+    {
+      "path": "shared/dsp/src/fx_registry.cpp",
+      "baseSha256": "025a9ba2561ca0c7e0021b1804474884e7c5f1efbfcb986ab9097a9426f8cbbb",
+      "currentSha256": "42f379b4ad093f494496d4a7e70283abecf9f28aae7f7d487b463aff64463568",
+      "bytes": 153972
+    },
+    {
+      "path": "shared/dsp/src/performance_fx.cpp",
+      "baseSha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23",
+      "currentSha256": "f819c3daf034b2d8b44a95f5a974d0fa9faba5ea03287e901759500304fa6998",
+      "bytes": 35410
+    },
+    {
+      "path": "shared/dsp/wasm/README.md",
+      "baseSha256": "bb1ec643a2809fa5d5f283dd8bce65c71d840697504a261ddf3814d401837c9b",
+      "currentSha256": "0c7f9f11c2cd0d15274c3f49cdd7923e11a0f98c2db35dd534ea532d846ee1ed",
+      "bytes": 15850
+    },
+    {
+      "path": "shared/dsp/wasm/browser-build-pin.json",
+      "baseSha256": "f863d62718a65d0c50549db31dd2ce232a4c84f9f4bc28a2c24c7a9924033612",
+      "currentSha256": "8bce8d80b23ca8bbd87db897d8b8a5beb5b4b74d3547348a141010f9cb8a4319",
+      "bytes": 504
+    },
+    {
+      "path": "shared/dsp/wasm/build-wasm.ps1",
+      "baseSha256": "bbfdc2c8206d81ca23e2be92c0c5cff1bf75e31d4d0053c15c96530cad1751c3",
+      "currentSha256": "b34ddc1c2c334cce37bfaa21c51dd04a947dc3fc4f3382f8b1a2e2a01720b10d",
+      "bytes": 15230
+    },
+    {
+      "path": "shared/dsp/wasm/tests/dsp-wasm-worklet-processor.js",
+      "baseSha256": "1bb767db4ee86963a1ff01ee7161c5fd2955db822e3d76931d05fcd0a12fc35c",
+      "currentSha256": "885af2dc7a3dcd552ed84f655d2a9dc3cd020e3f992f4d8c38859ed32db18f16",
+      "bytes": 9109
+    },
+    {
+      "path": "shared/dsp/wasm/tests/fx-registry-smoke.mjs",
+      "baseSha256": "c1ddf6ede396801a6126e2bd123818adad37270d7211222b817bca6710ec49a3",
+      "currentSha256": "7e2953c1cf0e3cf2b9bc660c055e4120d2f5ae62ed7026ca0ede84229f5573f5",
+      "bytes": 28137
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke-page.js",
+      "baseSha256": "6277f58a3ec538f7e9601eef850afb2362880681fb3069eb1c32ffcbeafba84a",
+      "currentSha256": "0f6bc01d0b085464cf4c4e394e1cf9aeda879b8ffe6363f3e273a3621475879a",
+      "bytes": 8492
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.html",
+      "baseSha256": "c1c13e2ffea56074ef4d5b1ce57bd34e1ec6efaef60b14d45ab3cb8f93568dc1",
+      "currentSha256": "d64fecd639b00e55f328279f645859fc527931332ae8b769e9411f44c50fce61",
+      "bytes": 430
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.mjs",
+      "baseSha256": "3433d1bad4f36b3a85f1c170ef3633f4b3854f083ecd1c599eb55fa99c613355",
+      "currentSha256": "d4e98d1fc8f33904822766b2fea86f41485c1b74d073a91d40bfd8a51921622e",
+      "bytes": 21503
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.cpp",
+      "baseSha256": "af70e599c4d860cd32a8d54049d61befc778849a77d5ee32e83d55cb47b1313c",
+      "currentSha256": "77434b7d3b1900c5ff3698fc99868e2a1411781dbd3521e8694ef491eeab8cbf",
+      "bytes": 19889
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.h",
+      "baseSha256": "62f8d44607d2732a3b54d924afbb11a17f11751bedda0fa30503dcd6f0053e1a",
+      "currentSha256": "7b2dc4cb407727ad8ccea06b3484f819df7650e95d53c5d933f1463661159d29",
+      "bytes": 5478
+    },
+    {
+      "path": "src/audio/BrowserAudioEngine.ts",
+      "baseSha256": "5129cac9bdb28a6f59dbe60401e030180b36707d2ec85132ebebd831b8f60260",
+      "currentSha256": "75eadfebb46c97fabedd73c32ddebaf82f6c77f4e2eecb11ba9a80d266e4afcd",
+      "bytes": 106410
+    },
+    {
+      "path": "src/audio/sharedDspGraph.ts",
+      "baseSha256": "959acc5a4a47714567d2254cfeea2fceb7435d44defa503516e6f3fcb15f6615",
+      "currentSha256": "244410bab927f4641b823432d3675749bab30c316dbba1808d657ec56f530b6f",
+      "bytes": 19237
+    },
+    {
+      "path": "tests/unit/browserFxTransactions.spec.ts",
+      "baseSha256": "2d5c662090cfa1bdb36d02e9f22901649cb82243ea1b1ed26d0649476492b93c",
+      "currentSha256": "5052a1aa3ab9f1ec23a2c7b25e74a4bbca7d3b2660bf406fa7ba43a34ac3fa0a",
+      "bytes": 23429
+    },
+    {
+      "path": "tests/unit/coreAudioBehaviors.spec.ts",
+      "baseSha256": "4cf25156b3be3a2116c30d21d343d26d92f76dc7708af760cdfca8e932cc105f",
+      "currentSha256": "502f07b67de754bf66be3cd915b824e0de87108258d0e2b971890e1d94b67b81",
+      "bytes": 29408
+    },
+    {
+      "path": "tests/unit/masterFxWorklet.spec.ts",
+      "baseSha256": "2a88486a0eeb78468bc2653dc023c7f608c68f7a489070aae7cf9e32e1c97bcf",
+      "currentSha256": "3d008a4641dcf3e2524e4f894f3479aedd4d52be56337f8144b62fc7bea17d9f",
+      "bytes": 29106
+    },
+    {
+      "path": "tests/unit/sharedDspGraph.spec.ts",
+      "baseSha256": "96042478c0c321ef7389efea72487b20d630d654ee3bf1586218a6649ff1b837",
+      "currentSha256": "f7314cc3da1edb3341bdc0049822b2963a666677df0ac86b29c10e8f40c00fff",
+      "bytes": 4776
+    },
+    {
+      "path": "tests/unit/stereoWorklet.spec.ts",
+      "baseSha256": "49a8d68dee8db5490c593d21e3cf8d1a0c676909637fd1550c2d103ea52a8c60",
+      "currentSha256": "4860cb75a0443c881c7b76e5363cb9f64bc4f9bd6a7e176a66e5397711a80e3d",
+      "bytes": 62833
+    }
+  ],
+  "captureManifest": {
+    "path": "repo/bench/results/browser-fx41-product-source-capture-20261010T064000Z/snapshot-manifest.json",
+    "sha256": "b7effe112e833e426e97031c40de09c2eb593f30df05056e604fdc72dac08172"
+  }
+}

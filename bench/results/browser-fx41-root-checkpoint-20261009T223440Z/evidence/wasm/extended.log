@@ -1,0 +1,141 @@
+{
+  "suite": "shared-dsp-wasm-extended-smoke",
+  "wasmSha256": "eb567831965c6194890e602f12a0999773e04eb46f8e22b4330d1424b13017dc",
+  "sourceSetSha256": "44afa10f105ef624066ff762173e33e2caf33013d343789462faa8e043f34e0d",
+  "extendedKindsCreated": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    126,
+    127
+  ],
+  "streamingRatioProbe": [
+    {
+      "ratio": 0.5,
+      "phaseRad": 0.37,
+      "expectedHz": 110,
+      "rms": 0.2121137554568134,
+      "targetProjectionPeak": 0.2999647295695788
+    },
+    {
+      "ratio": 0.5,
+      "phaseRad": 3.5115926535897932,
+      "expectedHz": 110,
+      "rms": 0.2121137554568134,
+      "targetProjectionPeak": 0.2999647295695788
+    },
+    {
+      "ratio": 0.75,
+      "phaseRad": 0.37,
+      "expectedHz": 165,
+      "rms": 0.21253454518504247,
+      "targetProjectionPeak": 0.3011388363151167
+    },
+    {
+      "ratio": 0.75,
+      "phaseRad": 3.5115926535897932,
+      "expectedHz": 165,
+      "rms": 0.21253454518504247,
+      "targetProjectionPeak": 0.3011388363151167
+    },
+    {
+      "ratio": 1,
+      "phaseRad": 0.37,
+      "expectedHz": 220,
+      "rms": 0.21213203459559588,
+      "targetProjectionPeak": 0.3000000003388874
+    },
+    {
+      "ratio": 1,
+      "phaseRad": 3.5115926535897932,
+      "expectedHz": 220,
+      "rms": 0.21213203459559588,
+      "targetProjectionPeak": 0.3000000003388874
+    },
+    {
+      "ratio": 1.25,
+      "phaseRad": 0.37,
+      "expectedHz": 275,
+      "rms": 0.21188505035292338,
+      "targetProjectionPeak": 0.2992844391594343
+    },
+    {
+      "ratio": 1.25,
+      "phaseRad": 3.5115926535897932,
+      "expectedHz": 275,
+      "rms": 0.21188505035292338,
+      "targetProjectionPeak": 0.2992844391594343
+    },
+    {
+      "ratio": 1.5,
+      "phaseRad": 0.37,
+      "expectedHz": 330,
+      "rms": 0.21213149308200718,
+      "targetProjectionPeak": 0.2999800031444192
+    },
+    {
+      "ratio": 1.5,
+      "phaseRad": 3.5115926535897932,
+      "expectedHz": 330,
+      "rms": 0.21213149308200718,
+      "targetProjectionPeak": 0.2999800031444192
+    },
+    {
+      "ratio": 2,
+      "phaseRad": 0.37,
+      "expectedHz": 440,
+      "rms": 0.21210419283145013,
+      "targetProjectionPeak": 0.29990375916267353
+    },
+    {
+      "ratio": 2,
+      "phaseRad": 3.5115926535897932,
+      "expectedHz": 440,
+      "rms": 0.21210419283145013,
+      "targetProjectionPeak": 0.29990375916267353
+    }
+  ],
+  "pitchProbe": {
+    "incrementalYinInputHz": 220,
+    "incrementalYinEstimatedHz": 220.0019989013672,
+    "incrementalAnalysisCount": "10",
+    "incrementalFirstEstimateFrames": "5248",
+    "incrementalLastWorkUnits": 32768,
+    "incrementalWorkBudget": 32768,
+    "liveMonoInputHz": 55,
+    "liveMonoDetectedHz": 54.99992752075195,
+    "liveMonoOutputZeroCrossingHz": 82.03125,
+    "liveMonoDeclaredWindowPlusResynthesisFrames": "7696",
+    "liveMonoFirstEstimateFrames": "5248",
+    "liveMonoProcessingLagFrames": 960,
+    "liveMonoEstimateAgeFrames": 1088,
+    "liveMonoLatencyModel": 2
+  },
+  "capabilities": 7,
+  "memoryBytes": 67108864,
+  "wasiCalls": {
+    "fd_close": 0,
+    "fd_write": 0,
+    "fd_seek": 0
+  },
+  "result": "PASS"
+}
