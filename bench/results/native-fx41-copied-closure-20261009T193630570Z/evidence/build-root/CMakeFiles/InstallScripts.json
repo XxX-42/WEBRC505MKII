@@ -1,0 +1,12 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/user1000/AppData/Local/Temp/webrc-native-fx41-copied-20261010T034000Z/cmake_install.cmake",
+		"C:/Users/user1000/AppData/Local/Temp/webrc-native-fx41-copied-20261010T034000Z/shared_dsp/cmake_install.cmake",
+		"C:/Users/user1000/AppData/Local/Temp/webrc-native-fx41-copied-20261010T034000Z/_deps/rtaudio_src-build/cmake_install.cmake",
+		"C:/Users/user1000/AppData/Local/Temp/webrc-native-fx41-copied-20261010T034000Z/_deps/rtaudio_src-build/tests/cmake_install.cmake",
+		"C:/Users/user1000/AppData/Local/Temp/webrc-native-fx41-copied-20261010T034000Z/_deps/httplib_src-build/cmake_install.cmake",
+		"C:/Users/user1000/AppData/Local/Temp/webrc-native-fx41-copied-20261010T034000Z/_deps/json_src-build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

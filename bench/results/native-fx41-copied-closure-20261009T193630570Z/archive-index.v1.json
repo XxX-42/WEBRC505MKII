@@ -1,0 +1,19 @@
+{
+  "schema": "native-fx41-archive-index-v1",
+  "createdAtUtc": "2026-10-09T19:50:20.3959932Z",
+  "sourceManifest": "source-manifest.v2.json",
+  "sourceManifestSha256": "a39fbc172673e73d05254b9ad93d6521b957c2edd6593214594fce83b04f3dbf",
+  "sourceSetSha256": "292d9ec0dbf6c51b11b37829ca5e5398adda8c88b1e16b3688a1fa4aa211273e",
+  "compilerClosure": "evidence/compiler-closure.v2.json",
+  "compilerClosureSha256": "078397969b50e4b8836f7f2b11e81136c3a22f5faea4d11a4f7e51c66e87f4df",
+  "buildRootManifest": "evidence/build-root-manifest.json",
+  "buildRootTreeSha256": "6f5f6238ef7ab68a7cb3c3f8389d2ef31d9d164269190c4ed02b1d71923560cd",
+  "buildRootFiles": 896,
+  "actualCompiledTranslationUnits": 66,
+  "uniqueCompilerDependencies": 478,
+  "ctest": "28/28 PASS, 17.17s incremental final run",
+  "sha256List": "archive-files.sha256.txt",
+  "filesInShaList": 3218,
+  "archiveTreeSha256": "739861186942d3c776ea06229dbb99e29fdb0aeb062083e12e6afa7463a03386",
+  "canonicalization": "archive-relative UTF-8 slash path sorted with .NET StringComparer.Ordinal; path=lowercase SHA-256; LF-separated, no trailing LF; archive-files.sha256.txt and archive-index.v1.json excluded"
+}

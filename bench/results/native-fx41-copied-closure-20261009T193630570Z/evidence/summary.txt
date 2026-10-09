@@ -1,0 +1,8 @@
+Copied-source Native FX registry verification.
+Source manifest: source-manifest.v2.json (SHA a39fbc172673e73d05254b9ad93d6521b957c2edd6593214594fce83b04f3dbf; tree 292d9ec0dbf6c51b11b37829ca5e5398adda8c88b1e16b3688a1fa4aa211273e; 1415 files)
+Copied Native CMake build: C:\Users\user1000\AppData\Local\Temp\webrc-native-fx41-copied-20261010T034000Z
+Toolchain: VS2019 toolset 14.29.30133; cl 19.29.30159.0; CMake/NMake Makefiles; Release /O2 /Ob2 /DNDEBUG /MD /std:c++17.
+Built translation units: 66; CMake-generated but not built command records: 13; dependency scanner translation units: 66; unique existing files in compiler dependency records: 478, unresolved: 0.
+Unmapped CMake/compiler test objects: 2 (compiler-id/show-includes helper outputs).
+Unfiltered CTest: 28/28 PASS. Logs: evidence/native-build-ctest.log and evidence/native-build-ctest-incremental.log.
+All .obj/.exe/.lib and generated CMake files are preserved under evidence/build-root.

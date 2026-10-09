@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-10-09T19:57:15.614734+00:00",
+  "result": "41-NATIVE-FUNCTIONAL-FACTORY-AND-COPIED-BUILD-PASS; FULL-QUALIFICATION-NOT-PASSED",
+  "archive": "bench/results/native-fx41-copied-closure-20261009T193630570Z",
+  "archivePayloadFilesVerified": 3218,
+  "archiveIndexSha256": "ac0a851338839d3b7b296fb1b7526f318bb2b414d21b3b84343a4d3196a14d30",
+  "archiveTreeSha256": "739861186942d3c776ea06229dbb99e29fdb0aeb062083e12e6afa7463a03386",
+  "sourceFilesVerified": 1415,
+  "sourceSetSha256": "292d9ec0dbf6c51b11b37829ca5e5398adda8c88b1e16b3688a1fa4aa211273e",
+  "compilerClosureSha256": "078397969b50e4b8836f7f2b11e81136c3a22f5faea4d11a4f7e51c66e87f4df",
+  "actualCompiledTranslationUnits": 66,
+  "actualCompiledTranslationUnitsMatchLiveRepository": true,
+  "compilerDependencyInputsRehashed": 478,
+  "configuredButUnbuiltCommands": 13,
+  "unmappedBuildObjects": [
+    {
+      "path": "CMakeFiles/4.4.2/CompilerIdCXX/CMakeCXXCompilerId.obj",
+      "bytes": 2054,
+      "sha256": "d4133903f846f7752a0b90ac9d3ede2dfbdd4438fbd269bf451c349a4b843749"
+    },
+    {
+      "path": "CMakeFiles/ShowIncludes/main.obj",
+      "bytes": 674,
+      "sha256": "03f5393bcb7c0dddf21f7602707beabff745039290bdd1ccfca3400bf77e32b2"
+    }
+  ],
+  "rootUnfilteredCTest": {
+    "exitCodePreviouslyVerified": 0,
+    "testsPassed": 28,
+    "tests": [
+      "looper_core_tests",
+      "native_multitrack_core_tests",
+      "native_track_host_tests",
+      "native_fx_graph_tests",
+      "dsp_primitives_tests",
+      "control_dynamics_tests",
+      "nonlinear_tests",
+      "spatial_temporal_tests",
+      "pitch_tests",
+      "pitch_profiles_tests",
+      "streaming_yin_tests",
+      "live_mono_pitch_tests",
+      "fx_registry_tests",
+      "performance_fx_tests",
+      "modulation_fx_tests",
+      "rhythm_tests",
+      "composite_fx_tests",
+      "modulated_delay_fx_tests",
+      "rhythmic_fx_tests",
+      "spatial_fx_adapters_tests",
+      "preamp_fx_tests",
+      "preamp_models_tests",
+      "distortion_fx_tests",
+      "octave_fx_tests",
+      "octave_models_tests",
+      "temporal_fx_adapters_tests",
+      "reconstruction_fx_adapter_tests",
+      "apinames"
+    ],
+    "reusedCapturedLogAfterCTest4SummaryParserCorrection": true
+  },
+  "archiveUnchangedAfterRootCTest": true,
+  "limitations": [
+    "ProcessorAvailable is functional construction/process availability, not official-control, algorithm-quality, or whole-graph realtime qualification.",
+    "Native 41 extends the earlier32 with PREAMP model23, DIST24, functional OCTAVE28 and Temporal40-45; twelve factory ordinals remain unavailable.",
+    "New OCTAVE runtime remains the earlier functional phase-vocoder candidate with unresolved quality limitations; the experimental Signalsmith candidate is not substituted.",
+    "PREAMP startup bound hardcodes 48-kHz far-mic reflection168; high-rate conservative warmup needs a subsequent revision.",
+    "WASM initial PREAMP selectors and candidate stack usage require separate integration/probe; Browser public assets still implement32.",
+    "Compiler dependencies were hashed after the producer build and rehashed at review; this is not a retroactive before-build external-SDK snapshot.",
+    "toolchain.vcvarsPath is malformed metadata under cl.exe; actual compiler and build log/tool binary hashes are preserved.",
+    "Source manifest v1 locale-sorted aggregate is explicitly provisional; v2 ordinal digest is verified.",
+    "No complete Native30-minute stress, cross-runtime41 parity, final audio-quality gate, or hardware E2E latency pass is claimed."
+  ]
+}

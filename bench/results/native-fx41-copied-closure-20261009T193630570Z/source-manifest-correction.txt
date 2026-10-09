@@ -1,0 +1,4 @@
+The original source-manifest.json and README.txt are preserved as provisional bytes. The original aggregate was computed with culture-sensitive PowerShell sorting despite claiming ordinal ordering. Use source-manifest.v2.json for source-set canonicalization; it recomputes every copied file's length and SHA-256, sorts by .NET StringComparer.Ordinal, and records the verified corrected digest. No source snapshot file changed.
+Corrected UTC: 2026-10-09T19:47:16.7627919Z
+Corrected sourceSetSha256: 292d9ec0dbf6c51b11b37829ca5e5398adda8c88b1e16b3688a1fa4aa211273e
+Corrected fileCount: 1415
