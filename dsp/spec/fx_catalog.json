@@ -1,0 +1,2227 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceCsv": "dsp/spec/source/fx_algorithm_matrix.csv",
+  "sourceCsvSha256": "ee53f9034354fbdabbe8adedbceb482d131f3cec696fe295e6e12d498b1b0193",
+  "officialScope": "53 Track FX, of which 49 are also available as Input FX; four are Track-only.",
+  "effects": [
+    {
+      "id": "rc505mkii.fx.lpf",
+      "ordinal": 1,
+      "officialDisplayName": "LPF",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Filter",
+      "researchFunctionalModel": "TPT state-variable low-pass; parameter-smoothed cutoff/Q",
+      "recommendedNativeArchitecture": "TPT-SVF, scalar/SIMD stereo; optional 2x control-rate coefficient update",
+      "recommendedBrowserArchitecture": "WASM TPT-SVF inside one AudioWorklet; update coefficients per 8–16 samples",
+      "formulaIds": [
+        "F01",
+        "F03"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Official function; implementation topology is a reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "filter"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.bpf",
+      "ordinal": 2,
+      "officialDisplayName": "BPF",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Filter",
+      "researchFunctionalModel": "TPT state-variable band-pass",
+      "recommendedNativeArchitecture": "TPT-SVF BP output",
+      "recommendedBrowserArchitecture": "Same WASM TPT-SVF BP output",
+      "formulaIds": [
+        "F01",
+        "F03"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Official function; reconstructed topology",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "filter"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.hpf",
+      "ordinal": 3,
+      "officialDisplayName": "HPF",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Filter",
+      "researchFunctionalModel": "TPT state-variable high-pass",
+      "recommendedNativeArchitecture": "TPT-SVF HP output",
+      "recommendedBrowserArchitecture": "Same WASM TPT-SVF HP output",
+      "formulaIds": [
+        "F01",
+        "F03"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Official function; reconstructed topology",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "filter"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.phaser",
+      "ordinal": 4,
+      "officialDisplayName": "PHASER",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Modulation",
+      "researchFunctionalModel": "4/8/12 cascaded first-order all-pass sections; dual opposing sweeps for BI-PHASE",
+      "recommendedNativeArchitecture": "8–12 all-pass stages, oversampled coefficient modulation, feedback saturation",
+      "recommendedBrowserArchitecture": "4–8 stages default; 12 stages only after runtime admission test",
+      "formulaIds": [
+        "F01",
+        "F04",
+        "F06"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Stage choices follow official parameters; coefficients/topology reconstructed",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "phaser"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.flanger",
+      "ordinal": 5,
+      "officialDisplayName": "FLANGER",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Modulated delay",
+      "researchFunctionalModel": "0.2–10 ms fractional delay with LFO, feedback and optional through-zero offset",
+      "recommendedNativeArchitecture": "4-point Lagrange fractional delay; filtered/saturated feedback",
+      "recommendedBrowserArchitecture": "4-point Lagrange in WASM; cap feedback and voices under load",
+      "formulaIds": [
+        "F01",
+        "F05",
+        "F06",
+        "F14"
+      ],
+      "researchLatencyEstimate": "<1 sample interpolation; audible delay is intentional",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.synth",
+      "ordinal": 6,
+      "officialDisplayName": "SYNTH",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pitch/synthesis",
+      "researchFunctionalModel": "Onset/envelope follower + monophonic F0 tracker + polyBLEP oscillator/sub oscillator + resonant filter",
+      "recommendedNativeArchitecture": "YIN/pYIN tracker; polyBLEP oscillators; TPT ladder/SVF",
+      "recommendedBrowserArchitecture": "YIN at decimated control rate; polyBLEP + TPT-SVF in WASM",
+      "formulaIds": [
+        "F03",
+        "F06",
+        "F10",
+        "F27"
+      ],
+      "researchLatencyEstimate": "Tracker frame 5–20 ms",
+      "evidenceStatusFromSource": "Official macro parameters known; synth topology inferred",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.lo-fi",
+      "ordinal": 7,
+      "officialDisplayName": "LO-FI",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Lo-fi",
+      "researchFunctionalModel": "Sample-rate hold, bit-depth quantization, optional post low-pass",
+      "recommendedNativeArchitecture": "Integer/fractional sample hold + TPDF dithered quantizer",
+      "recommendedBrowserArchitecture": "Same; extremely cheap in WASM",
+      "formulaIds": [
+        "F28"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.radio",
+      "ordinal": 8,
+      "officialDisplayName": "RADIO",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Lo-fi",
+      "researchFunctionalModel": "Band-limit + static/nonlinear saturation + noise/dropout",
+      "recommendedNativeArchitecture": "HPF/LPF biquads + 2x ADAA waveshaper + colored noise",
+      "recommendedBrowserArchitecture": "TPT/biquad + ADAA at 1x or 2x depending device tier",
+      "formulaIds": [
+        "F02",
+        "F07",
+        "F28"
+      ],
+      "researchLatencyEstimate": "0–16 samples if oversampled",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.ring-mod",
+      "ordinal": 9,
+      "officialDisplayName": "RING.MOD",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Modulation",
+      "researchFunctionalModel": "Four-quadrant multiplication by sine/triangle carrier",
+      "recommendedNativeArchitecture": "Quadrature recursive oscillator; optional DC blocking",
+      "recommendedBrowserArchitecture": "Same in WASM; AudioParam only supplies smoothed control values",
+      "formulaIds": [
+        "F01",
+        "F06",
+        "F29"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Standard ring-mod reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.g2b",
+      "ordinal": 10,
+      "officialDisplayName": "G2B",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pitch",
+      "researchFunctionalModel": "Monophonic tracking + octave-down resynthesis/divider blend + formant/body filtering",
+      "recommendedNativeArchitecture": "YIN + TD-PSOLA at -12 semitones, blended with square-wave divider and body EQ",
+      "recommendedBrowserArchitecture": "YIN decimated + WSOLA/PSOLA-lite; quality tier can disable divider blend",
+      "formulaIds": [
+        "F09",
+        "F10",
+        "F11"
+      ],
+      "researchLatencyEstimate": "5–20 ms",
+      "evidenceStatusFromSource": "Guitar-to-bass function official; exact topology inferred",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.sustainer",
+      "ordinal": 11,
+      "officialDisplayName": "SUSTAINER",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Dynamics",
+      "researchFunctionalModel": "Upward/downward compression, noise gate and safety limiter",
+      "recommendedNativeArchitecture": "Dual detector feed-forward compressor; 1 ms lookahead limiter",
+      "recommendedBrowserArchitecture": "No lookahead by default; optional 0.5 ms lookahead in WASM ring buffer",
+      "formulaIds": [
+        "F01",
+        "F08"
+      ],
+      "researchLatencyEstimate": "0–1 ms",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.auto-riff",
+      "ordinal": 12,
+      "officialDisplayName": "AUTO RIFF",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pitch/sequencer",
+      "researchFunctionalModel": "Detect F0/onsets, quantize to scale, drive rhythm-locked pitch sequence",
+      "recommendedNativeArchitecture": "YIN/pYIN + onset detector + TD-PSOLA/phase-vocoder voice",
+      "recommendedBrowserArchitecture": "Decimated YIN + cheaper WSOLA/Signalsmith Web tier",
+      "formulaIds": [
+        "F09",
+        "F10",
+        "F11",
+        "F12",
+        "F20",
+        "F27"
+      ],
+      "researchLatencyEstimate": "10–40 ms",
+      "evidenceStatusFromSource": "Pattern behavior official; internal note extraction inferred",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.slow-gear",
+      "ordinal": 13,
+      "officialDisplayName": "SLOW GEAR",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Envelope",
+      "researchFunctionalModel": "Onset-triggered attack envelope that suppresses pick transient",
+      "recommendedNativeArchitecture": "Spectral-flux/energy onset detector + exponential or raised-cosine ramp",
+      "recommendedBrowserArchitecture": "Block energy onset detector + raised-cosine ramp",
+      "formulaIds": [
+        "F01",
+        "F27"
+      ],
+      "researchLatencyEstimate": "0 samples; attack is intentional",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.transpose",
+      "ordinal": 14,
+      "officialDisplayName": "TRANSPOSE",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pitch",
+      "researchFunctionalModel": "Constant-ratio pitch shift with optional formant compensation",
+      "recommendedNativeArchitecture": "Polyphonic: Signalsmith/Rubber Band; monophonic: YIN + TD-PSOLA",
+      "recommendedBrowserArchitecture": "Signalsmith Web WASM/AudioWorklet; cheaper preset under pressure",
+      "formulaIds": [
+        "F09",
+        "F10",
+        "F11",
+        "F12"
+      ],
+      "researchLatencyEstimate": "Native 14–43 ms for tested Rubber Band modes; browser device-dependent",
+      "evidenceStatusFromSource": "Function official; algorithm selected by material",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.pitch-bend",
+      "ordinal": 15,
+      "officialDisplayName": "PITCH BEND",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pitch",
+      "researchFunctionalModel": "Time-varying semitone envelope into streaming pitch shifter/resampler",
+      "recommendedNativeArchitecture": "Monophonic PSOLA for voice; Signalsmith for polyphonic content; smooth bend trajectory",
+      "recommendedBrowserArchitecture": "Signalsmith Web cheaper/default tier; clamp derivative to avoid zippering",
+      "formulaIds": [
+        "F01",
+        "F09",
+        "F11",
+        "F12"
+      ],
+      "researchLatencyEstimate": "Algorithm dependent",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.robot",
+      "ordinal": 16,
+      "officialDisplayName": "ROBOT",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Voice",
+      "researchFunctionalModel": "Force F0 to fixed/quantized pitch while retaining or shifting formants",
+      "recommendedNativeArchitecture": "YIN + PSOLA fixed period; phase-vocoder fallback for polyphonic/unstable F0",
+      "recommendedBrowserArchitecture": "PSOLA-lite with voiced/unvoiced gate; fallback granular vocoder",
+      "formulaIds": [
+        "F09",
+        "F10",
+        "F11",
+        "F12"
+      ],
+      "researchLatencyEstimate": "10–30 ms",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.electric",
+      "ordinal": 17,
+      "officialDisplayName": "ELECTRIC",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Voice character",
+      "researchFunctionalModel": "Hard pitch quantization plus metallic ring/vocoder/bit-crush macro",
+      "recommendedNativeArchitecture": "Pitch snap + ring modulation + formant/filter macro; scene presets",
+      "recommendedBrowserArchitecture": "Same modules with one active character path at a time",
+      "formulaIds": [
+        "F03",
+        "F09",
+        "F10",
+        "F13",
+        "F28",
+        "F29"
+      ],
+      "researchLatencyEstimate": "10–30 ms",
+      "evidenceStatusFromSource": "Exact Roland topology is not public; this is a perceptual reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.hrm-manual",
+      "ordinal": 18,
+      "officialDisplayName": "HRM MANUAL",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Harmony",
+      "researchFunctionalModel": "One or more fixed-interval pitch-shift voices with formant and pan control",
+      "recommendedNativeArchitecture": "YIN + TD-PSOLA per voice; phase-vocoder/Signalsmith fallback",
+      "recommendedBrowserArchitecture": "Maximum two live harmony voices by default; Signalsmith/PSOLA WASM",
+      "formulaIds": [
+        "F09",
+        "F10",
+        "F11",
+        "F12",
+        "F21"
+      ],
+      "researchLatencyEstimate": "10–40 ms",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.hrm-auto-m",
+      "ordinal": 19,
+      "officialDisplayName": "HRM AUTO (M)",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Harmony/MIDI",
+      "researchFunctionalModel": "MIDI chord/note parsing, voice assignment, diatonic interval selection and pitch shifts",
+      "recommendedNativeArchitecture": "Lock-free MIDI event queue + PSOLA/Signalsmith voices",
+      "recommendedBrowserArchitecture": "Timestamped MIDI messages delivered to AudioWorklet; 1–2 voices",
+      "formulaIds": [
+        "F09",
+        "F11",
+        "F12",
+        "F20",
+        "F21"
+      ],
+      "researchLatencyEstimate": "Pitch engine dependent",
+      "evidenceStatusFromSource": "MIDI-based behavior is official; voicing algorithm reconstructed",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.vocoder",
+      "ordinal": 20,
+      "officialDisplayName": "VOCODER",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Vocoder",
+      "researchFunctionalModel": "ERB/log-spaced analysis filterbank, envelope followers and carrier synthesis",
+      "recommendedNativeArchitecture": "24-band TPT filterbank; 1024/256 STFT mode for HQ",
+      "recommendedBrowserArchitecture": "16-band TPT default; 24-band only if admission test passes",
+      "formulaIds": [
+        "F01",
+        "F03",
+        "F13"
+      ],
+      "researchLatencyEstimate": "Filterbank 0 samples; STFT mode ~16 ms",
+      "evidenceStatusFromSource": "Standard vocoder reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.osc-voc-m",
+      "ordinal": 21,
+      "officialDisplayName": "OSC VOC (M)",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Vocoder/MIDI",
+      "researchFunctionalModel": "MIDI-controlled anti-aliased oscillator carrier through vocoder analysis envelopes",
+      "recommendedNativeArchitecture": "PolyBLEP saw/square, 24-band filterbank, stereo unison optional",
+      "recommendedBrowserArchitecture": "PolyBLEP carrier, 16-band default, voice cap",
+      "formulaIds": [
+        "F03",
+        "F06",
+        "F13",
+        "F20"
+      ],
+      "researchLatencyEstimate": "0–16 ms",
+      "evidenceStatusFromSource": "MIDI behavior official; carrier design reconstructed",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.osc-bot",
+      "ordinal": 22,
+      "officialDisplayName": "OSC BOT",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Voice/synthesis",
+      "researchFunctionalModel": "Oscillator-bank robot voice with envelope, step pattern and resonant filter",
+      "recommendedNativeArchitecture": "polyBLEP oscillator + formant filterbank + step sequencer",
+      "recommendedBrowserArchitecture": "Same with fewer bands/voices",
+      "formulaIds": [
+        "F03",
+        "F06",
+        "F13",
+        "F20",
+        "F27"
+      ],
+      "researchLatencyEstimate": "0–16 ms",
+      "evidenceStatusFromSource": "Exact topology not public; perceptual reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.preamp",
+      "ordinal": 23,
+      "officialDisplayName": "PREAMP",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Amp simulation",
+      "researchFunctionalModel": "Input conditioning, triode/diode nonlinear stages, tone stack and cabinet response",
+      "recommendedNativeArchitecture": "4x oversampled WDF/VA stages + state-space tone stack + short/partitioned cabinet IR",
+      "recommendedBrowserArchitecture": "2x oversampled WDF/ADAA + minimum-phase 128–256 tap cabinet FIR",
+      "formulaIds": [
+        "F02",
+        "F07",
+        "F18",
+        "F23"
+      ],
+      "researchLatencyEstimate": "Native 16–128 samples; browser 16–64 samples",
+      "evidenceStatusFromSource": "Amp style names official; circuit is a clean-room approximation",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.dist",
+      "ordinal": 24,
+      "officialDisplayName": "DIST",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Nonlinear",
+      "researchFunctionalModel": "Preset-dependent overdrive/fuzz/metal waveshaping with pre/post EQ and anti-aliasing",
+      "recommendedNativeArchitecture": "4x oversampling + WDF/ADAA; 8x optional render mode",
+      "recommendedBrowserArchitecture": "2x oversampling + ADAA/WDF default; 4x only high-tier devices",
+      "formulaIds": [
+        "F02",
+        "F07",
+        "F23"
+      ],
+      "researchLatencyEstimate": "Filter delay 8–64 samples",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.dynamics",
+      "ordinal": 25,
+      "officialDisplayName": "DYNAMICS",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Dynamics",
+      "researchFunctionalModel": "Compressor/limiter/noise-suppressor preset macros",
+      "recommendedNativeArchitecture": "Peak/RMS dual detector, log soft knee, optional 0.5–2 ms lookahead",
+      "recommendedBrowserArchitecture": "Same in WASM; no lookahead on low-latency tier",
+      "formulaIds": [
+        "F01",
+        "F08"
+      ],
+      "researchLatencyEstimate": "0–2 ms",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "compressor"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.eq",
+      "ordinal": 26,
+      "officialDisplayName": "EQ",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "EQ",
+      "researchFunctionalModel": "Low/high shelves plus two peaking sections",
+      "recommendedNativeArchitecture": "RBJ DF2T biquads; double-precision coefficient calculation, float processing",
+      "recommendedBrowserArchitecture": "WASM DF2T; coefficient interpolation/smoothing",
+      "formulaIds": [
+        "F01",
+        "F02"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Direct implementation of published EQ behavior",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "filter"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.isolator",
+      "ordinal": 27,
+      "officialDisplayName": "ISOLATOR",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Multiband/gate",
+      "researchFunctionalModel": "3-band crossover, independent gain/cut and tempo-synced gating",
+      "recommendedNativeArchitecture": "TPT/Linkwitz–Riley 4th-order crossover; smoothed band gains",
+      "recommendedBrowserArchitecture": "TPT crossover; control-rate sequencer in Worklet",
+      "formulaIds": [
+        "F01",
+        "F03",
+        "F16",
+        "F20"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.octave",
+      "ordinal": 28,
+      "officialDisplayName": "OCTAVE",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pitch",
+      "researchFunctionalModel": "Mix -24/-12/+12 octave voices with formant and tracking controls",
+      "recommendedNativeArchitecture": "Monophonic PSOLA for voice/instrument; Signalsmith for complex input",
+      "recommendedBrowserArchitecture": "PSOLA-lite/Signalsmith Web; limit simultaneous voices",
+      "formulaIds": [
+        "F09",
+        "F10",
+        "F11",
+        "F12"
+      ],
+      "researchLatencyEstimate": "10–40 ms",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.auto-pan",
+      "ordinal": 29,
+      "officialDisplayName": "AUTO PAN",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pan modulation",
+      "researchFunctionalModel": "Equal-power stereo pan driven by LFO/tempo sync",
+      "recommendedNativeArchitecture": "Per-sample or 16-sample-ramped equal-power gains",
+      "recommendedBrowserArchitecture": "Same; cheap WASM kernel",
+      "formulaIds": [
+        "F01",
+        "F06",
+        "F21"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.manual-pan",
+      "ordinal": 30,
+      "officialDisplayName": "MANUAL PAN",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Pan",
+      "researchFunctionalModel": "Equal-power pan controlled by knob/assign/pedal",
+      "recommendedNativeArchitecture": "Smoothed equal-power gains",
+      "recommendedBrowserArchitecture": "Same in WASM",
+      "formulaIds": [
+        "F01",
+        "F21"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.stereo-enhance",
+      "ordinal": 31,
+      "officialDisplayName": "STEREO ENHANCE",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Stereo",
+      "researchFunctionalModel": "Mid/side width, frequency-selective side gain and all-pass decorrelation",
+      "recommendedNativeArchitecture": "M/S matrix + low-frequency mono protection + decorrelating APF",
+      "recommendedBrowserArchitecture": "M/S + one/two APF sections; correlation safety limiter",
+      "formulaIds": [
+        "F01",
+        "F04",
+        "F22"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.tremolo",
+      "ordinal": 32,
+      "officialDisplayName": "TREMOLO",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Amplitude modulation",
+      "researchFunctionalModel": "Amplitude LFO with waveform/depth/tempo sync",
+      "recommendedNativeArchitecture": "Band-limited LFO; smoothed depth",
+      "recommendedBrowserArchitecture": "Same; negligible cost",
+      "formulaIds": [
+        "F01",
+        "F06"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.vibrato",
+      "ordinal": 33,
+      "officialDisplayName": "VIBRATO",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Modulated delay",
+      "researchFunctionalModel": "Wet-only fractional delay modulated by LFO; optional multi-LFO color",
+      "recommendedNativeArchitecture": "4-point Lagrange read head; 2 voices for vintage color",
+      "recommendedBrowserArchitecture": "One Lagrange voice default; second voice high-tier",
+      "formulaIds": [
+        "F01",
+        "F05",
+        "F06"
+      ],
+      "researchLatencyEstimate": "<1 sample plus intentional delay",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.pattern-slicer",
+      "ordinal": 34,
+      "officialDisplayName": "PATTERN SLICER",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Rhythmic gate",
+      "researchFunctionalModel": "Preset step table controls smooth gain envelope, synced to tempo",
+      "recommendedNativeArchitecture": "Sample-accurate scheduler + raised-cosine 0.5–2 ms edges",
+      "recommendedBrowserArchitecture": "Worklet sample counter + table; never schedule many AudioBufferSourceNodes",
+      "formulaIds": [
+        "F16",
+        "F20"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "slicer"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.step-slicer",
+      "ordinal": 35,
+      "officialDisplayName": "STEP SLICER",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Rhythmic gate",
+      "researchFunctionalModel": "Editable 16-step amplitude/pan/filter sequence",
+      "recommendedNativeArchitecture": "Vectorized step envelope and optional per-step filter target",
+      "recommendedBrowserArchitecture": "Worklet table, parameter mailbox and sample-accurate edges",
+      "formulaIds": [
+        "F01",
+        "F16",
+        "F20",
+        "F21"
+      ],
+      "researchLatencyEstimate": "0 samples",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "slicer"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.delay",
+      "ordinal": 36,
+      "officialDisplayName": "DELAY",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Delay",
+      "researchFunctionalModel": "Circular buffer, fractional read, feedback filter/saturation and tempo sync",
+      "recommendedNativeArchitecture": "4-point Lagrange for modulation; 8-tap sinc for static resampling taps",
+      "recommendedBrowserArchitecture": "Lagrange in WASM; memory preallocated by maximum delay",
+      "formulaIds": [
+        "F01",
+        "F05",
+        "F14",
+        "F20"
+      ],
+      "researchLatencyEstimate": "Intentional delay only",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "delay"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.panning-delay",
+      "ordinal": 37,
+      "officialDisplayName": "PANNING DELAY",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Stereo delay",
+      "researchFunctionalModel": "Two delay lines with cross-feedback and equal-power repeat panning",
+      "recommendedNativeArchitecture": "2x2 stable feedback matrix + Lagrange taps",
+      "recommendedBrowserArchitecture": "Same in one WASM kernel",
+      "formulaIds": [
+        "F05",
+        "F14",
+        "F20",
+        "F21"
+      ],
+      "researchLatencyEstimate": "Intentional delay only",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.reverse-delay",
+      "ordinal": 38,
+      "officialDisplayName": "REVERSE DELAY",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Reverse delay",
+      "researchFunctionalModel": "Alternating segments written forward/read backward with overlap crossfade",
+      "recommendedNativeArchitecture": "Dual/triple segment buffers and equal-power crossfades",
+      "recommendedBrowserArchitecture": "Dual segment buffers; segment size quantized to beat",
+      "formulaIds": [
+        "F14",
+        "F20",
+        "F25"
+      ],
+      "researchLatencyEstimate": "At least one segment/2",
+      "evidenceStatusFromSource": "Direct functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.mod-delay",
+      "ordinal": 39,
+      "officialDisplayName": "MOD DELAY",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Modulated delay",
+      "researchFunctionalModel": "Long delay with LFO-modulated fractional read and filtered feedback",
+      "recommendedNativeArchitecture": "Lagrange interpolation; parameter smoothing; feedback saturation",
+      "recommendedBrowserArchitecture": "Same in WASM; cap modulation depth near buffer boundaries",
+      "formulaIds": [
+        "F01",
+        "F05",
+        "F06",
+        "F14"
+      ],
+      "researchLatencyEstimate": "Intentional delay only",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.tape-echo",
+      "ordinal": 40,
+      "officialDisplayName": "TAPE ECHO",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Tape delay",
+      "researchFunctionalModel": "Multi-head delay, wow/flutter, frequency-dependent loss, saturation and hiss",
+      "recommendedNativeArchitecture": "4-point Lagrange heads + 4x nonlinear record/repro path + feedback LPF",
+      "recommendedBrowserArchitecture": "Lagrange heads + 2x ADAA + filtered noise; fewer heads on low tier",
+      "formulaIds": [
+        "F02",
+        "F05",
+        "F06",
+        "F07",
+        "F14",
+        "F20"
+      ],
+      "researchLatencyEstimate": "Intentional head delay + 8–64 filter samples",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.granular-delay",
+      "ordinal": 41,
+      "officialDisplayName": "GRANULAR DELAY",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Granular",
+      "researchFunctionalModel": "Overlapped windowed grains with controllable size, density, pitch and position jitter",
+      "recommendedNativeArchitecture": "2–8 voices, Hann/sqrt-Hann windows, sinc8 static or Lagrange moving reads",
+      "recommendedBrowserArchitecture": "2–4 voices, Lagrange, fixed pool, no allocation",
+      "formulaIds": [
+        "F05",
+        "F09",
+        "F15",
+        "F20"
+      ],
+      "researchLatencyEstimate": "Half grain typical",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.warp",
+      "ordinal": 42,
+      "officialDisplayName": "WARP",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Granular/freeze macro",
+      "researchFunctionalModel": "Tempo-synced capture/freeze, diffuse feedback, pitch smear and filtered regeneration",
+      "recommendedNativeArchitecture": "Spectral/granular freeze + FDN-like feedback macro",
+      "recommendedBrowserArchitecture": "Granular freeze + FDN8 feedback; spectral mode high tier only",
+      "formulaIds": [
+        "F12",
+        "F15",
+        "F17",
+        "F19",
+        "F20"
+      ],
+      "researchLatencyEstimate": "10–40 ms",
+      "evidenceStatusFromSource": "Name/parameters official; topology is an explicitly marked perceptual inference",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.twist",
+      "ordinal": 43,
+      "officialDisplayName": "TWIST",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Performance macro",
+      "researchFunctionalModel": "Single control couples delay time/rate, pitch, feedback, pan and filter along a nonlinear trajectory",
+      "recommendedNativeArchitecture": "Variable-rate delay + safe feedback saturator + filter/pan macro",
+      "recommendedBrowserArchitecture": "Same modules; precomputed trajectory table",
+      "formulaIds": [
+        "F01",
+        "F03",
+        "F05",
+        "F06",
+        "F07",
+        "F14",
+        "F21"
+      ],
+      "researchLatencyEstimate": "Intentional delay",
+      "evidenceStatusFromSource": "Topology is an explicitly marked perceptual inference",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.roll",
+      "ordinal": 44,
+      "officialDisplayName": "ROLL",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Beat repeat",
+      "researchFunctionalModel": "Capture quantized short segment and retrigger with optional pitch/decay/reverse",
+      "recommendedNativeArchitecture": "Dual buffers, zero-cross or equal-power transitions, sample-accurate beat clock",
+      "recommendedBrowserArchitecture": "Fixed capture pool in Worklet; Lagrange for pitch/rate",
+      "formulaIds": [
+        "F05",
+        "F15",
+        "F20",
+        "F25"
+      ],
+      "researchLatencyEstimate": "One roll slice",
+      "evidenceStatusFromSource": "Direct functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.freeze",
+      "ordinal": 45,
+      "officialDisplayName": "FREEZE",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Freeze",
+      "researchFunctionalModel": "Capture loop or freeze STFT magnitude/phase evolution; hold indefinitely",
+      "recommendedNativeArchitecture": "Dual mode: spectral freeze for HQ, micro-loop with decorrelation for zero-risk live",
+      "recommendedBrowserArchitecture": "Micro-loop default; 1024/256 STFT spectral freeze on capable devices",
+      "formulaIds": [
+        "F12",
+        "F19",
+        "F25"
+      ],
+      "researchLatencyEstimate": "Loop mode 2–20 ms; spectral ~16 ms",
+      "evidenceStatusFromSource": "Direct functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.chorus",
+      "ordinal": 46,
+      "officialDisplayName": "CHORUS",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Modulated delay",
+      "researchFunctionalModel": "2–4 decorrelated fractional delay voices, stereo phase offsets, optional feedback",
+      "recommendedNativeArchitecture": "4-point Lagrange, 2–4 voices, filtered modulation",
+      "recommendedBrowserArchitecture": "2 voices default, 4 voices high-tier",
+      "formulaIds": [
+        "F01",
+        "F05",
+        "F06",
+        "F21"
+      ],
+      "researchLatencyEstimate": "Intentional 5–30 ms delay",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.reverb",
+      "ordinal": 47,
+      "officialDisplayName": "REVERB",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Reverb",
+      "researchFunctionalModel": "Early-reflection FIR feeding modulated feedback delay network",
+      "recommendedNativeArchitecture": "16-line modulated FDN + 32–128 tap early FIR; convolution only render/HQ mode",
+      "recommendedBrowserArchitecture": "8-line modulated FDN + short FIR; optional partitioned IR high tier",
+      "formulaIds": [
+        "F01",
+        "F17",
+        "F18"
+      ],
+      "researchLatencyEstimate": "FDN ~0 samples; FIR partition mode 64–256 samples",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [
+          "reverb"
+        ],
+        "state": "partial_prototype_exists_not_product_implementation",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.gate-reverb",
+      "ordinal": 48,
+      "officialDisplayName": "GATE REVERB",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Reverb/gate",
+      "researchFunctionalModel": "Reverb return multiplied by hold/release gate envelope",
+      "recommendedNativeArchitecture": "FDN16 + sidechain gate with hysteresis and smooth release",
+      "recommendedBrowserArchitecture": "FDN8 + gate envelope",
+      "formulaIds": [
+        "F01",
+        "F08",
+        "F17"
+      ],
+      "researchLatencyEstimate": "As reverb",
+      "evidenceStatusFromSource": "Direct reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.reverse-reverb",
+      "ordinal": 49,
+      "officialDisplayName": "REVERSE REVERB",
+      "availability": {
+        "inputFx": true,
+        "trackFx": true
+      },
+      "family": "Reverse reverb",
+      "researchFunctionalModel": "Reversed IR or segmented reversed diffuse tail with crossfade",
+      "recommendedNativeArchitecture": "Partitioned reverse-IR convolution for HQ; segmented FDN-tail reverse for live",
+      "recommendedBrowserArchitecture": "Segmented reverse FDN tail default; short reverse IR optional",
+      "formulaIds": [
+        "F17",
+        "F18",
+        "F25"
+      ],
+      "researchLatencyEstimate": "Segment/partition latency 10–100 ms",
+      "evidenceStatusFromSource": "Direct functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.beat-scatter",
+      "ordinal": 50,
+      "officialDisplayName": "BEAT SCATTER",
+      "availability": {
+        "inputFx": false,
+        "trackFx": true
+      },
+      "family": "Track-only beat FX",
+      "researchFunctionalModel": "Beat-synchronous grain capture, read-head jumps, random/repeat ordering and pitch changes",
+      "recommendedNativeArchitecture": "Deterministic PRNG, fixed grain pool, quantized read positions",
+      "recommendedBrowserArchitecture": "Same in Worklet; seed stored in memory for repeatability",
+      "formulaIds": [
+        "F05",
+        "F09",
+        "F15",
+        "F20",
+        "F25"
+      ],
+      "researchLatencyEstimate": "One grain/slice",
+      "evidenceStatusFromSource": "Track-only name/function official; selection law reconstructed",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.beat-repeat",
+      "ordinal": 51,
+      "officialDisplayName": "BEAT REPEAT",
+      "availability": {
+        "inputFx": false,
+        "trackFx": true
+      },
+      "family": "Track-only beat FX",
+      "researchFunctionalModel": "Capture beat subdivision and loop forward/reverse/alternate with decay",
+      "recommendedNativeArchitecture": "Dual capture buffers + beat clock + crossfade",
+      "recommendedBrowserArchitecture": "Same in Worklet; no node creation during playback",
+      "formulaIds": [
+        "F15",
+        "F20",
+        "F25"
+      ],
+      "researchLatencyEstimate": "One slice",
+      "evidenceStatusFromSource": "Direct functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.beat-shift",
+      "ordinal": 52,
+      "officialDisplayName": "BEAT SHIFT",
+      "availability": {
+        "inputFx": false,
+        "trackFx": true
+      },
+      "family": "Track-only beat FX",
+      "researchFunctionalModel": "Shift loop read pointer by signed beat/subdivision while preserving click-free continuity",
+      "recommendedNativeArchitecture": "Modulo pointer offset + equal-power crossfade, optional phase-aligned zero-cross selection",
+      "recommendedBrowserArchitecture": "Same in Worklet",
+      "formulaIds": [
+        "F20",
+        "F25"
+      ],
+      "researchLatencyEstimate": "Crossfade 1–10 ms",
+      "evidenceStatusFromSource": "Direct functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    },
+    {
+      "id": "rc505mkii.fx.vinyl-flick",
+      "ordinal": 53,
+      "officialDisplayName": "VINYL FLICK",
+      "availability": {
+        "inputFx": false,
+        "trackFx": true
+      },
+      "family": "Track-only transport FX",
+      "researchFunctionalModel": "Inertial platter speed model drives variable-rate resampler; friction and motor recovery",
+      "recommendedNativeArchitecture": "Second-order speed/torque model + sinc8/Lagrange resampler",
+      "recommendedBrowserArchitecture": "Second-order model + Lagrange resampler; cap acceleration",
+      "formulaIds": [
+        "F05",
+        "F09",
+        "F26"
+      ],
+      "researchLatencyEstimate": "Variable, effect intentional",
+      "evidenceStatusFromSource": "Functional reconstruction",
+      "parameterContract": {
+        "officialGuide": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+        "guidePdfSha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+        "extractionArtifact": "official_fx_parameters.json",
+        "extractionStatus": "not_extracted",
+        "reason": "The current PDF text extractor has known column-boundary, wrapped-row, glyph, and default-detection errors. Values require geometry-aware review before use as an implementation contract."
+      },
+      "implementation": {
+        "nativeTarget": "not_implemented",
+        "browserTarget": "not_implemented",
+        "runtimeQualification": "not_qualified",
+        "qualificationEvidence": [],
+        "p99": "not_measured",
+        "latency": "not_measured",
+        "qualityTier": "unrated"
+      },
+      "legacyPrototype": {
+        "prototypeAliases": [],
+        "state": "no_matching_prototype_identified",
+        "qualification": "Legacy WebAudio prototypes do not satisfy this effect's full official parameter, quality, realtime, or Native/Web parity requirements."
+      }
+    }
+  ]
+}

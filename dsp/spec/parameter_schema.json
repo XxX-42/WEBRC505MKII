@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:webrc505:dsp:parameter-schema:1.0.0",
+  "title": "RC-505mkII-compatible control metadata schema",
+  "description": "Contract for source-attributed control facts and explicitly nullable DSP mappings. Catalog presence is not runtime support.",
+  "type": "object",
+  "required": ["id", "displayName", "source", "parseStatus", "controlMapping"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "displayName": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "required": ["document", "page", "sha256"],
+      "properties": {
+        "document": {"type": "string"},
+        "page": {"type": ["integer", "null"], "minimum": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "unit": {"type": ["string", "null"]},
+    "minimum": {"type": ["number", "null"]},
+    "maximum": {"type": ["number", "null"]},
+    "default": {"type": ["number", "string", "boolean", "null"]},
+    "choices": {"type": ["array", "null"], "items": {"type": "string"}},
+    "manufacturerSettingText": {"type": ["string", "null"]},
+    "defaultEvidence": {"enum": ["bold_in_source", "explicitly_stated", "unknown", "not_applicable"]},
+    "parseStatus": {"enum": ["verified", "partial", "unparsed_glyphs", "unverified", "unknown"]},
+    "unmappedSourceGlyphs": {"type": "array", "items": {"type": "string"}},
+    "controlMapping": {
+      "type": "object",
+      "required": ["curve", "status"],
+      "properties": {
+        "curve": {"type": ["string", "null"]},
+        "status": {"enum": ["measured", "documented", "candidate", "unknown"]},
+        "smoothingMs": {"type": ["number", "null"], "minimum": 0},
+        "automation": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "parameterDependencies": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,320 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceCsv": "dsp/spec/source/kits_16_algorithm_matrix.csv",
+  "sourceCsvSha256": "c684c32b1011b651a8221b94265be955282d48b461f9a9a8bfe98a5af89a62c5",
+  "count": 16,
+  "kits": [
+    {
+      "id": "rc505mkii.kit.studio",
+      "ordinal": 1,
+      "officialDisplayName": "STUDIO",
+      "researchTimbreTarget": "Tight close-mic acoustic kit, controlled room",
+      "researchNativeArchitecture": "4–8 velocity layers, 3–4 round robins, close/OH/room buses",
+      "researchBrowserArchitecture": "2–4 layers, 2 round robins, pre-rendered room tail",
+      "formulaIds": [
+        "Sample playback + F20/F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.live",
+      "ordinal": 2,
+      "officialDisplayName": "LIVE",
+      "researchTimbreTarget": "Larger room and stage bleed, broader stereo image",
+      "researchNativeArchitecture": "Multi-mic sample set + early reflections/FDN room send",
+      "researchBrowserArchitecture": "Dry samples + short pre-rendered room/FDN8 send",
+      "formulaIds": [
+        "F17",
+        "F18",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.light",
+      "ordinal": 3,
+      "officialDisplayName": "LIGHT",
+      "researchTimbreTarget": "Small shells, short decay, low transient mass",
+      "researchNativeArchitecture": "Short acoustic samples, light bus compression",
+      "researchBrowserArchitecture": "Reduced layers and tail lengths",
+      "formulaIds": [
+        "F08",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.heavy",
+      "ordinal": 4,
+      "officialDisplayName": "HEAVY",
+      "researchTimbreTarget": "Large shells, deep kick, parallel-compressed room",
+      "researchNativeArchitecture": "Layered acoustic kit, parallel dynamics, room FDN",
+      "researchBrowserArchitecture": "Layered samples, baked room and gentle bus compressor",
+      "formulaIds": [
+        "F08",
+        "F17",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.rock",
+      "ordinal": 5,
+      "officialDisplayName": "ROCK",
+      "researchTimbreTarget": "Strong attack, medium room, controlled gated ambience",
+      "researchNativeArchitecture": "Attack/body sample layers, gated room return",
+      "researchBrowserArchitecture": "2–4 layers, baked ambience, FDN8 gate",
+      "formulaIds": [
+        "F08",
+        "F17",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.metal",
+      "ordinal": 6,
+      "officialDisplayName": "METAL",
+      "researchTimbreTarget": "Click-forward kick, bright snare/cymbals, fast decay",
+      "researchNativeArchitecture": "Multi-layer samples, transient shaper, narrow dynamic tails",
+      "researchBrowserArchitecture": "Pre-shaped samples and light saturation",
+      "formulaIds": [
+        "F07",
+        "F08",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.jazz",
+      "ordinal": 7,
+      "officialDisplayName": "JAZZ",
+      "researchTimbreTarget": "Ride-led, open dynamics, natural room",
+      "researchNativeArchitecture": "High velocity resolution, cymbal round robins, minimal compression",
+      "researchBrowserArchitecture": "Prioritize ride/cymbal variations; 2–4 layers",
+      "formulaIds": [
+        "F17",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.brush",
+      "ordinal": 8,
+      "officialDisplayName": "BRUSH",
+      "researchTimbreTarget": "Brush taps, sweeps and softer snare articulations",
+      "researchNativeArchitecture": "Dedicated sweep/tap one-shots and loopable brush textures",
+      "researchBrowserArchitecture": "Compressed brush sample set; sweep texture pool",
+      "formulaIds": [
+        "F15",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.cajon",
+      "ordinal": 9,
+      "officialDisplayName": "CAJON",
+      "researchTimbreTarget": "Bass/body/slap articulations with wooden resonance",
+      "researchNativeArchitecture": "Layered cajon samples + modal body resonator",
+      "researchBrowserArchitecture": "Samples + 2–4 modal resonances",
+      "formulaIds": [
+        "F03",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.drum-bass",
+      "ordinal": 10,
+      "officialDisplayName": "DRUM&BASS",
+      "researchTimbreTarget": "Tight breakbeat transients, electronic sub and edited hats",
+      "researchNativeArchitecture": "Sample/procedural hybrid, transient slicing, parallel saturation",
+      "researchBrowserArchitecture": "Pre-rendered break layers + procedural sub kick",
+      "formulaIds": [
+        "F07",
+        "F15",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.r-b",
+      "ordinal": 11,
+      "officialDisplayName": "R&B",
+      "researchTimbreTarget": "Round kick, soft snare/clap, restrained hats",
+      "researchNativeArchitecture": "Layered samples, gentle low-pass and bus compression",
+      "researchBrowserArchitecture": "2–4 sample layers and low-cost bus compressor",
+      "formulaIds": [
+        "F02",
+        "F08",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.dance",
+      "ordinal": 12,
+      "officialDisplayName": "DANCE",
+      "researchTimbreTarget": "Club kick, bright clap and open electronic hats",
+      "researchNativeArchitecture": "Procedural/sample hybrid with sidechain-ready envelopes",
+      "researchBrowserArchitecture": "Procedural kick + one-shot clap/hats",
+      "formulaIds": [
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.techno",
+      "ordinal": 13,
+      "officialDisplayName": "TECHNO",
+      "researchTimbreTarget": "Hard electronic kick, resonant percussion, saturated hats",
+      "researchNativeArchitecture": "Procedural kick/toms + oversampled saturation",
+      "researchBrowserArchitecture": "Procedural oscillators + 2x ADAA",
+      "formulaIds": [
+        "F03",
+        "F07",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.dance-beats",
+      "ordinal": 14,
+      "officialDisplayName": "DANCE BEATS",
+      "researchTimbreTarget": "Layered modern dance kit with broad macro range",
+      "researchNativeArchitecture": "Sample/procedural layers, macro-driven transient/body balance",
+      "researchBrowserArchitecture": "Pre-rendered layers, selective procedural kick",
+      "formulaIds": [
+        "F08",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.hiphop",
+      "ordinal": 15,
+      "officialDisplayName": "HIPHOP",
+      "researchTimbreTarget": "Low-passed drums, clap/snare layering, vinyl coloration",
+      "researchNativeArchitecture": "Layered one-shots + saturation + optional wow/noise",
+      "researchBrowserArchitecture": "Samples + ADAA + cheap filtered noise",
+      "formulaIds": [
+        "F02",
+        "F07",
+        "F26",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    },
+    {
+      "id": "rc505mkii.kit.808-909",
+      "ordinal": 16,
+      "officialDisplayName": "808+909",
+      "researchTimbreTarget": "Classic analog drum-machine hybrid",
+      "researchNativeArchitecture": "Procedural bridged-T kick/toms, noise snare/clap/hats, nonlinear accent",
+      "researchBrowserArchitecture": "Same procedural core in WASM; deterministic random source",
+      "formulaIds": [
+        "F07",
+        "F24"
+      ],
+      "sourceEvidenceStatus": "Kit name is official; sample/circuit architecture is a clean-room design because Roland does not publish the original assets/topology.",
+      "legalAssetProvenance": "pending",
+      "assetStatus": "not_implemented_no_assets",
+      "audioAssets": [],
+      "proceduralVoiceGenerator": "not_implemented",
+      "kitRuntimeStatus": "not_implemented",
+      "qualification": "Kit name is metadata. Timbre/architecture fields are research proposals; no samples, drum synthesis voices, or factory sounds are provided."
+    }
+  ],
+  "assetPolicy": "Use only original procedural synthesis or samples with documented, redistributable licenses and per-asset provenance. Do not import factory RC-505mkII samples."
+}

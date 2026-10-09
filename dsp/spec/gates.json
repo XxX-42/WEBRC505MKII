@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.1.0",
+  "qualificationRule": "Metadata completeness and runtime qualification are independent. Catalog presence, source-matrix text, candidate formulas, legacy prototypes, or old package benchmarks never pass a runtime gate.",
+  "statusModel": {
+    "Gate0": ["ready_for_root_review", "passed_after_root_review"],
+    "runtimeGates": ["not_passed", "in_progress", "passed"],
+    "passRequiresNonemptyEvidence": true
+  },
+  "globalRealtimeRequirements": {
+    "requiredFormulaIds": ["F01", "F02", "F03", "F04", "F05", "F06", "F07", "F08", "F09", "F10", "F11", "F12", "F13", "F14", "F15", "F16", "F17", "F18", "F19", "F20", "F21", "F22", "F23", "F24", "F25", "F26", "F27", "F28", "F29"],
+    "nativeBlockFrames": 64,
+    "browserQuantumFrames": "read from actual AudioWorklet output buffers at runtime; never assume 128",
+    "callbackBudget": {
+      "frameDeadlineFormula": "quantumFrames / sampleRateHz",
+      "p99MaxFractionOfDeadline": 0.6,
+      "p999TargetFractionOfDeadline": 0.8,
+      "recordMaximum": true,
+      "recordXrunsOrDeadlineMisses": true
+    },
+    "realtimeProhibitions": ["heap allocation", "mutex/lock wait", "blocking I/O", "logging", "unbounded work", "GC on the callback thread"],
+    "evidenceMustInclude": ["device/CPU/browser and OS versions", "sample rate", "actual quantum/block size", "route and FX load", "warm-up and sample duration", "callback P99/P99.9/max", "xrun/deadline-miss count", "memory/allocation result"]
+  },
+  "pitchEvaluationRequirements": {
+    "routes": ["LIVE_MONO", "LIVE_POLY", "HQ_RENDER"],
+    "candidateEngines": ["Signalsmith", "Rubber Band R2", "Rubber Band R3"],
+    "rubberBandEvaluation": "Evaluate R2 and R3 independently; pin exact version, license and distribution mode before adopting. License approval is a hard gate, not a benchmark result.",
+    "mustMeasure": ["latency", "startup", "tail flush", "CPU and callback tails", "pitch error", "transient/timbre quality", "load scaling"]
+  },
+  "hardwareEvidence": {
+    "currentStatus": "not_tested",
+    "currentAuditScope": "software/build/unit-test evidence only; no hardware end-to-end acceptance",
+    "qualificationRule": "A software-only run may qualify only the stated software scope. Hardware/device claims require a named hardware run and evidence."
+  },
+  "gates": [
+    {
+      "id": "Gate0",
+      "name": "Repository audit and contracts",
+      "status": "passed_after_root_review",
+      "rootReviewEvidence": ["docs/dsp/GATE0_ROOT_REVIEW.md"],
+      "evidence": ["docs/dsp/IMPLEMENTATION_BASELINE.md", "dsp/spec/source_manifest.json", "dsp/spec/fx_catalog.json", "dsp/spec/rhythm_index.json", "dsp/spec/kit_specs.json", "dsp/spec/formula_index.json", "docs/dsp/RESEARCH_ERRATA.md"],
+      "exitRequirements": ["Audit Native and Browser signal paths and existing tests", "Pin and verify all imported metadata source hashes", "Record 53 FX / 49 Input FX / four named Track-only FX, 240 patterns, 16 kit names and exact F01-F29 set", "Record unresolved license boundary and research errata", "Root reviews the baseline and records review evidence"]
+    },
+    {
+      "id": "Gate1",
+      "name": "Shared DSP primitives",
+      "status": "not_passed",
+      "evidence": [],
+      "exitRequirements": ["Required F01-F29 primitives pass their numerical/quality test plan", "Native processes 64-frame blocks; Browser reads actual callback quantum", "Native and Browser/WASM behavior is parity-tested", "No realtime allocation, blocking, I/O, logging, unbounded work, or callback-thread GC", "P99 <= 60% and P99.9 target <= 80% of measured per-quantum deadline, with maximum/xruns recorded"]
+    },
+    {
+      "id": "Gate2",
+      "name": "Low-risk FX",
+      "status": "not_passed",
+      "evidence": [],
+      "exitRequirements": ["Every assigned FX is registered and implements its reviewed official-control schema", "State save/restore, automation, defaults, bounds and control mapping are tested", "Native/Web parity and objective quality tests pass per effect", "No silent bypass or catalog-only completion", "Realtime callback thresholds and prohibitions pass under multi-effect load"]
+    },
+    {
+      "id": "Gate3",
+      "name": "Reverb and nonlinear FX",
+      "status": "not_passed",
+      "evidence": [],
+      "exitRequirements": ["FDN/convolution and nonlinear paths pass objective decay, stability, alias and quality tests", "Corrected F04/F07/FDN/noise errata are covered by tests and old results are not substituted", "Performance is measured on target configurations with callback tails and xrun counts", "No real-time allocation/blocking"]
+    },
+    {
+      "id": "Gate4",
+      "name": "Pitch and voice FX",
+      "status": "not_passed",
+      "evidence": [],
+      "requiredRoutes": ["LIVE_MONO", "LIVE_POLY", "HQ_RENDER"],
+      "requiredEngineEvaluation": ["Signalsmith", "Rubber Band R2", "Rubber Band R3"],
+      "exitRequirements": ["Live and HQ paths are explicitly separated", "Signalsmith plus Rubber Band R2 and R3 are independently evaluated for quality/performance", "Exact library version, license and distribution mode pass legal review before adoption", "Pitch/time quality, latency, startup, tail processing and callback-load tests pass", "No claim relies only on offline or non-deadline telemetry"]
+    },
+    {
+      "id": "Gate5",
+      "name": "Track-only performance FX",
+      "status": "not_passed",
+      "evidence": [],
+      "requiredEffects": ["BEAT SCATTER", "BEAT REPEAT", "BEAT SHIFT", "VINYL FLICK"],
+      "exitRequirements": ["Track-only effects are implemented on every legal route", "Sample-accurate transitions, feedback bounds, automation, state restore, quality and realtime tests pass"]
+    },
+    {
+      "id": "Gate6",
+      "name": "Rhythm and Kits",
+      "status": "not_passed",
+      "evidence": ["dsp/spec/rhythm_index.json", "dsp/spec/kit_specs.json"],
+      "exitRequirements": ["Metadata catalog is only the indexing prerequisite", "Legal actual pattern event sources and sample-accurate playback are implemented", "All 16 kits produce verified audio from redistributable samples or original synthesis", "Voice pool, variations, fills, synchronization, state restore, quality and realtime tests pass"]
+    },
+    {
+      "id": "Gate7",
+      "name": "Whole-system stress",
+      "status": "not_passed",
+      "evidence": [],
+      "stressScenario": ["5 stereo tracks", "input/track FX chains including four concurrent FX per track", "rhythm playback", "master reverb", "automation", "at least one LIVE pitch route", "concurrent UI, file and MIDI load", "continuous measured run for at least 30 minutes"],
+      "exitRequirements": ["Run the full scenario with existing functionality enabled", "Collect per-callback P99/P99.9/max, xrun/deadline misses, memory/CPU and allocation results", "Meet callback and memory budgets with reproducible environment metadata", "State software-only versus named hardware coverage explicitly"]
+    }
+  ]
+}

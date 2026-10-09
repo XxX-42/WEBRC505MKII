@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0.0",
+  "records": [
+    {
+      "id": "ERR-F04-ALLPASS-SIGN",
+      "formulaId": "F04",
+      "source": "01_PRIMARY_RESEARCH_REPORT.md, Phaser All-pass",
+      "status": "corrected",
+      "reportedCoefficient": "a=(tan(pi*fc/fs)-1)/(tan(pi*fc/fs)+1)",
+      "reportedRecurrence": "y[n]=-a*x[n]+x[n-1]+a*y[n-1]",
+      "correctedRecurrenceForDeclaredCoefficientAndCenterFc": "y[n]=a*x[n]+x[n-1]-a*y[n-1]",
+      "reason": "The report's recurrence sign convention with its stated coefficient centers the all-pass at Nyquist-fc, not fc. Native implementation has a 3 kHz/48 kHz phase-center test at -90 degrees.",
+      "evidence": "shared DSP implementation review and Native phase test; do not cite the old report formula as the corrected contract"
+    },
+    {
+      "id": "ERR-F07-ADAA-ANTIDERIVATIVE",
+      "formulaId": "F07",
+      "source": "package benchmark clamp/ADAA kernel",
+      "status": "rejected_old_benchmark_formula",
+      "invalidClaim": "The old benchmark's clamp antiderivative is globally an antiderivative of the clipped transfer function.",
+      "candidateCorrectAntiderivative": "F(x)=0.75*x^2-0.125*x^4 for |x|<1; F(x)=|x|-0.375 for |x|>=1",
+      "reason": "The previous expression did not satisfy F'=f globally. The corrected candidate integrates the clipped cubic without clamping input before integration. Validate derivative, continuity, alias rejection and numerical edge cases in actual tests.",
+      "latencyNote": "No whole-sample buffer does not imply literal zero delay; first-order ADAA divided differences have frequency-dependent small-signal group delay (about 0.5 sample at low frequencies)."
+    },
+    {
+      "id": "ERR-FDN-HADAMARD-SCALE",
+      "formulaId": "F17",
+      "source": "package bench/browser_kernels.c versus Native source",
+      "status": "old_browser_benchmark_rejected",
+      "finding": "The old browser benchmark multiplied by 1/sqrt(8) at each of three Hadamard stages, yielding an aggregate matrix norm near 1/8 rather than an orthogonal transform. Native source applies one final 1/sqrt(8) normalization.",
+      "qualification": "Old Native and Web FDN benchmark numbers are not equivalent and cannot qualify product Gate3/Gate7."
+    },
+    {
+      "id": "ERR-BENCH-NOISE-SEED",
+      "formulaId": null,
+      "source": "package bench/browser_kernels.c init_input",
+      "status": "old_browser_benchmark_rejected",
+      "finding": "The old seed expression seed>>8 produces a nonnegative range (reported as 0..2), not bipolar white noise.",
+      "qualification": "Noise-based quality results from that path cannot qualify product stochastic/noise behavior until the stimulus is corrected and independently checked."
+    }
+  ]
+}

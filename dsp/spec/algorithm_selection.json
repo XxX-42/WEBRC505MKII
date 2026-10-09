@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceCsv": "dsp/spec/source/algorithm_class_selection.csv",
+  "sourceCsvSha256": "24fc091dc947f9f0e716a26a15972965bfdb69e485954bf933cb33a958a72ae1",
+  "entries": [
+    {
+      "class": "Static EQ/filter",
+      "candidates": "RBJ DF2T; TPT SVF",
+      "native_winner": "RBJ DF2T for static EQ; TPT for modulated filters",
+      "browser_winner": "same in WASM",
+      "why": "zero algorithmic delay, stable, lowest complexity; TPT survives rapid modulation",
+      "test_status": "local Native + V8-WASM kernel benchmark"
+    },
+    {
+      "class": "Fractional delay",
+      "candidates": "linear; Catmull-Rom; Lagrange3; sinc8",
+      "native_winner": "Lagrange3 moving; sinc8 static",
+      "browser_winner": "Lagrange3 moving; sinc8 offline/static",
+      "why": "sinc8 lowest objective error; Lagrange3 nearly halves linear error at tiny cost",
+      "test_status": "local sweep + Native + V8-WASM benchmark"
+    },
+    {
+      "class": "Nonlinear anti-alias",
+      "candidates": "1x naive; ADAA1; 2x OS; 4x OS",
+      "native_winner": "4x OS + WDF/ADAA",
+      "browser_winner": "2x OS + ADAA/WDF",
+      "why": "large alias reduction; browser chooses 2x to preserve multi-track headroom",
+      "test_status": "local coherent-tone alias test + kernel benchmark"
+    },
+    {
+      "class": "Dynamics",
+      "candidates": "peak; RMS; dual detector; lookahead",
+      "native_winner": "peak/RMS dual detector + soft knee + optional 0.5–2ms lookahead",
+      "browser_winner": "same without lookahead by default",
+      "why": "transparent control with bounded cost",
+      "test_status": "local kernel benchmark; listening still required"
+    },
+    {
+      "class": "Reverb",
+      "candidates": "Schroeder 4C2A; FDN8; FDN16; convolution",
+      "native_winner": "early FIR + modulated FDN16; convolution HQ only",
+      "browser_winner": "early FIR + FDN8",
+      "why": "FDN reaches dense tail much sooner; convolution costs latency/memory",
+      "test_status": "local impulse/echo-density and Native/V8-WASM benchmark"
+    },
+    {
+      "class": "Monophonic pitch/harmony",
+      "candidates": "resampling; WSOLA; TD-PSOLA; phase vocoder",
+      "native_winner": "YIN/pYIN + TD-PSOLA + LPC/formant",
+      "browser_winner": "decimated YIN + PSOLA-lite",
+      "why": "lowest live latency with explicit formant control when F0 is reliable",
+      "test_status": "source/algorithm evidence; target-device benchmark pending"
+    },
+    {
+      "class": "Polyphonic pitch/time",
+      "candidates": "Signalsmith; Rubber Band R2/R3; generic phase vocoder",
+      "native_winner": "R3 short or R2 HQ for measured live option; R3 standard HQ; Signalsmith split route to benchmark",
+      "browser_winner": "Signalsmith official WASM/AudioWorklet, cheaper/default by admission test",
+      "why": "measured Rubber Band trade-off; Signalsmith has maintained C++ and WebAudio path",
+      "test_status": "Rubber Band locally measured; Signalsmith source inspected, not locally timed"
+    },
+    {
+      "class": "Vocoder",
+      "candidates": "8/16/24-band filterbank; STFT",
+      "native_winner": "24-band ERB TPT + optional STFT HQ",
+      "browser_winner": "16-band default, 24-band after admission test",
+      "why": "filterbank has zero block latency; band count controls intelligibility/cost",
+      "test_status": "design recommendation; listening and speech-intelligibility tests pending"
+    },
+    {
+      "class": "Rhythm playback",
+      "candidates": "per-hit AudioBufferSourceNode; Worklet mixer; native voice pool",
+      "native_winner": "callback voice pool + absolute sample clock",
+      "browser_winner": "single Worklet/WASM voice pool + current frame counter",
+      "why": "sample accuracy and no node/GC storms",
+      "test_status": "architecture evidence; end-to-end jitter test pending"
+    }
+  ],
+  "qualification": "Research recommendations only. Bench results cited by the input package are not accepted as product gates; see docs/dsp/RESEARCH_ERRATA.md."
+}

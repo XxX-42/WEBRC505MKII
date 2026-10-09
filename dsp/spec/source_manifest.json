@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourcePackage": {
+    "filename": "CODEX_RC505_IMPLEMENTATION_PACKAGE.zip",
+    "sha256": "c06b23502c7d49db5e69a15e00e3155107207e451f9f612bcf65ee8c29df9382",
+    "sha256SumsFileSha256": "190E093C637AAB6036694FEE33821C38792153112D2A7BC1D9D129D2E5601E4B",
+    "inputFilesChecked": 36,
+    "inputFilesPassed": 36,
+    "verificationMethod": "SHA256SUMS.txt entries recomputed against each extracted file; ZIP CRC test also passed."
+  },
+  "copiedCsvFiles": {
+    "fx_algorithm_matrix.csv": {
+      "path": "dsp/spec/source/fx_algorithm_matrix.csv",
+      "sha256": "ee53f9034354fbdabbe8adedbceb482d131f3cec696fe295e6e12d498b1b0193"
+    },
+    "rhythm_patterns_240.csv": {
+      "path": "dsp/spec/source/rhythm_patterns_240.csv",
+      "sha256": "2b3fc5a271607b8b10046455bc11298ea0349ff8724eb489a9dc7e0257a75dae"
+    },
+    "kits_16_algorithm_matrix.csv": {
+      "path": "dsp/spec/source/kits_16_algorithm_matrix.csv",
+      "sha256": "c684c32b1011b651a8221b94265be955282d48b461f9a9a8bfe98a5af89a62c5"
+    },
+    "algorithm_class_selection.csv": {
+      "path": "dsp/spec/source/algorithm_class_selection.csv",
+      "sha256": "24fc091dc947f9f0e716a26a15972965bfdb69e485954bf933cb33a958a72ae1"
+    }
+  },
+  "officialGuide": {
+    "title": "RC-505mkII Parameter Guide, Version 1.3 and later",
+    "publisher": "Roland Corporation",
+    "url": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+    "sha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+    "scope": "Names and published control facts only; does not establish the internal DSP topology."
+  },
+  "licenseReview": {
+    "repositoryLicenseFound": false,
+    "status": "unresolved",
+    "note": "No root LICENSE/COPYING/NOTICE was found during Gate 0. Do not import or redistribute third-party DSP code, sample assets, factory MIDI, or audio without an explicit compatible license review."
+  }
+}

@@ -1,0 +1,7 @@
+# DSP metadata source and provenance
+
+`dsp/spec/source_manifest.json` is the machine-readable source ledger. The implementation package ZIP is pinned by SHA-256 `c06b23502c7d49db5e69a15e00e3155107207e451f9f612bcf65ee8c29df9382`; its 36 extracted files matched the provided `SHA256SUMS.txt`, and the ZIP CRC test passed. The four retained CSV matrices are pinned individually. The full source package remains outside the repository.
+
+The official control reference is Roland Corporation's [RC-505mkII Parameter Guide, Version 1.3 and later](https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf), SHA-256 `6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b`. It establishes published labels/settings, not the device's internal DSP topology. `dsp/spec/official_fx_parameters.json` currently contains only effect slots, source references, and empty parameter arrays; setting extraction is incomplete and must not be treated as a normative contract.
+
+The project has no root license file in the audited tree, so no downstream GPL or commercial-code compatibility conclusion can be made. The catalog includes names, controls metadata, and algorithm research suggestions only; it does not include Roland source code, factory MIDI, drum samples, or guide prose. The architecture columns are clean-room recommendations from the research package, not manufacturer disclosures. Third-party engines/libraries and any future audio assets require version, license, and provenance review before adoption.

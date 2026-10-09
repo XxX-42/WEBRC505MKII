@@ -1,0 +1,653 @@
+{
+  "schemaVersion": "1.0.0",
+  "extractionStatus": "not_extracted",
+  "normative": false,
+  "source": {
+    "title": "RC-505mkII Parameter Guide, Version 1.3 and later",
+    "publisher": "Roland Corporation",
+    "url": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+    "sha256": "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b",
+    "scope": "Names and published control facts only; does not establish the internal DSP topology."
+  },
+  "warning": "No setting values are included. The in-progress PDF extractor has known geometry/font failures and is fail-closed; do not infer ranges, choices, defaults, units, or parameter mappings from this file.",
+  "effects": [
+    {
+      "effect": "LPF",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "LPF"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "BPF",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "BPF"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "HPF",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "HPF"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "PHASER",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "PHASER"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "FLANGER",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "FLANGER"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "SYNTH",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "SYNTH"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "LO-FI",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "LO-FI"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "RADIO",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "RADIO"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "RING.MOD",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "RING.MOD"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "G2B",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "G2B"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "SUSTAINER",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "SUSTAINER"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "AUTO RIFF",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "AUTO RIFF"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "SLOW GEAR",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "SLOW GEAR"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "TRANSPOSE",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "TRANSPOSE"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "PITCH BEND",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "PITCH BEND"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "ROBOT",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "ROBOT"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "ELECTRIC",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "ELECTRIC"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "HRM MANUAL",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "HRM MANUAL"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "HRM AUTO (M)",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "HRM AUTO (M)"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "VOCODER",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "VOCODER"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "OSC VOC (M)",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "OSC VOC (M)"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "OSC BOT",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "OSC BOT"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "PREAMP",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "PREAMP"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "DIST",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "DIST"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "DYNAMICS",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "DYNAMICS"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "EQ",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "EQ"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "ISOLATOR",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "ISOLATOR"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "OCTAVE",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "OCTAVE"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "AUTO PAN",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "AUTO PAN"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "MANUAL PAN",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "MANUAL PAN"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "STEREO ENHANCE",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "STEREO ENHANCE"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "TREMOLO",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "TREMOLO"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "VIBRATO",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "VIBRATO"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "PATTERN SLICER",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "PATTERN SLICER"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "STEP SLICER",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "STEP SLICER"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "DELAY",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "DELAY"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "PANNING DELAY",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "PANNING DELAY"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "REVERSE DELAY",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "REVERSE DELAY"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "MOD DELAY",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "MOD DELAY"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "TAPE ECHO",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "TAPE ECHO1",
+        "TAPE ECHO2"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "GRANULAR DELAY",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "GRANULAR DELAY"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "WARP",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "WARP"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "TWIST",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "TWIST"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "ROLL",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "ROLL1",
+        "ROLL2"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "FREEZE",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "FREEZE"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "CHORUS",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "CHORUS"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "REVERB",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "REVERB"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "GATE REVERB",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "GATE REVERB"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "REVERSE REVERB",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "REVERSE REVERB"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "BEAT SCATTER",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "BEAT SCATTER"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "BEAT REPEAT",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "BEAT REPEAT"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "BEAT SHIFT",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "BEAT SHIFT"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    },
+    {
+      "effect": "VINYL FLICK",
+      "sourcePageRange": [
+        34,
+        43
+      ],
+      "guideSectionLabels": [
+        "VINYL FLICK"
+      ],
+      "parameterExtractionStatus": "not_extracted",
+      "parameters": []
+    }
+  ]
+}
