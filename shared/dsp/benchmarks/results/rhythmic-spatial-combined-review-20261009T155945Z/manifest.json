@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T16:00:01.1605256Z",
+  "compiler": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe",
+  "compilerVersion": [
+    "用于 x64 的 Microsoft (R) C/C++ 优化编译器 19.29.30159 版\r",
+    "版权所有(C) Microsoft Corporation。保留所有权利。\r",
+    "\r",
+    "编译器扫描遍数:\r",
+    " C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe:        版本 19.29.30159.0\r"
+  ],
+  "flags": [
+    "/nologo",
+    "/std:c++17",
+    "/EHsc",
+    "/O2",
+    "/W4",
+    "/permissive-"
+  ],
+  "compileExitCode": 0,
+  "testExitCode": 0,
+  "tests": [
+    [
+      "rhythmic_fx_tests.exe",
+      "tests/rhythmic_fx_tests.cpp"
+    ],
+    [
+      "rhythmic_fx_edge_automation_review.exe",
+      "tests/rhythmic_fx_edge_automation_review.cpp"
+    ],
+    [
+      "spatial_fx_adapters_tests.exe",
+      "tests/spatial_fx_adapters_tests.cpp"
+    ]
+  ],
+  "sourceHashesBefore": [
+    {
+      "path": "include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "include/webrc/dsp/fft.hpp",
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "include/webrc/dsp/spatial_temporal.hpp",
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f"
+    },
+    {
+      "path": "include/webrc/dsp/rhythmic_fx.hpp",
+      "sha256": "40ce7b8cc8fb5b31ff8d062baedc72d0224588dae2aebfc6819a9757bb8fe94c"
+    },
+    {
+      "path": "include/webrc/dsp/spatial_fx_adapters.hpp",
+      "sha256": "c550d1aa7cfd4b93c000e1eec5236542044a5647e941da01888730f0df05db23"
+    },
+    {
+      "path": "src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "src/rhythmic_fx.cpp",
+      "sha256": "58ba3849b3c75ec8aeef65e93133cedcf38149650750844b7fde36fdc3f0df58"
+    },
+    {
+      "path": "src/spatial_fx_adapters.cpp",
+      "sha256": "e9be597c12760c6824be141f6c6c794d45200bf59fcda78d881b66899680abd6"
+    },
+    {
+      "path": "tests/rhythmic_fx_tests.cpp",
+      "sha256": "0b8ef7218ee3d5a15b65bc0f64bbe9d79e21f02872c0e9c40fe221661fc7f76e"
+    },
+    {
+      "path": "tests/rhythmic_fx_edge_automation_review.cpp",
+      "sha256": "e8f689e317ec72eb9f333c61460a192c2d879c508f527546d7e2a21203d5136a"
+    },
+    {
+      "path": "tests/spatial_fx_adapters_tests.cpp",
+      "sha256": "36dd67e7fdb4e73c8dfe5a10e14fe6982be9550b8cd3dd9ff7eba4baf305348a"
+    }
+  ],
+  "sourceHashesAfter": [
+    {
+      "path": "include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "include/webrc/dsp/fft.hpp",
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "include/webrc/dsp/spatial_temporal.hpp",
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f"
+    },
+    {
+      "path": "include/webrc/dsp/rhythmic_fx.hpp",
+      "sha256": "40ce7b8cc8fb5b31ff8d062baedc72d0224588dae2aebfc6819a9757bb8fe94c"
+    },
+    {
+      "path": "include/webrc/dsp/spatial_fx_adapters.hpp",
+      "sha256": "c550d1aa7cfd4b93c000e1eec5236542044a5647e941da01888730f0df05db23"
+    },
+    {
+      "path": "src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "src/rhythmic_fx.cpp",
+      "sha256": "58ba3849b3c75ec8aeef65e93133cedcf38149650750844b7fde36fdc3f0df58"
+    },
+    {
+      "path": "src/spatial_fx_adapters.cpp",
+      "sha256": "e9be597c12760c6824be141f6c6c794d45200bf59fcda78d881b66899680abd6"
+    },
+    {
+      "path": "tests/rhythmic_fx_tests.cpp",
+      "sha256": "0b8ef7218ee3d5a15b65bc0f64bbe9d79e21f02872c0e9c40fe221661fc7f76e"
+    },
+    {
+      "path": "tests/rhythmic_fx_edge_automation_review.cpp",
+      "sha256": "e8f689e317ec72eb9f333c61460a192c2d879c508f527546d7e2a21203d5136a"
+    },
+    {
+      "path": "tests/spatial_fx_adapters_tests.cpp",
+      "sha256": "36dd67e7fdb4e73c8dfe5a10e14fe6982be9550b8cd3dd9ff7eba4baf305348a"
+    }
+  ],
+  "sourceFingerprintStable": true,
+  "resultDirectory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\rhythmic-spatial-combined-review-20261009T155945Z"
+}

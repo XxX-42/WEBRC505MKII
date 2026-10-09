@@ -1,0 +1,15 @@
+[rhythmic_fx_tests.exe] exit=0
+Isolator low 80 Hz unity -0.00 dB, mute -38.28 dB
+Isolator mid 1000 Hz unity -0.00 dB, mute -29.98 dB
+Isolator high 7000 Hz unity -0.00 dB, mute -39.55 dB
+Slicer clock: tick@tempo event 240.000; partition deltas 0.0 / 0.0; gate samples 0.2500 / 0.0000 / 0.2500; max adjacent steps 0.00818 / 0.00818 / 0.00104
+PASS: stereo isolator and sample-accurate pattern/step slicers; spectra, clock, bounds and noalloc
+
+[rhythmic_fx_edge_automation_review.exe] exit=0
+{"schemaVersion":1,"fixture":"rhythmic-edge-automation-review","kind":"PATTERN SLICER","sampleRate":48000,"tempoBpm":120,"patternId":0,"edgeChanges":[{"frame":24024,"fromMs":1,"toMs":10},{"frame":48024,"fromMs":10,"toMs":0.1}],"edgeBoundsMs":[0.1,10],"twentyMsRejected":true,"dcNormalizedGainSteps":[0.00188052654,5.91874123e-05],"sine440NormalizedGainSteps":[0.00188055634,5.92232682e-05],"limit":0.05}
+Rhythmic edge automation passed
+
+[spatial_fx_adapters_tests.exe] exit=0
+{"schemaVersion":1,"suite":"spatial-fx-adapters","sampleRate":48000,"reverseDelay":{"segmentSeconds":0.100123,"crossfadeSeconds":0.00517,"segmentFrames":4806,"crossfadeFrames":248,"wetPathWarmupFrames":9364,"leftPeakFrame":14069,"leftPeak":0.386062264,"rightPeakFrame":13769,"rightPeak":0.390000015,"partitionMaximumDifference":0,"maximumAdjacentStep":0.0514597297},"gateReverb":{"shortEarlyEnergy":0.0013733575693971707,"shortLateEnergy":0,"longLateEnergy":5.9760636682675525e-05,"shortHoldMs":0,"shortReleaseMs":5,"longHoldMs":250,"longReleaseMs":1000,"closedWetOneMax":0,"closedHalfWetMaxError":0},"reverseReverb":{"earlyEnergy":0.20479992231506849,"lateEnergy":0.023581113994380377,"rightEnergy":0.0079708122939882841,"wetPathWarmupFrames":9364},"wetOneImpulseProbes":[{"ordinal":38,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":11169,"peakFrame":3000,"peak":0.699999988,"energy":1.0125240781578138,"leftEnergy":1.0125240781578138,"rightEnergy":0,"rightToLeftEnergyRatio":0},{"ordinal":48,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":3000,"peakFrame":3226,"peak":0.139441848,"energy":0.038273905479579554,"leftEnergy":0.031312207869169613,"rightEnergy":0.0069616976104099372,"rightToLeftEnergyRatio":0.22233173845478046},{"ordinal":49,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":9364,"peakFrame":3000,"peak":0.196339786,"energy":0.16310805150662872,"leftEnergy":0.14868045502085514,"rightEnergy":0.01442759648577357,"rightToLeftEnergyRatio":0.09703761320712824}],"eventBurst":{"maxEvents":64,"gateAllocationsAndFrees":0,"fdnAllocationsAndFrees":0,"reverseDelayAllocationsAndFrees":0}}
+Spatial FX adapter tests passed
+

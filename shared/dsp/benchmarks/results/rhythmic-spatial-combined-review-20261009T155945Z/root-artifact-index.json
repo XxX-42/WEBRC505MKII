@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "scope": "Root-observed artifact bytes after independent source checks and executable reruns; original producer manifest preserved",
+  "reviewedAtUtc": "2026-10-09T16:20:26.821349+00:00",
+  "files": [
+    {
+      "path": "build.log",
+      "bytes": 7190,
+      "sha256": "7a52b40232fe166d980b3beb77b60b147609d9572a5832fa8e3d6ecedbbdc4d3"
+    },
+    {
+      "path": "build/rhythmic_fx_edge_automation_review.exe",
+      "bytes": 207872,
+      "sha256": "774e8e24b6cfdb8036b762fbdaf3cf50999fe3b2747444aebca712f13014766f"
+    },
+    {
+      "path": "build/rhythmic_fx_tests.exe",
+      "bytes": 221184,
+      "sha256": "2eb4cf8a7bd9b59d4263e0a3d208b14abd2dd99c7ecf97c825db72dd77d57fc1"
+    },
+    {
+      "path": "build/spatial_fx_adapters_tests.exe",
+      "bytes": 243200,
+      "sha256": "ee22998c67a29e68c22cf1b26481413e8326397eab86ec560200e069c0d50ca3"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 5178,
+      "sha256": "6cdce756043188abe85c04113ce459eb9d24004f6465e5fe86e8006467afedd1"
+    },
+    {
+      "path": "source/include/webrc/dsp/fft.hpp",
+      "bytes": 548,
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "source/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "source/include/webrc/dsp/rhythmic_fx.hpp",
+      "bytes": 6656,
+      "sha256": "40ce7b8cc8fb5b31ff8d062baedc72d0224588dae2aebfc6819a9757bb8fe94c"
+    },
+    {
+      "path": "source/include/webrc/dsp/spatial_fx_adapters.hpp",
+      "bytes": 5301,
+      "sha256": "c550d1aa7cfd4b93c000e1eec5236542044a5647e941da01888730f0df05db23"
+    },
+    {
+      "path": "source/include/webrc/dsp/spatial_temporal.hpp",
+      "bytes": 23156,
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f"
+    },
+    {
+      "path": "source/src/fft.cpp",
+      "bytes": 3129,
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "source/src/primitives.cpp",
+      "bytes": 38017,
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "source/src/rhythmic_fx.cpp",
+      "bytes": 30316,
+      "sha256": "58ba3849b3c75ec8aeef65e93133cedcf38149650750844b7fde36fdc3f0df58"
+    },
+    {
+      "path": "source/src/spatial_fx_adapters.cpp",
+      "bytes": 17011,
+      "sha256": "e9be597c12760c6824be141f6c6c794d45200bf59fcda78d881b66899680abd6"
+    },
+    {
+      "path": "source/src/spatial_temporal.cpp",
+      "bytes": 88577,
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "source/tests/rhythmic_fx_edge_automation_review.cpp",
+      "bytes": 6807,
+      "sha256": "e8f689e317ec72eb9f333c61460a192c2d879c508f527546d7e2a21203d5136a"
+    },
+    {
+      "path": "source/tests/rhythmic_fx_tests.cpp",
+      "bytes": 20508,
+      "sha256": "0b8ef7218ee3d5a15b65bc0f64bbe9d79e21f02872c0e9c40fe221661fc7f76e"
+    },
+    {
+      "path": "source/tests/spatial_fx_adapters_tests.cpp",
+      "bytes": 30998,
+      "sha256": "36dd67e7fdb4e73c8dfe5a10e14fe6982be9550b8cd3dd9ff7eba4baf305348a"
+    },
+    {
+      "path": "test.log",
+      "bytes": 2628,
+      "sha256": "4e73759d6f3b61236e0d424a0afa3e1b93655aa112a2eff4bc60447faf0a0a20"
+    }
+  ]
+}

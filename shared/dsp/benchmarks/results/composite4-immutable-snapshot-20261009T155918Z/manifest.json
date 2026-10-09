@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "artifact": "composite4-isolated-native-source-build-test-snapshot",
+  "capturedAtUtc": "2026-10-09T15:59:26.2216179Z",
+  "compiler": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe",
+  "compilerVersion": [
+    "用于 x64 的 Microsoft (R) C/C++ 优化编译器 19.29.30159 版\r",
+    "版权所有(C) Microsoft Corporation。保留所有权利。\r",
+    "\r",
+    "编译器扫描遍数:\r",
+    " C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe:        版本 19.29.30159.0\r"
+  ],
+  "flags": [
+    "/nologo",
+    "/std:c++17",
+    "/EHsc",
+    "/O2",
+    "/W4",
+    "/permissive-"
+  ],
+  "closure": [
+    "composite_fx.hpp -> control_dynamics.hpp -> primitives.hpp",
+    "composite_fx.cpp references DualDetectorCompressor, prepared filters and reducer from control_dynamics/primitives",
+    "test executable links primitives.cpp, control_dynamics.cpp, composite_fx.cpp, composite_fx_tests.cpp"
+  ],
+  "compileExitCode": 0,
+  "testExitCode": 0,
+  "sourceHashesBefore": [
+    {
+      "path": "include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "include/webrc/dsp/control_dynamics.hpp",
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb"
+    },
+    {
+      "path": "include/webrc/dsp/composite_fx.hpp",
+      "sha256": "158843f620cc17debaac0015263e30921eb801c8f91eb018c6415bf97da4917b"
+    },
+    {
+      "path": "src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "src/control_dynamics.cpp",
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "src/composite_fx.cpp",
+      "sha256": "77009dbb0dba1cc90cc2da1e6b42aee2106bff4b2d8f81d70f96eacb86bb95c1"
+    },
+    {
+      "path": "tests/composite_fx_tests.cpp",
+      "sha256": "30b63684b6f11500f92a5c1d9d7327945d856cf29c62a634c932a4a5bf3fdbd3"
+    }
+  ],
+  "sourceHashesAfter": [
+    {
+      "path": "include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "include/webrc/dsp/control_dynamics.hpp",
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb"
+    },
+    {
+      "path": "include/webrc/dsp/composite_fx.hpp",
+      "sha256": "158843f620cc17debaac0015263e30921eb801c8f91eb018c6415bf97da4917b"
+    },
+    {
+      "path": "src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "src/control_dynamics.cpp",
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "src/composite_fx.cpp",
+      "sha256": "77009dbb0dba1cc90cc2da1e6b42aee2106bff4b2d8f81d70f96eacb86bb95c1"
+    },
+    {
+      "path": "tests/composite_fx_tests.cpp",
+      "sha256": "30b63684b6f11500f92a5c1d9d7327945d856cf29c62a634c932a4a5bf3fdbd3"
+    }
+  ],
+  "sourceFingerprintStable": true,
+  "resultDirectory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\composite4-immutable-snapshot-20261009T155918Z"
+}

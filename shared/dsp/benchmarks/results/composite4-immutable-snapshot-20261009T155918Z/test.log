@@ -1,0 +1,6 @@
+Radio drive automation: max audio step 0.0342999 at frame 45330; mean change 0.4206353
+Sustainer hard automation: output 0.780529 to 0.000339; max step 0.0032944
+Slow Gear 12 kHz steady carrier: max same-phase gain range 0.0000000
+Slow Gear onset/fade: base gain 0.376847, onset gain 0.160837, max step 0.011322
+PASS: radio, sustainer, slow gear and stereo enhance; stereo response, sample events, block invariance and noalloc
+

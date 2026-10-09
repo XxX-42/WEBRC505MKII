@@ -200,3 +200,15 @@
 /third_party/signalsmith-stretch/LICENSE.txt -text -whitespace
 /third_party/signalsmith-stretch/README.md -text -whitespace
 /third_party/signalsmith-stretch/signalsmith-stretch.h -text -whitespace
+/shared/dsp/include/webrc/dsp/composite_fx.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/composite_fx.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/composite_fx_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/rhythmic_fx.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/spatial_fx_adapters.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/rhythmic_fx.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/spatial_fx_adapters.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/rhythmic_fx_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/rhythmic_fx_edge_automation_review.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/spatial_fx_adapters_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/results/composite4-immutable-snapshot-20261009T155918Z/** -text -whitespace
+/shared/dsp/benchmarks/results/rhythmic-spatial-combined-review-20261009T155945Z/** -text -whitespace

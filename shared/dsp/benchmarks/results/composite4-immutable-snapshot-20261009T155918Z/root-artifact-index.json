@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "scope": "Root-observed artifact bytes after independent source checks and executable reruns; original producer manifest preserved",
+  "reviewedAtUtc": "2026-10-09T16:20:26.800838+00:00",
+  "files": [
+    {
+      "path": "build.log",
+      "bytes": 2506,
+      "sha256": "0f825caeb305d7db5bbe007b05d8e65f2c15bf10380cdb74fa2ae52c1b564ef6"
+    },
+    {
+      "path": "build/composite_fx_tests.exe",
+      "bytes": 246784,
+      "sha256": "04cbbd4a33e56f2d3eda569b7a1f3843dcef7e871ead2a8561e8ef15ff2154b3"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 3469,
+      "sha256": "1f64d752ab200fe9556501230e46871814e53c2a9415d7afbeb33be2692bb31c"
+    },
+    {
+      "path": "source/include/webrc/dsp/composite_fx.hpp",
+      "bytes": 6360,
+      "sha256": "158843f620cc17debaac0015263e30921eb801c8f91eb018c6415bf97da4917b"
+    },
+    {
+      "path": "source/include/webrc/dsp/control_dynamics.hpp",
+      "bytes": 6746,
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb"
+    },
+    {
+      "path": "source/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "source/src/composite_fx.cpp",
+      "bytes": 22560,
+      "sha256": "77009dbb0dba1cc90cc2da1e6b42aee2106bff4b2d8f81d70f96eacb86bb95c1"
+    },
+    {
+      "path": "source/src/control_dynamics.cpp",
+      "bytes": 18208,
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "source/src/primitives.cpp",
+      "bytes": 38017,
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "source/tests/composite_fx_tests.cpp",
+      "bytes": 37952,
+      "sha256": "30b63684b6f11500f92a5c1d9d7327945d856cf29c62a634c932a4a5bf3fdbd3"
+    },
+    {
+      "path": "test.log",
+      "bytes": 434,
+      "sha256": "be60ada76e167527f470cf89eeac0514c95c76a87e6f1ff23f7d7570126496d6"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+cl /nologo /std:c++17 /EHsc /O2 /W4 /permissive- /I D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\source\include /c src/primitives.cpp /FoD:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\primitives.obj
+primitives.cpp
+
+cl /nologo /std:c++17 /EHsc /O2 /W4 /permissive- /I D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\source\include /c src/control_dynamics.cpp /FoD:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\control_dynamics.obj
+control_dynamics.cpp
+
+cl /nologo /std:c++17 /EHsc /O2 /W4 /permissive- /I D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\source\include /c src/composite_fx.cpp /FoD:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\composite_fx.obj
+composite_fx.cpp
+
+cl /nologo /std:c++17 /EHsc /O2 /W4 /permissive- /I D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\source\include /c tests/composite_fx_tests.cpp /FoD:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\composite_fx_tests.obj
+composite_fx_tests.cpp
+
+cl /nologo D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\primitives.obj D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\control_dynamics.obj D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\composite_fx.obj D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\composite_fx_tests.obj /Fe:D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\composite4-immutable-snapshot-20261009T155918Z\build\composite_fx_tests.exe
+
