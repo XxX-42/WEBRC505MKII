@@ -1,0 +1,76 @@
+{
+  "scope": "Independent unchanged root defect fixture linked against copied preflight-v1 build. Not a new full clean build.",
+  "fixtureSha256": "f5dc74a93c58a830fd15a50feea2b51e6ead945c772a862e6e874834caa10dbd",
+  "buildExitCode": 0,
+  "fixtureExitCode": 1,
+  "expectedFixedExitCode": 1,
+  "sourceComparison": [
+    {
+      "path": "native-mvp/engine-cpp/include/native_fx_control.hpp",
+      "frozenSha256": "ca92e7629751e76118c7ee797d0433e69df5bdbe404d864980bd10c644deeb50",
+      "liveSha256": "ca92e7629751e76118c7ee797d0433e69df5bdbe404d864980bd10c644deeb50",
+      "identical": true
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_fx_control.cpp",
+      "frozenSha256": "0bd6f863576f25e7236e46e1435e2e0820ab5ff659f1ebf9f71da046c301fb93",
+      "liveSha256": "0bd6f863576f25e7236e46e1435e2e0820ab5ff659f1ebf9f71da046c301fb93",
+      "identical": true
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/native_fx_control_tests.cpp",
+      "frozenSha256": "cf14b4f78da36d411744382c8fca1f07cf08c100c7bb5b6c90bc730f4efc7020",
+      "liveSha256": "cf14b4f78da36d411744382c8fca1f07cf08c100c7bb5b6c90bc730f4efc7020",
+      "identical": true
+    }
+  ],
+  "linkedLibraries": [
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-config-preflight-v1-build\\native_track_host.lib",
+      "sha256": "e6bbbf8715ccbe8ea3518c09edb7ab339521ca07726f3d4239fa9565a4301115"
+    },
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-config-preflight-v1-build\\native_multitrack_core.lib",
+      "sha256": "6dcf56902fb7877bcabf0016715de7b406e9a19af5bf98c7f0481675089c1f13"
+    },
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-config-preflight-v1-build\\shared_dsp\\webrc_dsp.lib",
+      "sha256": "9a2bce6a895fa902df7171b603be52d0ec0d287da3760a27a83faaaedd0a533f"
+    }
+  ],
+  "result": {
+    "softwareOnly": true,
+    "hardwareStreamStarted": false,
+    "cases": [
+      {
+        "name": "one-byte-remaining-budget",
+        "status": 17,
+        "allocationsBeforeRejection": 0,
+        "allocatedBytesBeforeRejection": 0,
+        "correctRejection": true
+      },
+      {
+        "name": "unprepared-host",
+        "status": 1,
+        "allocationsBeforeRejection": 0,
+        "allocatedBytesBeforeRejection": 0,
+        "correctRejection": true
+      },
+      {
+        "name": "sample-rate-mismatch",
+        "status": 3,
+        "allocationsBeforeRejection": 0,
+        "allocatedBytesBeforeRejection": 0,
+        "correctRejection": true
+      },
+      {
+        "name": "nyquist-invalid",
+        "status": 11,
+        "allocationsBeforeRejection": 0,
+        "allocatedBytesBeforeRejection": 0,
+        "correctRejection": true
+      }
+    ],
+    "defectReproduced": false
+  }
+}

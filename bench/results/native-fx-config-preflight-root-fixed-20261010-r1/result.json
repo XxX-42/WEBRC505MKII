@@ -1,0 +1,11 @@
+{
+  "softwareOnly":true,
+  "hardwareStreamStarted":false,
+  "cases":[
+    {"name":"one-byte-remaining-budget","status":17,"allocationsBeforeRejection":0,"allocatedBytesBeforeRejection":0,"correctRejection":true},
+    {"name":"unprepared-host","status":1,"allocationsBeforeRejection":0,"allocatedBytesBeforeRejection":0,"correctRejection":true},
+    {"name":"sample-rate-mismatch","status":3,"allocationsBeforeRejection":0,"allocatedBytesBeforeRejection":0,"correctRejection":true},
+    {"name":"nyquist-invalid","status":11,"allocationsBeforeRejection":0,"allocatedBytesBeforeRejection":0,"correctRejection":true}
+  ],
+  "defectReproduced":false
+}
