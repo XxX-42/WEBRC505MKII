@@ -4,6 +4,8 @@ The coordinator independently built the combined shared library with MSVC 19.29.
 
 The final pitch test source was also independently compiled with pinned Emscripten 6.0.10, SIMD, `-fno-exceptions -fno-rtti`, fixed 64 MiB memory and Node execution. It passed. This functional test is not an AudioWorklet timing run or Native/WASM PCM parity qualification for the entire graph.
 
+An independent `git archive df038ca` source snapshot was then built through the Native parent project with cached pinned dependencies. The bridge host and legacy looper compiled; **6/6 CTest entries passed** in 1.58 seconds, including the legacy looper and five shared-core entries. No audio device stream was opened. This validates parent build compatibility, not integration of every shared module into the Native audio callback.
+
 ## Measured signal behavior
 
 The real YIN-to-streaming-PSOLA fixture covers onset, deterministic noise, 82.3 Hz, a glide, 997.3 Hz, and offset at 48 kHz. A first voiced estimate arrives 1663 samples after input onset. The resynthesis buffer is 1800 samples (37.5 ms); detected output onset occurs at frame 5901 versus input onset 4096, a fixture-specific difference of 1805 samples (37.604 ms). Output last-active frame is 67360 versus input offset 65536, a difference of 1824 samples (38 ms). These onset thresholds are neither an impulse group-delay measurement nor hardware round-trip latency.
@@ -17,6 +19,8 @@ Spatial tests exercise independent FFT/DFT agreement, matrix convolution against
 The fresh immutable records are `bench/results/native_primitives_20261009T113047393Z_0ece4c18fa94.json` and `bench/results/native_nonlinear_20261009T113047393Z_0ece4c18fa94.json`. The initial primitive stack's 20,000 measured 64-frame/48 kHz calls give P99 39.9 microseconds, P99.9 63.3 microseconds and maximum 233.2 microseconds; its deadline is 1333.333 microseconds. This stack does not exercise every newly added module, four effects per track, the actual device callback, or the full five-track graph. Older runs and their outliers remain preserved. Source fingerprint changes in unrelated test inputs do not convert this stack into a whole-library benchmark.
 
 Initial spatial percentile-only archives have provisional provenance; their capture method is being replaced by fresh TEMP compilation with before/after source hashes and chronological timing arrays. They are not used to pass a performance gate.
+
+The replacement `shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json` contains 24 module/block combinations, each with 32 startup and 2500 chronological steady calls. The coordinator independently verified all nine before/after input hashes against current files and recomputed nearest-rank P50/P99/P99.9, maximum and 60/80/100-percent deadline counts from every array. All matched. At 64 frames/48 kHz, P99/P99.9/max in microseconds are: FDN8 105.3/196.1/322.2; FDN16 99.9/145.8/225.3; 4096-frame-IR convolution 155.0/220.5/249.0; 32-voice granular pool 95.5/131.7/211.5; 1024/256 freeze 322.4/352.5/391.4; reverse 4.3/13.4/16.5; platter 1.6/1.7/10.9; mixed eight-voice drums 107.3/193.2/217.2. Every measured steady call is below its own block deadline; these separate measurements cannot be added statistically or used to pass a full graph. The 256-frame convolution run retains a 2735.1-microsecond maximum. Localized compiler-banner metadata has decoding artifacts, while numeric compiler identity, paths, flags and source hashes are preserved.
 
 ## AddressSanitizer is not passed
 

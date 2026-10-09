@@ -1,0 +1,376 @@
+{
+  "schema": "webrc.spatial-temporal-bench-record.v1",
+  "capturedUtc": "2026-10-09T11:15:18.563Z",
+  "machine": "DESKTOP-MGFRCL8",
+  "operatingSystem": "Microsoft Windows 10.0.26200",
+  "compiler": "MSVC C++20 /O2; native Windows benchmark",
+  "executableSha256": "538211590c3266e7383fe1f5aef218a8c0fd20357865757befe3fdc17fadb71b",
+  "sourceSha256": {
+    "shared/dsp/benchmarks/native_spatial_temporal_bench.cpp": "be9792c0965fe48d972c8186da63032348efdc844839c3333aa5d402f17d4c10",
+    "shared/dsp/src/fft.cpp": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+    "shared/dsp/src/spatial_temporal.cpp": "05fcb7462b54fe925d47b78dda04106c0523c5d304da0f0635e05589c42debfe",
+    "shared/dsp/include/webrc/dsp/fft.hpp": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+    "shared/dsp/include/webrc/dsp/spatial_temporal.hpp": "4c44e5f054b377566c2af6d0f5dbe8184e1d75bc9c03bcc931cf6603ef32db53",
+    "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+    "shared/dsp/tests/spatial_temporal_tests.cpp": "0b1ee055dd76c1f0bea109ea57215437fafdec0282a46d89ee3c2e556f780beb"
+  },
+  "measurement": {
+    "schema": "webrc.spatial-temporal-bench.v1",
+    "fixture": {
+      "sample_rate_hz": 48000,
+      "seed_fft": 305441741,
+      "seed_drum": 20261009,
+      "seed_hat": 811,
+      "fdn_impulse": "left unit impulse",
+      "fdn_rt60_target_seconds": 1.0,
+      "fdn_damping_hz": 4500,
+      "fdn_modulation_rate_hz": 0.23,
+      "fdn_modulation_depth_ms": 0.18,
+      "freeze_window_hop": [
+        [
+          256,
+          128
+        ],
+        [
+          512,
+          128
+        ],
+        [
+          1024,
+          256
+        ]
+      ],
+      "callback_sample_count": 2500
+    },
+    "quality": {
+      "fft_independent_dft_max_error": 6.36961875784E-07,
+      "convolver_max_residual": 4.842877388E-08,
+      "convolver_partition_latency_samples": 32,
+      "fdn8": {
+        "stereo_correlation": 0.260596615,
+        "bands_hz": [
+          100,
+          1000,
+          4000
+        ],
+        "t20_seconds": [
+          1.03012208,
+          0.812082495,
+          0.470036082
+        ],
+        "t30_seconds": [
+          1.04884159,
+          0.847317406,
+          0.554959901
+        ]
+      },
+      "fdn16": {
+        "stereo_correlation": 0.28410771,
+        "bands_hz": [
+          100,
+          1000,
+          4000
+        ],
+        "t20_seconds": [
+          0.923313331,
+          0.738138235,
+          0.476244928
+        ],
+        "t30_seconds": [
+          0.999111745,
+          0.793368364,
+          0.532035643
+        ]
+      },
+      "spectral_freeze": {
+        "window_frames": 1024,
+        "hop_frames": 256,
+        "latency_samples": 1024,
+        "held_left_hz": 437.5,
+        "held_right_hz": 995.5,
+        "held_left_rms": 0.338359399,
+        "held_right_rms": 0.339970317,
+        "held_total_energy": 11060.4072,
+        "wola_identity": [
+          {
+            "window_frames": 256,
+            "hop_frames": 128,
+            "max_identity_error": 1.30992056979E-07
+          },
+          {
+            "window_frames": 512,
+            "hop_frames": 128,
+            "max_identity_error": 1.27799763383E-07
+          },
+          {
+            "window_frames": 1024,
+            "hop_frames": 256,
+            "max_identity_error": 1.2462218707E-07
+          }
+        ]
+      },
+      "drum_voices": [
+        {
+          "name": "kick_exponential_sweep",
+          "peak": 0.828840017,
+          "attack_rms": 0.317982497,
+          "idle_after_render": true
+        },
+        {
+          "name": "snare_noise_plus_body",
+          "peak": 0.347111762,
+          "attack_rms": 0.0718413817,
+          "idle_after_render": true
+        },
+        {
+          "name": "hihat_inharmonic_partials_plus_noise",
+          "peak": 0.331352472,
+          "attack_rms": 0.0449618907,
+          "idle_after_render": true
+        }
+      ]
+    },
+    "callback_timing": [
+      {
+        "name": "fdn8",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 25700.0,
+        "p99_ns": 48100.0,
+        "p999_ns": 76700.0,
+        "max_ns": 147700.0
+      },
+      {
+        "name": "fdn16",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 48500.0,
+        "p99_ns": 111500.0,
+        "p999_ns": 260800.0,
+        "max_ns": 382200.0
+      },
+      {
+        "name": "partitioned_convolver_4096_ir",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 12600.0,
+        "p99_ns": 180100.0,
+        "p999_ns": 306600.0,
+        "max_ns": 343200.0
+      },
+      {
+        "name": "granular_32_voice_pool",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 65900.0,
+        "p99_ns": 174900.0,
+        "p999_ns": 638400.0,
+        "max_ns": 836500.0
+      },
+      {
+        "name": "spectral_freeze_1024_256",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 3300.0,
+        "p99_ns": 527300.0,
+        "p999_ns": 1811700.0,
+        "max_ns": 4240100.0
+      },
+      {
+        "name": "reverse_segment_8192_1024",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 1600.0,
+        "p99_ns": 3200.0,
+        "p999_ns": 10700.0,
+        "max_ns": 33500.0
+      },
+      {
+        "name": "platter_inertia",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 1300.0,
+        "p99_ns": 2400.0,
+        "p999_ns": 5900.0,
+        "max_ns": 13800.0
+      },
+      {
+        "name": "drum_mixed_8_voice_pool",
+        "block_frames": 64,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 1333333.3,
+        "p50_ns": 23700.0,
+        "p99_ns": 101400.0,
+        "p999_ns": 138100.0,
+        "max_ns": 216700.0
+      },
+      {
+        "name": "fdn8",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 54200.0,
+        "p99_ns": 128800.0,
+        "p999_ns": 223400.0,
+        "max_ns": 270500.0
+      },
+      {
+        "name": "fdn16",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 107200.0,
+        "p99_ns": 223600.0,
+        "p999_ns": 492400.0,
+        "max_ns": 895500.0
+      },
+      {
+        "name": "partitioned_convolver_4096_ir",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 98900.0,
+        "p99_ns": 240600.0,
+        "p999_ns": 400200.0,
+        "max_ns": 641000.0
+      },
+      {
+        "name": "granular_32_voice_pool",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 137200.0,
+        "p99_ns": 407900.0,
+        "p999_ns": 1373600.0,
+        "max_ns": 1834300.0
+      },
+      {
+        "name": "spectral_freeze_1024_256",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 40900.0,
+        "p99_ns": 505600.0,
+        "p999_ns": 839300.0,
+        "max_ns": 1067400.0
+      },
+      {
+        "name": "reverse_segment_8192_1024",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 4600.0,
+        "p99_ns": 9500.0,
+        "p999_ns": 60300.0,
+        "max_ns": 83300.0
+      },
+      {
+        "name": "platter_inertia",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 2500.0,
+        "p99_ns": 4400.0,
+        "p999_ns": 14400.0,
+        "max_ns": 32900.0
+      },
+      {
+        "name": "drum_mixed_8_voice_pool",
+        "block_frames": 128,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 2666666.7,
+        "p50_ns": 7400.0,
+        "p99_ns": 123300.0,
+        "p999_ns": 163400.0,
+        "max_ns": 216500.0
+      },
+      {
+        "name": "fdn8",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 192600.0,
+        "p99_ns": 932900.0,
+        "p999_ns": 2726600.0,
+        "max_ns": 4099000.0
+      },
+      {
+        "name": "fdn16",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 233100.0,
+        "p99_ns": 680600.0,
+        "p999_ns": 3007600.0,
+        "max_ns": 3613200.0
+      },
+      {
+        "name": "partitioned_convolver_4096_ir",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 157600.0,
+        "p99_ns": 394600.0,
+        "p999_ns": 603100.0,
+        "max_ns": 689900.0
+      },
+      {
+        "name": "granular_32_voice_pool",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 382100.0,
+        "p99_ns": 991000.0,
+        "p999_ns": 2951700.0,
+        "max_ns": 4153000.0
+      },
+      {
+        "name": "spectral_freeze_1024_256",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 332200.0,
+        "p99_ns": 768200.0,
+        "p999_ns": 1245200.0,
+        "max_ns": 4915600.0
+      },
+      {
+        "name": "reverse_segment_8192_1024",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 9900.0,
+        "p99_ns": 32100.0,
+        "p999_ns": 178700.0,
+        "max_ns": 199900.0
+      },
+      {
+        "name": "platter_inertia",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 5100.0,
+        "p99_ns": 13700.0,
+        "p999_ns": 80400.0,
+        "max_ns": 247800.0
+      },
+      {
+        "name": "drum_mixed_8_voice_pool",
+        "block_frames": 256,
+        "sample_rate_hz": 48000,
+        "callback_budget_ns": 5333333.3,
+        "p50_ns": 15000.0,
+        "p99_ns": 302300.0,
+        "p999_ns": 442600.0,
+        "max_ns": 1095800.0
+      }
+    ]
+  }
+}
