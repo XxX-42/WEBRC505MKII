@@ -51,10 +51,10 @@ $configureArgs = @(
 ) + $fetchContent.Arguments
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $configureArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
-$buildArgs = @('--build', $BuildRoot, '--target', 'native_bridge_host', 'looper_core_tests', 'native_looper_bench')
+$buildArgs = @('--build', $BuildRoot, '--target', 'native_bridge_host', 'looper_core_tests', 'native_looper_bench', 'dsp_primitives_tests', 'native_dsp_primitives_bench')
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $buildArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
-$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', 'looper_core_tests')
+$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', 'looper_core_tests|dsp_primitives_tests')
 $lines += '"{0}" {1}' -f $ctestPath, (ConvertTo-NativeCmdArguments $testArgs)
 $lines += 'exit /b %errorlevel%'
 [System.IO.File]::WriteAllLines($runner, $lines, [System.Text.Encoding]::ASCII)

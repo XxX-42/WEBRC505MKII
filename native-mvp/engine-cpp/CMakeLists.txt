@@ -12,6 +12,8 @@ set(NATIVE_BENCH_LOOPER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/src/looper_core.cpp"
 
 include(FetchContent)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../shared/dsp shared_dsp)
+
 FetchContent_Declare(
   rtaudio_src
   GIT_REPOSITORY https://github.com/thestk/rtaudio.git
