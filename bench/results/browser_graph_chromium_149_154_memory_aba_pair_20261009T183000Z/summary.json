@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "status": "DIAGNOSTIC-PAIR-COMPLETE",
+  "bothTargetsReached": true,
+  "metricDefinition": "Software timeline gap proxy: the looper Worklet increments timelineXrunCount on forward timeline discontinuity; it is not a hardware/driver XRUN counter.",
+  "sourceIdentity": {
+    "snapshotManifestSha256": "bb2e20f3bfa470d4afcad6d651f7f44a917af6a9b2b22944055ae5ef24931fc9",
+    "sourceAssetSetSha256": "734da009c64d3c73b2ca5d3a9deb2dfa16ed5f1d9e6e0e36c3bb2ce123b411e9",
+    "wasmBuildManifestSha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d",
+    "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+    "wasmArtifactSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+    "pilotRunnerSha256": "ceeaa2454ad7e024b447c14445ba0ae3cdacdffcf238d81c5f2bc2f3d3992afd"
+  },
+  "comparisonMethod": "Same immutable app/WASM snapshot, same synthetic input topology, same 48 kHz / observed 128-frame render quantum, same single-context setup, same launch args and 10/20/30/40/50/60-second A-B-A Memory action offsets; only Chromium executable/version differed.",
+  "arms": [
+    {
+      "id": "chrome149",
+      "chromiumVersion": "149.0.7827.55",
+      "executablePath": "C:\\Users\\user1000\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+      "executableSha256": "b798f9e53a98d29eb7f36f8c409f905d3184780a04d2bcb56989067194784bd1",
+      "launchArgs": [
+        "--autoplay-policy=no-user-gesture-required"
+      ],
+      "smokeStatus": "PASS",
+      "assertionCount": 74,
+      "failedAssertions": [],
+      "startedAtUtc": "2026-10-09T18:29:58.132Z",
+      "completedAtUtc": "2026-10-09T18:31:12.495Z",
+      "wallElapsedMs": 74362,
+      "wallTargetMs": 60000,
+      "uniqueOutputFrames": 3154560,
+      "uniqueOutputSecondsAt48k": 65.72,
+      "uniqueOutputTargetFrames": 2880000,
+      "uniqueOutputTargetSeconds": 60,
+      "bothTargetsReached": true,
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "audioSink": "none",
+      "softwareOnly": true,
+      "hardwareCertified": false,
+      "processorOrdinals": {
+        "input": [
+          25,
+          3
+        ],
+        "track": [
+          26,
+          29,
+          36,
+          53
+        ],
+        "master": [
+          47
+        ]
+      },
+      "cleanRoomRhythm": {
+        "patternIndex": 17,
+        "kitIndex": 7
+      },
+      "runtimeModuleSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+      "looperProcessorInstanceId": 1,
+      "masterProcessorInstanceId": 1,
+      "actionScheduleOffsetsMs": [
+        10000,
+        20000,
+        30000,
+        40000,
+        50000,
+        60000
+      ],
+      "actions": [
+        {
+          "scheduledOffsetMs": 10000,
+          "startedOffsetMs": 10004,
+          "durationMs": 2930,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 20000,
+          "startedOffsetMs": 20003,
+          "durationMs": 3234,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 30000,
+          "startedOffsetMs": 30001,
+          "durationMs": 2327,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 40000,
+          "startedOffsetMs": 40000,
+          "durationMs": 2097,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 50000,
+          "startedOffsetMs": 50004,
+          "durationMs": 2102,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 60000,
+          "startedOffsetMs": 60004,
+          "durationMs": 2336,
+          "status": "complete"
+        }
+      ],
+      "actionErrors": [],
+      "memoryABACycles": 6,
+      "duplicateCallbacks": 107,
+      "forwardGapCount": 107,
+      "forwardGapFrames": 13696,
+      "softwareTimelineGapProxyCount": 107,
+      "droppedOutputFrames": 0,
+      "droppedInputFrames": 0,
+      "unprovokedSharedDspFailureDelta": 0,
+      "timelineEventCaptureComplete": false,
+      "timelineEventsCaptured": 245,
+      "pilotTimelineEventsCaptured": 192,
+      "trace": {
+        "maxUs": 1324,
+        "processThreadIds": [
+          25776
+        ],
+        "processTraceCoverage": "trace-complete-single-audio-tid",
+        "compressedBytes": 1952377,
+        "collectionWallMs": 12684,
+        "uncompressedBytes": 33109412,
+        "p99Us": 909,
+        "p999Us": 1112,
+        "compressedSha256": "c62d4f969fb4c7efe15ebc0a0ce3881e75b0a1a4000319174e65d685f0be573b",
+        "wholeAudioRenderTask": "not-measured",
+        "processEventCount": 30721,
+        "audioThreadGcEventCount": 356,
+        "p50Us": 16,
+        "excludedCategories": [
+          "*"
+        ],
+        "uncompressedSha256": "cc3f19d766f4275d7ddb29245f35524034f0a046c3b1f7eec17673ed6267d6eb",
+        "includedCategories": [
+          "audio",
+          "webaudio",
+          "disabled-by-default-audio",
+          "disabled-by-default-audio-worklet",
+          "disabled-by-default-v8.gc"
+        ],
+        "dataLossOccurred": false,
+        "path": "window-01.trace.json.gz"
+      },
+      "sourceIdentity": {
+        "snapshotManifestSha256": "bb2e20f3bfa470d4afcad6d651f7f44a917af6a9b2b22944055ae5ef24931fc9",
+        "sourceAssetSetSha256": "734da009c64d3c73b2ca5d3a9deb2dfa16ed5f1d9e6e0e36c3bb2ce123b411e9",
+        "wasmBuildManifestSha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d",
+        "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+        "wasmArtifactSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+        "pilotRunnerSha256": "ceeaa2454ad7e024b447c14445ba0ae3cdacdffcf238d81c5f2bc2f3d3992afd"
+      },
+      "smokeReportSha256": "6ce0aa118a9f1b6f0d3147a279545e4d830bd75e45285238744d51987f71a630",
+      "summarySha256": "03a69f8c68e7380fcb1eb4ba945b1f3379ca4e35e605234fcaf9f256e78cfa42"
+    },
+    {
+      "id": "chrome154-rerun1",
+      "chromiumVersion": "154.0.8037.99",
+      "executablePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "executableSha256": "e57b884ec7ddd663a43e3f82f87723e93709766475014ab0e63accd9eb3be7f0",
+      "launchArgs": [
+        "--autoplay-policy=no-user-gesture-required"
+      ],
+      "smokeStatus": "PASS",
+      "assertionCount": 74,
+      "failedAssertions": [],
+      "startedAtUtc": "2026-10-09T18:33:05.236Z",
+      "completedAtUtc": "2026-10-09T18:34:20.464Z",
+      "wallElapsedMs": 75226,
+      "wallTargetMs": 60000,
+      "uniqueOutputFrames": 3113088,
+      "uniqueOutputSecondsAt48k": 64.856,
+      "uniqueOutputTargetFrames": 2880000,
+      "uniqueOutputTargetSeconds": 60,
+      "bothTargetsReached": true,
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "audioSink": "none",
+      "softwareOnly": true,
+      "hardwareCertified": false,
+      "processorOrdinals": {
+        "input": [
+          25,
+          3
+        ],
+        "track": [
+          26,
+          29,
+          36,
+          53
+        ],
+        "master": [
+          47
+        ]
+      },
+      "cleanRoomRhythm": {
+        "patternIndex": 17,
+        "kitIndex": 7
+      },
+      "runtimeModuleSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+      "looperProcessorInstanceId": 1,
+      "masterProcessorInstanceId": 1,
+      "actionScheduleOffsetsMs": [
+        10000,
+        20000,
+        30000,
+        40000,
+        50000,
+        60000
+      ],
+      "actions": [
+        {
+          "scheduledOffsetMs": 10000,
+          "startedOffsetMs": 10001,
+          "durationMs": 2951,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 20000,
+          "startedOffsetMs": 20002,
+          "durationMs": 2682,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 30000,
+          "startedOffsetMs": 30001,
+          "durationMs": 2954,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 40000,
+          "startedOffsetMs": 40001,
+          "durationMs": 3211,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 50000,
+          "startedOffsetMs": 50001,
+          "durationMs": 2517,
+          "status": "complete"
+        },
+        {
+          "scheduledOffsetMs": 60000,
+          "startedOffsetMs": 60001,
+          "durationMs": 3170,
+          "status": "complete"
+        }
+      ],
+      "actionErrors": [],
+      "memoryABACycles": 6,
+      "duplicateCallbacks": 36,
+      "forwardGapCount": 36,
+      "forwardGapFrames": 4608,
+      "softwareTimelineGapProxyCount": 36,
+      "droppedOutputFrames": 0,
+      "droppedInputFrames": 0,
+      "unprovokedSharedDspFailureDelta": 0,
+      "timelineEventCaptureComplete": false,
+      "timelineEventsCaptured": 124,
+      "pilotTimelineEventsCaptured": 103,
+      "trace": {
+        "maxUs": 1410,
+        "processThreadIds": [
+          31632
+        ],
+        "processTraceCoverage": "trace-complete-single-audio-tid",
+        "compressedBytes": 1951277,
+        "collectionWallMs": 12411,
+        "uncompressedBytes": 33179947,
+        "p99Us": 827,
+        "p999Us": 1056,
+        "compressedSha256": "6c460dcb8937e48cae9694a9e6fa1d5424f2b8575ea7120aafac03d5435119ba",
+        "wholeAudioRenderTask": "not-measured",
+        "processEventCount": 30949,
+        "audioThreadGcEventCount": 343,
+        "p50Us": 15,
+        "excludedCategories": [
+          "*"
+        ],
+        "uncompressedSha256": "eff3aa7470b529220c9d8c6c45bb6801ef6e055213d8c1e139f77eb48639dab7",
+        "includedCategories": [
+          "audio",
+          "webaudio",
+          "disabled-by-default-audio",
+          "disabled-by-default-audio-worklet",
+          "disabled-by-default-v8.gc"
+        ],
+        "dataLossOccurred": false,
+        "path": "window-01.trace.json.gz"
+      },
+      "sourceIdentity": {
+        "snapshotManifestSha256": "bb2e20f3bfa470d4afcad6d651f7f44a917af6a9b2b22944055ae5ef24931fc9",
+        "sourceAssetSetSha256": "734da009c64d3c73b2ca5d3a9deb2dfa16ed5f1d9e6e0e36c3bb2ce123b411e9",
+        "wasmBuildManifestSha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d",
+        "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+        "wasmArtifactSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+        "pilotRunnerSha256": "ceeaa2454ad7e024b447c14445ba0ae3cdacdffcf238d81c5f2bc2f3d3992afd"
+      },
+      "smokeReportSha256": "eff8fb8d04db4e5f17df803e171168c91147a57bd628316051bba427a501f2a0",
+      "summarySha256": "e438671e96a42d543bb8ab7da324fabdb02709eea9aeffa7f1bda9734fc6bbe9"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "report": "summary.json",
+  "progress": "progress.ndjson",
+  "timelineEvents": "timeline-events.ndjson",
+  "traceDirectory": "traces",
+  "summarySha256": "e438671e96a42d543bb8ab7da324fabdb02709eea9aeffa7f1bda9734fc6bbe9",
+  "progressSha256": "ae1cb852fc246509b094f54282ed9bd340ca3d46dfe37412b98edc70c37d8cbf",
+  "timelineSha256": "5c4607eda196a80d077672eb21d79d435bb385793ad6353b7c7244dfbac5217e",
+  "capturedAtUtc": "2026-10-09T18:34:20.475Z"
+}

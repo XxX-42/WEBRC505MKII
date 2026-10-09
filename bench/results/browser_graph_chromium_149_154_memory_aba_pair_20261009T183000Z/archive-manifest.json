@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-09T18:36:37.134Z",
+  "fileCount": 15,
+  "fileSetSha256": "2beb18ed83f6606d5cf1f6100382151582e716761da352f13f17d024f233b2d7",
+  "canonicalization": "files sorted by UTF-8 path using JS code-point order; each line path=lowercase SHA-256; LF joined with no trailing LF; archive-manifest.json excluded",
+  "pilotStatus": "DIAGNOSTIC-PAIR-COMPLETE",
+  "bothTargetsReached": true,
+  "sourceIdentity": {
+    "snapshotManifestSha256": "bb2e20f3bfa470d4afcad6d651f7f44a917af6a9b2b22944055ae5ef24931fc9",
+    "sourceAssetSetSha256": "734da009c64d3c73b2ca5d3a9deb2dfa16ed5f1d9e6e0e36c3bb2ce123b411e9",
+    "wasmBuildManifestSha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d",
+    "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+    "wasmArtifactSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+    "pilotRunnerSha256": "ceeaa2454ad7e024b447c14445ba0ae3cdacdffcf238d81c5f2bc2f3d3992afd"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3982,
+      "sha256": "9d802b4a96aabb79cc22799d8beac394e8e6c65f73a156bceb918b3d9f3b8fda"
+    },
+    {
+      "path": "attempts/chrome154-output-directory-precreated-rejected.json",
+      "bytes": 279338,
+      "sha256": "210cff29f25bbbdbe1eba7780d533f266adb475afd388ebdc6bf4d9967d3cc25"
+    },
+    {
+      "path": "chrome149/browser-smoke.json",
+      "bytes": 316027,
+      "sha256": "6ce0aa118a9f1b6f0d3147a279545e4d830bd75e45285238744d51987f71a630"
+    },
+    {
+      "path": "chrome149/pilot-index.json",
+      "bytes": 472,
+      "sha256": "6a9fe041ddcb92a5b2ec9a8386d4a444292c71360099cee1c78ef83b06b21828"
+    },
+    {
+      "path": "chrome149/progress.ndjson",
+      "bytes": 14892,
+      "sha256": "c43efe9ad9910ad246d1be7b4fca3c88457538185cca61ea92674b14631f9c6e"
+    },
+    {
+      "path": "chrome149/summary.json",
+      "bytes": 29984,
+      "sha256": "03a69f8c68e7380fcb1eb4ba945b1f3379ca4e35e605234fcaf9f256e78cfa42"
+    },
+    {
+      "path": "chrome149/timeline-events.ndjson",
+      "bytes": 35462,
+      "sha256": "46f293c7d2ab14b4392613383a344408ef39f9d0c14a34e9541c18067e73272e"
+    },
+    {
+      "path": "chrome149/traces/window-01.trace.json.gz",
+      "bytes": 1952377,
+      "sha256": "c62d4f969fb4c7efe15ebc0a0ce3881e75b0a1a4000319174e65d685f0be573b"
+    },
+    {
+      "path": "chrome154-rerun1/browser-smoke.json",
+      "bytes": 316347,
+      "sha256": "eff8fb8d04db4e5f17df803e171168c91147a57bd628316051bba427a501f2a0"
+    },
+    {
+      "path": "chrome154-rerun1/pilot-index.json",
+      "bytes": 472,
+      "sha256": "7d6ee8bace97d40b3d47829f1726ac9a72969fe93de8ad046a283fe7052e76c7"
+    },
+    {
+      "path": "chrome154-rerun1/progress.ndjson",
+      "bytes": 14163,
+      "sha256": "ae1cb852fc246509b094f54282ed9bd340ca3d46dfe37412b98edc70c37d8cbf"
+    },
+    {
+      "path": "chrome154-rerun1/summary.json",
+      "bytes": 26662,
+      "sha256": "e438671e96a42d543bb8ab7da324fabdb02709eea9aeffa7f1bda9734fc6bbe9"
+    },
+    {
+      "path": "chrome154-rerun1/timeline-events.ndjson",
+      "bytes": 17782,
+      "sha256": "5c4607eda196a80d077672eb21d79d435bb385793ad6353b7c7244dfbac5217e"
+    },
+    {
+      "path": "chrome154-rerun1/traces/window-01.trace.json.gz",
+      "bytes": 1951277,
+      "sha256": "6c460dcb8937e48cae9694a9e6fa1d5424f2b8575ea7120aafac03d5435119ba"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 11041,
+      "sha256": "498ec2f73472315761693054f842bc179dd25cd5743512f0b8065b7c558efcf0"
+    }
+  ]
+}

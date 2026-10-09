@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "verifiedAtUtc": "2026-10-09T19:12:34.787837+00:00",
+  "result": "INTEGRITY-PASS; REALTIME-CONTINUITY-FAIL-IN-BOTH-ARMS",
+  "pairArchive": "bench/results/browser_graph_chromium_149_154_memory_aba_pair_20261009T183000Z",
+  "snapshot": "bench/results/browser_graph_snapshot_20261009T182455Z_core32_memory_ABA_pair",
+  "pairInventoryFilesVerified": 15,
+  "snapshotInventoryFilesVerified": 168,
+  "wasmCompilerInputsVerified": 60,
+  "sourceIdentity": {
+    "snapshotManifestSha256": "bb2e20f3bfa470d4afcad6d651f7f44a917af6a9b2b22944055ae5ef24931fc9",
+    "sourceAssetSetSha256": "734da009c64d3c73b2ca5d3a9deb2dfa16ed5f1d9e6e0e36c3bb2ce123b411e9",
+    "wasmBuildManifestSha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d",
+    "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+    "wasmArtifactSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+    "pilotRunnerSha256": "ceeaa2454ad7e024b447c14445ba0ae3cdacdffcf238d81c5f2bc2f3d3992afd"
+  },
+  "arms": [
+    {
+      "id": "chrome149",
+      "browserVersion": "149.0.7827.55",
+      "smokeAssertionsPassed": 74,
+      "sixMemoryABAActionsComplete": true,
+      "wallElapsedMs": 74362,
+      "uniqueOutputFramesAtLastProgress": 3154560,
+      "finalUniqueCounterMinusLastProgressFrames": 7168,
+      "duplicateCallbacksDelta": 107,
+      "forwardGapCountDelta": 107,
+      "forwardGapFramesDelta": 13696,
+      "softwareTimelineGapProxyDelta": 107,
+      "audioThreadGcTraceEventCount": 356,
+      "perWorkletProcessDurationUs": {
+        "p50Us": 16,
+        "p99Us": 909,
+        "p999Us": 1112,
+        "maxUs": 1324
+      },
+      "timelineEventCaptureComplete": false,
+      "realtimeContinuousOutputQualified": false
+    },
+    {
+      "id": "chrome154-rerun1",
+      "browserVersion": "154.0.8037.99",
+      "smokeAssertionsPassed": 74,
+      "sixMemoryABAActionsComplete": true,
+      "wallElapsedMs": 75226,
+      "uniqueOutputFramesAtLastProgress": 3113088,
+      "finalUniqueCounterMinusLastProgressFrames": 75392,
+      "duplicateCallbacksDelta": 36,
+      "forwardGapCountDelta": 36,
+      "forwardGapFramesDelta": 4608,
+      "softwareTimelineGapProxyDelta": 36,
+      "audioThreadGcTraceEventCount": 343,
+      "perWorkletProcessDurationUs": {
+        "p50Us": 15,
+        "p99Us": 827,
+        "p999Us": 1056,
+        "maxUs": 1410
+      },
+      "timelineEventCaptureComplete": false,
+      "realtimeContinuousOutputQualified": false
+    }
+  ],
+  "limitations": [
+    "One short observational run per version; no causal attribution or repeated statistical trial.",
+    "Software timeline gap proxy is not a physical device or driver XRUN counter.",
+    "Duplicate and forward-gap callbacks can belong to the same episode; do not add counts as independent faults.",
+    "Diagnostic event rings overflowed; individual action attribution is incomplete.",
+    "Durations pool per-Worklet callbacks without node identity; complete render task deadline was not measured.",
+    "Unique-output duration ends at last progress sample; final diagnostics include later frames.",
+    "Historical snapshot uses the previous WASM; it is not a measurement of the subsequent pitch or serial warmup changes."
+  ]
+}
