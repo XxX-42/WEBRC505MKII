@@ -1,0 +1,200 @@
+cmake_minimum_required(VERSION 3.16)
+project(webrc_shared_dsp LANGUAGES CXX)
+
+get_filename_component(WEBRC_REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+set(WEBRC_SIGNALSMITH_STRETCH_INCLUDE "${WEBRC_REPOSITORY_ROOT}/third_party/signalsmith-stretch/include")
+set(WEBRC_SIGNALSMITH_LINEAR_INCLUDE "${WEBRC_REPOSITORY_ROOT}/third_party/signalsmith-linear/include")
+if(NOT EXISTS "${WEBRC_SIGNALSMITH_STRETCH_INCLUDE}/signalsmith-stretch/signalsmith-stretch.h" OR
+   NOT EXISTS "${WEBRC_SIGNALSMITH_LINEAR_INCLUDE}/signalsmith-linear/linear.h")
+  message(FATAL_ERROR "Pinned Signalsmith Stretch/Linear headers are missing from third_party.")
+endif()
+add_library(signalsmith-stretch INTERFACE)
+target_include_directories(signalsmith-stretch INTERFACE
+  "${WEBRC_SIGNALSMITH_STRETCH_INCLUDE}"
+  "${WEBRC_SIGNALSMITH_LINEAR_INCLUDE}"
+)
+
+add_library(webrc_dsp STATIC
+  src/primitives.cpp
+  src/control_dynamics.cpp
+  src/nonlinear.cpp
+  src/preamp_fx.cpp
+  src/preamp_models.cpp
+  src/distortion_fx.cpp
+  src/octave_fx.cpp
+  src/octave_models.cpp
+  src/temporal_fx_adapters.cpp
+  src/reconstruction_fx_adapter.cpp
+  src/fft.cpp
+  src/spatial_temporal.cpp
+  src/pitch.cpp
+  src/pitch_profiles.cpp
+  src/signalsmith_adapter.cpp
+  src/streaming_yin.cpp
+  src/live_mono_pitch.cpp
+  src/fx_registry.cpp
+  src/performance_fx.cpp
+  src/modulation_fx.cpp
+  src/rhythm.cpp
+  src/cleanroom_rhythm_data.cpp
+  src/composite_fx.cpp
+  src/modulated_delay_fx.cpp
+  src/rhythmic_fx.cpp
+  src/spatial_fx_adapters.cpp
+  src/musical_fx_adapter.cpp
+  src/musical_fx_registry_bridge.cpp
+  src/synthesis_pitch_fx.cpp
+  src/voice_fx.cpp
+  src/vocoder_fx.cpp
+)
+
+target_include_directories(webrc_dsp PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_compile_features(webrc_dsp PUBLIC cxx_std_17)
+target_link_libraries(webrc_dsp PUBLIC signalsmith-stretch)
+
+if(MSVC)
+  target_compile_options(webrc_dsp PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(webrc_dsp PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(dsp_primitives_tests tests/dsp_primitives_tests.cpp)
+  target_link_libraries(dsp_primitives_tests PRIVATE webrc_dsp)
+  add_test(NAME dsp_primitives_tests COMMAND dsp_primitives_tests)
+
+  add_executable(control_dynamics_tests tests/control_dynamics_tests.cpp)
+  target_link_libraries(control_dynamics_tests PRIVATE webrc_dsp)
+  add_test(NAME control_dynamics_tests COMMAND control_dynamics_tests)
+
+  add_executable(nonlinear_tests tests/nonlinear_tests.cpp)
+  target_link_libraries(nonlinear_tests PRIVATE webrc_dsp)
+  add_test(NAME nonlinear_tests COMMAND nonlinear_tests)
+
+  add_executable(spatial_temporal_tests tests/spatial_temporal_tests.cpp)
+  target_link_libraries(spatial_temporal_tests PRIVATE webrc_dsp)
+  add_test(NAME spatial_temporal_tests COMMAND spatial_temporal_tests)
+
+  add_executable(pitch_tests tests/pitch_tests.cpp)
+  target_link_libraries(pitch_tests PRIVATE webrc_dsp)
+  add_test(NAME pitch_tests COMMAND pitch_tests)
+
+  add_executable(pitch_profiles_tests tests/pitch_profiles_tests.cpp)
+  target_link_libraries(pitch_profiles_tests PRIVATE webrc_dsp)
+  add_test(NAME pitch_profiles_tests COMMAND pitch_profiles_tests)
+
+  add_executable(streaming_yin_tests tests/streaming_yin_tests.cpp)
+  target_link_libraries(streaming_yin_tests PRIVATE webrc_dsp)
+  add_test(NAME streaming_yin_tests COMMAND streaming_yin_tests)
+
+  add_executable(live_mono_pitch_tests tests/live_mono_pitch_tests.cpp)
+  target_link_libraries(live_mono_pitch_tests PRIVATE webrc_dsp)
+  add_test(NAME live_mono_pitch_tests COMMAND live_mono_pitch_tests)
+
+  add_executable(fx_registry_tests tests/fx_registry_tests.cpp)
+  target_link_libraries(fx_registry_tests PRIVATE webrc_dsp)
+  add_test(NAME fx_registry_tests COMMAND fx_registry_tests)
+
+  add_executable(performance_fx_tests tests/performance_fx_tests.cpp)
+  target_link_libraries(performance_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME performance_fx_tests COMMAND performance_fx_tests)
+
+  add_executable(modulation_fx_tests tests/modulation_fx_tests.cpp)
+  target_link_libraries(modulation_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME modulation_fx_tests COMMAND modulation_fx_tests)
+
+
+  add_executable(rhythm_tests tests/rhythm_tests.cpp)
+  target_link_libraries(rhythm_tests PRIVATE webrc_dsp)
+  add_test(NAME rhythm_tests COMMAND rhythm_tests)
+
+  add_executable(composite_fx_tests tests/composite_fx_tests.cpp)
+  target_link_libraries(composite_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME composite_fx_tests COMMAND composite_fx_tests)
+
+  add_executable(modulated_delay_fx_tests tests/modulated_delay_fx_tests.cpp)
+  target_link_libraries(modulated_delay_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME modulated_delay_fx_tests COMMAND modulated_delay_fx_tests)
+
+  add_executable(rhythmic_fx_tests tests/rhythmic_fx_tests.cpp)
+  target_link_libraries(rhythmic_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME rhythmic_fx_tests COMMAND rhythmic_fx_tests)
+
+  add_executable(spatial_fx_adapters_tests tests/spatial_fx_adapters_tests.cpp)
+  target_link_libraries(spatial_fx_adapters_tests PRIVATE webrc_dsp)
+  add_test(NAME spatial_fx_adapters_tests COMMAND spatial_fx_adapters_tests)
+
+  add_executable(preamp_fx_tests tests/preamp_fx_tests.cpp)
+  target_link_libraries(preamp_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME preamp_fx_tests COMMAND preamp_fx_tests)
+
+  add_executable(preamp_models_tests tests/preamp_models_tests.cpp)
+  target_link_libraries(preamp_models_tests PRIVATE webrc_dsp)
+  add_test(NAME preamp_models_tests COMMAND preamp_models_tests)
+
+  add_executable(distortion_fx_tests tests/distortion_fx_tests.cpp)
+  target_link_libraries(distortion_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME distortion_fx_tests COMMAND distortion_fx_tests)
+
+  add_executable(octave_fx_tests tests/octave_fx_tests.cpp)
+  target_link_libraries(octave_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME octave_fx_tests COMMAND octave_fx_tests)
+
+  add_executable(octave_models_tests tests/octave_models_tests.cpp)
+  target_link_libraries(octave_models_tests PRIVATE webrc_dsp)
+  add_test(NAME octave_models_tests COMMAND octave_models_tests)
+
+  add_executable(temporal_fx_adapters_tests tests/temporal_fx_adapters_tests.cpp)
+  target_link_libraries(temporal_fx_adapters_tests PRIVATE webrc_dsp)
+  add_test(NAME temporal_fx_adapters_tests COMMAND temporal_fx_adapters_tests)
+
+  add_executable(reconstruction_fx_adapter_tests tests/reconstruction_fx_adapter_tests.cpp)
+  target_link_libraries(reconstruction_fx_adapter_tests PRIVATE webrc_dsp)
+  add_test(NAME reconstruction_fx_adapter_tests COMMAND reconstruction_fx_adapter_tests)
+
+  add_executable(musical_fx_adapter_tests tests/musical_fx_adapter_tests.cpp)
+  target_link_libraries(musical_fx_adapter_tests PRIVATE webrc_dsp)
+  add_test(NAME musical_fx_adapter_tests COMMAND musical_fx_adapter_tests)
+
+  add_executable(musical_fx_registry_bridge_tests tests/musical_fx_registry_bridge_tests.cpp)
+  target_link_libraries(musical_fx_registry_bridge_tests PRIVATE webrc_dsp)
+  add_test(NAME musical_fx_registry_bridge_tests COMMAND musical_fx_registry_bridge_tests)
+
+  add_executable(voice_fx_tests tests/voice_fx_tests.cpp)
+  target_link_libraries(voice_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME voice_fx_tests COMMAND voice_fx_tests)
+
+  add_executable(vocoder_fx_tests tests/vocoder_fx_tests.cpp)
+  target_link_libraries(vocoder_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME vocoder_fx_tests COMMAND vocoder_fx_tests)
+
+  add_executable(synthesis_pitch_fx_tests tests/synthesis_pitch_fx_tests.cpp)
+  target_link_libraries(synthesis_pitch_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME synthesis_pitch_fx_tests COMMAND synthesis_pitch_fx_tests)
+
+endif()
+
+add_executable(native_dsp_primitives_bench benchmarks/native_dsp_primitives_bench.cpp)
+target_link_libraries(native_dsp_primitives_bench PRIVATE webrc_dsp)
+
+add_executable(dsp_primitives_golden benchmarks/native_dsp_primitives_golden.cpp)
+target_link_libraries(dsp_primitives_golden PRIVATE webrc_dsp)
+
+add_executable(native_dsp_pcm_fixture_generator benchmarks/native_dsp_pcm_fixture_generator.cpp)
+target_link_libraries(native_dsp_pcm_fixture_generator PRIVATE webrc_dsp)
+
+add_executable(native_dsp_parity_v21_generator benchmarks/native_dsp_parity_v21_generator.cpp)
+target_link_libraries(native_dsp_parity_v21_generator PRIVATE webrc_dsp)
+
+add_executable(native_rhythm_bench benchmarks/native_rhythm_bench.cpp)
+target_link_libraries(native_rhythm_bench PRIVATE webrc_dsp)
+
+add_executable(native_dsp_sustained_bench benchmarks/native_dsp_sustained_bench.cpp)
+target_link_libraries(native_dsp_sustained_bench PRIVATE webrc_dsp)
+
+add_executable(native_streaming_yin_bench benchmarks/native_streaming_yin_bench.cpp)
+target_link_libraries(native_streaming_yin_bench PRIVATE webrc_dsp)

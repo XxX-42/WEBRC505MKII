@@ -1,0 +1,14 @@
+{
+  "createdAtUtc": "2026-10-09T23:11:03.205880+00:00",
+  "scope": "Independent real WASM C ABI context test. Not Browser AudioWorklet production routing or realtime acceptance.",
+  "snapshotRoot": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\browser-wasm-musical-context-r3-20261009T225200Z\\source-snapshot",
+  "inputs": {
+    "build-output\\webrc-dsp.wasm": "65960fceaf4cc343629d2cbaaed560a898233c4d3e2d3cda7c9c365fdeca4f5e",
+    "build-output\\webrc-dsp.build.json": "8115dd825d8dc27b0b8d88c2f5475ddb2d435a5fc462b98849579fbcddda0763",
+    "shared\\dsp\\wasm\\tests\\fx-context-smoke.mjs": "6a70c9c2778a98ce57a6b1b014194dc1943942d57927bd6bec77acfdd0db2a4f"
+  },
+  "exitCode": 0,
+  "inputsStableAfterRun": true,
+  "stdout": "{\n  \"result\": \"PASS\",\n  \"scope\": \"typed FX C ABI context validation and musical PCM smoke\",\n  \"wasmSha256\": \"65960fceaf4cc343629d2cbaaed560a898233c4d3e2d3cda7c9c365fdeca4f5e\",\n  \"assertions\": [\n    \"vocoder-required-stereo-carrier\",\n    \"carrier-frame/channel/span-validation\",\n    \"carrier-output-stereo-separation\",\n    \"sample-offset-17-pre-and-post-pcm\",\n    \"same-offset-parameter-before-midi-order\",\n    \"midi-value/offset/channel/alignment/order-validation\",\n    \"parameter-offset/alignment/order-validation\",\n    \"exact-64-event-boundary\",\n    \"65-event-rejection-sentinel-and-state-transactionality\",\n    \"nonmusical-sidecar-rejection\",\n    \"context-api-version\"\n  ]\n}\n",
+  "stderr": ""
+}

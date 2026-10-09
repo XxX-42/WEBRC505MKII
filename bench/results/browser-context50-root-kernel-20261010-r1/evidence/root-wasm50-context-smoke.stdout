@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "scope": "typed FX C ABI context validation and musical PCM smoke",
+  "wasmSha256": "65960fceaf4cc343629d2cbaaed560a898233c4d3e2d3cda7c9c365fdeca4f5e",
+  "assertions": [
+    "vocoder-required-stereo-carrier",
+    "carrier-frame/channel/span-validation",
+    "carrier-output-stereo-separation",
+    "sample-offset-17-pre-and-post-pcm",
+    "same-offset-parameter-before-midi-order",
+    "midi-value/offset/channel/alignment/order-validation",
+    "parameter-offset/alignment/order-validation",
+    "exact-64-event-boundary",
+    "65-event-rejection-sentinel-and-state-transactionality",
+    "nonmusical-sidecar-rejection",
+    "context-api-version"
+  ]
+}

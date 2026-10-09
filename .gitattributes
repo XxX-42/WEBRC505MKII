@@ -428,3 +428,4 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /bench/native-fx-config-preflight-root-repro.cpp -text
 /bench/results/native-fx-config-preflight-root-repro-20261009T224524Z/** -text -whitespace
 /bench/results/native-fx-config-preflight-root-fixed-20261010-r1/** -text -whitespace
+/bench/results/browser-context50-root-kernel-20261010-r1/** -text -whitespace
