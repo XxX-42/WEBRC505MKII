@@ -1,0 +1,40 @@
+{
+  "reviewer": "root",
+  "retrievedAtDate": "2026-10-10",
+  "sourceUrl": "https://chromium.googlesource.com/chromium/src/+/refs/tags/154.0.8037.99/third_party/blink/renderer/platform/audio/audio_destination.cc?format=TEXT",
+  "sourceSha256": "0d22eca8967d74437ed409181ccb5b4ec98b0c2dd6b0ddb52a86f4892194d26f",
+  "sourceBytes": 35592,
+  "sourcePath": "tmp\\chromium-audio-reference-20261010\\154.0.8037.99.cc",
+  "installedChromeExecutable": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "reportedProductVersion": "154.0.8037.99",
+  "hasRenderSessionGenerationGuard": true,
+  "scope": "Candidate comparison environment; not a run result and not proof that current XRUNs are caused by the known upstream bug.",
+  "installedChromeExecutableSha256": "e57b884ec7ddd663a43e3f82f87723e93709766475014ab0e63accd9eb3be7f0",
+  "upstreamFixCommit": "ff7dd2ce70981fdc64621013dba7bc911f7d87c1",
+  "referenceSources": [
+    {
+      "label": "149.0.7827.55",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/149.0.7827.55/third_party/blink/renderer/platform/audio/audio_destination.cc?format=TEXT",
+      "path": "tmp\\chromium-audio-reference-20261010\\149.0.7827.55.cc",
+      "sha256": "e5c3029b4e25f46599b5aaedff17bccd8e3d59add58ccb316faa3ff3866e405c",
+      "bytes": 29336
+    },
+    {
+      "label": "session-fix",
+      "url": "https://chromium.googlesource.com/chromium/src/+/ff7dd2ce70981fdc64621013dba7bc911f7d87c1/third_party/blink/renderer/platform/audio/audio_destination.cc?format=TEXT",
+      "path": "tmp\\chromium-audio-reference-20261010\\session-fix.cc",
+      "sha256": "bbf692bc90d4de38f5c39a646aa807526bb9c20c2e947f210a187f1e337a611a",
+      "bytes": 30647
+    }
+  ],
+  "upstreamFixCommittedAt": "2026-07-06T15:37:44",
+  "upstreamFixCommitMetadataUrl": "https://chromium.googlesource.com/chromium/src/+/ff7dd2ce70981fdc64621013dba7bc911f7d87c1?format=JSON",
+  "comparisonExecution": "pending; ongoing pilot remains Chromium149",
+  "traceObservation": {
+    "path": "bench/results/browser_graph_32fx_pilot_20261010T014700Z_30min/traces/window-03.trace.json.gz",
+    "compressedSha256": "92478fefdf4d856e453090f6085ff5d18d390d59bc7e8b2fbb183be1b869f798",
+    "eventCount": 1942143,
+    "uncompressedJsonBytes": 347760352,
+    "status": "Diagnostic overhead and processor scope limit qualification."
+  }
+}

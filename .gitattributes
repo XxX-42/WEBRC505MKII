@@ -242,3 +242,4 @@
 /shared/dsp/benchmarks/results/preamp-max-control-audit-20261010T011904902/** -text -whitespace
 /shared/dsp/benchmarks/results/vocoder-fx-chord-carrier-20261010T013535969/** -text -whitespace
 /docs/validation/20261010/preamp-vocoder-root-review.json -text -whitespace
+/docs/validation/20261010/chromium-render-session-reference.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
