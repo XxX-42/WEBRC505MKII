@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-10-09T18:24:32.276763+00:00",
+  "reviewer": "root",
+  "scope": "Independent read-only artifact integrity and recorded software metric review; no hardware test",
+  "archives": [
+    {
+      "path": "bench/results/browser_graph_32fx_pilot_20261010T014700Z_30min",
+      "fileCount": 13,
+      "fileSetSha256": "4b311b6771b95e2cc3caf407b3c91c66294f22a1ff59967765cdb57cd941a4cf",
+      "integrity": "PASS"
+    },
+    {
+      "path": "bench/results/browser_graph_32fx_pilot_20261009T181400Z_chrome154_tracefiltered",
+      "fileCount": 7,
+      "fileSetSha256": "5c6d551fef90c40ac12eb6835140d529c459320f4bfc81c4b9ec8300f9bfd0e8",
+      "integrity": "PASS"
+    }
+  ],
+  "sustainedPilot": {
+    "wallElapsedMs": 2035637,
+    "lastProgressWallElapsedMs": 2034023,
+    "uniqueOutputFrames": 87333504,
+    "uniqueOutputSeconds": 1819.448,
+    "finalDiagnosticsUniqueOutputDelta": 87399808,
+    "endpointDifferenceFrames": 66304,
+    "durationEndpointNote": "Reported output duration ends at last progress, before final diagnostics; do not equate its cumulative count to final diagnostics delta. Both duration targets already met at last progress.",
+    "bothTargetsReached": true,
+    "softwareOnly": true,
+    "hardwareCertified": false,
+    "deltas": {
+      "processCallbackCount": 682875,
+      "processFrameCount": 87408000,
+      "duplicateCallbacks": 61,
+      "forwardGapCount": 57,
+      "forwardGapFrames": 8192,
+      "xrunCount": 57,
+      "droppedOutputCallbacks": 3,
+      "droppedOutputFrames": 384,
+      "droppedInputCallbacks": 3,
+      "droppedInputFrames": 384,
+      "timelineEventCount": 178,
+      "unprovokedSharedDspFailureDelta": 0,
+      "sharedDspFailures": {
+        "stereoProcess": 0,
+        "filterReset": 0,
+        "inputOversize": 0,
+        "rhythmFrame": 0,
+        "rhythmProcess": 0,
+        "rhythmCommand": 0
+      }
+    },
+    "timelineEventCaptureComplete": false,
+    "uncapturedPilotEvents": 8,
+    "interpretation": "FAIL software timeline continuity; xrunCount is an app-side forward timeline-gap proxy, not a physical device counter. Duplicate and gap counts can overlap one episode. No whole AudioRenderTask timing measurement; no Gate7 qualification."
+  },
+  "psolaFailure": {
+    "path": "shared/dsp/benchmarks/results/streaming-psola-ratio2-failure-20261009T180747Z",
+    "integrity": "PASS",
+    "indexedFiles": 20,
+    "rmsIndependentlyMeasured": 0.0010451280863206557,
+    "peakIndependentlyMeasured": 0.2678813338279724,
+    "f0IndependentlyMeasuredHz": 106.76869049280947,
+    "expectedHz": 440,
+    "warmWindowFrames": [
+      32000,
+      44000
+    ],
+    "scope": "Frozen pre-fix standalone primitive failure, not current Native implementation; no archived files modified"
+  }
+}

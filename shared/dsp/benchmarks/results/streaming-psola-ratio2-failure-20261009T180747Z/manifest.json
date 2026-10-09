@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "archiveId": "streaming-psola-ratio2-failure-20261009T180747Z",
+  "status": "reproduced_failure",
+  "createdAtUtc": "2026-10-09T18:11:05.8272301+00:00",
+  "createdAtLocal": "2026-10-10T02:11:05.8328771+08:00",
+  "reproSource": "source/pitch_ratio_2_failure_repro.cpp",
+  "buildScript": "build.cmd",
+  "toolchain": "MSVC 19.29.30159.0 / linker 14.29.30159.0 (VS 2019 BuildTools 14.29.30133)",
+  "compilerFlags": [
+    "/std:c++17",
+    "/O2",
+    "/EHsc",
+    "/W4",
+    "/permissive-",
+    "/fp:precise"
+  ],
+  "sourceClosure": [
+    {
+      "path": "source/pitch_ratio_2_failure_repro.cpp",
+      "sha256": "afd2f71bb7b440d5aea94b4037812dd5c524d07352196ce08f30c8d476819141"
+    },
+    {
+      "path": "source/src/pitch.cpp",
+      "sha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957"
+    },
+    {
+      "path": "source/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "source/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "source/include/webrc/dsp/pitch.hpp",
+      "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163"
+    },
+    {
+      "path": "source/include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "source/include/webrc/dsp/fft.hpp",
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    }
+  ],
+  "configuration": {
+    "sampleRate": 48000,
+    "channels": 1,
+    "maxBlockFrames": 128,
+    "frames": 48000,
+    "inputFrequencyHz": 220,
+    "inputAmplitude": 0.3,
+    "pitchRatio": 2.0,
+    "pitchEstimate": {
+      "frequencyHz": 220,
+      "periodSamples": 218.181818182,
+      "confidence": 0.99,
+      "rms": 0.3,
+      "voiced": true
+    },
+    "maximumPitchPeriodSamples": 739,
+    "inputSchedule": "contiguous 375 callbacks of 128 frames"
+  },
+  "warmMeasurement": {
+    "startFrame": 32000,
+    "frames": 12000,
+    "expectedFrequencyHz": 440,
+    "measuredFrequencyHz": 106.768690493,
+    "rms": 0.00104512808632,
+    "frequencyMethod": "normalized autocorrelation, lag range 40..600, parabolic interpolation",
+    "wholeOutputPeak": 0.267881333828,
+    "nonFiniteSamples": 0,
+    "latencySamples": 2217
+  },
+  "rawPcm": {
+    "input": {
+      "path": "artifacts/input.f32le",
+      "encoding": "float32-le mono",
+      "frames": 48000
+    },
+    "output": {
+      "path": "artifacts/output.f32le",
+      "encoding": "float32-le mono",
+      "frames": 48000
+    }
+  },
+  "buildResult": {
+    "compile": "PASS",
+    "link": "PASS",
+    "reproductionProgram": "PASS (expected failure metric reproduced)",
+    "exitCode": 0,
+    "logs": [
+      "build/compiler_version.txt",
+      "build/compile.log",
+      "build/link.log",
+      "build/run.log"
+    ]
+  },
+  "notes": [
+    "Standalone direct-primitive fixture; does not include voice_fx adapter or YIN detector.",
+    "The ratio-2 expectation is 440 Hz from a known 220 Hz source with a manually supplied valid PitchEstimate.",
+    "This is a defect reproduction and not a performance qualification."
+  ]
+}

@@ -265,3 +265,7 @@
 /bench/results/native-fx-reclaim-serial-warmup-20261009T180047Z/** -text -whitespace
 /docs/validation/20261010/native-serial-warmup-root-review.json -text -whitespace
 /docs/validation/20261010/root-full-native-verify.log -text -whitespace
+/bench/results/browser_graph_32fx_pilot_20261010T014700Z_30min/** -text -whitespace
+/bench/results/browser_graph_32fx_pilot_20261009T181400Z_chrome154_tracefiltered/** -text -whitespace
+/shared/dsp/benchmarks/results/streaming-psola-ratio2-failure-20261009T180747Z/** -text -whitespace
+/docs/validation/20261010/browser-pilot-and-psola-failure-root-review.json -text -whitespace

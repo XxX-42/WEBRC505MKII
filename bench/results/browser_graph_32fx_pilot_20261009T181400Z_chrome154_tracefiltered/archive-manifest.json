@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-09T18:16:32.237Z",
+  "fileCount": 7,
+  "fileSetSha256": "5c6d551fef90c40ac12eb6835140d529c459320f4bfc81c4b9ec8300f9bfd0e8",
+  "canonicalization": "files sorted by UTF-8 path using JS code-point order; each line path=lowercase SHA-256; LF joined with no trailing LF; archive-manifest.json excluded",
+  "pilotStatus": "DIAGNOSTIC-PARTIAL-REGISTRY",
+  "bothTargetsReached": true,
+  "sourceIdentity": {
+    "snapshotManifestSha256": "36c43efa7af3f5998adc2bd3e49cd0c1f9b818aa51db41348bc700866212e327",
+    "sourceAssetSetSha256": "ed8cd7d6b8773d6dc6782e191354c4dc1face025f22a7f86e31fad6143e5e828",
+    "wasmBuildManifestSha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d",
+    "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+    "wasmArtifactSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+    "pilotRunnerSha256": "ea9dd5e8d39ee4fc9d250df4245dcf0f87230471003d3316440ffd948005a0a2"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3400,
+      "sha256": "9730cd21af059557f59c7163e53c14a13292e7e0e9653f6f06a7f7bddf3b2c89"
+    },
+    {
+      "path": "browser-smoke.json",
+      "bytes": 308982,
+      "sha256": "536ed7eeb6037ec484c151f66d86e874d91d47b78b768756a3de15a382d7c143"
+    },
+    {
+      "path": "pilot-index.json",
+      "bytes": 472,
+      "sha256": "9200a416bd24672ae34a2fff1699836d83e0ad388f36e99cfb94b02d2b7db663"
+    },
+    {
+      "path": "progress.ndjson",
+      "bytes": 12725,
+      "sha256": "e57e142354db91028ad5ec53ddcce4a7ae1ec4c9333b2ea4b304085c6540e6aa"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 24110,
+      "sha256": "81df9886e0932d34bc1b1d5d119b660ec24f67e40800161ec30fe3e18aa80db0"
+    },
+    {
+      "path": "timeline-events.ndjson",
+      "bytes": 5690,
+      "sha256": "b24d48a2aedce54487e61cd9237ebba9bf8a631b6e06fa0f2e155fea904a02c5"
+    },
+    {
+      "path": "traces/window-01.trace.json.gz",
+      "bytes": 1889014,
+      "sha256": "cb9219d357cf686b53ce2618caddd3c54c0f9d4c9839d087c7e52e8556026acf"
+    }
+  ]
+}

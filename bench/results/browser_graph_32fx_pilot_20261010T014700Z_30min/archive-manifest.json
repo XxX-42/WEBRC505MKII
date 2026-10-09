@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-09T18:12:06.529Z",
+  "fileCount": 13,
+  "fileSetSha256": "4b311b6771b95e2cc3caf407b3c91c66294f22a1ff59967765cdb57cd941a4cf",
+  "canonicalization": "files sorted by UTF-8 path using JS code-point order; each line path=lowercase SHA-256; LF joined with no trailing LF; archive-manifest.json excluded",
+  "pilotStatus": "DIAGNOSTIC-PARTIAL-REGISTRY",
+  "bothTargetsReached": true,
+  "sourceIdentity": {
+    "snapshotManifestSha256": "e484296adc51b5b546a2f73f3b241459824cc99fe07eeb66321d23a63f510fa7",
+    "sourceAssetSetSha256": "866b0dfb439bf8c56617ec13a477dc36de3760ed743a19c6b9e49b841dddc5e9",
+    "wasmBuildManifestSha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d",
+    "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+    "wasmArtifactSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+    "pilotRunnerSha256": "c8e8945c0c93ff8002fd8a160c70cb6197b2203be8c495f14bfec4961aa60aea"
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2622,
+      "sha256": "ff5b7ab550fae4f091d9c341b391ca46d3b7ecc510ee199015ff34a78ea8c502"
+    },
+    {
+      "path": "browser-smoke.json",
+      "bytes": 444726,
+      "sha256": "b7d9c060f65b66d02bcd5527007235cf12283e08b4042a017a06226b85ce5f24"
+    },
+    {
+      "path": "pilot-index.json",
+      "bytes": 472,
+      "sha256": "5b81e3c2d7a41eb11f6a409e044bacb81ef672b8cd9b2095b60cebe1b353cc3d"
+    },
+    {
+      "path": "progress.ndjson",
+      "bytes": 285474,
+      "sha256": "d33fca448c1d15e64eb8346581264d732de1962d2d87e78c92745e682a32820b"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 136973,
+      "sha256": "7f933a046a42d03add2183c36d0a19254e1a77fb5e6b920024e4f3ac93e7ff7e"
+    },
+    {
+      "path": "timeline-events.ndjson",
+      "bytes": 32351,
+      "sha256": "db936522a418e3ef625456a061c88defc3217cb1c7d222b61b2a640710806e36"
+    },
+    {
+      "path": "traces/window-01.trace.json.gz",
+      "bytes": 32158880,
+      "sha256": "78332817063a17619119a14a01e682126aad890171608a3b7d085ae303ac6a3d"
+    },
+    {
+      "path": "traces/window-02.trace.json.gz",
+      "bytes": 34290502,
+      "sha256": "79ccd9cb9149967feea402c6b8e2770b82599bd6dcb7c35b488180ba4314c4e4"
+    },
+    {
+      "path": "traces/window-03.trace.json.gz",
+      "bytes": 34237106,
+      "sha256": "92478fefdf4d856e453090f6085ff5d18d390d59bc7e8b2fbb183be1b869f798"
+    },
+    {
+      "path": "traces/window-04.trace.json.gz",
+      "bytes": 33611946,
+      "sha256": "4ff348f8942fa4ac9866ec9d327cab22a3a07aa79115ebcc1a47dc7485031550"
+    },
+    {
+      "path": "traces/window-05.trace.json.gz",
+      "bytes": 34761580,
+      "sha256": "903b1571851eeec91c3c89651472ba7cd043ba1baa26980aecc0b3be6e1f4e1c"
+    },
+    {
+      "path": "traces/window-06.trace.json.gz",
+      "bytes": 34542471,
+      "sha256": "528951c576ab90dee5eab57b741a7b9e6e967cd371f3a7e8e0c2a5f6b4dfb8a5"
+    },
+    {
+      "path": "traces/window-07.trace.json.gz",
+      "bytes": 31592188,
+      "sha256": "f9ce2de11d4b551f0cb60717e2f250986ba488623e24acced4c12072d0881a22"
+    }
+  ]
+}
