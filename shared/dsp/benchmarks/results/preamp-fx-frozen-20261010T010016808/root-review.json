@@ -1,0 +1,31 @@
+{
+  "reviewer": "root",
+  "status": "PASS-SCOPED-ARTIFACT-AND-SOURCE-VERIFICATION",
+  "indexedArtifacts": 27,
+  "capturedSourceCount": 11,
+  "canonicalSourceCount": 11,
+  "derivedSources": {},
+  "rootSourceSetSha256": "45e2679d3cacd51f91a6439a15d10218f9a347b05d20497696e9918f971b8690",
+  "capturedSources": {
+    "shared/dsp/include/webrc/dsp/fft.hpp": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+    "shared/dsp/include/webrc/dsp/nonlinear.hpp": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+    "shared/dsp/include/webrc/dsp/preamp_fx.hpp": "43c9301f85605e0aa3e3422659b996e8c0b18eb30898ac28e31549f36fa81c5f",
+    "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+    "shared/dsp/include/webrc/dsp/spatial_temporal.hpp": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+    "shared/dsp/src/fft.cpp": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+    "shared/dsp/src/nonlinear.cpp": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+    "shared/dsp/src/preamp_fx.cpp": "3a9e0a69552a7b0b943862eb7ffe60bdd2436ebd3a172bc6aa95aa96514cede5",
+    "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+    "shared/dsp/src/spatial_temporal.cpp": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+    "shared/dsp/tests/preamp_fx_tests.cpp": "0ae426b136bacffb4b71d1019e72d2a12f9b4d88289fb5fe7467f5f773e55ac7"
+  },
+  "rerunLog": "root-rerun.log",
+  "rerunLogSha256": "eadb562e7efb21a4a306dd52510596b228a22a3ca9b59447756ebc50329b5053",
+  "rerunExitCode": 0,
+  "rootFreshCompilation": false,
+  "limitations": [
+    "No full graph realtime qualification",
+    "No browser/native integration claim",
+    "No hardware latency measurement"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "capturePhase": "before-build",
+  "sourceFingerprint": "305c343a87ca2e04a86489ab3edd510f4d511ca117909562ffb568e39b2ea5cc",
+  "sourceFiles": [
+    {
+      "path": "shared/dsp/benchmarks/octave_impulse_audit.cpp",
+      "sha256": "6ae0a3f5a21c0d585ec083f49b08b0727e4718367abbfacbe3dabf0b95a29efb",
+      "bytes": 8250
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "bytes": 548
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/octave_fx.hpp",
+      "sha256": "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7",
+      "bytes": 4139
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+      "bytes": 9082
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "bytes": 10933
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "bytes": 3129
+    },
+    {
+      "path": "shared/dsp/src/octave_fx_probe.cpp",
+      "sha256": "a9360c82dae1ebb51970ccc9f64a22fd3a444dd08e7866503d0c7b0e8b048af3",
+      "bytes": 14092
+    },
+    {
+      "path": "shared/dsp/src/octave_fx.cpp",
+      "sha256": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292",
+      "bytes": 13804
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "sha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957",
+      "bytes": 36950
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "bytes": 38017
+    }
+  ]
+}

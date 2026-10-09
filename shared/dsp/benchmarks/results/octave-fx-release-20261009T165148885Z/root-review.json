@@ -1,0 +1,29 @@
+{
+  "reviewer": "root",
+  "status": "PASS-SCOPED-ARTIFACT-AND-SOURCE-VERIFICATION",
+  "indexedArtifacts": 26,
+  "capturedSourceCount": 9,
+  "canonicalSourceCount": 9,
+  "derivedSources": {},
+  "rootSourceSetSha256": "3c4773b0d3e5a4aba15fd724f7e391db30a0ddb3425ea02d3c662e44555e63eb",
+  "capturedSources": {
+    "shared/dsp/include/webrc/dsp/fft.hpp": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+    "shared/dsp/include/webrc/dsp/octave_fx.hpp": "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7",
+    "shared/dsp/include/webrc/dsp/pitch.hpp": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+    "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+    "shared/dsp/src/fft.cpp": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+    "shared/dsp/src/octave_fx.cpp": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292",
+    "shared/dsp/src/pitch.cpp": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957",
+    "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+    "shared/dsp/tests/octave_fx_tests.cpp": "8fb4f3616e48111ca2b73de853d13fbf05b63b6d900ae6dcf0aba72534cffddf"
+  },
+  "rerunLog": "root-rerun.log",
+  "rerunLogSha256": "badd4a6b3da7dd41f5585091206ce48937fde61cee43ce19413b7c08746003d5",
+  "rerunExitCode": 0,
+  "rootFreshCompilation": false,
+  "limitations": [
+    "No full graph realtime qualification",
+    "No browser/native integration claim",
+    "No hardware latency measurement"
+  ]
+}

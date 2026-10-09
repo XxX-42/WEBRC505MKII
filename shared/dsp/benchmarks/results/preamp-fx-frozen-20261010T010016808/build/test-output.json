@@ -1,0 +1,1 @@
+{"schemaVersion":1,"suite":"preamp-fx","sampleRate":48000,"defaultNonlinearModel":"WdfSymmetricDiode4x","callbackAllocationsAndFrees":[0,0],"partitionMaximumDifference":0,"toneLowFrequencyPlusMinusRatio":4.96892605,"cabinetChangedResponseRms":0.110846214122,"dryImpulseFrame":86,"wetImpulseFirstFrame":73,"wetImpulsePeakFrame":86,"failures":0}

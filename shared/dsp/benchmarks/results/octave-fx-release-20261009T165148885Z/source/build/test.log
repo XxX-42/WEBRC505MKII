@@ -1,0 +1,2 @@
+{"schemaVersion":1,"suite":"octave-fx","sampleRate":48000,"latencySamples":2048,"partitionMaximumDifference":0,"upPeakHz":[439.999669,660.000019],"upWrongChannelRatio":[7.03556121062e-09,1.61544804383e-08],"downPeakHz":[439.999772,330.000077],"downWrongChannelRatio":[5.57607950438e-08,3.15179042788e-08],"unityMaximumError":5.96046447754e-08,"impulseFirstOutput":257,"gatedToneDurationMs":538.666667,"callbackAllocationsAndFrees":[0,0]}
+OCTAVE: true stereo phase-vocoder voice, latency, octave accuracy, duration, and callback checks passed

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "capturePhase": "before-build",
+  "sourceFingerprint": "6c0a643f608c41f187afe5b771e8fa34f7f7dc85af55f0c8ecb94276440cda57",
+  "sourceFiles": [
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "bytes": 548
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+      "bytes": 4181
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/preamp_fx.hpp",
+      "sha256": "43c9301f85605e0aa3e3422659b996e8c0b18eb30898ac28e31549f36fa81c5f",
+      "bytes": 5367
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "bytes": 10933
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "bytes": 23156
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "bytes": 3129
+    },
+    {
+      "path": "shared/dsp/src/nonlinear.cpp",
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+      "bytes": 10185
+    },
+    {
+      "path": "shared/dsp/src/preamp_fx.cpp",
+      "sha256": "3a9e0a69552a7b0b943862eb7ffe60bdd2436ebd3a172bc6aa95aa96514cede5",
+      "bytes": 18204
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "bytes": 38017
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "bytes": 88577
+    },
+    {
+      "path": "shared/dsp/tests/preamp_fx_tests.cpp",
+      "sha256": "0ae426b136bacffb4b71d1019e72d2a12f9b4d88289fb5fe7467f5f773e55ac7",
+      "bytes": 18355
+    }
+  ]
+}

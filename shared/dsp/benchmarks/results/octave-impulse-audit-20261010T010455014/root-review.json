@@ -1,0 +1,32 @@
+{
+  "reviewer": "root",
+  "status": "PASS-SCOPED-ARTIFACT-AND-SOURCE-VERIFICATION",
+  "indexedArtifacts": 24,
+  "capturedSourceCount": 10,
+  "canonicalSourceCount": 9,
+  "derivedSources": {
+    "shared/dsp/src/octave_fx_probe.cpp": "a9360c82dae1ebb51970ccc9f64a22fd3a444dd08e7866503d0c7b0e8b048af3"
+  },
+  "rootSourceSetSha256": "8728cf31b882cfda2e29ffaca3adb091d8891591a6289a56168d0882b882e415",
+  "capturedSources": {
+    "shared/dsp/benchmarks/octave_impulse_audit.cpp": "6ae0a3f5a21c0d585ec083f49b08b0727e4718367abbfacbe3dabf0b95a29efb",
+    "shared/dsp/include/webrc/dsp/fft.hpp": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+    "shared/dsp/include/webrc/dsp/octave_fx.hpp": "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7",
+    "shared/dsp/include/webrc/dsp/pitch.hpp": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+    "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+    "shared/dsp/src/fft.cpp": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+    "shared/dsp/src/octave_fx_probe.cpp": "a9360c82dae1ebb51970ccc9f64a22fd3a444dd08e7866503d0c7b0e8b048af3",
+    "shared/dsp/src/octave_fx.cpp": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292",
+    "shared/dsp/src/pitch.cpp": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957",
+    "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+  },
+  "rerunLog": "root-rerun.log",
+  "rerunLogSha256": "7ce239e4dd20a022cc13f47b540efc0d70ed5994aefb71888faf2a9a3e0adaed",
+  "rerunExitCode": 0,
+  "rootFreshCompilation": false,
+  "limitations": [
+    "No full graph realtime qualification",
+    "No browser/native integration claim",
+    "No hardware latency measurement"
+  ]
+}

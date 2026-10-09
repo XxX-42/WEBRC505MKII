@@ -221,3 +221,13 @@
 /shared/dsp/tests/distortion_fx_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /shared/dsp/benchmarks/results/temporal-fx-adapters-latency-contract-fix-20261009T163910062Z/** -text -whitespace
 /shared/dsp/benchmarks/results/distortion-fx-maxdrive-fix-20261009T163506248Z/** -text -whitespace
+/shared/dsp/include/webrc/dsp/octave_fx.hpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/octave_fx.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/octave_fx_tests.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/preamp_fx.hpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/preamp_fx.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/preamp_fx_tests.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/octave_impulse_audit.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/results/octave-fx-release-20261009T165148885Z/** -text -whitespace
+/shared/dsp/benchmarks/results/octave-impulse-audit-20261010T010455014/** -text -whitespace
+/shared/dsp/benchmarks/results/preamp-fx-frozen-20261010T010016808/** -text -whitespace
