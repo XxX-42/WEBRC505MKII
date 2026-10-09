@@ -534,8 +534,8 @@ void testSpectralFreeze() {
           "non-bin spectral freeze prepares wet-only pitch test");
     std::vector<float> frozenLeft;
     std::vector<float> frozenRight;
-    frozenLeft.reserve(warmSamples + hop + totalSamples);
-    frozenRight.reserve(warmSamples + hop + totalSamples);
+    frozenLeft.reserve(warmSamples + totalSamples);
+    frozenRight.reserve(warmSamples + totalSamples);
     const auto feedTone = [&](std::uint32_t frames) {
         for (std::uint32_t i = 0; i < frames; ++i) {
             const auto absolute = static_cast<double>(frozenLeft.size());
@@ -547,8 +547,10 @@ void testSpectralFreeze() {
         }
     };
     feedTone(warmSamples);
-    check(pitchHold.setFreeze(true), "non-bin spectral freeze captures on next complete hop");
-    feedTone(hop);
+    check(pitchHold.setFreeze(true),
+          "non-bin spectral freeze captures the last complete frame at the event");
+    // Stop the input on the exact freeze event. A later analysis hop therefore
+    // contains silence and must not replace the last populated spectrum.
     for (std::uint32_t i = 0; i < totalSamples; ++i) {
         const auto output = pitchHold.processSample(0.0f, 0.0f);
         frozenLeft.push_back(output.left);
@@ -557,13 +559,13 @@ void testSpectralFreeze() {
     const std::uint32_t measureBegin = 8192;
     const std::uint32_t measureEnd = measureBegin + measuredSamples;
     const double leftFrequency = dominantFrequency(frozenLeft, measureBegin, measureEnd,
-                                                   410.0, 470.0, 1.0, 48000.0);
+                                                   430.0, 450.0, 0.1, 48000.0);
     const double rightFrequency = dominantFrequency(frozenRight, measureBegin, measureEnd,
-                                                    960.0, 1030.0, 1.0, 48000.0);
+                                                    987.0, 1007.0, 0.1, 48000.0);
     const double earlyRms = rms(frozenLeft, measureBegin, measureBegin + 4096);
     const double lateRms = rms(frozenLeft, measureEnd - 4096, measureEnd);
-    check(std::abs(leftFrequency - 440.0) <= 4.0 && std::abs(rightFrequency - 997.0) <= 4.0,
-          "phase-locked freeze holds non-bin 440 Hz and 997 Hz tones");
+    check(std::abs(leftFrequency - 440.0) <= 0.5 && std::abs(rightFrequency - 997.0) <= 0.5,
+          "phase-locked freeze holds non-bin 440 Hz and 997 Hz after input stops at the trigger");
     check(earlyRms > 0.05 && lateRms > 0.05 &&
           lateRms / earlyRms > 0.65 && lateRms / earlyRms < 1.45,
           "frozen non-bin tones sustain with bounded amplitude drift");

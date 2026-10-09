@@ -88,10 +88,12 @@ const Kind = {
 const Control = {
   smootherTarget: 1,
   biquadLowpass: 2,
+  biquadLowShelf: 14,
+  biquadHighShelf: 15,
   svfFrequencyQ: 6,
   delayMatrixFeedback: 13,
 };
-const Status = { ok: 0, badHandle: -1, blockTooLarge: -4, memoryBudget: -7, badKind: -3 };
+const Status = { ok: 0, badHandle: -1, badArgument: -2, blockTooLarge: -4, memoryBudget: -7, badKind: -3 };
 const ExtKind = { wdfDiode: 100 };
 const MAX_BLOCK = 512;
 const bytesBefore = wasm.HEAPF32.buffer.byteLength;
@@ -213,6 +215,35 @@ assertPcm(output.view.subarray(0, 8), [
   0.05584675818681717,
   0.05834154412150383,
 ], 'RBJ low-pass impulse PCM', 4e-7);
+
+// Shelf controls use the shared RBJ implementation. Invalid parameters must
+// leave the previously configured filter unchanged.
+const lowShelf = create(Kind.biquad);
+const lowShelfReference = create(Kind.biquad);
+const shelfControl = allocate(4);
+shelfControl.view.set([1000, 6, 1, 0]);
+assert.equal(wasm._webrc_dsp_configure(lowShelf, Control.biquadLowShelf,
+  shelfControl.address, 4), Status.ok);
+assert.equal(wasm._webrc_dsp_configure(lowShelfReference, Control.biquadLowShelf,
+  shelfControl.address, 4), Status.ok);
+shelfControl.view.set([1000, 6, 0, 0]);
+assert.equal(wasm._webrc_dsp_configure(lowShelf, Control.biquadLowShelf,
+  shelfControl.address, 4), Status.badArgument, 'invalid shelf slope is rejected');
+input.view.fill(0, 0, 32);
+for (let i = 0; i < 32; ++i) input.view[i] = Math.sin(2 * Math.PI * 311 * i / SAMPLE_RATE);
+assert.equal(wasm._webrc_dsp_process(lowShelf, input.address, 0, output.address, 0, 0, 0, 32), Status.ok);
+const shelfOutput = Float32Array.from(output.view.subarray(0, 32));
+assert.equal(wasm._webrc_dsp_process(lowShelfReference, input.address, 0, output.address, 0, 0, 0, 32), Status.ok);
+assertPcm(shelfOutput, output.view.subarray(0, 32), 'rejected shelf update preserves prior coefficients', 0);
+assert.ok(shelfOutput.some((value, index) => Math.abs(value - input.view[index]) > 1e-3),
+  'configured low shelf changes the signal');
+
+const highShelf = create(Kind.biquad);
+shelfControl.view.set([4000, -6, 0.75, 0]);
+assert.equal(wasm._webrc_dsp_configure(highShelf, Control.biquadHighShelf,
+  shelfControl.address, 4), Status.ok);
+assert.equal(wasm._webrc_dsp_process(highShelf, input.address, 0, output.address, 0, 0, 0, 32), Status.ok);
+assert.ok(Array.from(output.view.subarray(0, 32)).every(Number.isFinite), 'high shelf output is finite');
 
 const svf = create(Kind.svf);
 const svfControl = allocate(3);
@@ -437,7 +468,8 @@ const bytesAfterRendering = wasm.HEAPF32.buffer.byteLength;
 assert.equal(bytesAfterRendering, bytesBefore, 'process calls never grow linear memory');
 
 for (const handle of largeDelayHandles) assert.equal(wasm._webrc_dsp_destroy(handle), Status.ok);
-for (const handle of [...fixtureHandles, smoother, biquad, svf, delayMatrix, reusedSlot]) {
+for (const handle of [...fixtureHandles, smoother, biquad, lowShelf, lowShelfReference,
+  highShelf, svf, delayMatrix, reusedSlot]) {
   assert.equal(wasm._webrc_dsp_destroy(handle), Status.ok);
 }
 assert.equal(wasm._webrc_dsp_extended_destroy(extendedWdf), Status.ok);
@@ -448,7 +480,7 @@ assert.equal(wasm._webrc_dsp_managed_memory_bytes(), transferMemoryBytes,
 
 for (const buffer of [input, output, outputRight, outputAux, parameters, leftGain,
   rightGain, scalar, smootherControl, filterControl, svfControl, delayFeedbackControl, sincInput,
-  ...fixtureBuffers]) {
+  shelfControl, ...fixtureBuffers]) {
   wasm._webrc_dsp_free(buffer.address);
 }
 assert.equal(wasm._webrc_dsp_managed_memory_bytes(), 0, 'setup transfer buffers are accounted and released');

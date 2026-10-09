@@ -21,3 +21,7 @@
 /bench/results/dsp_pcm_parity_v2/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /bench/results/dsp_pcm_parity_v2/**/*.f32le -diff
 /bench/results/dsp_pcm_parity_v2/**/logs/** -whitespace
+# Preserve the freeze compiler inputs captured by the shelf-control snapshot.
+/shared/dsp/include/webrc/dsp/spatial_temporal.hpp -text
+/shared/dsp/src/spatial_temporal.cpp -text
+/shared/dsp/tests/spatial_temporal_tests.cpp -text

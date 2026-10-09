@@ -1,0 +1,36 @@
+{
+  "suite": "shared-dsp-wasm-extended-smoke",
+  "wasmSha256": "100776aecdb7f366c24b7681dde70bedbeac756f85415385d3d60c7e5ed3f4bd",
+  "sourceSetSha256": "d34f34ac95a059a29e0efb07f62adac55167ce15e7265f5608199606094ec7ad",
+  "extendedKindsCreated": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120
+  ],
+  "capabilities": 3,
+  "memoryBytes": 67108864,
+  "wasiCalls": {
+    "fd_close": 0,
+    "fd_write": 0,
+    "fd_seek": 0
+  },
+  "result": "PASS"
+}

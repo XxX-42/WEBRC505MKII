@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "sourceSnapshot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-dsp-wasm-snapshot-20261009T122229",
+  "sourceSnapshotManifestSha256": "5306571e14b0fe29721f414d94f8c80e86747f9c64c8c32a0618ced97ae52f78",
+  "nodeVersion": "v24.19.0",
+  "buildSourceSetSha256": "d34f34ac95a059a29e0efb07f62adac55167ce15e7265f5608199606094ec7ad",
+  "wasmSha256": "100776aecdb7f366c24b7681dde70bedbeac756f85415385d3d60c7e5ed3f4bd",
+  "tests": [
+    "golden.mjs",
+    "extended-smoke.mjs"
+  ],
+  "outputs": {
+    "webrc-dsp.wasm": "100776aecdb7f366c24b7681dde70bedbeac756f85415385d3d60c7e5ed3f4bd",
+    "webrc-dsp.build.json": "78f515b0b97e309f0cd07c959d06e9fd4d20eeb8bca0eed522edb7b2b699e718",
+    "snapshot-source-manifest.json": "5306571e14b0fe29721f414d94f8c80e86747f9c64c8c32a0618ced97ae52f78",
+    "golden.stdout.json": "1f0cfde2f62abb341096b85044293bd7166849a15245e0d3b02fc3a283580cfb",
+    "golden.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "extended-smoke.stdout.json": "1ad5c0f4a90bb182d11de4b45deb0d628722687dc13bb6f303a3282a25084caa",
+    "extended-smoke.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

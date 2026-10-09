@@ -830,6 +830,7 @@ bool SpectralFreeze::prepare(const ProcessSpec& spec, std::uint32_t windowFrames
             channel.previousPhase.assign(bins, 0.0f);
             channel.frozenPhase.assign(bins, 0.0f);
             channel.frozenPhaseOffset.assign(bins, 0.0f);
+            channel.phaseAdvance.assign(bins, 0.0f);
             channel.frozenOmega.assign(bins, 0.0f);
             channel.peakOwner.assign(bins, 0);
             channel.peakList.assign(bins, 0);
@@ -858,7 +859,7 @@ std::size_t SpectralFreeze::requiredPrepareBytes(const ProcessSpec& spec,
     const std::uint64_t bins = windowFrames / 2U + 1U;
     const std::uint64_t perChannel = 6U * windowFrames * sizeof(float) +
         2U * windowFrames * sizeof(std::complex<float>) +
-        bins * (7U * sizeof(float) + 2U * sizeof(std::uint32_t));
+        bins * (8U * sizeof(float) + 2U * sizeof(std::uint32_t));
     const std::uint64_t payload = static_cast<std::uint64_t>(windowFrames + hopFrames) * sizeof(float) +
         2U * perChannel;
     constexpr std::uint64_t maximumPayload = 2U * 1024U * 1024U;
@@ -879,10 +880,13 @@ void SpectralFreeze::reset() noexcept {
         std::fill(channel.previousPhase.begin(), channel.previousPhase.end(), 0.0f);
         std::fill(channel.frozenPhase.begin(), channel.frozenPhase.end(), 0.0f);
         std::fill(channel.frozenPhaseOffset.begin(), channel.frozenPhaseOffset.end(), 0.0f);
+        std::fill(channel.phaseAdvance.begin(), channel.phaseAdvance.end(), 0.0f);
         std::fill(channel.frozenOmega.begin(), channel.frozenOmega.end(), 0.0f);
         std::fill(channel.peakOwner.begin(), channel.peakOwner.end(), 0U);
         std::fill(channel.peakList.begin(), channel.peakList.end(), 0U);
         std::fill(channel.scratch.begin(), channel.scratch.end(), 0.0f);
+        channel.hasAnalysisFrame = false;
+        channel.hasPhaseAdvance = false;
     }
     sampleCounter_ = 0;
     windowWrite_ = 0;
@@ -894,9 +898,19 @@ bool SpectralFreeze::setFreeze(bool freeze) noexcept {
         return false;
     }
     if (freeze && !freezeRequested_) {
-        capturePending_ = true;
+        // Capture the last complete analysis frame at the control event. If we
+        // waited for the next hop, an input that stops on the freeze event
+        // would contaminate that frame with silence and shift off-bin pitch.
+        if (channels_[0].hasPhaseAdvance && channels_[1].hasPhaseAdvance) {
+            captureFrozenState(channels_[0]);
+            captureFrozenState(channels_[1]);
+            capturePending_ = false;
+        } else {
+            capturePending_ = true;
+        }
     }
     freezeRequested_ = freeze;
+    if (!freeze) capturePending_ = false;
     return true;
 }
 
@@ -922,11 +936,11 @@ void SpectralFreeze::captureFrozenState(ChannelState& channel) noexcept {
     for (std::uint32_t bin = 0; bin < bins; ++bin) {
         channel.frozenMagnitude[bin] = channel.magnitude[bin];
         channel.frozenPhase[bin] = channel.phase[bin];
-        const double expected = kTwoPi * static_cast<double>(bin) * hopFrames_ / windowFrames_;
-        double residual = channel.phase[bin] - channel.previousPhase[bin] - expected;
-        residual = std::remainder(residual, kTwoPi);
-        // expected + phase residual is measured in radians per analysis hop.
-        channel.frozenOmega[bin] = static_cast<float>(expected + residual);
+        // phaseAdvance was computed from this frame and the preceding complete
+        // frame before previousPhase was refreshed. Keep its rad/hop value so
+        // a freeze event can snapshot the latest full frame without observing
+        // a zero phase difference or analyzing post-event silence.
+        channel.frozenOmega[bin] = channel.phaseAdvance[bin];
         channel.frozenSpectrum[bin] = channel.spectrum[bin];
         const float before = bin == 0 ? channel.magnitude[bin] : channel.magnitude[bin - 1];
         const float after = bin + 1 >= bins ? channel.magnitude[bin] : channel.magnitude[bin + 1];
@@ -954,6 +968,7 @@ void SpectralFreeze::captureFrozenState(ChannelState& channel) noexcept {
 
 void SpectralFreeze::processFrame(ChannelState& channel, std::uint32_t channelIndex,
                                   std::uint64_t frameEnd) noexcept {
+    const bool hasPriorAnalysis = channel.hasAnalysisFrame;
     const std::int64_t frameStart = static_cast<std::int64_t>(frameEnd + 1) - windowFrames_;
     for (std::uint32_t i = 0; i < windowFrames_; ++i) {
         const float input = ringSample(channel.inputRing, frameStart + i);
@@ -965,6 +980,11 @@ void SpectralFreeze::processFrame(ChannelState& channel, std::uint32_t channelIn
         const auto value = channel.spectrum[bin];
         channel.magnitude[bin] = std::hypot(value.real(), value.imag());
         channel.phase[bin] = std::atan2(value.imag(), value.real());
+        const double expected = kTwoPi * static_cast<double>(bin) * hopFrames_ / windowFrames_;
+        const double residual = hasPriorAnalysis ? std::remainder(
+            static_cast<double>(channel.phase[bin]) - channel.previousPhase[bin] - expected,
+            kTwoPi) : 0.0;
+        channel.phaseAdvance[bin] = static_cast<float>(expected + residual);
     }
 
     const bool captureThisFrame = capturePending_;
@@ -1001,6 +1021,8 @@ void SpectralFreeze::processFrame(ChannelState& channel, std::uint32_t channelIn
         channel.outputOverlap[outputIndex] = clean(channel.outputOverlap[outputIndex] + sample);
     }
     std::copy(channel.phase.begin(), channel.phase.end(), channel.previousPhase.begin());
+    channel.hasPhaseAdvance = hasPriorAnalysis;
+    channel.hasAnalysisFrame = true;
     if (channelIndex == 1 && capturePending_) {
         capturePending_ = false;
     }

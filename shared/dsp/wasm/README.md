@@ -5,6 +5,28 @@ by the Native engine: `shared/dsp/src/primitives.cpp`. It does not contain a
 second set of audio algorithms. The ABI uses opaque handles because C++ state
 layout is private to the shared core.
 
+The base API kind IDs 1–11 and control IDs 1–15 are versioned independently
+from the extended kind IDs. ABI version 2 keeps existing control IDs 1–13
+unchanged; biquad low/high shelf controls were appended as IDs 14/15. Shelf
+control values are `[frequencyHz, gainDb, slope, smoothingMs]`; the final
+`smoothingMs` element may be omitted and defaults to 5 ms. The shared core
+rejects invalid frequency, gain, slope, or smoothing values before changing
+the active coefficients.
+
+| Base kind | C ABI ID | Controls |
+| --- | ---: | --- |
+| Parameter smoother | 1 | 1: target `[value, timeMs]` |
+| Biquad DF2T | 2 | 2: low-pass; 3: high-pass; 4: band-pass; 5: peaking; 14: low shelf; 15: high shelf |
+| TPT state-variable filter | 3 | 6: frequency/Q |
+| First-order all-pass | 4 | 7: frequency |
+| Lagrange delay | 5 | delay time per frame through the process parameter span |
+| LFO | 6 | 8: frequency |
+| PolyBLEP oscillator | 7 | 9: frequency; 10: waveform |
+| ADAA cubic shaper | 8 | 11: drive |
+| Dual-detector compressor | 9 | 12: parameters |
+| 2×2 delay matrix | 10 | 13: same/cross feedback |
+| PCG32 | 11 | `webrc_dsp_seed(state, sequence)` |
+
 The initial bridge exposes the implemented primitive classes and stateless
 helpers. It is a Gate 1 foundation, not evidence that the full F01–F29 catalog,
 53 effect implementations, or browser realtime/stress gates have passed.

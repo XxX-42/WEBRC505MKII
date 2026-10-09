@@ -237,10 +237,13 @@ private:
         std::vector<float> previousPhase;
         std::vector<float> frozenPhase;
         std::vector<float> frozenPhaseOffset;
+        std::vector<float> phaseAdvance;
         std::vector<float> frozenOmega;
         std::vector<std::uint32_t> peakOwner;
         std::vector<std::uint32_t> peakList;
         std::vector<float> scratch;
+        bool hasAnalysisFrame = false;
+        bool hasPhaseAdvance = false;
     };
     void processFrame(ChannelState& channel, std::uint32_t channelIndex,
                       std::uint64_t frameEnd) noexcept;

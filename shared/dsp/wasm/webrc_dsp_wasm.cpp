@@ -128,6 +128,16 @@ int32_t configure(State& state, uint32_t control, const float* values,
         if (state.kind != WEBRC_DSP_BIQUAD_DF2T || (valueCount != 3U && valueCount != 4U)) break;
         return std::get<BiquadDf2T>(state.payload).setPeaking(values[0], values[1], values[2], valueCount == 4U ? values[3] : 5.0f)
                    ? WEBRC_DSP_OK : WEBRC_DSP_BAD_ARGUMENT;
+    case WEBRC_DSP_CONTROL_BIQUAD_LOW_SHELF:
+        if (state.kind != WEBRC_DSP_BIQUAD_DF2T || (valueCount != 3U && valueCount != 4U)) break;
+        return std::get<BiquadDf2T>(state.payload).setLowShelf(values[0], values[1], values[2],
+                                                               valueCount == 4U ? values[3] : 5.0f)
+                   ? WEBRC_DSP_OK : WEBRC_DSP_BAD_ARGUMENT;
+    case WEBRC_DSP_CONTROL_BIQUAD_HIGH_SHELF:
+        if (state.kind != WEBRC_DSP_BIQUAD_DF2T || (valueCount != 3U && valueCount != 4U)) break;
+        return std::get<BiquadDf2T>(state.payload).setHighShelf(values[0], values[1], values[2],
+                                                                valueCount == 4U ? values[3] : 5.0f)
+                   ? WEBRC_DSP_OK : WEBRC_DSP_BAD_ARGUMENT;
     case WEBRC_DSP_CONTROL_SVF_FREQUENCY_Q:
         if (state.kind != WEBRC_DSP_TPT_SVF || (valueCount != 2U && valueCount != 3U)) break;
         return std::get<TptStateVariableFilter>(state.payload).setFrequencyQ(values[0], values[1], valueCount == 3U ? values[2] : 5.0f)

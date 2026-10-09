@@ -1,0 +1,1143 @@
+{
+  "schemaVersion": 1,
+  "sourceRoot": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2",
+  "snapshotRoot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-dsp-wasm-snapshot-20261009T122229",
+  "createdUtc": "2026-10-09T12:23:39.7559959Z",
+  "byteVerified": true,
+  "files": [
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/inputs/pitch_mono.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\inputs\\pitch_mono.f32le",
+      "bytes": 61440,
+      "originalSha256": "8ea01e321166d73239b9f74b2ab46690be025459e56176d77a69475ac0f9bf4e",
+      "snapshotSha256": "8ea01e321166d73239b9f74b2ab46690be025459e56176d77a69475ac0f9bf4e"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/inputs/pitch_stereo.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\inputs\\pitch_stereo.f32le",
+      "bytes": 122880,
+      "originalSha256": "8226eaa509a4dd364e2cbfca6347fee1f0ddf17686d2246c92f189e7e94ef13c",
+      "snapshotSha256": "8226eaa509a4dd364e2cbfca6347fee1f0ddf17686d2246c92f189e7e94ef13c"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/cmake-build.stderr.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\cmake-build.stderr.log",
+      "bytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "snapshotSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/cmake-build.stdout.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\cmake-build.stdout.log",
+      "bytes": 30647,
+      "originalSha256": "a5dabc622752d84bfc2b928717bcbc55d7fcd29f3f08a3cd483a75aa07b3b30c",
+      "snapshotSha256": "a5dabc622752d84bfc2b928717bcbc55d7fcd29f3f08a3cd483a75aa07b3b30c"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/cmake-configure.stderr.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\cmake-configure.stderr.log",
+      "bytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "snapshotSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/cmake-configure.stdout.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\cmake-configure.stdout.log",
+      "bytes": 526,
+      "originalSha256": "c7e326be5bbd2186bf6a8302cf24ac33dd2c24c63c3e6dab068afdbb1ab753c9",
+      "snapshotSha256": "c7e326be5bbd2186bf6a8302cf24ac33dd2c24c63c3e6dab068afdbb1ab753c9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/ctest.stderr.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\ctest.stderr.log",
+      "bytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "snapshotSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/ctest.stdout.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\ctest.stdout.log",
+      "bytes": 653,
+      "originalSha256": "261e4e0aab9830456c33c358397292710063c64b53f344bca5350af2fdb7a44b",
+      "snapshotSha256": "261e4e0aab9830456c33c358397292710063c64b53f344bca5350af2fdb7a44b"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/fixture-generator.stderr.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\fixture-generator.stderr.log",
+      "bytes": 0,
+      "originalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "snapshotSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/fixture-generator.stdout.log",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\fixture-generator.stdout.log",
+      "bytes": 132,
+      "originalSha256": "13e9e960a800c8f2b167edcd916f7cefe0d16b4092133a1907f73740ce5657e5",
+      "snapshotSha256": "13e9e960a800c8f2b167edcd916f7cefe0d16b4092133a1907f73740ce5657e5"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/logs/run-native-pcm-fixtures.cmd",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\logs\\run-native-pcm-fixtures.cmd",
+      "bytes": 2242,
+      "originalSha256": "73f7f029c87266e2a28e56681394e58a5295800f03035260ebafea09bd88001d",
+      "snapshotSha256": "73f7f029c87266e2a28e56681394e58a5295800f03035260ebafea09bd88001d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/manifest.draft.json",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\manifest.draft.json",
+      "bytes": 255873,
+      "originalSha256": "c1d9931de26a3d65ea12aa00b9640ebfff5f82a759e53ce20c6fdb84e2e9fa38",
+      "snapshotSha256": "c1d9931de26a3d65ea12aa00b9640ebfff5f82a759e53ce20c6fdb84e2e9fa38"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/manifest.json",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\manifest.json",
+      "bytes": 483927,
+      "originalSha256": "8c110b6e557a5880c7bc411a4355428f067e4a9b37efe241320a48fb4989c154",
+      "snapshotSha256": "8c110b6e557a5880c7bc411a4355428f067e4a9b37efe241320a48fb4989c154"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_050_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_075_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_100_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_125_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_200_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_050_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725",
+      "snapshotSha256": "9f209bbfab974912955a7b6c65e7850a096a0b56fe00d31f5584083bcc842725"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_075_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9",
+      "snapshotSha256": "8dab221458d6a3579c74a50abac665cf6e7ff9d864b7ebbba3c1ffd9b5b4fcf9"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_100_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319",
+      "snapshotSha256": "76ad292c56dc63262d67f7853f050017328df04bc7d6b65a6bf3f443960c9319"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_125_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d",
+      "snapshotSha256": "a61aab6d987f9fb33c033d87ebddc92f3601ef31af4ef3066ee74f2f33d8468d"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_200_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_128.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_256.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_512.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_64.f32le",
+      "bytes": 61440,
+      "originalSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7",
+      "snapshotSha256": "d1ed66b4eaab1ef932c6db83f00005f8cae94b204cd17123f3669747a88040b7"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99",
+      "snapshotSha256": "1fe75cb0d7e606f0bede749dc9cdcb3aade935905f6426d3315bc5edfd881d99"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681",
+      "snapshotSha256": "64f10b0507141faca077c21c9bd00ed6008ac8d35f33d4c77caa9be898912681"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3",
+      "snapshotSha256": "9765823b489442384aa3d73bf546c7bf2790a4b391307ea661de90f5ff4e78c3"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487",
+      "snapshotSha256": "a16116ca6e822c078437c1a6e346182d4aaf77221ad51389291abd7a5eac1487"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_mixed_64_128_256_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_128.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_128.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_256.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_256.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_512.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_512.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/pcm/native/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_64.f32le",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\pcm\\native\\pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_64.f32le",
+      "bytes": 122880,
+      "originalSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef",
+      "snapshotSha256": "8f98d37e45894163066adc9d490146e722c27f2ee58a42e4f4c80cefd08b0fef"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/source-files.manifest.json",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\dsp_pcm_parity_v2\\native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11\\source-files.manifest.json",
+      "bytes": 8443,
+      "originalSha256": "32f2aa0ada66b8d957ed49395d66c5c2e2bc1dbf2c505d35975e01d4f284552a",
+      "snapshotSha256": "32f2aa0ada66b8d957ed49395d66c5c2e2bc1dbf2c505d35975e01d4f284552a"
+    },
+    {
+      "path": "shared/dsp/benchmarks/results/native_primitives_golden.json",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native_primitives_golden.json",
+      "bytes": 6555,
+      "originalSha256": "44dae0d6ee9c2c90008c0cc75a2790b621e19e1ffb7d4c0a666eb6f7fa8b0d37",
+      "snapshotSha256": "44dae0d6ee9c2c90008c0cc75a2790b621e19e1ffb7d4c0a666eb6f7fa8b0d37"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\include\\webrc\\dsp\\control_dynamics.hpp",
+      "bytes": 6746,
+      "originalSha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+      "snapshotSha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\include\\webrc\\dsp\\fft.hpp",
+      "bytes": 548,
+      "originalSha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "snapshotSha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\include\\webrc\\dsp\\nonlinear.hpp",
+      "bytes": 4181,
+      "originalSha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+      "snapshotSha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\include\\webrc\\dsp\\pitch.hpp",
+      "bytes": 9082,
+      "originalSha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+      "snapshotSha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\include\\webrc\\dsp\\primitives.hpp",
+      "bytes": 10933,
+      "originalSha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "snapshotSha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\include\\webrc\\dsp\\signalsmith_adapter.hpp",
+      "bytes": 3415,
+      "originalSha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+      "snapshotSha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\include\\webrc\\dsp\\spatial_temporal.hpp",
+      "bytes": 23156,
+      "originalSha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "snapshotSha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f"
+    },
+    {
+      "path": "shared/dsp/src/control_dynamics.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\src\\control_dynamics.cpp",
+      "bytes": 18208,
+      "originalSha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a",
+      "snapshotSha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\src\\fft.cpp",
+      "bytes": 3129,
+      "originalSha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "snapshotSha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "shared/dsp/src/nonlinear.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\src\\nonlinear.cpp",
+      "bytes": 10185,
+      "originalSha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+      "snapshotSha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85"
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\src\\pitch.cpp",
+      "bytes": 36950,
+      "originalSha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957",
+      "snapshotSha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957"
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\src\\primitives.cpp",
+      "bytes": 38017,
+      "originalSha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "snapshotSha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "shared/dsp/src/signalsmith_adapter.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\src\\signalsmith_adapter.cpp",
+      "bytes": 8333,
+      "originalSha256": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a",
+      "snapshotSha256": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a"
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\src\\spatial_temporal.cpp",
+      "bytes": 88577,
+      "originalSha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "snapshotSha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "shared/dsp/wasm/build-pitch-tests.ps1",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\build-pitch-tests.ps1",
+      "bytes": 9699,
+      "originalSha256": "72b2de6de065b5e9778f000628d09dec1a826abe61490beaddef5199ee7e3936",
+      "snapshotSha256": "72b2de6de065b5e9778f000628d09dec1a826abe61490beaddef5199ee7e3936"
+    },
+    {
+      "path": "shared/dsp/wasm/build-wasm.ps1",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\build-wasm.ps1",
+      "bytes": 10215,
+      "originalSha256": "f7e1104986cb51d1c0f0a06dc369a188f0f89a14f418d4b133e2896f4089332e",
+      "snapshotSha256": "f7e1104986cb51d1c0f0a06dc369a188f0f89a14f418d4b133e2896f4089332e"
+    },
+    {
+      "path": "shared/dsp/wasm/handle_registry.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\handle_registry.cpp",
+      "bytes": 6825,
+      "originalSha256": "b83670ab4d0b8c24a2d2809d44753466fe44431b51aa300e807a7c612ca1f12b",
+      "snapshotSha256": "b83670ab4d0b8c24a2d2809d44753466fe44431b51aa300e807a7c612ca1f12b"
+    },
+    {
+      "path": "shared/dsp/wasm/handle_registry.hpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\handle_registry.hpp",
+      "bytes": 3552,
+      "originalSha256": "dbd093fc8ff55f8cadb51c60d0c8d48ddf46b9f3263cc7d851a75a139e4137d6",
+      "snapshotSha256": "dbd093fc8ff55f8cadb51c60d0c8d48ddf46b9f3263cc7d851a75a139e4137d6"
+    },
+    {
+      "path": "shared/dsp/wasm/README.md",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\README.md",
+      "bytes": 7714,
+      "originalSha256": "e17680cf393e8bc0462bd5dbf10b5a4c26c9ac66966103d4457685c9d0c2e3af",
+      "snapshotSha256": "e17680cf393e8bc0462bd5dbf10b5a4c26c9ac66966103d4457685c9d0c2e3af"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/dsp-wasm-worklet-processor.js",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\dsp-wasm-worklet-processor.js",
+      "bytes": 9109,
+      "originalSha256": "885af2dc7a3dcd552ed84f655d2a9dc3cd020e3f992f4d8c38859ed32db18f16",
+      "snapshotSha256": "885af2dc7a3dcd552ed84f655d2a9dc3cd020e3f992f4d8c38859ed32db18f16"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/extended-smoke.mjs",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\extended-smoke.mjs",
+      "bytes": 18723,
+      "originalSha256": "7e298d973972e4c601dd8d36f6471b9976182467be6b43d0f1f1d18ab482b897",
+      "snapshotSha256": "7e298d973972e4c601dd8d36f6471b9976182467be6b43d0f1f1d18ab482b897"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/golden.mjs",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\golden.mjs",
+      "bytes": 26041,
+      "originalSha256": "4541c95e8737933fc0eb49d7c69a1ce4ec057e233c94925c1885253c0cdfc853",
+      "snapshotSha256": "4541c95e8737933fc0eb49d7c69a1ce4ec057e233c94925c1885253c0cdfc853"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/multimodule-pcm-parity-v2.mjs",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\multimodule-pcm-parity-v2.mjs",
+      "bytes": 27592,
+      "originalSha256": "bdee88d9e853cc3b5c49d31c4cf1a0461cfddb3d8acc6ef0b71f8ccee91b8141",
+      "snapshotSha256": "bdee88d9e853cc3b5c49d31c4cf1a0461cfddb3d8acc6ef0b71f8ccee91b8141"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/pitch-pcm-parity-v2.mjs",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\pitch-pcm-parity-v2.mjs",
+      "bytes": 19190,
+      "originalSha256": "c66de0d49eed132fd23d4da69658b7ad7c2ed02f6b81b98436ef342a75c0608b",
+      "snapshotSha256": "c66de0d49eed132fd23d4da69658b7ad7c2ed02f6b81b98436ef342a75c0608b"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/run-pitch-tests.mjs",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\run-pitch-tests.mjs",
+      "bytes": 4710,
+      "originalSha256": "d35be87d3aff85360c9f6e5cb4e425c9a88a6ac353edd4aea16a40eb9ba825fe",
+      "snapshotSha256": "d35be87d3aff85360c9f6e5cb4e425c9a88a6ac353edd4aea16a40eb9ba825fe"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke-page.js",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\worklet-smoke-page.js",
+      "bytes": 8309,
+      "originalSha256": "a335eb373897bb0fbadc8bfb837e7a53d2ddae2aba6631f512f6a2fead47ffa0",
+      "snapshotSha256": "a335eb373897bb0fbadc8bfb837e7a53d2ddae2aba6631f512f6a2fead47ffa0"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.html",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\worklet-smoke.html",
+      "bytes": 430,
+      "originalSha256": "d64fecd639b00e55f328279f645859fc527931332ae8b769e9411f44c50fce61",
+      "snapshotSha256": "d64fecd639b00e55f328279f645859fc527931332ae8b769e9411f44c50fce61"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.mjs",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\worklet-smoke.mjs",
+      "bytes": 21503,
+      "originalSha256": "d4e98d1fc8f33904822766b2fea86f41485c1b74d073a91d40bfd8a51921622e",
+      "snapshotSha256": "d4e98d1fc8f33904822766b2fea86f41485c1b74d073a91d40bfd8a51921622e"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\webrc_dsp_extended.cpp",
+      "bytes": 53492,
+      "originalSha256": "cfd1664afaad56ff56b58d8386c666fc1d8fe65703cc4adb2e207856609cd181",
+      "snapshotSha256": "cfd1664afaad56ff56b58d8386c666fc1d8fe65703cc4adb2e207856609cd181"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\webrc_dsp_extended.h",
+      "bytes": 11132,
+      "originalSha256": "582a23ec76fbe6598cef5c834c28503e2ac5a546ef13359c280df40d35ea1324",
+      "snapshotSha256": "582a23ec76fbe6598cef5c834c28503e2ac5a546ef13359c280df40d35ea1324"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_wasm.cpp",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\webrc_dsp_wasm.cpp",
+      "bytes": 18178,
+      "originalSha256": "c87f9819c84a166d82efa0fd35f7c62e97aa673256cf5cd6da16cd20388d00d9",
+      "snapshotSha256": "c87f9819c84a166d82efa0fd35f7c62e97aa673256cf5cd6da16cd20388d00d9"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_wasm.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\webrc_dsp_wasm.h",
+      "bytes": 4426,
+      "originalSha256": "07032ddfda74353591b4ee0cd58b428e8ac35861099d4b1f59da1a2ad4c2eec2",
+      "snapshotSha256": "07032ddfda74353591b4ee0cd58b428e8ac35861099d4b1f59da1a2ad4c2eec2"
+    },
+    {
+      "path": "third_party/SIGNALSMITH_PINS.md",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\SIGNALSMITH_PINS.md",
+      "bytes": 1112,
+      "originalSha256": "ae068d32b2c525ec15afe825b015608d18ff0951cdfe1d7816a496456818dd41",
+      "snapshotSha256": "ae068d32b2c525ec15afe825b015608d18ff0951cdfe1d7816a496456818dd41"
+    },
+    {
+      "path": "third_party/signalsmith-linear/approx.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\approx.h",
+      "bytes": 5147,
+      "originalSha256": "bc3e6dfb911ac50fb5841784b5633751fc14ae9b0f881a88b427c60c7a628cf1",
+      "snapshotSha256": "bc3e6dfb911ac50fb5841784b5633751fc14ae9b0f881a88b427c60c7a628cf1"
+    },
+    {
+      "path": "third_party/signalsmith-linear/fft.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\fft.h",
+      "bytes": 46628,
+      "originalSha256": "af0df3ff84c6f69ec00f09e0e53634b7ccacd3198a4acb2b482cb7d93854d207",
+      "snapshotSha256": "af0df3ff84c6f69ec00f09e0e53634b7ccacd3198a4acb2b482cb7d93854d207"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/approx.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\include\\signalsmith-linear\\approx.h",
+      "bytes": 27,
+      "originalSha256": "eac208cc0e94556dde10e1d9bb0d53d8df9453aa8d2157421073f0497649ec3b",
+      "snapshotSha256": "eac208cc0e94556dde10e1d9bb0d53d8df9453aa8d2157421073f0497649ec3b"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/fft.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\include\\signalsmith-linear\\fft.h",
+      "bytes": 24,
+      "originalSha256": "30e4054a9df4f1f31318ffefb43b52d69378788a344fb09c8995a36d5bc28148",
+      "snapshotSha256": "30e4054a9df4f1f31318ffefb43b52d69378788a344fb09c8995a36d5bc28148"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/linear.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\include\\signalsmith-linear\\linear.h",
+      "bytes": 27,
+      "originalSha256": "38560f893be3ecbd18e6ce45b17dc7c3f3d3e4e6ed2890572b4aba385e36c03d",
+      "snapshotSha256": "38560f893be3ecbd18e6ce45b17dc7c3f3d3e4e6ed2890572b4aba385e36c03d"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/stft.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\include\\signalsmith-linear\\stft.h",
+      "bytes": 25,
+      "originalSha256": "db40c535f6554daf2f0a12540730dc22bce71c5007210e515f463a0cbd1a16b7",
+      "snapshotSha256": "db40c535f6554daf2f0a12540730dc22bce71c5007210e515f463a0cbd1a16b7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/LICENSE.txt",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\LICENSE.txt",
+      "bytes": 1095,
+      "originalSha256": "a91f5703b0f5fa22e8c14a8bd854559a7c512bbe58656ea8bdcd4964e923ab2f",
+      "snapshotSha256": "a91f5703b0f5fa22e8c14a8bd854559a7c512bbe58656ea8bdcd4964e923ab2f"
+    },
+    {
+      "path": "third_party/signalsmith-linear/linear.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\linear.h",
+      "bytes": 37714,
+      "originalSha256": "fe7fb1c944950487f0744dcdd2fb067a098ad3597a86385c6a3f4bae1d31eb55",
+      "snapshotSha256": "fe7fb1c944950487f0744dcdd2fb067a098ad3597a86385c6a3f4bae1d31eb55"
+    },
+    {
+      "path": "third_party/signalsmith-linear/README.md",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\README.md",
+      "bytes": 5254,
+      "originalSha256": "961d35d216e5972551711996aaf01f3eb022fefb3a92808031f5d06dca0e57c7",
+      "snapshotSha256": "961d35d216e5972551711996aaf01f3eb022fefb3a92808031f5d06dca0e57c7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/stft.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-linear\\stft.h",
+      "bytes": 25013,
+      "originalSha256": "0fc36186c3f892d068fff4108536b0f2132552f5a450b1e1ea5657e2899c6df3",
+      "snapshotSha256": "0fc36186c3f892d068fff4108536b0f2132552f5a450b1e1ea5657e2899c6df3"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-stretch\\include\\signalsmith-stretch\\signalsmith-stretch.h",
+      "bytes": 38,
+      "originalSha256": "869facc1853189bec91fb54960da2f59333284963d6b52a242d55a399d305e4d",
+      "snapshotSha256": "869facc1853189bec91fb54960da2f59333284963d6b52a242d55a399d305e4d"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/LICENSE.txt",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-stretch\\LICENSE.txt",
+      "bytes": 1113,
+      "originalSha256": "16bf62d475af149d96a24853e77c9e0d939259a9d55b23b41da7f9939db85085",
+      "snapshotSha256": "16bf62d475af149d96a24853e77c9e0d939259a9d55b23b41da7f9939db85085"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/README.md",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-stretch\\README.md",
+      "bytes": 8382,
+      "originalSha256": "268df6b2053832a3ae43df2c1e7b4e6a957e3e4cc30766870dcd9846ecbaec39",
+      "snapshotSha256": "268df6b2053832a3ae43df2c1e7b4e6a957e3e4cc30766870dcd9846ecbaec39"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/signalsmith-stretch.h",
+      "sourcePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\third_party\\signalsmith-stretch\\signalsmith-stretch.h",
+      "bytes": 36506,
+      "originalSha256": "45a0b93b1e00257014d48e7ae494ec4e604f56b4ee15189a355cd9794653a37d",
+      "snapshotSha256": "45a0b93b1e00257014d48e7ae494ec4e604f56b4ee15189a355cd9794653a37d"
+    }
+  ]
+}

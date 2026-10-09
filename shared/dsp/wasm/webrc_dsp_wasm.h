@@ -36,6 +36,9 @@ enum WebrcDspControl {
     WEBRC_DSP_CONTROL_ADAA_DRIVE = 11,
     WEBRC_DSP_CONTROL_COMPRESSOR_PARAMETERS = 12,
     WEBRC_DSP_CONTROL_DELAY_MATRIX_FEEDBACK = 13,
+    // Added in ABI v2 as new control IDs; existing IDs retain their meaning.
+    WEBRC_DSP_CONTROL_BIQUAD_LOW_SHELF = 14,
+    WEBRC_DSP_CONTROL_BIQUAD_HIGH_SHELF = 15,
 };
 
 enum WebrcDspStatus {
