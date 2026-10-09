@@ -65,3 +65,6 @@ target_link_libraries(native_dsp_primitives_bench PRIVATE webrc_dsp)
 
 add_executable(dsp_primitives_golden benchmarks/native_dsp_primitives_golden.cpp)
 target_link_libraries(dsp_primitives_golden PRIVATE webrc_dsp)
+
+add_executable(native_dsp_pcm_fixture_generator benchmarks/native_dsp_pcm_fixture_generator.cpp)
+target_link_libraries(native_dsp_pcm_fixture_generator PRIVATE webrc_dsp)

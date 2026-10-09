@@ -1,0 +1,817 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "comparisonPath": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json",
+  "comparisonSha256": "c1649752ef00c4b121041f259f0a2bc380033c83955b302bc848ed338e787fcc",
+  "nativeManifestPath": "bench/results/dsp_pcm_parity_v2/native_signalsmith_pitch_parity_v2_20261009T120535354Z_752b3f11/manifest.json",
+  "nativeManifestSha256": "8c110b6e557a5880c7bc411a4355428f067e4a9b37efe241320a48fb4989c154",
+  "nativeSourceTreeSha256": "fd6fd5b659e3e8ce6cbea0ad60620cd4b8b06674b6bfce1e12171a8063d5d16c",
+  "wasmBuildManifestPath": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/webrc-dsp.build.json",
+  "wasmBuildManifestSha256": "41291795610c018c689ba5fd2f6bf58274022a2be9eb13d1089db2a5271a692d",
+  "wasmArtifactSha256": "05685575f1f00e3b73822bf07878ad530d005ae899459af84ba9dc8bc41275ef",
+  "wasmSourceSetSha256": "169428fe254d318bc179d3ee8ea977143565a8f67f5fdbc24931e12b64e4c578",
+  "comparatorPath": "shared/dsp/wasm/tests/pitch-pcm-parity-v2.mjs",
+  "comparatorSha256": "c66de0d49eed132fd23d4da69658b7ad7c2ed02f6b81b98436ef342a75c0608b",
+  "sidecars": [
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_050_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_075_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_100_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_125_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_200_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_MONO_mono_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_LIVE_POLY_stereo_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_050_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "7eb7e5ea155fab473631349647720b3beb3de265cfe43ac3d0b49b164506521d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_075_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "268a551f6618466beb87accef6e54729f445fec6198170e44693daf7f9c9e719",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_100_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "2ff3a9dc8fa3b418116c6bbd5c31b4538a906baa773d2169061858bb45dfc01d",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_125_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "7e80d1f75e7aec9ecf57584b8fc07870b290f8da228e5549c5886abb0c60d5d8",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_64.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_128.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_256.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_200_uniform_512.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_mono_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 61440,
+      "sha256": "a01a384393ed5a2c2ddb62b02c63b803bd4a97014cbc2728f25f9330affa191a",
+      "frames": 15360,
+      "channels": 1,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_050_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "efed459645edf8b26cce46a35a5c555e50f88ef0a1cb97ba5e1e9ef825e5e839",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_075_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "41582253f39eb03ee7d99b6bc9aa242274380ec096fc86dbd3dd2f18bb9ee4f0",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_100_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "7b8fed9f654e33d658f66f4028017f887f9bbadbe01931f1564560863a61c0d3",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_125_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "5091e4099f1f5c39d35b7ca513b0cd18d07189ab37e5d85482f1a3741fc07491",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_64.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_128.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_256.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_uniform_512.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    },
+    {
+      "path": "bench/results/dsp_pcm_parity_v2/browser_signalsmith_pitch_parity_v2_20261009T121140Z_05685575/comparison.json.wasm-pcm/pitch_signalsmith_HQ_RENDER_stereo_ratio_200_mixed_64_128_256_512.f32le",
+      "bytes": 122880,
+      "sha256": "bff3f6ea2c7107be954958466b6bc60703e87a693329312d8a2cb1f04d99704e",
+      "frames": 15360,
+      "channels": 2,
+      "encoding": "float32-le-interleaved"
+    }
+  ]
+}

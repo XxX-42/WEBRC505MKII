@@ -15,3 +15,9 @@
 /shared/dsp/wasm/tests/golden.mjs -text
 /shared/dsp/wasm/tests/extended-smoke.mjs -text
 /shared/dsp/wasm/tests/run-pitch-tests.mjs -text
+/shared/dsp/wasm/tests/pitch-pcm-parity-v2.mjs -text
+/shared/dsp/benchmarks/native_dsp_pcm_fixture_generator.cpp -text
+/scripts/native-dsp-pcm-fixtures.ps1 -text
+/bench/results/dsp_pcm_parity_v2/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/bench/results/dsp_pcm_parity_v2/**/*.f32le -diff
+/bench/results/dsp_pcm_parity_v2/**/logs/** -whitespace
