@@ -1,0 +1,557 @@
+{
+  "reviewedAtUtc": "2026-10-09T18:41:46.402004+00:00",
+  "indexBaseHead": "33f277f086f792f8a25c8680f52296718751d2fb",
+  "indexExportRoot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-browser32-root-staged-20261009T183028Z",
+  "sourceScope": [
+    {
+      "path": "public/dsp/webrc-dsp.build.json",
+      "sha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d"
+    },
+    {
+      "path": "public/dsp/webrc-dsp.wasm",
+      "sha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6"
+    },
+    {
+      "path": "public/worklets/looper-processor.js",
+      "sha256": "e20553988a745f07dc82c1c0d4694524a73f70a6bd61675fbfd9c9971c784bd9"
+    },
+    {
+      "path": "public/worklets/master-fx-processor.js",
+      "sha256": "e17310daad4f27c3bc996fe03ff99be30c59a0d1eaed8f689b2da6ae9013c716"
+    },
+    {
+      "path": "scripts/browser-realtime-smoke.mjs",
+      "sha256": "db6f15e32f6b15d340cbde3eeb414f09344d0a57efc1a5ed4eba3d768d994a9e"
+    },
+    {
+      "path": "scripts/capture-browser-graph-snapshot.mjs",
+      "sha256": "dfe435e1888a583185c42ff29b1ce2e789e8e31a96d17925ea96b623ad3b23d5"
+    },
+    {
+      "path": "scripts/install-shared-dsp-assets.mjs",
+      "sha256": "5fd1c25112bc36be175ba7846cf7328cf98c926e22f7842c41417d0fb2cd8d56"
+    },
+    {
+      "path": "shared/dsp/wasm/README.md",
+      "sha256": "bb1ec643a2809fa5d5f283dd8bce65c71d840697504a261ddf3814d401837c9b"
+    },
+    {
+      "path": "shared/dsp/wasm/browser-build-pin.json",
+      "sha256": "bd7aac1039fc70d838ec197eeda534ba2810b64fa6304c09a485ded80adf2abb"
+    },
+    {
+      "path": "shared/dsp/wasm/build-wasm.ps1",
+      "sha256": "bbfdc2c8206d81ca23e2be92c0c5cff1bf75e31d4d0053c15c96530cad1751c3"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/extended-smoke.mjs",
+      "sha256": "c6451fedc4ae694a94115018e94cc8b578e360ce8930a8598c1bc75b837da375"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/fx-registry-smoke.mjs",
+      "sha256": "c1ddf6ede396801a6126e2bd123818adad37270d7211222b817bca6710ec49a3"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.cpp",
+      "sha256": "8412ac798c8d4c3d0e8dbbb6c4d19a9ce93fb218a005608c747b9679b9c98674"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.h",
+      "sha256": "41ac72c2668135384c5a7155cb54dfb53f6a50bf0020b4f03a4a2b91cfc158ee"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_wasm.h",
+      "sha256": "c1dbdbf6af60100e7264a1433b5549e96d5d11d49d5cdda9007d1faf8f645610"
+    },
+    {
+      "path": "src/audio/AudioEngine.ts",
+      "sha256": "c8fffa24a160bd03a1b0fcdf2691b0224e71bb832debc3ecc373a381f2c8eb6e"
+    },
+    {
+      "path": "src/audio/BrowserAudioEngine.ts",
+      "sha256": "fffb143bd2e9ea70ef95574009bb34f4f267711b84c7eebc7b5851f6625edcea"
+    },
+    {
+      "path": "src/audio/BrowserRealtimeRuntime.ts",
+      "sha256": "cb777f0a8485dcf061fa772bc2ffa2008399fc7ca418471c8c495ade2a2d79b7"
+    },
+    {
+      "path": "src/audio/sharedDspGraph.ts",
+      "sha256": "ebc87886b81f596b43de36f4bf84c81e9e992140c416d74551e8868a24bfc69e"
+    },
+    {
+      "path": "src/composables/useFxPanelState.ts",
+      "sha256": "f678e03627219d2c1234979651699e400609c8e83539c5aec2b4e699d5988b4c"
+    },
+    {
+      "path": "tests/unit/browserFxTransactions.spec.ts",
+      "sha256": "0428bb5cd7696b7ab03c59209850214ac6330e08c75d20ce33001afb0fcb4384"
+    },
+    {
+      "path": "tests/unit/stereoWorklet.spec.ts",
+      "sha256": "504f3ad3981a357a5e457b466425215052f0e09374a484528366093bf4252a91"
+    },
+    {
+      "path": "tests/unit/useFxPanelState.spec.ts",
+      "sha256": "d025d1dfec1ad46abebc6f261d1cd6c3f152f4ea3c9a7fb4904f9ced0b324e5e"
+    },
+    {
+      "path": "tests/unit/masterFxWorklet.spec.ts",
+      "sha256": "fcc1618845fb419fb7d0dc2708f1258440c8d60301917140352c403b7142c9cc"
+    },
+    {
+      "path": "tests/helpers/coreAudioHarness.ts",
+      "sha256": "9f1b681f7df675e9808c626786ee496ca3ce048a7d268a2525c12a0531e4cd5a"
+    }
+  ],
+  "wasmCompilerInputs": [
+    {
+      "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+      "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/composite_fx.hpp",
+      "sha256": "158843f620cc17debaac0015263e30921eb801c8f91eb018c6415bf97da4917b"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "sha256": "85d2f23fc029ddc0696b6ecd0b8be59bf077134da73bb2aeaf2bd5f7dd169028"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/live_mono_pitch.hpp",
+      "sha256": "55dddf6a8b0263d3ba1bfb68752b78b08476f33287f34290c4c5949ebf2bcf34"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/modulated_delay_fx.hpp",
+      "sha256": "8bb7c51ffd70461e45064cca7f4b8f46da394c6fd2c98971c307a4cccda3af73"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/modulation_fx.hpp",
+      "sha256": "ea5667f70bfc56a8ec001656c200e33fb83683c2fa18ec6a991f666806dc50b6"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+      "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+      "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythmic_fx.hpp",
+      "sha256": "40ce7b8cc8fb5b31ff8d062baedc72d0224588dae2aebfc6819a9757bb8fe94c"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+      "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_fx_adapters.hpp",
+      "sha256": "c550d1aa7cfd4b93c000e1eec5236542044a5647e941da01888730f0df05db23"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/streaming_yin.hpp",
+      "sha256": "bd780750e77bdda94bf6cb28a181e4a60ea5a40775555d7845fc8cdd21cba697"
+    },
+    {
+      "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885"
+    },
+    {
+      "path": "shared/dsp/src/composite_fx.cpp",
+      "sha256": "77009dbb0dba1cc90cc2da1e6b42aee2106bff4b2d8f81d70f96eacb86bb95c1"
+    },
+    {
+      "path": "shared/dsp/src/control_dynamics.cpp",
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "shared/dsp/src/fx_registry.cpp",
+      "sha256": "13362047237cfd9de4cffd9040a93b25cb48b6dc6fa6f655c5bd3b3c522bec54"
+    },
+    {
+      "path": "shared/dsp/src/live_mono_pitch.cpp",
+      "sha256": "c1589c4df2b5d14f79a680e78b8681d3d4a89ee3fdccb9c9336d16da1b5f5b64"
+    },
+    {
+      "path": "shared/dsp/src/modulated_delay_fx.cpp",
+      "sha256": "aac4540053f5f281280085d7c8876ea8d79176dbe9969fd3aa70ca236883e68b"
+    },
+    {
+      "path": "shared/dsp/src/modulation_fx.cpp",
+      "sha256": "8b9368db27cd7934d9eb6a7005a4088b7585ffafd1d641a2e7e8cc02e3a3b685"
+    },
+    {
+      "path": "shared/dsp/src/nonlinear.cpp",
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85"
+    },
+    {
+      "path": "shared/dsp/src/performance_fx.cpp",
+      "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "sha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957"
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "shared/dsp/src/rhythm.cpp",
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1"
+    },
+    {
+      "path": "shared/dsp/src/rhythmic_fx.cpp",
+      "sha256": "58ba3849b3c75ec8aeef65e93133cedcf38149650750844b7fde36fdc3f0df58"
+    },
+    {
+      "path": "shared/dsp/src/signalsmith_adapter.cpp",
+      "sha256": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a"
+    },
+    {
+      "path": "shared/dsp/src/spatial_fx_adapters.cpp",
+      "sha256": "e9be597c12760c6824be141f6c6c794d45200bf59fcda78d881b66899680abd6"
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "shared/dsp/src/streaming_yin.cpp",
+      "sha256": "09d75ea4c26f9df826c97c839a091984959587470a9f4fd56adcaa6757de7a8f"
+    },
+    {
+      "path": "shared/dsp/wasm/build-wasm.ps1",
+      "sha256": "bbfdc2c8206d81ca23e2be92c0c5cff1bf75e31d4d0053c15c96530cad1751c3"
+    },
+    {
+      "path": "shared/dsp/wasm/handle_registry.cpp",
+      "sha256": "b83670ab4d0b8c24a2d2809d44753466fe44431b51aa300e807a7c612ca1f12b"
+    },
+    {
+      "path": "shared/dsp/wasm/handle_registry.hpp",
+      "sha256": "fbe5802fa94b4c42701b7c2a78745efffc1b9159cb937c2da400ab46d02e2c9d"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.cpp",
+      "sha256": "8412ac798c8d4c3d0e8dbbb6c4d19a9ce93fb218a005608c747b9679b9c98674"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.h",
+      "sha256": "41ac72c2668135384c5a7155cb54dfb53f6a50bf0020b4f03a4a2b91cfc158ee"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.cpp",
+      "sha256": "af70e599c4d860cd32a8d54049d61befc778849a77d5ee32e83d55cb47b1313c"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.h",
+      "sha256": "62f8d44607d2732a3b54d924afbb11a17f11751bedda0fa30503dcd6f0053e1a"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_wasm.cpp",
+      "sha256": "78b4f21d881ed07f23fd70cf17465ba990dbbda0f3a26a07b3c836c63ce99504"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_wasm.h",
+      "sha256": "c1dbdbf6af60100e7264a1433b5549e96d5d11d49d5cdda9007d1faf8f645610"
+    },
+    {
+      "path": "third_party/SIGNALSMITH_PINS.md",
+      "sha256": "ae068d32b2c525ec15afe825b015608d18ff0951cdfe1d7816a496456818dd41"
+    },
+    {
+      "path": "third_party/signalsmith-linear/approx.h",
+      "sha256": "bc3e6dfb911ac50fb5841784b5633751fc14ae9b0f881a88b427c60c7a628cf1"
+    },
+    {
+      "path": "third_party/signalsmith-linear/fft.h",
+      "sha256": "af0df3ff84c6f69ec00f09e0e53634b7ccacd3198a4acb2b482cb7d93854d207"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/approx.h",
+      "sha256": "eac208cc0e94556dde10e1d9bb0d53d8df9453aa8d2157421073f0497649ec3b"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/fft.h",
+      "sha256": "30e4054a9df4f1f31318ffefb43b52d69378788a344fb09c8995a36d5bc28148"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/linear.h",
+      "sha256": "38560f893be3ecbd18e6ce45b17dc7c3f3d3e4e6ed2890572b4aba385e36c03d"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/stft.h",
+      "sha256": "db40c535f6554daf2f0a12540730dc22bce71c5007210e515f463a0cbd1a16b7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/LICENSE.txt",
+      "sha256": "a91f5703b0f5fa22e8c14a8bd854559a7c512bbe58656ea8bdcd4964e923ab2f"
+    },
+    {
+      "path": "third_party/signalsmith-linear/linear.h",
+      "sha256": "fe7fb1c944950487f0744dcdd2fb067a098ad3597a86385c6a3f4bae1d31eb55"
+    },
+    {
+      "path": "third_party/signalsmith-linear/README.md",
+      "sha256": "961d35d216e5972551711996aaf01f3eb022fefb3a92808031f5d06dca0e57c7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/stft.h",
+      "sha256": "0fc36186c3f892d068fff4108536b0f2132552f5a450b1e1ea5657e2899c6df3"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h",
+      "sha256": "869facc1853189bec91fb54960da2f59333284963d6b52a242d55a399d305e4d"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/LICENSE.txt",
+      "sha256": "16bf62d475af149d96a24853e77c9e0d939259a9d55b23b41da7f9939db85085"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/README.md",
+      "sha256": "268df6b2053832a3ae43df2c1e7b4e6a957e3e4cc30766870dcd9846ecbaec39"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/signalsmith-stretch.h",
+      "sha256": "45a0b93b1e00257014d48e7ae494ec4e604f56b4ee15189a355cd9794653a37d"
+    }
+  ],
+  "wasmSourceSetSha256": "941d410a28a2960ba66080488a34581a2e117be5b427e1f2823061b83e50c3fb",
+  "wasmSha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6",
+  "unitTestSourceFiles": [
+    {
+      "path": "tests/unit/audioEngine.spec.ts",
+      "testedSha256": "28683a264af85434ad4d54d8e7078e7b7f79e1227dc46ffa417bddeccf50d98c",
+      "indexSha256": "28683a264af85434ad4d54d8e7078e7b7f79e1227dc46ffa417bddeccf50d98c",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/bounceCaptureProcessor.spec.ts",
+      "testedSha256": "59e66e6c141ec6e190803a6fcb8ca97d609c9ef454534e5f8d3f53ce6467c17a",
+      "indexSha256": "80061c3a73714a7d31d534c35169875bcaed131bdac8250a3acb463f488ec5dc",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/browserBulkTransport.spec.ts",
+      "testedSha256": "70491bd9e01e7e6b95a5a1104fcae9ea3ebb3aa41d90036c05db87b6eb4f37c7",
+      "indexSha256": "3ecb4151ff6ec5b15d935de2fb586a03917d17e366a59036610e14a868bd8431",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/browserCompressorFailure.spec.ts",
+      "testedSha256": "f3ee3e832c3ffddd214bb7692f180676bc21013a09d42c668eca3bdfe31c9aa4",
+      "indexSha256": "6012e1e12bfbfc35e5770059795f671a7024378c2839548cb8d6404f3ba6a463",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/browserFxTransactions.spec.ts",
+      "testedSha256": "0428bb5cd7696b7ab03c59209850214ac6330e08c75d20ce33001afb0fcb4384",
+      "indexSha256": "0428bb5cd7696b7ab03c59209850214ac6330e08c75d20ce33001afb0fcb4384",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/browserProjectAdapter.spec.ts",
+      "testedSha256": "811c1ff3a771a5e9e590104eb0bfd4c3615c5a8184527ce8285a48cbc2804176",
+      "indexSha256": "f11589f5ce701f7455f4d62da8e193ea51f126e6206f880920ff13ba3215b6fb",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/browserRealtimeProtocol.spec.ts",
+      "testedSha256": "43673bd0c53e4da25e591b00e5f869551d7523f82acb772efbe15eef7ebd1d7e",
+      "indexSha256": "43673bd0c53e4da25e591b00e5f869551d7523f82acb772efbe15eef7ebd1d7e",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/browserRouting.spec.ts",
+      "testedSha256": "ba01a6e322c195579106a40a6bc39994083371228194f7f0efc31693c5ef469d",
+      "indexSha256": "ba01a6e322c195579106a40a6bc39994083371228194f7f0efc31693c5ef469d",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/compressorWorklet.spec.ts",
+      "testedSha256": "5eb624385a2548cadc4ec2eb2d57745bf9b872de2c6c9992649514319134978c",
+      "indexSha256": "bf5aba30b87bdee2f1ce08fdba7a9bc124805d5e1b8f63628dfa61ab738b9051",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/controlDispatcher.spec.ts",
+      "testedSha256": "e67e84984b08ca5b1d8693be20ba664e95358876af67a0d2f0a36b62e94ba695",
+      "indexSha256": "d1341d40dd7fa8efd0c7783b9d15ae59308f27720ef530f21342d3d6c8134343",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/coreAudioBehaviors.spec.ts",
+      "testedSha256": "4cf25156b3be3a2116c30d21d343d26d92f76dc7708af760cdfca8e932cc105f",
+      "indexSha256": "e5699e49f9e00aed906ec3ca1a2035dd58f0f7c0c4c62b8e037c3fec9bf019c9",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/historyCompaction.spec.ts",
+      "testedSha256": "f242fa0c89db2a3d3e482c49afbc950b64609b1c0d6a11839e585550493cdaac",
+      "indexSha256": "2bdc8d651c0755f5ebf006fb5afc16bcfcde2c6af46397a4fa5a82b23a118a57",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/instrumentGradeMetrics.spec.ts",
+      "testedSha256": "c89539a0af45f7c6d88b36180606633c088512e98a316684c0cf3885b44a1031",
+      "indexSha256": "c89539a0af45f7c6d88b36180606633c088512e98a316684c0cf3885b44a1031",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/loadTrackState.spec.ts",
+      "testedSha256": "0affc16e41009c95c90e78bf9b6b74f0db9cc7f37da243872aaf635a8cfd3ad1",
+      "indexSha256": "d23e551be50204a3139427bf48b0910723d0e877c558f954fc44902defc520f6",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/masterClockAtomicStart.spec.ts",
+      "testedSha256": "ac3e5559beb2d4f8becc2b7a5f92f047265dc1a34a7584d4bbb43cd8168b9e00",
+      "indexSha256": "5c15b89c176cc5634810362773ebb37cc2828fe217ae4957b846634f1f325f55",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/masterClockEpoch.spec.ts",
+      "testedSha256": "29d76da5117b527b6905a20a26e4db22982a9fbf554dd836065e200283d95f2e",
+      "indexSha256": "d91bf46e9fe246f30ce1b84300509a33ea0dca611962b071b4044240d6e33ecf",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/masterFxWorklet.spec.ts",
+      "testedSha256": "fcc1618845fb419fb7d0dc2708f1258440c8d60301917140352c403b7142c9cc",
+      "indexSha256": "fcc1618845fb419fb7d0dc2708f1258440c8d60301917140352c403b7142c9cc",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/nativeBridgeClient.spec.ts",
+      "testedSha256": "c9a27445b1689c7873868a9debac4409a2daa8f3e8af65d8545ae41538af8707",
+      "indexSha256": "c9a27445b1689c7873868a9debac4409a2daa8f3e8af65d8545ae41538af8707",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/pitchCompositeCache.spec.ts",
+      "testedSha256": "d357229d55df287fd9f7483f41b282cc843b614e23936b78bf3968fc6f98df1f",
+      "indexSha256": "fda3d9e9821537a306dddcb5baf278fe26934a14b38ac2cfe64afa5399695ab2",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/projectArchive.spec.ts",
+      "testedSha256": "be461af0dfcfeed5df92e7c54654267613b12d5442f41b7e759c1f66fe0c031b",
+      "indexSha256": "3cdf91a99bc92b49e83d692c891453c819964287e78d6002409723562bc82573",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/projectMixRenderer.spec.ts",
+      "testedSha256": "4c53e7254e46649a7b8f7a1dadc64e1e5da9b531f4a4bb0498f80c96b555c40f",
+      "indexSha256": "ff712e9bcf7768a1cb2f3e0f1cb6fb472ec8b82e2e2c92baf0b982a49fd5763d",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/projectService.spec.ts",
+      "testedSha256": "9075b6c3c905e3e38a15a1250264f386eabac0fcdd4dd0726db1e80519305d29",
+      "indexSha256": "7cecada6597c6952be31c07512e3268e616c1cf2b8e41ae132f38f49de92c69f",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/projectWavCodec.spec.ts",
+      "testedSha256": "b609d37d20dc78a3a72e067a12a4d02cbd3f35db99a1492fd8a95260738508dd",
+      "indexSha256": "847d303ad49d9d0d23eecef501136eb3754cd1c820d48d5cbedbceb6aa5ffb59",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/rhythmDocuments.spec.ts",
+      "testedSha256": "649ff35e1795497c6ad792bfcff51649c2d7d2b41011b99a63b8f222debfa79e",
+      "indexSha256": "a4bf00e2f092a30ad53b26910d3e17bc6a453ebefbf7891f8ef2434462ebbc61",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/sharedDspGraph.spec.ts",
+      "testedSha256": "96042478c0c321ef7389efea72487b20d630d654ee3bf1586218a6649ff1b837",
+      "indexSha256": "96042478c0c321ef7389efea72487b20d630d654ee3bf1586218a6649ff1b837",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/stereoWorklet.spec.ts",
+      "testedSha256": "504f3ad3981a357a5e457b466425215052f0e09374a484528366093bf4252a91",
+      "indexSha256": "504f3ad3981a357a5e457b466425215052f0e09374a484528366093bf4252a91",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/takeStoragePreflight.spec.ts",
+      "testedSha256": "5df93106aa7d25bfebc07fdb2acbf43527c6329afc55f3e5a1bd9cb38cd16dfe",
+      "indexSha256": "c32a2c494091acf63f575a7b950f0aa56f1e953fa8c2534d56eb7b6567e4475b",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/timeStretch.spec.ts",
+      "testedSha256": "e209c371920948c2fe7bb4837d4ed43189a23c12e12ce5e9ece480308d56f442",
+      "indexSha256": "b495043413b16b59cb9e3a4ceb139f918e05992391f48127e13d1040656e32e0",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/trackAudio.spec.ts",
+      "testedSha256": "cf3c50029f3089288f70e4ef0083b29f10f412002336c2699dca8c6603077442",
+      "indexSha256": "4864e60689a0c6b18f4dd64abfbd64e60a79c79bf611a1a86a913aa8b3266afa",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/trackUnit.spec.ts",
+      "testedSha256": "325307dc67e67834c9aaf99f3295bae4ca2abd278332fa7ebbf7a76224c8ff75",
+      "indexSha256": "a2b865430c6f3f7b0777fe2ca9a78f5de96ee4724ecd59f8e8d6d40478637257",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/transport.spec.ts",
+      "testedSha256": "1f9a1f29137f6369f08a7ec9bf8995b208d997ca49e6947e7884d0c5c79f88c2",
+      "indexSha256": "3d3a7b827f4c07374f65e32a88dc65d7caf9c93d9eb85f9c3afa52deeebc9181",
+      "sameAfterCRLFNormalization": true
+    },
+    {
+      "path": "tests/unit/useFxPanelState.spec.ts",
+      "testedSha256": "d025d1dfec1ad46abebc6f261d1cd6c3f152f4ea3c9a7fb4904f9ced0b324e5e",
+      "indexSha256": "d025d1dfec1ad46abebc6f261d1cd6c3f152f4ea3c9a7fb4904f9ced0b324e5e",
+      "sameAfterCRLFNormalization": true
+    }
+  ],
+  "unitTestFileCount": 32,
+  "unitTests": {
+    "passed": 193,
+    "failed": 0
+  },
+  "productionBuild": "PASS: vue-tsc -b and vite build; guard verified all 60 exact WASM compiler inputs",
+  "initialFailure": "191/193: two long-recording fixtures used invalid 16384-frame callbacks. Bulk acceleration now partitions into <=4096; all stereo PCM and duration assertions retained.",
+  "scope": "32 processors, generic bank controls, separate post-master-gain Worklet and transaction tests. Does not qualify all 53 effects, official control mapping, cold delayed-chain transitions, callback GC, full render-task timing or end-to-end latency.",
+  "frozenPilotSnapshot": "bench/results/browser_graph_snapshot_20261010T014600Z_core32_stress_fullpilot",
+  "pilotSnapshotSourceAssetSetSha256": "866b0dfb439bf8c56617ec13a477dc36de3760ed743a19c6b9e49b841dddc5e9",
+  "sustainedPilotStatus": "FAIL software timeline continuity; exact raw archive committed in 33f277f",
+  "sourceArchiveNote": "Product scope copies are exact index bytes. The 60 compiler inputs are preserved in the frozen pilot snapshot. Actual tested unit files are also copied; checkout-index applied CRLF to some unchanged tests, with both hashes and normalized equality recorded."
+}

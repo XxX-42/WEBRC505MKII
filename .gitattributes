@@ -269,3 +269,15 @@
 /bench/results/browser_graph_32fx_pilot_20261009T181400Z_chrome154_tracefiltered/** -text -whitespace
 /shared/dsp/benchmarks/results/streaming-psola-ratio2-failure-20261009T180747Z/** -text -whitespace
 /docs/validation/20261010/browser-pilot-and-psola-failure-root-review.json -text -whitespace
+
+/public/worklets/master-fx-processor.js -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/src/composables/useFxPanelState.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/browserFxTransactions.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/useFxPanelState.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/masterFxWorklet.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+
+/tests/helpers/coreAudioHarness.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+
+/bench/results/browser32-root-staged-review-20261009T183028Z/** -text -whitespace
+/bench/results/browser_graph_snapshot_20261010T014600Z_core32_stress_fullpilot/** -text -whitespace
+/docs/validation/20261010/browser32-root-review.json -text -whitespace

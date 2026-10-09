@@ -1,0 +1,320 @@
+{
+  "fileCount": 63,
+  "files": [
+    {
+      "path": "root-extended-smoke.log",
+      "bytes": 1266,
+      "sha256": "8e8b23a1a6bd7850182e19953932d25de22b407b7293338c4eff0614bf53a699"
+    },
+    {
+      "path": "root-fx-registry-smoke.log",
+      "bytes": 1059,
+      "sha256": "2f530f354c16624b864faa22ff37951138f211bea6a237af123973fd49af6c30"
+    },
+    {
+      "path": "root-long-record-harness-fix.json",
+      "bytes": 5881,
+      "sha256": "829f6291e62d7dff6e49ffac40f18cc28ede00840cc73ba2f576b6fbf1aa2d3b"
+    },
+    {
+      "path": "root-review.json",
+      "bytes": 24438,
+      "sha256": "d5bd5d37b1cbf42b3d5e91dc106b06ad65cc40cc0466e7a3af13e3feb724fe41"
+    },
+    {
+      "path": "root-unit-results-after-harness-fix.json",
+      "bytes": 75038,
+      "sha256": "a880e53815c5efdb9dcc7f1b21fdaca52636da531d0bf763fa0c16eddfee0ecd"
+    },
+    {
+      "path": "root-unit-results-before-harness-fix.json",
+      "bytes": 76123,
+      "sha256": "b27d2f2259bcc7b302a2dc56b0302d1e2c4a5aa944ff1a5d5c1bf0d6f80e032f"
+    },
+    {
+      "path": "source-snapshot/public/dsp/webrc-dsp.build.json",
+      "bytes": 14536,
+      "sha256": "4e51496e5afcefc70c79ccb3b197605af06c1a25c798adb0f2cef30d3be86e8d"
+    },
+    {
+      "path": "source-snapshot/public/dsp/webrc-dsp.wasm",
+      "bytes": 661293,
+      "sha256": "f670c0dacdc0e7175f8ce821b1040bf1f39eabdce15673d16f5a00212d0b79c6"
+    },
+    {
+      "path": "source-snapshot/public/worklets/looper-processor.js",
+      "bytes": 183331,
+      "sha256": "e20553988a745f07dc82c1c0d4694524a73f70a6bd61675fbfd9c9971c784bd9"
+    },
+    {
+      "path": "source-snapshot/public/worklets/master-fx-processor.js",
+      "bytes": 21261,
+      "sha256": "e17310daad4f27c3bc996fe03ff99be30c59a0d1eaed8f689b2da6ae9013c716"
+    },
+    {
+      "path": "source-snapshot/scripts/browser-realtime-smoke.mjs",
+      "bytes": 123481,
+      "sha256": "db6f15e32f6b15d340cbde3eeb414f09344d0a57efc1a5ed4eba3d768d994a9e"
+    },
+    {
+      "path": "source-snapshot/scripts/capture-browser-graph-snapshot.mjs",
+      "bytes": 5635,
+      "sha256": "dfe435e1888a583185c42ff29b1ce2e789e8e31a96d17925ea96b623ad3b23d5"
+    },
+    {
+      "path": "source-snapshot/scripts/install-shared-dsp-assets.mjs",
+      "bytes": 4338,
+      "sha256": "5fd1c25112bc36be175ba7846cf7328cf98c926e22f7842c41417d0fb2cd8d56"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/browser-build-pin.json",
+      "bytes": 504,
+      "sha256": "bd7aac1039fc70d838ec197eeda534ba2810b64fa6304c09a485ded80adf2abb"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/build-wasm.ps1",
+      "bytes": 13894,
+      "sha256": "bbfdc2c8206d81ca23e2be92c0c5cff1bf75e31d4d0053c15c96530cad1751c3"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/README.md",
+      "bytes": 14279,
+      "sha256": "bb1ec643a2809fa5d5f283dd8bce65c71d840697504a261ddf3814d401837c9b"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/tests/extended-smoke.mjs",
+      "bytes": 34297,
+      "sha256": "c6451fedc4ae694a94115018e94cc8b578e360ce8930a8598c1bc75b837da375"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/tests/fx-registry-smoke.mjs",
+      "bytes": 16611,
+      "sha256": "c1ddf6ede396801a6126e2bd123818adad37270d7211222b817bca6710ec49a3"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/webrc_dsp_extended.cpp",
+      "bytes": 74396,
+      "sha256": "8412ac798c8d4c3d0e8dbbb6c4d19a9ce93fb218a005608c747b9679b9c98674"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/webrc_dsp_extended.h",
+      "bytes": 16905,
+      "sha256": "41ac72c2668135384c5a7155cb54dfb53f6a50bf0020b4f03a4a2b91cfc158ee"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/wasm/webrc_dsp_wasm.h",
+      "bytes": 4602,
+      "sha256": "c1dbdbf6af60100e7264a1433b5549e96d5d11d49d5cdda9007d1faf8f645610"
+    },
+    {
+      "path": "source-snapshot/src/audio/AudioEngine.ts",
+      "bytes": 23230,
+      "sha256": "c8fffa24a160bd03a1b0fcdf2691b0224e71bb832debc3ecc373a381f2c8eb6e"
+    },
+    {
+      "path": "source-snapshot/src/audio/BrowserAudioEngine.ts",
+      "bytes": 101942,
+      "sha256": "fffb143bd2e9ea70ef95574009bb34f4f267711b84c7eebc7b5851f6625edcea"
+    },
+    {
+      "path": "source-snapshot/src/audio/BrowserRealtimeRuntime.ts",
+      "bytes": 102503,
+      "sha256": "cb777f0a8485dcf061fa772bc2ffa2008399fc7ca418471c8c495ade2a2d79b7"
+    },
+    {
+      "path": "source-snapshot/src/audio/sharedDspGraph.ts",
+      "bytes": 17126,
+      "sha256": "ebc87886b81f596b43de36f4bf84c81e9e992140c416d74551e8868a24bfc69e"
+    },
+    {
+      "path": "source-snapshot/src/composables/useFxPanelState.ts",
+      "bytes": 12110,
+      "sha256": "f678e03627219d2c1234979651699e400609c8e83539c5aec2b4e699d5988b4c"
+    },
+    {
+      "path": "source-snapshot/tests/helpers/coreAudioHarness.ts",
+      "bytes": 9337,
+      "sha256": "9f1b681f7df675e9808c626786ee496ca3ce048a7d268a2525c12a0531e4cd5a"
+    },
+    {
+      "path": "source-snapshot/tests/unit/browserFxTransactions.spec.ts",
+      "bytes": 8717,
+      "sha256": "0428bb5cd7696b7ab03c59209850214ac6330e08c75d20ce33001afb0fcb4384"
+    },
+    {
+      "path": "source-snapshot/tests/unit/masterFxWorklet.spec.ts",
+      "bytes": 7266,
+      "sha256": "fcc1618845fb419fb7d0dc2708f1258440c8d60301917140352c403b7142c9cc"
+    },
+    {
+      "path": "source-snapshot/tests/unit/stereoWorklet.spec.ts",
+      "bytes": 52946,
+      "sha256": "504f3ad3981a357a5e457b466425215052f0e09374a484528366093bf4252a91"
+    },
+    {
+      "path": "source-snapshot/tests/unit/useFxPanelState.spec.ts",
+      "bytes": 5410,
+      "sha256": "d025d1dfec1ad46abebc6f261d1cd6c3f152f4ea3c9a7fb4904f9ced0b324e5e"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/audioEngine.spec.ts",
+      "bytes": 8554,
+      "sha256": "28683a264af85434ad4d54d8e7078e7b7f79e1227dc46ffa417bddeccf50d98c"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/bounceCaptureProcessor.spec.ts",
+      "bytes": 6629,
+      "sha256": "59e66e6c141ec6e190803a6fcb8ca97d609c9ef454534e5f8d3f53ce6467c17a"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/browserBulkTransport.spec.ts",
+      "bytes": 2980,
+      "sha256": "70491bd9e01e7e6b95a5a1104fcae9ea3ebb3aa41d90036c05db87b6eb4f37c7"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/browserCompressorFailure.spec.ts",
+      "bytes": 2483,
+      "sha256": "f3ee3e832c3ffddd214bb7692f180676bc21013a09d42c668eca3bdfe31c9aa4"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/browserFxTransactions.spec.ts",
+      "bytes": 8717,
+      "sha256": "0428bb5cd7696b7ab03c59209850214ac6330e08c75d20ce33001afb0fcb4384"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/browserProjectAdapter.spec.ts",
+      "bytes": 10679,
+      "sha256": "811c1ff3a771a5e9e590104eb0bfd4c3615c5a8184527ce8285a48cbc2804176"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/browserRealtimeProtocol.spec.ts",
+      "bytes": 19805,
+      "sha256": "43673bd0c53e4da25e591b00e5f869551d7523f82acb772efbe15eef7ebd1d7e"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/browserRouting.spec.ts",
+      "bytes": 11638,
+      "sha256": "ba01a6e322c195579106a40a6bc39994083371228194f7f0efc31693c5ef469d"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/compressorWorklet.spec.ts",
+      "bytes": 9619,
+      "sha256": "5eb624385a2548cadc4ec2eb2d57745bf9b872de2c6c9992649514319134978c"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/controlDispatcher.spec.ts",
+      "bytes": 8196,
+      "sha256": "e67e84984b08ca5b1d8693be20ba664e95358876af67a0d2f0a36b62e94ba695"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/coreAudioBehaviors.spec.ts",
+      "bytes": 29956,
+      "sha256": "4cf25156b3be3a2116c30d21d343d26d92f76dc7708af760cdfca8e932cc105f"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/historyCompaction.spec.ts",
+      "bytes": 15160,
+      "sha256": "f242fa0c89db2a3d3e482c49afbc950b64609b1c0d6a11839e585550493cdaac"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/instrumentGradeMetrics.spec.ts",
+      "bytes": 10825,
+      "sha256": "c89539a0af45f7c6d88b36180606633c088512e98a316684c0cf3885b44a1031"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/loadTrackState.spec.ts",
+      "bytes": 4378,
+      "sha256": "0affc16e41009c95c90e78bf9b6b74f0db9cc7f37da243872aaf635a8cfd3ad1"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/masterClockAtomicStart.spec.ts",
+      "bytes": 1286,
+      "sha256": "ac3e5559beb2d4f8becc2b7a5f92f047265dc1a34a7584d4bbb43cd8168b9e00"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/masterClockEpoch.spec.ts",
+      "bytes": 2036,
+      "sha256": "29d76da5117b527b6905a20a26e4db22982a9fbf554dd836065e200283d95f2e"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/masterFxWorklet.spec.ts",
+      "bytes": 7266,
+      "sha256": "fcc1618845fb419fb7d0dc2708f1258440c8d60301917140352c403b7142c9cc"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/nativeBridgeClient.spec.ts",
+      "bytes": 2034,
+      "sha256": "c9a27445b1689c7873868a9debac4409a2daa8f3e8af65d8545ae41538af8707"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/pitchCompositeCache.spec.ts",
+      "bytes": 5202,
+      "sha256": "d357229d55df287fd9f7483f41b282cc843b614e23936b78bf3968fc6f98df1f"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/projectArchive.spec.ts",
+      "bytes": 2817,
+      "sha256": "be461af0dfcfeed5df92e7c54654267613b12d5442f41b7e759c1f66fe0c031b"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/projectMixRenderer.spec.ts",
+      "bytes": 10740,
+      "sha256": "4c53e7254e46649a7b8f7a1dadc64e1e5da9b531f4a4bb0498f80c96b555c40f"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/projectService.spec.ts",
+      "bytes": 13428,
+      "sha256": "9075b6c3c905e3e38a15a1250264f386eabac0fcdd4dd0726db1e80519305d29"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/projectWavCodec.spec.ts",
+      "bytes": 8006,
+      "sha256": "b609d37d20dc78a3a72e067a12a4d02cbd3f35db99a1492fd8a95260738508dd"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/rhythmDocuments.spec.ts",
+      "bytes": 2500,
+      "sha256": "649ff35e1795497c6ad792bfcff51649c2d7d2b41011b99a63b8f222debfa79e"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/sharedDspGraph.spec.ts",
+      "bytes": 2471,
+      "sha256": "96042478c0c321ef7389efea72487b20d630d654ee3bf1586218a6649ff1b837"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/stereoWorklet.spec.ts",
+      "bytes": 52946,
+      "sha256": "504f3ad3981a357a5e457b466425215052f0e09374a484528366093bf4252a91"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/takeStoragePreflight.spec.ts",
+      "bytes": 4035,
+      "sha256": "5df93106aa7d25bfebc07fdb2acbf43527c6329afc55f3e5a1bd9cb38cd16dfe"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/timeStretch.spec.ts",
+      "bytes": 24082,
+      "sha256": "e209c371920948c2fe7bb4837d4ed43189a23c12e12ce5e9ece480308d56f442"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/trackAudio.spec.ts",
+      "bytes": 2142,
+      "sha256": "cf3c50029f3089288f70e4ef0083b29f10f412002336c2699dca8c6603077442"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/trackUnit.spec.ts",
+      "bytes": 9171,
+      "sha256": "325307dc67e67834c9aaf99f3295bae4ca2abd278332fa7ebbf7a76224c8ff75"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/transport.spec.ts",
+      "bytes": 7663,
+      "sha256": "1f9a1f29137f6369f08a7ec9bf8995b208d997ca49e6947e7884d0c5c79f88c2"
+    },
+    {
+      "path": "test-source-snapshot/tests/unit/useFxPanelState.spec.ts",
+      "bytes": 5410,
+      "sha256": "d025d1dfec1ad46abebc6f261d1cd6c3f152f4ea3c9a7fb4904f9ced0b324e5e"
+    }
+  ]
+}
