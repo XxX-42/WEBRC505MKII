@@ -8,9 +8,13 @@ This is an intermediate review, not an acceptance report. Gate 0 has passed; no 
 - `21365e8`: the initial WASM interface, compiled-source manifest, Native/Node fixtures, and a real AudioWorklet interface probe. Its accepted 1024-callback probe processes one mono biquad at 128 frames/48 kHz through a software sink. It does not qualify the five-track graph or all primitives. See `WASM_INTERFACE_ROOT_REVIEW.md` for trace archives, rejected runs, and timing attribution.
 - Both commits are pushed to `codex/instrument-grade-audio-20261007`. Generated WASM and local build output remain reproducible artifacts rather than completed product integration.
 
-## Source review still requiring final reproduction
+## Additional accepted functional and standalone evidence
 
-FFT/spatial and pitch modules are being revised and have only preliminary agent test evidence. The review requires a fresh combined Native test and AddressSanitizer pass against stable sources, longer cross-runtime PCM fixtures, callback allocation checks, and per-module timing distributions. Native 64 frames and Browser actual output-array quantum remain separate measurement configurations.
+`df038ca` has independent combined shared-core Native CTest 5/5, a later final pitch assertion 1/1, fresh pinned-Emscripten pitch tests, and an immutable Native parent snapshot build with CTest 6/6. `f647ac9` adds fresh spatial timing arrays with independently recomputed quantiles/source hashes and the corrected standalone Rubber Band comparison. See `SPATIAL_PITCH_ROOT_REVIEW.md` and `RUBBERBAND_ROOT_REVIEW.md` for their actual scope. A newly reported immutable LLVM 23.1.3 AddressSanitizer 5/5 pass is awaiting coordinator log/manifest review; the earlier concurrent-source run remains stale.
+
+## Source review still requiring full qualification
+
+FFT/spatial and pitch modules have accepted partial functional evidence. Longer cross-runtime PCM fixtures, a reviewed sanitizer archive, complete callback allocation coverage and all-module timing distributions remain required. Native 64 frames and Browser actual output-array quantum remain separate measurement configurations.
 
 Spatial review caught and requested fixes for convolution size overflow, frequency-unit confusion in spectral freeze, grain-window edge normalization, reverse capture/play cadence, drum modal amplitude normalization, and voice-pool discontinuities. The current absolute-frame reverse design removes the unequal capture/play cadence, but its startup transition and repeated voice stealing still need quantitative coverage. Timing archives that contain only percentiles and source hashes collected after running an external executable cannot establish full source/build provenance or raw callback acceptance.
 
@@ -22,7 +26,7 @@ Rubber Band v4.0.0 is evaluated only in an external TEMP harness; its GPL/commer
 
 The coordinator independently calibrated the first harness's autocorrelation/parabolic frequency estimator on a perfect 8192-sample sine at 587.329535834815 Hz, 48 kHz, amplitude 0.62, starting at source frame 48000. It returned 587.469882729 Hz, a +0.413642-cent bias. Its approximate residual calculation reported -25.106 dB on this ideal sine. Thus preliminary approximately +0.43-cent R3 errors and residual values near that floor do not prove library quality. The expression `rms^2 - amplitude^2/2` assumes finite-segment sine/cosine orthogonality and is not an exact least-squares residual.
 
-The revised harness must calibrate the estimator, fit sine/cosine/DC jointly, compute the residual directly, retain every chronological call (including padding, startup, warmup and flush), and test final tail draining. Expanded input content requires new immutable results; old corrected timing records stay available with their narrower scope.
+The expanded corrected archive now calibrates the estimator, fits sine/cosine/DC jointly, computes the residual directly, retains every chronological section and tests final tail draining. Coordinator recomputation passes. Its measured finalization spikes, delay-trimmed length differences, correlated stereo fixture and standalone scope remain explicit limits; see `RUBBERBAND_ROOT_REVIEW.md`. Earlier records remain excluded from quality acceptance.
 
 ## Remaining acceptance work
 
