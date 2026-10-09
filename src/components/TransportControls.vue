@@ -29,6 +29,7 @@
         @press="toggleTransport"
         class="transport-button"
       />
+      <div v-if="transportError" class="transport-error" role="alert">{{ transportError }}</div>
 
       <HardwareButton
         size="sm"
@@ -101,6 +102,7 @@ const isPlaying = ref(false);
 const beatIndicator = ref(false);
 const tapActive = ref(false);
 const showSettings = ref(false);
+const transportError = ref('');
 const isThruActive = ref(engine.monitoringEnabled);
 const nativeReady = ref(engine.isNativeReady());
 const audioMode = ref(engine.getMode());
@@ -130,6 +132,7 @@ const hasActiveTracks = () => {
     track.state === TrackState.RECORDING ||
     track.state === TrackState.PLAYING ||
     track.state === TrackState.OVERDUBBING ||
+    track.state === TrackState.REPLACING ||
     track.state === TrackState.REC_STANDBY ||
     track.state === TrackState.REC_FINISHING
   ));
@@ -151,12 +154,17 @@ const adjustBpm = (delta: number) => {
   updateState();
 };
 
-const toggleTransport = () => {
+const toggleTransport = async () => {
   if (controlsDisabled.value) return;
-  if (isPlaying.value) {
-    engine.stopAllTracks();
-  } else {
-    engine.playAllTracks();
+  transportError.value = '';
+  try {
+    if (isPlaying.value) {
+      await engine.stopAllTracks();
+    } else {
+      await engine.playAllTracks();
+    }
+  } catch (error) {
+    transportError.value = error instanceof Error ? error.message : String(error);
   }
 };
 
@@ -446,6 +454,14 @@ onUnmounted(() => {
   align-items: flex-end;
   gap: 16px;
   padding-bottom: 2px;
+}
+
+.transport-error {
+  max-width: 220px;
+  color: #ff9da8;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .beat-indicator-module {

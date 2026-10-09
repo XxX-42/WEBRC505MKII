@@ -2,12 +2,14 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { TrackState } from '../core/types';
 import { usePanelFocus } from './usePanelFocus';
+import { useControlDispatcher } from './useControlDispatcher';
 
 export function useTrackStripState(trackId: number) {
   const engine = AudioEngine.getInstance();
   const trackAudio = engine.tracks[trackId - 1]!;
   const trackCapabilities = engine.getTrackCapabilities(trackId);
   const focus = usePanelFocus();
+  const { dispatcher } = useControlDispatcher();
 
   const trackState = ref(trackAudio.state);
   const playLevel = ref(trackAudio.track.playLevel);
@@ -25,6 +27,7 @@ export function useTrackStripState(trackId: number) {
     trackAvailable.value = trackAudio.isAvailable;
     trackTransportEnabled.value = trackAudio.transportEnabled;
     disabledReason.value = trackCapabilities.availabilityReason || trackAudio.disabledReason;
+    focus.setTrackFxApplied(trackId, trackAudio.track.fxSw === 'ON', false);
   };
 
   onMounted(() => {
@@ -42,7 +45,8 @@ export function useTrackStripState(trackId: number) {
   const isRecordingOrPlaying = computed(() => (
     trackState.value === TrackState.RECORDING ||
     trackState.value === TrackState.PLAYING ||
-    trackState.value === TrackState.OVERDUBBING
+    trackState.value === TrackState.OVERDUBBING ||
+    trackState.value === TrackState.REPLACING
   ));
 
   const buttonLedColor = computed(() => {
@@ -57,6 +61,8 @@ export function useTrackStripState(trackId: number) {
         return 'green';
       case TrackState.OVERDUBBING:
         return 'yellow';
+      case TrackState.REPLACING:
+        return 'purple';
       default:
         return 'neutral';
     }
@@ -70,6 +76,8 @@ export function useTrackStripState(trackId: number) {
         return 'green';
       case TrackState.OVERDUBBING:
         return 'yellow';
+      case TrackState.REPLACING:
+        return 'purple';
       default:
         return 'white';
     }
@@ -90,16 +98,15 @@ export function useTrackStripState(trackId: number) {
 
   const handleRecPlay = () => {
     if (!trackTransportEnabled.value) return;
-    trackAudio.triggerRecord();
+    void dispatcher.dispatch({ type: 'record-track', trackId });
   };
 
   const handleLevelChange = (value: number) => {
     if (!levelControlEnabled.value) return;
 
-    const safeValue = clamp(Math.round(value), 0, 100);
+    const safeValue = clamp(Math.round(value), 0, 200);
     playLevel.value = safeValue;
-    trackAudio.track.playLevel = safeValue;
-    trackAudio.updateSettings();
+    void dispatcher.dispatch({ type: 'set-track-level', trackId, value: safeValue });
   };
 
   const handleTrackSelect = () => {
@@ -110,15 +117,14 @@ export function useTrackStripState(trackId: number) {
   const toggleTrackFx = () => {
     if (!trackAvailable.value) return;
     const nextState = !focus.state.trackFxApplyMap[trackId];
-    trackAudio.track.fxSw = nextState ? 'ON' : 'OFF';
-    focus.setTrackFxApplied(trackId, nextState);
+    void dispatcher.dispatch({ type: 'set-track-fx-send', trackId, enabled: nextState });
   };
 
   const startStopPress = () => {
     if (!trackTransportEnabled.value || stopPressTimer) return;
     stopPressTimer = window.setTimeout(() => {
       isClearing.value = true;
-      trackAudio.clear();
+      void dispatcher.dispatch({ type: 'clear-track', trackId });
       window.setTimeout(() => {
         isClearing.value = false;
       }, 300);
@@ -131,7 +137,7 @@ export function useTrackStripState(trackId: number) {
     if (stopPressTimer) {
       window.clearTimeout(stopPressTimer);
       stopPressTimer = null;
-      trackAudio.triggerStop();
+      void dispatcher.dispatch({ type: 'stop-track', trackId });
     }
   };
 

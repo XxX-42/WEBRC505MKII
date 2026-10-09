@@ -35,6 +35,7 @@ const animationClass = computed(() => {
     case TrackState.REC_FINISHING: return 'state-rec-finishing';
     case TrackState.PLAYING: return 'state-playing';
     case TrackState.OVERDUBBING: return 'state-overdub';
+    case TrackState.REPLACING: return 'state-replace';
     case TrackState.STOPPED: return 'state-stopped';
     default: return 'state-empty';
   }
@@ -105,6 +106,9 @@ const draw = () => {
     } else if (currentState.value === TrackState.OVERDUBBING) {
       color = '#ffcc00'; // var(--led-yellow-overdub)
       glowIntensity = 18;
+    } else if (currentState.value === TrackState.REPLACING) {
+      color = '#a855f7';
+      glowIntensity = 20;
     }
     
     const startAngle = -Math.PI / 2;
@@ -253,6 +257,10 @@ onUnmounted(() => {
 
 .state-overdub {
   animation: overdub-blink 1.5s ease-in-out infinite;
+}
+
+.state-replace {
+  filter: drop-shadow(0 0 9px rgba(168, 85, 247, .7));
 }
 
 /* STOPPED: Gentle Breathing */

@@ -1,11 +1,11 @@
-import type { FXBase } from './FXBase';
+import type { FXBase, FXSnapshot } from './FXBase';
 
 export class PhaserFX implements FXBase {
     public name = 'PHASER';
     public input: GainNode;
     public output: GainNode;
 
-    private context: AudioContext;
+    private context: BaseAudioContext;
     private dryNode: GainNode;
     private wetNode: GainNode;
 
@@ -16,8 +16,10 @@ export class PhaserFX implements FXBase {
 
     private rate: number = 0.5;
     private depth: number = 0.5;
+    private resonance = 0.1;
+    private bypassed = true;
 
-    constructor(context: AudioContext) {
+    constructor(context: BaseAudioContext) {
         this.context = context;
         this.input = context.createGain();
         this.output = context.createGain();
@@ -97,15 +99,18 @@ export class PhaserFX implements FXBase {
                 this.lfoGain.gain.setTargetAtTime(this.depth * 2000, this.context.currentTime, 0.003);
                 break;
 
-            case 'resonance':
+            case 'resonance': {
                 // Q value
-                const q = 0.5 + (normValue * 5);
+                this.resonance = Math.max(0, Math.min(1, normValue));
+                const q = 0.5 + (this.resonance * 5);
                 this.filters.forEach(f => f.Q.setTargetAtTime(q, this.context.currentTime, 0.003));
                 break;
+            }
         }
     }
 
     public setBypass(bypass: boolean) {
+        this.bypassed = bypass;
         if (bypass) {
             // Bypass: Only Dry signal, full volume
             this.dryNode.gain.setTargetAtTime(1, this.context.currentTime, 0.003);
@@ -115,6 +120,18 @@ export class PhaserFX implements FXBase {
             this.dryNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.003);
             this.wetNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.003);
         }
+    }
+
+    public getSnapshot(): FXSnapshot {
+        return { type: this.name, enabled: !this.bypassed, params: { rate: (this.rate - 0.1) / 4.9, depth: this.depth, resonance: this.resonance } };
+    }
+
+    public applySnapshot(snapshot: FXSnapshot): void {
+        if (snapshot.type !== this.name) throw new TypeError(`Cannot apply ${snapshot.type} state to PHASER.`);
+        if (typeof snapshot.params.rate === 'number') this.setParam('rate', Math.max(0, Math.min(1, snapshot.params.rate)) * 100);
+        if (typeof snapshot.params.depth === 'number') this.setParam('depth', Math.max(0, Math.min(1, snapshot.params.depth)) * 100);
+        if (typeof snapshot.params.resonance === 'number') this.setParam('resonance', Math.max(0, Math.min(1, snapshot.params.resonance)) * 100);
+        this.setBypass(!snapshot.enabled);
     }
 
     public dispose() {

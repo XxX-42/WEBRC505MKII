@@ -151,6 +151,18 @@
       return new MockStereoPannerNode();
     }
 
+    createChannelMerger() {
+      return new MockAudioNode();
+    }
+
+    createChannelSplitter() {
+      return new MockAudioNode();
+    }
+
+    createMediaStreamDestination() {
+      return { ...new MockAudioNode(), stream: new MediaStream() };
+    }
+
     createDelay() {
       return new MockDelayNode();
     }
@@ -203,14 +215,25 @@
         start() {},
         close: () => window.clearInterval(this.controlTimer),
         postMessage: (message) => {
-          if (message?.type === 'ATTACH_TRACK') {
-            queueMicrotask(() => {
-              this.port.onmessage?.({ data: {
-                type: 'TRACK_ATTACHED', track: message.track,
-                channelCount: 2, layoutVersion: 2, storageLayout: 1,
-              } });
-            });
-          }
+          const responses = {
+            ATTACH_TRACK: {
+              type: 'TRACK_ATTACHED', track: message.track,
+              channelCount: 2, layoutVersion: 4, storageLayout: 1,
+            },
+            PREPARE_TAKE: {
+              type: 'TAKE_PREPARED', track: message.track,
+              takeSlot: message.takeSlot, mode: message.mode,
+            },
+            ATTACH_TAKE_SEGMENT: {
+              type: 'TAKE_SEGMENT_ATTACHED', track: message.track,
+              takeSlot: message.takeSlot, segmentIndex: message.segmentIndex,
+            },
+            RELEASE_TRACK_HISTORY: {
+              type: 'TRACK_HISTORY_RELEASED', track: message.track,
+            },
+          };
+          const response = responses[message?.type];
+          if (response) queueMicrotask(() => this.port.onmessage?.({ data: response }));
         },
       };
       if (control) {
@@ -220,12 +243,17 @@
           while (read !== write) {
             // Protocol header: 96 bytes; each command: eight Int32 words.
             const offset = 24 + (read % 256) * 8;
-            const executedFrame = (control[offset + 4] >>> 0) * 4294967296 + (control[offset + 3] >>> 0);
+            const scheduledTargetFrame = (control[offset + 4] >>> 0) * 4294967296 + (control[offset + 3] >>> 0);
+            const commandOpcode = control[offset + 1];
             const sequence = control[offset] >>> 0;
             Atomics.store(control, 6, sequence);
             this.port.onmessage?.({ data: {
-              type: 'ACK', sequence, opcode: control[offset + 1], track: control[offset + 2],
-              executedFrame, targetFrame: executedFrame, status: 0, loopFrames: 0, recordingFrames: 0,
+              type: 'ACK', sequence, opcode: commandOpcode, track: control[offset + 2],
+              // This UI-only fixture treats command operands as opaque. In
+              // particular SET_MASTER_CLOCK_EPOCH arg1/flags are Float64
+              // origin bits; the timing target remains the ring target words.
+              executedFrame: scheduledTargetFrame, targetFrame: scheduledTargetFrame,
+              status: 0, loopFrames: 0, recordingFrames: 0,
             } });
             read += 1;
           }

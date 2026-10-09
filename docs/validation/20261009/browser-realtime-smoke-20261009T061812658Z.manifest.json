@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "startedAt": "2026-10-09T06:18:12.658Z",
+  "completedAt": "2026-10-09T06:19:07.721Z",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "assertionCount": 57,
+  "passedAssertionCount": 57,
+  "failedAssertionCount": 0,
+  "browser": "Playwright Chromium 1228 / Chromium 149.0.7827.55",
+  "rawJsonFile": "browser-realtime-smoke-20261009T061812658Z.json",
+  "rawJsonSha256": "f871209b97fa54d4000c8548edd87261800b91f428f4ec3a7e8157b4e793f861",
+  "repro": "npm run audio:smoke:browser",
+  "reportSourceSha256": {
+    "scripts/browser-realtime-smoke.mjs": "244ff8345f8cd697c0626b1194306f2f2a2518b18a4fc1cfe4b25ade7ba50919",
+    "src/audio/BrowserAudioEngine.ts": "d43e12403603ea2ac3c5e9db3f80371882e5c7d0ae193d9052a9040594a0c8be",
+    "src/audio/browserRealtimeProtocol.ts": "b005e5a8fe2dd9eb61b0eabf8ccf6dbd93d225780683c4f6b0b46cdafce5073a",
+    "src/audio/BrowserRealtimeRuntime.ts": "14144a23ffae503b643b54e9c6926cdae929dd861845d8f55e294b3ab872a536",
+    "public/worklets/looper-processor.js": "4b24344d0e339dbcb4e886beac1f0d89c68b341e213098e0cb557ac386bf849a",
+    "public/worklets/time-stretch-core.js": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91"
+  },
+  "workspaceSha256": {
+    "scripts/browser-realtime-smoke.mjs": "244ff8345f8cd697c0626b1194306f2f2a2518b18a4fc1cfe4b25ade7ba50919",
+    "src/audio/BrowserAudioEngine.ts": "d43e12403603ea2ac3c5e9db3f80371882e5c7d0ae193d9052a9040594a0c8be",
+    "src/audio/browserRealtimeProtocol.ts": "b005e5a8fe2dd9eb61b0eabf8ccf6dbd93d225780683c4f6b0b46cdafce5073a",
+    "src/audio/BrowserRealtimeRuntime.ts": "14144a23ffae503b643b54e9c6926cdae929dd861845d8f55e294b3ab872a536",
+    "public/worklets/looper-processor.js": "4b24344d0e339dbcb4e886beac1f0d89c68b341e213098e0cb557ac386bf849a",
+    "public/worklets/time-stretch-core.js": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91"
+  },
+  "sourceHashesMatch": true
+}

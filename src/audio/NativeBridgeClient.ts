@@ -151,7 +151,9 @@ export class NativeBridgeClient {
         ...init,
       });
     } catch (error) {
-      throw new Error(`Native bridge is unreachable at ${this.baseUrl}: ${error}`);
+      const wrappedError = new Error(`Native bridge is unreachable at ${this.baseUrl}.`);
+      Object.defineProperty(wrappedError, 'cause', { value: error, configurable: true });
+      throw wrappedError;
     }
 
     const payload = (await response.json()) as T;

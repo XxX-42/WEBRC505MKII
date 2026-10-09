@@ -48,6 +48,7 @@
       <div class="slider-column">
         <HardwareFader
           :model-value="playLevel"
+          :max="200"
           :led-color="faderLedColor"
           label=""
           @update:model-value="handleLevelChange"
@@ -76,7 +77,9 @@
         <span class="indicator-chip" :class="{ active: trackState === TrackState.RECORDING }">REC</span>
         <span class="indicator-chip" :class="{ active: trackState === TrackState.PLAYING }">PLAY</span>
         <span class="indicator-chip" :class="{ active: trackState === TrackState.OVERDUBBING }">DUB</span>
+        <span class="indicator-chip replace-chip" :class="{ active: trackState === TrackState.REPLACING }">REPLACE</span>
       </div>
+      <TrackSettingsPanel :track-id="trackId" />
     </div>
   </section>
 </template>
@@ -88,6 +91,7 @@ import { useTrackStripState } from '../../composables/useTrackStripState';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareFader from '../ui/HardwareFader.vue';
 import LoopHalo from '../LoopHalo.vue';
+import TrackSettingsPanel from '../TrackSettingsPanel.vue';
 
 const props = defineProps<{
   trackId: number;
@@ -124,6 +128,8 @@ const stateLabel = computed(() => {
       return 'PLAY';
     case TrackState.OVERDUBBING:
       return 'OVERDUB';
+    case TrackState.REPLACING:
+      return 'REPLACE';
     case TrackState.STOPPED:
       return 'STOP';
     case TrackState.REC_STANDBY:
@@ -136,7 +142,7 @@ const stateLabel = computed(() => {
 });
 
 const transportGlyph = computed(() => {
-  if (trackState.value === TrackState.PLAYING || trackState.value === TrackState.OVERDUBBING) {
+  if (trackState.value === TrackState.PLAYING || trackState.value === TrackState.OVERDUBBING || trackState.value === TrackState.REPLACING) {
     return '▶';
   }
   return '●';
@@ -358,6 +364,18 @@ const transportGlyph = computed(() => {
   border-color: rgba(255, 214, 87, 0.9);
   box-shadow: 0 0 14px rgba(255, 204, 0, 0.22);
 }
+
+.main-recplay-button.state-purple::after {
+  border-color: rgba(168, 85, 247, .45);
+  box-shadow: 0 0 18px rgba(168, 85, 247, .24);
+}
+
+.main-recplay-button.state-purple .main-recplay-core {
+  border-color: rgba(196, 142, 255, .9);
+  box-shadow: 0 0 14px rgba(168, 85, 247, .28);
+}
+
+.main-recplay-button.state-purple .main-recplay-icon { color: #efddff; }
 
 .main-recplay-icon {
   font-family: var(--font-hardware);

@@ -1,13 +1,9 @@
 import { TrackAudio } from './TrackAudio';
-import { Track, TrackState, TransportState } from '../core/types';
+import { MemorySettings, Track, TrackState, TransportState } from '../core/types';
 import { Transport } from '../core/Transport';
 import { FXChain } from './FXChain';
-import type { FXBase } from './fx/FXBase';
-import { FilterFX } from './fx/FilterFX';
-import { DelayFX } from './fx/DelayFX';
-import { ReverbFX } from './fx/ReverbFX';
-import { SlicerFX } from './fx/SlicerFX';
-import { PhaserFX } from './fx/PhaserFX';
+import { defaultFXRegistry, type FxNodeGraph } from './fx/FXRegistry';
+import type { FXSnapshot } from './fx/FXBase';
 
 import { RhythmEngine } from './RhythmEngine';
 import type { IAudioEngine } from './AudioEngineInterface';
@@ -30,6 +26,15 @@ import {
     type BrowserLatencyCalibration,
     type BrowserLatencyCalibrationScope,
 } from './browserLatencyCalibration';
+import type { ProjectFxBank, ProjectFxUnit, ProjectMixer } from '../project/projectTypes';
+import { validateLoopEngineSettings, type LoopEngineSettings, type LoopEngineSettingsPatch } from './loopSettings';
+import type { RhythmKitDocument, RhythmPatternDocument, RhythmRuntimeSnapshot } from './rhythmTypes';
+import {
+    BrowserRoutingGraph,
+    type BrowserRoutingState,
+    type BrowserRoutingPatch,
+    type BrowserRoutingSourceNode,
+} from './browserRouting';
 
 export interface BrowserAudioLatencyInfo {
     sampleRate: number;
@@ -64,6 +69,8 @@ export interface BrowserAudioIoSnapshot {
   outputDeviceId: string | null;
   outputLabel: string | null;
   outputSinkType: string | null;
+  /** Added software delay for routing the rhythm bus back into recording inputs. */
+  rhythmRoutingDelayFrames: number;
 }
 
 export interface BrowserAudioUiStatus {
@@ -73,6 +80,13 @@ export interface BrowserAudioUiStatus {
     ready: boolean;
     message: string;
     lastError: string;
+}
+
+export type FxBankLocation = 'input' | 'track' | 'output';
+
+export interface FxStateSnapshot {
+    activeBankId: string;
+    banks: ProjectFxBank[];
 }
 
 export class BrowserAudioEngine implements IAudioEngine {
@@ -85,6 +99,19 @@ export class BrowserAudioEngine implements IAudioEngine {
     public roundTripLatency = 0; // Compatibility field; zero means no current measured calibration.
     public measuredRoundTripLatencyMs: number | null = null;
     public realtimeRuntime: BrowserRealtimeRuntime | null = null;
+    public readonly memorySettings = new MemorySettings();
+    public projectMixer: ProjectMixer = {
+        masterLevel: 1,
+        tracks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, level: 1, pan: 0, muted: false, solo: false })),
+    };
+    public activeFxBankId = 'bank-1';
+    public fxBanks: ProjectFxBank[] = Array.from({ length: 4 }, (_, index) => ({
+        id: `bank-${index + 1}`,
+        name: `Bank ${index + 1}`,
+        input: [null, null, null, null],
+        track: [null, null, null, null],
+        output: [null, null, null, null],
+    }));
 
     // ========================================
     // AUDIO I/O MANAGEMENT (CRITICAL SAFETY)
@@ -98,12 +125,25 @@ export class BrowserAudioEngine implements IAudioEngine {
     private currentOutputLabel: string | null = null;
     private currentCalibration: BrowserLatencyCalibration | null = null;
     private loopbackCaptureResolve: (() => void) | null = null;
+    private routingGraph: BrowserRoutingGraph | null = null;
+    private rhythmRouteDelay: DelayNode | null = null;
+    private readonly routingListeners = new Set<(state: BrowserRoutingState) => void>();
 
     // FX Chains & Mixing
     public inputFxChain: FXChain;
     public outputFxChain: FXChain;
     public trackMixNode: GainNode;
     public masterGainNode: GainNode;
+    private inputBankSourceNode: GainNode;
+    private inputBankReturnNode: GainNode;
+    private trackBankSourceNode: GainNode;
+    private trackBankReturnNode: GainNode;
+    private outputBankSourceNode: GainNode;
+    private outputBankReturnNode: GainNode;
+    private fxGraphs: Record<FxBankLocation, FxNodeGraph | null> = { input: null, track: null, output: null };
+    private readonly fxStateListeners = new Set<(state: FxStateSnapshot) => void>();
+    private readonly trackFxSends = [false, false, false, false, false];
+    private fxMutationQueue: Promise<void> = Promise.resolve();
 
     // Rhythm Engine
     public rhythmEngine: RhythmEngine;
@@ -116,18 +156,60 @@ export class BrowserAudioEngine implements IAudioEngine {
     private latencyListeners = new Set<(info: BrowserAudioLatencyInfo) => void>();
     private statusListeners = new Set<(status: BrowserAudioUiStatus) => void>();
     private initialized = false;
+    private suppressTransportBpmCommand = false;
     private compressorFailure: Error | null = null;
     private lastError = '';
     private transportListenersInstalled = false;
+    private suppressTransportMasterCommand = false;
+    private suppressTransportStopCommand = false;
 
     private readonly handleTransportStart = () => {
-        void this.realtimeRuntime?.setClock(true).catch((error) => this.recordRuntimeError(error));
+        const runtime = this.realtimeRuntime;
+        if (!runtime) return;
+        void (async () => {
+            const transport = Transport.getInstance();
+            if (transport.masterTrackId !== null) {
+                this.tracks[transport.masterTrackId - 1]?.syncMasterPlaybackSpeed();
+            }
+            // Start and phase-lock atomically. Separate SET_CLOCK and epoch
+            // commands can be drained in different render callbacks.
+            const epochAck = await runtime.setMasterClockEpoch(
+                this.getTransportClockOrigin(transport, runtime),
+                transport.bpm,
+                undefined,
+                true,
+            );
+            if (epochAck.status !== 0 && epochAck.status !== 1) {
+                throw new Error(`Worklet rejected atomic transport start (status ${epochAck.status}).`);
+            }
+        })().catch((error) => this.recordRuntimeError(error));
     };
     private readonly handleTransportStop = () => {
+        if (this.suppressTransportStopCommand) return;
         void this.realtimeRuntime?.setClock(false).catch((error) => this.recordRuntimeError(error));
     };
     private readonly handleTransportBpmChange = () => {
-        void this.realtimeRuntime?.setBpm(Transport.getInstance().bpm).catch((error) => this.recordRuntimeError(error));
+        if (this.suppressTransportBpmCommand) return;
+        const runtime = this.realtimeRuntime;
+        if (!runtime) return;
+        const transport = Transport.getInstance();
+        void (async () => {
+            if (transport.hasMasterTrack()) {
+                this.tracks[transport.masterTrackId! - 1]?.syncMasterPlaybackSpeed();
+            }
+            const epochAck = await runtime.setMasterClockEpoch(this.getTransportClockOrigin(transport, runtime), transport.bpm);
+            if (epochAck.status !== 0 && epochAck.status !== 1) {
+                throw new Error(`Worklet rejected BPM and phase update (status ${epochAck.status}).`);
+            }
+        })().catch((error) => this.recordRuntimeError(error));
+    };
+    private readonly handleTransportMasterChange = () => {
+        if (this.suppressTransportMasterCommand) return;
+        const transport = Transport.getInstance();
+        if (transport.masterTrackId !== null) {
+            this.tracks[transport.masterTrackId - 1]?.syncMasterPlaybackSpeed();
+        }
+        this.syncWorkletMasterEpoch();
     };
 
     public constructor() {
@@ -145,18 +227,30 @@ export class BrowserAudioEngine implements IAudioEngine {
         // Create monitor gain node (for software monitoring)
         this.monitorGainNode = this.context.createGain();
         this.monitorGainNode.gain.value = 1; // The worklet gates monitoring at the target sample; silence is its default.
-        this.monitorGainNode.connect(this.context.destination);
 
         // Initialize FX Chains & Mixing
         this.inputFxChain = new FXChain(this.context);
         this.outputFxChain = new FXChain(this.context);
         this.trackMixNode = this.context.createGain();
         this.masterGainNode = this.context.createGain();
+        this.monitorGainNode.connect(this.masterGainNode);
+        this.inputBankSourceNode = this.context.createGain();
+        this.inputBankReturnNode = this.context.createGain();
+        this.trackBankSourceNode = this.context.createGain();
+        this.trackBankReturnNode = this.context.createGain();
+        this.outputBankSourceNode = this.context.createGain();
+        this.outputBankReturnNode = this.context.createGain();
 
-        // Master Routing: TrackMix -> OutputFX -> MasterGain -> Destination
+        // Stable route anchors let bank graphs swap without disconnecting FXChain's
+        // owned edges or any unrelated source fan-out.
         this.trackMixNode.connect(this.outputFxChain.input);
-        this.outputFxChain.output.connect(this.masterGainNode);
-        this.masterGainNode.connect(this.context.destination);
+        this.outputFxChain.output.connect(this.outputBankSourceNode);
+        this.outputBankSourceNode.connect(this.outputBankReturnNode);
+        this.outputBankReturnNode.connect(this.masterGainNode);
+        this.inputFxChain.output.connect(this.inputBankSourceNode);
+        this.inputBankSourceNode.connect(this.inputBankReturnNode);
+        this.trackBankSourceNode.connect(this.trackBankReturnNode);
+        this.trackBankReturnNode.connect(this.trackMixNode);
 
         // Initialize Rhythm Engine
         this.rhythmEngine = new RhythmEngine(this.context);
@@ -164,9 +258,16 @@ export class BrowserAudioEngine implements IAudioEngine {
 
         // Initialize 5 tracks
         for (let i = 0; i < 5; i++) {
-            const trackData = new Track(i + 1);
+            const trackData = this.memorySettings.tracks[i] ?? new Track(i + 1);
             this.tracks.push(new TrackAudio(this, trackData, i, this.trackStates, this.trackPositions));
         }
+        this.tracks.forEach((track, index) => {
+            if (track.track.fxSw === 'ON') {
+                track.outputNode.disconnect(this.trackMixNode);
+                track.outputNode.connect(this.trackBankSourceNode);
+                this.trackFxSends[index] = true;
+            }
+        });
 
         const compressorFailureHandler = (error: Error) => {
             this.compressorFailure = error;
@@ -209,26 +310,39 @@ export class BrowserAudioEngine implements IAudioEngine {
             if (!this.workletNode || !this.realtimeRuntime) {
                 const controlBuffer = this.sharedBuffer;
                 const workletNode = new AudioWorkletNode(this.context, BROWSER_REALTIME_WORKLET_NAME, {
-                    numberOfInputs: 1,
+                    // Input 0 is the global monitor/reference feed; ports 1..5
+                    // carry each track's independently routed record source.
+                    numberOfInputs: BROWSER_REALTIME_TRACK_COUNT + 1,
                     numberOfOutputs: 7,
                     outputChannelCount: [2, 2, 2, 2, 2, 2, 2],
                     channelCount: 2,
                     channelCountMode: 'explicit',
-                    processorOptions: { controlBuffer },
+                    processorOptions: { controlBuffer, perTrackInputs: true },
                 });
                 this.workletNode = workletNode;
                 this.realtimeRuntime = new BrowserRealtimeRuntime(workletNode, controlBuffer, this.context.sampleRate);
                 this.realtimeRuntime.setMessageHandler((message) => this.handleRuntimeMessage(message));
 
-                this.inputFxChain.output.connect(workletNode, 0, 0);
+                this.inputBankReturnNode.connect(workletNode, 0, 0);
                 for (let track = 0; track < this.tracks.length; track += 1) {
                     workletNode.connect(this.tracks[track]!.fxChain.input, track, 0);
                 }
                 workletNode.connect(this.monitorGainNode!, 5, 0);
                 workletNode.connect(this.rhythmEngine.outputNode, 6, 0);
+                this.rhythmRouteDelay = this.context.createDelay(1);
+                this.rhythmRouteDelay.delayTime.value = BROWSER_REALTIME_QUANTUM_FRAMES / this.context.sampleRate;
+                workletNode.connect(this.rhythmRouteDelay, 6, 0);
+                this.routingGraph = new BrowserRoutingGraph(this.context, workletNode, this.masterGainNode);
+                await this.routingGraph.setInputFxSnapshots(this.getInputFxSnapshots());
+                await this.routingGraph.setSource({
+                    id: 'rhythm', node: this.rhythmRouteDelay, label: 'Rhythm engine', kind: 'rhythm', channelCount: 2,
+                    routingDelayFrames: BROWSER_REALTIME_QUANTUM_FRAMES,
+                }, 'rhythm');
+                this.routingGraph.subscribe((state) => this.routingListeners.forEach((listener) => listener(state)));
                 await this.realtimeRuntime.prepareAllTracks();
-                this.rhythmEngine.setRealtimeControl((running, pattern) => {
-                    void this.realtimeRuntime?.setRhythm(running, pattern).catch((error) => this.recordRuntimeError(error));
+                this.rhythmEngine.setRealtimeControl((running, pattern, preserveCustomPattern) => {
+                    void this.realtimeRuntime?.setRhythm(running, pattern, undefined, preserveCustomPattern)
+                        .catch((error) => this.recordRuntimeError(error));
                 });
             }
 
@@ -248,9 +362,14 @@ export class BrowserAudioEngine implements IAudioEngine {
             );
 
             const transport = Transport.getInstance();
-            void this.realtimeRuntime.setBpm(transport.bpm).catch((error) => this.recordRuntimeError(error));
-            if (transport.state === TransportState.PLAYING) {
-                void this.realtimeRuntime.setClock(true).catch((error) => this.recordRuntimeError(error));
+            const epochAck = await this.realtimeRuntime.setMasterClockEpoch(
+                this.getTransportClockOrigin(transport, this.realtimeRuntime),
+                transport.bpm,
+                undefined,
+                transport.state === TransportState.PLAYING,
+            );
+            if (epochAck.status !== 0 && epochAck.status !== 1) {
+                throw new Error(`Worklet rejected transport clock restore (status ${epochAck.status}).`);
             }
             void this.realtimeRuntime.setRhythm(this.rhythmEngine.isRunning, this.rhythmEngine.patternIndex)
                 .catch((error) => this.recordRuntimeError(error));
@@ -288,6 +407,7 @@ export class BrowserAudioEngine implements IAudioEngine {
 
             console.log(`Found ${inputs.length} input devices, ${outputs.length} output devices`);
 
+            await this.routingGraph?.setAvailableSinks(outputs);
             return { inputs, outputs };
         } catch (error) {
             console.error('Failed to enumerate devices:', error);
@@ -303,12 +423,16 @@ export class BrowserAudioEngine implements IAudioEngine {
      * Set input device (microphone)
      * SAFETY: Automatically disconnects old stream to prevent feedback
      */
-    public async setInputDevice(deviceId: string) {
+    public setInputDevice(deviceId: string, projectToken?: symbol): Promise<void> {
+        return this.runFxMutation(() => this.applyInputDevice(deviceId), projectToken);
+    }
+
+    private async applyInputDevice(deviceId: string): Promise<void> {
         console.log(`\n?? Switching input device to: ${deviceId}`);
 
         try {
             const stream = await this.requestInputStream(deviceId);
-            this.replaceInputStream(stream, deviceId || null);
+            await this.replaceInputStream(stream, deviceId || null);
             this.selectedInputDeviceId = this.currentInputSettings?.deviceId || deviceId || null;
             this.saveDevicePreferences();
             this.syncCurrentCalibration();
@@ -321,7 +445,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 console.warn('  Requested input device is unavailable or overconstrained. Falling back to the default microphone.');
                 try {
                     const fallbackStream = await this.requestInputStream('');
-                    this.replaceInputStream(fallbackStream, null);
+                    await this.replaceInputStream(fallbackStream, null);
                     this.selectedInputDeviceId = null;
                     this.saveDevicePreferences();
                     this.syncCurrentCalibration();
@@ -349,7 +473,11 @@ export class BrowserAudioEngine implements IAudioEngine {
     /**
      * Set output device (speakers/headphones)
      */
-    public async setOutputDevice(deviceId: string) {
+    public setOutputDevice(deviceId: string, projectToken?: symbol): Promise<void> {
+        return this.runFxMutation(() => this.applyOutputDevice(deviceId), projectToken);
+    }
+
+    private async applyOutputDevice(deviceId: string): Promise<void> {
         console.log(`\n?? Switching output device to: ${deviceId}`);
 
         try {
@@ -363,6 +491,11 @@ export class BrowserAudioEngine implements IAudioEngine {
             this.currentOutputLabel = devices.find((device) => device.kind === 'audiooutput' && device.deviceId === deviceId)?.label || null;
             this.saveDevicePreferences();
             this.syncCurrentCalibration();
+            if (this.routingGraph) {
+                const state = this.routingGraph.getState();
+                state.outputs.main.sinkId = this.selectedOutputDeviceId;
+                await this.routingGraph.applyState(state);
+            }
             console.log('  ? Output device changed\n');
         } catch (error) {
             console.error('Failed to set output device:', error);
@@ -380,200 +513,398 @@ export class BrowserAudioEngine implements IAudioEngine {
     // DYNAMIC FX ROUTING (Phase 5b)
     // ========================================
 
-    // FX Instances for Input and Track (4 slots each: A, B, C, D)
-    private inputFxInstances: (FXBase | null)[] = [null, null, null, null];
-    private trackFxInstances: (FXBase | null)[] = [null, null, null, null];
-    private inputFxTypes: (string | null)[] = [null, null, null, null];
-    private trackFxTypes: (string | null)[] = [null, null, null, null];
-
-    /**
-     * Set FX Type for a specific slot
-     * @param location 'input' or 'track'
-     * @param slotIndex 0-3 (A-D)
-     * @param type 'FILTER' | 'DELAY' | 'REVERB' | 'SLICER'
-     */
-    public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
-        if (slotIndex < 0 || slotIndex > 3) return;
-
-        const fxTypes = location === 'input' ? this.inputFxTypes : this.trackFxTypes;
-        if (fxTypes[slotIndex] === type) {
-            return;
-        }
-
-        const newFx = this.createFxInstance(type);
-        if (!newFx) {
-            console.warn(`Unknown FX type: ${type}`);
-            return;
-        }
-
-        // Update Chain
-        if (location === 'input') {
-            this.inputFxInstances[slotIndex]?.dispose();
-            this.inputFxInstances[slotIndex] = newFx;
-            this.inputFxTypes[slotIndex] = type;
-            this.rebuildInputChain();
-
-        } else {
-            this.trackFxInstances[slotIndex]?.dispose();
-            this.trackFxInstances[slotIndex] = newFx;
-            this.trackFxTypes[slotIndex] = type;
-            this.rebuildOutputChain();
-        }
-
-        console.log(`FX Set: ${location.toUpperCase()} [${['A', 'B', 'C', 'D'][slotIndex]}] -> ${type}`);
+    public getFxState(): FxStateSnapshot {
+        return { activeBankId: this.activeFxBankId, banks: structuredClone(this.fxBanks) };
     }
 
-    private createFxInstance(type: string): FXBase | null {
-        const context = this.context;
+    public getRoutingState(): BrowserRoutingState {
+        if (!this.routingGraph) throw new Error('Initialize browser audio before reading routing state.');
+        return this.routingGraph.getState();
+    }
 
-        switch (type) {
-            case 'FILTER':
-                return new FilterFX(context);
+    public subscribeRoutingState(listener: (state: BrowserRoutingState) => void): () => void {
+        this.routingListeners.add(listener);
+        if (this.routingGraph) listener(this.routingGraph.getState());
+        return () => this.routingListeners.delete(listener);
+    }
+
+    public updateRoutingState(patch: BrowserRoutingPatch, projectToken?: symbol): Promise<void> {
+        if (!this.routingGraph) throw new Error('Initialize browser audio before changing routing.');
+        return this.runFxMutation(async () => {
+            const previous = this.routingGraph!.getState();
+            const nextMainSink = patch.outputs?.main && Object.prototype.hasOwnProperty.call(patch.outputs.main, 'sinkId')
+                ? patch.outputs.main.sinkId ?? ''
+                : null;
+            try {
+                if (nextMainSink !== null && nextMainSink !== this.selectedOutputDeviceId) await this.applyOutputDevice(nextMainSink);
+                await this.routingGraph!.applyPatch(patch);
+            } catch (error) {
+                if (this.selectedOutputDeviceId !== previous.outputs.main.sinkId) {
+                    try { await this.applyOutputDevice(previous.outputs.main.sinkId ?? ''); }
+                    catch (rollbackError) { this.recordRuntimeError(rollbackError); throw error; }
+                }
+                throw error;
+            }
+        }, projectToken);
+    }
+
+    public applyRoutingStateForProject(state: BrowserRoutingState, token: symbol): Promise<void> {
+        if (!this.routingGraph) throw new Error('Initialize browser audio before restoring routing.');
+        return this.runFxMutation(async () => {
+            const previous = this.routingGraph!.getState();
+            try {
+                if (state.outputs.main.sinkId !== this.selectedOutputDeviceId) await this.applyOutputDevice(state.outputs.main.sinkId ?? '');
+                await this.routingGraph!.applyState(state);
+            } catch (error) {
+                if (this.selectedOutputDeviceId !== previous.outputs.main.sinkId) {
+                    try { await this.applyOutputDevice(previous.outputs.main.sinkId ?? ''); }
+                    catch (rollbackError) { this.recordRuntimeError(rollbackError); throw error; }
+                }
+                throw error;
+            }
+        }, token);
+    }
+
+    public resetRoutingStateForProject(token: symbol): Promise<void> {
+        if (!this.routingGraph) throw new Error('Initialize browser audio before resetting routing.');
+        return this.runFxMutation(() => this.routingGraph!.resetState(), token);
+    }
+
+    public getFxBanks(): ProjectFxBank[] { return structuredClone(this.fxBanks); }
+    public getActiveFxBankId(): string { return this.activeFxBankId; }
+    public getAvailableFxTypes(): string[] { return defaultFXRegistry.getTypes(); }
+
+    public subscribeFxState(listener: (state: FxStateSnapshot) => void): () => void {
+        this.fxStateListeners.add(listener);
+        listener(this.getFxState());
+        return () => this.fxStateListeners.delete(listener);
+    }
+
+    public selectFxBank(id: string): Promise<void> {
+        return this.runFxMutation(async () => {
+            const bank = this.fxBanks.find((candidate) => candidate.id === id);
+            if (!bank) throw new RangeError(`FX bank ${id} does not exist.`);
+            if (id === this.activeFxBankId) return;
+            const previousId = this.activeFxBankId;
+            const staged = await this.createBankGraphs(bank);
+            const previous = { ...this.fxGraphs };
+            try {
+                this.replaceBankGraphs(staged);
+                this.activeFxBankId = id;
+                await this.routingGraph?.setInputFxSnapshots(this.getInputFxSnapshots());
+                this.publishFxState();
+            } catch (error) {
+                this.replaceBankGraphs(previous);
+                this.activeFxBankId = previousId;
+                await this.routingGraph?.setInputFxSnapshots(this.getInputFxSnapshots()).catch((routingError) => this.recordRuntimeError(routingError));
+                this.disposeGraphs(staged);
+                throw error;
+            }
+            this.disposeGraphs(previous);
+        });
+    }
+
+    public async applyFxBankStateForProject(
+        banks: ProjectFxBank[],
+        activeBankId: string,
+        token: symbol,
+    ): Promise<void> {
+        if (!this.initialized || !this.realtimeRuntime || typeof token !== 'symbol') {
+            throw new Error('Project FX state requires initialized browser audio and the project lock token.');
+        }
+        if (!Array.isArray(banks) || banks.length !== 4 || new Set(banks.map((bank) => bank.id)).size !== 4) {
+            throw new TypeError('Project FX state must contain four uniquely named banks.');
+        }
+        const normalizedBanks = banks.map((bank) => {
+            if (!bank || typeof bank.id !== 'string' || typeof bank.name !== 'string') throw new TypeError('Project FX bank metadata is invalid.');
+            const normalized = { ...bank } as ProjectFxBank;
+            for (const location of ['input', 'track', 'output'] as const) {
+                if (!Array.isArray(bank[location]) || bank[location].length !== 4) throw new TypeError(`Project FX ${location} bank must have four slots.`);
+                normalized[location] = bank[location].map((slot) => this.validateFxUnit(slot));
+            }
+            return normalized;
+        });
+        const active = normalizedBanks.find((bank) => bank.id === activeBankId);
+        if (!active) throw new TypeError(`Active project FX bank ${activeBankId} is missing.`);
+
+        return await this.runFxMutation(async () => {
+            const staged = await this.createBankGraphs(active);
+            const previousGraphs = { ...this.fxGraphs };
+            const previousBanks = this.fxBanks;
+            const previousId = this.activeFxBankId;
+            try {
+                this.replaceBankGraphs(staged);
+                this.fxBanks = normalizedBanks;
+                this.activeFxBankId = activeBankId;
+                await this.routingGraph?.setInputFxSnapshots(this.getInputFxSnapshots());
+                this.publishFxState();
+            } catch (error) {
+                this.replaceBankGraphs(previousGraphs);
+                this.fxBanks = previousBanks;
+                this.activeFxBankId = previousId;
+                await this.routingGraph?.setInputFxSnapshots(this.getInputFxSnapshots()).catch((routingError) => this.recordRuntimeError(routingError));
+                this.disposeGraphs(staged);
+                throw error;
+            }
+            this.disposeGraphs(previousGraphs);
+        }, token);
+    }
+
+    public updateFxBankSlot(location: FxBankLocation, index: number, slot: ProjectFxUnit | null, projectToken?: symbol): Promise<void> {
+        const requestedBankId = this.activeFxBankId;
+        return this.runFxMutation(async () => {
+            if (!['input', 'track', 'output'].includes(location)) throw new TypeError('FX bank location is invalid.');
+            if (!Number.isInteger(index) || index < 0 || index >= 4) throw new RangeError('FX slot index must be from 0 through 3.');
+            if (requestedBankId !== this.activeFxBankId) throw new Error('Active FX bank changed before the slot update could be applied. Refresh the selected bank and retry.');
+            const bankIndex = this.fxBanks.findIndex((candidate) => candidate.id === requestedBankId);
+            const bank = this.fxBanks[bankIndex];
+            if (!bank) throw new Error(`Active FX bank ${this.activeFxBankId} is missing.`);
+            const normalized = this.validateFxUnit(slot);
+            const previousUnit = bank[location][index] ?? null;
+            const updated: ProjectFxBank = {
+                ...bank,
+                [location]: bank[location].map((current, slotIndex) => slotIndex === index ? normalized : current),
+            };
+
+            const canUpdateInPlace = previousUnit !== null && normalized !== null &&
+                previousUnit.type.toUpperCase() === normalized.type.toUpperCase();
+            const previousGraph = this.fxGraphs[location];
+            let stagedGraph: FxNodeGraph | null = null;
+            let inPlaceEffect: FxNodeGraph['effects'][number] | null = null;
+            let inPlaceSnapshot: FXSnapshot | null = null;
+            let graphWasReplaced = false;
+            let mutatedInPlace = false;
+            if (canUpdateInPlace) {
+                const effectIndex = bank[location].slice(0, index).filter((item) => item !== null).length;
+                const effect = this.fxGraphs[location]?.effects[effectIndex];
+                if (!effect) throw new Error(`Live ${location} FX graph is missing slot ${index}.`);
+                inPlaceEffect = effect;
+                inPlaceSnapshot = effect.getSnapshot();
+                try {
+                    effect.applySnapshot(normalized as FXSnapshot);
+                    mutatedInPlace = true;
+                } catch (error) {
+                    try { effect.applySnapshot(inPlaceSnapshot); }
+                    catch (rollbackError) {
+                        const wrapped = new Error(`FX ${location} slot update failed and its live effect could not be restored.`);
+                        Object.assign(wrapped, { cause: error, rollbackErrors: [rollbackError] });
+                        throw wrapped;
+                    }
+                    throw error;
+                }
+            } else {
+                stagedGraph = await this.createBankGraph(updated[location]);
+                try { this.replaceOneBankGraph(location, stagedGraph); }
+                catch (error) {
+                    stagedGraph.dispose();
+                    throw error;
+                }
+                graphWasReplaced = true;
+            }
+
+            const nextBanks = [...this.fxBanks];
+            nextBanks[bankIndex] = updated;
+            this.fxBanks = nextBanks;
+            try {
+                if (location === 'input') await this.routingGraph?.setInputFxSnapshots(this.getInputFxSnapshots());
+            } catch (error) {
+                const rollbackErrors: unknown[] = [];
+                this.fxBanks = this.fxBanks.map((candidate, candidateIndex) => candidateIndex === bankIndex ? bank : candidate);
+                if (graphWasReplaced) {
+                    try { this.replaceOneBankGraph(location, previousGraph); } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+                }
+                if (mutatedInPlace && inPlaceEffect && inPlaceSnapshot) {
+                    try { inPlaceEffect.applySnapshot(inPlaceSnapshot); } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+                }
+                if (location === 'input') {
+                    try { await this.routingGraph?.setInputFxSnapshots(this.getInputFxSnapshots()); }
+                    catch (rollbackError) { rollbackErrors.push(rollbackError); }
+                }
+                if (stagedGraph && graphWasReplaced && this.fxGraphs[location] !== stagedGraph) stagedGraph.dispose();
+                if (rollbackErrors.length > 0) {
+                    const rollbackError = new Error(`FX ${location} slot update failed and rollback was incomplete.`);
+                    Object.assign(rollbackError, { cause: error, rollbackErrors });
+                    throw rollbackError;
+                }
+                throw error;
+            }
+            if (graphWasReplaced) previousGraph?.dispose();
+            this.publishFxState();
+        }, projectToken);
+    }
+
+    public setTrackFxSend(trackId: number, enabled: boolean, projectToken?: symbol): Promise<void> {
+        return this.runFxMutation(() => {
+            if (!Number.isInteger(trackId) || trackId < 1 || trackId > this.tracks.length) {
+                throw new RangeError('Track FX send must target a track from 1 through 5.');
+            }
+            const index = trackId - 1;
+            const track = this.tracks[index];
+            if (!track) throw new RangeError(`Track ${trackId} is unavailable.`);
+            if (this.trackFxSends[index] === enabled) return;
+            if (enabled) {
+                track.outputNode.disconnect(this.trackMixNode);
+                track.outputNode.connect(this.trackBankSourceNode);
+            } else {
+                track.outputNode.disconnect(this.trackBankSourceNode);
+                track.outputNode.connect(this.trackMixNode);
+            }
+            this.trackFxSends[index] = enabled;
+            track.track.fxSw = enabled ? 'ON' : 'OFF';
+        }, projectToken);
+    }
+
+    public setFxType(location: 'input' | 'track', slotIndex: number, type: string): void {
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= 4) return;
+        const unit = type.trim().toUpperCase() === 'NONE' || type.trim() === '' ? null : this.createFxSnapshot(type);
+        void this.updateFxBankSlot(location, slotIndex, unit).catch((error) => this.recordRuntimeError(error));
+    }
+
+    public setFxParam(location: 'input' | 'track', slotIndex: number, value: number): void {
+        if (!Number.isFinite(value) || !Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= 4) return;
+        const bank = this.fxBanks.find((candidate) => candidate.id === this.activeFxBankId);
+        const unit = bank?.[location][slotIndex];
+        if (!unit) return;
+        const next = structuredClone(unit);
+        const normalized = Math.max(0, Math.min(1, value / 100));
+        switch (next.type.toUpperCase()) {
+            case 'FILTER': next.params.frequency = normalized; break;
+            case 'COMPRESSOR': next.params.amount = normalized; break;
             case 'DELAY':
-                return new DelayFX(context);
-            case 'REVERB':
-                return new ReverbFX(context);
+            case 'REVERB': next.params.mix = normalized; break;
             case 'SLICER':
-                return new SlicerFX(context);
-            case 'PHASER':
-                return new PhaserFX(context);
-            default:
-                return null;
+            case 'PHASER': next.params.rate = value; break;
+            default: return;
+        }
+        void this.updateFxBankSlot(location, slotIndex, next).catch((error) => this.recordRuntimeError(error));
+    }
+
+    public setFxActive(location: 'input' | 'track', slotIndex: number, active: boolean): void {
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= 4) return;
+        const bank = this.fxBanks.find((candidate) => candidate.id === this.activeFxBankId);
+        const unit = bank?.[location][slotIndex];
+        if (!unit) return;
+        void this.updateFxBankSlot(location, slotIndex, { ...unit, enabled: active })
+            .catch((error) => this.recordRuntimeError(error));
+    }
+
+    private validateFxUnit(slot: ProjectFxUnit | null): ProjectFxUnit | null {
+        if (slot === null) return null;
+        if (!slot || typeof slot !== 'object' || typeof slot.enabled !== 'boolean' || !defaultFXRegistry.supports(slot.type) ||
+            !slot.params || typeof slot.params !== 'object' || Object.values(slot.params).some((value) => !Number.isFinite(value))) {
+            throw new TypeError('FX unit must use a registered type, finite parameters, and an enabled flag.');
+        }
+        return structuredClone(slot);
+    }
+
+    private createFxSnapshot(type: string): ProjectFxUnit {
+        const normalizedType = type.trim().toUpperCase();
+        if (!defaultFXRegistry.supports(normalizedType)) throw new TypeError(`FX type ${type} is not registered.`);
+        const effect = defaultFXRegistry.create(this.context, normalizedType);
+        try {
+            return { ...effect.getSnapshot(), enabled: true };
+        } finally {
+            effect.dispose();
         }
     }
 
-    /**
-     * Rebuild the entire Input FX Chain
-     * Source -> Slot A -> Slot B -> Slot C -> Slot D -> Monitor/Tracks
-     */
-    private rebuildInputChain() {
-        // Disconnect everything first? 
-        // It's tricky to disconnect "everything" without tracking connections.
-        // Simplified approach: Re-connect the chain flow.
-
-        // 1. Disconnect Input Source
-        if (this.currentInputStream) {
-            this.currentInputStream.disconnect();
-        }
-
-        // 2. Chain nodes
-
-        // If no input, we can't connect, but we prepare the chain.
-        // Actually, we need a stable "Input Head" node.
-        // Let's use inputFxChain.input as the Head, and inputFxChain.output as the Tail.
-        // But wait, I want to replace the internal logic of inputFxChain.
-
-        // Let's use the existing `this.inputFxChain.input` and `this.inputFxChain.output` as anchors.
-        // We will disconnect `this.inputFxChain.input` from its internal hardcoded chain 
-        // and route it through our dynamic slots.
-
-        const head = this.inputFxChain.input;
-        const tail = this.inputFxChain.output;
-
-        // Break existing internal connections of FXChain if possible, 
-        // or just ignore FXChain's internal graph and repurpose the input/output nodes?
-        // FXChain constructor connects input->compressor->...->output.
-        // I should disconnect that.
-        head.disconnect();
-
-        let currentNode: AudioNode = head;
-
-        this.inputFxInstances.forEach((fx) => {
-            if (fx) {
-                currentNode.connect(fx.input);
-                currentNode = fx.output;
+    private async createBankGraphs(bank: ProjectFxBank): Promise<Record<FxBankLocation, FxNodeGraph>> {
+        const staged = {} as Record<FxBankLocation, FxNodeGraph>;
+        try {
+            for (const location of ['input', 'track', 'output'] as const) {
+                const graph = await this.createBankGraph(bank[location]);
+                staged[location] = graph;
             }
-        });
-
-        currentNode.connect(tail);
-
-        // Re-connect Input Source to Head if needed (it should already be connected to inputFxChain.input)
-        if (this.currentInputStream) {
-            this.currentInputStream.connect(head);
+            return staged;
+        } catch (error) {
+            this.disposeGraphs(staged);
+            throw error;
         }
     }
 
-    /**
-     * Rebuild the entire Output FX Chain
-     * TrackMix -> Slot A -> Slot B -> Slot C -> Slot D -> MasterGain
-     */
-    private rebuildOutputChain() {
-        const head = this.outputFxChain.input;
-        const tail = this.outputFxChain.output;
-
-        head.disconnect();
-
-        let currentNode: AudioNode = head;
-
-        this.trackFxInstances.forEach((fx) => {
-            if (fx) {
-                currentNode.connect(fx.input);
-                currentNode = fx.output;
+    private async createBankGraph(slots: Array<ProjectFxUnit | null>): Promise<FxNodeGraph> {
+        const graph = await defaultFXRegistry.createGraph(
+            this.context,
+            slots.filter((slot): slot is ProjectFxUnit => slot !== null),
+        );
+        try {
+            await graph.initialize();
+            for (const effect of graph.effects) {
+                const compressor = effect as typeof effect & { onFailure?: (error: Error) => void };
+                if (compressor.name === 'COMPRESSOR') compressor.onFailure = (error) => this.recordRuntimeError(error);
             }
-        });
-
-        currentNode.connect(tail);
-
-        // Ensure TrackMix is connected to Head
-        this.trackMixNode.disconnect();
-        this.trackMixNode.connect(head);
+            return graph;
+        } catch (error) {
+            graph.dispose();
+            throw error;
+        }
     }
 
-    /**
-     * Set FX Parameter
-     * @param location 'input' | 'track'
-     * @param slotIndex 0-3
-     * @param value 0-100
-     */
-    public setFxParam(location: 'input' | 'track', slotIndex: number, value: number) {
-        // SAFETY CHECK: Ensure value is a finite number
-        if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
-            console.error(`FX Error: Invalid param value received for slot ${slotIndex}:`, value);
-            return;
-        }
-
-        const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
-        const fx = instances[slotIndex];
-        if (fx) {
-            // Map 0-100 to 0-1 or appropriate range
-            // Most FX expect 0-1 for "amount" or "mix"
-            // Let's assume a generic 'amount' parameter for now, 
-            // or map based on FX type if we had access to it.
-            // FXBase interface has setParam(key, val).
-
-            // For now, we control the main parameter (e.g. Filter Frequency, Reverb Mix)
-            // We need to know WHAT parameter to control.
-            // Simplified: "amount" controls the most significant param.
-
-            // We can check the name or just pass 'amount' and let FX handle it?
-            // FXBase doesn't have a standardized 'amount'.
-            // Let's try to be smart.
-
-            if (fx instanceof FilterFX) {
-                fx.setParam('frequency', value / 100);
-            } else if (fx.name === 'COMPRESSOR') {
-                fx.setParam('amount', value / 100);
-            } else if (fx instanceof ReverbFX) {
-                fx.setParam('mix', value / 100);
-            } else if (fx instanceof DelayFX) {
-                fx.setParam('mix', value / 100);
-            } else if (fx instanceof SlicerFX) {
-                fx.setParam('rate', value);
-            } else if (fx instanceof PhaserFX) {
-                fx.setParam('rate', value);
+    private replaceBankGraphs(graphs: Record<FxBankLocation, FxNodeGraph | null>): void {
+        const previous = { ...this.fxGraphs };
+        const applied: FxBankLocation[] = [];
+        try {
+            for (const location of ['input', 'track', 'output'] as const) {
+                this.replaceOneBankGraph(location, graphs[location]);
+                applied.push(location);
             }
+        } catch (error) {
+            for (const location of applied.reverse()) this.replaceOneBankGraph(location, previous[location]);
+            throw error;
         }
     }
 
-    /**
-     * Set FX Active/Bypass
-     */
-    public setFxActive(location: 'input' | 'track', slotIndex: number, active: boolean) {
-        const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
-        const fx = instances[slotIndex];
-        if (fx) {
-            fx.setBypass(!active);
+    private replaceOneBankGraph(location: FxBankLocation, graph: FxNodeGraph | null): void {
+        const route = this.getBankRoute(location);
+        const previous = this.fxGraphs[location];
+        try {
+            if (previous) {
+                route.source.disconnect(previous.input);
+                previous.output.disconnect(route.destination);
+            } else {
+                route.source.disconnect(route.destination);
+            }
+            if (graph) {
+                route.source.connect(graph.input);
+                graph.output.connect(route.destination);
+            } else {
+                route.source.connect(route.destination);
+            }
+            this.fxGraphs[location] = graph;
+        } catch (error) {
+            try { if (graph) { route.source.disconnect(graph.input); graph.output.disconnect(route.destination); } } catch { /* restore old route */ }
+            if (previous) {
+                route.source.connect(previous.input);
+                previous.output.connect(route.destination);
+            } else {
+                route.source.connect(route.destination);
+            }
+            throw error;
         }
+    }
+
+    private getBankRoute(location: FxBankLocation): { source: GainNode; destination: GainNode } {
+        if (location === 'input') return { source: this.inputBankSourceNode, destination: this.inputBankReturnNode };
+        if (location === 'track') return { source: this.trackBankSourceNode, destination: this.trackBankReturnNode };
+        return { source: this.outputBankSourceNode, destination: this.outputBankReturnNode };
+    }
+
+    private disposeGraphs(graphs: Partial<Record<FxBankLocation, FxNodeGraph | null>>): void {
+        for (const graph of Object.values(graphs)) graph?.dispose();
+    }
+
+    private publishFxState(): void {
+        const state = this.getFxState();
+        for (const listener of this.fxStateListeners) {
+            try { listener(state); } catch (error) { this.recordRuntimeError(error); }
+        }
+    }
+
+    private runFxMutation<T>(operation: () => Promise<T> | T, projectToken?: symbol): Promise<T> {
+        const releaseLease = this.realtimeRuntime?.acquireMutationLease(projectToken);
+        const result = this.fxMutationQueue.then(operation);
+        this.fxMutationQueue = result.then(() => undefined, () => undefined);
+        return result.finally(() => releaseLease?.());
     }
 
     // ========================================
@@ -584,14 +915,20 @@ export class BrowserAudioEngine implements IAudioEngine {
      * Enable/disable software monitoring
      * WARNING: Only use with headphones to prevent feedback!
      */
-    public setMonitoring(enabled: boolean) {
-        this.monitoringEnabled = enabled;
-
-        if (this.realtimeRuntime) {
-            void this.realtimeRuntime.enqueue(BrowserRealtimeOpcode.SET_MONITOR, -1, enabled ? 1 : 0)
-                .catch((error) => this.recordRuntimeError(error));
-        }
-
+    public setMonitoring(enabled: boolean, projectToken?: symbol): Promise<void> {
+        return this.runFxMutation(async () => {
+            if (this.realtimeRuntime) {
+                await this.realtimeRuntime.enqueue(
+                    BrowserRealtimeOpcode.SET_MONITOR,
+                    -1,
+                    enabled ? 1 : 0,
+                    0,
+                    this.realtimeRuntime.getImmediateTargetFrame(),
+                    0,
+                    projectToken,
+                );
+            }
+            this.monitoringEnabled = enabled;
         console.log(`\n?? Software Monitoring: ${enabled ? 'ENABLED ??' : 'DISABLED (SAFE)'}`);
         if (enabled) {
             console.log('  ??  WARNING: Use headphones only! Speakers will cause feedback!\n');
@@ -601,6 +938,11 @@ export class BrowserAudioEngine implements IAudioEngine {
 
         this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
         this.emitStatus();
+        }, projectToken);
+    }
+
+    public async setMonitoringForProject(enabled: boolean, token: symbol): Promise<void> {
+        await this.setMonitoring(enabled, token);
     }
 
     public onMonitoringChange(listener: (enabled: boolean) => void) {
@@ -660,7 +1002,223 @@ export class BrowserAudioEngine implements IAudioEngine {
             trackCapacityOverruns: 0,
             maxTrackFrames: 0,
             trackCapacityFrames: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
+            inputDropoutFrames: 0,
+            storageAllocatedBytes: 0,
+            storageGrowthRequests: 0,
+            storageGrowthFailures: 0,
+            historyDepth: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
+            storageSegments: new Array(BROWSER_REALTIME_TRACK_COUNT).fill(0),
         };
+    }
+
+    public getMasterLevel(): number {
+        return this.masterGainNode.gain.value;
+    }
+
+    public setMasterLevel(value: number, projectToken?: symbol): void {
+        const releaseLease = this.realtimeRuntime?.acquireMutationLease(projectToken);
+        try {
+        if (!Number.isFinite(value)) throw new TypeError('Master level must be finite.');
+        const level = Math.max(0, Math.min(2, value));
+        this.masterGainNode.gain.setTargetAtTime(level, this.context.currentTime, 0.003);
+        this.projectMixer.masterLevel = level;
+        } finally {
+            releaseLease?.();
+        }
+    }
+
+    public getMixerState(): ProjectMixer {
+        return structuredClone(this.projectMixer);
+    }
+
+    public applyMixerState(state: ProjectMixer, projectToken?: symbol): Promise<void> {
+        return this.runFxMutation(() => this.applyMixerStateNow(state, projectToken), projectToken);
+    }
+
+    private applyMixerStateNow(state: ProjectMixer, projectToken?: symbol): void {
+        if (!Array.isArray(state.tracks) || state.tracks.length !== this.tracks.length) {
+            throw new TypeError('Mixer state must describe all five tracks.');
+        }
+        const anySolo = state.tracks.some((track) => track.solo);
+        state.tracks.forEach((track, index) => {
+            if (track.trackId !== index + 1 || !Number.isFinite(track.level) || !Number.isFinite(track.pan)) {
+                throw new TypeError('Mixer state has invalid track values.');
+            }
+        });
+        this.projectMixer = structuredClone(state);
+        this.setMasterLevel(state.masterLevel, projectToken);
+        state.tracks.forEach((track, index) => this.tracks[index]!.setMixerState(track, anySolo));
+    }
+
+    public async syncExternalClock(bpm: number, beatOrdinal = 0) {
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Browser realtime audio is not ready.');
+        const safeBpm = Number.isFinite(bpm) ? Math.max(40, Math.min(300, bpm)) : 120;
+        const appliedBpm = Math.round(safeBpm * 1_000) / 1_000;
+        const safeOrdinal = Number.isFinite(beatOrdinal) ? Math.max(0, Math.floor(beatOrdinal)) : 0;
+        const ack = await this.realtimeRuntime.syncExternalClock(appliedBpm, safeOrdinal);
+        if (ack.status !== 0 && ack.status !== 1) throw new Error(`Worklet rejected external clock synchronization (status ${ack.status}).`);
+
+        const transport = Transport.getInstance();
+        const beatFrames = this.context.sampleRate * 60 / appliedBpm;
+        // SYNC_EXTERNAL_CLOCK anchors its phase at the scheduled target, even
+        // when the Worklet reports that it executed a late command.
+        const externalOrigin = ack.targetFrame - safeOrdinal * beatFrames;
+        this.suppressTransportBpmCommand = true;
+        try {
+            transport.setBpm(appliedBpm);
+            transport.setClockEpoch(externalOrigin, appliedBpm, this.context.sampleRate, 'external');
+        } finally {
+            this.suppressTransportBpmCommand = false;
+        }
+        if (transport.masterTrackId !== null) this.tracks[transport.masterTrackId - 1]?.syncMasterPlaybackSpeed();
+        return ack;
+    }
+
+    public async stopTransportForProject(token: symbol): Promise<void> {
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Browser realtime audio is not ready.');
+        this.suppressTransportStopCommand = true;
+        try {
+            Transport.getInstance().stop();
+            const ack = await this.realtimeRuntime.setClock(false, token);
+            if (ack.status !== 0 && ack.status !== 1) throw new Error(`Worklet rejected project transport stop (status ${ack.status}).`);
+        } finally {
+            this.suppressTransportStopCommand = false;
+        }
+    }
+
+    public resetTransportMasterForProject(_token: symbol): void {
+        this.suppressTransportMasterCommand = true;
+        try {
+            Transport.getInstance().resetMasterTrack();
+        } finally {
+            this.suppressTransportMasterCommand = false;
+        }
+    }
+
+    public getLoopSettings(): LoopEngineSettings {
+        const transport = Transport.getInstance();
+        return {
+            bpm: transport.bpm,
+            masterTrackId: transport.masterTrackId,
+            loopSyncMode: this.memorySettings.loopSyncMode,
+            tempoSyncMode: this.memorySettings.tempoSyncMode,
+            quantize: this.memorySettings.quantize,
+        };
+    }
+
+    public updateLoopSettings(patch: LoopEngineSettingsPatch): Promise<void> {
+        return this.runFxMutation(async () => {
+            const next = { ...this.getLoopSettings(), ...patch };
+            await this.applyLoopSettings(next, undefined, false);
+        });
+    }
+
+    public getRhythmSnapshot(): RhythmRuntimeSnapshot {
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Initialize browser audio before reading rhythm settings.');
+        return { ...this.realtimeRuntime.getRhythmSnapshot(), volume: this.rhythmEngine.volume };
+    }
+
+    public loadRhythmPattern(document: RhythmPatternDocument): Promise<void> {
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Initialize browser audio before changing the rhythm pattern.');
+        return this.runFxMutation(() => this.realtimeRuntime!.loadRhythmPattern(document));
+    }
+
+    public loadRhythmKit(document: RhythmKitDocument): Promise<void> {
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Initialize browser audio before changing the rhythm kit.');
+        return this.runFxMutation(() => this.realtimeRuntime!.loadRhythmKit(document));
+    }
+
+    public applyRhythmSnapshot(snapshot: RhythmRuntimeSnapshot): Promise<void> {
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Initialize browser audio before applying rhythm settings.');
+        return this.runFxMutation(async () => {
+            await this.realtimeRuntime!.applyRhythmSnapshot(snapshot);
+            this.rhythmEngine.syncRuntimeState(snapshot.enabled, snapshot.volume);
+        });
+    }
+
+    public applyRhythmSnapshotForProject(snapshot: RhythmRuntimeSnapshot, token: symbol): Promise<void> {
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Initialize browser audio before applying rhythm settings.');
+        return this.runFxMutation(async () => {
+            await this.realtimeRuntime!.applyRhythmSnapshot(snapshot, token);
+            this.rhythmEngine.syncRuntimeState(snapshot.enabled, snapshot.volume);
+        }, token);
+    }
+
+    /** Transactional project path; the caller must own Runtime's exact lock token. */
+    public async applyLoopSettingsForProject(settings: LoopEngineSettings, token: symbol): Promise<void> {
+        await this.runFxMutation(() => this.applyLoopSettings(settings, token, true), token);
+    }
+
+    public refreshInputRoutingFxForProject(token: symbol): Promise<void> {
+        if (!this.routingGraph) throw new Error('Initialize browser audio before restoring input FX.');
+        return this.runFxMutation(() => this.routingGraph!.setInputFxSnapshots(this.getInputFxSnapshots()), token);
+    }
+
+    private async applyLoopSettings(settings: LoopEngineSettings, token: symbol | undefined, forceMasterEpoch: boolean): Promise<void> {
+        validateLoopEngineSettings(settings);
+        if (!this.initialized || !this.realtimeRuntime) throw new Error('Initialize browser audio before changing loop settings.');
+        const runtime = this.realtimeRuntime;
+        const transport = Transport.getInstance();
+        const previous = this.getLoopSettings();
+        const metrics = runtime.getMetrics();
+        if (settings.masterTrackId !== null && (metrics.loopFrames[settings.masterTrackId - 1] ?? 0) <= 0) {
+            throw new Error(`Track ${settings.masterTrackId} has no committed loop and cannot be the master track.`);
+        }
+
+        const priorTrackModes = this.tracks.map((track) => track.getRuntimeSettings().tempoSyncMode);
+        try {
+            await Promise.all(this.tracks.map((track) => {
+                const current = track.getRuntimeSettings();
+                const next = { ...current, tempoSyncMode: settings.tempoSyncMode };
+                return token
+                    ? track.updateRuntimeSettingsForProject(next, token)
+                    : track.updateRuntimeSettings({ tempoSyncMode: next.tempoSyncMode });
+            }));
+        } catch (error) {
+            await Promise.all(this.tracks.map((track, index) => token
+                ? track.updateRuntimeSettingsForProject({ ...track.getRuntimeSettings(), tempoSyncMode: priorTrackModes[index]! }, token).catch(() => undefined)
+                : track.updateRuntimeSettings({ tempoSyncMode: priorTrackModes[index]! }).catch(() => undefined)));
+            throw error;
+        }
+
+        const masterChanged = forceMasterEpoch || settings.masterTrackId !== previous.masterTrackId;
+        if (masterChanged) {
+            this.suppressTransportMasterCommand = true;
+            try {
+                transport.resetMasterTrack();
+                if (settings.masterTrackId !== null) {
+                    const loopFrames = metrics.loopFrames[settings.masterTrackId - 1] ?? 0;
+                    transport.setMasterTrack(
+                        settings.masterTrackId,
+                        loopFrames / this.context.sampleRate,
+                        this.context.sampleRate,
+                        loopFrames,
+                        metrics.renderedFrame,
+                    );
+                }
+            } finally {
+                this.suppressTransportMasterCommand = false;
+            }
+        }
+        this.memorySettings.loopSyncMode = settings.loopSyncMode;
+        this.memorySettings.tempoSyncMode = settings.tempoSyncMode;
+        this.memorySettings.quantize = settings.quantize;
+        this.suppressTransportBpmCommand = true;
+        try {
+            transport.setBpm(settings.bpm);
+            if (transport.hasMasterTrack()) transport.measureLength = transport.getMeasureDuration();
+        } finally {
+            this.suppressTransportBpmCommand = false;
+        }
+        const epochAck = await runtime.setMasterClockEpoch(
+            this.getTransportClockOrigin(transport, runtime),
+            settings.bpm,
+            token,
+        );
+        if (epochAck.status !== 0 && epochAck.status !== 1) throw new Error(`Worklet rejected master clock epoch (status ${epochAck.status}).`);
+        if (transport.masterTrackId !== null) {
+            this.tracks[transport.masterTrackId - 1]?.syncMasterPlaybackSpeed();
+        }
     }
 
     public getIoSnapshot(): BrowserAudioIoSnapshot {
@@ -697,6 +1255,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             outputDeviceId: contextSink || this.selectedOutputDeviceId,
             outputLabel: this.currentOutputLabel,
             outputSinkType,
+            rhythmRoutingDelayFrames: BROWSER_REALTIME_QUANTUM_FRAMES,
         };
     }
 
@@ -706,16 +1265,40 @@ export class BrowserAudioEngine implements IAudioEngine {
         transport.on('start', this.handleTransportStart);
         transport.on('stop', this.handleTransportStop);
         transport.on('bpm-change', this.handleTransportBpmChange);
+        transport.on('master-track-change', this.handleTransportMasterChange);
         this.transportListenersInstalled = true;
+    }
+
+    private syncWorkletMasterEpoch(projectToken?: symbol): void {
+        const runtime = this.realtimeRuntime;
+        if (!runtime) return;
+        const transport = Transport.getInstance();
+        const origin = this.getTransportClockOrigin(transport, runtime);
+        void runtime.setMasterClockEpoch(origin, transport.bpm, projectToken)
+            .catch((error) => this.recordRuntimeError(error));
+    }
+
+    private getTransportClockOrigin(transport: Transport, runtime: BrowserRealtimeRuntime): number {
+        if (transport.hasClockEpoch) return transport.clockOriginFrame;
+        return transport.hasMasterTrack() ? transport.masterOriginFrame : runtime.getCurrentFrame();
     }
 
     private getFxChains(): FXChain[] {
         return [this.inputFxChain, this.outputFxChain, ...this.tracks.map((track) => track.fxChain)];
     }
 
+    private getInputFxSnapshots(): FXSnapshot[] {
+        const fixed = Object.values(this.inputFxChain.getSnapshot());
+        const bank = this.fxBanks.find((candidate) => candidate.id === this.activeFxBankId);
+        const slots = bank?.input.filter((unit): unit is ProjectFxUnit => unit !== null) ?? [];
+        return [...fixed, ...slots].filter((snapshot) => snapshot.enabled);
+    }
+
     private handleRuntimeMessage(message: BrowserRealtimeRuntimeMessage) {
         if (message.type === 'CLOCK_TICK' && typeof message.beatOrdinal === 'number' && typeof message.frame === 'number') {
             Transport.getInstance().emitWorkletBeat(message.beatOrdinal, message.frame);
+        } else if (message.type === 'TRACK_STATE_CHANGED' && typeof message.track === 'number') {
+            this.tracks[message.track]?.refreshRuntimeStateFromWorklet();
         } else if (message.type === 'TRACK_CAPACITY_REACHED' && typeof message.track === 'number') {
             const track = this.tracks[message.track];
             track?.handleCapacityReached(message.frame ?? this.realtimeRuntime?.getCurrentFrame() ?? 0);
@@ -856,7 +1439,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         const gain = this.context.createGain();
 
         osc.connect(gain);
-        gain.connect(this.context.destination);
+        gain.connect(this.masterGainNode);
 
         osc.frequency.value = 440; // A4
         gain.gain.value = 0.3;
@@ -933,7 +1516,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             osc.frequency.value = 1000;
             oscGain.gain.value = 0.05;
             osc.connect(oscGain);
-            oscGain.connect(this.context.destination);
+            oscGain.connect(this.masterGainNode);
             const signalTime = signalFrame / this.context.sampleRate;
             osc.start(signalTime);
             osc.stop(signalTime + 0.12);
@@ -1029,20 +1612,46 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
     }
 
-    public stopAllTracks() {
-        this.tracks.forEach(track => {
-            if (track.state !== TrackState.EMPTY) {
-                track.triggerStop();
-            }
-        });
+    public async stopAllTracks(): Promise<void> {
+        const configured = this.memorySettings.allStopTrk;
+        const hasExplicitSelection = configured.some(Boolean);
+        const targets = this.tracks.filter((track, index) =>
+            (!hasExplicitSelection || configured[index] === true) && track.state !== TrackState.EMPTY,
+        );
+        await this.runBulkTrackAction(targets, 'stop');
     }
 
-    public playAllTracks() {
-        this.tracks.forEach(track => {
-            if (track.state === TrackState.STOPPED) {
-                track.play();
+    public async playAllTracks(): Promise<void> {
+        const configured = this.memorySettings.allStartTrk;
+        const hasExplicitSelection = configured.some(Boolean);
+        const targets = this.tracks.filter((track, index) =>
+            (!hasExplicitSelection || configured[index] === true) && track.state === TrackState.STOPPED,
+        );
+        await this.runBulkTrackAction(targets, 'play');
+    }
+
+    private async runBulkTrackAction(
+        targets: TrackAudio[],
+        action: 'play' | 'stop',
+    ): Promise<void> {
+        const results = await Promise.allSettled(targets.map(async (track) => {
+            try {
+                if (action === 'play') await track.play();
+                else await track.triggerStop();
+            } catch (error) {
+                const wrapped = new Error(`Track ${track.track.id} ${action} failed: ${error instanceof Error ? error.message : String(error)}`);
+                (wrapped as Error & { cause?: unknown }).cause = error;
+                throw wrapped;
             }
-        });
+
+            const message = track.getLastActionError();
+            if (message) throw new Error(`Track ${track.track.id} ${action} failed: ${message}`);
+        }));
+        const failures = results.flatMap((result) => result.status === 'rejected' ? [result.reason] : []);
+        if (failures.length > 0) {
+            const detail = failures.map((failure) => failure instanceof Error ? failure.message : String(failure)).join('; ');
+            throw new Error(`Could not ${action} ${failures.length} track${failures.length === 1 ? '' : 's'}: ${detail}`);
+        }
     }
 
     public toggleReverse(trackIndex: number) {
@@ -1073,7 +1682,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         return navigator.mediaDevices.getUserMedia(this.createInputConstraints(deviceId));
     }
 
-    private replaceInputStream(stream: MediaStream, requestedDeviceId: string | null) {
+    private async replaceInputStream(stream: MediaStream, requestedDeviceId: string | null): Promise<void> {
         if (this.currentInputStream) {
             this.currentInputStream.disconnect();
             this.currentInputStream = null;
@@ -1091,7 +1700,20 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.currentInputSettings = track?.getSettings() ?? null;
         this.currentInputLabel = track?.label || null;
         this.selectedInputDeviceId = this.currentInputSettings?.deviceId || requestedDeviceId;
-        this.currentInputStream.connect(this.inputFxChain.input);
+        const channelCount = Math.max(1, Math.min(32, Math.floor(this.currentInputSettings?.channelCount || 1)));
+        const source: BrowserRoutingSourceNode = {
+            id: 'capture',
+            node: this.currentInputStream,
+            label: this.currentInputLabel || 'Selected capture input',
+            kind: 'capture',
+            channelCount,
+            routingDelayFrames: 0,
+        };
+        await this.routingGraph?.setSource(source, 'capture');
+        if (navigator.mediaDevices?.enumerateDevices) {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            await this.routingGraph?.setAvailableSinks(devices);
+        }
     }
 
     private shouldFallbackToDefaultInput(error: unknown): boolean {

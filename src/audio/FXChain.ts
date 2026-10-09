@@ -2,6 +2,8 @@ import { CompressorFX } from './fx/CompressorFX';
 import { FilterFX } from './fx/FilterFX';
 import { DelayFX } from './fx/DelayFX';
 import { ReverbFX } from './fx/ReverbFX';
+import { defaultFXRegistry, type FxNodeGraph } from './fx/FXRegistry';
+import type { FXSnapshot } from './fx/FXBase';
 
 export class FXChain {
     public input: GainNode;
@@ -14,7 +16,7 @@ export class FXChain {
     public delay: DelayFX;
     public reverb: ReverbFX;
 
-    constructor(context: AudioContext) {
+    constructor(context: BaseAudioContext) {
         this.input = context.createGain();
         this.output = context.createGain();
 
@@ -89,5 +91,38 @@ export class FXChain {
 
     public setFilterParam(paramName: string, value: number) {
         this.filter.setParam(paramName, value);
+    }
+
+    public getSnapshot(): Record<string, FXSnapshot> {
+        return {
+            compressor: this.compressor.getSnapshot(),
+            filter: this.filter.getSnapshot(),
+            delay: this.delay.getSnapshot(),
+            reverb: this.reverb.getSnapshot(),
+        };
+    }
+
+    public applySnapshot(snapshot: Record<string, FXSnapshot>): void {
+        const entries: Array<[string, CompressorFX | FilterFX | DelayFX | ReverbFX]> = [
+            ['compressor', this.compressor],
+            ['filter', this.filter],
+            ['delay', this.delay],
+            ['reverb', this.reverb],
+        ];
+        for (const [name, effect] of entries) {
+            const state = snapshot[name];
+            if (state) effect.applySnapshot(state);
+        }
+    }
+
+    public async createOfflineClone(context: OfflineAudioContext, snapshot = this.getSnapshot()): Promise<FxNodeGraph> {
+        const graph = await defaultFXRegistry.createGraph(context, Object.values(snapshot));
+        try {
+            await graph.initialize();
+            return graph;
+        } catch (error) {
+            graph.dispose();
+            throw error;
+        }
     }
 }

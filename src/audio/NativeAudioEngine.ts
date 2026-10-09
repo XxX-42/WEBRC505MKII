@@ -306,12 +306,12 @@ export class NativeAudioEngine {
     await this.dispatchStatusRequest(() => this.bridge.clear());
   }
 
-  public stopAllTracks() {
-    void this.stopTrack();
+  public async stopAllTracks(): Promise<void> {
+    await this.stopTrack();
   }
 
-  public playAllTracks() {
-    void this.playTrack();
+  public async playAllTracks(): Promise<void> {
+    await this.playTrack();
   }
 
   public setFxType(_location: 'input' | 'track', _slotIndex: number, _type: string) { return; }

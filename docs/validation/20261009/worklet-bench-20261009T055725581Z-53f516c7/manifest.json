@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "artifactType": "same-realm-node-worklet-diagnostic",
+  "diagnosticStatus": "PASS",
+  "qualificationStatus": "NOT_HARDWARE_QUALIFIED",
+  "statusScope": "PASS/FAILED reflects source/protocol/state/phase assertions only; Node deadline counters are reported separately and no hardware qualification is implied.",
+  "startedAt": "2026-10-09T05:57:25.916Z",
+  "completedAt": "2026-10-09T05:57:41.452Z",
+  "executionRealm": "same-realm",
+  "sampleRate": 48000,
+  "quantumFrames": 128,
+  "blockBudgetMs": 2.6666666666666665,
+  "warmupBlocksPerScenario": 2000,
+  "measuredIterationsPerScenario": 3000,
+  "sourceSha256": {
+    "protocol": "b005e5a8fe2dd9eb61b0eabf8ccf6dbd93d225780683c4f6b0b46cdafce5073a",
+    "looperWorklet": "4b24344d0e339dbcb4e886beac1f0d89c68b341e213098e0cb557ac386bf849a",
+    "timeStretchCore": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91",
+    "benchmarkRunner": "2F02ECA09F0C9AFE02DB6F6FF0C334D4F0DBEFC6EC2BC8D8D70ACF2F7E789AEE"
+  },
+  "scenarios": [
+    {
+      "scenario": "five_track_multisegment_playback_35s",
+      "segmentCountPerTrack": 103,
+      "startupProcessMs": null,
+      "startupDeadlineMisses": null,
+      "p99Ms": 0.12869999999998072,
+      "maxMs": 4.712099999999964,
+      "warmupDeadlineMisses": 0,
+      "warmupSamples": 2000,
+      "measuredDeadlineMisses": 3,
+      "measuredSamples": 3000
+    },
+    {
+      "scenario": "five_track_keep_pitch_8_visible_layers_speed_1_3",
+      "segmentCountPerTrack": null,
+      "startupProcessMs": 14.9058,
+      "startupDeadlineMisses": 1,
+      "p99Ms": 2.0807999999997264,
+      "maxMs": 4.57089999999971,
+      "warmupDeadlineMisses": 11,
+      "warmupSamples": 2000,
+      "measuredDeadlineMisses": 9,
+      "measuredSamples": 3000
+    },
+    {
+      "scenario": "five_track_keep_pitch_8_committed_plus_active_overdub_speed_1_3",
+      "segmentCountPerTrack": null,
+      "startupProcessMs": 6.8759000000000015,
+      "startupDeadlineMisses": 1,
+      "p99Ms": 2.3410000000003492,
+      "maxMs": 8.65099999999984,
+      "warmupDeadlineMisses": 5,
+      "warmupSamples": 2000,
+      "measuredDeadlineMisses": 13,
+      "measuredSamples": 3000
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "file": "raw-results.json",
+      "sha256": "6980D9C425A6030D1A29413AACF545B101F7412E41F6DB95D5784A5C48345680"
+    },
+    {
+      "file": "process-samples.csv",
+      "sha256": "72352705B21ABBC1CB5075C3AC5FB626A63F3A0F49855642EA264A0487EC1172"
+    },
+    {
+      "file": "summary.csv",
+      "sha256": "B7AD6CDADCDDD07DBFD51C00E4AD7F89D8DE1133F6FBCD489C646CC5BF1D8D4C"
+    },
+    {
+      "file": "repro-command.ps1",
+      "sha256": "0FB61F2A07F64A2742160CE2C6FCAF227AD129144AFC3309D7B764A62D7F1402"
+    }
+  ],
+  "interpretation": "Node/V8 same-realm software timing only. Deadlines counted here are synthetic process timing misses, not browser callback misses or hardware XRUNs. The diagnostic pass status does not confer strict real-time qualification."
+}

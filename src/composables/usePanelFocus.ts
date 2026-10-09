@@ -56,9 +56,9 @@ export function usePanelFocus() {
     panelFocusState.panelFocusContext = 'track-fx';
   };
 
-  const setTrackFxApplied = (trackId: number, active: boolean) => {
+  const setTrackFxApplied = (trackId: number, active: boolean, focusPanel = true) => {
     panelFocusState.trackFxApplyMap[trackId] = active;
-    panelFocusState.panelFocusContext = 'track-bay';
+    if (focusPanel) panelFocusState.panelFocusContext = 'track-bay';
   };
 
   const toggleTrackFxApplied = (trackId: number) => {

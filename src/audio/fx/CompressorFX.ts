@@ -1,4 +1,4 @@
-import type { FXBase } from './FXBase';
+import type { FXBase, FXSnapshot } from './FXBase';
 
 const COMPRESSOR_PROCESSOR_NAME = 'webrc505-linked-compressor';
 const COMPRESSOR_WORKLET_URL = '/worklets/compressor-processor.js';
@@ -41,6 +41,7 @@ export class CompressorFX implements FXBase {
     private kneeDb = 30;
     private attackSeconds = 0.003;
     private releaseSeconds = 0.25;
+    private amount: number | null = null;
 
     public constructor(context: BaseAudioContext) {
         this.context = context;
@@ -136,6 +137,7 @@ export class CompressorFX implements FXBase {
         switch (key) {
             case 'amount': {
                 const amount = this.clamp(value, 0, 1);
+                this.amount = amount;
                 this.thresholdDb = -60 * amount;
                 this.ratio = 1 + (19 * amount);
                 this.setWorkletParameter('thresholdDb', this.thresholdDb);
@@ -144,10 +146,12 @@ export class CompressorFX implements FXBase {
             }
             case 'threshold':
             case 'thresholdDb':
+                this.amount = null;
                 this.thresholdDb = this.clamp(value, -120, 0);
                 this.setWorkletParameter('thresholdDb', this.thresholdDb);
                 break;
             case 'ratio':
+                this.amount = null;
                 this.ratio = this.clamp(value, 1, 40);
                 this.setWorkletParameter('ratio', this.ratio);
                 break;
@@ -189,6 +193,28 @@ export class CompressorFX implements FXBase {
         ++this.bypassTransition;
         this.connectWetPath();
         this.applyBypassState(false, false);
+    }
+
+    public getSnapshot(): FXSnapshot {
+        const params: Record<string, number> = {
+            thresholdDb: this.thresholdDb,
+            ratio: this.ratio,
+            kneeDb: this.kneeDb,
+            attackSeconds: this.attackSeconds,
+            releaseSeconds: this.releaseSeconds,
+        };
+        if (this.amount !== null) params.amount = this.amount;
+        return { type: this.name, enabled: !this.requestedBypass, params };
+    }
+
+    public applySnapshot(snapshot: FXSnapshot): void {
+        if (snapshot.type !== this.name) throw new TypeError(`Cannot apply ${snapshot.type} state to COMPRESSOR.`);
+        if (typeof snapshot.params.amount === 'number') this.setParam('amount', snapshot.params.amount);
+        for (const key of ['thresholdDb', 'ratio', 'kneeDb', 'attackSeconds', 'releaseSeconds']) {
+            const value = snapshot.params[key];
+            if (typeof value === 'number') this.setParam(key, value);
+        }
+        this.setBypass(!snapshot.enabled);
     }
 
     public dispose() {

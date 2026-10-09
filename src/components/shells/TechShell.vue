@@ -1,5 +1,6 @@
 <template>
   <section class="tech-shell">
+    <ControlSurfaceHost />
     <div class="tech-top">
       <TopPanel />
     </div>
@@ -15,6 +16,7 @@
 <script setup lang="ts">
 import TopPanel from '../TopPanel.vue';
 import TrackUnit from '../TrackUnit.vue';
+import ControlSurfaceHost from '../ControlSurfaceHost.vue';
 </script>
 
 <style scoped>

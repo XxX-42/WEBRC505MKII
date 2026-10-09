@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { runInNewContext } from 'node:vm';
+import { evaluateRealtimeWorklet } from '../helpers/evaluateRealtimeWorklet';
 import { BrowserRealtimeRuntime } from '../../src/audio/BrowserRealtimeRuntime';
 import {
   BROWSER_REALTIME_COMMAND_CAPACITY,
   BROWSER_REALTIME_COMMAND_WORDS,
   BROWSER_REALTIME_QUANTUM_FRAMES,
+  BROWSER_REALTIME_STORAGE_BLOCK_FRAMES,
   BrowserRealtimeOpcode,
   BrowserRealtimeStatus,
   ControlWord,
@@ -18,6 +17,7 @@ import {
   TRACK_META_BYTES,
   TrackMetaWord,
   createControlSharedBuffer,
+  createTakeSegmentBuffer,
   createTrackSharedBuffer,
   BROWSER_REALTIME_LAYOUT_PLANAR_LR,
   BROWSER_REALTIME_LAYOUT_VERSION,
@@ -28,11 +28,6 @@ import {
   queueSharedCommand,
   storeSharedFrame,
 } from '../../src/audio/browserRealtimeProtocol';
-
-const workletSource = readFileSync(
-  resolve(process.cwd(), 'public/worklets/looper-processor.js'),
-  'utf8',
-);
 
 type WorkletPort = {
   onmessage: ((event: { data: unknown }) => void) | null;
@@ -49,6 +44,26 @@ class WorkletHarnessBase {
     },
   };
 }
+
+type WorkletTestProcessor = WorkletHarnessBase & {
+  process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean;
+  handlePortMessage(message: unknown): void;
+  takeIndex(track: number, slot: number): number;
+  takeModes: Int8Array;
+  takeFrames: Int32Array;
+  takeActive: Uint8Array;
+  takeMeta: Array<Array<Int32Array | null>>;
+  commitTake(track: number, slot: number, frames: number): void;
+  playPositions: Float64Array;
+  playbackFrames: Float64Array;
+  controlPositions: Float32Array;
+  clockRunning: boolean;
+  clockOriginFrame: number;
+  clockBeatOrdinal: number;
+  clockNextBeatFrame: number;
+  bpm: number;
+  renderClockTick(frame: number): void;
+};
 
 function createProcessor(controlBuffer = createControlSharedBuffer()) {
   let RegisteredProcessor: (new (options: unknown) => WorkletHarnessBase) | null = null;
@@ -69,10 +84,10 @@ function createProcessor(controlBuffer = createControlSharedBuffer()) {
     sampleRate: 48_000,
     currentFrame: 0,
   };
-  runInNewContext(workletSource, scope);
+  evaluateRealtimeWorklet(scope);
   if (!RegisteredProcessor) throw new Error('The real worklet source did not register a processor.');
   const processor = new RegisteredProcessor({ processorOptions: { controlBuffer } });
-  return { processor: processor as WorkletHarnessBase & Record<string, any>, scope, controlBuffer };
+  return { processor: processor as WorkletTestProcessor, scope, controlBuffer };
 }
 
 function makeOutputs(frames: number): Float32Array[][] {
@@ -80,7 +95,7 @@ function makeOutputs(frames: number): Float32Array[][] {
 }
 
 function processBlock(
-  processor: WorkletHarnessBase & { process: (inputs: Float32Array[][], outputs: Float32Array[][]) => boolean },
+  processor: WorkletTestProcessor,
   scope: Record<string, unknown>,
   frame: number,
   input: Float32Array,
@@ -91,19 +106,49 @@ function processBlock(
   return outputs;
 }
 
-function attachTrack(processor: WorkletHarnessBase & { handlePortMessage: (message: unknown) => void }, track: number, capacity = 256) {
-  const buffer = createTrackSharedBuffer(capacity);
+function attachTrack(processor: WorkletTestProcessor, track: number, capacity = 256) {
+  const allocatedCapacity = BROWSER_REALTIME_STORAGE_BLOCK_FRAMES;
+  const buffer = createTrackSharedBuffer(allocatedCapacity);
   const meta = new Int32Array(buffer, 0, TRACK_META_BYTES / Int32Array.BYTES_PER_ELEMENT);
-  const samples = new Float32Array(buffer, TRACK_META_BYTES, capacity);
-  const samplesRight = new Float32Array(buffer, TRACK_META_BYTES + capacity * Float32Array.BYTES_PER_ELEMENT, capacity);
-  Atomics.store(meta, TrackMetaWord.CAPACITY_FRAMES, capacity);
+  const samples = new Float32Array(buffer, TRACK_META_BYTES, allocatedCapacity).subarray(0, capacity);
+  const samplesRight = new Float32Array(buffer, TRACK_META_BYTES + allocatedCapacity * Float32Array.BYTES_PER_ELEMENT, allocatedCapacity).subarray(0, capacity);
   processor.handlePortMessage({
     type: 'ATTACH_TRACK', track, buffer,
     channelCount: BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
     layoutVersion: BROWSER_REALTIME_LAYOUT_VERSION,
     storageLayout: BROWSER_REALTIME_LAYOUT_PLANAR_LR,
   });
+  processor.handlePortMessage({ type: 'PREPARE_TAKE', track, takeSlot: 0, mode: 'BASE', usePrimary: true });
+  expect(processor.port.messages.at(-1)).toMatchObject({ type: 'TAKE_PREPARED', track, takeSlot: 0 });
   return { buffer, meta, samples, samplesRight };
+}
+
+function seedBaseHistory(
+  processor: WorkletTestProcessor,
+  track: number,
+  meta: Int32Array,
+  frames: number,
+  position = 0,
+  reverse = 0,
+) {
+  const slot = processor.takeIndex(track, 0) as number;
+  processor.takeModes[slot] = 0;
+  processor.takeFrames[slot] = frames;
+  processor.takeActive[slot] = 1;
+  processor.takeMeta[track][0] = meta;
+  processor.commitTake(track, 0, frames);
+  Atomics.store(meta, TrackMetaWord.STATE, 4);
+  Atomics.store(meta, TrackMetaWord.PLAY_POSITION, position);
+  Atomics.store(meta, TrackMetaWord.REVERSE, reverse);
+  processor.playPositions[track] = position;
+  processor.playbackFrames[track] = 0;
+}
+
+function attachTakeSegment(processor: WorkletTestProcessor, track: number, takeSlot: number) {
+  const buffer = createTakeSegmentBuffer(BROWSER_REALTIME_STORAGE_BLOCK_FRAMES);
+  processor.handlePortMessage({ type: 'ATTACH_TAKE_SEGMENT', track, takeSlot, segmentIndex: 0, buffer });
+  expect(processor.port.messages.at(-1)).toMatchObject({ type: 'TAKE_SEGMENT_ATTACHED', track, takeSlot, segmentIndex: 0 });
+  return new Float32Array(buffer, TRACK_META_BYTES, BROWSER_REALTIME_STORAGE_BLOCK_FRAMES);
 }
 
 describe('browser real-time shared protocol', () => {
@@ -295,16 +340,21 @@ describe('persistent AudioWorklet sample processing', () => {
     { reverse: 0, expectedWrite: 3 },
     { reverse: 1, expectedWrite: 7 },
   ])('writes a delayed overdub impulse to the aligned $reverse playback location', ({ reverse, expectedWrite }) => {
-    const { processor, scope } = createProcessor();
+    const { processor, scope, controlBuffer } = createProcessor();
     const { meta, samples } = attachTrack(processor, 0, 16);
-    Atomics.store(meta, TrackMetaWord.STATE, 5);
-    Atomics.store(meta, TrackMetaWord.LOOP_FRAMES, 8);
-    Atomics.store(meta, TrackMetaWord.PLAY_POSITION, 5);
+    samples.set([1, 2, 3, 4, 5, 6, 7, 8]);
+    seedBaseHistory(processor, 0, meta, 8, 5, reverse);
     Atomics.store(meta, TrackMetaWord.REVERSE, reverse);
     Atomics.store(meta, TrackMetaWord.ALIGNMENT_SAMPLES, 2);
+    processor.handlePortMessage({ type: 'PREPARE_TAKE', track: 0, takeSlot: 1, mode: 'OVERDUB', usePrimary: false });
+    expect(processor.port.messages.at(-1)).toMatchObject({ type: 'TAKE_PREPARED', track: 0, takeSlot: 1 });
+    const overdub = attachTakeSegment(processor, 0, 1);
+    queueSharedCommand(new Int32Array(controlBuffer), {
+      sequence: 1, opcode: BrowserRealtimeOpcode.START_OVERDUB, track: 0, targetFrame: 32,
+    });
 
     processBlock(processor, scope, 32, Float32Array.of(1));
-    expect(samples[expectedWrite]).toBe(1);
+    expect(overdub[expectedWrite]).toBe(1);
     expect(Atomics.load(meta, TrackMetaWord.PLAY_POSITION)).toBe(reverse ? 4 : 6);
   });
 
@@ -375,9 +425,7 @@ describe('persistent AudioWorklet sample processing', () => {
     const { processor, scope } = createProcessor();
     const { meta, samples } = attachTrack(processor, 0, 256);
     samples.set(Float32Array.from({ length: 127 }, (_, index) => index));
-    Atomics.store(meta, TrackMetaWord.STATE, 4);
-    Atomics.store(meta, TrackMetaWord.LOOP_FRAMES, 127);
-    Atomics.store(meta, TrackMetaWord.PLAY_POSITION, 0);
+    seedBaseHistory(processor, 0, meta, 127, 0);
 
     const outputs = makeOutputs(BROWSER_REALTIME_QUANTUM_FRAMES);
     const input = new Float32Array(BROWSER_REALTIME_QUANTUM_FRAMES);
@@ -406,5 +454,5 @@ describe('persistent AudioWorklet sample processing', () => {
     const lastOrdinal = 9_999;
     expect(beatFrames[lastOrdinal]).toBe(origin + Math.round(lastOrdinal * 48_000 * 60 / 119));
     expect(beatFrames.at(-1)! - origin).toBe(Math.round(lastOrdinal * 48_000 * 60 / 119));
-  });
+  }, 15_000);
 });

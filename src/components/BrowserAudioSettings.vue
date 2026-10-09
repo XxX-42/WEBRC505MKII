@@ -30,6 +30,8 @@
               </select>
             </div>
 
+            <RoutingMatrixPanel />
+
             <div class="setting-group monitoring-group">
               <label class="setting-label monitoring-label">
                 <input
@@ -120,6 +122,7 @@
 import { onMounted, onUnmounted, ref, watch, computed } from 'vue';
 import { AudioEngine, type AudioDeviceInfo, type AudioUiStatus } from '../audio/AudioEngine';
 import BrowserRecordingOffsetSettings from './BrowserRecordingOffsetSettings.vue';
+import RoutingMatrixPanel from './RoutingMatrixPanel.vue';
 import HardwareButton from './ui/HardwareButton.vue';
 
 const props = defineProps<{

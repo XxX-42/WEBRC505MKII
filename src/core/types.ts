@@ -28,6 +28,7 @@ export const TrackState = {
     REC_FINISHING: "REC_FINISHING",  // Waiting for measure boundary to stop recording
     PLAYING: "PLAYING",
     OVERDUBBING: "OVERDUBBING",
+    REPLACING: "REPLACING",
     STOPPED: "STOPPED"
 } as const;
 export type TrackState = (typeof TrackState)[keyof typeof TrackState];
@@ -80,6 +81,29 @@ export const DubMode = {
     REPLACE2: "REPLACE2"
 } as const;
 export type DubMode = (typeof DubMode)[keyof typeof DubMode];
+
+/** Runtime settings that the browser looper consumes at an audio sample boundary. */
+export interface TrackRuntimeSettings {
+    reverse: boolean;
+    oneShot: boolean;
+    startMode: StartMode;
+    stopMode: StopMode;
+    fadeInMs: number;
+    fadeOutMs: number;
+    speed: number;
+    keepPitch: boolean;
+    tempoSyncEnabled: boolean;
+    tempoSyncSpeed: TempoSyncSpeed;
+    tempoSyncMode: TempoSyncMode;
+    /** BPM captured when the base recording was created, or null if unknown. */
+    recordBpm: number | null;
+    autoRec: {
+        enabled: boolean;
+        threshold: number;
+        debounceMs: number;
+    };
+    dubMode: DubMode;
+}
 
 // Image 2: Play Mode (Memory Level)
 export const PlayMode = {
@@ -138,6 +162,8 @@ export class Track {
 
     // Tempo Sync (SW: Default ON, Mode: Default PITCH, Speed: Default NORMAL)
     tempoSyncSw: Switch = Switch.ON;
+    tempoSyncSpeed: TempoSyncSpeed = TempoSyncSpeed.NORMAL;
+    recordBpm: number | null = null;
 
     // --- Image 2: TRACK Attributes ---
     reverse: Switch = Switch.OFF;
@@ -156,6 +182,13 @@ export class Track {
     stopMode: StopMode = StopMode.IMMEDIATE;
     dubMode: DubMode = DubMode.OVERDUB;
     fxSw: Switch = Switch.ON;
+    speed: number = 1;
+    keepPitch: boolean = true;
+    fadeInMs: number = 0;
+    fadeOutMs: number = 0;
+    autoRecEnabled: boolean = false;
+    autoRecThreshold: number = 0.01;
+    autoRecDebounceMs: number = 20;
 
     // --- FX Parameters ---
     // Filter (FLT button)

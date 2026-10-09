@@ -2,8 +2,10 @@
   <section class="center-main-panel" data-panel="center-main">
     <div class="left-stack">
       <div class="button-rail vertical">
-        <HardwareButton shape="rect" size="sm" color="white" label="MENU" aria-label="Menu placeholder" @press="flashPlaceholder('MENU placeholder')" />
-        <HardwareButton shape="rect" size="sm" color="white" label="LOOP" aria-label="Loop placeholder" @press="flashPlaceholder('LOOP placeholder')" />
+        <HardwareButton shape="rect" size="sm" color="white" label="MEMORY" aria-label="Open memory controls" @press="showMemoryPanel = true" />
+        <HardwareButton shape="rect" size="sm" color="white" label="TRACK SET" aria-label="Open selected track settings" @press="showTrackSettings = true" />
+        <HardwareButton shape="rect" size="sm" color="blue" label="AUDIO I/O" aria-label="Open audio input and output settings" @press="showAudioSettings = true" />
+        <HardwareButton shape="rect" size="sm" color="blue" label="LOOP SET" aria-label="Open loop and tempo settings" @press="showLoopSettings = true" />
       </div>
       <div class="button-rail">
         <HardwareButton
@@ -19,10 +21,11 @@
           shape="rect"
           size="sm"
           color="yellow"
-          label="UNDO/REDO"
-          aria-label="Undo or redo placeholder"
-          @press="flashPlaceholder('UNDO/REDO is a placeholder in this web shell')"
+          label="UNDO"
+          aria-label="Undo selected track"
+          @press="dispatchTrackCommand('undo')"
         />
+        <HardwareButton shape="rect" size="sm" color="yellow" label="REDO" aria-label="Redo selected track" @press="dispatchTrackCommand('redo')" />
       </div>
     </div>
 
@@ -33,58 +36,46 @@
             <span>MEMORY</span>
             <span>J={{ bpmDisplay }}.0</span>
           </div>
-          <div class="lcd-main">01</div>
-          <div class="lcd-name">Memory01</div>
+          <div class="lcd-main">{{ String(activeMemorySlot).padStart(2, '0') }}</div>
+          <div class="lcd-name">Memory{{ String(activeMemorySlot).padStart(2, '0') }}</div>
           <div class="lcd-row">
             <span>TRACK {{ currentTrackId }}</span>
-            <span>{{ focusLabel }}</span>
+            <span>{{ currentTrackState }}</span>
           </div>
           <div class="lcd-row small">
-            <span>{{ statusHint }}</span>
+            <span>{{ currentTrackSummary }}</span>
           </div>
         </div>
       </div>
 
-      <div class="knob-row">
-        <HardwareKnob v-for="knob in screenKnobs" :key="knob.label" v-model="knob.value" :label="knob.label" color="white" :size="58" />
-      </div>
+      <div class="selected-track-summary">{{ focusLabel }}</div>
     </div>
 
     <div class="nav-stack">
       <div class="button-rail">
-        <HardwareButton shape="rect" size="sm" color="white" label="EXIT" aria-label="Exit placeholder" @press="flashPlaceholder('EXIT placeholder')" />
-        <HardwareButton shape="rect" size="sm" color="blue" label="ENTER" aria-label="Enter placeholder" @press="flashPlaceholder('ENTER placeholder')" />
+        <HardwareButton shape="rect" size="sm" color="white" label="EXIT" aria-label="Close open panel" @press="closePanels" />
+        <HardwareButton shape="rect" size="sm" color="blue" label="ENTER" aria-label="Open memory controls" @press="showMemoryPanel = true" />
       </div>
       <div class="navigation-ring">
-        <button class="nav-btn up" type="button" @click="flashPlaceholder('Up navigation placeholder')">^</button>
-        <button class="nav-btn left" type="button" @click="flashPlaceholder('Left navigation placeholder')">&lt;</button>
-        <button class="nav-btn right" type="button" @click="flashPlaceholder('Right navigation placeholder')">&gt;</button>
-        <button class="nav-btn down" type="button" @click="flashPlaceholder('Down navigation placeholder')">v</button>
-        <button class="nav-btn center" type="button" @click="flashPlaceholder('Cursor center placeholder')">o</button>
+        <button class="nav-btn up" type="button" aria-label="Increase tempo" @click="adjustBpm(1)">+</button>
+        <button class="nav-btn left" type="button" aria-label="Select previous track" @click="selectAdjacentTrack(-1)">&lt;</button>
+        <button class="nav-btn right" type="button" aria-label="Select next track" @click="selectAdjacentTrack(1)">&gt;</button>
+        <button class="nav-btn down" type="button" aria-label="Decrease tempo" @click="adjustBpm(-1)">−</button>
+        <button class="nav-btn center" type="button" aria-label="Record or play selected track" @click="dispatchTrackCommand('record-track')">●</button>
       </div>
     </div>
 
     <div class="right-stack">
-      <div class="output-shell">
-        <div class="cluster-title">OUTPUT LEVEL</div>
+      <div class="output-shell" :class="{ unavailable: !canControlMasterLevel }">
+        <div class="cluster-title">MASTER LEVEL</div>
         <div class="output-block">
-          <HardwareKnob v-model="outputLevel" label="" color="red" :size="84" />
+          <HardwareKnob :model-value="outputLevel" :min="0" :max="200" label="" color="red" :size="84" @update:model-value="setOutputLevel" />
         </div>
+        <span class="master-level-value">{{ outputLevel }}%</span>
+        <span v-if="!canControlMasterLevel" class="module-note">BROWSER OUTPUT CONTROL</span>
       </div>
 
-      <div class="rhythm-shell">
-        <div class="cluster-title">RHYTHM</div>
-        <HardwareButton
-          shape="rect"
-          size="sm"
-          color="white"
-          label="EDIT"
-          aria-label="Rhythm edit placeholder"
-          @press="flashPlaceholder('RHYTHM EDIT placeholder')"
-        />
-      </div>
-
-      <div class="button-rail">
+      <div class="button-rail rhythm-actions">
         <HardwareButton
           shape="rect"
           size="sm"
@@ -97,69 +88,96 @@
         <HardwareButton
           shape="rect"
           size="sm"
-          :color="isRhythmPlaying ? 'red' : 'white'"
-          :active="isRhythmPlaying"
-          :label="isRhythmPlaying ? 'START/STOP' : 'START/STOP'"
-          aria-label="Toggle rhythm"
-          @press="toggleRhythm"
+          color="white"
+          label="RHYTHM EDIT"
+          aria-label="Open rhythm pattern and kit editor"
+          @press="showRhythmSettings = true"
         />
       </div>
-
-      <select v-model="selectedPattern" class="pattern-select" @change="updatePattern">
-        <option value="ROCK">ROCK</option>
-        <option value="TECHNO">TECHNO</option>
-        <option value="METRONOME">METRO</option>
-      </select>
-
-      <div class="rhythm-level">
-        <span>VOL</span>
-        <input v-model.number="rhythmVolume" type="range" min="0" max="100" @input="updateVolume">
-      </div>
-
-      <div v-if="rhythmUnavailableReason" class="rhythm-note">{{ rhythmUnavailableReason }}</div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="showMemoryPanel || showTrackSettings || showAudioSettings || showLoopSettings || showRhythmSettings" class="panel-modal-backdrop" @click.self="closePanels">
+        <section class="panel-modal" role="dialog" aria-modal="true" :aria-label="modalTitle">
+          <header class="modal-header"><h2>{{ modalTitle }}</h2><button type="button" aria-label="Close panel" @click="closePanels">×</button></header>
+          <MemoryControls v-if="showMemoryPanel" v-model="memorySlot" />
+          <TrackSettingsPanel v-else-if="showTrackSettings" :track-id="currentTrackId" />
+          <LoopSettingsPanel v-else-if="showLoopSettings" />
+          <RhythmEditorPanel v-else-if="showRhythmSettings" />
+          <template v-else-if="showAudioSettings">
+            <AudioSettings v-if="audioMode === 'native'" v-model="showAudioSettings" />
+            <BrowserAudioSettings v-else v-model="showAudioSettings" />
+          </template>
+        </section>
+      </div>
+    </Teleport>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { AudioEngine } from '../../audio/AudioEngine';
-import type { RhythmPattern } from '../../audio/RhythmEngine';
 import { Transport } from '../../core/Transport';
 import { TrackState, TransportState } from '../../core/types';
 import { usePanelFocus } from '../../composables/usePanelFocus';
+import { useControlDispatcher } from '../../composables/useControlDispatcher';
+import { useMemorySlot } from '../../composables/useMemorySlot';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareKnob from '../ui/HardwareKnob.vue';
+import MemoryControls from '../MemoryControls.vue';
+import TrackSettingsPanel from '../TrackSettingsPanel.vue';
+import LoopSettingsPanel from '../LoopSettingsPanel.vue';
+import RhythmEditorPanel from '../RhythmEditorPanel.vue';
+import AudioSettings from '../AudioSettings.vue';
+import BrowserAudioSettings from '../BrowserAudioSettings.vue';
 
 const engine = AudioEngine.getInstance();
 const transport = Transport.getInstance();
-const { state } = usePanelFocus();
+const { state, setCurrentTrack } = usePanelFocus();
+const { dispatcher } = useControlDispatcher();
+const { activeMemorySlot } = useMemorySlot();
 
 const bpm = ref(transport.bpm);
 const tapActive = ref(false);
 const isPlaying = ref(false);
-const outputLevel = ref(76);
-const statusHint = ref('CENTER CONTROL FOCUSED');
-const isRhythmPlaying = ref(false);
-const selectedPattern = ref<RhythmPattern>('ROCK');
-const rhythmVolume = ref(50);
-const screenKnobs = reactive([
-  { label: '1', value: 30 },
-  { label: '2', value: 54 },
-  { label: '3', value: 62 },
-  { label: '4', value: 44 },
-]);
+const outputLevel = ref(100);
+const showMemoryPanel = ref(false);
+const showTrackSettings = ref(false);
+const showAudioSettings = ref(false);
+const showLoopSettings = ref(false);
+const showRhythmSettings = ref(false);
+const memorySlot = ref(activeMemorySlot.value);
+const audioMode = ref(engine.getMode());
+const currentTrackState = ref('EMPTY');
+const currentRuntimeSettings = ref<{
+  oneShot: boolean;
+  stopMode: string;
+  speed: number;
+  keepPitch: boolean;
+  dubMode: string;
+} | null>(null);
 let tapFlashTimer: number | null = null;
 let tapResetTimer: number | null = null;
 let unsubscribeStatus: (() => void) | null = null;
+let statePollInterval = 0;
 const tapTimes: number[] = [];
 
 const bpmDisplay = computed(() => bpm.value.toString().padStart(3, '0'));
 const currentTrackId = computed(() => state.currentTrackId);
-const rhythmUnavailableReason = computed(() => {
-  const capabilities = engine.getCapabilities();
-  return capabilities.supportsRhythm ? '' : capabilities.rhythmReason;
+const currentTrackSummary = computed(() => {
+  const settings = currentRuntimeSettings.value;
+  if (!settings) return 'TRACK SETTINGS UNAVAILABLE';
+  return `${settings.speed.toFixed(2)}×${settings.keepPitch ? ' PITCH' : ''} ${settings.oneShot ? '1SHOT' : 'LOOP'} ${settings.stopMode}`;
 });
+const modalTitle = computed(() => showMemoryPanel.value ? 'MEMORY / PROJECT'
+  : showTrackSettings.value ? `TRACK ${currentTrackId.value} SETTINGS`
+    : showLoopSettings.value ? 'LOOP / TEMPO SETTINGS'
+      : showRhythmSettings.value ? 'RHYTHM PATTERN / KIT EDITOR'
+    : 'AUDIO SETTINGS');
+const masterApi = engine as unknown as { getMasterLevel?: () => number; setMasterLevel?: (value: number) => void };
+const canControlMasterLevel = computed(() => engine.getMode() === 'browser'
+  && typeof masterApi.getMasterLevel === 'function'
+  && typeof masterApi.setMasterLevel === 'function');
 const focusLabel = computed(() => {
   if (state.panelFocusContext === 'track-fx') {
     return `TRK FX ${state.activeTrackFxSlot}`;
@@ -174,6 +192,7 @@ const hasActiveTracks = () => engine.tracks.some((track) => (
   track.state === TrackState.RECORDING ||
   track.state === TrackState.PLAYING ||
   track.state === TrackState.OVERDUBBING ||
+  track.state === TrackState.REPLACING ||
   track.state === TrackState.REC_STANDBY ||
   track.state === TrackState.REC_FINISHING
 ));
@@ -191,18 +210,51 @@ const updateBpm = () => {
 };
 
 const toggleAllTransport = () => {
-  if (isPlaying.value) {
-    engine.stopAllTracks();
-    return;
-  }
-  engine.playAllTracks();
+  void dispatcher.dispatch({ type: 'toggle-transport' });
 };
 
-const flashPlaceholder = (message: string) => {
-  statusHint.value = message.toUpperCase();
-  window.setTimeout(() => {
-    statusHint.value = 'CENTER CONTROL FOCUSED';
-  }, 1200);
+const dispatchTrackCommand = (type: 'record-track' | 'undo' | 'redo') => {
+  if (type === 'record-track') {
+    void dispatcher.dispatch({ type, trackId: currentTrackId.value });
+    return;
+  }
+  void dispatcher.dispatch({ type, trackId: currentTrackId.value });
+};
+
+const closePanels = () => {
+  showMemoryPanel.value = false;
+  showTrackSettings.value = false;
+  showAudioSettings.value = false;
+  showLoopSettings.value = false;
+  showRhythmSettings.value = false;
+};
+
+const selectAdjacentTrack = (delta: number) => {
+  const nextTrackId = ((currentTrackId.value - 1 + delta + 5) % 5) + 1;
+  setCurrentTrack(nextTrackId);
+};
+
+const adjustBpm = (delta: number) => {
+  transport.setBpm(Math.max(40, Math.min(300, transport.bpm + delta)));
+  updateBpm();
+};
+
+const setOutputLevel = (value: number) => {
+  if (!canControlMasterLevel.value || !masterApi.setMasterLevel) return;
+  const safeValue = Math.max(0, Math.min(200, Math.round(value)));
+  masterApi.setMasterLevel(safeValue / 100);
+  outputLevel.value = safeValue;
+};
+
+const syncCurrentTrack = () => {
+  const current = engine.tracks[currentTrackId.value - 1] as (typeof engine.tracks[number] & {
+    getRuntimeSettings?: () => typeof currentRuntimeSettings.value;
+  }) | undefined;
+  currentTrackState.value = current?.state ?? 'EMPTY';
+  currentRuntimeSettings.value = current?.getRuntimeSettings?.() ?? null;
+  if (canControlMasterLevel.value && masterApi.getMasterLevel) {
+    outputLevel.value = Math.round(Math.max(0, Math.min(2, masterApi.getMasterLevel())) * 100);
+  }
 };
 
 const handleTap = () => {
@@ -243,46 +295,31 @@ const handleTap = () => {
   }, 3000);
 };
 
-const toggleRhythm = () => {
-  if (!engine.getCapabilities().supportsRhythm) {
-    flashPlaceholder(engine.getCapabilities().rhythmReason || 'RHYTHM UNAVAILABLE');
-    return;
-  }
-
-  if (isRhythmPlaying.value) {
-    engine.rhythmEngine.stop();
-    isRhythmPlaying.value = false;
-    return;
-  }
-
-  engine.rhythmEngine.start();
-  isRhythmPlaying.value = true;
-};
-
-const updatePattern = () => {
-  engine.rhythmEngine.setPattern(selectedPattern.value);
-};
-
-const updateVolume = () => {
-  engine.rhythmEngine.setVolume(rhythmVolume.value);
-};
-
 onMounted(() => {
   transport.on('bpm-change', updateBpm);
   transport.on('start', syncPlaybackState);
   transport.on('stop', syncPlaybackState);
   syncPlaybackState();
-  engine.rhythmEngine.setPattern(selectedPattern.value);
-  engine.rhythmEngine.setVolume(rhythmVolume.value);
-  unsubscribeStatus = engine.onStatusChange(() => {
+  audioMode.value = engine.getMode();
+  syncCurrentTrack();
+  statePollInterval = window.setInterval(() => {
     syncPlaybackState();
+    syncCurrentTrack();
+  }, 100);
+  unsubscribeStatus = engine.onStatusChange((status) => {
+    audioMode.value = status.mode;
+    syncPlaybackState();
+    syncCurrentTrack();
   });
 });
+
+watch(activeMemorySlot, (slot) => { memorySlot.value = slot; });
 
 onUnmounted(() => {
   transport.off('bpm-change', updateBpm);
   transport.off('start', syncPlaybackState);
   transport.off('stop', syncPlaybackState);
+  window.clearInterval(statePollInterval);
   if (tapFlashTimer) {
     window.clearTimeout(tapFlashTimer);
   }
@@ -325,8 +362,6 @@ onUnmounted(() => {
 .lcd-row,
 .lcd-main,
 .lcd-name,
-.pattern-select,
-.rhythm-level,
 .nav-btn {
   font-family: var(--font-hardware);
   text-transform: uppercase;
@@ -427,8 +462,7 @@ onUnmounted(() => {
 .nav-btn.right { right: 0; top: 42px; }
 .nav-btn.center { left: 42px; top: 42px; }
 
-.output-shell,
-.rhythm-shell {
+.output-shell {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -436,36 +470,72 @@ onUnmounted(() => {
   min-width: 0;
 }
 
+.output-shell.unavailable {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.master-level-value,
+.selected-track-summary {
+  color: #b6c2d2;
+  font: 9px var(--font-hardware);
+  letter-spacing: 0.8px;
+  text-align: center;
+}
+
+.panel-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(4px);
+}
+
+.panel-modal {
+  width: min(880px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: #121419;
+  color: #f3f4f7;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-family: var(--font-hardware);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #dce4f0;
+  font-size: 12px;
+  letter-spacing: 1.1px;
+}
+
+.modal-header button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 50%;
+  background: #22252b;
+  color: #e6ebf4;
+  font-size: 18px;
+  cursor: pointer;
+}
+
 .output-block {
   display: flex;
   justify-content: flex-start;
-}
-
-.pattern-select {
-  min-height: 36px;
-  width: 100%;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f3f3f5;
-  padding: 0 10px;
-}
-
-.rhythm-level {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 11px;
-  letter-spacing: 1.1px;
-  width: 100%;
-}
-
-.rhythm-note {
-  font-family: var(--font-hardware);
-  font-size: 10px;
-  letter-spacing: 1.1px;
-  color: #ff9198;
-  text-transform: uppercase;
 }
 
 @media (max-width: 1400px) {

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "artifactType": "browser-realtime-smoke",
+  "status": "PASS",
+  "historical": true,
+  "note": "Earlier run kept as historical evidence; its Worklet source hash differs from the final run.",
+  "startedAt": "2026-10-09T05:53:37.319Z",
+  "completedAt": "2026-10-09T05:54:02.372Z",
+  "browser": "149.0.7827.55",
+  "config": {
+    "layoutVersion": 4,
+    "sampleRate": 48000,
+    "quantumFrames": 128,
+    "audioSink": "none",
+    "input": "synthetic oscillators"
+  },
+  "assertions": {
+    "total": 57,
+    "passed": 57,
+    "failed": 0
+  },
+  "deadlineTelemetry": "Unavailable/NA remains unknown; it is not zero XRUNs.",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "sourceSha256": {
+    "smoke": "244ff8345f8cd697c0626b1194306f2f2a2518b18a4fc1cfe4b25ade7ba50919",
+    "browserAudioEngine": "d000d50cd92881aea0c9f8f5ded76845d4cc65f5c985b1d0a50f6d5d2cb88995",
+    "realtimeProtocol": "b005e5a8fe2dd9eb61b0eabf8ccf6dbd93d225780683c4f6b0b46cdafce5073a",
+    "realtimeRuntime": "19fb4b1a8de75e411e925da42f8cd524fae191768cfa4b0836083e01fe54c9b3",
+    "looperWorklet": "89ce4c8dedfb06ef5c042aea992da6994d3763df2e252166c6a2af2041bce50b",
+    "timeStretchCore": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91"
+  },
+  "rawJsonFile": "browser-realtime-smoke-20261009T055337319Z-historical.json",
+  "rawJsonSha256": "6814395889845CB62308E31CFCACC603DF8F77C12890BA04AF1E62F2FD6C6657"
+}

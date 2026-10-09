@@ -12,6 +12,16 @@ export class Transport {
     public masterLoopLengthSamples = 0;
     public measureLength = 0;
     public masterOriginFrame = 0;
+    /** Independent beat/measure epoch; it does not move the master PCM phase. */
+    public clockOriginFrame = 0;
+    public hasClockEpoch = false;
+    public sampleRate = 48_000;
+    public masterPlaybackSpeed = 1;
+    public masterPlaybackDirection: 1 | -1 = 1;
+
+    private masterPlaybackAnchorFrame = 0;
+    private masterPlaybackAnchorPosition = 0;
+    private clockEpochSource: 'master' | 'external' | null = null;
 
     private listeners = new Map<string, TransportListener[]>();
 
@@ -86,9 +96,17 @@ export class Transport {
         this.masterTrackId = trackId;
         this.masterLoopLengthSamples = Math.max(0, Math.floor(lengthSamples));
         this.masterOriginFrame = Math.max(0, Math.floor(originFrame));
+        this.masterPlaybackSpeed = 1;
+        this.masterPlaybackDirection = 1;
+        this.masterPlaybackAnchorFrame = this.masterOriginFrame;
+        this.masterPlaybackAnchorPosition = 0;
+        this.sampleRate = Math.max(1, sampleRate);
+        if (!this.hasClockEpoch || this.clockEpochSource !== 'external') {
+            this.setClockEpoch(this.masterOriginFrame, undefined, undefined, 'master');
+        }
         this.measureLength = durationSeconds;
 
-        if (durationSeconds > 0) {
+        if (durationSeconds > 0 && this.clockEpochSource !== 'external') {
             const targetMinBpm = 60;
             const targetMaxBpm = 160;
             const idealBpm = 120;
@@ -124,6 +142,12 @@ export class Transport {
         this.masterLoopLengthSamples = 0;
         this.measureLength = 0;
         this.masterOriginFrame = 0;
+        if (!this.hasClockEpoch) this.sampleRate = 48_000;
+        this.masterPlaybackSpeed = 1;
+        this.masterPlaybackDirection = 1;
+        this.masterPlaybackAnchorFrame = 0;
+        this.masterPlaybackAnchorPosition = 0;
+        if (this.clockEpochSource === 'master') this.clearClockEpoch();
         this.emit('master-track-change', null);
         console.log('Master track reset');
     }
@@ -132,44 +156,133 @@ export class Transport {
         return this.masterTrackId !== null && this.masterLoopLengthSamples > 0;
     }
 
+    /**
+     * Set the beat/measure grid origin without altering the master PCM phase.
+     * External clock callers can pass `ack.targetFrame - beatOrdinal *
+     * beatPeriod`; the Worklet phase-locks to the scheduled target even when a
+     * late command executes later. A fractional origin preserves MIDI phase.
+     */
+    public setClockEpoch(
+        originFrame: number,
+        bpm?: number,
+        sampleRate?: number,
+        source: 'master' | 'external' = 'external',
+    ): void {
+        if (!Number.isFinite(originFrame)) throw new RangeError('Clock epoch must be finite.');
+        if (bpm !== undefined) this.bpm = Math.max(40, Math.min(300, bpm));
+        if (sampleRate !== undefined) this.sampleRate = Math.max(1, sampleRate);
+        this.clockOriginFrame = originFrame;
+        this.hasClockEpoch = true;
+        this.clockEpochSource = source;
+    }
+
+    public clearClockEpoch(): void {
+        this.clockOriginFrame = 0;
+        this.hasClockEpoch = false;
+        this.clockEpochSource = null;
+    }
+
+    /** Re-anchor the real master playback cursor after an effective speed change. */
+    public setMasterPlaybackSpeed(
+        speed: number,
+        anchorFrame: number,
+        sourcePosition: number,
+        direction: 1 | -1 = 1,
+    ): void {
+        if (!Number.isFinite(speed) || !Number.isFinite(anchorFrame) || !Number.isFinite(sourcePosition)) {
+            throw new RangeError('Master playback speed and phase anchor must be finite.');
+        }
+        this.masterPlaybackSpeed = Math.max(0.25, Math.min(4, speed));
+        this.masterPlaybackDirection = direction === -1 ? -1 : 1;
+        this.masterPlaybackAnchorFrame = Math.max(0, Math.floor(anchorFrame));
+        if (this.masterLoopLengthSamples > 0) {
+            const position = sourcePosition % this.masterLoopLengthSamples;
+            this.masterPlaybackAnchorPosition = position < 0 ? position + this.masterLoopLengthSamples : position;
+        } else {
+            this.masterPlaybackAnchorPosition = 0;
+        }
+    }
+
+    /** Expected output-frame duration of one master source-loop traversal. */
+    public getMasterPlaybackPeriodFrames(): number {
+        if (!this.hasMasterTrack()) return 0;
+        return Math.max(1, Math.ceil(this.masterLoopLengthSamples / this.masterPlaybackSpeed));
+    }
+
     public getNextMeasureStartFrame(currentFrame: number, safetyFrames = 0): number {
-        if (!this.hasMasterTrack()) {
-            return Math.max(0, Math.floor(currentFrame + safetyFrames));
-        }
+        if (!this.hasClockEpoch) return Math.max(0, Math.floor(currentFrame + safetyFrames));
+        // Keep the fractional beat period through the division. Rounding the
+        // period once and repeatedly adding it can drift from Worklet's
+        // epoch + ordinal * beatFrames grid at fractional BPM values.
+        const measureFrames = Math.max(
+            1,
+            this.sampleRate * 60 * this.timeSignature[0] / Math.max(1, this.bpm),
+        );
+        return this.getNextBoundaryFrame(currentFrame, measureFrames, safetyFrames);
+    }
 
+    public getNextLoopBoundaryFrame(currentFrame: number, safetyFrames = 0): number {
+        if (!this.hasMasterTrack()) return Math.max(0, Math.floor(currentFrame + safetyFrames));
         const earliest = Math.max(0, Math.floor(currentFrame + safetyFrames));
-        const loopFrames = this.masterLoopLengthSamples;
-        if (earliest <= this.masterOriginFrame) {
-            return this.masterOriginFrame;
-        }
+        if (earliest < this.masterPlaybackAnchorFrame) return this.masterPlaybackAnchorFrame;
+        const sourcePosition = this.getMasterSourcePositionAtFrame(earliest);
+        const remainingSourceFrames = this.masterPlaybackDirection > 0
+            ? this.masterLoopLengthSamples - sourcePosition
+            : sourcePosition + 1;
+        if (remainingSourceFrames <= 1e-9) return earliest;
+        return earliest + Math.max(1, Math.ceil(remainingSourceFrames / this.masterPlaybackSpeed));
+    }
 
-        const elapsed = earliest - this.masterOriginFrame;
-        const completedLoops = Math.floor(elapsed / loopFrames);
-        const boundary = this.masterOriginFrame + completedLoops * loopFrames;
-        return boundary >= earliest ? boundary : boundary + loopFrames;
+    /** Map an immediate target sample onto the master loop phase. */
+    public getTrackFrameAtMasterPhase(targetFrame: number, trackLoopFrames: number, reverse = false): number {
+        if (!this.hasMasterTrack() || trackLoopFrames <= 0) return 0;
+        const masterPhase = this.getMasterSourcePositionAtFrame(targetFrame);
+        const trackPhase = Math.min(trackLoopFrames - 1, Math.floor(
+            masterPhase * trackLoopFrames / this.masterLoopLengthSamples,
+        ));
+        return reverse ? trackLoopFrames - 1 - trackPhase : trackPhase;
+    }
+
+    private getNextBoundaryFrame(currentFrame: number, periodFrames: number, safetyFrames: number): number {
+        const earliest = Math.max(0, Math.floor(currentFrame + safetyFrames));
+        const origin = this.clockOriginFrame;
+        const period = Math.max(1, periodFrames);
+        if (earliest <= origin) return origin;
+        const elapsed = earliest - origin;
+        const ordinal = Math.max(0, Math.ceil(elapsed / period - 1e-9));
+        return Math.round(origin + ordinal * period);
     }
 
     public getNextMeasureStartTime(currentTime: number, sampleRate: number): number {
-        if (!this.hasMasterTrack() || sampleRate <= 0) return currentTime;
+        if (!this.hasClockEpoch || sampleRate <= 0) return currentTime;
         const currentFrame = Math.floor(currentTime * sampleRate);
         return this.getNextMeasureStartFrame(currentFrame) / sampleRate;
     }
 
     public getNextMeasureStartSample(currentSample: number, _sampleRate: number): number {
-        if (!this.hasMasterTrack()) return 0;
+        if (!this.hasClockEpoch) return 0;
         return this.getNextMeasureStartFrame(currentSample) - currentSample;
     }
 
     public quantizeLoopLength(recordedSamples: number): number {
         if (!this.hasMasterTrack()) return Math.max(0, recordedSamples);
-        const loopCount = Math.max(1, Math.round(recordedSamples / this.masterLoopLengthSamples));
-        return loopCount * this.masterLoopLengthSamples;
+        const periodFrames = this.getMasterPlaybackPeriodFrames();
+        const loopCount = Math.max(1, Math.round(recordedSamples / periodFrames));
+        return loopCount * periodFrames;
     }
 
     public getMasterLoopPosition(currentFrame: number, _sampleRate: number): number {
-        if (!this.hasMasterTrack() || currentFrame < this.masterOriginFrame) return 0;
-        const elapsed = currentFrame - this.masterOriginFrame;
-        return (elapsed % this.masterLoopLengthSamples) / this.masterLoopLengthSamples;
+        if (!this.hasMasterTrack() || currentFrame < this.masterPlaybackAnchorFrame) return 0;
+        return this.getMasterSourcePositionAtFrame(currentFrame) / this.masterLoopLengthSamples;
+    }
+
+    private getMasterSourcePositionAtFrame(frame: number): number {
+        if (!this.hasMasterTrack()) return 0;
+        const elapsed = Math.max(0, Math.floor(frame) - this.masterPlaybackAnchorFrame);
+        const position = (
+            this.masterPlaybackAnchorPosition + elapsed * this.masterPlaybackSpeed * this.masterPlaybackDirection
+        ) % this.masterLoopLengthSamples;
+        return position < 0 ? position + this.masterLoopLengthSamples : position;
     }
 
     private emit(event: string, ...args: unknown[]) {

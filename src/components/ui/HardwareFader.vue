@@ -51,7 +51,7 @@ interface Props {
   min?: number;
   max?: number;
   label?: string;
-  ledColor?: 'red' | 'green' | 'yellow' | 'blue' | 'white';
+  ledColor?: 'red' | 'green' | 'yellow' | 'blue' | 'white' | 'purple';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -86,6 +86,7 @@ const ledColorClass = computed(() => {
     case 'yellow': return 'led-strip-yellow';
     case 'blue': return 'led-strip-blue';
     case 'white': return 'led-strip-white';
+    case 'purple': return 'led-strip-purple';
     default: return 'led-strip-green';
   }
 });
@@ -142,6 +143,7 @@ const handleInput = (event: Event) => {
 .led-strip-yellow { background: var(--led-yellow-overdub); box-shadow: var(--glow-yellow-soft); }
 .led-strip-blue { background: var(--led-blue-accent); box-shadow: var(--glow-blue-soft); }
 .led-strip-white { background: var(--led-white-neutral); box-shadow: var(--glow-white-soft); }
+.led-strip-purple { background: #a855f7; box-shadow: 0 0 8px rgba(168, 85, 247, .55); }
 
 /* === GROOVE & CAP === */
 .fader-groove {

@@ -1,9 +1,23 @@
 import type { TrackAudio } from './TrackAudio';
-import { BrowserAudioEngine, type BrowserAudioIoSnapshot, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus } from './BrowserAudioEngine';
+import {
+  BrowserAudioEngine,
+  type BrowserAudioIoSnapshot,
+  type BrowserAudioLatencyInfo,
+  type BrowserAudioUiStatus,
+  type FxBankLocation,
+  type FxStateSnapshot,
+} from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus } from './NativeAudioEngine';
 import type { NativeBackend, NativeDeviceInfo } from './NativeBridgeClient';
 import type { NativeTrackProxy } from './NativeTrackProxy';
 import type { BrowserRealtimeMetrics } from './browserRealtimeProtocol';
+import { BrowserProjectAdapter } from '../project/BrowserProjectAdapter';
+import { ProjectService } from '../project/ProjectService';
+import type { ProjectFxBank, ProjectFxUnit, ProjectServiceOptions } from '../project/projectTypes';
+import type { BrowserRealtimeAck } from './browserRealtimeProtocol';
+import type { LoopEngineSettings, LoopEngineSettingsPatch } from './loopSettings';
+import type { RhythmKitDocument, RhythmPatternDocument, RhythmRuntimeSnapshot } from './rhythmTypes';
+import type { BrowserRoutingPatch, BrowserRoutingState } from './browserRouting';
 
 export type AudioMode = 'native' | 'browser';
 export type AudioBackend = NativeBackend | 'BROWSER';
@@ -133,6 +147,7 @@ export class AudioEngine {
   private readonly nativeEngine = NativeAudioEngine.getInstance();
   private browserEngine: BrowserAudioEngine | null = null;
   private currentMode: AudioMode = resolveInitialMode();
+  private projectService: ProjectService | null = null;
 
   public static getInstance(): AudioEngine {
     if (!AudioEngine.instance) {
@@ -180,6 +195,87 @@ export class AudioEngine {
 
   public getRealtimeMetrics(): BrowserRealtimeMetrics | null {
     return this.currentMode === 'browser' ? this.browser.getRealtimeMetrics() : null;
+  }
+
+  /** Project memories are supported by the browser realtime backend only. */
+  public getProjectService(): ProjectService {
+    if (this.currentMode !== 'browser') throw new Error('Project memories are currently available in browser audio mode only.');
+    const browser = this.browser;
+    if (!browser.isReady) throw new Error('Initialize browser audio before opening project memories.');
+    if (!this.projectService) this.projectService = new ProjectService(new BrowserProjectAdapter(browser));
+    return this.projectService;
+  }
+
+  public setControlStateAdapter(controls: NonNullable<ProjectServiceOptions['controls']>): void {
+    this.getProjectService().setControlStateAdapter(controls);
+  }
+
+  public getMasterLevel(): number {
+    if (this.currentMode !== 'browser') throw new Error('Master level is only exposed by browser audio.');
+    return this.browser.getMasterLevel();
+  }
+
+  public setMasterLevel(value: number): void {
+    if (this.currentMode !== 'browser') throw new Error('Master level is only exposed by browser audio.');
+    this.browser.setMasterLevel(value);
+  }
+
+  public async syncExternalClock(bpm: number, beatOrdinal = 0): Promise<BrowserRealtimeAck> {
+    if (this.currentMode !== 'browser') throw new Error('External clock sync is only exposed by browser realtime audio.');
+    return await this.browser.syncExternalClock(bpm, beatOrdinal);
+  }
+
+  public getLoopSettings(): LoopEngineSettings {
+    return this.requireBrowserReady().getLoopSettings();
+  }
+
+  public async updateLoopSettings(patch: LoopEngineSettingsPatch): Promise<void> {
+    await this.requireBrowserReady().updateLoopSettings(patch);
+  }
+
+  public getRhythmSnapshot(): RhythmRuntimeSnapshot {
+    return this.requireBrowserReady().getRhythmSnapshot();
+  }
+
+  public async loadRhythmPattern(document: RhythmPatternDocument): Promise<void> {
+    await this.requireBrowserReady().loadRhythmPattern(document);
+  }
+
+  public async loadRhythmKit(document: RhythmKitDocument): Promise<void> {
+    await this.requireBrowserReady().loadRhythmKit(document);
+  }
+
+  public async applyRhythmSnapshot(snapshot: RhythmRuntimeSnapshot): Promise<void> {
+    await this.requireBrowserReady().applyRhythmSnapshot(snapshot);
+  }
+
+  public async setTrackFxSend(trackId: number, enabled: boolean): Promise<void> {
+    await this.requireBrowserReady().setTrackFxSend(trackId, enabled);
+  }
+
+  public getRoutingState(): BrowserRoutingState { return this.requireBrowserReady().getRoutingState(); }
+  public async updateRoutingState(patch: BrowserRoutingPatch): Promise<void> {
+    await this.requireBrowserReady().updateRoutingState(patch);
+  }
+  public subscribeRoutingState(listener: (state: BrowserRoutingState) => void): () => void {
+    return this.requireBrowserReady().subscribeRoutingState(listener);
+  }
+
+  public getFxState(): FxStateSnapshot { return this.requireBrowserReady().getFxState(); }
+  public getFxBanks(): ProjectFxBank[] { return this.requireBrowserReady().getFxBanks(); }
+  public getActiveFxBankId(): string { return this.requireBrowserReady().getActiveFxBankId(); }
+  public getAvailableFxTypes(): string[] { return this.requireBrowserReady().getAvailableFxTypes(); }
+
+  public async selectFxBank(id: string): Promise<void> {
+    await this.requireBrowserReady().selectFxBank(id);
+  }
+
+  public async updateFxBankSlot(location: FxBankLocation, index: number, slot: ProjectFxUnit | null): Promise<void> {
+    await this.requireBrowserReady().updateFxBankSlot(location, index, slot);
+  }
+
+  public subscribeFxState(listener: (state: FxStateSnapshot) => void): () => void {
+    return this.requireBrowserReady().subscribeFxState(listener);
   }
 
   public getBrowserIoSnapshot(): BrowserAudioIoSnapshot | null {
@@ -279,7 +375,7 @@ export class AudioEngine {
       await this.nativeEngine.setMonitoring(enabled);
       return;
     }
-    this.browser.setMonitoring(enabled);
+    await this.browser.setMonitoring(enabled);
   }
 
   public onMonitoringChange(listener: (enabled: boolean) => void) {
@@ -456,12 +552,12 @@ export class AudioEngine {
     this.browser.tracks[0]?.clear();
   }
 
-  public stopAllTracks() {
-    this.activeEngine.stopAllTracks();
+  public async stopAllTracks(): Promise<void> {
+    await this.activeEngine.stopAllTracks();
   }
 
-  public playAllTracks() {
-    this.activeEngine.playAllTracks();
+  public async playAllTracks(): Promise<void> {
+    await this.activeEngine.playAllTracks();
   }
 
   public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
@@ -496,6 +592,13 @@ export class AudioEngine {
 
   private get activeEngine() {
     return this.currentMode === 'native' ? this.nativeEngine : this.browser;
+  }
+
+  private requireBrowserReady(): BrowserAudioEngine {
+    if (this.currentMode !== 'browser') throw new Error('This control is available in browser audio mode only.');
+    const browser = this.browser;
+    if (!browser.isReady) throw new Error('Initialize browser audio before using this control.');
+    return browser;
   }
 
   private get browser(): BrowserAudioEngine {

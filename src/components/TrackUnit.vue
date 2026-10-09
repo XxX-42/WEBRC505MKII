@@ -62,6 +62,7 @@
       <div class="right-fader" :class="{ 'is-disabled': !levelControlEnabled }">
         <HardwareFader
           :model-value="playLevel"
+          :max="200"
           @update:modelValue="handleLevelChange"
           :led-color="faderLedColor"
           label="LEVEL"
@@ -99,6 +100,7 @@
           :class="{ 'is-disabled': !trackTransportEnabled }"
         />
       </div>
+      <TrackSettingsPanel :track-id="trackId" />
     </div>
   </div>
 </template>
@@ -111,6 +113,8 @@ import LoopHalo from './LoopHalo.vue';
 import HardwareButton from './ui/HardwareButton.vue';
 import HardwareFader from './ui/HardwareFader.vue';
 import HardwareKnob from './ui/HardwareKnob.vue';
+import TrackSettingsPanel from './TrackSettingsPanel.vue';
+import { useControlDispatcher } from '../composables/useControlDispatcher';
 
 const props = defineProps<{
   trackId: number;
@@ -119,6 +123,7 @@ const props = defineProps<{
 const engine = AudioEngine.getInstance();
 const trackAudio = engine.tracks[props.trackId - 1]!;
 const trackCapabilities = engine.getTrackCapabilities(props.trackId);
+const { dispatcher } = useControlDispatcher();
 
 const trackState = ref(trackAudio.state);
 const playLevel = ref(trackAudio.track.playLevel);
@@ -163,6 +168,7 @@ const clamp = (value: number, min: number, max: number) => {
 
 const syncTrackUi = () => {
   trackState.value = trackAudio.state;
+  playLevel.value = trackAudio.track.playLevel;
   isReverse.value = trackAudio.isReverse;
   trackAvailable.value = trackAudio.isAvailable;
   trackTransportEnabled.value = trackAudio.transportEnabled;
@@ -190,6 +196,7 @@ const buttonLedColor = computed(() => {
     case TrackState.RECORDING: return 'red';
     case TrackState.PLAYING: return 'green';
     case TrackState.OVERDUBBING: return 'yellow';
+    case TrackState.REPLACING: return 'purple';
     default: return 'neutral';
   }
 });
@@ -199,6 +206,7 @@ const faderLedColor = computed(() => {
     case TrackState.RECORDING: return 'red';
     case TrackState.PLAYING: return 'green';
     case TrackState.OVERDUBBING: return 'yellow';
+    case TrackState.REPLACING: return 'purple';
     default: return 'white';
   }
 });
@@ -206,21 +214,21 @@ const faderLedColor = computed(() => {
 const isRecordingOrPlaying = computed(() => {
   return trackState.value === TrackState.RECORDING ||
          trackState.value === TrackState.PLAYING ||
-         trackState.value === TrackState.OVERDUBBING;
+         trackState.value === TrackState.OVERDUBBING ||
+         trackState.value === TrackState.REPLACING;
 });
 
 const handleRecPlay = () => {
   if (!trackTransportEnabled.value) return;
-  trackAudio.triggerRecord();
+  void dispatcher.dispatch({ type: 'record-track', trackId: props.trackId });
 };
 
 const handleLevelChange = (value: number) => {
   if (!levelControlEnabled.value) return;
 
-  const safeValue = clamp(Math.round(value), 0, 100);
+  const safeValue = clamp(Math.round(value), 0, 200);
   playLevel.value = safeValue;
-  trackAudio.track.playLevel = safeValue;
-  trackAudio.updateSettings();
+  void dispatcher.dispatch({ type: 'set-track-level', trackId: props.trackId, value: safeValue });
 };
 
 const toggleFilter = () => {
@@ -266,7 +274,7 @@ const startStopPress = () => {
   if (!trackTransportEnabled.value || stopPressTimer) return;
   stopPressTimer = window.setTimeout(() => {
     isClearing.value = true;
-    trackAudio.clear();
+    void dispatcher.dispatch({ type: 'clear-track', trackId: props.trackId });
     setTimeout(() => { isClearing.value = false; }, 300);
     stopPressTimer = null;
   }, LONG_PRESS_DURATION);
@@ -277,7 +285,7 @@ const endStopPress = () => {
   if (stopPressTimer) {
     clearTimeout(stopPressTimer);
     stopPressTimer = null;
-    trackAudio.triggerStop();
+      void dispatcher.dispatch({ type: 'stop-track', trackId: props.trackId });
   }
 };
 

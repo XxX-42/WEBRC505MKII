@@ -1,0 +1,5974 @@
+{
+  "startedAt": "2026-10-09T05:59:16.853Z",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "validationConfig": {
+    "layoutVersion": 4,
+    "sampleRate": 48000,
+    "quantumFrames": 128,
+    "audioSink": "none",
+    "input": "synthetic oscillators"
+  },
+  "sourceSha256": {
+    "smoke": "244ff8345f8cd697c0626b1194306f2f2a2518b18a4fc1cfe4b25ade7ba50919",
+    "browserAudioEngine": "d000d50cd92881aea0c9f8f5ded76845d4cc65f5c985b1d0a50f6d5d2cb88995",
+    "realtimeProtocol": "b005e5a8fe2dd9eb61b0eabf8ccf6dbd93d225780683c4f6b0b46cdafce5073a",
+    "realtimeRuntime": "19fb4b1a8de75e411e925da42f8cd524fae191768cfa4b0836083e01fe54c9b3",
+    "looperWorklet": "4b24344d0e339dbcb4e886beac1f0d89c68b341e213098e0cb557ac386bf849a",
+    "timeStretchCore": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91"
+  },
+  "status": "PASS",
+  "assertions": [
+    {
+      "name": "all audio output is redirected away from physical devices",
+      "passed": true,
+      "contexts": [
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        },
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        }
+      ]
+    },
+    {
+      "name": "browser realtime engine is initialized",
+      "passed": true
+    },
+    {
+      "name": "48 kHz / 128-frame AudioWorklet backend",
+      "passed": true,
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 83072,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "recordingFrames": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackStates": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackPositions": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 4,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 5821440,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "storageSegments": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      }
+    },
+    {
+      "name": "all five tracks have preallocated loop storage",
+      "passed": true,
+      "capacities": [
+        131072,
+        131072,
+        131072,
+        131072,
+        131072
+      ]
+    },
+    {
+      "name": "browser loop recording/playback channel limit is explicit",
+      "passed": true,
+      "loopRecordingChannelCount": 2,
+      "loopPlaybackOutputChannelCount": 2,
+      "loopChannelLayout": "stereo planar LR; stereo input preserved and mono input duplicated to LR"
+    },
+    {
+      "name": "AudioEngine reports the software-only sink type",
+      "passed": true,
+      "outputSinkType": "none"
+    },
+    {
+      "name": "rhythm feedback routing declares one full Worklet-quantum delay",
+      "passed": true,
+      "rhythmRoutingDelayFrames": 128
+    },
+    {
+      "name": "capture routing inventory exposes the real synthetic stereo channel count and explicit LR targets",
+      "passed": true,
+      "captureSource": {
+        "id": "capture",
+        "label": "MediaStreamAudioDestinationNode",
+        "kind": "capture",
+        "channelCount": 2,
+        "routingDelayFrames": 0,
+        "available": true
+      },
+      "leftTarget": "left",
+      "rightTarget": "right"
+    },
+    {
+      "name": "100 gain-only routing updates reuse nodes without leaving owned fanout connections",
+      "passed": true,
+      "before": {
+        "sourceSplitters": 2,
+        "channelPaths": 4,
+        "routeSends": 32,
+        "inputFxPairs": 0,
+        "routeRebuildCount": 2
+      },
+      "after": {
+        "sourceSplitters": 2,
+        "channelPaths": 4,
+        "routeSends": 32,
+        "inputFxPairs": 0,
+        "routeRebuildCount": 2
+      }
+    },
+    {
+      "name": "main output OFF silences only the software main destination branch after steady signal",
+      "passed": true,
+      "mainBeforeOffRms": 0.03536952488949881,
+      "directMainBeforeOffRms": 0.035369524848903475,
+      "directMainOffRms": 0,
+      "mainOffRms": 0,
+      "mainOffRmsWindows": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mainOffStartFrame": 95232,
+      "mainOffFrameWindows": [
+        151936,
+        156160,
+        160384,
+        164736,
+        168576
+      ],
+      "subEnabledRms": 0.03536952543124309,
+      "headphonesEnabledRms": 0.03536952543124309
+    },
+    {
+      "name": "main output OFF leaves enabled sub and headphone software buses live",
+      "passed": true,
+      "mainBeforeOffRms": 0.03536952488949881,
+      "directMainOffRms": 0,
+      "mainOffRms": 0,
+      "mainOffRmsWindows": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mainOffStartFrame": 95232,
+      "mainOffFrameWindows": [
+        151936,
+        156160,
+        160384,
+        164736,
+        168576
+      ],
+      "subEnabledRms": 0.03536952543124309,
+      "headphonesEnabledRms": 0.03536952543124309
+    },
+    {
+      "name": "main output ON restores its software signal while disabled sub/headphone buses are silent",
+      "passed": true,
+      "mainEnabledRms": 0.03534662772170287,
+      "mainEnabledDirectRms": 0.03534662775009221,
+      "directSubEnabledRms": 0.035349844004455976,
+      "directHeadphonesEnabledRms": 0.035349844004455976,
+      "directSubOffRms": 0,
+      "directHeadphonesOffRms": 0,
+      "subDisabledRms": 0,
+      "headphonesDisabledRms": 0,
+      "subDisabledRmsWindows": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "headphonesDisabledRmsWindows": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "subOffStartFrame": 168576,
+      "disabledOutputFrameWindows": [
+        225152,
+        228992,
+        233856,
+        238464,
+        241920
+      ]
+    },
+    {
+      "name": "record path starts with software monitor disabled",
+      "passed": true
+    },
+    {
+      "name": "monitor ON carries synthetic input through the persistent Worklet",
+      "passed": true,
+      "monitorRms": 0.013221145130573061
+    },
+    {
+      "name": "monitor OFF is silent at its sample-gated output",
+      "passed": true,
+      "monitorRms": 0
+    },
+    {
+      "name": "track 1 exports planar LR with the configured active channels",
+      "passed": true,
+      "loopFrames": 6656,
+      "exportedFrames": 6656,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.014953185723807013,
+        0.011912622379813586
+      ]
+    },
+    {
+      "name": "exported channel 0 keeps the 250 Hz left tone and rejects 500 Hz right leakage",
+      "passed": true,
+      "left250": 0.0034647501045911465,
+      "left500": 0.00019880921679650123,
+      "leakageRatio": 0.05738053562161923
+    },
+    {
+      "name": "exported channel 1 keeps the 500 Hz right tone and rejects 250 Hz left leakage",
+      "passed": true,
+      "right250": 0.00015904300627057327,
+      "right500": 0.01419106120327551,
+      "leakageRatio": 0.011207266602011677
+    },
+    {
+      "name": "track 2 exports planar LR with the configured active channels",
+      "passed": true,
+      "loopFrames": 6912,
+      "exportedFrames": 6912,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0,
+        0.011180336716759703
+      ]
+    },
+    {
+      "name": "routing matrix independently disconnects capture L from track 2 while preserving capture R",
+      "passed": true,
+      "channelRms": [
+        0,
+        0.011180336716759703
+      ]
+    },
+    {
+      "name": "track 3 exports planar LR with the configured active channels",
+      "passed": true,
+      "loopFrames": 6272,
+      "exportedFrames": 6272,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.014671137441961163,
+        0.011736908643470056
+      ]
+    },
+    {
+      "name": "track 4 exports planar LR with the configured active channels",
+      "passed": true,
+      "loopFrames": 6144,
+      "exportedFrames": 6144,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.013832815422890346,
+        0.011095384550247929
+      ]
+    },
+    {
+      "name": "track 5 exports planar LR with the configured active channels",
+      "passed": true,
+      "loopFrames": 6784,
+      "exportedFrames": 6784,
+      "numberOfChannels": 2,
+      "channelRms": [
+        0.013299877346329574,
+        0.010639900564286238
+      ]
+    },
+    {
+      "name": "short recorded loops remain non-silent and PCM-stable during live keep-pitch playback",
+      "passed": true,
+      "frames": 6784,
+      "liveRms": 0.008343358910536029,
+      "liveMaxStep": 0.0010991930030286312,
+      "allFinite": true,
+      "sourcePcmUnchanged": true
+    },
+    {
+      "name": "imported track 1 publishes STOPPED state through runtime and UI views",
+      "passed": true,
+      "visibleState": "STOPPED",
+      "runtimeState": 6,
+      "metadataState": 6,
+      "loopFrames": 48000
+    },
+    {
+      "name": "track 1 keep-pitch PLAY command is accepted",
+      "passed": true,
+      "state": "STOPPED",
+      "lastActionError": null,
+      "modelOneShot": "OFF",
+      "runtimeSettings": {
+        "reverse": false,
+        "oneShot": false,
+        "startMode": "IMMEDIATE",
+        "stopMode": "IMMEDIATE",
+        "fadeInMs": 0,
+        "fadeOutMs": 0,
+        "speed": 1,
+        "keepPitch": true,
+        "tempoSyncEnabled": true,
+        "tempoSyncSpeed": "NORMAL",
+        "tempoSyncMode": "PITCH",
+        "recordBpm": null,
+        "autoRec": {
+          "enabled": false,
+          "threshold": 0.01,
+          "debounceMs": 20
+        },
+        "dubMode": "OVERDUB"
+      },
+      "metadataWords": [
+        4,
+        48000,
+        48000,
+        113,
+        131072,
+        248704,
+        0,
+        0,
+        0,
+        2,
+        4,
+        1,
+        1,
+        1,
+        -1,
+        0,
+        0,
+        0,
+        65536,
+        0,
+        0,
+        0,
+        0,
+        0,
+        327,
+        960,
+        0,
+        0,
+        0,
+        0,
+        65536,
+        0
+      ],
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 298240,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          48000,
+          6912,
+          6272,
+          6144,
+          6784
+        ],
+        "recordingFrames": [
+          48000,
+          6912,
+          6272,
+          6144,
+          6784
+        ],
+        "trackStates": [
+          6,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trackPositions": [
+          0,
+          0.12962962687015533,
+          0.6122449040412903,
+          0.625,
+          0.5962311625480652
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 45,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 5821440,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "storageSegments": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "transportState": null
+    },
+    {
+      "name": "imported track 2 publishes STOPPED state through runtime and UI views",
+      "passed": true,
+      "visibleState": "STOPPED",
+      "runtimeState": 6,
+      "metadataState": 6,
+      "loopFrames": 48000
+    },
+    {
+      "name": "track 2 keep-pitch PLAY command is accepted",
+      "passed": true,
+      "state": "STOPPED",
+      "lastActionError": null,
+      "modelOneShot": "OFF",
+      "runtimeSettings": {
+        "reverse": false,
+        "oneShot": false,
+        "startMode": "IMMEDIATE",
+        "stopMode": "IMMEDIATE",
+        "fadeInMs": 0,
+        "fadeOutMs": 0,
+        "speed": 1,
+        "keepPitch": true,
+        "tempoSyncEnabled": true,
+        "tempoSyncSpeed": "NORMAL",
+        "tempoSyncMode": "PITCH",
+        "recordBpm": null,
+        "autoRec": {
+          "enabled": false,
+          "threshold": 0.01,
+          "debounceMs": 20
+        },
+        "dubMode": "OVERDUB"
+      },
+      "metadataWords": [
+        4,
+        48000,
+        48000,
+        54,
+        131072,
+        255872,
+        0,
+        0,
+        0,
+        2,
+        4,
+        1,
+        1,
+        1,
+        -1,
+        0,
+        0,
+        0,
+        65536,
+        0,
+        0,
+        0,
+        0,
+        0,
+        327,
+        960,
+        0,
+        0,
+        0,
+        0,
+        65536,
+        0
+      ],
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 301184,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          48000,
+          48000,
+          6272,
+          6144,
+          6784
+        ],
+        "recordingFrames": [
+          48000,
+          48000,
+          6272,
+          6144,
+          6784
+        ],
+        "trackStates": [
+          4,
+          6,
+          4,
+          4,
+          4
+        ],
+        "trackPositions": [
+          0.06133333221077919,
+          0,
+          0.08163265138864517,
+          0.1041666641831398,
+          0.030193401500582695
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 49,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 5821440,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "storageSegments": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "transportState": null
+    },
+    {
+      "name": "imported track 3 publishes STOPPED state through runtime and UI views",
+      "passed": true,
+      "visibleState": "STOPPED",
+      "runtimeState": 6,
+      "metadataState": 6,
+      "loopFrames": 48000
+    },
+    {
+      "name": "track 3 keep-pitch PLAY command is accepted",
+      "passed": true,
+      "state": "PLAYING",
+      "lastActionError": null,
+      "modelOneShot": "OFF",
+      "runtimeSettings": {
+        "reverse": false,
+        "oneShot": false,
+        "startMode": "IMMEDIATE",
+        "stopMode": "IMMEDIATE",
+        "fadeInMs": 0,
+        "fadeOutMs": 0,
+        "speed": 1,
+        "keepPitch": true,
+        "tempoSyncEnabled": true,
+        "tempoSyncSpeed": "NORMAL",
+        "tempoSyncMode": "PITCH",
+        "recordBpm": null,
+        "autoRec": {
+          "enabled": false,
+          "threshold": 0.01,
+          "debounceMs": 20
+        },
+        "dubMode": "OVERDUB"
+      },
+      "metadataWords": [
+        4,
+        48000,
+        48000,
+        256,
+        131072,
+        263040,
+        0,
+        0,
+        0,
+        2,
+        4,
+        1,
+        1,
+        1,
+        -1,
+        0,
+        0,
+        0,
+        65536,
+        0,
+        0,
+        0,
+        0,
+        0,
+        327,
+        960,
+        0,
+        0,
+        0,
+        0,
+        65536,
+        0
+      ],
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 304256,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          48000,
+          48000,
+          48000,
+          6144,
+          6784
+        ],
+        "recordingFrames": [
+          48000,
+          48000,
+          48000,
+          6144,
+          6784
+        ],
+        "trackStates": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trackPositions": [
+          0.12533333897590637,
+          0.06400000303983688,
+          0.005333333276212215,
+          0.6041666865348816,
+          0.48302358388900757
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 53,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 5821440,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "storageSegments": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "transportState": null
+    },
+    {
+      "name": "imported track 4 publishes STOPPED state through runtime and UI views",
+      "passed": true,
+      "visibleState": "STOPPED",
+      "runtimeState": 6,
+      "metadataState": 6,
+      "loopFrames": 48000
+    },
+    {
+      "name": "track 4 keep-pitch PLAY command is accepted",
+      "passed": true,
+      "state": "STOPPED",
+      "lastActionError": null,
+      "modelOneShot": "OFF",
+      "runtimeSettings": {
+        "reverse": false,
+        "oneShot": false,
+        "startMode": "IMMEDIATE",
+        "stopMode": "IMMEDIATE",
+        "fadeInMs": 0,
+        "fadeOutMs": 0,
+        "speed": 1,
+        "keepPitch": true,
+        "tempoSyncEnabled": true,
+        "tempoSyncSpeed": "NORMAL",
+        "tempoSyncMode": "PITCH",
+        "recordBpm": null,
+        "autoRec": {
+          "enabled": false,
+          "threshold": 0.01,
+          "debounceMs": 20
+        },
+        "dubMode": "OVERDUB"
+      },
+      "metadataWords": [
+        4,
+        48000,
+        48000,
+        62,
+        131072,
+        269824,
+        0,
+        0,
+        0,
+        2,
+        4,
+        1,
+        1,
+        1,
+        -1,
+        0,
+        0,
+        0,
+        65536,
+        0,
+        0,
+        0,
+        0,
+        0,
+        327,
+        960,
+        0,
+        0,
+        0,
+        0,
+        65536,
+        0
+      ],
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 306944,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          48000,
+          48000,
+          48000,
+          48000,
+          6784
+        ],
+        "recordingFrames": [
+          48000,
+          48000,
+          48000,
+          48000,
+          6784
+        ],
+        "trackStates": [
+          4,
+          4,
+          4,
+          6,
+          4
+        ],
+        "trackPositions": [
+          0.18133333325386047,
+          0.11999999731779099,
+          0.06133333221077919,
+          0,
+          0.8792499899864197
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 57,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 5821440,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "storageSegments": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "transportState": null
+    },
+    {
+      "name": "imported track 5 publishes STOPPED state through runtime and UI views",
+      "passed": true,
+      "visibleState": "STOPPED",
+      "runtimeState": 6,
+      "metadataState": 6,
+      "loopFrames": 48000
+    },
+    {
+      "name": "track 5 keep-pitch PLAY command is accepted",
+      "passed": true,
+      "state": "PLAYING",
+      "lastActionError": null,
+      "modelOneShot": "OFF",
+      "runtimeSettings": {
+        "reverse": false,
+        "oneShot": false,
+        "startMode": "IMMEDIATE",
+        "stopMode": "IMMEDIATE",
+        "fadeInMs": 0,
+        "fadeOutMs": 0,
+        "speed": 1,
+        "keepPitch": false,
+        "tempoSyncEnabled": true,
+        "tempoSyncSpeed": "NORMAL",
+        "tempoSyncMode": "PITCH",
+        "recordBpm": null,
+        "autoRec": {
+          "enabled": false,
+          "threshold": 0.01,
+          "debounceMs": 20
+        },
+        "dubMode": "OVERDUB"
+      },
+      "metadataWords": [
+        4,
+        48000,
+        48000,
+        128,
+        131072,
+        276992,
+        0,
+        0,
+        0,
+        2,
+        4,
+        1,
+        1,
+        1,
+        -1,
+        0,
+        0,
+        0,
+        65536,
+        0,
+        0,
+        0,
+        0,
+        0,
+        328,
+        960,
+        0,
+        0,
+        0,
+        0,
+        65536,
+        1
+      ],
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 309376,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          48000,
+          48000,
+          48000,
+          48000,
+          48000
+        ],
+        "recordingFrames": [
+          48000,
+          48000,
+          48000,
+          48000,
+          48000
+        ],
+        "trackStates": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trackPositions": [
+          0.23199999332427979,
+          0.1706666648387909,
+          0.1120000034570694,
+          0.05066666752099991,
+          0.0026666666381061077
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 61,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 5821440,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "storageSegments": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      },
+      "transportState": null
+    },
+    {
+      "name": "five live Worklet tracks preserve their independent LR tones at 1.3x keep-pitch",
+      "passed": true,
+      "shortLoopKeepPitch": {
+        "frames": 6784,
+        "liveRms": 0.008343358910536029,
+        "liveMaxStep": 0.0010991930030286312,
+        "allFinite": true,
+        "sourcePcmUnchanged": true
+      },
+      "liveNormalSpeedMeasurements": [
+        {
+          "track": 1,
+          "expected": {
+            "left": 277,
+            "right": 733
+          },
+          "leftExpected": 0.024989402730676583,
+          "rightExpected": 0.020001769151683862,
+          "leftLeak": 0.00009265162033380077,
+          "rightLeak": 0.00008368998031454511,
+          "leftLeakHz": 331,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.024989402730676583,
+            0.00009265162033380077,
+            0.000022011529247494022,
+            0.00002808840119193796,
+            0.000028740695240163674,
+            0.000011962741635680263,
+            0.000015375518802391578,
+            0.000004228603338791199,
+            0.000008437566752277117,
+            0.000004580377245367172
+          ],
+          "rightMagnitudes": [
+            0.000022158051441184744,
+            0.000027175468545229562,
+            0.0000311562910178781,
+            0.0000058537643103256055,
+            0.00005627151641728644,
+            0.020001769151683862,
+            0.00008368998031454511,
+            0.00003152661360667509,
+            0.00003532540729802087,
+            0.000006763552084715515
+          ],
+          "leftEstimatedHz": 277.0000000078012,
+          "rightEstimatedHz": 732.9999981763019,
+          "leftDominance": 269.71360717325797,
+          "rightDominance": 238.99837324023846
+        },
+        {
+          "track": 2,
+          "expected": {
+            "left": 331,
+            "right": 811
+          },
+          "leftExpected": 0.024996704789972336,
+          "rightExpected": 0.02000053342203579,
+          "leftLeak": 0.00008652196587451543,
+          "rightLeak": 0.00009690611408408533,
+          "leftLeakHz": 277,
+          "rightLeakHz": 907,
+          "leftMagnitudes": [
+            0.00008652196587451543,
+            0.024996704789972336,
+            0.00003078844037914622,
+            0.00007585860884897512,
+            0.000039882153317270773,
+            0.000036765714011432896,
+            0.000028860855931717042,
+            0.000016145020156938214,
+            0.0000018815642146518604,
+            0.000019610149097670164
+          ],
+          "rightMagnitudes": [
+            0.0000176797578987325,
+            0.000017288149215237223,
+            0.000022654268284379528,
+            0.000022229263661189564,
+            0.000011670266346165472,
+            0.00008409423594695148,
+            0.02000053342203579,
+            0.00009690611408408533,
+            0.00004851522611863826,
+            0.00003240329916384966
+          ],
+          "leftEstimatedHz": 331.0000004870779,
+          "rightEstimatedHz": 810.9999994073142,
+          "leftDominance": 288.9058811519096,
+          "rightDominance": 206.39083107471782
+        },
+        {
+          "track": 3,
+          "expected": {
+            "left": 419,
+            "right": 907
+          },
+          "leftExpected": 0.0250001910627891,
+          "rightExpected": 0.02000464234047123,
+          "leftLeak": 0.00012376481163225075,
+          "rightLeak": 0.00009362615853379426,
+          "leftLeakHz": 503,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.00001680599075202879,
+            0.00003078843933959061,
+            0.0250001910627891,
+            0.00012376481163225075,
+            0.00005862542052429312,
+            0.000035448286295732784,
+            0.000029696133514757134,
+            0.000011939050874308037,
+            0.00000468254684854595,
+            0.0000157428581243028
+          ],
+          "rightMagnitudes": [
+            0.000009713951891323797,
+            0.000013403244851302531,
+            0.000012629185179463976,
+            0.000007223811362185674,
+            0.000026975240092796947,
+            0.000028097350162575597,
+            0.00009362615853379426,
+            0.02000464234047123,
+            0.00008058199274952471,
+            0.000028912992929513008
+          ],
+          "leftEstimatedHz": 419.00000047595154,
+          "rightEstimatedHz": 907.0000063695726,
+          "leftDominance": 201.99756888148104,
+          "rightDominance": 213.66509802119646
+        },
+        {
+          "track": 4,
+          "expected": {
+            "left": 503,
+            "right": 977
+          },
+          "leftExpected": 0.024992172087678823,
+          "rightExpected": 0.020000309151244886,
+          "leftLeak": 0.00012594115589736757,
+          "rightLeak": 0.00009696529194700308,
+          "leftLeakHz": 587,
+          "rightLeakHz": 1061,
+          "leftMagnitudes": [
+            0.000025213189684207178,
+            0.00005331037294622854,
+            0.00011026511019008007,
+            0.024992172087678823,
+            0.00012594115589736757,
+            0.000004002713788852277,
+            0.00002836522815357146,
+            0.00002526182909756045,
+            0.00003070923204624927,
+            0.000010839405572414996
+          ],
+          "rightMagnitudes": [
+            0.000006034115994021057,
+            0.000001641138999868667,
+            0.0000037660519597002647,
+            0.000021345704452010325,
+            0.000018455404585462028,
+            0.00003904704617012757,
+            0.00004938185128185136,
+            0.00008342442857653851,
+            0.020000309151244886,
+            0.00009696529194700308
+          ],
+          "leftEstimatedHz": 503.0000002474446,
+          "rightEstimatedHz": 977.0000150952129,
+          "leftDominance": 198.4432484329867,
+          "rightDominance": 206.2625579694657
+        },
+        {
+          "track": 5,
+          "expected": {
+            "left": 587,
+            "right": 1061
+          },
+          "leftExpected": 0.025004923597839127,
+          "rightExpected": 0.019995924604844735,
+          "leftLeak": 0.00012423974729873684,
+          "rightLeak": 0.00009449065107793714,
+          "leftLeakHz": 503,
+          "rightLeakHz": 977,
+          "leftMagnitudes": [
+            0.00003171245819847765,
+            0.00002718283671118225,
+            0.00005411956289976065,
+            0.00012423974729873684,
+            0.025004923597839127,
+            0.00006723642772033774,
+            0.000011602352220421234,
+            0.000037257275799790435,
+            0.000024150612466011935,
+            0.00002336836400935908
+          ],
+          "rightMagnitudes": [
+            0.000001057465384340804,
+            0.000006333017766563002,
+            0.000005450925999213046,
+            0.000008666157790005865,
+            0.000018384474425675773,
+            0.000011687791381719945,
+            0.00003305063809034223,
+            0.00001946174301782237,
+            0.00009449065107793714,
+            0.019995924604844735
+          ],
+          "leftEstimatedHz": 587.0000000906102,
+          "rightEstimatedHz": 1060.99998896538,
+          "leftDominance": 201.2634776028183,
+          "rightDominance": 211.61802121938848
+        }
+      ],
+      "liveKeepPitchMeasurements": [
+        {
+          "track": 1,
+          "expected": {
+            "left": 277,
+            "right": 733
+          },
+          "leftExpected": 0.025004721652540612,
+          "rightExpected": 0.019988686329712502,
+          "leftLeak": 0.00008732175440330748,
+          "rightLeak": 0.00008357373245521415,
+          "leftLeakHz": 331,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.025004721652540612,
+            0.00008732175440330748,
+            0.000012768483901682676,
+            0.00005079084293243407,
+            0.00003915654938915815,
+            0.000029081518924515705,
+            0.000027191851705000334,
+            0.000010917298037840474,
+            0.000005813510400946438,
+            0.000015750289044543437
+          ],
+          "rightMagnitudes": [
+            0.000024846688971604478,
+            0.000029979044814256705,
+            0.000033872261882142325,
+            0.000007368795215505139,
+            0.00006830244789616525,
+            0.019988686329712502,
+            0.00008357373245521415,
+            0.000030014308642144775,
+            0.00003296526080508467,
+            0.000004604467807293513
+          ],
+          "leftEstimatedHz": 277.00015557598584,
+          "rightEstimatedHz": 733.0009185847762,
+          "leftDominance": 286.3515721071393,
+          "rightDominance": 239.174268546928
+        },
+        {
+          "track": 2,
+          "expected": {
+            "left": 331,
+            "right": 811
+          },
+          "leftExpected": 0.02499692231811355,
+          "rightExpected": 0.019984687573604745,
+          "leftLeak": 0.0000902922482852081,
+          "rightLeak": 0.0000979795082665005,
+          "leftLeakHz": 277,
+          "rightLeakHz": 907,
+          "leftMagnitudes": [
+            0.0000902922482852081,
+            0.02499692231811355,
+            0.00003071394724997446,
+            0.00006359528455099491,
+            0.000030499054091634225,
+            0.00002792206981172457,
+            0.00002066817591168086,
+            0.000012469255523625227,
+            0.000002057236826914036,
+            0.000014189754847339543
+          ],
+          "rightMagnitudes": [
+            0.000014013660469392745,
+            0.000012687157420141247,
+            0.00001895512621861336,
+            0.000024441717011532706,
+            0.000009031072102081035,
+            0.00008467977693136021,
+            0.019984687573604745,
+            0.0000979795082665005,
+            0.00004997611540961405,
+            0.00003310009855162421
+          ],
+          "leftEstimatedHz": 330.99974293978744,
+          "rightEstimatedHz": 811.0001118959188,
+          "leftDominance": 276.8446106154675,
+          "rightDominance": 203.96803298141856
+        },
+        {
+          "track": 3,
+          "expected": {
+            "left": 419,
+            "right": 907
+          },
+          "leftExpected": 0.02499386985665736,
+          "rightExpected": 0.01997288616827354,
+          "leftLeak": 0.0001239243861627362,
+          "rightLeak": 0.00009942374874936789,
+          "leftLeakHz": 503,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.00001666213233669581,
+            0.0000307040481744216,
+            0.02499386985665736,
+            0.0001239243861627362,
+            0.00005890768298416356,
+            0.000035182097515605165,
+            0.000029691878169011438,
+            0.000011947878288781873,
+            0.00000469944793740602,
+            0.000015783825751206146
+          ],
+          "rightMagnitudes": [
+            0.0000028797243530656026,
+            0.000006417334014185271,
+            0.00000425521392182411,
+            0.00001997444047318413,
+            0.000029910239472809204,
+            0.00003968779997000102,
+            0.00009942374874936789,
+            0.01997288616827354,
+            0.0000846264827710598,
+            0.000018376956632590754
+          ],
+          "leftEstimatedHz": 419.00067932743104,
+          "rightEstimatedHz": 906.9989956444509,
+          "leftDominance": 201.6864527683492,
+          "rightDominance": 200.88647249282604
+        },
+        {
+          "track": 4,
+          "expected": {
+            "left": 503,
+            "right": 977
+          },
+          "leftExpected": 0.02499897796120137,
+          "rightExpected": 0.019973100933828147,
+          "leftLeak": 0.0001345435388432,
+          "rightLeak": 0.00009532856473092095,
+          "leftLeakHz": 419,
+          "rightLeakHz": 1061,
+          "leftMagnitudes": [
+            0.000052583373662942576,
+            0.00007998817894044083,
+            0.0001345435388432,
+            0.02499897796120137,
+            0.00011903635826898299,
+            0.000007364017717776022,
+            0.000024181555819629377,
+            0.000010914539372940023,
+            0.00001674234677680678,
+            0.0000014627440044090832
+          ],
+          "rightMagnitudes": [
+            0.000006623828162788638,
+            0.0000017218218000330312,
+            0.0000037549578900316316,
+            0.000023442604850505456,
+            0.00002030088246081818,
+            0.00004054904604222991,
+            0.000052255186923876734,
+            0.00008451929189009338,
+            0.019973100933828147,
+            0.00009532856473092095
+          ],
+          "leftEstimatedHz": 502.9990576896619,
+          "rightEstimatedHz": 976.999789393148,
+          "leftDominance": 185.80586014119734,
+          "rightDominance": 209.51853193431785
+        },
+        {
+          "track": 5,
+          "expected": {
+            "left": 587,
+            "right": 1061
+          },
+          "leftExpected": 0.024991684226357905,
+          "rightExpected": 0.019967993424546564,
+          "leftLeak": 0.00012239607815896564,
+          "rightLeak": 0.0000972274885686219,
+          "leftLeakHz": 503,
+          "rightLeakHz": 977,
+          "leftMagnitudes": [
+            0.000041856298506793936,
+            0.00002995189498465649,
+            0.00005371112950213087,
+            0.00012239607815896564,
+            0.024991684226357905,
+            0.0000687922155300856,
+            0.000011196909902841716,
+            0.000036382763955102004,
+            0.000022689615208857652,
+            0.00002362291957946986
+          ],
+          "rightMagnitudes": [
+            0.00000984106577236002,
+            0.000012742026557259522,
+            0.000012378688269840022,
+            0.000006194249421188423,
+            0.000019040976390019943,
+            0.000008454984722750028,
+            0.00003258228043899107,
+            0.00002680411056495574,
+            0.0000972274885686219,
+            0.019967993424546564
+          ],
+          "leftEstimatedHz": 587.0022684992791,
+          "rightEstimatedHz": 1061.0013217901999,
+          "leftDominance": 204.18696907836534,
+          "rightDominance": 205.37395050015525
+        }
+      ],
+      "runtimeSettings": [
+        {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1.3,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1.3,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1.3,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1.3,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1.3,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        }
+      ],
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 403712,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          48000,
+          48000,
+          48000,
+          48000,
+          48000
+        ],
+        "recordingFrames": [
+          48000,
+          48000,
+          48000,
+          48000,
+          48000
+        ],
+        "trackStates": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trackPositions": [
+          0.5061364769935608,
+          0.4448031485080719,
+          0.3861364722251892,
+          0.3248031437397003,
+          0.2768031358718872
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 161,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 5821440,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "storageSegments": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ]
+      }
+    },
+    {
+      "name": "unavailable Worklet deadline telemetry remains NA instead of being treated as zero XRUNs",
+      "passed": true,
+      "deadlineMetricAvailable": false,
+      "processDeadlineMisses": null,
+      "xrunInterpretation": "not available"
+    },
+    {
+      "name": "real BrowserAudioEngine Memory A→B→A restores native stereo PCM, clock, mix, FX send, routing, and assignments",
+      "passed": true,
+      "memoryAInfo": {
+        "slot": 1,
+        "name": "software memory A",
+        "updatedAt": "2026-10-09T05:59:33.781Z",
+        "trackCount": 5,
+        "assetCount": 5
+      },
+      "memoryBInfo": {
+        "slot": 2,
+        "name": "software memory B",
+        "updatedAt": "2026-10-09T05:59:33.974Z",
+        "trackCount": 5,
+        "assetCount": 1
+      },
+      "pcmExact": true,
+      "memoryAHashes": [
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "d0880b38"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "b6225581"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "c1173d4f"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "b003b084"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "624b6ea3"
+        }
+      ],
+      "memoryARestoredHashes": [
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "d0880b38"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "b6225581"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "c1173d4f"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "b003b084"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "624b6ea3"
+        }
+      ],
+      "bpm": 93,
+      "masterTrackId": 1,
+      "runtimeSettings": {
+        "reverse": true,
+        "oneShot": false,
+        "startMode": "IMMEDIATE",
+        "stopMode": "IMMEDIATE",
+        "fadeInMs": 0,
+        "fadeOutMs": 0,
+        "speed": 1.25,
+        "keepPitch": false,
+        "tempoSyncEnabled": true,
+        "tempoSyncSpeed": "NORMAL",
+        "tempoSyncMode": "PITCH",
+        "recordBpm": null,
+        "autoRec": {
+          "enabled": false,
+          "threshold": 0.01,
+          "debounceMs": 20
+        },
+        "dubMode": "OVERDUB"
+      },
+      "mixer": {
+        "masterLevel": 0.8,
+        "tracks": [
+          {
+            "trackId": 1,
+            "level": 0.7,
+            "pan": 0.2,
+            "muted": false,
+            "solo": false
+          },
+          {
+            "trackId": 2,
+            "level": 1,
+            "pan": 0,
+            "muted": false,
+            "solo": false
+          },
+          {
+            "trackId": 3,
+            "level": 1,
+            "pan": 0,
+            "muted": false,
+            "solo": false
+          },
+          {
+            "trackId": 4,
+            "level": 1,
+            "pan": 0,
+            "muted": false,
+            "solo": false
+          },
+          {
+            "trackId": 5,
+            "level": 1,
+            "pan": 0,
+            "muted": false,
+            "solo": false
+          }
+        ]
+      },
+      "trackFxSend": "ON",
+      "activeBankId": "bank-1",
+      "bankFx": {
+        "type": "FILTER",
+        "enabled": true,
+        "params": {
+          "frequency": 0.82,
+          "resonance": 0.22
+        }
+      },
+      "restoredMainGain": 0.35,
+      "controlAssignment": {
+        "source": "cc",
+        "channel": 1,
+        "number": 21,
+        "trigger": "value",
+        "command": "set-track-pan",
+        "trackId": 1
+      }
+    },
+    {
+      "name": "fractional external clock updates Transport with Worklet scheduled phase epoch",
+      "passed": true,
+      "requestedBpm": 93.4567,
+      "appliedBpm": 93.457,
+      "beatOrdinal": 25,
+      "syncTargetFrame": 445696,
+      "syncExecutedFrame": 445696,
+      "transportClockOrigin": -324711.78111858934,
+      "expectedClockOrigin": -324711.78111858934,
+      "currentFrameBeforeSync": 445824,
+      "originMustBeNegativeAndFractional": true
+    },
+    {
+      "name": "selecting another loaded master preserves the negative external beat epoch",
+      "passed": true,
+      "masterTrackId": 2,
+      "transportClockOrigin": -324711.78111858934,
+      "expectedClockOrigin": -324711.78111858934,
+      "bpm": 93.457,
+      "masterChangeEpoch": {
+        "origin": -324711.78111858934,
+        "bpm": 93.457,
+        "startClock": false,
+        "ack": {
+          "sequence": 516,
+          "opcode": 33,
+          "track": -1,
+          "intentFrame": 445952,
+          "executedFrame": 445952,
+          "targetFrame": 445952,
+          "intentToScheduledFrames": 0,
+          "scheduledToActualFrames": 0,
+          "intentToScheduledMs": 0,
+          "scheduledToActualMs": 0,
+          "status": 0,
+          "loopFrames": 0,
+          "recordingFrames": 0
+        }
+      }
+    },
+    {
+      "name": "stop/start reanchors every observed Worklet beat tick to the same negative fractional epoch",
+      "passed": true,
+      "externalClockOrigin": -324711.78111858934,
+      "restartedEpoch": {
+        "origin": -324711.78111858934,
+        "bpm": 93.457,
+        "startClock": true,
+        "ack": {
+          "sequence": 518,
+          "opcode": 33,
+          "track": -1,
+          "intentFrame": 446080,
+          "executedFrame": 446208,
+          "targetFrame": 446080,
+          "intentToScheduledFrames": 0,
+          "scheduledToActualFrames": 128,
+          "intentToScheduledMs": 0,
+          "scheduledToActualMs": 2.6666666666666665,
+          "status": 1,
+          "loopFrames": 0,
+          "recordingFrames": 0
+        }
+      },
+      "clockStateAcks": [
+        {
+          "running": false,
+          "ack": {
+            "sequence": 517,
+            "opcode": 12,
+            "track": -1,
+            "intentFrame": 446080,
+            "executedFrame": 446080,
+            "targetFrame": 446080,
+            "intentToScheduledFrames": 0,
+            "scheduledToActualFrames": 0,
+            "intentToScheduledMs": 0,
+            "scheduledToActualMs": 0,
+            "status": 0,
+            "loopFrames": 0,
+            "recordingFrames": 0
+          }
+        },
+        {
+          "running": false,
+          "ack": {
+            "sequence": 517,
+            "opcode": 12,
+            "track": -1,
+            "intentFrame": 446080,
+            "executedFrame": 446080,
+            "targetFrame": 446080,
+            "intentToScheduledFrames": 0,
+            "scheduledToActualFrames": 0,
+            "intentToScheduledMs": 0,
+            "scheduledToActualMs": 0,
+            "status": 0,
+            "loopFrames": 0,
+            "recordingFrames": 0
+          }
+        }
+      ],
+      "firstBeatEvents": [
+        {
+          "beatOrdinal": 26,
+          "frame": 476512
+        }
+      ],
+      "matchingPhaseTick": {
+        "beatOrdinal": 26,
+        "frame": 476512
+      },
+      "offPhaseTicks": []
+    },
+    {
+      "name": "fractional MIDI clock quantizes a real REC target to the next measure",
+      "passed": true,
+      "externalClockOrigin": -324711.78111858934,
+      "externalBeatFrames": 30816.311244743574,
+      "measureFrames": 123265.2449789743,
+      "measureOrdinal": 7.000000537586805,
+      "nearestMeasureOrdinal": 7,
+      "measureGridErrorFrames": 0.066265769302845,
+      "syncTargetFrame": 445696,
+      "recordTargetFrame": 538145,
+      "recordExecutedFrame": 538145,
+      "transportBpm": 93.457
+    },
+    {
+      "name": "enabled INPUT compressor changes captured PCM on both stereo channels",
+      "passed": true,
+      "dryInputFxRms": [
+        0.013299877346329574,
+        0.010639900564286238
+      ],
+      "wetInputFxRms": [
+        0.0007773004540551607,
+        0.0006283149947660045
+      ],
+      "gainRatios": [
+        0.05844418213899362,
+        0.05905271303709351
+      ]
+    },
+    {
+      "name": "capture and live monitor use the same single-pass stereo INPUT FX signal",
+      "passed": true,
+      "wetRecordedTailRms": [
+        0.0008183182746843634,
+        0.0006508359675926929
+      ],
+      "wetInputMonitorRms": [
+        0.0008457424318594577,
+        0.000676648800828996
+      ],
+      "ratios": [
+        0.9675738662954403,
+        0.9618519485962608
+      ]
+    },
+    {
+      "name": "four-channel dry routing keeps stereo pairs isolated without folding channels",
+      "passed": true,
+      "sourceChannels": 4,
+      "quadDryMagnitudes": {
+        "left600": 0.029878366343682745,
+        "left800": 0.0299056696189608,
+        "left700": 0.00021984334122203,
+        "left900": 0.00018693953682229338,
+        "right700": 0.02990567861677556,
+        "right900": 0.029925229247626438,
+        "right600": 0.0002146991292334382,
+        "right800": 0.00019451887943832611
+      },
+      "dualToneSpectralLeakageDiagnosticOnly": {
+        "left600FromRight": 0.007357943827759244,
+        "left800FromRight": 0.006250973116608295,
+        "right700FromLeft": 0.00717920940650392,
+        "right900FromLeft": 0.00650016338483872
+      }
+    },
+    {
+      "name": "four-channel dry routing isolates each actual source channel from the opposite output side",
+      "passed": true,
+      "isolatedDry0": {
+        "left600": 0.02999092776614983,
+        "left800": 0.00025160860371785176,
+        "left700": 0.00037537247688200156,
+        "left900": 0.0000948191953734202,
+        "right700": 0,
+        "right900": 0,
+        "right600": 0,
+        "right800": 0
+      },
+      "isolatedDry1": {
+        "left600": 0,
+        "left800": 0,
+        "left700": 0,
+        "left900": 0,
+        "right700": 0.029992836695212237,
+        "right900": 0.00009632372353619288,
+        "right600": 0.00012004410226878017,
+        "right800": 0.00010486397455632391
+      },
+      "isolatedDry2": {
+        "left600": 0.0001876779476771717,
+        "left800": 0.029969263719612456,
+        "left700": 0.0004935861668019688,
+        "left900": 0.0004757071373121914,
+        "right700": 0,
+        "right900": 0,
+        "right600": 0,
+        "right800": 0
+      },
+      "isolatedDry3": {
+        "left600": 0,
+        "left800": 0,
+        "left700": 0,
+        "left900": 0,
+        "right700": 0.0002057314017075788,
+        "right900": 0.030020485529823,
+        "right600": 0.0001669578004483046,
+        "right800": 0.0002316647486204903
+      },
+      "dryRouteRatios": {
+        "channel0LeftToRight": 0,
+        "channel1RightToLeft": 0,
+        "channel2LeftToRight": 0,
+        "channel3RightToLeft": 0
+      },
+      "dualToneSpectralLeakageDiagnosticOnly": {
+        "left600FromRight": 0.007357943827759244,
+        "left800FromRight": 0.006250973116608295,
+        "right700FromLeft": 0.00717920940650392,
+        "right900FromLeft": 0.00650016338483872
+      }
+    },
+    {
+      "name": "four-channel source retains both left/right pairs with INPUT FX enabled",
+      "passed": true,
+      "sourceChannels": 4,
+      "quadWetMagnitudes": {
+        "left600": 0.0012167981428191606,
+        "left800": 0.0012159225857295017,
+        "left700": 0.000017556575220040385,
+        "left900": 0.000018875199845730484,
+        "right700": 0.0012157886122293236,
+        "right900": 0.0012155188078680809,
+        "right600": 0.000015479019071938197,
+        "right800": 0.000017118269093818782
+      }
+    },
+    {
+      "name": "four-channel INPUT FX keeps isolated first-pair source channels on their assigned stereo sides",
+      "passed": true,
+      "sourcePair": [
+        0,
+        1
+      ],
+      "isolatedLeft": {
+        "left600": 0.001357818133522716,
+        "left800": 0.00005752152242090995,
+        "left700": 0.0000654748197489693,
+        "left900": 0.000041283723329020816,
+        "right700": 0,
+        "right900": 0,
+        "right600": 0,
+        "right800": 0
+      },
+      "isolatedRight": {
+        "left600": 0,
+        "left800": 0,
+        "left700": 0,
+        "left900": 0,
+        "right700": 0.0012361245811797117,
+        "right900": 0.000005336508951160488,
+        "right600": 0.000022092842680625076,
+        "right800": 0.00002114150112999799
+      },
+      "firstPairRouteRatios": {
+        "leftToRight": 0,
+        "rightToLeft": 0
+      }
+    },
+    {
+      "name": "four-channel INPUT FX keeps isolated second-pair source channels on their assigned stereo sides",
+      "passed": true,
+      "sourcePair": [
+        2,
+        3
+      ],
+      "isolatedLeft": {
+        "left600": 0.000009879361883471048,
+        "left800": 0.0012465978750167896,
+        "left700": 0.000020978473828394057,
+        "left900": 0.000021552317695384167,
+        "right700": 0,
+        "right900": 0,
+        "right600": 0,
+        "right800": 0
+      },
+      "isolatedRight": {
+        "left600": 0,
+        "left800": 0,
+        "left700": 0,
+        "left900": 0,
+        "right700": 0.000050456616693073465,
+        "right900": 0.0013545558375910108,
+        "right600": 0.00003266111072094687,
+        "right800": 0.00006219707342122445
+      },
+      "secondPairRouteRatios": {
+        "leftToRight": 0,
+        "rightToLeft": 0
+      }
+    },
+    {
+      "name": "replacing a source while INPUT FX is enabled rebuilds its owned source-to-splitter path",
+      "passed": true,
+      "replacementSourceChannels": 2,
+      "replacementSourceRms": [
+        0.0009695803339098993,
+        0.0009695803339098993
+      ],
+      "nodeDiagnostics": {
+        "sourceSplitters": 2,
+        "channelPaths": 4,
+        "routeSends": 32,
+        "inputFxPairs": 2,
+        "routeRebuildCount": 29
+      }
+    },
+    {
+      "name": "centered stereo playback preserves left/right frequency separation through the master output",
+      "passed": true,
+      "playbackTones": {
+        "left277": 0.012542527247234701,
+        "left733": 0.00007130770154241078,
+        "right277": 0.000060479722779487406,
+        "right733": 0.01001490756417961
+      },
+      "state": "PLAYING",
+      "loopFrames": 48000,
+      "metrics": {
+        "sampleRate": 48000,
+        "quantumFrames": 128,
+        "renderedFrame": 681600,
+        "underruns": 0,
+        "commandQueueDepth": 0,
+        "loopFrames": [
+          48000,
+          0,
+          0,
+          0,
+          0
+        ],
+        "recordingFrames": [
+          48000,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackStates": [
+          4,
+          0,
+          0,
+          0,
+          0
+        ],
+        "trackPositions": [
+          0.109333336353302,
+          0,
+          0,
+          0,
+          0
+        ],
+        "outputMonitorEnabled": false,
+        "backendMode": "sab-worklet",
+        "lastAckSequence": 731,
+        "commandOverruns": 0,
+        "processDeadlineMisses": null,
+        "deadlineMetricAvailable": false,
+        "inputDropoutBlocks": 0,
+        "trackCapacityOverruns": 0,
+        "maxTrackFrames": 67108864,
+        "trackCapacityFrames": [
+          131072,
+          16384,
+          16384,
+          16384,
+          16384
+        ],
+        "inputDropoutFrames": 0,
+        "storageAllocatedBytes": 1689088,
+        "storageGrowthRequests": 0,
+        "storageGrowthFailures": 0,
+        "historyDepth": [
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "storageSegments": [
+          8,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "name": "overdub updates both planar channels inside persistent loop storage",
+      "passed": true,
+      "changedSamples": 3997,
+      "changedRightSamples": 3997,
+      "loopFrames": 48000
+    },
+    {
+      "name": "clear releases loop history while retaining a bounded reusable storage reserve",
+      "passed": true,
+      "loopFrames": 0,
+      "capacityFrames": 16384
+    },
+    {
+      "name": "channel-aware routing preserves opposite polarity in the two recorded channels",
+      "passed": true,
+      "frames": 6144,
+      "antiCorrelation": -1
+    },
+    {
+      "name": "unverified browser route calibration is not reported as physical round-trip",
+      "passed": true,
+      "roundTripLatencyMs": 8,
+      "physicalRoundTripMs": null,
+      "note": "Measured by scheduled output tone and AudioWorklet capture for the active route; the signal path is not independently verified as analog hardware."
+    },
+    {
+      "name": "input device change invalidates device-scoped latency calibration",
+      "passed": true,
+      "calibratedBeforeSwitchMs": 8,
+      "calibratedAfterSwitchMs": null,
+      "selectedInputDeviceId": "smoke-mono-input"
+    },
+    {
+      "name": "mono capture remains a separate supported path and duplicates into both loop channels",
+      "passed": true,
+      "numberOfChannels": 2,
+      "frames": 6272,
+      "monoChannelMaxDifference": 0,
+      "inputChannelCount": 2
+    },
+    {
+      "name": "dynamic Filter UI endpoint 100 maps to the normalized 20 kHz endpoint",
+      "passed": true,
+      "filterHighCutoffRms": 0.008769851315033954,
+      "filterLowCutoffRms": 0.0007371608043947785,
+      "ratio": 11.896795465453634
+    }
+  ],
+  "browserConsoleErrors": [
+    "console: Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep",
+    "console: Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep"
+  ],
+  "note": "Synthetic oscillator input and software taps only; no physical input/output or hardware latency certification.",
+  "chromiumVersion": "149.0.7827.55",
+  "executablePath": "C:\\Users\\user1000\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+  "crossOriginIsolated": true,
+  "sharedArrayBufferAvailable": true,
+  "engineStatus": {
+    "ready": true,
+    "lastError": "",
+    "message": "BROWSER AUDIO READY"
+  },
+  "softwareSmoke": {
+    "assertions": [
+      {
+        "name": "all audio output is redirected away from physical devices",
+        "passed": true,
+        "contexts": [
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          },
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          }
+        ]
+      },
+      {
+        "name": "browser realtime engine is initialized",
+        "passed": true
+      },
+      {
+        "name": "48 kHz / 128-frame AudioWorklet backend",
+        "passed": true,
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 83072,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackStates": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackPositions": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 4,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            131072,
+            131072,
+            131072,
+            131072
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 5821440,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "storageSegments": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        }
+      },
+      {
+        "name": "all five tracks have preallocated loop storage",
+        "passed": true,
+        "capacities": [
+          131072,
+          131072,
+          131072,
+          131072,
+          131072
+        ]
+      },
+      {
+        "name": "browser loop recording/playback channel limit is explicit",
+        "passed": true,
+        "loopRecordingChannelCount": 2,
+        "loopPlaybackOutputChannelCount": 2,
+        "loopChannelLayout": "stereo planar LR; stereo input preserved and mono input duplicated to LR"
+      },
+      {
+        "name": "AudioEngine reports the software-only sink type",
+        "passed": true,
+        "outputSinkType": "none"
+      },
+      {
+        "name": "rhythm feedback routing declares one full Worklet-quantum delay",
+        "passed": true,
+        "rhythmRoutingDelayFrames": 128
+      },
+      {
+        "name": "capture routing inventory exposes the real synthetic stereo channel count and explicit LR targets",
+        "passed": true,
+        "captureSource": {
+          "id": "capture",
+          "label": "MediaStreamAudioDestinationNode",
+          "kind": "capture",
+          "channelCount": 2,
+          "routingDelayFrames": 0,
+          "available": true
+        },
+        "leftTarget": "left",
+        "rightTarget": "right"
+      },
+      {
+        "name": "100 gain-only routing updates reuse nodes without leaving owned fanout connections",
+        "passed": true,
+        "before": {
+          "sourceSplitters": 2,
+          "channelPaths": 4,
+          "routeSends": 32,
+          "inputFxPairs": 0,
+          "routeRebuildCount": 2
+        },
+        "after": {
+          "sourceSplitters": 2,
+          "channelPaths": 4,
+          "routeSends": 32,
+          "inputFxPairs": 0,
+          "routeRebuildCount": 2
+        }
+      },
+      {
+        "name": "main output OFF silences only the software main destination branch after steady signal",
+        "passed": true,
+        "mainBeforeOffRms": 0.03536952488949881,
+        "directMainBeforeOffRms": 0.035369524848903475,
+        "directMainOffRms": 0,
+        "mainOffRms": 0,
+        "mainOffRmsWindows": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mainOffStartFrame": 95232,
+        "mainOffFrameWindows": [
+          151936,
+          156160,
+          160384,
+          164736,
+          168576
+        ],
+        "subEnabledRms": 0.03536952543124309,
+        "headphonesEnabledRms": 0.03536952543124309
+      },
+      {
+        "name": "main output OFF leaves enabled sub and headphone software buses live",
+        "passed": true,
+        "mainBeforeOffRms": 0.03536952488949881,
+        "directMainOffRms": 0,
+        "mainOffRms": 0,
+        "mainOffRmsWindows": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mainOffStartFrame": 95232,
+        "mainOffFrameWindows": [
+          151936,
+          156160,
+          160384,
+          164736,
+          168576
+        ],
+        "subEnabledRms": 0.03536952543124309,
+        "headphonesEnabledRms": 0.03536952543124309
+      },
+      {
+        "name": "main output ON restores its software signal while disabled sub/headphone buses are silent",
+        "passed": true,
+        "mainEnabledRms": 0.03534662772170287,
+        "mainEnabledDirectRms": 0.03534662775009221,
+        "directSubEnabledRms": 0.035349844004455976,
+        "directHeadphonesEnabledRms": 0.035349844004455976,
+        "directSubOffRms": 0,
+        "directHeadphonesOffRms": 0,
+        "subDisabledRms": 0,
+        "headphonesDisabledRms": 0,
+        "subDisabledRmsWindows": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "headphonesDisabledRmsWindows": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "subOffStartFrame": 168576,
+        "disabledOutputFrameWindows": [
+          225152,
+          228992,
+          233856,
+          238464,
+          241920
+        ]
+      },
+      {
+        "name": "record path starts with software monitor disabled",
+        "passed": true
+      },
+      {
+        "name": "monitor ON carries synthetic input through the persistent Worklet",
+        "passed": true,
+        "monitorRms": 0.013221145130573061
+      },
+      {
+        "name": "monitor OFF is silent at its sample-gated output",
+        "passed": true,
+        "monitorRms": 0
+      },
+      {
+        "name": "track 1 exports planar LR with the configured active channels",
+        "passed": true,
+        "loopFrames": 6656,
+        "exportedFrames": 6656,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.014953185723807013,
+          0.011912622379813586
+        ]
+      },
+      {
+        "name": "exported channel 0 keeps the 250 Hz left tone and rejects 500 Hz right leakage",
+        "passed": true,
+        "left250": 0.0034647501045911465,
+        "left500": 0.00019880921679650123,
+        "leakageRatio": 0.05738053562161923
+      },
+      {
+        "name": "exported channel 1 keeps the 500 Hz right tone and rejects 250 Hz left leakage",
+        "passed": true,
+        "right250": 0.00015904300627057327,
+        "right500": 0.01419106120327551,
+        "leakageRatio": 0.011207266602011677
+      },
+      {
+        "name": "track 2 exports planar LR with the configured active channels",
+        "passed": true,
+        "loopFrames": 6912,
+        "exportedFrames": 6912,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0,
+          0.011180336716759703
+        ]
+      },
+      {
+        "name": "routing matrix independently disconnects capture L from track 2 while preserving capture R",
+        "passed": true,
+        "channelRms": [
+          0,
+          0.011180336716759703
+        ]
+      },
+      {
+        "name": "track 3 exports planar LR with the configured active channels",
+        "passed": true,
+        "loopFrames": 6272,
+        "exportedFrames": 6272,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.014671137441961163,
+          0.011736908643470056
+        ]
+      },
+      {
+        "name": "track 4 exports planar LR with the configured active channels",
+        "passed": true,
+        "loopFrames": 6144,
+        "exportedFrames": 6144,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.013832815422890346,
+          0.011095384550247929
+        ]
+      },
+      {
+        "name": "track 5 exports planar LR with the configured active channels",
+        "passed": true,
+        "loopFrames": 6784,
+        "exportedFrames": 6784,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.013299877346329574,
+          0.010639900564286238
+        ]
+      },
+      {
+        "name": "short recorded loops remain non-silent and PCM-stable during live keep-pitch playback",
+        "passed": true,
+        "frames": 6784,
+        "liveRms": 0.008343358910536029,
+        "liveMaxStep": 0.0010991930030286312,
+        "allFinite": true,
+        "sourcePcmUnchanged": true
+      },
+      {
+        "name": "imported track 1 publishes STOPPED state through runtime and UI views",
+        "passed": true,
+        "visibleState": "STOPPED",
+        "runtimeState": 6,
+        "metadataState": 6,
+        "loopFrames": 48000
+      },
+      {
+        "name": "track 1 keep-pitch PLAY command is accepted",
+        "passed": true,
+        "state": "STOPPED",
+        "lastActionError": null,
+        "modelOneShot": "OFF",
+        "runtimeSettings": {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        "metadataWords": [
+          4,
+          48000,
+          48000,
+          113,
+          131072,
+          248704,
+          0,
+          0,
+          0,
+          2,
+          4,
+          1,
+          1,
+          1,
+          -1,
+          0,
+          0,
+          0,
+          65536,
+          0,
+          0,
+          0,
+          0,
+          0,
+          327,
+          960,
+          0,
+          0,
+          0,
+          0,
+          65536,
+          0
+        ],
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 298240,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            48000,
+            6912,
+            6272,
+            6144,
+            6784
+          ],
+          "recordingFrames": [
+            48000,
+            6912,
+            6272,
+            6144,
+            6784
+          ],
+          "trackStates": [
+            6,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trackPositions": [
+            0,
+            0.12962962687015533,
+            0.6122449040412903,
+            0.625,
+            0.5962311625480652
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 45,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            131072,
+            131072,
+            131072,
+            131072
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 5821440,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "storageSegments": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        "transportState": null
+      },
+      {
+        "name": "imported track 2 publishes STOPPED state through runtime and UI views",
+        "passed": true,
+        "visibleState": "STOPPED",
+        "runtimeState": 6,
+        "metadataState": 6,
+        "loopFrames": 48000
+      },
+      {
+        "name": "track 2 keep-pitch PLAY command is accepted",
+        "passed": true,
+        "state": "STOPPED",
+        "lastActionError": null,
+        "modelOneShot": "OFF",
+        "runtimeSettings": {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        "metadataWords": [
+          4,
+          48000,
+          48000,
+          54,
+          131072,
+          255872,
+          0,
+          0,
+          0,
+          2,
+          4,
+          1,
+          1,
+          1,
+          -1,
+          0,
+          0,
+          0,
+          65536,
+          0,
+          0,
+          0,
+          0,
+          0,
+          327,
+          960,
+          0,
+          0,
+          0,
+          0,
+          65536,
+          0
+        ],
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 301184,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            48000,
+            48000,
+            6272,
+            6144,
+            6784
+          ],
+          "recordingFrames": [
+            48000,
+            48000,
+            6272,
+            6144,
+            6784
+          ],
+          "trackStates": [
+            4,
+            6,
+            4,
+            4,
+            4
+          ],
+          "trackPositions": [
+            0.06133333221077919,
+            0,
+            0.08163265138864517,
+            0.1041666641831398,
+            0.030193401500582695
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 49,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            131072,
+            131072,
+            131072,
+            131072
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 5821440,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "storageSegments": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        "transportState": null
+      },
+      {
+        "name": "imported track 3 publishes STOPPED state through runtime and UI views",
+        "passed": true,
+        "visibleState": "STOPPED",
+        "runtimeState": 6,
+        "metadataState": 6,
+        "loopFrames": 48000
+      },
+      {
+        "name": "track 3 keep-pitch PLAY command is accepted",
+        "passed": true,
+        "state": "PLAYING",
+        "lastActionError": null,
+        "modelOneShot": "OFF",
+        "runtimeSettings": {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        "metadataWords": [
+          4,
+          48000,
+          48000,
+          256,
+          131072,
+          263040,
+          0,
+          0,
+          0,
+          2,
+          4,
+          1,
+          1,
+          1,
+          -1,
+          0,
+          0,
+          0,
+          65536,
+          0,
+          0,
+          0,
+          0,
+          0,
+          327,
+          960,
+          0,
+          0,
+          0,
+          0,
+          65536,
+          0
+        ],
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 304256,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            48000,
+            48000,
+            48000,
+            6144,
+            6784
+          ],
+          "recordingFrames": [
+            48000,
+            48000,
+            48000,
+            6144,
+            6784
+          ],
+          "trackStates": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trackPositions": [
+            0.12533333897590637,
+            0.06400000303983688,
+            0.005333333276212215,
+            0.6041666865348816,
+            0.48302358388900757
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 53,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            131072,
+            131072,
+            131072,
+            131072
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 5821440,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "storageSegments": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        "transportState": null
+      },
+      {
+        "name": "imported track 4 publishes STOPPED state through runtime and UI views",
+        "passed": true,
+        "visibleState": "STOPPED",
+        "runtimeState": 6,
+        "metadataState": 6,
+        "loopFrames": 48000
+      },
+      {
+        "name": "track 4 keep-pitch PLAY command is accepted",
+        "passed": true,
+        "state": "STOPPED",
+        "lastActionError": null,
+        "modelOneShot": "OFF",
+        "runtimeSettings": {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1,
+          "keepPitch": true,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        "metadataWords": [
+          4,
+          48000,
+          48000,
+          62,
+          131072,
+          269824,
+          0,
+          0,
+          0,
+          2,
+          4,
+          1,
+          1,
+          1,
+          -1,
+          0,
+          0,
+          0,
+          65536,
+          0,
+          0,
+          0,
+          0,
+          0,
+          327,
+          960,
+          0,
+          0,
+          0,
+          0,
+          65536,
+          0
+        ],
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 306944,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            48000,
+            48000,
+            48000,
+            48000,
+            6784
+          ],
+          "recordingFrames": [
+            48000,
+            48000,
+            48000,
+            48000,
+            6784
+          ],
+          "trackStates": [
+            4,
+            4,
+            4,
+            6,
+            4
+          ],
+          "trackPositions": [
+            0.18133333325386047,
+            0.11999999731779099,
+            0.06133333221077919,
+            0,
+            0.8792499899864197
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 57,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            131072,
+            131072,
+            131072,
+            131072
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 5821440,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "storageSegments": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        "transportState": null
+      },
+      {
+        "name": "imported track 5 publishes STOPPED state through runtime and UI views",
+        "passed": true,
+        "visibleState": "STOPPED",
+        "runtimeState": 6,
+        "metadataState": 6,
+        "loopFrames": 48000
+      },
+      {
+        "name": "track 5 keep-pitch PLAY command is accepted",
+        "passed": true,
+        "state": "PLAYING",
+        "lastActionError": null,
+        "modelOneShot": "OFF",
+        "runtimeSettings": {
+          "reverse": false,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1,
+          "keepPitch": false,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        "metadataWords": [
+          4,
+          48000,
+          48000,
+          128,
+          131072,
+          276992,
+          0,
+          0,
+          0,
+          2,
+          4,
+          1,
+          1,
+          1,
+          -1,
+          0,
+          0,
+          0,
+          65536,
+          0,
+          0,
+          0,
+          0,
+          0,
+          328,
+          960,
+          0,
+          0,
+          0,
+          0,
+          65536,
+          1
+        ],
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 309376,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            48000,
+            48000,
+            48000,
+            48000,
+            48000
+          ],
+          "recordingFrames": [
+            48000,
+            48000,
+            48000,
+            48000,
+            48000
+          ],
+          "trackStates": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trackPositions": [
+            0.23199999332427979,
+            0.1706666648387909,
+            0.1120000034570694,
+            0.05066666752099991,
+            0.0026666666381061077
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 61,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            131072,
+            131072,
+            131072,
+            131072
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 5821440,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "storageSegments": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        "transportState": null
+      },
+      {
+        "name": "five live Worklet tracks preserve their independent LR tones at 1.3x keep-pitch",
+        "passed": true,
+        "shortLoopKeepPitch": {
+          "frames": 6784,
+          "liveRms": 0.008343358910536029,
+          "liveMaxStep": 0.0010991930030286312,
+          "allFinite": true,
+          "sourcePcmUnchanged": true
+        },
+        "liveNormalSpeedMeasurements": [
+          {
+            "track": 1,
+            "expected": {
+              "left": 277,
+              "right": 733
+            },
+            "leftExpected": 0.024989402730676583,
+            "rightExpected": 0.020001769151683862,
+            "leftLeak": 0.00009265162033380077,
+            "rightLeak": 0.00008368998031454511,
+            "leftLeakHz": 331,
+            "rightLeakHz": 811,
+            "leftMagnitudes": [
+              0.024989402730676583,
+              0.00009265162033380077,
+              0.000022011529247494022,
+              0.00002808840119193796,
+              0.000028740695240163674,
+              0.000011962741635680263,
+              0.000015375518802391578,
+              0.000004228603338791199,
+              0.000008437566752277117,
+              0.000004580377245367172
+            ],
+            "rightMagnitudes": [
+              0.000022158051441184744,
+              0.000027175468545229562,
+              0.0000311562910178781,
+              0.0000058537643103256055,
+              0.00005627151641728644,
+              0.020001769151683862,
+              0.00008368998031454511,
+              0.00003152661360667509,
+              0.00003532540729802087,
+              0.000006763552084715515
+            ],
+            "leftEstimatedHz": 277.0000000078012,
+            "rightEstimatedHz": 732.9999981763019,
+            "leftDominance": 269.71360717325797,
+            "rightDominance": 238.99837324023846
+          },
+          {
+            "track": 2,
+            "expected": {
+              "left": 331,
+              "right": 811
+            },
+            "leftExpected": 0.024996704789972336,
+            "rightExpected": 0.02000053342203579,
+            "leftLeak": 0.00008652196587451543,
+            "rightLeak": 0.00009690611408408533,
+            "leftLeakHz": 277,
+            "rightLeakHz": 907,
+            "leftMagnitudes": [
+              0.00008652196587451543,
+              0.024996704789972336,
+              0.00003078844037914622,
+              0.00007585860884897512,
+              0.000039882153317270773,
+              0.000036765714011432896,
+              0.000028860855931717042,
+              0.000016145020156938214,
+              0.0000018815642146518604,
+              0.000019610149097670164
+            ],
+            "rightMagnitudes": [
+              0.0000176797578987325,
+              0.000017288149215237223,
+              0.000022654268284379528,
+              0.000022229263661189564,
+              0.000011670266346165472,
+              0.00008409423594695148,
+              0.02000053342203579,
+              0.00009690611408408533,
+              0.00004851522611863826,
+              0.00003240329916384966
+            ],
+            "leftEstimatedHz": 331.0000004870779,
+            "rightEstimatedHz": 810.9999994073142,
+            "leftDominance": 288.9058811519096,
+            "rightDominance": 206.39083107471782
+          },
+          {
+            "track": 3,
+            "expected": {
+              "left": 419,
+              "right": 907
+            },
+            "leftExpected": 0.0250001910627891,
+            "rightExpected": 0.02000464234047123,
+            "leftLeak": 0.00012376481163225075,
+            "rightLeak": 0.00009362615853379426,
+            "leftLeakHz": 503,
+            "rightLeakHz": 811,
+            "leftMagnitudes": [
+              0.00001680599075202879,
+              0.00003078843933959061,
+              0.0250001910627891,
+              0.00012376481163225075,
+              0.00005862542052429312,
+              0.000035448286295732784,
+              0.000029696133514757134,
+              0.000011939050874308037,
+              0.00000468254684854595,
+              0.0000157428581243028
+            ],
+            "rightMagnitudes": [
+              0.000009713951891323797,
+              0.000013403244851302531,
+              0.000012629185179463976,
+              0.000007223811362185674,
+              0.000026975240092796947,
+              0.000028097350162575597,
+              0.00009362615853379426,
+              0.02000464234047123,
+              0.00008058199274952471,
+              0.000028912992929513008
+            ],
+            "leftEstimatedHz": 419.00000047595154,
+            "rightEstimatedHz": 907.0000063695726,
+            "leftDominance": 201.99756888148104,
+            "rightDominance": 213.66509802119646
+          },
+          {
+            "track": 4,
+            "expected": {
+              "left": 503,
+              "right": 977
+            },
+            "leftExpected": 0.024992172087678823,
+            "rightExpected": 0.020000309151244886,
+            "leftLeak": 0.00012594115589736757,
+            "rightLeak": 0.00009696529194700308,
+            "leftLeakHz": 587,
+            "rightLeakHz": 1061,
+            "leftMagnitudes": [
+              0.000025213189684207178,
+              0.00005331037294622854,
+              0.00011026511019008007,
+              0.024992172087678823,
+              0.00012594115589736757,
+              0.000004002713788852277,
+              0.00002836522815357146,
+              0.00002526182909756045,
+              0.00003070923204624927,
+              0.000010839405572414996
+            ],
+            "rightMagnitudes": [
+              0.000006034115994021057,
+              0.000001641138999868667,
+              0.0000037660519597002647,
+              0.000021345704452010325,
+              0.000018455404585462028,
+              0.00003904704617012757,
+              0.00004938185128185136,
+              0.00008342442857653851,
+              0.020000309151244886,
+              0.00009696529194700308
+            ],
+            "leftEstimatedHz": 503.0000002474446,
+            "rightEstimatedHz": 977.0000150952129,
+            "leftDominance": 198.4432484329867,
+            "rightDominance": 206.2625579694657
+          },
+          {
+            "track": 5,
+            "expected": {
+              "left": 587,
+              "right": 1061
+            },
+            "leftExpected": 0.025004923597839127,
+            "rightExpected": 0.019995924604844735,
+            "leftLeak": 0.00012423974729873684,
+            "rightLeak": 0.00009449065107793714,
+            "leftLeakHz": 503,
+            "rightLeakHz": 977,
+            "leftMagnitudes": [
+              0.00003171245819847765,
+              0.00002718283671118225,
+              0.00005411956289976065,
+              0.00012423974729873684,
+              0.025004923597839127,
+              0.00006723642772033774,
+              0.000011602352220421234,
+              0.000037257275799790435,
+              0.000024150612466011935,
+              0.00002336836400935908
+            ],
+            "rightMagnitudes": [
+              0.000001057465384340804,
+              0.000006333017766563002,
+              0.000005450925999213046,
+              0.000008666157790005865,
+              0.000018384474425675773,
+              0.000011687791381719945,
+              0.00003305063809034223,
+              0.00001946174301782237,
+              0.00009449065107793714,
+              0.019995924604844735
+            ],
+            "leftEstimatedHz": 587.0000000906102,
+            "rightEstimatedHz": 1060.99998896538,
+            "leftDominance": 201.2634776028183,
+            "rightDominance": 211.61802121938848
+          }
+        ],
+        "liveKeepPitchMeasurements": [
+          {
+            "track": 1,
+            "expected": {
+              "left": 277,
+              "right": 733
+            },
+            "leftExpected": 0.025004721652540612,
+            "rightExpected": 0.019988686329712502,
+            "leftLeak": 0.00008732175440330748,
+            "rightLeak": 0.00008357373245521415,
+            "leftLeakHz": 331,
+            "rightLeakHz": 811,
+            "leftMagnitudes": [
+              0.025004721652540612,
+              0.00008732175440330748,
+              0.000012768483901682676,
+              0.00005079084293243407,
+              0.00003915654938915815,
+              0.000029081518924515705,
+              0.000027191851705000334,
+              0.000010917298037840474,
+              0.000005813510400946438,
+              0.000015750289044543437
+            ],
+            "rightMagnitudes": [
+              0.000024846688971604478,
+              0.000029979044814256705,
+              0.000033872261882142325,
+              0.000007368795215505139,
+              0.00006830244789616525,
+              0.019988686329712502,
+              0.00008357373245521415,
+              0.000030014308642144775,
+              0.00003296526080508467,
+              0.000004604467807293513
+            ],
+            "leftEstimatedHz": 277.00015557598584,
+            "rightEstimatedHz": 733.0009185847762,
+            "leftDominance": 286.3515721071393,
+            "rightDominance": 239.174268546928
+          },
+          {
+            "track": 2,
+            "expected": {
+              "left": 331,
+              "right": 811
+            },
+            "leftExpected": 0.02499692231811355,
+            "rightExpected": 0.019984687573604745,
+            "leftLeak": 0.0000902922482852081,
+            "rightLeak": 0.0000979795082665005,
+            "leftLeakHz": 277,
+            "rightLeakHz": 907,
+            "leftMagnitudes": [
+              0.0000902922482852081,
+              0.02499692231811355,
+              0.00003071394724997446,
+              0.00006359528455099491,
+              0.000030499054091634225,
+              0.00002792206981172457,
+              0.00002066817591168086,
+              0.000012469255523625227,
+              0.000002057236826914036,
+              0.000014189754847339543
+            ],
+            "rightMagnitudes": [
+              0.000014013660469392745,
+              0.000012687157420141247,
+              0.00001895512621861336,
+              0.000024441717011532706,
+              0.000009031072102081035,
+              0.00008467977693136021,
+              0.019984687573604745,
+              0.0000979795082665005,
+              0.00004997611540961405,
+              0.00003310009855162421
+            ],
+            "leftEstimatedHz": 330.99974293978744,
+            "rightEstimatedHz": 811.0001118959188,
+            "leftDominance": 276.8446106154675,
+            "rightDominance": 203.96803298141856
+          },
+          {
+            "track": 3,
+            "expected": {
+              "left": 419,
+              "right": 907
+            },
+            "leftExpected": 0.02499386985665736,
+            "rightExpected": 0.01997288616827354,
+            "leftLeak": 0.0001239243861627362,
+            "rightLeak": 0.00009942374874936789,
+            "leftLeakHz": 503,
+            "rightLeakHz": 811,
+            "leftMagnitudes": [
+              0.00001666213233669581,
+              0.0000307040481744216,
+              0.02499386985665736,
+              0.0001239243861627362,
+              0.00005890768298416356,
+              0.000035182097515605165,
+              0.000029691878169011438,
+              0.000011947878288781873,
+              0.00000469944793740602,
+              0.000015783825751206146
+            ],
+            "rightMagnitudes": [
+              0.0000028797243530656026,
+              0.000006417334014185271,
+              0.00000425521392182411,
+              0.00001997444047318413,
+              0.000029910239472809204,
+              0.00003968779997000102,
+              0.00009942374874936789,
+              0.01997288616827354,
+              0.0000846264827710598,
+              0.000018376956632590754
+            ],
+            "leftEstimatedHz": 419.00067932743104,
+            "rightEstimatedHz": 906.9989956444509,
+            "leftDominance": 201.6864527683492,
+            "rightDominance": 200.88647249282604
+          },
+          {
+            "track": 4,
+            "expected": {
+              "left": 503,
+              "right": 977
+            },
+            "leftExpected": 0.02499897796120137,
+            "rightExpected": 0.019973100933828147,
+            "leftLeak": 0.0001345435388432,
+            "rightLeak": 0.00009532856473092095,
+            "leftLeakHz": 419,
+            "rightLeakHz": 1061,
+            "leftMagnitudes": [
+              0.000052583373662942576,
+              0.00007998817894044083,
+              0.0001345435388432,
+              0.02499897796120137,
+              0.00011903635826898299,
+              0.000007364017717776022,
+              0.000024181555819629377,
+              0.000010914539372940023,
+              0.00001674234677680678,
+              0.0000014627440044090832
+            ],
+            "rightMagnitudes": [
+              0.000006623828162788638,
+              0.0000017218218000330312,
+              0.0000037549578900316316,
+              0.000023442604850505456,
+              0.00002030088246081818,
+              0.00004054904604222991,
+              0.000052255186923876734,
+              0.00008451929189009338,
+              0.019973100933828147,
+              0.00009532856473092095
+            ],
+            "leftEstimatedHz": 502.9990576896619,
+            "rightEstimatedHz": 976.999789393148,
+            "leftDominance": 185.80586014119734,
+            "rightDominance": 209.51853193431785
+          },
+          {
+            "track": 5,
+            "expected": {
+              "left": 587,
+              "right": 1061
+            },
+            "leftExpected": 0.024991684226357905,
+            "rightExpected": 0.019967993424546564,
+            "leftLeak": 0.00012239607815896564,
+            "rightLeak": 0.0000972274885686219,
+            "leftLeakHz": 503,
+            "rightLeakHz": 977,
+            "leftMagnitudes": [
+              0.000041856298506793936,
+              0.00002995189498465649,
+              0.00005371112950213087,
+              0.00012239607815896564,
+              0.024991684226357905,
+              0.0000687922155300856,
+              0.000011196909902841716,
+              0.000036382763955102004,
+              0.000022689615208857652,
+              0.00002362291957946986
+            ],
+            "rightMagnitudes": [
+              0.00000984106577236002,
+              0.000012742026557259522,
+              0.000012378688269840022,
+              0.000006194249421188423,
+              0.000019040976390019943,
+              0.000008454984722750028,
+              0.00003258228043899107,
+              0.00002680411056495574,
+              0.0000972274885686219,
+              0.019967993424546564
+            ],
+            "leftEstimatedHz": 587.0022684992791,
+            "rightEstimatedHz": 1061.0013217901999,
+            "leftDominance": 204.18696907836534,
+            "rightDominance": 205.37395050015525
+          }
+        ],
+        "runtimeSettings": [
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1.3,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          },
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1.3,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          },
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1.3,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          },
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1.3,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          },
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1.3,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          }
+        ],
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 403712,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            48000,
+            48000,
+            48000,
+            48000,
+            48000
+          ],
+          "recordingFrames": [
+            48000,
+            48000,
+            48000,
+            48000,
+            48000
+          ],
+          "trackStates": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "trackPositions": [
+            0.5061364769935608,
+            0.4448031485080719,
+            0.3861364722251892,
+            0.3248031437397003,
+            0.2768031358718872
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 161,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            131072,
+            131072,
+            131072,
+            131072
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 5821440,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "storageSegments": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        }
+      },
+      {
+        "name": "unavailable Worklet deadline telemetry remains NA instead of being treated as zero XRUNs",
+        "passed": true,
+        "deadlineMetricAvailable": false,
+        "processDeadlineMisses": null,
+        "xrunInterpretation": "not available"
+      },
+      {
+        "name": "real BrowserAudioEngine Memory A→B→A restores native stereo PCM, clock, mix, FX send, routing, and assignments",
+        "passed": true,
+        "memoryAInfo": {
+          "slot": 1,
+          "name": "software memory A",
+          "updatedAt": "2026-10-09T05:59:33.781Z",
+          "trackCount": 5,
+          "assetCount": 5
+        },
+        "memoryBInfo": {
+          "slot": 2,
+          "name": "software memory B",
+          "updatedAt": "2026-10-09T05:59:33.974Z",
+          "trackCount": 5,
+          "assetCount": 1
+        },
+        "pcmExact": true,
+        "memoryAHashes": [
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "d0880b38"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "b6225581"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "c1173d4f"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "b003b084"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "624b6ea3"
+          }
+        ],
+        "memoryARestoredHashes": [
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "d0880b38"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "b6225581"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "c1173d4f"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "b003b084"
+          },
+          {
+            "frames": 48000,
+            "channels": 2,
+            "fnv1a32": "624b6ea3"
+          }
+        ],
+        "bpm": 93,
+        "masterTrackId": 1,
+        "runtimeSettings": {
+          "reverse": true,
+          "oneShot": false,
+          "startMode": "IMMEDIATE",
+          "stopMode": "IMMEDIATE",
+          "fadeInMs": 0,
+          "fadeOutMs": 0,
+          "speed": 1.25,
+          "keepPitch": false,
+          "tempoSyncEnabled": true,
+          "tempoSyncSpeed": "NORMAL",
+          "tempoSyncMode": "PITCH",
+          "recordBpm": null,
+          "autoRec": {
+            "enabled": false,
+            "threshold": 0.01,
+            "debounceMs": 20
+          },
+          "dubMode": "OVERDUB"
+        },
+        "mixer": {
+          "masterLevel": 0.8,
+          "tracks": [
+            {
+              "trackId": 1,
+              "level": 0.7,
+              "pan": 0.2,
+              "muted": false,
+              "solo": false
+            },
+            {
+              "trackId": 2,
+              "level": 1,
+              "pan": 0,
+              "muted": false,
+              "solo": false
+            },
+            {
+              "trackId": 3,
+              "level": 1,
+              "pan": 0,
+              "muted": false,
+              "solo": false
+            },
+            {
+              "trackId": 4,
+              "level": 1,
+              "pan": 0,
+              "muted": false,
+              "solo": false
+            },
+            {
+              "trackId": 5,
+              "level": 1,
+              "pan": 0,
+              "muted": false,
+              "solo": false
+            }
+          ]
+        },
+        "trackFxSend": "ON",
+        "activeBankId": "bank-1",
+        "bankFx": {
+          "type": "FILTER",
+          "enabled": true,
+          "params": {
+            "frequency": 0.82,
+            "resonance": 0.22
+          }
+        },
+        "restoredMainGain": 0.35,
+        "controlAssignment": {
+          "source": "cc",
+          "channel": 1,
+          "number": 21,
+          "trigger": "value",
+          "command": "set-track-pan",
+          "trackId": 1
+        }
+      },
+      {
+        "name": "fractional external clock updates Transport with Worklet scheduled phase epoch",
+        "passed": true,
+        "requestedBpm": 93.4567,
+        "appliedBpm": 93.457,
+        "beatOrdinal": 25,
+        "syncTargetFrame": 445696,
+        "syncExecutedFrame": 445696,
+        "transportClockOrigin": -324711.78111858934,
+        "expectedClockOrigin": -324711.78111858934,
+        "currentFrameBeforeSync": 445824,
+        "originMustBeNegativeAndFractional": true
+      },
+      {
+        "name": "selecting another loaded master preserves the negative external beat epoch",
+        "passed": true,
+        "masterTrackId": 2,
+        "transportClockOrigin": -324711.78111858934,
+        "expectedClockOrigin": -324711.78111858934,
+        "bpm": 93.457,
+        "masterChangeEpoch": {
+          "origin": -324711.78111858934,
+          "bpm": 93.457,
+          "startClock": false,
+          "ack": {
+            "sequence": 516,
+            "opcode": 33,
+            "track": -1,
+            "intentFrame": 445952,
+            "executedFrame": 445952,
+            "targetFrame": 445952,
+            "intentToScheduledFrames": 0,
+            "scheduledToActualFrames": 0,
+            "intentToScheduledMs": 0,
+            "scheduledToActualMs": 0,
+            "status": 0,
+            "loopFrames": 0,
+            "recordingFrames": 0
+          }
+        }
+      },
+      {
+        "name": "stop/start reanchors every observed Worklet beat tick to the same negative fractional epoch",
+        "passed": true,
+        "externalClockOrigin": -324711.78111858934,
+        "restartedEpoch": {
+          "origin": -324711.78111858934,
+          "bpm": 93.457,
+          "startClock": true,
+          "ack": {
+            "sequence": 518,
+            "opcode": 33,
+            "track": -1,
+            "intentFrame": 446080,
+            "executedFrame": 446208,
+            "targetFrame": 446080,
+            "intentToScheduledFrames": 0,
+            "scheduledToActualFrames": 128,
+            "intentToScheduledMs": 0,
+            "scheduledToActualMs": 2.6666666666666665,
+            "status": 1,
+            "loopFrames": 0,
+            "recordingFrames": 0
+          }
+        },
+        "clockStateAcks": [
+          {
+            "running": false,
+            "ack": {
+              "sequence": 517,
+              "opcode": 12,
+              "track": -1,
+              "intentFrame": 446080,
+              "executedFrame": 446080,
+              "targetFrame": 446080,
+              "intentToScheduledFrames": 0,
+              "scheduledToActualFrames": 0,
+              "intentToScheduledMs": 0,
+              "scheduledToActualMs": 0,
+              "status": 0,
+              "loopFrames": 0,
+              "recordingFrames": 0
+            }
+          },
+          {
+            "running": false,
+            "ack": {
+              "sequence": 517,
+              "opcode": 12,
+              "track": -1,
+              "intentFrame": 446080,
+              "executedFrame": 446080,
+              "targetFrame": 446080,
+              "intentToScheduledFrames": 0,
+              "scheduledToActualFrames": 0,
+              "intentToScheduledMs": 0,
+              "scheduledToActualMs": 0,
+              "status": 0,
+              "loopFrames": 0,
+              "recordingFrames": 0
+            }
+          }
+        ],
+        "firstBeatEvents": [
+          {
+            "beatOrdinal": 26,
+            "frame": 476512
+          }
+        ],
+        "matchingPhaseTick": {
+          "beatOrdinal": 26,
+          "frame": 476512
+        },
+        "offPhaseTicks": []
+      },
+      {
+        "name": "fractional MIDI clock quantizes a real REC target to the next measure",
+        "passed": true,
+        "externalClockOrigin": -324711.78111858934,
+        "externalBeatFrames": 30816.311244743574,
+        "measureFrames": 123265.2449789743,
+        "measureOrdinal": 7.000000537586805,
+        "nearestMeasureOrdinal": 7,
+        "measureGridErrorFrames": 0.066265769302845,
+        "syncTargetFrame": 445696,
+        "recordTargetFrame": 538145,
+        "recordExecutedFrame": 538145,
+        "transportBpm": 93.457
+      },
+      {
+        "name": "enabled INPUT compressor changes captured PCM on both stereo channels",
+        "passed": true,
+        "dryInputFxRms": [
+          0.013299877346329574,
+          0.010639900564286238
+        ],
+        "wetInputFxRms": [
+          0.0007773004540551607,
+          0.0006283149947660045
+        ],
+        "gainRatios": [
+          0.05844418213899362,
+          0.05905271303709351
+        ]
+      },
+      {
+        "name": "capture and live monitor use the same single-pass stereo INPUT FX signal",
+        "passed": true,
+        "wetRecordedTailRms": [
+          0.0008183182746843634,
+          0.0006508359675926929
+        ],
+        "wetInputMonitorRms": [
+          0.0008457424318594577,
+          0.000676648800828996
+        ],
+        "ratios": [
+          0.9675738662954403,
+          0.9618519485962608
+        ]
+      },
+      {
+        "name": "four-channel dry routing keeps stereo pairs isolated without folding channels",
+        "passed": true,
+        "sourceChannels": 4,
+        "quadDryMagnitudes": {
+          "left600": 0.029878366343682745,
+          "left800": 0.0299056696189608,
+          "left700": 0.00021984334122203,
+          "left900": 0.00018693953682229338,
+          "right700": 0.02990567861677556,
+          "right900": 0.029925229247626438,
+          "right600": 0.0002146991292334382,
+          "right800": 0.00019451887943832611
+        },
+        "dualToneSpectralLeakageDiagnosticOnly": {
+          "left600FromRight": 0.007357943827759244,
+          "left800FromRight": 0.006250973116608295,
+          "right700FromLeft": 0.00717920940650392,
+          "right900FromLeft": 0.00650016338483872
+        }
+      },
+      {
+        "name": "four-channel dry routing isolates each actual source channel from the opposite output side",
+        "passed": true,
+        "isolatedDry0": {
+          "left600": 0.02999092776614983,
+          "left800": 0.00025160860371785176,
+          "left700": 0.00037537247688200156,
+          "left900": 0.0000948191953734202,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "isolatedDry1": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.029992836695212237,
+          "right900": 0.00009632372353619288,
+          "right600": 0.00012004410226878017,
+          "right800": 0.00010486397455632391
+        },
+        "isolatedDry2": {
+          "left600": 0.0001876779476771717,
+          "left800": 0.029969263719612456,
+          "left700": 0.0004935861668019688,
+          "left900": 0.0004757071373121914,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "isolatedDry3": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.0002057314017075788,
+          "right900": 0.030020485529823,
+          "right600": 0.0001669578004483046,
+          "right800": 0.0002316647486204903
+        },
+        "dryRouteRatios": {
+          "channel0LeftToRight": 0,
+          "channel1RightToLeft": 0,
+          "channel2LeftToRight": 0,
+          "channel3RightToLeft": 0
+        },
+        "dualToneSpectralLeakageDiagnosticOnly": {
+          "left600FromRight": 0.007357943827759244,
+          "left800FromRight": 0.006250973116608295,
+          "right700FromLeft": 0.00717920940650392,
+          "right900FromLeft": 0.00650016338483872
+        }
+      },
+      {
+        "name": "four-channel source retains both left/right pairs with INPUT FX enabled",
+        "passed": true,
+        "sourceChannels": 4,
+        "quadWetMagnitudes": {
+          "left600": 0.0012167981428191606,
+          "left800": 0.0012159225857295017,
+          "left700": 0.000017556575220040385,
+          "left900": 0.000018875199845730484,
+          "right700": 0.0012157886122293236,
+          "right900": 0.0012155188078680809,
+          "right600": 0.000015479019071938197,
+          "right800": 0.000017118269093818782
+        }
+      },
+      {
+        "name": "four-channel INPUT FX keeps isolated first-pair source channels on their assigned stereo sides",
+        "passed": true,
+        "sourcePair": [
+          0,
+          1
+        ],
+        "isolatedLeft": {
+          "left600": 0.001357818133522716,
+          "left800": 0.00005752152242090995,
+          "left700": 0.0000654748197489693,
+          "left900": 0.000041283723329020816,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "isolatedRight": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.0012361245811797117,
+          "right900": 0.000005336508951160488,
+          "right600": 0.000022092842680625076,
+          "right800": 0.00002114150112999799
+        },
+        "firstPairRouteRatios": {
+          "leftToRight": 0,
+          "rightToLeft": 0
+        }
+      },
+      {
+        "name": "four-channel INPUT FX keeps isolated second-pair source channels on their assigned stereo sides",
+        "passed": true,
+        "sourcePair": [
+          2,
+          3
+        ],
+        "isolatedLeft": {
+          "left600": 0.000009879361883471048,
+          "left800": 0.0012465978750167896,
+          "left700": 0.000020978473828394057,
+          "left900": 0.000021552317695384167,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "isolatedRight": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.000050456616693073465,
+          "right900": 0.0013545558375910108,
+          "right600": 0.00003266111072094687,
+          "right800": 0.00006219707342122445
+        },
+        "secondPairRouteRatios": {
+          "leftToRight": 0,
+          "rightToLeft": 0
+        }
+      },
+      {
+        "name": "replacing a source while INPUT FX is enabled rebuilds its owned source-to-splitter path",
+        "passed": true,
+        "replacementSourceChannels": 2,
+        "replacementSourceRms": [
+          0.0009695803339098993,
+          0.0009695803339098993
+        ],
+        "nodeDiagnostics": {
+          "sourceSplitters": 2,
+          "channelPaths": 4,
+          "routeSends": 32,
+          "inputFxPairs": 2,
+          "routeRebuildCount": 29
+        }
+      },
+      {
+        "name": "centered stereo playback preserves left/right frequency separation through the master output",
+        "passed": true,
+        "playbackTones": {
+          "left277": 0.012542527247234701,
+          "left733": 0.00007130770154241078,
+          "right277": 0.000060479722779487406,
+          "right733": 0.01001490756417961
+        },
+        "state": "PLAYING",
+        "loopFrames": 48000,
+        "metrics": {
+          "sampleRate": 48000,
+          "quantumFrames": 128,
+          "renderedFrame": 681600,
+          "underruns": 0,
+          "commandQueueDepth": 0,
+          "loopFrames": [
+            48000,
+            0,
+            0,
+            0,
+            0
+          ],
+          "recordingFrames": [
+            48000,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackStates": [
+            4,
+            0,
+            0,
+            0,
+            0
+          ],
+          "trackPositions": [
+            0.109333336353302,
+            0,
+            0,
+            0,
+            0
+          ],
+          "outputMonitorEnabled": false,
+          "backendMode": "sab-worklet",
+          "lastAckSequence": 731,
+          "commandOverruns": 0,
+          "processDeadlineMisses": null,
+          "deadlineMetricAvailable": false,
+          "inputDropoutBlocks": 0,
+          "trackCapacityOverruns": 0,
+          "maxTrackFrames": 67108864,
+          "trackCapacityFrames": [
+            131072,
+            16384,
+            16384,
+            16384,
+            16384
+          ],
+          "inputDropoutFrames": 0,
+          "storageAllocatedBytes": 1689088,
+          "storageGrowthRequests": 0,
+          "storageGrowthFailures": 0,
+          "historyDepth": [
+            1,
+            0,
+            0,
+            0,
+            0
+          ],
+          "storageSegments": [
+            8,
+            1,
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      {
+        "name": "overdub updates both planar channels inside persistent loop storage",
+        "passed": true,
+        "changedSamples": 3997,
+        "changedRightSamples": 3997,
+        "loopFrames": 48000
+      },
+      {
+        "name": "clear releases loop history while retaining a bounded reusable storage reserve",
+        "passed": true,
+        "loopFrames": 0,
+        "capacityFrames": 16384
+      },
+      {
+        "name": "channel-aware routing preserves opposite polarity in the two recorded channels",
+        "passed": true,
+        "frames": 6144,
+        "antiCorrelation": -1
+      },
+      {
+        "name": "unverified browser route calibration is not reported as physical round-trip",
+        "passed": true,
+        "roundTripLatencyMs": 8,
+        "physicalRoundTripMs": null,
+        "note": "Measured by scheduled output tone and AudioWorklet capture for the active route; the signal path is not independently verified as analog hardware."
+      },
+      {
+        "name": "input device change invalidates device-scoped latency calibration",
+        "passed": true,
+        "calibratedBeforeSwitchMs": 8,
+        "calibratedAfterSwitchMs": null,
+        "selectedInputDeviceId": "smoke-mono-input"
+      },
+      {
+        "name": "mono capture remains a separate supported path and duplicates into both loop channels",
+        "passed": true,
+        "numberOfChannels": 2,
+        "frames": 6272,
+        "monoChannelMaxDifference": 0,
+        "inputChannelCount": 2
+      },
+      {
+        "name": "dynamic Filter UI endpoint 100 maps to the normalized 20 kHz endpoint",
+        "passed": true,
+        "filterHighCutoffRms": 0.008769851315033954,
+        "filterLowCutoffRms": 0.0007371608043947785,
+        "ratio": 11.896795465453634
+      }
+    ],
+    "status": "PASS",
+    "liveKeepPitch": {
+      "frequencies": [
+        {
+          "left": 277,
+          "right": 733
+        },
+        {
+          "left": 331,
+          "right": 811
+        },
+        {
+          "left": 419,
+          "right": 907
+        },
+        {
+          "left": 503,
+          "right": 977
+        },
+        {
+          "left": 587,
+          "right": 1061
+        }
+      ],
+      "normalSpeedMeasurements": [
+        {
+          "track": 1,
+          "expected": {
+            "left": 277,
+            "right": 733
+          },
+          "leftExpected": 0.024989402730676583,
+          "rightExpected": 0.020001769151683862,
+          "leftLeak": 0.00009265162033380077,
+          "rightLeak": 0.00008368998031454511,
+          "leftLeakHz": 331,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.024989402730676583,
+            0.00009265162033380077,
+            0.000022011529247494022,
+            0.00002808840119193796,
+            0.000028740695240163674,
+            0.000011962741635680263,
+            0.000015375518802391578,
+            0.000004228603338791199,
+            0.000008437566752277117,
+            0.000004580377245367172
+          ],
+          "rightMagnitudes": [
+            0.000022158051441184744,
+            0.000027175468545229562,
+            0.0000311562910178781,
+            0.0000058537643103256055,
+            0.00005627151641728644,
+            0.020001769151683862,
+            0.00008368998031454511,
+            0.00003152661360667509,
+            0.00003532540729802087,
+            0.000006763552084715515
+          ],
+          "leftEstimatedHz": 277.0000000078012,
+          "rightEstimatedHz": 732.9999981763019,
+          "leftDominance": 269.71360717325797,
+          "rightDominance": 238.99837324023846
+        },
+        {
+          "track": 2,
+          "expected": {
+            "left": 331,
+            "right": 811
+          },
+          "leftExpected": 0.024996704789972336,
+          "rightExpected": 0.02000053342203579,
+          "leftLeak": 0.00008652196587451543,
+          "rightLeak": 0.00009690611408408533,
+          "leftLeakHz": 277,
+          "rightLeakHz": 907,
+          "leftMagnitudes": [
+            0.00008652196587451543,
+            0.024996704789972336,
+            0.00003078844037914622,
+            0.00007585860884897512,
+            0.000039882153317270773,
+            0.000036765714011432896,
+            0.000028860855931717042,
+            0.000016145020156938214,
+            0.0000018815642146518604,
+            0.000019610149097670164
+          ],
+          "rightMagnitudes": [
+            0.0000176797578987325,
+            0.000017288149215237223,
+            0.000022654268284379528,
+            0.000022229263661189564,
+            0.000011670266346165472,
+            0.00008409423594695148,
+            0.02000053342203579,
+            0.00009690611408408533,
+            0.00004851522611863826,
+            0.00003240329916384966
+          ],
+          "leftEstimatedHz": 331.0000004870779,
+          "rightEstimatedHz": 810.9999994073142,
+          "leftDominance": 288.9058811519096,
+          "rightDominance": 206.39083107471782
+        },
+        {
+          "track": 3,
+          "expected": {
+            "left": 419,
+            "right": 907
+          },
+          "leftExpected": 0.0250001910627891,
+          "rightExpected": 0.02000464234047123,
+          "leftLeak": 0.00012376481163225075,
+          "rightLeak": 0.00009362615853379426,
+          "leftLeakHz": 503,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.00001680599075202879,
+            0.00003078843933959061,
+            0.0250001910627891,
+            0.00012376481163225075,
+            0.00005862542052429312,
+            0.000035448286295732784,
+            0.000029696133514757134,
+            0.000011939050874308037,
+            0.00000468254684854595,
+            0.0000157428581243028
+          ],
+          "rightMagnitudes": [
+            0.000009713951891323797,
+            0.000013403244851302531,
+            0.000012629185179463976,
+            0.000007223811362185674,
+            0.000026975240092796947,
+            0.000028097350162575597,
+            0.00009362615853379426,
+            0.02000464234047123,
+            0.00008058199274952471,
+            0.000028912992929513008
+          ],
+          "leftEstimatedHz": 419.00000047595154,
+          "rightEstimatedHz": 907.0000063695726,
+          "leftDominance": 201.99756888148104,
+          "rightDominance": 213.66509802119646
+        },
+        {
+          "track": 4,
+          "expected": {
+            "left": 503,
+            "right": 977
+          },
+          "leftExpected": 0.024992172087678823,
+          "rightExpected": 0.020000309151244886,
+          "leftLeak": 0.00012594115589736757,
+          "rightLeak": 0.00009696529194700308,
+          "leftLeakHz": 587,
+          "rightLeakHz": 1061,
+          "leftMagnitudes": [
+            0.000025213189684207178,
+            0.00005331037294622854,
+            0.00011026511019008007,
+            0.024992172087678823,
+            0.00012594115589736757,
+            0.000004002713788852277,
+            0.00002836522815357146,
+            0.00002526182909756045,
+            0.00003070923204624927,
+            0.000010839405572414996
+          ],
+          "rightMagnitudes": [
+            0.000006034115994021057,
+            0.000001641138999868667,
+            0.0000037660519597002647,
+            0.000021345704452010325,
+            0.000018455404585462028,
+            0.00003904704617012757,
+            0.00004938185128185136,
+            0.00008342442857653851,
+            0.020000309151244886,
+            0.00009696529194700308
+          ],
+          "leftEstimatedHz": 503.0000002474446,
+          "rightEstimatedHz": 977.0000150952129,
+          "leftDominance": 198.4432484329867,
+          "rightDominance": 206.2625579694657
+        },
+        {
+          "track": 5,
+          "expected": {
+            "left": 587,
+            "right": 1061
+          },
+          "leftExpected": 0.025004923597839127,
+          "rightExpected": 0.019995924604844735,
+          "leftLeak": 0.00012423974729873684,
+          "rightLeak": 0.00009449065107793714,
+          "leftLeakHz": 503,
+          "rightLeakHz": 977,
+          "leftMagnitudes": [
+            0.00003171245819847765,
+            0.00002718283671118225,
+            0.00005411956289976065,
+            0.00012423974729873684,
+            0.025004923597839127,
+            0.00006723642772033774,
+            0.000011602352220421234,
+            0.000037257275799790435,
+            0.000024150612466011935,
+            0.00002336836400935908
+          ],
+          "rightMagnitudes": [
+            0.000001057465384340804,
+            0.000006333017766563002,
+            0.000005450925999213046,
+            0.000008666157790005865,
+            0.000018384474425675773,
+            0.000011687791381719945,
+            0.00003305063809034223,
+            0.00001946174301782237,
+            0.00009449065107793714,
+            0.019995924604844735
+          ],
+          "leftEstimatedHz": 587.0000000906102,
+          "rightEstimatedHz": 1060.99998896538,
+          "leftDominance": 201.2634776028183,
+          "rightDominance": 211.61802121938848
+        }
+      ],
+      "keepPitchMeasurements": [
+        {
+          "track": 1,
+          "expected": {
+            "left": 277,
+            "right": 733
+          },
+          "leftExpected": 0.025004721652540612,
+          "rightExpected": 0.019988686329712502,
+          "leftLeak": 0.00008732175440330748,
+          "rightLeak": 0.00008357373245521415,
+          "leftLeakHz": 331,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.025004721652540612,
+            0.00008732175440330748,
+            0.000012768483901682676,
+            0.00005079084293243407,
+            0.00003915654938915815,
+            0.000029081518924515705,
+            0.000027191851705000334,
+            0.000010917298037840474,
+            0.000005813510400946438,
+            0.000015750289044543437
+          ],
+          "rightMagnitudes": [
+            0.000024846688971604478,
+            0.000029979044814256705,
+            0.000033872261882142325,
+            0.000007368795215505139,
+            0.00006830244789616525,
+            0.019988686329712502,
+            0.00008357373245521415,
+            0.000030014308642144775,
+            0.00003296526080508467,
+            0.000004604467807293513
+          ],
+          "leftEstimatedHz": 277.00015557598584,
+          "rightEstimatedHz": 733.0009185847762,
+          "leftDominance": 286.3515721071393,
+          "rightDominance": 239.174268546928
+        },
+        {
+          "track": 2,
+          "expected": {
+            "left": 331,
+            "right": 811
+          },
+          "leftExpected": 0.02499692231811355,
+          "rightExpected": 0.019984687573604745,
+          "leftLeak": 0.0000902922482852081,
+          "rightLeak": 0.0000979795082665005,
+          "leftLeakHz": 277,
+          "rightLeakHz": 907,
+          "leftMagnitudes": [
+            0.0000902922482852081,
+            0.02499692231811355,
+            0.00003071394724997446,
+            0.00006359528455099491,
+            0.000030499054091634225,
+            0.00002792206981172457,
+            0.00002066817591168086,
+            0.000012469255523625227,
+            0.000002057236826914036,
+            0.000014189754847339543
+          ],
+          "rightMagnitudes": [
+            0.000014013660469392745,
+            0.000012687157420141247,
+            0.00001895512621861336,
+            0.000024441717011532706,
+            0.000009031072102081035,
+            0.00008467977693136021,
+            0.019984687573604745,
+            0.0000979795082665005,
+            0.00004997611540961405,
+            0.00003310009855162421
+          ],
+          "leftEstimatedHz": 330.99974293978744,
+          "rightEstimatedHz": 811.0001118959188,
+          "leftDominance": 276.8446106154675,
+          "rightDominance": 203.96803298141856
+        },
+        {
+          "track": 3,
+          "expected": {
+            "left": 419,
+            "right": 907
+          },
+          "leftExpected": 0.02499386985665736,
+          "rightExpected": 0.01997288616827354,
+          "leftLeak": 0.0001239243861627362,
+          "rightLeak": 0.00009942374874936789,
+          "leftLeakHz": 503,
+          "rightLeakHz": 811,
+          "leftMagnitudes": [
+            0.00001666213233669581,
+            0.0000307040481744216,
+            0.02499386985665736,
+            0.0001239243861627362,
+            0.00005890768298416356,
+            0.000035182097515605165,
+            0.000029691878169011438,
+            0.000011947878288781873,
+            0.00000469944793740602,
+            0.000015783825751206146
+          ],
+          "rightMagnitudes": [
+            0.0000028797243530656026,
+            0.000006417334014185271,
+            0.00000425521392182411,
+            0.00001997444047318413,
+            0.000029910239472809204,
+            0.00003968779997000102,
+            0.00009942374874936789,
+            0.01997288616827354,
+            0.0000846264827710598,
+            0.000018376956632590754
+          ],
+          "leftEstimatedHz": 419.00067932743104,
+          "rightEstimatedHz": 906.9989956444509,
+          "leftDominance": 201.6864527683492,
+          "rightDominance": 200.88647249282604
+        },
+        {
+          "track": 4,
+          "expected": {
+            "left": 503,
+            "right": 977
+          },
+          "leftExpected": 0.02499897796120137,
+          "rightExpected": 0.019973100933828147,
+          "leftLeak": 0.0001345435388432,
+          "rightLeak": 0.00009532856473092095,
+          "leftLeakHz": 419,
+          "rightLeakHz": 1061,
+          "leftMagnitudes": [
+            0.000052583373662942576,
+            0.00007998817894044083,
+            0.0001345435388432,
+            0.02499897796120137,
+            0.00011903635826898299,
+            0.000007364017717776022,
+            0.000024181555819629377,
+            0.000010914539372940023,
+            0.00001674234677680678,
+            0.0000014627440044090832
+          ],
+          "rightMagnitudes": [
+            0.000006623828162788638,
+            0.0000017218218000330312,
+            0.0000037549578900316316,
+            0.000023442604850505456,
+            0.00002030088246081818,
+            0.00004054904604222991,
+            0.000052255186923876734,
+            0.00008451929189009338,
+            0.019973100933828147,
+            0.00009532856473092095
+          ],
+          "leftEstimatedHz": 502.9990576896619,
+          "rightEstimatedHz": 976.999789393148,
+          "leftDominance": 185.80586014119734,
+          "rightDominance": 209.51853193431785
+        },
+        {
+          "track": 5,
+          "expected": {
+            "left": 587,
+            "right": 1061
+          },
+          "leftExpected": 0.024991684226357905,
+          "rightExpected": 0.019967993424546564,
+          "leftLeak": 0.00012239607815896564,
+          "rightLeak": 0.0000972274885686219,
+          "leftLeakHz": 503,
+          "rightLeakHz": 977,
+          "leftMagnitudes": [
+            0.000041856298506793936,
+            0.00002995189498465649,
+            0.00005371112950213087,
+            0.00012239607815896564,
+            0.024991684226357905,
+            0.0000687922155300856,
+            0.000011196909902841716,
+            0.000036382763955102004,
+            0.000022689615208857652,
+            0.00002362291957946986
+          ],
+          "rightMagnitudes": [
+            0.00000984106577236002,
+            0.000012742026557259522,
+            0.000012378688269840022,
+            0.000006194249421188423,
+            0.000019040976390019943,
+            0.000008454984722750028,
+            0.00003258228043899107,
+            0.00002680411056495574,
+            0.0000972274885686219,
+            0.019967993424546564
+          ],
+          "leftEstimatedHz": 587.0022684992791,
+          "rightEstimatedHz": 1061.0013217901999,
+          "leftDominance": 204.18696907836534,
+          "rightDominance": 205.37395050015525
+        }
+      ],
+      "deadlineMetricAvailable": false,
+      "processDeadlineMisses": null,
+      "inputDropoutFrames": 0,
+      "storageGrowthFailures": 0,
+      "trackCapacityOverruns": 0,
+      "commandOverruns": 0
+    },
+    "projectMemoryReload": {
+      "slot": 1,
+      "expectedPcm": [
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "d0880b38"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "b6225581"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "c1173d4f"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "b003b084"
+        },
+        {
+          "frames": 48000,
+          "channels": 2,
+          "fnv1a32": "624b6ea3"
+        }
+      ],
+      "expectedBankId": "bank-1",
+      "status": "PENDING"
+    },
+    "transportPhase": {
+      "originFrame": -324711.78111858934,
+      "beatOrdinal": 25,
+      "masterAfterSync": 2,
+      "masterChangeEpoch": {
+        "origin": -324711.78111858934,
+        "bpm": 93.457,
+        "startClock": false,
+        "ack": {
+          "sequence": 516,
+          "opcode": 33,
+          "track": -1,
+          "intentFrame": 445952,
+          "executedFrame": 445952,
+          "targetFrame": 445952,
+          "intentToScheduledFrames": 0,
+          "scheduledToActualFrames": 0,
+          "intentToScheduledMs": 0,
+          "scheduledToActualMs": 0,
+          "status": 0,
+          "loopFrames": 0,
+          "recordingFrames": 0
+        }
+      },
+      "restartedEpoch": {
+        "origin": -324711.78111858934,
+        "bpm": 93.457,
+        "startClock": true,
+        "ack": {
+          "sequence": 518,
+          "opcode": 33,
+          "track": -1,
+          "intentFrame": 446080,
+          "executedFrame": 446208,
+          "targetFrame": 446080,
+          "intentToScheduledFrames": 0,
+          "scheduledToActualFrames": 128,
+          "intentToScheduledMs": 0,
+          "scheduledToActualMs": 2.6666666666666665,
+          "status": 1,
+          "loopFrames": 0,
+          "recordingFrames": 0
+        }
+      },
+      "beatEvents": [
+        {
+          "beatOrdinal": 26,
+          "frame": 476512
+        }
+      ],
+      "offPhaseTicks": []
+    },
+    "inputFxFourChannel": {
+      "quadDryMagnitudes": {
+        "left600": 0.029878366343682745,
+        "left800": 0.0299056696189608,
+        "left700": 0.00021984334122203,
+        "left900": 0.00018693953682229338,
+        "right700": 0.02990567861677556,
+        "right900": 0.029925229247626438,
+        "right600": 0.0002146991292334382,
+        "right800": 0.00019451887943832611
+      },
+      "quadDryCrosstalkRatios": {
+        "left600FromRight": 0.007357943827759244,
+        "left800FromRight": 0.006250973116608295,
+        "right700FromLeft": 0.00717920940650392,
+        "right900FromLeft": 0.00650016338483872
+      },
+      "quadWetMagnitudes": {
+        "left600": 0.0012167981428191606,
+        "left800": 0.0012159225857295017,
+        "left700": 0.000017556575220040385,
+        "left900": 0.000018875199845730484,
+        "right700": 0.0012157886122293236,
+        "right900": 0.0012155188078680809,
+        "right600": 0.000015479019071938197,
+        "right800": 0.000017118269093818782
+      },
+      "dryIsolatedChannels": {
+        "channel0": {
+          "left600": 0.02999092776614983,
+          "left800": 0.00025160860371785176,
+          "left700": 0.00037537247688200156,
+          "left900": 0.0000948191953734202,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "channel1": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.029992836695212237,
+          "right900": 0.00009632372353619288,
+          "right600": 0.00012004410226878017,
+          "right800": 0.00010486397455632391
+        },
+        "channel2": {
+          "left600": 0.0001876779476771717,
+          "left800": 0.029969263719612456,
+          "left700": 0.0004935861668019688,
+          "left900": 0.0004757071373121914,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "channel3": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.0002057314017075788,
+          "right900": 0.030020485529823,
+          "right600": 0.0001669578004483046,
+          "right800": 0.0002316647486204903
+        },
+        "routeRatios": {
+          "channel0LeftToRight": 0,
+          "channel1RightToLeft": 0,
+          "channel2LeftToRight": 0,
+          "channel3RightToLeft": 0
+        }
+      },
+      "firstPair": {
+        "left": {
+          "left600": 0.001357818133522716,
+          "left800": 0.00005752152242090995,
+          "left700": 0.0000654748197489693,
+          "left900": 0.000041283723329020816,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "right": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.0012361245811797117,
+          "right900": 0.000005336508951160488,
+          "right600": 0.000022092842680625076,
+          "right800": 0.00002114150112999799
+        },
+        "routeRatios": {
+          "leftToRight": 0,
+          "rightToLeft": 0
+        }
+      },
+      "secondPair": {
+        "left": {
+          "left600": 0.000009879361883471048,
+          "left800": 0.0012465978750167896,
+          "left700": 0.000020978473828394057,
+          "left900": 0.000021552317695384167,
+          "right700": 0,
+          "right900": 0,
+          "right600": 0,
+          "right800": 0
+        },
+        "right": {
+          "left600": 0,
+          "left800": 0,
+          "left700": 0,
+          "left900": 0,
+          "right700": 0.000050456616693073465,
+          "right900": 0.0013545558375910108,
+          "right600": 0.00003266111072094687,
+          "right800": 0.00006219707342122445
+        },
+        "routeRatios": {
+          "leftToRight": 0,
+          "rightToLeft": 0
+        }
+      }
+    },
+    "contextSampleRate": 48000,
+    "contextState": "running",
+    "contextSafety": [
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": ""
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      }
+    ],
+    "initialMetrics": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 83072,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordingFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackStates": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackPositions": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 4,
+      "commandOverruns": 0,
+      "processDeadlineMisses": null,
+      "deadlineMetricAvailable": false,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 67108864,
+      "trackCapacityFrames": [
+        131072,
+        131072,
+        131072,
+        131072,
+        131072
+      ],
+      "inputDropoutFrames": 0,
+      "storageAllocatedBytes": 5821440,
+      "storageGrowthRequests": 0,
+      "storageGrowthFailures": 0,
+      "historyDepth": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "storageSegments": [
+        8,
+        8,
+        8,
+        8,
+        8
+      ]
+    },
+    "finalMetrics": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 740480,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        0,
+        0,
+        0,
+        0,
+        6272
+      ],
+      "recordingFrames": [
+        0,
+        0,
+        0,
+        0,
+        6272
+      ],
+      "trackStates": [
+        0,
+        0,
+        0,
+        0,
+        4
+      ],
+      "trackPositions": [
+        0,
+        0,
+        0,
+        0,
+        0.7142857313156128
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 744,
+      "commandOverruns": 0,
+      "processDeadlineMisses": null,
+      "deadlineMetricAvailable": false,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 67108864,
+      "trackCapacityFrames": [
+        16384,
+        16384,
+        16384,
+        16384,
+        131072
+      ],
+      "inputDropoutFrames": 0,
+      "storageAllocatedBytes": 1689088,
+      "storageGrowthRequests": 0,
+      "storageGrowthFailures": 0,
+      "historyDepth": [
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "storageSegments": [
+        1,
+        1,
+        1,
+        1,
+        8
+      ]
+    },
+    "ioSnapshot": {
+      "contextSampleRate": 48000,
+      "contextBaseLatencyMs": 10,
+      "contextOutputLatencyMs": 56,
+      "loopRecordingChannelCount": 2,
+      "loopPlaybackOutputChannelCount": 2,
+      "loopChannelLayout": "stereo planar LR; stereo input preserved and mono input duplicated to LR",
+      "inputDeviceId": "smoke-mono-input",
+      "inputLabel": "MediaStreamAudioDestinationNode",
+      "inputSampleRate": 48000,
+      "inputChannelCount": 2,
+      "inputLatencyMs": 10,
+      "echoCancellation": null,
+      "noiseSuppression": null,
+      "autoGainControl": null,
+      "outputDeviceId": null,
+      "outputLabel": null,
+      "outputSinkType": "default",
+      "rhythmRoutingDelayFrames": 128
+    },
+    "latencyInfo": {
+      "mode": "browser",
+      "backend": "BROWSER",
+      "sampleRate": 48000,
+      "bufferFrames": 128,
+      "inputLatencyMs": null,
+      "outputLatencyMs": 56,
+      "baseLatencyMs": 10,
+      "estimatedMonitoringLatencyMs": null,
+      "roundTripLatencyMs": null,
+      "physicalRoundTripMs": null,
+      "inputLatencySource": null,
+      "outputLatencySource": "AudioContext.outputLatency API",
+      "driverReportedStreamLatencyMs": null,
+      "driverReportedStreamLatencySource": null,
+      "roundTripLatencyNote": "No correlated output-to-input loopback calibration is stored for the active device route and capture format.",
+      "inputPeak": 0,
+      "outputPeak": 0,
+      "xrunsOrDropouts": null,
+      "callbackStatusFaults": null,
+      "inputQueueOverruns": null,
+      "outputQueueUnderruns": null,
+      "callbackFrameLimitViolations": null,
+      "droppedCommands": null,
+      "outputQueueDepthBlocks": null,
+      "outputQueueCapacityBlocks": null,
+      "callbackTicks": null,
+      "inputCallbackTicks": null,
+      "outputCallbackTicks": null,
+      "callbackCountSkew": null,
+      "bridgeAvailable": true,
+      "engineRunning": true
+    },
+    "trackResults": [
+      {
+        "track": 1,
+        "loopFrames": 6656,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.014953185723807013,
+          0.011912622379813586
+        ]
+      },
+      {
+        "track": 2,
+        "loopFrames": 6912,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0,
+          0.011180336716759703
+        ]
+      },
+      {
+        "track": 3,
+        "loopFrames": 6272,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.014671137441961163,
+          0.011736908643470056
+        ]
+      },
+      {
+        "track": 4,
+        "loopFrames": 6144,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.013832815422890346,
+          0.011095384550247929
+        ]
+      },
+      {
+        "track": 5,
+        "loopFrames": 6784,
+        "numberOfChannels": 2,
+        "channelRms": [
+          0.013299877346329574,
+          0.010639900564286238
+        ]
+      }
+    ],
+    "inputCompressorCapture": {
+      "dryRms": [
+        0.013299877346329574,
+        0.010639900564286238
+      ],
+      "wetRms": [
+        0.0007773004540551607,
+        0.0006283149947660045
+      ],
+      "monitorRms": [
+        0.0008457424318594577,
+        0.000676648800828996
+      ],
+      "recordedTailRms": [
+        0.0008183182746843634,
+        0.0006508359675926929
+      ],
+      "quadDry": {
+        "magnitudes": {
+          "left600": 0.029878366343682745,
+          "left800": 0.0299056696189608,
+          "left700": 0.00021984334122203,
+          "left900": 0.00018693953682229338,
+          "right700": 0.02990567861677556,
+          "right900": 0.029925229247626438,
+          "right600": 0.0002146991292334382,
+          "right800": 0.00019451887943832611
+        },
+        "crosstalkRatios": {
+          "left600FromRight": 0.007357943827759244,
+          "left800FromRight": 0.006250973116608295,
+          "right700FromLeft": 0.00717920940650392,
+          "right900FromLeft": 0.00650016338483872
+        }
+      },
+      "quadWet": {
+        "magnitudes": {
+          "left600": 0.0012167981428191606,
+          "left800": 0.0012159225857295017,
+          "left700": 0.000017556575220040385,
+          "left900": 0.000018875199845730484,
+          "right700": 0.0012157886122293236,
+          "right900": 0.0012155188078680809,
+          "right600": 0.000015479019071938197,
+          "right800": 0.000017118269093818782
+        }
+      },
+      "quadWetIsolatedChannels": {
+        "quadDryMagnitudes": {
+          "left600": 0.029878366343682745,
+          "left800": 0.0299056696189608,
+          "left700": 0.00021984334122203,
+          "left900": 0.00018693953682229338,
+          "right700": 0.02990567861677556,
+          "right900": 0.029925229247626438,
+          "right600": 0.0002146991292334382,
+          "right800": 0.00019451887943832611
+        },
+        "quadDryCrosstalkRatios": {
+          "left600FromRight": 0.007357943827759244,
+          "left800FromRight": 0.006250973116608295,
+          "right700FromLeft": 0.00717920940650392,
+          "right900FromLeft": 0.00650016338483872
+        },
+        "quadWetMagnitudes": {
+          "left600": 0.0012167981428191606,
+          "left800": 0.0012159225857295017,
+          "left700": 0.000017556575220040385,
+          "left900": 0.000018875199845730484,
+          "right700": 0.0012157886122293236,
+          "right900": 0.0012155188078680809,
+          "right600": 0.000015479019071938197,
+          "right800": 0.000017118269093818782
+        },
+        "dryIsolatedChannels": {
+          "channel0": {
+            "left600": 0.02999092776614983,
+            "left800": 0.00025160860371785176,
+            "left700": 0.00037537247688200156,
+            "left900": 0.0000948191953734202,
+            "right700": 0,
+            "right900": 0,
+            "right600": 0,
+            "right800": 0
+          },
+          "channel1": {
+            "left600": 0,
+            "left800": 0,
+            "left700": 0,
+            "left900": 0,
+            "right700": 0.029992836695212237,
+            "right900": 0.00009632372353619288,
+            "right600": 0.00012004410226878017,
+            "right800": 0.00010486397455632391
+          },
+          "channel2": {
+            "left600": 0.0001876779476771717,
+            "left800": 0.029969263719612456,
+            "left700": 0.0004935861668019688,
+            "left900": 0.0004757071373121914,
+            "right700": 0,
+            "right900": 0,
+            "right600": 0,
+            "right800": 0
+          },
+          "channel3": {
+            "left600": 0,
+            "left800": 0,
+            "left700": 0,
+            "left900": 0,
+            "right700": 0.0002057314017075788,
+            "right900": 0.030020485529823,
+            "right600": 0.0001669578004483046,
+            "right800": 0.0002316647486204903
+          },
+          "routeRatios": {
+            "channel0LeftToRight": 0,
+            "channel1RightToLeft": 0,
+            "channel2LeftToRight": 0,
+            "channel3RightToLeft": 0
+          }
+        },
+        "firstPair": {
+          "left": {
+            "left600": 0.001357818133522716,
+            "left800": 0.00005752152242090995,
+            "left700": 0.0000654748197489693,
+            "left900": 0.000041283723329020816,
+            "right700": 0,
+            "right900": 0,
+            "right600": 0,
+            "right800": 0
+          },
+          "right": {
+            "left600": 0,
+            "left800": 0,
+            "left700": 0,
+            "left900": 0,
+            "right700": 0.0012361245811797117,
+            "right900": 0.000005336508951160488,
+            "right600": 0.000022092842680625076,
+            "right800": 0.00002114150112999799
+          },
+          "routeRatios": {
+            "leftToRight": 0,
+            "rightToLeft": 0
+          }
+        },
+        "secondPair": {
+          "left": {
+            "left600": 0.000009879361883471048,
+            "left800": 0.0012465978750167896,
+            "left700": 0.000020978473828394057,
+            "left900": 0.000021552317695384167,
+            "right700": 0,
+            "right900": 0,
+            "right600": 0,
+            "right800": 0
+          },
+          "right": {
+            "left600": 0,
+            "left800": 0,
+            "left700": 0,
+            "left900": 0,
+            "right700": 0.000050456616693073465,
+            "right900": 0.0013545558375910108,
+            "right600": 0.00003266111072094687,
+            "right800": 0.00006219707342122445
+          },
+          "routeRatios": {
+            "leftToRight": 0,
+            "rightToLeft": 0
+          }
+        }
+      }
+    },
+    "stereoPlayback": {
+      "left277": 0.012542527247234701,
+      "left733": 0.00007130770154241078,
+      "right277": 0.000060479722779487406,
+      "right733": 0.01001490756417961
+    },
+    "routing": {
+      "captureSource": {
+        "id": "capture",
+        "label": "MediaStreamAudioDestinationNode",
+        "kind": "capture",
+        "channelCount": 2,
+        "routingDelayFrames": 0,
+        "available": true
+      },
+      "leftTarget": "left",
+      "rightTarget": "right",
+      "antiCorrelation": -1
+    },
+    "routingNodeReuse": {
+      "before": {
+        "sourceSplitters": 2,
+        "channelPaths": 4,
+        "routeSends": 32,
+        "inputFxPairs": 0,
+        "routeRebuildCount": 2
+      },
+      "after": {
+        "sourceSplitters": 2,
+        "channelPaths": 4,
+        "routeSends": 32,
+        "inputFxPairs": 0,
+        "routeRebuildCount": 2
+      }
+    },
+    "replacementSourceInputFx": {
+      "sourceChannels": 2,
+      "rms": [
+        0.0009695803339098993,
+        0.0009695803339098993
+      ]
+    },
+    "changedOverdubSamples": 3997,
+    "changedOverdubRightSamples": 3997,
+    "monoCompatibility": {
+      "frames": 6272,
+      "maxChannelDifference": 0
+    },
+    "filterOutputRms": {
+      "ui100": 0.008769851315033954,
+      "ui1": 0.0007371608043947785
+    },
+    "monitorOnRms": 0.013221145130573061,
+    "monitorOffRms": 0,
+    "calibration": {
+      "beforeDeviceSwitchMs": 8,
+      "afterDeviceSwitchMs": null
+    },
+    "outputRouting": {
+      "mainBeforeOffRms": 0.03536952488949881,
+      "directMainBeforeOffRms": 0.035369524848903475,
+      "directMainOffRms": 0,
+      "mainOffRms": 0,
+      "mainOffRmsWindows": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mainOffFrameWindows": [
+        151936,
+        156160,
+        160384,
+        164736,
+        168576
+      ],
+      "mainOffStartFrame": 95232,
+      "subEnabledRms": 0.03536952543124309,
+      "headphonesEnabledRms": 0.03536952543124309,
+      "directSubEnabledRms": 0.035349844004455976,
+      "directHeadphonesEnabledRms": 0.035349844004455976,
+      "mainEnabledRms": 0.03534662772170287,
+      "mainEnabledDirectRms": 0.03534662775009221,
+      "directSubOffRms": 0,
+      "directHeadphonesOffRms": 0,
+      "subDisabledRms": 0,
+      "headphonesDisabledRms": 0,
+      "subDisabledRmsWindows": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "headphonesDisabledRmsWindows": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "subOffStartFrame": 168576,
+      "disabledOutputFrameWindows": [
+        225152,
+        228992,
+        233856,
+        238464,
+        241920
+      ]
+    },
+    "externalClockQuantizedRecord": {
+      "requestedBpm": 93.4567,
+      "appliedBpm": 93.457,
+      "beatOrdinal": 25,
+      "syncAck": {
+        "status": 0,
+        "targetFrame": 445696,
+        "executedFrame": 445696
+      },
+      "transportClockOrigin": -324711.78111858934,
+      "recordTargetFrame": 538145,
+      "recordExecutedFrame": 538145,
+      "measureOrdinal": 7.000000537586805
+    },
+    "softwareTaps": {
+      "mainStreamTracks": 1,
+      "subStreamTracks": 1,
+      "headphonesStreamTracks": 1,
+      "monitorStreamTracks": 1
+    }
+  },
+  "projectMemoryReload": {
+    "slot": 1,
+    "pass": true,
+    "pcmExact": true,
+    "expectedPcm": [
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "d0880b38"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "b6225581"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "c1173d4f"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "b003b084"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "624b6ea3"
+      }
+    ],
+    "restoredPcm": [
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "d0880b38"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "b6225581"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "c1173d4f"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "b003b084"
+      },
+      {
+        "frames": 48000,
+        "channels": 2,
+        "fnv1a32": "624b6ea3"
+      }
+    ],
+    "bpm": 93,
+    "masterTrackId": 1,
+    "runtimeSettings": {
+      "reverse": true,
+      "oneShot": false,
+      "startMode": "IMMEDIATE",
+      "stopMode": "IMMEDIATE",
+      "fadeInMs": 0,
+      "fadeOutMs": 0,
+      "speed": 1.25,
+      "keepPitch": false,
+      "tempoSyncEnabled": true,
+      "tempoSyncSpeed": "NORMAL",
+      "tempoSyncMode": "PITCH",
+      "recordBpm": null,
+      "autoRec": {
+        "enabled": false,
+        "threshold": 0.01,
+        "debounceMs": 20
+      },
+      "dubMode": "OVERDUB"
+    },
+    "mixer": {
+      "masterLevel": 0.8,
+      "tracks": [
+        {
+          "trackId": 1,
+          "level": 0.7,
+          "pan": 0.2,
+          "muted": false,
+          "solo": false
+        },
+        {
+          "trackId": 2,
+          "level": 1,
+          "pan": 0,
+          "muted": false,
+          "solo": false
+        },
+        {
+          "trackId": 3,
+          "level": 1,
+          "pan": 0,
+          "muted": false,
+          "solo": false
+        },
+        {
+          "trackId": 4,
+          "level": 1,
+          "pan": 0,
+          "muted": false,
+          "solo": false
+        },
+        {
+          "trackId": 5,
+          "level": 1,
+          "pan": 0,
+          "muted": false,
+          "solo": false
+        }
+      ]
+    },
+    "activeBankId": "bank-1",
+    "bankFx": {
+      "type": "FILTER",
+      "enabled": true,
+      "params": {
+        "frequency": 0.82,
+        "resonance": 0.22
+      }
+    },
+    "routeMainGain": 0.35,
+    "controlAssignment": {
+      "source": "cc",
+      "channel": 1,
+      "number": 21,
+      "trigger": "value",
+      "command": "set-track-pan",
+      "trackId": 1
+    },
+    "renderedFrame": 31744
+  },
+  "completedAt": "2026-10-09T05:59:41.844Z",
+  "softwareContexts": [
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    },
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    }
+  ],
+  "syntheticInputContextCount": 1,
+  "syntheticInputLayouts": [
+    {
+      "requestedDeviceId": "",
+      "mono": false,
+      "sourceChannels": 2,
+      "trackSettings": {
+        "channelCount": 2,
+        "deviceId": "smoke-stereo-input",
+        "latency": 0.01,
+        "sampleRate": 48000,
+        "sampleSize": 16
+      }
+    }
+  ],
+  "outputFile": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc505-browser-realtime-smoke-2026-10-09T05-59-16-853Z.json"
+}

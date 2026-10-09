@@ -1,5 +1,6 @@
 <template>
   <section ref="hostRef" class="classic-shell">
+    <ControlSurfaceHost />
     <div class="classic-fit" :style="fitStyle">
       <div ref="stageRef" class="classic-stage" :style="stageStyle">
         <div class="classic-console">
@@ -28,6 +29,7 @@ import CenterMainPanel from '../panel/CenterMainPanel.vue';
 import InputFxPanel from '../panel/InputFxPanel.vue';
 import TrackBay from '../panel/TrackBay.vue';
 import TrackFxPanel from '../panel/TrackFxPanel.vue';
+import ControlSurfaceHost from '../ControlSurfaceHost.vue';
 
 const hostRef = ref<HTMLElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);

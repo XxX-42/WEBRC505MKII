@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "status": "PASSED",
+  "startedAt": "2026-10-09T05:32:45.911Z",
+  "finishedAt": "2026-10-09T05:33:01.373Z",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "assertionCount": 21,
+  "passedAssertionCount": 21,
+  "failedAssertionCount": 0,
+  "coreSource": "public/worklets/time-stretch-core.js",
+  "coreSha256": "749D3F63B2856071E32067531A22D8F3DC086C914206352ABCF9F837E80C9F91",
+  "smokeScript": "scripts/project-mix-smoke.mjs",
+  "smokeScriptSha256": "4078B9700596DC08A622D348F85F0CBAAC24E0ECA4B5E4A901B99912E329040A",
+  "rawJsonFile": "project-mix-smoke-core-749d3f63.json",
+  "rawJsonSha256": "3F9318D5C36157B3FA9FA9C556815E61CD2A4A28EC8F2AAB1C5973C117B79B64",
+  "repro": "npm run audio:smoke:project-mix",
+  "browser": "Playwright Chromium 1228 / Chromium 149.0.7827.55"
+}

@@ -16,9 +16,6 @@ if (args.help) {
 const baseUrl = validateBaseUrl(args.baseUrl ?? 'http://127.0.0.1:5173');
 const repeats = positiveInteger(args.repeats ?? '5', '--repeats');
 const sampleRate = 48000;
-const renderDurationSeconds = 4.5;
-const inputTimeSeconds = 0.25;
-const thresholdFraction = 1e-4;
 const tempRoot = path.resolve(os.tmpdir());
 const outputRoot = path.resolve(args.outputDir ?? path.join(
   tempRoot,

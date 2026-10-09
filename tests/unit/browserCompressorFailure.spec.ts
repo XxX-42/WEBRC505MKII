@@ -27,9 +27,11 @@ describe('browser compressor failure status', () => {
       loopFrames: 128,
       recordingFrames: 0,
     }));
+    const releaseTrackHistory = vi.fn(async () => undefined);
     engine.realtimeRuntime = {
       getImmediateTargetFrame: () => 4_096,
       enqueue,
+      releaseTrackHistory,
     } as unknown as BrowserRealtimeRuntime;
 
     const track = engine.tracks[0]!;
@@ -50,6 +52,9 @@ describe('browser compressor failure status', () => {
     expect(enqueue).toHaveBeenCalledWith(BrowserRealtimeOpcode.STOP, 0, 0, 0, 4_096);
     expect(enqueue).toHaveBeenCalledWith(BrowserRealtimeOpcode.CANCEL_PENDING, 0, 0, 0, 4_096);
     expect(enqueue).toHaveBeenCalledWith(BrowserRealtimeOpcode.CLEAR, 0, 0, 0, 4_096);
+    expect(releaseTrackHistory).toHaveBeenCalledWith(0);
+    expect(track.getLastActionError()).toBeNull();
+    expect(track.state).toBe(TrackState.EMPTY);
     Transport.getInstance().stop();
     engine.tracks.forEach((item) => item.fxChain.compressor.dispose());
     engine.inputFxChain.compressor.dispose();

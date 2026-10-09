@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockAudioContext } from '../helpers/audioTestUtils';
 
+type TrackAudioTestAccess = { syncTransportState(): void };
+
 describe('TrackAudio transport sync helpers', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -38,7 +40,7 @@ describe('TrackAudio transport sync helpers', () => {
     Transport.stop();
     trackAudio.state = TrackState.PLAYING;
 
-    (trackAudio as any).syncTransportState();
+    (trackAudio as unknown as TrackAudioTestAccess).syncTransportState();
 
     expect(Transport.state).toBe(TransportState.PLAYING);
   });
@@ -48,7 +50,7 @@ describe('TrackAudio transport sync helpers', () => {
     trackAudio.state = TrackState.STOPPED;
     Transport.start();
 
-    (trackAudio as any).syncTransportState();
+    (trackAudio as unknown as TrackAudioTestAccess).syncTransportState();
 
     expect(Transport.state).toBe(TransportState.STOPPED);
   });

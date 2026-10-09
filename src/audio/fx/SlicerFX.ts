@@ -1,11 +1,11 @@
-import type { FXBase } from './FXBase';
+import type { FXBase, FXSnapshot } from './FXBase';
 
 export class SlicerFX implements FXBase {
     public name = 'SLICER';
     public input: GainNode;
     public output: GainNode;
 
-    private context: AudioContext;
+    private context: BaseAudioContext;
     private vca: GainNode;
     private lfo: OscillatorNode;
     private lfoGain: GainNode;
@@ -15,7 +15,7 @@ export class SlicerFX implements FXBase {
     private rate: number = 4; // Hz
     private depth: number = 1;
 
-    constructor(context: AudioContext) {
+    constructor(context: BaseAudioContext) {
         this.context = context;
         this.input = context.createGain();
         this.output = context.createGain();
@@ -101,6 +101,17 @@ export class SlicerFX implements FXBase {
             // Active: Restore depth settings
             this.updateDepth();
         }
+    }
+
+    public getSnapshot(): FXSnapshot {
+        return { type: this.name, enabled: !this.isBypassed, params: { rate: (this.rate - 1) / 19, depth: this.depth } };
+    }
+
+    public applySnapshot(snapshot: FXSnapshot): void {
+        if (snapshot.type !== this.name) throw new TypeError(`Cannot apply ${snapshot.type} state to SLICER.`);
+        if (typeof snapshot.params.rate === 'number') this.setParam('rate', Math.max(0, Math.min(1, snapshot.params.rate)) * 100);
+        if (typeof snapshot.params.depth === 'number') this.setParam('depth', Math.max(0, Math.min(1, snapshot.params.depth)) * 100);
+        this.setBypass(!snapshot.enabled);
     }
 
     public dispose() {

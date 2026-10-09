@@ -17,7 +17,6 @@ const DEFAULT_URL = 'http://127.0.0.1:5173/';
 const SAMPLE_RATE = 48000;
 const PROBE_COUNT = 100;
 const PROBE_AMPLITUDE = 0.01; // -40 dBFS; short, windowed 450–2,000 Hz chirp.
-const PROBE_SECONDS = 0.01;
 const PROBE_INTERVAL_MS = 300;
 const MAX_ROUND_TRIP_MS = 180;
 const MIN_CORRELATION = 0.35;

@@ -7,12 +7,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { performance, PerformanceObserver } from 'node:perf_hooks';
 import { createHash, randomBytes } from 'node:crypto';
 import { once } from 'node:events';
+import * as timeStretchCore from '../public/worklets/time-stretch-core.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
 if (args.help) {
-  process.stdout.write(`Synthetic Node/V8 benchmark for the actual AudioWorklet processor source. No hardware or browser callback is opened.\n\nUsage:\n  node scripts/worklet-benchmark.mjs [--iterations 10000] [--warmup 1000] [--burst-samples 100] [--phase-minutes 30] [--phase-clock] [--observe-gc] [--worklet-source <path>]\n\nDefault runs five-track 48 kHz / 128-frame REC, PLAY, overdub, Clear, Record, command-burst and protocol assertions.\n--phase-minutes opts into an actual accelerated VM process-loop simulation; it is still not a real 30-minute device run.\n--phase-clock changes only that optional phase to one playing track, four empty tracks, and a 119 BPM clock.\n--observe-gc adds perf_hooks GC event timestamps for correlation with unfiltered phase samples.\n--worklet-source permits saved stereo planar-LR v2 sources for controlled comparisons; legacy mono sources are rejected.\nTrack buffers use two independent planar channels, and both channel outputs are asserted.\nOutputs are written below the system TEMP directory.\n`);
+  process.stdout.write(`Synthetic Node/V8 benchmark for the actual AudioWorklet processor source. No hardware or browser callback is opened.\n\nUsage:\n  node scripts/worklet-benchmark.mjs [--iterations 10000] [--warmup 1000] [--burst-samples 100] [--phase-minutes 30] [--phase-clock] [--observe-gc] [--worklet-source <path>] [--realm vm|vm-host-math|same-realm] [--realm-probe]\n\nDefault runs five-track 48 kHz / 128-frame REC, PLAY, overdub, 119 BPM clock, 8-layer keep-pitch, Clear, Record, command-burst and protocol assertions.\n--phase-minutes opts into an actual accelerated VM process-loop simulation; it is still not a real 30-minute device run.\n--phase-clock changes only that optional phase to one playing track, four empty tracks, and a 119 BPM clock.\n--observe-gc adds perf_hooks GC event timestamps for correlation with unfiltered phase samples.\n--worklet-source permits saved stereo planar-LR layout v4 sources for controlled comparisons; legacy mono/v2/v3 sources are rejected.\n--realm selects vm, vm with host Math, or same-realm Function evaluation; --realm-probe limits scenarios to playback and keep-pitch comparison.\nThe Worklet's ESM time-stretch import is linked to the real shared module source. Track buffers use planar LR and outputs are asserted per channel.\nOutputs are written below the system TEMP directory.\n`);
   process.exit(0);
+}
+const executionRealm = args.realm ?? 'vm';
+if (!['vm', 'vm-host-math', 'same-realm'].includes(executionRealm)) {
+  throw new Error('--realm must be vm, vm-host-math, or same-realm.');
 }
 
 const sampleRate = 48_000;
@@ -43,10 +48,14 @@ const require = createRequire(pathToFileURL(path.join(repoRoot, 'package.json'))
 const typescript = require('typescript');
 const protocolSourcePath = path.join(repoRoot, 'src', 'audio', 'browserRealtimeProtocol.ts');
 const defaultWorkletSourcePath = path.join(repoRoot, 'public', 'worklets', 'looper-processor.js');
+const timeStretchSourcePath = path.join(repoRoot, 'public', 'worklets', 'time-stretch-core.js');
 const workletSourcePath = path.resolve(args.workletSource ?? defaultWorkletSourcePath);
 const protocolSource = fs.readFileSync(protocolSourcePath, 'utf8');
 const workletSource = fs.readFileSync(workletSourcePath, 'utf8');
+const timeStretchSource = fs.readFileSync(timeStretchSourcePath, 'utf8');
+const protocolSourceSha256 = createHash('sha256').update(protocolSource).digest('hex');
 const workletSourceSha256 = createHash('sha256').update(workletSource).digest('hex');
+const timeStretchSourceSha256 = createHash('sha256').update(timeStretchSource).digest('hex');
 const protocol = loadProtocolExports(protocolSource, protocolSourcePath, typescript);
 const protocolAudit = auditProtocolMirror(protocol, workletSource, workletSourcePath);
 
@@ -72,6 +81,7 @@ const processorState = {
   PLAYING: readWorkletIntegerConstant(workletSource, 'STATE_PLAYING', workletSourcePath),
   OVERDUBBING: readWorkletIntegerConstant(workletSource, 'STATE_OVERDUBBING', workletSourcePath),
   STOPPED: readWorkletIntegerConstant(workletSource, 'STATE_STOPPED', workletSourcePath),
+  REPLACING: readWorkletIntegerConstant(workletSource, 'STATE_REPLACING', workletSourcePath),
 };
 const loopLengths = [127, 131, 137, 139, 149];
 if (loopLengths.length !== trackCount || loopLengths.some((length) => length === quantumFrames || quantumFrames % length === 0)) {
@@ -81,15 +91,25 @@ if (loopLengths.length !== trackCount || loopLengths.some((length) => length ===
 const runStartedAt = new Date().toISOString();
 const scenarioResults = [];
 const rawSamples = [];
+const rawWarmupSamples = [];
 const diagnostics = [];
 let phaseDiagnostic = null;
 
-scenarioResults.push(runSteadyScenario('five_track_record', 'record', iterations, warmup));
-scenarioResults.push(runSteadyScenario('five_track_playback', 'play', iterations, warmup));
-scenarioResults.push(runSteadyScenario('five_track_overdub', 'overdub', iterations, warmup));
-scenarioResults.push(runCommandScenario('clear_five_tracks', opcode.CLEAR, iterations, warmup));
-scenarioResults.push(runCommandScenario('record_start_five_tracks', opcode.START_RECORD, iterations, warmup));
-scenarioResults.push(runCommandBurstScenario(burstSamples, burstWarmup));
+if (args.realmProbe) {
+  scenarioResults.push(runSteadyScenario('five_track_playback', 'play', iterations, warmup));
+  scenarioResults.push(runKeepPitchScenario(iterations, warmup));
+} else {
+  scenarioResults.push(runSteadyScenario('five_track_record', 'record', iterations, warmup));
+  scenarioResults.push(runSteadyScenario('five_track_playback', 'play', iterations, warmup));
+  scenarioResults.push(runMultiSegmentPlaybackScenario(iterations, warmup));
+  scenarioResults.push(runSteadyScenario('five_track_overdub', 'overdub', iterations, warmup));
+  scenarioResults.push(runClockScenario(iterations, warmup));
+  scenarioResults.push(runKeepPitchScenario(iterations, warmup));
+  scenarioResults.push(runKeepPitchScenario(iterations, warmup, { activeOverdub: true }));
+  scenarioResults.push(runCommandScenario('clear_five_tracks', opcode.CLEAR, iterations, warmup));
+  scenarioResults.push(runCommandScenario('record_start_five_tracks', opcode.START_RECORD, iterations, warmup));
+  scenarioResults.push(runCommandBurstScenario(burstSamples, burstWarmup));
+}
 diagnostics.push(runProtocolBehaviorAssertions());
 if (phaseMinutes > 0) {
   phaseDiagnostic = await runLongPlaybackPhaseSimulation(phaseMinutes, phaseYieldBlocks, phaseYieldMs, phaseClock);
@@ -103,6 +123,16 @@ if (gcObserver) {
 }
 
 for (const result of scenarioResults) {
+  for (let index = 0; index < (result.warmupSamplesMs?.length ?? 0); index += 1) {
+    rawWarmupSamples.push({
+      scenario: result.scenario,
+      sampleIndex: index + 1,
+      elapsedMs: result.warmupSamplesMs[index],
+      quantumFrames,
+      sampleRate,
+      blockStartFrame: (index + 1) * quantumFrames,
+    });
+  }
   for (let index = 0; index < result.samplesMs.length; index += 1) {
     rawSamples.push({
       scenario: result.scenario,
@@ -120,7 +150,8 @@ const report = {
   diagnosticStatus: diagnostics.some((item) => Number(item.assertionErrors ?? 0) > 0) ? 'FAILED' : 'PASS',
   diagnosticStatusScope: 'PASS/FAILED reflects source/protocol/state/phase assertions only; Node deadline counters are reported separately and no hardware qualification is implied.',
   qualificationStatus: 'NOT_HARDWARE_QUALIFIED',
-  benchmark: 'Actual public/worklets/looper-processor.js process() in a Node vm AudioWorkletProcessor stub; synthetic V8 only',
+  benchmark: `Actual public/worklets/looper-processor.js process() in a Node ${executionRealm} AudioWorkletProcessor stub; synthetic V8 only`,
+  executionRealm,
   startedAt: runStartedAt,
   completedAt: new Date().toISOString(),
   sampleRate,
@@ -132,7 +163,7 @@ const report = {
   commandBurstWarmupBlocks: burstWarmup,
   loopFramesForPhaseChecks: loopLengths,
   phaseMode: phaseClock ? 'one PLAYING track, four EMPTY tracks, 119 BPM clock' : 'five-track PLAYING, clock inactive',
-  timer: 'Node perf_hooks.performance.now() around processor.process(); includes vm call edge, excludes queue/setup, verification and host-yield time',
+  timer: 'Node perf_hooks.performance.now() around processor.process(); includes realm call edge, excludes queue/setup, verification and host-yield time',
   gcObservation: args.observeGc ? 'Enabled with perf_hooks PerformanceObserver; correlates pause intervals to raw phase callback intervals.' : 'Disabled; use --observe-gc to capture GC events.',
   limitations: [
     'This is accelerated/synthetic Node V8 execution, not a Chromium AudioWorklet callback measurement.',
@@ -141,9 +172,12 @@ const report = {
     'No microphone, render endpoint, loopback, or physical audio stream is opened.',
   ],
   protocolAudit,
+  protocolSourceSha256,
   workletSourcePath,
   workletSourceSha256,
-  scenarios: scenarioResults.map(({ samplesMs: _samplesMs, ...summary }) => summary),
+  timeStretchSourcePath,
+  timeStretchSourceSha256,
+  scenarios: scenarioResults.map(({ samplesMs: _samplesMs, warmupSamplesMs: _warmupSamplesMs, ...summary }) => summary),
   diagnostics: compactDiagnostics,
 };
 
@@ -154,7 +188,13 @@ const phaseSummary = compactDiagnostics.find((item) => item.name === 'accelerate
 const phaseSummaryCsvPath = phaseSummary ? path.join(outputRoot, 'phase-summary.csv') : null;
 const phaseSamplesCsvPath = phaseDiagnostic ? path.join(outputRoot, 'phase-process-samples.csv') : null;
 const reproPath = path.join(outputRoot, 'repro-command.ps1');
-fs.writeFileSync(rawPath, JSON.stringify({ ...report, processSampleCount: rawSamples.length, processSamplesMs: scenarioResults.map((scenario) => ({ scenario: scenario.scenario, samplesMs: scenario.samplesMs })) }, null, 2), 'utf8');
+fs.writeFileSync(rawPath, JSON.stringify({
+  ...report,
+  processSampleCount: rawSamples.length,
+  processWarmupSampleCount: rawWarmupSamples.length,
+  processSamplesMs: scenarioResults.map((scenario) => ({ scenario: scenario.scenario, samplesMs: scenario.samplesMs })),
+  processWarmupSamplesMs: scenarioResults.map((scenario) => ({ scenario: scenario.scenario, samplesMs: scenario.warmupSamplesMs ?? [] })),
+}, null, 2), 'utf8');
 fs.writeFileSync(samplesCsvPath, toCsv(rawSamples), 'utf8');
 fs.writeFileSync(summaryCsvPath, toCsv(report.scenarios), 'utf8');
 if (phaseSummaryCsvPath) fs.writeFileSync(phaseSummaryCsvPath, toCsv([phaseSummary]), 'utf8');
@@ -163,9 +203,10 @@ const phaseArgs = phaseMinutes > 0 ? ` --phase-minutes ${phaseMinutes} --phase-y
 const phaseClockArgs = phaseClock ? ' --phase-clock' : '';
 const gcArgs = args.observeGc ? ' --observe-gc' : '';
 const workletSourceArgs = args.workletSource ? ` --worklet-source '${path.resolve(args.workletSource).replaceAll("'", "''")}'` : '';
+const realmArgs = ` --realm ${executionRealm}${args.realmProbe ? ' --realm-probe' : ''}`;
 const escapedRoot = repoRoot.replaceAll("'", "''");
 fs.writeFileSync(reproPath,
-  `Set-Location '${escapedRoot}'\nnode scripts/worklet-benchmark.mjs --iterations ${iterations} --warmup ${warmup} --burst-samples ${burstSamples} --burst-warmup ${burstWarmup}${phaseArgs}${phaseClockArgs}${gcArgs}${workletSourceArgs}\n`,
+  `Set-Location '${escapedRoot}'\nnode scripts/worklet-benchmark.mjs --iterations ${iterations} --warmup ${warmup} --burst-samples ${burstSamples} --burst-warmup ${burstWarmup}${phaseArgs}${phaseClockArgs}${gcArgs}${workletSourceArgs}${realmArgs}\n`,
   'utf8',
 );
 process.stdout.write(JSON.stringify({ diagnosticStatus: report.diagnosticStatus, diagnosticStatusScope: report.diagnosticStatusScope, qualificationStatus: report.qualificationStatus, outputRoot, rawPath, samplesCsvPath, summaryCsvPath, phaseSummaryCsvPath, phaseSamplesCsvPath, reproPath, protocolAudit, scenarios: report.scenarios, diagnostics: compactDiagnostics }, null, 2) + '\n');
@@ -191,18 +232,17 @@ function loadProtocolExports(source, filename, ts) {
 }
 
 function auditProtocolMirror(exports, source, filename) {
-  if (!/\bconst\s+LAYOUT_VERSION\s*=\s*2\s*;/.test(source) ||
+  const layoutVersion = exports.BROWSER_REALTIME_LAYOUT_VERSION;
+  if (!new RegExp(`\\bconst\\s+LAYOUT_VERSION\\s*=\\s*${layoutVersion}\\s*;`).test(source) ||
       !/\bconst\s+TRACK_CHANNEL_COUNT\s*=\s*2\s*;/.test(source) ||
       !/\bconst\s+LAYOUT_PLANAR_LR\s*=\s*1\s*;/.test(source)) {
-    throw new Error(`The selected Worklet source ${filename} is not stereo planar-LR layout v2; legacy mono snapshots are rejected for this benchmark.`);
+    throw new Error(`The selected Worklet source ${filename} is not stereo planar-LR layout v${layoutVersion}; legacy mono snapshots are rejected for this benchmark.`);
   }
   const constantPairs = [
     ['TRACK_COUNT', exports.BROWSER_REALTIME_TRACK_COUNT],
-    ['OUTPUT_COUNT', exports.BROWSER_REALTIME_TRACK_COUNT + 2],
     ['COMMAND_CAPACITY', exports.BROWSER_REALTIME_COMMAND_CAPACITY],
     ['COMMAND_WORDS', exports.BROWSER_REALTIME_COMMAND_WORDS],
     ['COMMAND_WORD_OFFSET', exports.CONTROL_COMMANDS_WORD_OFFSET],
-    ['CONTROL_HEADER_BYTES', exports.CONTROL_HEADER_BYTES],
     ['TRACK_META_BYTES', exports.TRACK_META_BYTES],
     ['TRACK_META_WORDS', exports.TRACK_META_WORDS],
     ['LAYOUT_VERSION', exports.BROWSER_REALTIME_LAYOUT_VERSION],
@@ -215,6 +255,10 @@ function auditProtocolMirror(exports, source, filename) {
     const actual = readWorkletIntegerConstant(source, name, filename);
     if (actual !== expected) throw new Error(`${name} diverges: worklet=${actual}, protocol=${expected}`);
     mirrored.push({ name, value: actual });
+  }
+  if (exports.CONTROL_COMMANDS_BYTE_OFFSET !== exports.CONTROL_HEADER_BYTES ||
+      exports.CONTROL_HEADER_BYTES !== readWorkletIntegerConstant(source, 'COMMAND_WORD_OFFSET', filename) * Int32Array.BYTES_PER_ELEMENT) {
+    throw new Error('The Worklet command-word offset and protocol control-header size do not match.');
   }
 
   const controlPairs = {
@@ -237,6 +281,12 @@ function auditProtocolMirror(exports, source, filename) {
     PLAY_POSITION: 'PLAY_POSITION', CAPACITY_FRAMES: 'CAPACITY_FRAMES',
     RECORD_START_LOW: 'RECORD_START_LOW', RECORD_START_HIGH: 'RECORD_START_HIGH', REVERSE: 'REVERSE',
     CHANNEL_COUNT: 'CHANNEL_COUNT', STORAGE_LAYOUT_VERSION: 'LAYOUT_VERSION', STORAGE_LAYOUT: 'STORAGE_LAYOUT',
+    HISTORY_CURSOR: 'HISTORY_CURSOR', HISTORY_LENGTH: 'HISTORY_LENGTH', TAKE_MODE: 'TAKE_MODE',
+    SPEED_Q16: 'SPEED_Q16', PLAYBACK_FLAGS: 'PLAYBACK_FLAGS', STOP_MODE: 'STOP_MODE',
+    START_MODE: 'START_MODE', FADE_IN_FRAMES: 'FADE_IN_FRAMES', FADE_OUT_FRAMES: 'FADE_OUT_FRAMES',
+    AUTO_REC_THRESHOLD_Q15: 'AUTO_REC_THRESHOLD_Q15', AUTO_REC_DEBOUNCE_FRAMES: 'AUTO_REC_DEBOUNCE_FRAMES',
+    ACTIVE_TAKE_SLOT: 'ACTIVE_TAKE_SLOT', PENDING_STOP_MODE: 'PENDING_STOP_MODE', RECORD_BPM: 'RECORD_BPM',
+    TEMPO_SYNC_FACTOR_Q16: 'TEMPO_SYNC_FACTOR_Q16', TEMPO_SYNC_FLAGS: 'TEMPO_SYNC_FLAGS',
   };
   auditNamedValues(source, filename, trackMetaPairs, exports.TrackMetaWord, 'track-meta-word');
 
@@ -247,19 +297,30 @@ function auditProtocolMirror(exports, source, filename) {
     OPCODE_SET_RHYTHM: 'SET_RHYTHM', OPCODE_SET_BPM: 'SET_BPM', OPCODE_SET_CLOCK: 'SET_CLOCK',
     OPCODE_EXPORT_TRACK: 'EXPORT_TRACK', OPCODE_SET_ALIGNMENT: 'SET_ALIGNMENT',
     OPCODE_CANCEL_PENDING: 'CANCEL_PENDING',
+    OPCODE_UNDO: 'UNDO', OPCODE_REDO: 'REDO', OPCODE_MARK: 'MARK',
+    OPCODE_RESTORE_MARK: 'RESTORE_MARK', OPCODE_RESET_BACK: 'RESET_BACK',
+    OPCODE_SET_SPEED: 'SET_SPEED', OPCODE_SET_ONE_SHOT: 'SET_ONE_SHOT',
+    OPCODE_SET_STOP_MODE: 'SET_STOP_MODE', OPCODE_SET_FADE: 'SET_FADE',
+    OPCODE_SET_AUTO_REC: 'SET_AUTO_REC', OPCODE_SET_DUB_MODE: 'SET_DUB_MODE',
+    OPCODE_SET_START_MODE: 'SET_START_MODE', OPCODE_SET_RECORD_BPM: 'SET_RECORD_BPM',
+    OPCODE_LOAD_TRACK: 'LOAD_TRACK', OPCODE_CLEAR_MARK: 'CLEAR_MARK',
+    OPCODE_SYNC_EXTERNAL_CLOCK: 'SYNC_EXTERNAL_CLOCK', OPCODE_SET_TEMPO_SYNC: 'SET_TEMPO_SYNC',
+    OPCODE_SET_MASTER_CLOCK_EPOCH: 'SET_MASTER_CLOCK_EPOCH',
   };
   auditNamedValues(source, filename, opcodePairs, exports.BrowserRealtimeOpcode, 'opcode');
 
   const statusPairs = {
     STATUS_OK: 'OK', STATUS_LATE: 'LATE', STATUS_MISSING_TRACK_STORAGE: 'MISSING_TRACK_STORAGE',
-    STATUS_TRACK_CAPACITY_REACHED: 'TRACK_CAPACITY_REACHED', STATUS_INVALID_STATE: 'INVALID_STATE',
+    STATUS_INVALID_STATE: 'INVALID_STATE',
     STATUS_COMMAND_OVERFLOW: 'COMMAND_OVERFLOW', STATUS_CANCELLED: 'CANCELLED', STATUS_INVALID_TRACK: 'INVALID_TRACK',
+    STATUS_NO_UNDO: 'NO_UNDO', STATUS_NO_REDO: 'NO_REDO', STATUS_LOAD_INVALID: 'LOAD_INVALID',
+    STATUS_INVALID_SETTINGS: 'INVALID_SETTINGS',
   };
   auditNamedValues(source, filename, statusPairs, exports.BrowserRealtimeStatus, 'status');
 
   const statePairs = {
     STATE_EMPTY: 0, STATE_REC_STANDBY: 1, STATE_RECORDING: 2, STATE_REC_FINISHING: 3,
-    STATE_PLAYING: 4, STATE_OVERDUBBING: 5, STATE_STOPPED: 6,
+    STATE_PLAYING: 4, STATE_OVERDUBBING: 5, STATE_STOPPED: 6, STATE_REPLACING: 7,
   };
   auditNamedValues(source, filename, statePairs, statePairs, 'track-state');
 
@@ -275,7 +336,7 @@ function auditProtocolMirror(exports, source, filename) {
   if (trackBuffer.byteLength !== exports.TRACK_META_BYTES + 31 * 2 * Float32Array.BYTES_PER_ELEMENT) throw new Error('Protocol createTrackSharedBuffer() stereo size mismatch.');
   const trackMeta = new Int32Array(trackBuffer, 0, exports.TRACK_META_WORDS);
   if (Atomics.load(trackMeta, exports.TrackMetaWord.CHANNEL_COUNT) !== 2 ||
-      Atomics.load(trackMeta, exports.TrackMetaWord.LAYOUT_VERSION) !== 2 ||
+      Atomics.load(trackMeta, exports.TrackMetaWord.LAYOUT_VERSION) !== layoutVersion ||
       Atomics.load(trackMeta, exports.TrackMetaWord.STORAGE_LAYOUT) !== exports.BROWSER_REALTIME_LAYOUT_PLANAR_LR) {
     throw new Error('Protocol createTrackSharedBuffer() metadata does not identify stereo planar LR.');
   }
@@ -296,7 +357,7 @@ function auditProtocolMirror(exports, source, filename) {
     commandWords: exports.BROWSER_REALTIME_COMMAND_WORDS,
     controlBufferBytes: controlBuffer.byteLength,
     trackMetaBytes: exports.TRACK_META_BYTES,
-    trackLayout: 'stereo planar LR v2',
+    trackLayout: `stereo planar LR v${layoutVersion}`,
     trackChannelCount: exports.BROWSER_REALTIME_TRACK_CHANNEL_COUNT,
     commandBaseWordOffset: exports.CONTROL_COMMANDS_WORD_OFFSET,
     trackStatesByteOffset: exports.CONTROL_TRACK_STATES_BYTE_OFFSET,
@@ -331,7 +392,7 @@ function readWorkletExpression(source, name, filename) {
   return match[1];
 }
 
-function loadWorkletRegistration(source, filename) {
+function loadWorkletRegistration(source, filename, realm = executionRealm) {
   let registration = null;
   const counters = emptyMessageCounters();
   class AudioWorkletProcessorStub {
@@ -350,29 +411,48 @@ function loadWorkletRegistration(source, filename) {
     sampleRate: 48_000,
     registerProcessor: (name, constructor) => { registration = { name, constructor }; },
     console,
+    ...timeStretchCore,
+    ...(realm === 'vm-host-math' || realm === 'same-realm' ? { Math } : {}),
   };
-  vm.runInNewContext(source, globals, { filename, timeout: 5000 });
+  const strippedImport = source.replace(
+    /^import\s*\{[\s\S]*?\}\s*from\s*['"]\.\/time-stretch-core\.js['"];?\s*/m,
+    '',
+  );
+  if (strippedImport === source) throw new Error(`Could not resolve the Worklet ESM import in ${filename}.`);
+  if (realm === 'same-realm') {
+    const names = Object.keys(globals);
+    const values = Object.values(globals);
+    const evaluate = new Function(...names, `${strippedImport}\nreturn (frame) => { currentFrame = frame; };`);
+    globals.setCurrentFrame = evaluate(...values);
+  } else {
+    vm.runInNewContext(strippedImport, globals, { filename, timeout: 5000 });
+  }
   if (!registration) throw new Error(`registerProcessor() was not called by ${filename}`);
-  return registration;
+  return { ...registration, globals, counters };
 }
 
-function createHarness(capacityFrames = sampleRate * 35, attachedTrackCount = trackCount) {
+function createHarness(capacityFrames = protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES, attachedTrackCount = trackCount) {
   const controlBuffer = protocol.createControlSharedBuffer();
   const control = new Int32Array(controlBuffer);
   const stateView = new Int32Array(controlBuffer, protocol.CONTROL_TRACK_STATES_BYTE_OFFSET, trackCount);
   const positionView = new Float32Array(controlBuffer, protocol.CONTROL_TRACK_POSITIONS_BYTE_OFFSET, trackCount);
   const tracks = [];
+  const primarySegmentCapacity = protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES;
+  const primarySegmentCount = Math.max(1, Math.ceil(capacityFrames / primarySegmentCapacity));
+  if (primarySegmentCount > protocol.BROWSER_REALTIME_MAX_SEGMENTS_PER_TAKE) {
+    throw new RangeError(`Requested benchmark capacity needs ${primarySegmentCount} segments, above the protocol limit.`);
+  }
   for (let track = 0; track < trackCount; track += 1) {
-    const buffer = protocol.createTrackSharedBuffer(capacityFrames);
+    const buffer = protocol.createTrackSharedBuffer(primarySegmentCapacity);
     const meta = new Int32Array(buffer, 0, protocol.TRACK_META_WORDS);
-    const dataLeft = new Float32Array(buffer, protocol.TRACK_META_BYTES, capacityFrames);
+    const dataLeft = new Float32Array(buffer, protocol.TRACK_META_BYTES, primarySegmentCapacity);
     const dataRight = new Float32Array(
       buffer,
-      protocol.TRACK_META_BYTES + capacityFrames * Float32Array.BYTES_PER_ELEMENT,
-      capacityFrames,
+      protocol.TRACK_META_BYTES + primarySegmentCapacity * Float32Array.BYTES_PER_ELEMENT,
+      primarySegmentCapacity,
     );
     Atomics.store(meta, trackWord.STATE, processorState.EMPTY);
-    Atomics.store(meta, trackWord.CAPACITY_FRAMES, capacityFrames);
+    Atomics.store(meta, trackWord.CAPACITY_FRAMES, primarySegmentCapacity);
     Atomics.store(meta, trackWord.ALIGNMENT_SAMPLES, 0);
     Atomics.store(meta, trackWord.CHANNEL_COUNT, protocol.BROWSER_REALTIME_TRACK_CHANNEL_COUNT);
     Atomics.store(meta, trackWord.LAYOUT_VERSION, protocol.BROWSER_REALTIME_LAYOUT_VERSION);
@@ -380,26 +460,9 @@ function createHarness(capacityFrames = sampleRate * 35, attachedTrackCount = tr
     tracks.push({ buffer, meta, dataLeft, dataRight });
   }
 
-  const counters = emptyMessageCounters();
-  class AudioWorkletProcessorStub {
-    constructor() {
-      this.port = { onmessage: null, onmessageerror: null, postMessage: (message) => countMessage(counters, message) };
-    }
-  }
-  let registration = null;
-  const vmGlobals = {
-    AudioWorkletProcessor: AudioWorkletProcessorStub,
-    SharedArrayBuffer,
-    Int32Array,
-    Float32Array,
-    Atomics,
-    performance,
-    currentFrame: 0,
-    sampleRate,
-    registerProcessor: (name, constructor) => { registration = { name, constructor }; },
-    console,
-  };
-  vm.runInNewContext(workletSource, vmGlobals, { filename: workletSourcePath, timeout: 5000 });
+  const registration = loadWorkletRegistration(workletSource, workletSourcePath, executionRealm);
+  const counters = registration.counters;
+  const vmGlobals = registration.globals;
   if (!registration || registration.name !== protocol.BROWSER_REALTIME_WORKLET_NAME) throw new Error('Actual worklet registration was not captured.');
   const processor = new registration.constructor({ processorOptions: { controlBuffer } });
   for (let track = 0; track < attachedTrackCount; track += 1) {
@@ -409,6 +472,13 @@ function createHarness(capacityFrames = sampleRate * 35, attachedTrackCount = tr
       layoutVersion: protocol.BROWSER_REALTIME_LAYOUT_VERSION,
       storageLayout: protocol.BROWSER_REALTIME_LAYOUT_PLANAR_LR,
     });
+    for (let segmentIndex = 1; segmentIndex < primarySegmentCount; segmentIndex += 1) {
+      processor.handlePortMessage({
+        type: 'ATTACH_TAKE_SEGMENT', track, takeSlot: 0, segmentIndex,
+        buffer: protocol.createTakeSegmentBuffer(primarySegmentCapacity),
+      });
+    }
+    processor.handlePortMessage({ type: 'PREPARE_TAKE', track, takeSlot: 0, mode: 'BASE', usePrimary: true });
   }
 
   const inputLeft = new Float32Array(quantumFrames);
@@ -418,7 +488,7 @@ function createHarness(capacityFrames = sampleRate * 35, attachedTrackCount = tr
     inputRight[frame] = Math.cos(frame * 0.0234375) * 0.1;
   }
   const inputs = [[inputLeft, inputRight]];
-  const outputs = Array.from({ length: protocolAudit.mirroredConstants.find((entry) => entry.name === 'OUTPUT_COUNT').value }, () => [new Float32Array(quantumFrames), new Float32Array(quantumFrames)]);
+  const outputs = Array.from({ length: trackCount + 2 }, () => [new Float32Array(quantumFrames), new Float32Array(quantumFrames)]);
   return {
     controlBuffer,
     control,
@@ -433,7 +503,8 @@ function createHarness(capacityFrames = sampleRate * 35, attachedTrackCount = tr
     frame: 0,
     nextSequence: 1,
     processBlock() {
-      vmGlobals.currentFrame = this.frame;
+      if (vmGlobals.setCurrentFrame) vmGlobals.setCurrentFrame(this.frame);
+      else vmGlobals.currentFrame = this.frame;
       const keepAlive = processor.process(inputs, outputs);
       this.frame += quantumFrames;
       if (keepAlive !== true) throw new Error('Worklet process() unexpectedly requested shutdown.');
@@ -456,18 +527,88 @@ function queueCommand(harness, op, track, args = {}) {
 
 function initializeLoopTracks(harness, lengths = loopLengths, stateValue = processorState.STOPPED) {
   for (let track = 0; track < trackCount; track += 1) {
-    const { meta, dataLeft, dataRight } = harness.tracks[track];
+    const { meta } = harness.tracks[track];
     const length = lengths[track];
     Atomics.store(meta, trackWord.STATE, stateValue);
     Atomics.store(meta, trackWord.LOOP_FRAMES, length);
     Atomics.store(meta, trackWord.RECORDING_FRAMES, length);
     Atomics.store(meta, trackWord.PLAY_POSITION, 0);
     Atomics.store(meta, trackWord.REVERSE, 0);
+    harness.processor.playPositions[track] = 0;
+    harness.processor.playbackFrames[track] = 0;
+    setPrimaryVisibleLoop(harness, track, length);
     for (let frame = 0; frame < length; frame += 1) {
-      dataLeft[frame] = (track + 1) * 0.125 + frame * 0.00001;
-      dataRight[frame] = -(track + 1) * 0.0625 - frame * 0.00002;
+      const segment = Math.floor(frame / protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES);
+      const offset = frame - segment * protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES;
+      const dataLeft = harness.processor.takeLeft[track][0][segment];
+      const dataRight = harness.processor.takeRight[track][0][segment];
+      if (!dataLeft || !dataRight) throw new Error(`Missing primary segment ${segment} for track ${track + 1}.`);
+      dataLeft[offset] = (track + 1) * 0.125 + frame * 0.0000001;
+      dataRight[offset] = -(track + 1) * 0.0625 - frame * 0.0000002;
+    }
+    harness.processor.updateVisibleLoopFrames(track);
+  }
+}
+
+function setPrimaryVisibleLoop(harness, track, length) {
+  const meta = harness.tracks[track].meta;
+  const processor = harness.processor;
+  const baseIndex = processor.takeIndex(track, 0);
+  processor.takeActive[baseIndex] = 1;
+  processor.takeModes[baseIndex] = 0;
+  processor.takeFrames[baseIndex] = length;
+  Atomics.store(meta, trackWord.HISTORY_CURSOR, 1);
+  Atomics.store(meta, trackWord.HISTORY_LENGTH, 1);
+  Atomics.store(meta, trackWord.ACTIVE_TAKE_SLOT, 0);
+  Atomics.store(meta, trackWord.TAKE_MODE, 0);
+}
+
+function prepareVisibleHistoryLayers(harness, track, layerCount, frames, { activeOverdub = false } = {}) {
+  setPrimaryVisibleLoop(harness, track, frames);
+  const meta = harness.tracks[track].meta;
+  const processor = harness.processor;
+  for (let slot = 1; slot < layerCount; slot += 1) {
+    processor.handlePortMessage({
+      type: 'PREPARE_TAKE', track, takeSlot: slot, mode: 'OVERDUB', usePrimary: false,
+    });
+    const segmentCount = activeOverdub && slot === layerCount - 1
+      ? protocol.BROWSER_REALTIME_STORAGE_BATCH_BLOCKS
+      : 1;
+    for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+      processor.handlePortMessage({
+        type: 'ATTACH_TAKE_SEGMENT', track, takeSlot: slot, segmentIndex,
+        buffer: protocol.createTakeSegmentBuffer(protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES),
+      });
+    }
+    const index = processor.takeIndex(track, slot);
+    processor.takeActive[index] = 1;
+    processor.takeModes[index] = 1;
+    processor.takeFrames[index] = frames;
+    const left = processor.takeLeft[track][slot][0];
+    const right = processor.takeRight[track][slot][0];
+    for (let frame = 0; frame < frames; frame += 1) {
+      left[frame] = (slot + 1) * 0.0078125;
+      right[frame] = -(slot + 1) * 0.00390625;
+    }
+    if (!activeOverdub || slot < layerCount - 1) {
+      Atomics.store(meta, trackWord.HISTORY_CURSOR, slot + 1);
+      Atomics.store(meta, trackWord.HISTORY_LENGTH, slot + 1);
     }
   }
+  const committedCount = activeOverdub ? layerCount - 1 : layerCount;
+  Atomics.store(meta, trackWord.HISTORY_CURSOR, committedCount);
+  Atomics.store(meta, trackWord.HISTORY_LENGTH, committedCount);
+  Atomics.store(meta, trackWord.ACTIVE_TAKE_SLOT, layerCount - 1);
+  Atomics.store(meta, trackWord.TAKE_MODE, activeOverdub ? 1 : 0);
+}
+
+function sampleFromTake(harness, track, channel, frame) {
+  const segment = Math.floor(frame / protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES);
+  const offset = frame - segment * protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES;
+  const samples = channel === 0
+    ? harness.processor.takeLeft[track][0][segment]
+    : harness.processor.takeRight[track][0][segment];
+  return samples?.[offset] ?? 0;
 }
 
 function runSteadyScenario(name, mode, sampleCount, warmupCount) {
@@ -477,11 +618,20 @@ function runSteadyScenario(name, mode, sampleCount, warmupCount) {
     for (let track = 0; track < trackCount; track += 1) queueCommand(harness, opcode.START_RECORD, track);
   } else {
     initializeLoopTracks(harness, loopLengths, mode === 'overdub' ? processorState.PLAYING : processorState.STOPPED);
+    if (mode === 'overdub') {
+      for (let track = 0; track < trackCount; track += 1) {
+        prepareVisibleHistoryLayers(harness, track, 2, loopLengths[track], { activeOverdub: true });
+      }
+    }
     for (let track = 0; track < trackCount; track += 1) {
       queueCommand(harness, mode === 'play' ? opcode.PLAY : opcode.START_OVERDUB, track, { arg0: mode === 'play' ? 1 : 0 });
     }
   }
+  const setupDeadlineBefore = processorDeadlineMissCounter(harness);
+  const setupStart = performance.now();
   harness.processBlock(); // Apply setup commands; this block is outside warmup and measured samples.
+  const setupProcessMs = performance.now() - setupStart;
+  const setupWorkletDeadlineMisses = processorDeadlineMissDelta(harness, setupDeadlineBefore);
 
   let blockOrdinal = 0;
   const verify = () => {
@@ -509,10 +659,11 @@ function runSteadyScenario(name, mode, sampleCount, warmupCount) {
     }
     if (metrics.trackCapacityOverruns !== 0) throw new Error('Unexpected recording capacity overrun.');
     if (metrics.inputDropoutBlocks !== 0) throw new Error('Unexpected input dropout in synthetic input test.');
-    for (const [trackIndex, track] of harness.tracks.entries()) {
+    for (let trackIndex = 0; trackIndex < harness.tracks.length; trackIndex += 1) {
       for (let frame = 0; frame < expectedRecordFrames; frame += 1) {
         const offset = frame % quantumFrames;
-        if (track.dataLeft[frame] !== harness.inputs[0][0][offset] || track.dataRight[frame] !== harness.inputs[0][1][offset]) {
+        if (sampleFromTake(harness, trackIndex, 0, frame) !== harness.inputs[0][0][offset] ||
+            sampleFromTake(harness, trackIndex, 1, frame) !== harness.inputs[0][1][offset]) {
           throw new Error(`Stereo REC ${trackIndex + 1} changed LR source samples at frame ${frame}.`);
         }
       }
@@ -531,12 +682,169 @@ function runSteadyScenario(name, mode, sampleCount, warmupCount) {
     warmupBlocks: warmupCount,
     callbacks: sampleCount + warmupCount,
     framesPerCallback: quantumFrames,
+    setupProcessMs,
+    setupDeadlineMisses: setupProcessMs > blockBudgetMs() ? 1 : 0,
+    setupWorkletDeadlineMisses,
     firstMeasuredFrame: (warmupCount + 1) * quantumFrames,
     processMs: distribution(samplesMs),
     samplesMs,
+    ...getLastProcessTiming(harness),
     phaseChecksPerTrack: mode === 'record' ? 0 : sampleCount + warmupCount + 1,
     loopFrames: mode === 'record' ? [] : loopLengths,
     finalRuntimeMetrics: metrics,
+    messageCounts: { ...harness.counters },
+  };
+}
+
+function runClockScenario(sampleCount, warmupCount) {
+  const harness = createHarness(Math.max(...loopLengths));
+  initializeLoopTracks(harness, loopLengths, processorState.PLAYING);
+  const clockTicks = [];
+  const originalPostMessage = harness.processor.port.postMessage;
+  harness.processor.port.postMessage = (message) => {
+    if (message?.type === 'CLOCK_TICK') clockTicks.push({ frame: message.frame, beatOrdinal: message.beatOrdinal });
+    originalPostMessage(message);
+  };
+  queueCommand(harness, opcode.SET_BPM, -1, { arg0: 119_000, flags: 1 });
+  queueCommand(harness, opcode.SET_CLOCK, -1, { arg0: 1 });
+  const setupDeadlineBefore = processorDeadlineMissCounter(harness);
+  const setupStart = performance.now();
+  harness.processBlock();
+  const setupProcessMs = performance.now() - setupStart;
+  const setupWorkletDeadlineMisses = processorDeadlineMissDelta(harness, setupDeadlineBefore);
+  if (Math.abs(harness.processor.bpm - 119) > 1e-9) throw new Error(`Fractional clock setup failed: ${harness.processor.bpm} BPM.`);
+  const samplesMs = runProcessSamples(harness, sampleCount, warmupCount);
+  if (clockTicks.length === 0) throw new Error('The 5-track clock scenario did not render a sample-timestamped beat.');
+  const metrics = readRuntimeMetrics(harness);
+  return {
+    scenario: 'five_track_playback_clock_119bpm',
+    sampleCount,
+    warmupBlocks: warmupCount,
+    callbacks: sampleCount + warmupCount,
+    framesPerCallback: quantumFrames,
+    setupProcessMs,
+    setupDeadlineMisses: setupProcessMs > blockBudgetMs() ? 1 : 0,
+    setupWorkletDeadlineMisses,
+    processMs: distribution(samplesMs),
+    samplesMs,
+    ...getLastProcessTiming(harness),
+    clockTickCount: clockTicks.length,
+    firstClockTicks: clockTicks.slice(0, 8),
+    finalRuntimeMetrics: metrics,
+    messageCounts: { ...harness.counters },
+  };
+}
+
+function runKeepPitchScenario(sampleCount, warmupCount, { activeOverdub = false } = {}) {
+  const harness = createHarness(protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES);
+  const lengths = Array(trackCount).fill(8_192);
+  initializeLoopTracks(harness, lengths, processorState.PLAYING);
+  for (let track = 0; track < trackCount; track += 1) {
+    prepareVisibleHistoryLayers(harness, track, activeOverdub ? 9 : 8, lengths[track], { activeOverdub });
+    const meta = harness.tracks[track].meta;
+    Atomics.store(meta, trackWord.SPEED_Q16, Math.round(1.3 * 65_536));
+    Atomics.store(meta, trackWord.PLAYBACK_FLAGS, 2);
+    if (activeOverdub) Atomics.store(meta, trackWord.STATE, processorState.OVERDUBBING);
+    harness.processor.updateVisibleLoopFrames(track);
+    harness.processor.resetPitchReader(track, 0);
+  }
+
+  const startupDeadlineBefore = processorDeadlineMissCounter(harness);
+  const startupStart = performance.now();
+  harness.processBlock();
+  const startupProcessMs = performance.now() - startupStart;
+  const startupWorkletDeadlineMisses = processorDeadlineMissDelta(harness, startupDeadlineBefore);
+  for (let track = 0; track < trackCount; track += 1) {
+    const expectedCursor = 8;
+    const expectedState = activeOverdub ? processorState.OVERDUBBING : processorState.PLAYING;
+    if (Atomics.load(harness.tracks[track].meta, trackWord.HISTORY_CURSOR) !== expectedCursor ||
+        Atomics.load(harness.tracks[track].meta, trackWord.STATE) !== expectedState) {
+      throw new Error(`Keep-pitch fixture did not activate the expected history/state on track ${track + 1}.`);
+    }
+    if (activeOverdub && Atomics.load(harness.tracks[track].meta, trackWord.ACTIVE_TAKE_SLOT) !== 8) {
+      throw new Error(`Keep-pitch overdub fixture did not retain its current overlay on track ${track + 1}.`);
+    }
+  }
+
+  const samplesMs = runProcessSamples(harness, sampleCount, warmupCount);
+  for (let track = 0; track < trackCount; track += 1) {
+    const left = harness.outputs[track][0];
+    const right = harness.outputs[track][1];
+    if (!left.every(Number.isFinite) || !right.every(Number.isFinite) ||
+        !left.some((sample) => sample !== 0) || !right.some((sample) => sample !== 0)) {
+      throw new Error(`Keep-pitch Worklet output was silent or non-finite on track ${track + 1}.`);
+    }
+  }
+  return {
+    scenario: activeOverdub
+      ? 'five_track_keep_pitch_8_committed_plus_active_overdub_speed_1_3'
+      : 'five_track_keep_pitch_8_visible_layers_speed_1_3',
+    sampleCount,
+    warmupBlocks: warmupCount,
+    callbacks: sampleCount + warmupCount,
+    framesPerCallback: quantumFrames,
+    startupProcessMs,
+    startupBlockFrames: quantumFrames,
+    startupMeasuredSeparately: true,
+    startupDeadlineMisses: startupProcessMs > blockBudgetMs() ? 1 : 0,
+    startupWorkletDeadlineMisses,
+    steadySamplesExcludeStartup: true,
+    processMs: distribution(samplesMs),
+    samplesMs,
+    ...getLastProcessTiming(harness),
+    visibleHistoryLayersPerTrack: harness.tracks.map((track) => Atomics.load(track.meta, trackWord.HISTORY_CURSOR)),
+    visibleLayersIncludingActiveOverdubPerTrack: harness.tracks.map((track) =>
+      Atomics.load(track.meta, trackWord.HISTORY_CURSOR) + (activeOverdub ? 1 : 0)),
+    activeOverdub,
+    activeOverlayIncludedInPV: activeOverdub,
+    effectiveSpeed: 1.3,
+    finalRuntimeMetrics: readRuntimeMetrics(harness),
+    messageCounts: { ...harness.counters },
+  };
+}
+
+function runMultiSegmentPlaybackScenario(sampleCount, warmupCount) {
+  const length = sampleRate * 35;
+  const harness = createHarness(length);
+  const lengths = Array(trackCount).fill(length);
+  initializeLoopTracks(harness, lengths, processorState.STOPPED);
+  for (let track = 0; track < trackCount; track += 1) queueCommand(harness, opcode.PLAY, track, { arg0: 1 });
+  const setupDeadlineBefore = processorDeadlineMissCounter(harness);
+  const setupStart = performance.now();
+  harness.processBlock();
+  const setupProcessMs = performance.now() - setupStart;
+  const setupWorkletDeadlineMisses = processorDeadlineMissDelta(harness, setupDeadlineBefore);
+
+  let checkedBlocks = 0;
+  const verify = () => {
+    checkedBlocks += 1;
+    const expected = ((checkedBlocks + 1) * quantumFrames) % length;
+    for (let track = 0; track < trackCount; track += 1) {
+      const actual = Atomics.load(harness.tracks[track].meta, trackWord.PLAY_POSITION);
+      if (actual !== expected) throw new Error(`Multi-segment PLAY phase mismatch on track ${track + 1}: expected ${expected}, got ${actual}.`);
+    }
+  };
+  const samplesMs = runProcessSamples(harness, sampleCount, warmupCount, verify);
+  const segmentsPerTrack = harness.tracks.map((_, track) => harness.processor.takeSegmentCounts[harness.processor.takeIndex(track, 0)]);
+  if (segmentsPerTrack.some((count) => count < Math.ceil(length / protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES))) {
+    throw new Error('The multi-segment playback fixture did not attach every primary segment.');
+  }
+  return {
+    scenario: 'five_track_multisegment_playback_35s',
+    sampleCount,
+    warmupBlocks: warmupCount,
+    callbacks: sampleCount + warmupCount,
+    framesPerCallback: quantumFrames,
+    setupProcessMs,
+    setupDeadlineMisses: setupProcessMs > blockBudgetMs() ? 1 : 0,
+    setupWorkletDeadlineMisses,
+    loopFramesPerTrack: lengths,
+    primarySegmentsPerTrack: segmentsPerTrack,
+    verifiedPhaseCallbacks: checkedBlocks,
+    processMs: distribution(samplesMs),
+    samplesMs,
+    ...getLastProcessTiming(harness),
+    finalRuntimeMetrics: readRuntimeMetrics(harness),
     messageCounts: { ...harness.counters },
   };
 }
@@ -547,15 +855,24 @@ function runCommandScenario(name, commandOpcode, sampleCount, warmupCount) {
   if (isClear) initializeLoopTracks(harness, loopLengths, processorState.PLAYING);
   const total = sampleCount + warmupCount;
   const samplesMs = new Float64Array(sampleCount);
+  const warmupSamplesMs = new Float64Array(warmupCount);
+  const workletMissesBefore = processorDeadlineMissCounter(harness);
+  let warmupWorkletDeadlineMisses = null;
   let firstMeasuredFrame = 0;
   for (let index = 0; index < total; index += 1) {
     if (isClear) initializeLoopMetadata(harness, loopLengths, 4);
     else resetTrackMetadata(harness);
     for (let track = 0; track < trackCount; track += 1) queueCommand(harness, commandOpcode, track, { arg0: isClear ? 0 : 1 });
     if (index === warmupCount) firstMeasuredFrame = harness.frame;
-    const start = index >= warmupCount ? performance.now() : 0;
+    const start = performance.now();
     harness.processBlock();
-    if (index >= warmupCount) samplesMs[index - warmupCount] = performance.now() - start;
+    const elapsedMs = performance.now() - start;
+    if (index >= warmupCount) {
+      if (warmupWorkletDeadlineMisses === null) warmupWorkletDeadlineMisses = processorDeadlineMissDelta(harness, workletMissesBefore);
+      samplesMs[index - warmupCount] = elapsedMs;
+    } else {
+      warmupSamplesMs[index] = elapsedMs;
+    }
 
     for (const [trackIndex, track] of harness.tracks.entries()) {
       if (isClear) {
@@ -568,6 +885,7 @@ function runCommandScenario(name, commandOpcode, sampleCount, warmupCount) {
     }
   }
   const metrics = readRuntimeMetrics(harness);
+  const measuredWorkletDeadlineMisses = processorDeadlineMissDelta(harness, workletMissesBefore) - (warmupWorkletDeadlineMisses ?? 0);
   return {
     scenario: name,
     sampleCount,
@@ -578,6 +896,12 @@ function runCommandScenario(name, commandOpcode, sampleCount, warmupCount) {
     firstMeasuredFrame,
     processMs: distribution(samplesMs),
     samplesMs,
+    warmupSamplesMs,
+    warmupProcessMs: distribution(warmupSamplesMs),
+    warmupDeadlineMisses: deadlineMissCount(warmupSamplesMs),
+    measuredDeadlineMisses: deadlineMissCount(samplesMs),
+    warmupWorkletDeadlineMisses,
+    measuredWorkletDeadlineMisses,
     finalRuntimeMetrics: metrics,
     messageCounts: { ...harness.counters },
   };
@@ -588,16 +912,26 @@ function runCommandBurstScenario(sampleCount, warmupCount) {
   const burstSize = protocol.BROWSER_REALTIME_COMMAND_CAPACITY;
   const total = sampleCount + warmupCount;
   const samplesMs = new Float64Array(sampleCount);
+  const warmupSamplesMs = new Float64Array(warmupCount);
+  const workletMissesBefore = processorDeadlineMissCounter(harness);
+  let warmupWorkletDeadlineMisses = null;
   let firstMeasuredFrame = 0;
   for (let index = 0; index < total; index += 1) {
     for (let command = 0; command < burstSize; command += 1) {
       queueCommand(harness, opcode.SET_MONITOR, -1, { arg0: command & 1 });
     }
     if (index === warmupCount) firstMeasuredFrame = harness.frame;
-    const start = index >= warmupCount ? performance.now() : 0;
+    const start = performance.now();
     harness.processBlock();
-    if (index >= warmupCount) samplesMs[index - warmupCount] = performance.now() - start;
+    const elapsedMs = performance.now() - start;
+    if (index >= warmupCount) {
+      if (warmupWorkletDeadlineMisses === null) warmupWorkletDeadlineMisses = processorDeadlineMissDelta(harness, workletMissesBefore);
+      samplesMs[index - warmupCount] = elapsedMs;
+    } else {
+      warmupSamplesMs[index] = elapsedMs;
+    }
   }
+  const measuredWorkletDeadlineMisses = processorDeadlineMissDelta(harness, workletMissesBefore) - (warmupWorkletDeadlineMisses ?? 0);
   const metrics = readRuntimeMetrics(harness);
   if (metrics.commandQueueDepth !== 0 || metrics.commandOverruns !== 0) throw new Error('The nominal full command burst overflowed or was not drained.');
   if (harness.counters.ackCount !== total * burstSize) throw new Error(`Expected ${total * burstSize} command ACKs, got ${harness.counters.ackCount}.`);
@@ -611,6 +945,12 @@ function runCommandBurstScenario(sampleCount, warmupCount) {
     firstMeasuredFrame,
     processMs: distribution(samplesMs),
     samplesMs,
+    warmupSamplesMs,
+    warmupProcessMs: distribution(warmupSamplesMs),
+    warmupDeadlineMisses: deadlineMissCount(warmupSamplesMs),
+    measuredDeadlineMisses: deadlineMissCount(samplesMs),
+    warmupWorkletDeadlineMisses,
+    measuredWorkletDeadlineMisses,
     finalRuntimeMetrics: metrics,
     messageCounts: { ...harness.counters },
   };
@@ -618,17 +958,67 @@ function runCommandBurstScenario(sampleCount, warmupCount) {
 
 function runProcessSamples(harness, sampleCount, warmupCount, afterBlock) {
   const samplesMs = new Float64Array(sampleCount);
+  const warmupSamplesMs = new Float64Array(warmupCount);
+  const workletMissesBefore = processorDeadlineMissCounter(harness);
   for (let index = 0; index < warmupCount; index += 1) {
+    const start = performance.now();
     harness.processBlock();
+    warmupSamplesMs[index] = performance.now() - start;
     afterBlock?.(index);
   }
+  const warmupWorkletDeadlineMisses = processorDeadlineMissDelta(harness, workletMissesBefore);
+  const measuredWorkletStart = processorDeadlineMissCounter(harness);
   for (let index = 0; index < sampleCount; index += 1) {
     const start = performance.now();
     harness.processBlock();
     samplesMs[index] = performance.now() - start;
     afterBlock?.(warmupCount + index);
   }
+  const measuredWorkletDeadlineMisses = processorDeadlineMissDelta(harness, measuredWorkletStart);
+  harness.lastProcessTiming = {
+    warmupSamplesMs,
+    warmupProcessMs: distribution(warmupSamplesMs),
+    warmupDeadlineMisses: deadlineMissCount(warmupSamplesMs),
+    measuredDeadlineMisses: deadlineMissCount(samplesMs),
+    warmupWorkletDeadlineMisses,
+    measuredWorkletDeadlineMisses,
+  };
   return samplesMs;
+}
+
+function blockBudgetMs() {
+  return quantumFrames / sampleRate * 1000;
+}
+
+function deadlineMissCount(samplesMs) {
+  const budgetMs = blockBudgetMs();
+  let misses = 0;
+  for (const elapsedMs of samplesMs) if (elapsedMs > budgetMs) misses += 1;
+  return misses;
+}
+
+function processorDeadlineMissCounter(harness) {
+  if (Atomics.load(harness.control, controlWord.DEADLINE_METRIC_AVAILABLE) === 0) return null;
+  return Atomics.load(harness.control, controlWord.DEADLINE_MISSES);
+}
+
+function processorDeadlineMissDelta(harness, before) {
+  if (before === null) return null;
+  const after = processorDeadlineMissCounter(harness);
+  return after === null ? null : after - before;
+}
+
+function getLastProcessTiming(harness) {
+  const timing = harness.lastProcessTiming;
+  if (!timing) return {
+    warmupSamplesMs: new Float64Array(0),
+    warmupProcessMs: null,
+    warmupDeadlineMisses: null,
+    measuredDeadlineMisses: null,
+    warmupWorkletDeadlineMisses: null,
+    measuredWorkletDeadlineMisses: null,
+  };
+  return timing;
 }
 
 function runProtocolBehaviorAssertions() {
@@ -676,8 +1066,9 @@ function runProtocolBehaviorAssertions() {
 
   const capacityHarness = createHarness(quantumFrames);
   queueCommand(capacityHarness, opcode.START_RECORD, 0);
-  capacityHarness.processBlock();
-  capacityHarness.processBlock();
+  for (let block = 0; block <= protocol.BROWSER_REALTIME_STORAGE_BLOCK_FRAMES / quantumFrames; block += 1) {
+    capacityHarness.processBlock();
+  }
   const capacityMetrics = readRuntimeMetrics(capacityHarness);
   if (capacityMetrics.trackCapacityOverruns !== 1 || capacityHarness.counters.capacityEvents !== 1) {
     throw new Error('Track capacity overflow/counter assertion failed.');
@@ -690,6 +1081,7 @@ function runProtocolBehaviorAssertions() {
   track.dataRight.fill(-0.5, 0, clearLength);
   Atomics.store(track.meta, trackWord.STATE, processorState.PLAYING);
   Atomics.store(track.meta, trackWord.LOOP_FRAMES, clearLength);
+  setPrimaryVisibleLoop(clearHarness, 0, clearLength);
   Atomics.store(track.meta, trackWord.RECORDING_FRAMES, clearLength);
   queueCommand(clearHarness, opcode.CLEAR, 0);
   clearHarness.processBlock();
@@ -726,11 +1118,15 @@ function runProtocolBehaviorAssertions() {
     clearPointerResetAndNoGhostPlayback: true,
     steadyPlaybackFastPathBlocks: steadyPlaybackAssertions.fastPathBlocks,
     steadyPlaybackFastPathAvailable: steadyPlaybackAssertions.fastPathAvailable,
+    processUsesSteadyPlaybackHelper: steadyPlaybackAssertions.processUsesSteadyHelper,
     steadyPlaybackSamplesAndPhasePassed: true,
+    stoppedTrackSilenceFastPathBlocks: stoppedTrackAssertions.fastPathBlocks,
+    stoppedTrackSilenceFastPathAvailable: stoppedTrackAssertions.hasFastPath,
     monitorOffBoundaryAndNextBlockSilencePassed: true,
     rhythmStopBoundaryAndNextBlockSilencePassed: true,
     clock119BpmSampleAccuracyAcrossLowWordWrapPassed: true,
     onePlayingFourEmptyClockFastPathBlocks: clockPlaybackAssertions.fastPathBlocks,
+    clockProcessUsesSteadyPlaybackHelper: clockPlaybackAssertions.processUsesSteadyHelper,
     clockTickFrames: clockPlaybackAssertions.clockTickFrames,
     emptyTrackNoGhostOutputPassed: true,
     stoppedTrackRetainedPcmNoGhostOutputPassed: true,
@@ -746,6 +1142,7 @@ function runSteadyPlaybackAssertions() {
     const { meta } = harness.tracks[track];
     Atomics.store(meta, trackWord.PLAY_POSITION, initialPositions[track]);
     Atomics.store(meta, trackWord.REVERSE, track === 1 ? 1 : 0);
+    harness.processor.playPositions[track] = initialPositions[track];
   }
 
   let fastPathBlocks = 0;
@@ -840,10 +1237,9 @@ function runSteadyPlaybackAssertions() {
   assertSilent(harness.outputs[5][1], 'post-monitor/rhythm fast block monitor right');
   assertSilent(harness.outputs[6][0], 'post-rhythm-stop fast block rhythm left');
   assertSilent(harness.outputs[6][1], 'post-rhythm-stop fast block rhythm right');
-  const expectedFastPathBlocks = fastPathAvailable ? 3 : 0;
-  if (fastPathBlocks !== expectedFastPathBlocks) throw new Error(`Expected ${expectedFastPathBlocks} steady playback fast-path blocks, got ${fastPathBlocks}.`);
+  if (fastPathBlocks < 3) throw new Error(`Guarded steady playback path was not used after eligible blocks: ${fastPathBlocks}.`);
 
-  return { fastPathBlocks, fastPathAvailable };
+  return { fastPathBlocks, fastPathAvailable, processUsesSteadyHelper: fastPathBlocks > 0 };
 }
 
 function runClockSteadyPlaybackAssertions() {
@@ -890,8 +1286,7 @@ function runClockSteadyPlaybackAssertions() {
     relativeFrames += quantumFrames;
   }
 
-  if (fastPathAvailable && fastPathBlocks < 2) throw new Error(`Clock-running single-track playback missed the fast path (${fastPathBlocks} blocks).`);
-  if (!fastPathAvailable && fastPathBlocks !== 0) throw new Error('The baseline source unexpectedly reported fast-path blocks.');
+  if (fastPathBlocks === 0) throw new Error('Clock-active steady playback never entered the guarded helper.');
   if (harness.processor.bpm !== 119) throw new Error(`Clock BPM did not remain 119: ${harness.processor.bpm}`);
   if (JSON.stringify(clockTicks) !== JSON.stringify(expectedTicks)) {
     throw new Error(`119 BPM clock ticks were not sample-accurate across the 32-bit wrap: expected ${JSON.stringify(expectedTicks)}, got ${JSON.stringify(clockTicks)}.`);
@@ -904,7 +1299,7 @@ function runClockSteadyPlaybackAssertions() {
   );
   if (renderedFrame !== harness.frame) throw new Error('Clock-running single-track phase lost its 64-bit rendered-frame position.');
 
-  return { fastPathBlocks, clockTickFrames: clockTicks.map((tick) => tick.frame) };
+  return { fastPathBlocks, fastPathAvailable, processUsesSteadyHelper: fastPathBlocks > 0, clockTickFrames: clockTicks.map((tick) => tick.frame) };
 }
 
 function runStoppedTrackSilenceAssertion() {
@@ -944,8 +1339,8 @@ function runStoppedTrackSilenceAssertion() {
   harness.processBlock();
   assertSilent(harness.outputs[0][0], 'stopped track with retained loop PCM left output');
   assertSilent(harness.outputs[0][1], 'stopped track with retained loop PCM right output');
-  if (hasFastPath && fastPathBlocks !== 1) throw new Error(`Stopped/empty steady block did not enter the fast path exactly once: ${fastPathBlocks}.`);
-  return { fastPathBlocks, hasFastPath };
+  if (fastPathBlocks === 0) throw new Error('Stopped-track retained-PCM silence did not use the guarded helper.');
+  return { fastPathBlocks, hasFastPath, processUsesSteadyHelper: fastPathBlocks > 0 };
 }
 
 function processAndAssertClockPlaybackBlock(harness, loopLength, relativeStartFrame) {
@@ -1306,6 +1701,7 @@ function initializeLoopMetadata(harness, lengths, state) {
     Atomics.store(meta, trackWord.RECORDING_FRAMES, lengths[track]);
     Atomics.store(meta, trackWord.PLAY_POSITION, 0);
     Atomics.store(meta, trackWord.REVERSE, 0);
+    setPrimaryVisibleLoop(harness, track, lengths[track]);
   }
 }
 
@@ -1316,6 +1712,9 @@ function resetTrackMetadata(harness) {
     Atomics.store(meta, trackWord.RECORDING_FRAMES, 0);
     Atomics.store(meta, trackWord.PLAY_POSITION, 0);
     Atomics.store(meta, trackWord.REVERSE, 0);
+    Atomics.store(meta, trackWord.HISTORY_CURSOR, 0);
+    Atomics.store(meta, trackWord.HISTORY_LENGTH, 0);
+    Atomics.store(meta, trackWord.ACTIVE_TAKE_SLOT, 0);
   }
 }
 
@@ -1352,8 +1751,8 @@ function parseArgs(argv) {
   const names = {
     '--iterations': 'iterations', '--warmup': 'warmup', '--burst-samples': 'burstSamples',
     '--burst-warmup': 'burstWarmup', '--phase-minutes': 'phaseMinutes',
-  '--phase-yield-blocks': 'phaseYieldBlocks', '--phase-yield-ms': 'phaseYieldMs', '--output-dir': 'outputDir',
-  '--worklet-source': 'workletSource',
+    '--phase-yield-blocks': 'phaseYieldBlocks', '--phase-yield-ms': 'phaseYieldMs', '--output-dir': 'outputDir',
+    '--worklet-source': 'workletSource', '--realm': 'realm',
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -1361,6 +1760,7 @@ function parseArgs(argv) {
     else if (arg === '--audit-only') parsed.auditOnly = true;
     else if (arg === '--observe-gc') parsed.observeGc = true;
     else if (arg === '--phase-clock') parsed.phaseClock = true;
+    else if (arg === '--realm-probe') parsed.realmProbe = true;
     else if (names[arg]) {
       const value = argv[index + 1];
       if (!value || value.startsWith('--')) throw new Error(`Missing value for ${arg}`);

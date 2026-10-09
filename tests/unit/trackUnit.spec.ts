@@ -35,6 +35,8 @@ describe('TrackUnit', () => {
   });
 
   async function mountTrackUnit(options: {
+    audioMode?: 'browser' | 'native';
+    engineReady?: boolean;
     trackCapabilities: {
       supportsTrackLevel: boolean;
       levelReason: string;
@@ -70,6 +72,9 @@ describe('TrackUnit', () => {
       AudioEngine: {
         getInstance: () => ({
           tracks: [options.trackAudio],
+          getMode: () => options.audioMode ?? 'browser',
+          getUiStatus: () => ({ ready: options.engineReady ?? options.audioMode !== 'native' }),
+          onStatusChange: () => () => undefined,
           getTrackCapabilities: () => options.trackCapabilities,
         }),
       },
@@ -113,9 +118,27 @@ describe('TrackUnit', () => {
       triggerRecord: vi.fn(),
       triggerStop: vi.fn(),
       clear: vi.fn(),
+      getRuntimeSettings: vi.fn(() => ({
+        reverse: false,
+        oneShot: false,
+        startMode: 'IMMEDIATE' as const,
+        stopMode: 'IMMEDIATE' as const,
+        fadeInMs: 0,
+        fadeOutMs: 0,
+        speed: 1,
+        keepPitch: false,
+        tempoSyncEnabled: false,
+        tempoSyncSpeed: 'NORMAL' as const,
+        tempoSyncMode: 'PITCH' as const,
+        recordBpm: null,
+        autoRec: { enabled: false, threshold: 0.1, debounceMs: 250 },
+        dubMode: 'OVERDUB' as const,
+      })),
+      updateRuntimeSettings: vi.fn(async () => undefined),
     };
 
     const wrapper = await mountTrackUnit({
+      audioMode: 'browser',
       trackAudio,
       trackCapabilities: {
         supportsTrackLevel: true,
@@ -126,6 +149,9 @@ describe('TrackUnit', () => {
         reverseReason: '',
       },
     });
+
+    expect(wrapper.text()).toContain('TEMPO SYNC');
+    expect(wrapper.text()).toContain('REC BPM');
 
     await wrapper.get('.stub-fader').trigger('click');
     await wrapper.get('[data-label="FX"]').trigger('click');
@@ -169,6 +195,7 @@ describe('TrackUnit', () => {
     };
 
     const wrapper = await mountTrackUnit({
+      audioMode: 'native',
       trackAudio,
       trackCapabilities: {
         supportsTrackLevel: false,
@@ -180,6 +207,7 @@ describe('TrackUnit', () => {
       },
     });
 
+    expect(wrapper.text()).toContain('Track settings require browser audio.');
     expect(wrapper.text()).toContain('TRACK MIX IN BROWSER ONLY');
     expect(wrapper.text()).toContain('NO FX IN NATIVE V1');
     expect(wrapper.text()).toContain('NO REVERSE IN NATIVE V1');
@@ -195,6 +223,58 @@ describe('TrackUnit', () => {
     expect(trackAudio.updateSettings).not.toHaveBeenCalled();
     expect(trackAudio.fxChain.setFilterEnabled).not.toHaveBeenCalled();
     expect(trackAudio.toggleReverse).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+  });
+
+  it('does not expose runtime controls before the browser engine is ready', async () => {
+    const wrapper = await mountTrackUnit({
+      audioMode: 'browser',
+      engineReady: false,
+      trackAudio: {
+        state: 'EMPTY',
+        track: { playLevel: 100, filterValue: 0.5, filterResonance: 1, filterEnabled: false },
+        isReverse: false,
+        isAvailable: true,
+        transportEnabled: true,
+        disabledReason: '',
+        updateSettings: vi.fn(),
+        toggleReverse: vi.fn(),
+        fxChain: { setFilterEnabled: vi.fn(), setFilterParam: vi.fn() },
+        triggerRecord: vi.fn(),
+        triggerStop: vi.fn(),
+        clear: vi.fn(),
+        getRuntimeSettings: vi.fn(() => ({
+          reverse: false,
+          oneShot: false,
+          startMode: 'IMMEDIATE' as const,
+          stopMode: 'IMMEDIATE' as const,
+          fadeInMs: 0,
+          fadeOutMs: 0,
+          speed: 1,
+          keepPitch: false,
+          tempoSyncEnabled: false,
+          tempoSyncSpeed: 'NORMAL' as const,
+          tempoSyncMode: 'PITCH' as const,
+          recordBpm: null,
+          autoRec: { enabled: false, threshold: 0.1, debounceMs: 250 },
+          dubMode: 'OVERDUB' as const,
+        })),
+        updateRuntimeSettings: vi.fn(async () => undefined),
+      },
+      trackCapabilities: {
+        supportsTrackLevel: true,
+        levelReason: '',
+        supportsTrackFx: true,
+        trackFxReason: '',
+        supportsReverse: true,
+        reverseReason: '',
+      },
+    });
+
+    expect(wrapper.text()).toContain('Track runtime settings are unavailable.');
+    expect(wrapper.text()).not.toContain('AUTO REC');
+    expect(wrapper.find('.track-actions').exists()).toBe(false);
 
     wrapper.unmount();
   });

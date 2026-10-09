@@ -20,22 +20,29 @@
     </div>
 
     <div class="fx-main">
-      <HardwareKnob
-        :model-value="activeFx?.value ?? 0"
-        label="INPUT FX"
-        color="blue"
-        :size="118"
-        @update:model-value="updateActiveValue"
-      />
+      <div class="knob-control" :class="{ disabled: fxDisabled || busy }" :aria-disabled="fxDisabled || busy">
+        <HardwareKnob
+          :model-value="activeFx?.value ?? 0"
+          label="INPUT FX"
+          color="blue"
+          :size="118"
+          @update:model-value="updateActiveValue"
+        />
+      </div>
 
       <div class="fx-detail">
         <div class="detail-chip">BANK {{ activeFx?.id ?? 'A' }}</div>
-        <select v-if="activeFx" v-model="activeFx.type" class="fx-select" :disabled="fxDisabled">
+        <select class="fx-select bank-select" :value="activeBankId" :disabled="fxDisabled || busy" aria-label="Active FX bank" @change="changeBank">
+          <option v-for="bank in banks" :key="bank.id" :value="bank.id">{{ bank.name }}</option>
+        </select>
+        <select v-if="activeFx" :value="activeFx.type" class="fx-select" :disabled="fxDisabled || busy" aria-label="Input FX type" @change="changeType">
+          <option v-if="!activeFx.type" value="" disabled>EMPTY</option>
           <option v-for="option in fxOptions" :key="option" :value="option">{{ option }}</option>
         </select>
         <div class="detail-line">ACTIVE {{ activeFx?.active ? 'ON' : 'OFF' }}</div>
-        <div class="detail-line">PARAM {{ Math.round(activeFx?.value ?? 0) }}</div>
+        <div class="detail-line">{{ activeFx?.parameterLabel ?? 'PARAM' }} {{ Math.round(activeFx?.value ?? 0) }}%</div>
         <div v-if="fxUnavailableReason" class="detail-note">{{ fxUnavailableReason }}</div>
+        <div v-if="error" class="detail-note" role="alert">{{ error }}</div>
       </div>
     </div>
 
@@ -61,7 +68,8 @@
         :color="activeFx.active ? 'red' : 'white'"
         :active="activeFx.active"
         :aria-label="`Toggle input FX slot ${activeFx.id}`"
-        @press="activeFx.active = !activeFx.active"
+        :disabled="fxDisabled || busy || !activeFx.unit"
+        @press="toggleActive(activeFx.id)"
       />
     </div>
   </section>
@@ -74,7 +82,10 @@ import type { FxSlotId } from '../../composables/usePanelFocus';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareKnob from '../ui/HardwareKnob.vue';
 
-const { slots, fxOptions, fxDisabled, fxUnavailableReason, activeSlot, selectSlot } = useFxPanelState('input');
+const {
+  slots, banks, activeBankId, fxOptions, fxDisabled, fxUnavailableReason, activeSlot, busy, error,
+  selectSlot, selectBank, updateType, updateValue, toggleActive,
+} = useFxPanelState('input');
 const editMode = ref(false);
 
 const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlot.value) ?? slots.value[0]);
@@ -85,8 +96,13 @@ const handleSlotPress = (slotId: FxSlotId) => {
 
 const updateActiveValue = (value: number) => {
   if (!activeFx.value) return;
-  activeFx.value.value = Math.max(0, Math.min(100, Math.round(value)));
+  void updateValue(activeFx.value.id, Math.max(0, Math.min(100, Math.round(value))));
 };
+const changeType = (event: Event) => {
+  if (!activeFx.value) return;
+  void updateType(activeFx.value.id, (event.target as HTMLSelectElement).value);
+};
+const changeBank = (event: Event) => void selectBank((event.target as HTMLSelectElement).value);
 </script>
 
 <style scoped>
@@ -107,6 +123,9 @@ const updateActiveValue = (value: number) => {
   justify-content: space-between;
   gap: 14px;
 }
+
+.knob-control { display: grid; place-items: center; }
+.knob-control.disabled { pointer-events: none; opacity: .45; }
 
 .fx-main {
   align-items: center;

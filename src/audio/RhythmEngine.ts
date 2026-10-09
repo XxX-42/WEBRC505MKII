@@ -1,5 +1,5 @@
 export type RhythmPattern = 'ROCK' | 'TECHNO' | 'METRONOME';
-export type RhythmRealtimeControl = (running: boolean, patternIndex: number) => void;
+export type RhythmRealtimeControl = (running: boolean, patternIndex: number, preserveCustomPattern: boolean) => void;
 
 const PATTERN_INDEX: Record<RhythmPattern, number> = {
   ROCK: 0,
@@ -29,22 +29,32 @@ export class RhythmEngine {
     return PATTERN_INDEX[this.currentPattern];
   }
 
+  public get volume(): number {
+    return this.outputNode.gain.value;
+  }
+
   public connect(destination: AudioNode) {
     this.outputNode.connect(destination);
   }
 
   public setRealtimeControl(control: RhythmRealtimeControl | null) {
     this.realtimeControl = control;
-    this.notifyWorklet();
+    this.notifyWorklet(true);
   }
 
   public setPattern(pattern: RhythmPattern) {
     this.currentPattern = pattern;
-    this.notifyWorklet();
+    this.notifyWorklet(false);
   }
 
   public setVolume(value: number) {
     this.outputNode.gain.value = Math.max(0, Math.min(100, value)) / 100;
+  }
+
+  /** Mirror an acknowledged project/runtime snapshot without enqueuing another Worklet command. */
+  public syncRuntimeState(running: boolean, volume: number): void {
+    this.isPlaying = running;
+    this.outputNode.gain.value = Math.max(0, Math.min(1, volume));
   }
 
   public start() {
@@ -53,16 +63,16 @@ export class RhythmEngine {
     if (this.context.state === 'suspended') {
       void this.context.resume().catch((error) => console.error('Could not resume audio for rhythm playback:', error));
     }
-    this.notifyWorklet();
+    this.notifyWorklet(true);
   }
 
   public stop() {
     if (!this.isPlaying) return;
     this.isPlaying = false;
-    this.notifyWorklet();
+    this.notifyWorklet(true);
   }
 
-  private notifyWorklet() {
-    this.realtimeControl?.(this.isPlaying, this.patternIndex);
+  private notifyWorklet(preserveCustomPattern: boolean) {
+    this.realtimeControl?.(this.isPlaying, this.patternIndex, preserveCustomPattern);
   }
 }

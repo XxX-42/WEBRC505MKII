@@ -1,0 +1,1728 @@
+{
+  "startedAt": "2026-10-09T06:18:12.261Z",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "status": "PASSED",
+  "assertions": [
+    {
+      "name": "all live AudioContexts are software-only and outputs are redirected",
+      "passed": true,
+      "details": {
+        "contextSafety": [
+          {
+            "rerouted": true,
+            "sinkIdNone": true,
+            "sampleRate": 48000,
+            "sinkError": null
+          },
+          {
+            "rerouted": true,
+            "sinkIdNone": true,
+            "sampleRate": 48000,
+            "sinkError": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "AudioEngine uses ready BrowserAudioEngine and actual ProjectService",
+      "passed": true,
+      "details": {
+        "ready": true,
+        "mode": "browser"
+      }
+    },
+    {
+      "name": "browser runtime runs at canonical 48 kHz",
+      "passed": true,
+      "details": {
+        "sampleRate": 48000
+      }
+    },
+    {
+      "name": "all HTML audio/video elements remain muted",
+      "passed": true,
+      "details": {
+        "mediaElements": 0
+      }
+    },
+    {
+      "name": "ProjectService offline bounce imports exact PCM into target 3",
+      "passed": true,
+      "details": {
+        "targetTrackId": 3,
+        "selectedTrackIds": [
+          1,
+          2
+        ],
+        "durationFrames": 48000,
+        "realtime": false,
+        "returned": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22843455838937396,
+              "peak": 0.43486887216567993,
+              "hash": "cf66c2cd"
+            },
+            {
+              "rms": 0.1678272458080802,
+              "peak": 0.3232699930667877,
+              "hash": "5767d4a1"
+            }
+          ]
+        },
+        "imported": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22843455838937396,
+              "peak": 0.43486887216567993,
+              "hash": "cf66c2cd"
+            },
+            {
+              "rms": 0.1678272458080802,
+              "peak": 0.3232699930667877,
+              "hash": "5767d4a1"
+            }
+          ]
+        },
+        "samePcm": true
+      }
+    },
+    {
+      "name": "ProjectService realtime bounce imports exact PCM into target 4",
+      "passed": true,
+      "details": {
+        "targetTrackId": 4,
+        "selectedTrackIds": [
+          1,
+          2
+        ],
+        "durationFrames": 48000,
+        "realtime": true,
+        "returned": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22843455838937396,
+              "peak": 0.43486887216567993,
+              "hash": "cf66c2cd"
+            },
+            {
+              "rms": 0.1678272458080802,
+              "peak": 0.3232699930667877,
+              "hash": "5767d4a1"
+            }
+          ]
+        },
+        "imported": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22843455838937396,
+              "peak": 0.43486887216567993,
+              "hash": "cf66c2cd"
+            },
+            {
+              "rms": 0.1678272458080802,
+              "peak": 0.3232699930667877,
+              "hash": "5767d4a1"
+            }
+          ]
+        },
+        "samePcm": true
+      }
+    },
+    {
+      "name": "actual two-track offline and realtime PCM agree and separate stereo probe retains distinct L/R sources",
+      "passed": true,
+      "details": {
+        "baselineMetrics": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22843455838937396,
+              "peak": 0.43486887216567993,
+              "hash": "cf66c2cd"
+            },
+            {
+              "rms": 0.1678272458080802,
+              "peak": 0.3232699930667877,
+              "hash": "5767d4a1"
+            }
+          ]
+        },
+        "stereoFrequencies": {
+          "left250": 250.30000001551036,
+          "right441": 440.6999997454824,
+          "left250Magnitude": 0.14397417681637048,
+          "left441Leakage": 0.00009020819232604581,
+          "right441Magnitude": 0.10345113704291742,
+          "right250Leakage": 0.00007496849823247374
+        },
+        "dryOfflineRealtimeRelativeError": 0
+      }
+    },
+    {
+      "name": "project track gain and master level affect actual rendered PCM",
+      "passed": true,
+      "details": {
+        "expectedRatio": 0.25,
+        "actualRatio": 0.25,
+        "gainReferenceMetrics": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.135748784365298,
+              "peak": 0.19200000166893005,
+              "hash": "af00be09"
+            },
+            {
+              "rms": 0.1074836117587069,
+              "peak": 0.15199999511241913,
+              "hash": "593f0aa8"
+            }
+          ]
+        },
+        "reducedMetrics": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.0339371960913245,
+              "peak": 0.04800000041723251,
+              "hash": "7a00be09"
+            },
+            {
+              "rms": 0.026870902939676724,
+              "peak": 0.03799999877810478,
+              "hash": "b83f0aa8"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "project track pan changes the rendered stereo balance",
+      "passed": true,
+      "details": {
+        "pan": -0.95,
+        "rightToLeft": 0.04874947320907034,
+        "hardLeftMetrics": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.1729878995325446,
+              "peak": 0.34350723028182983,
+              "hash": "6e63f3d9"
+            },
+            {
+              "rms": 0.008433068973755134,
+              "peak": 0.011925785802304745,
+              "hash": "e40a23b3"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "manual speed 0.5 changes actual source pitch by the requested factor",
+      "passed": true,
+      "details": {
+        "speed": 0.5,
+        "expectedLeft": 125.15,
+        "expectedRight": 220.35,
+        "measuredLeft": 125.14999999833512,
+        "measuredRight": 220.35000100268667,
+        "pcm": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22618902840401947,
+              "peak": 0.3199999928474426,
+              "hash": "213c174e"
+            },
+            {
+              "rms": 0.16262754398757437,
+              "peak": 0.23000000417232513,
+              "hash": "8aff4f86"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "manual speed 2 changes actual source pitch by the requested factor",
+      "passed": true,
+      "details": {
+        "speed": 2,
+        "expectedLeft": 500.6,
+        "expectedRight": 881.4,
+        "measuredLeft": 501.36796058603767,
+        "measuredRight": 881.728191253099,
+        "pcm": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22629101749028205,
+              "peak": 0.3199999928474426,
+              "hash": "f4409505"
+            },
+            {
+              "rms": 0.16262290217472442,
+              "peak": 0.23000000417232513,
+              "hash": "6e68b311"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "keep-pitch renderer preserves independent left/right fundamentals at variable speed",
+      "passed": true,
+      "details": {
+        "speed": 1.5,
+        "expectedLeftHz": 250.3,
+        "expectedRightHz": 440.7,
+        "measuredLeftHz": 250.44642146097138,
+        "measuredRightHz": 440.9189074303814,
+        "pcm": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22632332172579175,
+              "peak": 0.3211653232574463,
+              "hash": "242b7553"
+            },
+            {
+              "rms": 0.16265884621522242,
+              "peak": 0.23468947410583496,
+              "hash": "46de1135"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "manual speed combines with live master tempo and track tempo factor in the actual renderer",
+      "passed": true,
+      "details": {
+        "globalBpm": 240,
+        "recordBpm": 120,
+        "manualSpeed": 0.5,
+        "tempoSyncSpeed": "DOUBLE",
+        "expectedEffectiveSpeed": 2,
+        "measuredLeftHz": 501.36796058603767,
+        "measuredRightHz": 881.728191253099,
+        "pcm": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22629101749028205,
+              "peak": 0.3199999928474426,
+              "hash": "f4409505"
+            },
+            {
+              "rms": 0.16262290217472442,
+              "peak": 0.23000000417232513,
+              "hash": "6e68b311"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "reverse setting reverses imported source PCM in the actual offline renderer",
+      "passed": true,
+      "details": {
+        "firstSample": 0.800000011920929,
+        "sample10": 0.7998541593551636,
+        "sample3000": 0.7562490701675415,
+        "pcm": {
+          "frames": 4096,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.7703330290722135,
+              "peak": 0.800000011920929,
+              "hash": "d7304837"
+            },
+            {
+              "rms": 0.7703330290722135,
+              "peak": 0.800000011920929,
+              "hash": "d7304837"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "ProjectService offline bounce imports exact PCM into target 3",
+      "passed": true,
+      "details": {
+        "targetTrackId": 3,
+        "selectedTrackIds": [
+          1,
+          5
+        ],
+        "durationFrames": 48000,
+        "realtime": false,
+        "returned": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.050500841905098355,
+              "peak": 0.48656758666038513,
+              "hash": "08feff11"
+            },
+            {
+              "rms": 0.047673627349552924,
+              "peak": 0.6501603722572327,
+              "hash": "1121c30a"
+            }
+          ]
+        },
+        "imported": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.050500841905098355,
+              "peak": 0.48656758666038513,
+              "hash": "08feff11"
+            },
+            {
+              "rms": 0.047673627349552924,
+              "peak": 0.6501603722572327,
+              "hash": "1121c30a"
+            }
+          ]
+        },
+        "samePcm": true
+      }
+    },
+    {
+      "name": "ProjectService realtime bounce imports exact PCM into target 4",
+      "passed": true,
+      "details": {
+        "targetTrackId": 4,
+        "selectedTrackIds": [
+          1,
+          5
+        ],
+        "durationFrames": 48000,
+        "realtime": true,
+        "returned": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.050500841905098355,
+              "peak": 0.48656758666038513,
+              "hash": "f50c2565"
+            },
+            {
+              "rms": 0.047673627349552924,
+              "peak": 0.6501603722572327,
+              "hash": "3beeb972"
+            }
+          ]
+        },
+        "imported": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.050500841905098355,
+              "peak": 0.48656758666038513,
+              "hash": "f50c2565"
+            },
+            {
+              "rms": 0.047673627349552924,
+              "peak": 0.6501603722572327,
+              "hash": "3beeb972"
+            }
+          ]
+        },
+        "samePcm": true
+      }
+    },
+    {
+      "name": "real TRACK bank Compressor is nonlinear after the two source sends are combined once",
+      "passed": true,
+      "details": {
+        "dryRms": 0.6219552591560975,
+        "wetRms": 0.050500841905098355,
+        "wetToDryRatio": 0.08119690469957698,
+        "nonlinearDifference": 0.6666612715634869,
+        "offlineRealtimeRelativeError": 3.2912468078127257e-13,
+        "wetOffline": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.050500841905098355,
+              "peak": 0.48656758666038513,
+              "hash": "08feff11"
+            },
+            {
+              "rms": 0.047673627349552924,
+              "peak": 0.6501603722572327,
+              "hash": "1121c30a"
+            }
+          ]
+        },
+        "wetRealtime": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.050500841905098355,
+              "peak": 0.48656758666038513,
+              "hash": "f50c2565"
+            },
+            {
+              "rms": 0.047673627349552924,
+              "peak": 0.6501603722572327,
+              "hash": "3beeb972"
+            }
+          ]
+        },
+        "sumOfSeparatelyCompressedSolos": {
+          "leftRms": 0.0793468152102417,
+          "rightRms": 0.06851890125232779
+        }
+      }
+    },
+    {
+      "name": "enabled shared FX with no real graph rejects instead of returning dry PCM",
+      "passed": true,
+      "details": {
+        "missingFxError": "Enabled shared track-bank FX are unavailable in the bounce renderer; refusing to render a dry signal.",
+        "activeBankId": "bank-1",
+        "selectedTrackBankFx": {
+          "type": "COMPRESSOR",
+          "enabled": true,
+          "params": {
+            "thresholdDb": -24,
+            "ratio": 12,
+            "kneeDb": 30,
+            "attackSeconds": 0.003,
+            "releaseSeconds": 0.25
+          }
+        }
+      }
+    },
+    {
+      "name": "a real delayed FX graph initializes beyond the previous 42.7 ms lead without losing bounce onset",
+      "passed": true,
+      "details": {
+        "initializationDelayMs": 1290.7650000154972,
+        "firstMeaningfulSampleFrame": 1,
+        "expectedStartWindowFrames": 256,
+        "pcm": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.2262973315488255,
+              "peak": 0.3200182318687439,
+              "hash": "6a435439"
+            },
+            {
+              "rms": 0.16263385279711343,
+              "peak": 0.23014985024929047,
+              "hash": "b3861a78"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "rendering and target imports leave the original selected source PCM and settings intact",
+      "passed": true,
+      "details": {
+        "originals": [
+          {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.2262931719978554,
+                "peak": 0.3199999928474426,
+                "hash": "0af18deb"
+              },
+              {
+                "rms": 0.1626244058191846,
+                "peak": 0.23000000417232513,
+                "hash": "0c154c85"
+              }
+            ]
+          },
+          {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.16968597756455162,
+                "peak": 0.23999999463558197,
+                "hash": "2c0b75c5"
+              },
+              {
+                "rms": 0.134354512149466,
+                "peak": 0.1899999976158142,
+                "hash": "59e099ae"
+              }
+            ]
+          }
+        ],
+        "unchangedSources": [
+          {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.2262931719978554,
+                "peak": 0.3199999928474426,
+                "hash": "0af18deb"
+              },
+              {
+                "rms": 0.1626244058191846,
+                "peak": 0.23000000417232513,
+                "hash": "0c154c85"
+              }
+            ]
+          },
+          {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.16968597756455162,
+                "peak": 0.23999999463558197,
+                "hash": "2c0b75c5"
+              },
+              {
+                "rms": 0.134354512149466,
+                "peak": 0.1899999976158142,
+                "hash": "59e099ae"
+              }
+            ]
+          }
+        ],
+        "runtimeDefaults": [
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          },
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          }
+        ],
+        "restoredRuntime": [
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          },
+          {
+            "reverse": false,
+            "oneShot": false,
+            "startMode": "IMMEDIATE",
+            "stopMode": "IMMEDIATE",
+            "fadeInMs": 0,
+            "fadeOutMs": 0,
+            "speed": 1,
+            "keepPitch": true,
+            "tempoSyncEnabled": true,
+            "tempoSyncSpeed": "NORMAL",
+            "tempoSyncMode": "PITCH",
+            "recordBpm": null,
+            "autoRec": {
+              "enabled": false,
+              "threshold": 0.01,
+              "debounceMs": 20
+            },
+            "dubMode": "OVERDUB"
+          }
+        ]
+      }
+    },
+    {
+      "name": "no HTML media output became audible during the software-only test",
+      "passed": true,
+      "details": {
+        "actualMedia": []
+      }
+    }
+  ],
+  "browserConsoleErrors": [
+    "console: Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep"
+  ],
+  "note": "Actual Chromium BrowserAudioEngine, ProjectService, BrowserProjectAdapter, shared time-stretch core and registered FX graphs; synthetic input only, all physical audio outputs muted or redirected.",
+  "repro": "node scripts/project-mix-smoke.mjs",
+  "chromiumVersion": "149.0.7827.55",
+  "executablePath": "C:\\Users\\user1000\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+  "crossOriginIsolated": true,
+  "sharedArrayBufferAvailable": true,
+  "engineStatus": {
+    "ready": true,
+    "mode": "browser",
+    "lastError": "",
+    "message": "BROWSER AUDIO READY"
+  },
+  "smoke": {
+    "status": "PASSED",
+    "assertions": [
+      {
+        "name": "all live AudioContexts are software-only and outputs are redirected",
+        "passed": true,
+        "details": {
+          "contextSafety": [
+            {
+              "rerouted": true,
+              "sinkIdNone": true,
+              "sampleRate": 48000,
+              "sinkError": null
+            },
+            {
+              "rerouted": true,
+              "sinkIdNone": true,
+              "sampleRate": 48000,
+              "sinkError": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "AudioEngine uses ready BrowserAudioEngine and actual ProjectService",
+        "passed": true,
+        "details": {
+          "ready": true,
+          "mode": "browser"
+        }
+      },
+      {
+        "name": "browser runtime runs at canonical 48 kHz",
+        "passed": true,
+        "details": {
+          "sampleRate": 48000
+        }
+      },
+      {
+        "name": "all HTML audio/video elements remain muted",
+        "passed": true,
+        "details": {
+          "mediaElements": 0
+        }
+      },
+      {
+        "name": "ProjectService offline bounce imports exact PCM into target 3",
+        "passed": true,
+        "details": {
+          "targetTrackId": 3,
+          "selectedTrackIds": [
+            1,
+            2
+          ],
+          "durationFrames": 48000,
+          "realtime": false,
+          "returned": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22843455838937396,
+                "peak": 0.43486887216567993,
+                "hash": "cf66c2cd"
+              },
+              {
+                "rms": 0.1678272458080802,
+                "peak": 0.3232699930667877,
+                "hash": "5767d4a1"
+              }
+            ]
+          },
+          "imported": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22843455838937396,
+                "peak": 0.43486887216567993,
+                "hash": "cf66c2cd"
+              },
+              {
+                "rms": 0.1678272458080802,
+                "peak": 0.3232699930667877,
+                "hash": "5767d4a1"
+              }
+            ]
+          },
+          "samePcm": true
+        }
+      },
+      {
+        "name": "ProjectService realtime bounce imports exact PCM into target 4",
+        "passed": true,
+        "details": {
+          "targetTrackId": 4,
+          "selectedTrackIds": [
+            1,
+            2
+          ],
+          "durationFrames": 48000,
+          "realtime": true,
+          "returned": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22843455838937396,
+                "peak": 0.43486887216567993,
+                "hash": "cf66c2cd"
+              },
+              {
+                "rms": 0.1678272458080802,
+                "peak": 0.3232699930667877,
+                "hash": "5767d4a1"
+              }
+            ]
+          },
+          "imported": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22843455838937396,
+                "peak": 0.43486887216567993,
+                "hash": "cf66c2cd"
+              },
+              {
+                "rms": 0.1678272458080802,
+                "peak": 0.3232699930667877,
+                "hash": "5767d4a1"
+              }
+            ]
+          },
+          "samePcm": true
+        }
+      },
+      {
+        "name": "actual two-track offline and realtime PCM agree and separate stereo probe retains distinct L/R sources",
+        "passed": true,
+        "details": {
+          "baselineMetrics": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22843455838937396,
+                "peak": 0.43486887216567993,
+                "hash": "cf66c2cd"
+              },
+              {
+                "rms": 0.1678272458080802,
+                "peak": 0.3232699930667877,
+                "hash": "5767d4a1"
+              }
+            ]
+          },
+          "stereoFrequencies": {
+            "left250": 250.30000001551036,
+            "right441": 440.6999997454824,
+            "left250Magnitude": 0.14397417681637048,
+            "left441Leakage": 0.00009020819232604581,
+            "right441Magnitude": 0.10345113704291742,
+            "right250Leakage": 0.00007496849823247374
+          },
+          "dryOfflineRealtimeRelativeError": 0
+        }
+      },
+      {
+        "name": "project track gain and master level affect actual rendered PCM",
+        "passed": true,
+        "details": {
+          "expectedRatio": 0.25,
+          "actualRatio": 0.25,
+          "gainReferenceMetrics": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.135748784365298,
+                "peak": 0.19200000166893005,
+                "hash": "af00be09"
+              },
+              {
+                "rms": 0.1074836117587069,
+                "peak": 0.15199999511241913,
+                "hash": "593f0aa8"
+              }
+            ]
+          },
+          "reducedMetrics": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.0339371960913245,
+                "peak": 0.04800000041723251,
+                "hash": "7a00be09"
+              },
+              {
+                "rms": 0.026870902939676724,
+                "peak": 0.03799999877810478,
+                "hash": "b83f0aa8"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "project track pan changes the rendered stereo balance",
+        "passed": true,
+        "details": {
+          "pan": -0.95,
+          "rightToLeft": 0.04874947320907034,
+          "hardLeftMetrics": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.1729878995325446,
+                "peak": 0.34350723028182983,
+                "hash": "6e63f3d9"
+              },
+              {
+                "rms": 0.008433068973755134,
+                "peak": 0.011925785802304745,
+                "hash": "e40a23b3"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "manual speed 0.5 changes actual source pitch by the requested factor",
+        "passed": true,
+        "details": {
+          "speed": 0.5,
+          "expectedLeft": 125.15,
+          "expectedRight": 220.35,
+          "measuredLeft": 125.14999999833512,
+          "measuredRight": 220.35000100268667,
+          "pcm": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22618902840401947,
+                "peak": 0.3199999928474426,
+                "hash": "213c174e"
+              },
+              {
+                "rms": 0.16262754398757437,
+                "peak": 0.23000000417232513,
+                "hash": "8aff4f86"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "manual speed 2 changes actual source pitch by the requested factor",
+        "passed": true,
+        "details": {
+          "speed": 2,
+          "expectedLeft": 500.6,
+          "expectedRight": 881.4,
+          "measuredLeft": 501.36796058603767,
+          "measuredRight": 881.728191253099,
+          "pcm": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22629101749028205,
+                "peak": 0.3199999928474426,
+                "hash": "f4409505"
+              },
+              {
+                "rms": 0.16262290217472442,
+                "peak": 0.23000000417232513,
+                "hash": "6e68b311"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "keep-pitch renderer preserves independent left/right fundamentals at variable speed",
+        "passed": true,
+        "details": {
+          "speed": 1.5,
+          "expectedLeftHz": 250.3,
+          "expectedRightHz": 440.7,
+          "measuredLeftHz": 250.44642146097138,
+          "measuredRightHz": 440.9189074303814,
+          "pcm": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22632332172579175,
+                "peak": 0.3211653232574463,
+                "hash": "242b7553"
+              },
+              {
+                "rms": 0.16265884621522242,
+                "peak": 0.23468947410583496,
+                "hash": "46de1135"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "manual speed combines with live master tempo and track tempo factor in the actual renderer",
+        "passed": true,
+        "details": {
+          "globalBpm": 240,
+          "recordBpm": 120,
+          "manualSpeed": 0.5,
+          "tempoSyncSpeed": "DOUBLE",
+          "expectedEffectiveSpeed": 2,
+          "measuredLeftHz": 501.36796058603767,
+          "measuredRightHz": 881.728191253099,
+          "pcm": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22629101749028205,
+                "peak": 0.3199999928474426,
+                "hash": "f4409505"
+              },
+              {
+                "rms": 0.16262290217472442,
+                "peak": 0.23000000417232513,
+                "hash": "6e68b311"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "reverse setting reverses imported source PCM in the actual offline renderer",
+        "passed": true,
+        "details": {
+          "firstSample": 0.800000011920929,
+          "sample10": 0.7998541593551636,
+          "sample3000": 0.7562490701675415,
+          "pcm": {
+            "frames": 4096,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.7703330290722135,
+                "peak": 0.800000011920929,
+                "hash": "d7304837"
+              },
+              {
+                "rms": 0.7703330290722135,
+                "peak": 0.800000011920929,
+                "hash": "d7304837"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "ProjectService offline bounce imports exact PCM into target 3",
+        "passed": true,
+        "details": {
+          "targetTrackId": 3,
+          "selectedTrackIds": [
+            1,
+            5
+          ],
+          "durationFrames": 48000,
+          "realtime": false,
+          "returned": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.050500841905098355,
+                "peak": 0.48656758666038513,
+                "hash": "08feff11"
+              },
+              {
+                "rms": 0.047673627349552924,
+                "peak": 0.6501603722572327,
+                "hash": "1121c30a"
+              }
+            ]
+          },
+          "imported": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.050500841905098355,
+                "peak": 0.48656758666038513,
+                "hash": "08feff11"
+              },
+              {
+                "rms": 0.047673627349552924,
+                "peak": 0.6501603722572327,
+                "hash": "1121c30a"
+              }
+            ]
+          },
+          "samePcm": true
+        }
+      },
+      {
+        "name": "ProjectService realtime bounce imports exact PCM into target 4",
+        "passed": true,
+        "details": {
+          "targetTrackId": 4,
+          "selectedTrackIds": [
+            1,
+            5
+          ],
+          "durationFrames": 48000,
+          "realtime": true,
+          "returned": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.050500841905098355,
+                "peak": 0.48656758666038513,
+                "hash": "f50c2565"
+              },
+              {
+                "rms": 0.047673627349552924,
+                "peak": 0.6501603722572327,
+                "hash": "3beeb972"
+              }
+            ]
+          },
+          "imported": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.050500841905098355,
+                "peak": 0.48656758666038513,
+                "hash": "f50c2565"
+              },
+              {
+                "rms": 0.047673627349552924,
+                "peak": 0.6501603722572327,
+                "hash": "3beeb972"
+              }
+            ]
+          },
+          "samePcm": true
+        }
+      },
+      {
+        "name": "real TRACK bank Compressor is nonlinear after the two source sends are combined once",
+        "passed": true,
+        "details": {
+          "dryRms": 0.6219552591560975,
+          "wetRms": 0.050500841905098355,
+          "wetToDryRatio": 0.08119690469957698,
+          "nonlinearDifference": 0.6666612715634869,
+          "offlineRealtimeRelativeError": 3.2912468078127257e-13,
+          "wetOffline": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.050500841905098355,
+                "peak": 0.48656758666038513,
+                "hash": "08feff11"
+              },
+              {
+                "rms": 0.047673627349552924,
+                "peak": 0.6501603722572327,
+                "hash": "1121c30a"
+              }
+            ]
+          },
+          "wetRealtime": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.050500841905098355,
+                "peak": 0.48656758666038513,
+                "hash": "f50c2565"
+              },
+              {
+                "rms": 0.047673627349552924,
+                "peak": 0.6501603722572327,
+                "hash": "3beeb972"
+              }
+            ]
+          },
+          "sumOfSeparatelyCompressedSolos": {
+            "leftRms": 0.0793468152102417,
+            "rightRms": 0.06851890125232779
+          }
+        }
+      },
+      {
+        "name": "enabled shared FX with no real graph rejects instead of returning dry PCM",
+        "passed": true,
+        "details": {
+          "missingFxError": "Enabled shared track-bank FX are unavailable in the bounce renderer; refusing to render a dry signal.",
+          "activeBankId": "bank-1",
+          "selectedTrackBankFx": {
+            "type": "COMPRESSOR",
+            "enabled": true,
+            "params": {
+              "thresholdDb": -24,
+              "ratio": 12,
+              "kneeDb": 30,
+              "attackSeconds": 0.003,
+              "releaseSeconds": 0.25
+            }
+          }
+        }
+      },
+      {
+        "name": "a real delayed FX graph initializes beyond the previous 42.7 ms lead without losing bounce onset",
+        "passed": true,
+        "details": {
+          "initializationDelayMs": 1290.7650000154972,
+          "firstMeaningfulSampleFrame": 1,
+          "expectedStartWindowFrames": 256,
+          "pcm": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.2262973315488255,
+                "peak": 0.3200182318687439,
+                "hash": "6a435439"
+              },
+              {
+                "rms": 0.16263385279711343,
+                "peak": 0.23014985024929047,
+                "hash": "b3861a78"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "rendering and target imports leave the original selected source PCM and settings intact",
+        "passed": true,
+        "details": {
+          "originals": [
+            {
+              "frames": 48000,
+              "sampleRate": 48000,
+              "numberOfChannels": 2,
+              "channels": [
+                {
+                  "rms": 0.2262931719978554,
+                  "peak": 0.3199999928474426,
+                  "hash": "0af18deb"
+                },
+                {
+                  "rms": 0.1626244058191846,
+                  "peak": 0.23000000417232513,
+                  "hash": "0c154c85"
+                }
+              ]
+            },
+            {
+              "frames": 48000,
+              "sampleRate": 48000,
+              "numberOfChannels": 2,
+              "channels": [
+                {
+                  "rms": 0.16968597756455162,
+                  "peak": 0.23999999463558197,
+                  "hash": "2c0b75c5"
+                },
+                {
+                  "rms": 0.134354512149466,
+                  "peak": 0.1899999976158142,
+                  "hash": "59e099ae"
+                }
+              ]
+            }
+          ],
+          "unchangedSources": [
+            {
+              "frames": 48000,
+              "sampleRate": 48000,
+              "numberOfChannels": 2,
+              "channels": [
+                {
+                  "rms": 0.2262931719978554,
+                  "peak": 0.3199999928474426,
+                  "hash": "0af18deb"
+                },
+                {
+                  "rms": 0.1626244058191846,
+                  "peak": 0.23000000417232513,
+                  "hash": "0c154c85"
+                }
+              ]
+            },
+            {
+              "frames": 48000,
+              "sampleRate": 48000,
+              "numberOfChannels": 2,
+              "channels": [
+                {
+                  "rms": 0.16968597756455162,
+                  "peak": 0.23999999463558197,
+                  "hash": "2c0b75c5"
+                },
+                {
+                  "rms": 0.134354512149466,
+                  "peak": 0.1899999976158142,
+                  "hash": "59e099ae"
+                }
+              ]
+            }
+          ],
+          "runtimeDefaults": [
+            {
+              "reverse": false,
+              "oneShot": false,
+              "startMode": "IMMEDIATE",
+              "stopMode": "IMMEDIATE",
+              "fadeInMs": 0,
+              "fadeOutMs": 0,
+              "speed": 1,
+              "keepPitch": true,
+              "tempoSyncEnabled": true,
+              "tempoSyncSpeed": "NORMAL",
+              "tempoSyncMode": "PITCH",
+              "recordBpm": null,
+              "autoRec": {
+                "enabled": false,
+                "threshold": 0.01,
+                "debounceMs": 20
+              },
+              "dubMode": "OVERDUB"
+            },
+            {
+              "reverse": false,
+              "oneShot": false,
+              "startMode": "IMMEDIATE",
+              "stopMode": "IMMEDIATE",
+              "fadeInMs": 0,
+              "fadeOutMs": 0,
+              "speed": 1,
+              "keepPitch": true,
+              "tempoSyncEnabled": true,
+              "tempoSyncSpeed": "NORMAL",
+              "tempoSyncMode": "PITCH",
+              "recordBpm": null,
+              "autoRec": {
+                "enabled": false,
+                "threshold": 0.01,
+                "debounceMs": 20
+              },
+              "dubMode": "OVERDUB"
+            }
+          ],
+          "restoredRuntime": [
+            {
+              "reverse": false,
+              "oneShot": false,
+              "startMode": "IMMEDIATE",
+              "stopMode": "IMMEDIATE",
+              "fadeInMs": 0,
+              "fadeOutMs": 0,
+              "speed": 1,
+              "keepPitch": true,
+              "tempoSyncEnabled": true,
+              "tempoSyncSpeed": "NORMAL",
+              "tempoSyncMode": "PITCH",
+              "recordBpm": null,
+              "autoRec": {
+                "enabled": false,
+                "threshold": 0.01,
+                "debounceMs": 20
+              },
+              "dubMode": "OVERDUB"
+            },
+            {
+              "reverse": false,
+              "oneShot": false,
+              "startMode": "IMMEDIATE",
+              "stopMode": "IMMEDIATE",
+              "fadeInMs": 0,
+              "fadeOutMs": 0,
+              "speed": 1,
+              "keepPitch": true,
+              "tempoSyncEnabled": true,
+              "tempoSyncSpeed": "NORMAL",
+              "tempoSyncMode": "PITCH",
+              "recordBpm": null,
+              "autoRec": {
+                "enabled": false,
+                "threshold": 0.01,
+                "debounceMs": 20
+              },
+              "dubMode": "OVERDUB"
+            }
+          ]
+        }
+      },
+      {
+        "name": "no HTML media output became audible during the software-only test",
+        "passed": true,
+        "details": {
+          "actualMedia": []
+        }
+      }
+    ],
+    "samples": {
+      "bounce-offline-1-2": {
+        "frames": 48000,
+        "sampleRate": 48000,
+        "numberOfChannels": 2,
+        "channels": [
+          {
+            "rms": 0.22843455838937396,
+            "peak": 0.43486887216567993,
+            "hash": "cf66c2cd"
+          },
+          {
+            "rms": 0.1678272458080802,
+            "peak": 0.3232699930667877,
+            "hash": "5767d4a1"
+          }
+        ]
+      },
+      "bounce-realtime-1-2": {
+        "frames": 48000,
+        "sampleRate": 48000,
+        "numberOfChannels": 2,
+        "channels": [
+          {
+            "rms": 0.22843455838937396,
+            "peak": 0.43486887216567993,
+            "hash": "cf66c2cd"
+          },
+          {
+            "rms": 0.1678272458080802,
+            "peak": 0.3232699930667877,
+            "hash": "5767d4a1"
+          }
+        ]
+      },
+      "bounce-offline-1-5": {
+        "frames": 48000,
+        "sampleRate": 48000,
+        "numberOfChannels": 2,
+        "channels": [
+          {
+            "rms": 0.050500841905098355,
+            "peak": 0.48656758666038513,
+            "hash": "08feff11"
+          },
+          {
+            "rms": 0.047673627349552924,
+            "peak": 0.6501603722572327,
+            "hash": "1121c30a"
+          }
+        ]
+      },
+      "bounce-realtime-1-5": {
+        "frames": 48000,
+        "sampleRate": 48000,
+        "numberOfChannels": 2,
+        "channels": [
+          {
+            "rms": 0.050500841905098355,
+            "peak": 0.48656758666038513,
+            "hash": "f50c2565"
+          },
+          {
+            "rms": 0.047673627349552924,
+            "peak": 0.6501603722572327,
+            "hash": "3beeb972"
+          }
+        ]
+      },
+      "frequencyCases": [
+        {
+          "speed": 0.5,
+          "expectedLeft": 125.15,
+          "expectedRight": 220.35,
+          "measuredLeft": 125.14999999833512,
+          "measuredRight": 220.35000100268667,
+          "pcm": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22618902840401947,
+                "peak": 0.3199999928474426,
+                "hash": "213c174e"
+              },
+              {
+                "rms": 0.16262754398757437,
+                "peak": 0.23000000417232513,
+                "hash": "8aff4f86"
+              }
+            ]
+          }
+        },
+        {
+          "speed": 2,
+          "expectedLeft": 500.6,
+          "expectedRight": 881.4,
+          "measuredLeft": 501.36796058603767,
+          "measuredRight": 881.728191253099,
+          "pcm": {
+            "frames": 48000,
+            "sampleRate": 48000,
+            "numberOfChannels": 2,
+            "channels": [
+              {
+                "rms": 0.22629101749028205,
+                "peak": 0.3199999928474426,
+                "hash": "f4409505"
+              },
+              {
+                "rms": 0.16262290217472442,
+                "peak": 0.23000000417232513,
+                "hash": "6e68b311"
+              }
+            ]
+          }
+        }
+      ],
+      "keepPitch": {
+        "speed": 1.5,
+        "expectedLeftHz": 250.3,
+        "expectedRightHz": 440.7,
+        "measuredLeftHz": 250.44642146097138,
+        "measuredRightHz": 440.9189074303814,
+        "pcm": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22632332172579175,
+              "peak": 0.3211653232574463,
+              "hash": "242b7553"
+            },
+            {
+              "rms": 0.16265884621522242,
+              "peak": 0.23468947410583496,
+              "hash": "46de1135"
+            }
+          ]
+        }
+      },
+      "tempoEffective": {
+        "globalBpm": 240,
+        "recordBpm": 120,
+        "manualSpeed": 0.5,
+        "tempoSyncSpeed": "DOUBLE",
+        "expectedEffectiveSpeed": 2,
+        "measuredLeftHz": 501.36796058603767,
+        "measuredRightHz": 881.728191253099,
+        "pcm": {
+          "frames": 48000,
+          "sampleRate": 48000,
+          "numberOfChannels": 2,
+          "channels": [
+            {
+              "rms": 0.22629101749028205,
+              "peak": 0.3199999928474426,
+              "hash": "f4409505"
+            },
+            {
+              "rms": 0.16262290217472442,
+              "peak": 0.23000000417232513,
+              "hash": "6e68b311"
+            }
+          ]
+        }
+      },
+      "reverse": {
+        "descending": true,
+        "firstSample": 0.800000011920929,
+        "sample10": 0.7998541593551636,
+        "sample3000": 0.7562490701675415
+      },
+      "compressor": {
+        "dryRms": 0.6219552591560975,
+        "wetRms": 0.050500841905098355,
+        "nonlinearDifference": 0.6666612715634869,
+        "offlineRealtimeRelativeError": 3.2912468078127257e-13
+      },
+      "delayedFx": {
+        "delayMs": 1290.7650000154972,
+        "onsetFrame": 1
+      }
+    },
+    "contextSafety": [
+      {
+        "rerouted": true,
+        "sinkIdNone": true,
+        "sampleRate": 48000,
+        "sinkError": null
+      },
+      {
+        "rerouted": true,
+        "sinkIdNone": true,
+        "sampleRate": 48000,
+        "sinkError": null
+      }
+    ],
+    "projectState": {
+      "busy": false,
+      "operation": "idle",
+      "progress": null,
+      "error": null
+    }
+  },
+  "outputSafety": {
+    "contexts": [
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sampleRate": 48000,
+        "state": "running",
+        "sinkError": null
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sampleRate": 48000,
+        "state": "running",
+        "sinkError": null
+      }
+    ],
+    "syntheticGetUserMediaRequests": 1,
+    "audibleMediaCount": 0
+  },
+  "finishedAt": "2026-10-09T06:19:06.180Z",
+  "outputPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-project-mix-smoke-1791526692263.json"
+}

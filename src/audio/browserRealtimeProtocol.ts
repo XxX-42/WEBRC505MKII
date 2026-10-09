@@ -2,14 +2,28 @@ export const BROWSER_REALTIME_WORKLET_NAME = 'webrc505-realtime';
 export const BROWSER_REALTIME_SAMPLE_RATE = 48_000;
 export const BROWSER_REALTIME_QUANTUM_FRAMES = 128;
 export const BROWSER_REALTIME_TRACK_COUNT = 5;
-export const BROWSER_REALTIME_LAYOUT_VERSION = 2;
+// v4 changes SET_MASTER_CLOCK_EPOCH's arg1/flags payload to an exact Float64
+// phase origin. Bind the Worklet URL to this version so cached v3 processors
+// cannot ACK the new command while interpreting its origin as integer words.
+export const BROWSER_REALTIME_LAYOUT_VERSION = 4;
 export const BROWSER_REALTIME_WORKLET_URL = `/worklets/looper-processor.js?layout=${BROWSER_REALTIME_LAYOUT_VERSION}`;
 export const BROWSER_REALTIME_TRACK_CHANNEL_COUNT = 2;
 export const BROWSER_REALTIME_LAYOUT_MONO = 0;
 export const BROWSER_REALTIME_LAYOUT_PLANAR_LR = 1;
-export const BROWSER_REALTIME_MAX_TRACK_SECONDS = 180;
+export const BROWSER_REALTIME_STORAGE_BLOCK_FRAMES = 16_384;
+/** Eight bounded storage blocks reserve about 2.73 seconds at the 48 kHz baseline. */
+export const BROWSER_REALTIME_STORAGE_BATCH_BLOCKS = 8;
+export const BROWSER_REALTIME_STORAGE_BATCH_FRAMES =
+  BROWSER_REALTIME_STORAGE_BLOCK_FRAMES * BROWSER_REALTIME_STORAGE_BATCH_BLOCKS;
+export const BROWSER_REALTIME_INITIAL_TRACK_FRAMES = BROWSER_REALTIME_STORAGE_BLOCK_FRAMES;
+export const BROWSER_REALTIME_MAX_SEGMENTS_PER_TAKE = 4_096;
+export const BROWSER_REALTIME_MAX_HISTORY_TAKES = 32;
+export const BROWSER_REALTIME_MAX_STORAGE_BYTES = 512 * 1024 * 1024;
+/** Upper per-track frame boundary; storage is allocated in bounded blocks on demand. */
 export const BROWSER_REALTIME_MAX_TRACK_FRAMES =
-  BROWSER_REALTIME_SAMPLE_RATE * BROWSER_REALTIME_MAX_TRACK_SECONDS;
+  BROWSER_REALTIME_STORAGE_BLOCK_FRAMES * BROWSER_REALTIME_MAX_SEGMENTS_PER_TAKE;
+export const BROWSER_REALTIME_STORAGE_LOW_WATERMARK_FRAMES =
+  BROWSER_REALTIME_STORAGE_BLOCK_FRAMES * 4;
 export const BROWSER_REALTIME_COMMAND_CAPACITY = 256;
 export const BROWSER_REALTIME_COMMAND_WORDS = 8;
 
@@ -24,7 +38,7 @@ export const CONTROL_TRACK_POSITIONS_BYTE_OFFSET =
 export const CONTROL_BUFFER_BYTE_LENGTH =
   CONTROL_TRACK_POSITIONS_BYTE_OFFSET + BROWSER_REALTIME_TRACK_COUNT * Float32Array.BYTES_PER_ELEMENT;
 
-export const TRACK_META_BYTES = 64;
+export const TRACK_META_BYTES = 128;
 export const TRACK_META_WORDS = TRACK_META_BYTES / Int32Array.BYTES_PER_ELEMENT;
 
 export const ControlWord = {
@@ -45,11 +59,14 @@ export const ControlWord = {
   COMMAND_OVERRUNS: 14,
   DEADLINE_MISSES: 15,
   LAST_QUANTUM_FRAMES: 16,
+  // Signed integer diagnostics only. The authoritative master clock epoch is
+  // a Float64 in the SET_MASTER_CLOCK_EPOCH command payload and can be fractional.
   MASTER_ORIGIN_LOW: 17,
   MASTER_ORIGIN_HIGH: 18,
   TRACK_CAPACITY_OVERRUNS: 19,
   DEADLINE_METRIC_AVAILABLE: 20,
   INPUT_DROPOUT_BLOCKS: 21,
+  INPUT_DROPOUT_FRAMES: 22,
 } as const;
 
 export const TrackMetaWord = {
@@ -65,6 +82,27 @@ export const TrackMetaWord = {
   CHANNEL_COUNT: 9,
   LAYOUT_VERSION: 10,
   STORAGE_LAYOUT: 11,
+  HISTORY_CURSOR: 12,
+  HISTORY_LENGTH: 13,
+  MARK_CURSOR: 14,
+  MARK_POSITION: 15,
+  MARK_STATE: 16,
+  TAKE_MODE: 17,
+  SPEED_Q16: 18,
+  PLAYBACK_FLAGS: 19,
+  STOP_MODE: 20,
+  START_MODE: 21,
+  FADE_IN_FRAMES: 22,
+  FADE_OUT_FRAMES: 23,
+  AUTO_REC_THRESHOLD_Q15: 24,
+  AUTO_REC_DEBOUNCE_FRAMES: 25,
+  ACTIVE_TAKE_SLOT: 26,
+  PENDING_STOP_MODE: 27,
+  RECORD_BPM: 28,
+  PENDING_RECORD_FRAMES: 29,
+  GAIN_Q16: 30,
+  TEMPO_SYNC_FACTOR_Q16: 30,
+  TEMPO_SYNC_FLAGS: 31,
 } as const;
 
 export const BrowserRealtimeOpcode = {
@@ -83,6 +121,24 @@ export const BrowserRealtimeOpcode = {
   EXPORT_TRACK: 13,
   SET_ALIGNMENT: 14,
   CANCEL_PENDING: 15,
+  UNDO: 16,
+  REDO: 17,
+  MARK: 18,
+  RESTORE_MARK: 19,
+  RESET_BACK: 20,
+  SET_SPEED: 21,
+  SET_ONE_SHOT: 22,
+  SET_STOP_MODE: 23,
+  SET_FADE: 24,
+  SET_AUTO_REC: 25,
+  SET_DUB_MODE: 26,
+  SET_START_MODE: 27,
+  SET_RECORD_BPM: 28,
+  LOAD_TRACK: 29,
+  CLEAR_MARK: 30,
+  SYNC_EXTERNAL_CLOCK: 31,
+  SET_TEMPO_SYNC: 32,
+  SET_MASTER_CLOCK_EPOCH: 33,
 } as const;
 
 export const BrowserRealtimeStatus = {
@@ -94,6 +150,13 @@ export const BrowserRealtimeStatus = {
   COMMAND_OVERFLOW: 5,
   CANCELLED: 6,
   INVALID_TRACK: 7,
+  NO_UNDO: 8,
+  NO_REDO: 9,
+  NO_MARK: 10,
+  HISTORY_FULL: 11,
+  LOAD_INVALID: 12,
+  STORAGE_LIMIT: 13,
+  INVALID_SETTINGS: 14,
 } as const;
 
 export interface BrowserRealtimeCommand {
@@ -120,6 +183,10 @@ export interface BrowserRealtimeAck {
   status: number;
   loopFrames: number;
   recordingFrames: number;
+  historyCursor?: number;
+  historyLength?: number;
+  markCursor?: number;
+  markPosition?: number;
 }
 
 export interface BrowserRealtimeMetrics {
@@ -142,6 +209,12 @@ export interface BrowserRealtimeMetrics {
   trackCapacityOverruns: number;
   maxTrackFrames: number;
   trackCapacityFrames: number[];
+  inputDropoutFrames: number;
+  storageAllocatedBytes: number;
+  storageGrowthRequests: number;
+  storageGrowthFailures: number;
+  historyDepth: number[];
+  storageSegments: number[];
 }
 
 export function createControlSharedBuffer(): SharedArrayBuffer {
@@ -149,7 +222,7 @@ export function createControlSharedBuffer(): SharedArrayBuffer {
 }
 
 export function createTrackSharedBuffer(
-  capacityFrames = BROWSER_REALTIME_MAX_TRACK_FRAMES,
+  capacityFrames = BROWSER_REALTIME_INITIAL_TRACK_FRAMES,
 ): SharedArrayBuffer {
   if (!Number.isSafeInteger(capacityFrames) || capacityFrames <= 0) {
     throw new RangeError('Track storage capacity must be a positive safe integer.');
@@ -157,6 +230,17 @@ export function createTrackSharedBuffer(
   const buffer = new SharedArrayBuffer(
     TRACK_META_BYTES + capacityFrames * BROWSER_REALTIME_TRACK_CHANNEL_COUNT * Float32Array.BYTES_PER_ELEMENT,
   );
+  initializeTrackStorageMetadata(buffer, capacityFrames, BROWSER_REALTIME_TRACK_CHANNEL_COUNT, BROWSER_REALTIME_LAYOUT_PLANAR_LR);
+  return buffer;
+}
+
+/** A bounded planar LR take segment with a per-frame written mask for replace modes. */
+export function createTakeSegmentBuffer(capacityFrames = BROWSER_REALTIME_STORAGE_BLOCK_FRAMES): SharedArrayBuffer {
+  if (!Number.isSafeInteger(capacityFrames) || capacityFrames <= 0) {
+    throw new RangeError('Take segment capacity must be a positive safe integer.');
+  }
+  const sampleBytes = capacityFrames * BROWSER_REALTIME_TRACK_CHANNEL_COUNT * Float32Array.BYTES_PER_ELEMENT;
+  const buffer = new SharedArrayBuffer(TRACK_META_BYTES + sampleBytes + capacityFrames);
   initializeTrackStorageMetadata(buffer, capacityFrames, BROWSER_REALTIME_TRACK_CHANNEL_COUNT, BROWSER_REALTIME_LAYOUT_PLANAR_LR);
   return buffer;
 }
@@ -196,18 +280,14 @@ export function frameFromWords(low: number, high: number): number {
 }
 
 export function loadSharedFrame(view: Int32Array, sequenceWord: number, lowWord: number, highWord: number): number {
-  let before = 0;
-  let low = 0;
-  let high = 0;
-  let after = 0;
-  do {
-    before = Atomics.load(view, sequenceWord);
+  while (true) {
+    const before = Atomics.load(view, sequenceWord);
     if (before & 1) continue;
-    low = Atomics.load(view, lowWord);
-    high = Atomics.load(view, highWord);
-    after = Atomics.load(view, sequenceWord);
-  } while (before !== after || (after & 1) !== 0);
-  return frameFromWords(low, high);
+    const low = Atomics.load(view, lowWord);
+    const high = Atomics.load(view, highWord);
+    const after = Atomics.load(view, sequenceWord);
+    if (before === after && (after & 1) === 0) return frameFromWords(low, high);
+  }
 }
 
 export function storeSharedFrame(view: Int32Array, sequenceWord: number, lowWord: number, highWord: number, frame: number) {
