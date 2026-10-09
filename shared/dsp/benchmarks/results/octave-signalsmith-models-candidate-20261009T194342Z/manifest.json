@@ -1,0 +1,459 @@
+{
+  "schemaVersion": 1,
+  "candidate": "octave-signalsmith-models",
+  "disposition": "standalone experimental functional candidate; not final-quality, runtime-integrated, cross-runtime qualified, deadline qualified, or hardware tested",
+  "capturedAtUtc": "2026-10-09T19:43:57.8560705Z",
+  "build": {
+    "command": "build_release.cmd",
+    "startedUtc": "2026-10-09T19:43:44.4747376Z",
+    "endedUtc": "2026-10-09T19:43:57.8560705Z",
+    "exitCode": 0,
+    "compilerVersionLog": "build/compiler-version.log",
+    "compilerVersionSha256": "00eacddb6dcbaff4a38517cdd201438fb7405f4b0523a7cd3d43dabd64761d99",
+    "flags": [
+      "/std:c++17",
+      "/O2",
+      "/EHsc",
+      "/W4",
+      "/permissive-"
+    ],
+    "translationUnits": [
+      "octave_signalsmith_models.cpp",
+      "signalsmith_adapter.cpp",
+      "primitives.cpp",
+      "octave_signalsmith_models_tests.cpp"
+    ],
+    "buildScriptSha256": "8f60ae40ba42c9fca3c12b4fa57ce3815c5e4772e43ac38f24f128e3e9da7ee4",
+    "captureScriptSha256": "3c4c3ca15df1688c1f384f9ac8bc3990611865b8fd22e80cbe62b068223521ed",
+    "sourceHashCount": 22,
+    "sourceChangedDuringBuild": [],
+    "sourceHashesBefore": {
+      "shared/dsp/include/webrc/dsp/octave_signalsmith_models.hpp": "93d577cedcf6e04064ab9e4cf11547a3a65ace466940cd0fc7071268ce0b90f9",
+      "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+      "shared/dsp/src/octave_signalsmith_models.cpp": "c97d0f8fa173e4979f7848ea552739b35ac2ccf8471508b852fbcd80ad6361c6",
+      "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "shared/dsp/src/signalsmith_adapter.cpp": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a",
+      "shared/dsp/tests/octave_signalsmith_models_tests.cpp": "e34910e702d849462236dcd4b272b17ad3c25c6fd248e780bd5efed238d3c80f",
+      "third_party/SIGNALSMITH_PINS.md": "ae068d32b2c525ec15afe825b015608d18ff0951cdfe1d7816a496456818dd41",
+      "third_party/signalsmith-linear/approx.h": "bc3e6dfb911ac50fb5841784b5633751fc14ae9b0f881a88b427c60c7a628cf1",
+      "third_party/signalsmith-linear/fft.h": "af0df3ff84c6f69ec00f09e0e53634b7ccacd3198a4acb2b482cb7d93854d207",
+      "third_party/signalsmith-linear/include/signalsmith-linear/approx.h": "eac208cc0e94556dde10e1d9bb0d53d8df9453aa8d2157421073f0497649ec3b",
+      "third_party/signalsmith-linear/include/signalsmith-linear/fft.h": "30e4054a9df4f1f31318ffefb43b52d69378788a344fb09c8995a36d5bc28148",
+      "third_party/signalsmith-linear/include/signalsmith-linear/linear.h": "38560f893be3ecbd18e6ce45b17dc7c3f3d3e4e6ed2890572b4aba385e36c03d",
+      "third_party/signalsmith-linear/include/signalsmith-linear/stft.h": "db40c535f6554daf2f0a12540730dc22bce71c5007210e515f463a0cbd1a16b7",
+      "third_party/signalsmith-linear/LICENSE.txt": "a91f5703b0f5fa22e8c14a8bd854559a7c512bbe58656ea8bdcd4964e923ab2f",
+      "third_party/signalsmith-linear/linear.h": "fe7fb1c944950487f0744dcdd2fb067a098ad3597a86385c6a3f4bae1d31eb55",
+      "third_party/signalsmith-linear/README.md": "961d35d216e5972551711996aaf01f3eb022fefb3a92808031f5d06dca0e57c7",
+      "third_party/signalsmith-linear/stft.h": "0fc36186c3f892d068fff4108536b0f2132552f5a450b1e1ea5657e2899c6df3",
+      "third_party/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h": "869facc1853189bec91fb54960da2f59333284963d6b52a242d55a399d305e4d",
+      "third_party/signalsmith-stretch/LICENSE.txt": "16bf62d475af149d96a24853e77c9e0d939259a9d55b23b41da7f9939db85085",
+      "third_party/signalsmith-stretch/README.md": "268df6b2053832a3ae43df2c1e7b4e6a957e3e4cc30766870dcd9846ecbaec39",
+      "third_party/signalsmith-stretch/signalsmith-stretch.h": "45a0b93b1e00257014d48e7ae494ec4e604f56b4ee15189a355cd9794653a37d"
+    },
+    "sourceHashesAfter": {
+      "shared/dsp/include/webrc/dsp/octave_signalsmith_models.hpp": "93d577cedcf6e04064ab9e4cf11547a3a65ace466940cd0fc7071268ce0b90f9",
+      "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+      "shared/dsp/src/octave_signalsmith_models.cpp": "c97d0f8fa173e4979f7848ea552739b35ac2ccf8471508b852fbcd80ad6361c6",
+      "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "shared/dsp/src/signalsmith_adapter.cpp": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a",
+      "shared/dsp/tests/octave_signalsmith_models_tests.cpp": "e34910e702d849462236dcd4b272b17ad3c25c6fd248e780bd5efed238d3c80f",
+      "third_party/SIGNALSMITH_PINS.md": "ae068d32b2c525ec15afe825b015608d18ff0951cdfe1d7816a496456818dd41",
+      "third_party/signalsmith-linear/approx.h": "bc3e6dfb911ac50fb5841784b5633751fc14ae9b0f881a88b427c60c7a628cf1",
+      "third_party/signalsmith-linear/fft.h": "af0df3ff84c6f69ec00f09e0e53634b7ccacd3198a4acb2b482cb7d93854d207",
+      "third_party/signalsmith-linear/include/signalsmith-linear/approx.h": "eac208cc0e94556dde10e1d9bb0d53d8df9453aa8d2157421073f0497649ec3b",
+      "third_party/signalsmith-linear/include/signalsmith-linear/fft.h": "30e4054a9df4f1f31318ffefb43b52d69378788a344fb09c8995a36d5bc28148",
+      "third_party/signalsmith-linear/include/signalsmith-linear/linear.h": "38560f893be3ecbd18e6ce45b17dc7c3f3d3e4e6ed2890572b4aba385e36c03d",
+      "third_party/signalsmith-linear/include/signalsmith-linear/stft.h": "db40c535f6554daf2f0a12540730dc22bce71c5007210e515f463a0cbd1a16b7",
+      "third_party/signalsmith-linear/LICENSE.txt": "a91f5703b0f5fa22e8c14a8bd854559a7c512bbe58656ea8bdcd4964e923ab2f",
+      "third_party/signalsmith-linear/linear.h": "fe7fb1c944950487f0744dcdd2fb067a098ad3597a86385c6a3f4bae1d31eb55",
+      "third_party/signalsmith-linear/README.md": "961d35d216e5972551711996aaf01f3eb022fefb3a92808031f5d06dca0e57c7",
+      "third_party/signalsmith-linear/stft.h": "0fc36186c3f892d068fff4108536b0f2132552f5a450b1e1ea5657e2899c6df3",
+      "third_party/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h": "869facc1853189bec91fb54960da2f59333284963d6b52a242d55a399d305e4d",
+      "third_party/signalsmith-stretch/LICENSE.txt": "16bf62d475af149d96a24853e77c9e0d939259a9d55b23b41da7f9939db85085",
+      "third_party/signalsmith-stretch/README.md": "268df6b2053832a3ae43df2c1e7b4e6a957e3e4cc30766870dcd9846ecbaec39",
+      "third_party/signalsmith-stretch/signalsmith-stretch.h": "45a0b93b1e00257014d48e7ae494ec4e604f56b4ee15189a355cd9794653a37d"
+    },
+    "artifacts": [
+      {
+        "path": "build/build.log",
+        "sha256": "91e130f16db0082146bbf2948c6fa652a4d51ed2294712424321b94c0d4f9a8e",
+        "bytes": 70947
+      },
+      {
+        "path": "build/compiler-version.log",
+        "sha256": "00eacddb6dcbaff4a38517cdd201438fb7405f4b0523a7cd3d43dabd64761d99",
+        "bytes": 1350
+      },
+      {
+        "path": "build/octave_signalsmith_models_tests.exe",
+        "sha256": "9d0796653b46219c929e95501809daa921fed64d9891c805bf223f0b9a397543",
+        "bytes": 403456
+      },
+      {
+        "path": "build/octave_signalsmith_models_tests.obj",
+        "sha256": "2d7fc77b53d7cc1174bc46a2e156e6e04880aadeef8d4b44d2c980aa58c38378",
+        "bytes": 976287
+      },
+      {
+        "path": "build/octave_signalsmith_models.obj",
+        "sha256": "4361128d4c9cc4405a73f1c549b363c8c858e463fb1932881309a99b605d9abe",
+        "bytes": 162631
+      },
+      {
+        "path": "build/primitives.obj",
+        "sha256": "35d188f65f761c6df1aeb3dca3ebc7543db19a702153549142358dd95d7401a7",
+        "bytes": 124627
+      },
+      {
+        "path": "build/signalsmith_adapter.obj",
+        "sha256": "b2880463e324a0a01db68e444855d12b2aa72c50e295e546c6d9d256b0e32696",
+        "bytes": 538805
+      },
+      {
+        "path": "build/test-output.json",
+        "sha256": "faaeb5b252e8a3c96a643b8dc11d8fa7be115903eb035e97753bab952c8f4c4b",
+        "bytes": 3940
+      },
+      {
+        "path": "build/test-stderr.log",
+        "sha256": "7ac62d8858cc3f4c3b520f1c83aee777e3f1318d22a67b48367377e24a1908cb",
+        "bytes": 316
+      },
+      {
+        "path": "build/vcvars.log",
+        "sha256": "3a48173132a5d5f173d16e0aa51fe08080bdfb703250aa8d21b8eef8e86a8bdb",
+        "bytes": 299
+      }
+    ]
+  },
+  "environment": {
+    "os": {
+      "Caption": "Microsoft Windows 11 专业版",
+      "Version": "10.0.26200",
+      "BuildNumber": "26200",
+      "OSArchitecture": "64 位"
+    },
+    "cpu": {
+      "Name": "AMD Ryzen 9 5900HX with Radeon Graphics        ",
+      "Architecture": 9,
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 16,
+      "MaxClockSpeed": 3301
+    },
+    "hardwareAudio": "not accessed or tested"
+  },
+  "algorithm": {
+    "wrapper": "two continuously-running pinned Signalsmith branches, stereo, equal input/output frames",
+    "factors": {
+      "downOne": 0.5,
+      "downTwo": 0.25
+    },
+    "wrapperSettings": {
+      "sampleRate": 48000,
+      "seed": "0x05aa1234",
+      "controlSmoothingMs": 8,
+      "maxCallbackFrames": 256,
+      "splitComputation": false,
+      "intervalSamples": 1024,
+      "blockSamples": 8192
+    },
+    "highResolutionDirectProbe": {
+      "blockSamples": 16384,
+      "intervalSamples": 2048,
+      "scope": "diagnostic direct upstream engine only; not wrapper adapter setting",
+      "seed": "0x05aa1234"
+    }
+  },
+  "test": {
+    "schemaVersion": 1,
+    "suite": "octave-signalsmith-models",
+    "sampleRate": 48000,
+    "fixedMixedPathSamples": 8192,
+    "adapterInputLatencySamples": 4096,
+    "adapterOutputLatencySamples": 4096,
+    "dryImpulseFirstSample": 8192,
+    "dryImpulsePeakSample": 8192,
+    "wetImpulseFirstSample": 1818,
+    "wetImpulsePeakSample": 8192,
+    "impulseCrossCorrelationPeakNormalized": 0.866073944234,
+    "impulseCrossCorrelationOffsetSamples": 0,
+    "tones": [
+      {
+        "inputHz": 55,
+        "rightInputHz": 68.75,
+        "oneLeftHz": 25.25,
+        "oneRightHz": 37.375,
+        "twoLeftHz": 10.75,
+        "twoRightHz": 20.1875,
+        "oneLeftFrequencyErrorHz": -2.25,
+        "oneRightFrequencyErrorHz": 3,
+        "twoLeftFrequencyErrorHz": -3,
+        "twoRightFrequencyErrorHz": 3,
+        "oneLeftExactTargetAmplitude": 0.0529866537,
+        "oneRightExactTargetAmplitude": 0.0268863625,
+        "twoLeftExactTargetAmplitude": 0.0317490035,
+        "twoRightExactTargetAmplitude": 0.019511643,
+        "oneLeftAmplitude": 0.545909429,
+        "oneRightAmplitude": 0.0776264929,
+        "twoLeftAmplitude": 0.129799444,
+        "twoRightAmplitude": 0.0371321642,
+        "dualMeasured": false,
+        "dualOneLeftHz": 0,
+        "dualTwoLeftHz": 0,
+        "dualOneRightHz": 0,
+        "dualTwoRightHz": 0,
+        "dualOneLeftAmplitude": 0,
+        "dualTwoLeftAmplitude": 0,
+        "dualOneRightAmplitude": 0,
+        "dualTwoRightAmplitude": 0
+      },
+      {
+        "inputHz": 110,
+        "rightInputHz": 137.5,
+        "oneLeftHz": 55.25,
+        "oneRightHz": 69.25,
+        "twoLeftHz": 27.75,
+        "twoRightHz": 34.375,
+        "oneLeftFrequencyErrorHz": 0.25,
+        "oneRightFrequencyErrorHz": 0.5,
+        "twoLeftFrequencyErrorHz": 0.25,
+        "twoRightFrequencyErrorHz": 0,
+        "oneLeftExactTargetAmplitude": 0.499550656,
+        "oneRightExactTargetAmplitude": 0.304486883,
+        "twoLeftExactTargetAmplitude": 0.277200433,
+        "twoRightExactTargetAmplitude": 0.456663475,
+        "oneLeftAmplitude": 0.505729023,
+        "oneRightAmplitude": 0.381341737,
+        "twoLeftAmplitude": 0.33810369,
+        "twoRightAmplitude": 0.456663475,
+        "dualMeasured": false,
+        "dualOneLeftHz": 0,
+        "dualTwoLeftHz": 0,
+        "dualOneRightHz": 0,
+        "dualTwoRightHz": 0,
+        "dualOneLeftAmplitude": 0,
+        "dualTwoLeftAmplitude": 0,
+        "dualOneRightAmplitude": 0,
+        "dualTwoRightAmplitude": 0
+      },
+      {
+        "inputHz": 220,
+        "rightInputHz": 275,
+        "oneLeftHz": 109,
+        "oneRightHz": 138.25,
+        "twoLeftHz": 55,
+        "twoRightHz": 69.25,
+        "oneLeftFrequencyErrorHz": -1,
+        "oneRightFrequencyErrorHz": 0.75,
+        "twoLeftFrequencyErrorHz": 0,
+        "twoRightFrequencyErrorHz": 0.5,
+        "oneLeftExactTargetAmplitude": 0.0267139945,
+        "oneRightExactTargetAmplitude": 0.0671753699,
+        "twoLeftExactTargetAmplitude": 0.511907441,
+        "twoRightExactTargetAmplitude": 0.313447849,
+        "oneLeftAmplitude": 0.544219448,
+        "oneRightAmplitude": 0.399277953,
+        "twoLeftAmplitude": 0.511907441,
+        "twoRightAmplitude": 0.472210762,
+        "dualMeasured": true,
+        "dualOneLeftHz": 109,
+        "dualTwoLeftHz": 55,
+        "dualOneRightHz": 138.25,
+        "dualTwoRightHz": 69.25,
+        "dualOneLeftAmplitude": 0.272424307,
+        "dualTwoLeftAmplitude": 0.255696273,
+        "dualOneRightAmplitude": 0.199856331,
+        "dualTwoRightAmplitude": 0.236146889
+      },
+      {
+        "inputHz": 880,
+        "rightInputHz": 1100,
+        "oneLeftHz": 440.25,
+        "oneRightHz": 550,
+        "twoLeftHz": 219.5,
+        "twoRightHz": 275,
+        "oneLeftFrequencyErrorHz": 0.25,
+        "oneRightFrequencyErrorHz": 0,
+        "twoLeftFrequencyErrorHz": -0.5,
+        "twoRightFrequencyErrorHz": 0,
+        "oneLeftExactTargetAmplitude": 0.540796762,
+        "oneRightExactTargetAmplitude": 0.42628717,
+        "twoLeftExactTargetAmplitude": 0.339383664,
+        "twoRightExactTargetAmplitude": 0.422590275,
+        "oneLeftAmplitude": 0.547721283,
+        "oneRightAmplitude": 0.42628717,
+        "twoLeftAmplitude": 0.513794042,
+        "twoRightAmplitude": 0.422590275,
+        "dualMeasured": true,
+        "dualOneLeftHz": 440.25,
+        "dualTwoLeftHz": 219.5,
+        "dualOneRightHz": 550,
+        "dualTwoRightHz": 275,
+        "dualOneLeftAmplitude": 0.274030727,
+        "dualTwoLeftAmplitude": 0.257129249,
+        "dualOneRightAmplitude": 0.213238578,
+        "dualTwoRightAmplitude": 0.211253595
+      }
+    ],
+    "highResolution16384": {
+      "blockSamples": 16384,
+      "intervalSamples": 2048,
+      "measureFirstFrame": 192000,
+      "measureFrames": 96000,
+      "leftPeakHz": 14,
+      "leftZeroCrossingHz": 13.9275,
+      "leftExactTargetAmplitude": 0.275920705,
+      "rightPeakHz": 17.1875,
+      "rightZeroCrossingHz": 17.1661,
+      "rightExactTargetAmplitude": 0.46046614,
+      "inputLatencySamples": 8192,
+      "outputLatencySamples": 8192
+    },
+    "leftOnlyLeakageRms": 0,
+    "gatedFirstActiveFrame": 6400,
+    "gatedLastActiveFrameExclusive": 58112,
+    "gatedDurationMs": 1077.33,
+    "partitionMaximumDifference": 0,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "failures": 0
+  },
+  "sidecars": [
+    {
+      "path": "data/octave-signalsmith-55Hz-16384-input.f32le",
+      "sha256": "7c0e73a6e78bcb84009593deff57b30b9b718a0b3f8536d6e67fd7bc6711ca21",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-55Hz-16384-output.f32le",
+      "sha256": "ad76507eb2a83ed4d248e7f210ad93962d37725273d7d3452d018ebf12254316",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-impulse-dry.f32le",
+      "sha256": "67abeb91119984bcb9c680d4197a70c5f0e5d882f5b6489a891babe3c4da0a36",
+      "bytes": 262144,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 32768,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-impulse-input.f32le",
+      "sha256": "5228c325a55bf81819bc1433ac704ab4f8c05924f8349d2b39c34584536b0e85",
+      "bytes": 262144,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 32768,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-impulse-wet.f32le",
+      "sha256": "5da63d0a60ca24be1bc383982952baeffb51dbbf676ac8391d3dc71342117ec6",
+      "bytes": 262144,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 32768,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-left-only-input.f32le",
+      "sha256": "1311178d3da329b85b434d6e38588eed3002b9f491e9f8eed60d999f774307f0",
+      "bytes": 524288,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 65536,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-left-only.f32le",
+      "sha256": "196ea7f2e3d95eefdd3a570a8c2c28d70f6195a22c56ee59ff748b11caf9b705",
+      "bytes": 524288,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 65536,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-110Hz-input.f32le",
+      "sha256": "e66857caef62bcbd408c5ead78a20d5f648a0734cc720e66d2302f2ec63afbe8",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-110Hz-output.f32le",
+      "sha256": "beb93f670f3f43adcc448d0f0b294c4c435dafb401ae8b8381c8f04884d65bc0",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-220Hz-input.f32le",
+      "sha256": "1eb79fdba27e5077440b32479ad4c8dab82e6ed82765dcc812818c30eec3739d",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-220Hz-output.f32le",
+      "sha256": "a4dd321addcfdedb000dd0fc6672d15394f3b61d06e5d14900231935f39a8165",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-55Hz-input.f32le",
+      "sha256": "7c0e73a6e78bcb84009593deff57b30b9b718a0b3f8536d6e67fd7bc6711ca21",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-55Hz-output.f32le",
+      "sha256": "7437411d4ed29cad3578abe611c0d05c40c0b7a8849a3152194d630128046a77",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-880Hz-input.f32le",
+      "sha256": "3cc6702ec100d5fab39f017673bc349a12df40ce63a3cacf83c1ed3c89857970",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    },
+    {
+      "path": "data/octave-signalsmith-tone-880Hz-output.f32le",
+      "sha256": "2bbc6670181027efcbf28aee297aae8443de68f504d188b994c4bc61a0665987",
+      "bytes": 2304000,
+      "encoding": "float32-le-interleaved-stereo",
+      "frames": 288000,
+      "channels": 2
+    }
+  ],
+  "upstream": [
+    {
+      "pin": "a670068d9aeb64913331d5cc29337b19a457a7df",
+      "license": "MIT",
+      "path": "source/third_party/signalsmith-stretch",
+      "name": "Signalsmith Stretch"
+    },
+    {
+      "pin": "de55e6a50ffcf6f8f43f649692d94691c7025151",
+      "license": "MIT",
+      "path": "source/third_party/signalsmith-linear",
+      "name": "Signalsmith Linear"
+    }
+  ]
+}

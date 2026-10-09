@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-10-09T19:48:29.155344+00:00",
+  "result": "STANDALONE-FUNCTIONAL-PASS; LOW-REGISTER-QUALITY-FAIL; NOT-RUNTIME-QUALIFIED",
+  "archive": "shared/dsp/benchmarks/results/octave-signalsmith-models-candidate-20261009T194342Z",
+  "inventoryEntriesVerified": 51,
+  "inventorySha256": "701be911a6bcc7d3eb6a08223fdad89192f660de8fad3f9db85b3508943128e4",
+  "manifestSha256": "71422e4043de41ac0956fc3277259b368ea302ed93f190658a7b8c4f415d3485",
+  "copiedAndLiveSourceInputsByteIdentical": 22,
+  "executableSha256": "9d0796653b46219c929e95501809daa921fed64d9891c805bf223f0b9a397543",
+  "independentExecutableRerunPassed": true,
+  "rawFloatSidecarsVerified": 15,
+  "independentProjectionChecks": [
+    {
+      "inputHz": 55,
+      "oneLeft": {
+        "targetHz": 27.5,
+        "peakHz": 25.25,
+        "exactTargetAmplitude": 0.052986653703569,
+        "sweptPeakAmplitude": 0.545909428701872
+      },
+      "oneRight": {
+        "targetHz": 34.375,
+        "peakHz": 37.375,
+        "exactTargetAmplitude": 0.0268863624710662,
+        "sweptPeakAmplitude": 0.07762649291908466
+      },
+      "twoLeft": {
+        "targetHz": 13.75,
+        "peakHz": 10.75,
+        "exactTargetAmplitude": 0.0317490034735214,
+        "sweptPeakAmplitude": 0.12979944424322457
+      },
+      "twoRight": {
+        "targetHz": 17.1875,
+        "peakHz": 20.1875,
+        "exactTargetAmplitude": 0.019511642961294144,
+        "sweptPeakAmplitude": 0.037132164184874396
+      }
+    },
+    {
+      "inputHz": 110,
+      "oneLeft": {
+        "targetHz": 55.0,
+        "peakHz": 55.25,
+        "exactTargetAmplitude": 0.499550656351717,
+        "sweptPeakAmplitude": 0.5057290230071925
+      },
+      "oneRight": {
+        "targetHz": 68.75,
+        "peakHz": 69.25,
+        "exactTargetAmplitude": 0.30448688263604207,
+        "sweptPeakAmplitude": 0.38134173748635186
+      },
+      "twoLeft": {
+        "targetHz": 27.5,
+        "peakHz": 27.75,
+        "exactTargetAmplitude": 0.27720043308663345,
+        "sweptPeakAmplitude": 0.3381036901610619
+      },
+      "twoRight": {
+        "targetHz": 34.375,
+        "peakHz": 34.375,
+        "exactTargetAmplitude": 0.4566634746795564,
+        "sweptPeakAmplitude": 0.4566634746795564
+      }
+    },
+    {
+      "inputHz": 220,
+      "oneLeft": {
+        "targetHz": 110.0,
+        "peakHz": 109.0,
+        "exactTargetAmplitude": 0.02671399445574094,
+        "sweptPeakAmplitude": 0.5442194478199729
+      },
+      "oneRight": {
+        "targetHz": 137.5,
+        "peakHz": 138.25,
+        "exactTargetAmplitude": 0.0671753698564347,
+        "sweptPeakAmplitude": 0.39927795297950547
+      },
+      "twoLeft": {
+        "targetHz": 55.0,
+        "peakHz": 55.0,
+        "exactTargetAmplitude": 0.5119074409089713,
+        "sweptPeakAmplitude": 0.5119074409089713
+      },
+      "twoRight": {
+        "targetHz": 68.75,
+        "peakHz": 69.25,
+        "exactTargetAmplitude": 0.3134478485458693,
+        "sweptPeakAmplitude": 0.4722107624787229
+      }
+    },
+    {
+      "inputHz": 880,
+      "oneLeft": {
+        "targetHz": 440.0,
+        "peakHz": 440.25,
+        "exactTargetAmplitude": 0.5407967616705287,
+        "sweptPeakAmplitude": 0.5477212827059886
+      },
+      "oneRight": {
+        "targetHz": 550.0,
+        "peakHz": 550.0,
+        "exactTargetAmplitude": 0.42628716990155785,
+        "sweptPeakAmplitude": 0.42628716990155785
+      },
+      "twoLeft": {
+        "targetHz": 220.0,
+        "peakHz": 219.5,
+        "exactTargetAmplitude": 0.339383663706365,
+        "sweptPeakAmplitude": 0.5137940424869007
+      },
+      "twoRight": {
+        "targetHz": 275.0,
+        "peakHz": 275.0,
+        "exactTargetAmplitude": 0.42259027548796,
+        "sweptPeakAmplitude": 0.42259027548796
+      }
+    }
+  ],
+  "metrics": {
+    "schemaVersion": 1,
+    "suite": "octave-signalsmith-models",
+    "sampleRate": 48000,
+    "fixedMixedPathSamples": 8192,
+    "adapterInputLatencySamples": 4096,
+    "adapterOutputLatencySamples": 4096,
+    "dryImpulseFirstSample": 8192,
+    "dryImpulsePeakSample": 8192,
+    "wetImpulseFirstSample": 1818,
+    "wetImpulsePeakSample": 8192,
+    "impulseCrossCorrelationPeakNormalized": 0.866073944234,
+    "impulseCrossCorrelationOffsetSamples": 0,
+    "tones": [
+      {
+        "inputHz": 55,
+        "rightInputHz": 68.75,
+        "oneLeftHz": 25.25,
+        "oneRightHz": 37.375,
+        "twoLeftHz": 10.75,
+        "twoRightHz": 20.1875,
+        "oneLeftFrequencyErrorHz": -2.25,
+        "oneRightFrequencyErrorHz": 3,
+        "twoLeftFrequencyErrorHz": -3,
+        "twoRightFrequencyErrorHz": 3,
+        "oneLeftExactTargetAmplitude": 0.0529866537,
+        "oneRightExactTargetAmplitude": 0.0268863625,
+        "twoLeftExactTargetAmplitude": 0.0317490035,
+        "twoRightExactTargetAmplitude": 0.019511643,
+        "oneLeftAmplitude": 0.545909429,
+        "oneRightAmplitude": 0.0776264929,
+        "twoLeftAmplitude": 0.129799444,
+        "twoRightAmplitude": 0.0371321642,
+        "dualMeasured": false,
+        "dualOneLeftHz": 0,
+        "dualTwoLeftHz": 0,
+        "dualOneRightHz": 0,
+        "dualTwoRightHz": 0,
+        "dualOneLeftAmplitude": 0,
+        "dualTwoLeftAmplitude": 0,
+        "dualOneRightAmplitude": 0,
+        "dualTwoRightAmplitude": 0
+      },
+      {
+        "inputHz": 110,
+        "rightInputHz": 137.5,
+        "oneLeftHz": 55.25,
+        "oneRightHz": 69.25,
+        "twoLeftHz": 27.75,
+        "twoRightHz": 34.375,
+        "oneLeftFrequencyErrorHz": 0.25,
+        "oneRightFrequencyErrorHz": 0.5,
+        "twoLeftFrequencyErrorHz": 0.25,
+        "twoRightFrequencyErrorHz": 0,
+        "oneLeftExactTargetAmplitude": 0.499550656,
+        "oneRightExactTargetAmplitude": 0.304486883,
+        "twoLeftExactTargetAmplitude": 0.277200433,
+        "twoRightExactTargetAmplitude": 0.456663475,
+        "oneLeftAmplitude": 0.505729023,
+        "oneRightAmplitude": 0.381341737,
+        "twoLeftAmplitude": 0.33810369,
+        "twoRightAmplitude": 0.456663475,
+        "dualMeasured": false,
+        "dualOneLeftHz": 0,
+        "dualTwoLeftHz": 0,
+        "dualOneRightHz": 0,
+        "dualTwoRightHz": 0,
+        "dualOneLeftAmplitude": 0,
+        "dualTwoLeftAmplitude": 0,
+        "dualOneRightAmplitude": 0,
+        "dualTwoRightAmplitude": 0
+      },
+      {
+        "inputHz": 220,
+        "rightInputHz": 275,
+        "oneLeftHz": 109,
+        "oneRightHz": 138.25,
+        "twoLeftHz": 55,
+        "twoRightHz": 69.25,
+        "oneLeftFrequencyErrorHz": -1,
+        "oneRightFrequencyErrorHz": 0.75,
+        "twoLeftFrequencyErrorHz": 0,
+        "twoRightFrequencyErrorHz": 0.5,
+        "oneLeftExactTargetAmplitude": 0.0267139945,
+        "oneRightExactTargetAmplitude": 0.0671753699,
+        "twoLeftExactTargetAmplitude": 0.511907441,
+        "twoRightExactTargetAmplitude": 0.313447849,
+        "oneLeftAmplitude": 0.544219448,
+        "oneRightAmplitude": 0.399277953,
+        "twoLeftAmplitude": 0.511907441,
+        "twoRightAmplitude": 0.472210762,
+        "dualMeasured": true,
+        "dualOneLeftHz": 109,
+        "dualTwoLeftHz": 55,
+        "dualOneRightHz": 138.25,
+        "dualTwoRightHz": 69.25,
+        "dualOneLeftAmplitude": 0.272424307,
+        "dualTwoLeftAmplitude": 0.255696273,
+        "dualOneRightAmplitude": 0.199856331,
+        "dualTwoRightAmplitude": 0.236146889
+      },
+      {
+        "inputHz": 880,
+        "rightInputHz": 1100,
+        "oneLeftHz": 440.25,
+        "oneRightHz": 550,
+        "twoLeftHz": 219.5,
+        "twoRightHz": 275,
+        "oneLeftFrequencyErrorHz": 0.25,
+        "oneRightFrequencyErrorHz": 0,
+        "twoLeftFrequencyErrorHz": -0.5,
+        "twoRightFrequencyErrorHz": 0,
+        "oneLeftExactTargetAmplitude": 0.540796762,
+        "oneRightExactTargetAmplitude": 0.42628717,
+        "twoLeftExactTargetAmplitude": 0.339383664,
+        "twoRightExactTargetAmplitude": 0.422590275,
+        "oneLeftAmplitude": 0.547721283,
+        "oneRightAmplitude": 0.42628717,
+        "twoLeftAmplitude": 0.513794042,
+        "twoRightAmplitude": 0.422590275,
+        "dualMeasured": true,
+        "dualOneLeftHz": 440.25,
+        "dualTwoLeftHz": 219.5,
+        "dualOneRightHz": 550,
+        "dualTwoRightHz": 275,
+        "dualOneLeftAmplitude": 0.274030727,
+        "dualTwoLeftAmplitude": 0.257129249,
+        "dualOneRightAmplitude": 0.213238578,
+        "dualTwoRightAmplitude": 0.211253595
+      }
+    ],
+    "highResolution16384": {
+      "blockSamples": 16384,
+      "intervalSamples": 2048,
+      "measureFirstFrame": 192000,
+      "measureFrames": 96000,
+      "leftPeakHz": 14,
+      "leftZeroCrossingHz": 13.9275,
+      "leftExactTargetAmplitude": 0.275920705,
+      "rightPeakHz": 17.1875,
+      "rightZeroCrossingHz": 17.1661,
+      "rightExactTargetAmplitude": 0.46046614,
+      "inputLatencySamples": 8192,
+      "outputLatencySamples": 8192
+    },
+    "leftOnlyLeakageRms": 0,
+    "gatedFirstActiveFrame": 6400,
+    "gatedLastActiveFrameExclusive": 58112,
+    "gatedDurationMs": 1077.33,
+    "partitionMaximumDifference": 0,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "failures": 0
+  },
+  "archiveUnchangedAfterRerun": true,
+  "readmeContainsUnexpectedNul": true,
+  "limitations": [
+    "8192-frame wrapper exhibits substantial 55-Hz octave-down tuning errors; even some 220-Hz exact-target projections are low.",
+    "16384-frame direct-engine diagnostic is not supported by this wrapper and is not a product configuration.",
+    "Dry alignment 8192 samples at 48 kHz is 170.6667 ms; earliest wet onset and impulse peak are separate observations, not hardware end-to-end latency.",
+    "Standalone suite success does not accept the measured low-register defects or establish complete graph deadline performance.",
+    "The producer archive includes pinned project/upstream bytes but does not close over all external MSVC/SDK headers or libraries.",
+    "README seed text contains an unexpected NUL before x05aa1234; the immutable original bytes are retained and manifest/source specify 0x05aa1234.",
+    "No Native/WASM runtime integration, Browser parity, or hardware measurement is claimed."
+  ]
+}

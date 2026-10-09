@@ -1,0 +1,766 @@
+octave_signalsmith_models.cpp
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(530): warning C4305: “初始化”: 从“double”到“const Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::DynamicSTFT<Sample,false,1>”的引用
+        with
+        [
+            Sample=float
+        ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\memory(3089): note: 查看对正在编译的 类 模板 实例化“signalsmith::stretch::SignalsmithStretch<float,void>”的引用
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\memory(3088): note: 在编译 类 模板 成员函数“void std::default_delete<webrc::dsp::SignalsmithStretchAdapter::Engine>::operator ()(_Ty *) noexcept const”时
+        with
+        [
+            _Ty=webrc::dsp::SignalsmithStretchAdapter::Engine
+        ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\memory(3198): note: 查看对正在编译的函数 模板 实例化“void std::default_delete<webrc::dsp::SignalsmithStretchAdapter::Engine>::operator ()(_Ty *) noexcept const”的引用
+        with
+        [
+            _Ty=webrc::dsp::SignalsmithStretchAdapter::Engine
+        ]
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\memory(3125): note: 查看对正在编译的 类 模板 实例化“std::default_delete<webrc::dsp::SignalsmithStretchAdapter::Engine>”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\shared\dsp\include\webrc/dsp/signalsmith_adapter.hpp(73): note: 查看对正在编译的 类 模板 实例化“std::unique_ptr<webrc::dsp::SignalsmithStretchAdapter::Engine,std::default_delete<webrc::dsp::SignalsmithStretchAdapter::Engine>>”的引用
+signalsmith_adapter.cpp
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(530): warning C4305: “初始化”: 从“double”到“const Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::DynamicSTFT<Sample,false,1>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\shared\dsp\src\signalsmith_adapter.cpp(94): note: 查看对正在编译的 类 模板 实例化“signalsmith::stretch::SignalsmithStretch<float,void>”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(50): warning C4305: “参数”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(49): note: 在编译 类 模板 成员函数“void signalsmith::stretch::SignalsmithStretch<float,void>::reset(void)”时
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\shared\dsp\src\signalsmith_adapter.cpp(127): note: 查看对正在编译的函数 模板 实例化“void signalsmith::stretch::SignalsmithStretch<float,void>::reset(void)”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\shared\dsp\src\signalsmith_adapter.cpp(94): note: 查看对正在编译的 类 模板 实例化“signalsmith::stretch::SignalsmithStretch<float,void>”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(554): warning C4244: “初始化”: 从“size_t”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(544): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(91): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::DynamicSTFT<Sample,false,1>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(980): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(970): note: 在编译 类 模板 成员函数“void signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(37): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(19): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::RealFFT<Sample,false,true>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(985): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(991): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(115): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(112): note: 在编译 类 模板 成员函数“void signalsmith::linear::SimpleFFT<Sample>::resize(size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(109): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SimpleFFT<Sample>::resize(size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(321): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::SimpleFFT<Sample>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(328): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::Pow2FFT<Sample>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(960): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::SplitFFT<Sample,false>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(667): warning C4458: “norm”的声明隐藏了类成员
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(543): note: 参见“signalsmith::linear::DynamicSTFT<Sample,false,1>::norm”的声明
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(287): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(75): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(672): warning C4244: “=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(677): warning C4244: “*=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(635): warning C4244: “=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(640): warning C4244: “*=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(692): warning C4244: “*=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): warning C4127: 条件表达式是常量
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): note: 考虑改用 "if constexpr" 语句
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(408): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): warning C4127: 条件表达式是常量
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): note: 考虑改用 "if constexpr" 语句
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(330): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(337): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1222): warning C4456: “hSize”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1183): note: 参见“hSize”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1181): note: 在编译 类 模板 成员函数“void signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(426): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1015): warning C4456: “hSize”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1011): note: 参见“hSize”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1009): note: 在编译 类 模板 成员函数“void signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(386): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(1012): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(972): note: 在编译 类 模板 成员函数“void signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)”时
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(691): note: 查看对正在编译的函数 模板 实例化“void signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(682): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(623): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(623): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(456): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(456): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(455): note: 在编译 类 模板 成员函数“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1220): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(682): warning C4244: “初始化”: 从“double”转换到“const Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(777): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(629): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(629): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(778): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(779): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(780): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(849): warning C4456: “sumR”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(840): note: 参见“sumR”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(632): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(632): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(849): warning C4456: “sumI”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(840): note: 参见“sumI”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(744): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(547): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(547): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(448): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(448): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(447): note: 在编译 类 模板 成员函数“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1274): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(745): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(746): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(747): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(818): warning C4456: “sum”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(811): note: 参见“sum”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(550): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(550): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+primitives.cpp
+octave_signalsmith_models_tests.cpp
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(530): warning C4305: “初始化”: 从“double”到“const Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::DynamicSTFT<Sample,false,1>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\shared\dsp\tests\octave_signalsmith_models_tests.cpp(411): note: 查看对正在编译的 类 模板 实例化“signalsmith::stretch::SignalsmithStretch<float,void>”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(554): warning C4244: “初始化”: 从“size_t”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(544): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(91): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::DynamicSTFT<Sample,false,1>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\shared\dsp\tests\octave_signalsmith_models_tests.cpp(411): note: 查看对正在编译的 类 模板 实例化“signalsmith::stretch::SignalsmithStretch<float,void>”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(980): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(970): note: 在编译 类 模板 成员函数“void signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(37): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(19): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::RealFFT<Sample,false,true>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(985): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(991): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(115): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(112): note: 在编译 类 模板 成员函数“void signalsmith::linear::SimpleFFT<Sample>::resize(size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(109): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SimpleFFT<Sample>::resize(size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(321): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::SimpleFFT<Sample>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(328): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::Pow2FFT<Sample>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(960): note: 查看对正在编译的 类 模板 实例化“signalsmith::linear::SplitFFT<Sample,false>”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(667): warning C4458: “norm”的声明隐藏了类成员
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(543): note: 参见“signalsmith::linear::DynamicSTFT<Sample,false,1>::norm”的声明
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(287): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(75): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(672): warning C4244: “=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(677): warning C4244: “*=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(635): warning C4244: “=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(640): warning C4244: “*=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(692): warning C4244: “*=”: 从“double”转换到“_Ty”，可能丢失数据
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)”的引用
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): warning C4127: 条件表达式是常量
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): note: 考虑改用 "if constexpr" 语句
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(408): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): warning C4127: 条件表达式是常量
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): note: 考虑改用 "if constexpr" 语句
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(330): note: 在编译 类 模板 成员函数“void signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(337): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1222): warning C4456: “hSize”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1183): note: 参见“hSize”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1181): note: 在编译 类 模板 成员函数“void signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(426): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1015): warning C4456: “hSize”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1011): note: 参见“hSize”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1009): note: 在编译 类 模板 成员函数“void signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(386): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(1012): warning C4244: “初始化”: 从“float”转换到“int”，可能丢失数据
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(972): note: 在编译 类 模板 成员函数“void signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)”时
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(691): note: 查看对正在编译的函数 模板 实例化“void signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)”的引用
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(682): warning C4244: “初始化”: 从“double”转换到“Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(623): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(623): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(456): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(456): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(455): note: 在编译 类 模板 成员函数“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1220): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(682): warning C4244: “初始化”: 从“double”转换到“const Sample”，可能丢失数据
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(777): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(629): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(629): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(778): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(779): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(780): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(849): warning C4456: “sumR”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(840): note: 参见“sumR”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(632): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(632): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(849): warning C4456: “sumI”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(840): note: 参见“sumI”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(744): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(547): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(547): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(448): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(448): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(447): note: 在编译 类 模板 成员函数“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)”时
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(1274): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(745): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(746): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(747): warning C4305: “初始化”: 从“double”到“Sample”截断
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(818): warning C4456: “sum”的声明隐藏了上一个本地声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(811): note: 参见“sum”的声明
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(550): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\benchmarks\results\octave-signalsmith-models-candidate-20261009T194342Z\source\third_party\signalsmith-linear\./fft.h(550): note: 查看对正在编译的函数 模板 实例化“void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)”的引用
+        with
+        [
+            Sample=float
+        ]
