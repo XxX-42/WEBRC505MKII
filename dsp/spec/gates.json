@@ -44,7 +44,7 @@
       "id": "Gate1",
       "name": "Shared DSP primitives",
       "status": "in_progress",
-      "evidence": ["docs/dsp/PRIMITIVES_FOUNDATION.md", "docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/WASM_INTERFACE_ROOT_REVIEW.md"],
+      "evidence": ["docs/dsp/PRIMITIVES_FOUNDATION.md", "docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/WASM_INTERFACE_ROOT_REVIEW.md", "docs/dsp/GATE1_PROGRESS_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/RUBBERBAND_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
       "exitRequirements": ["Required F01-F29 primitives pass their numerical/quality test plan", "Native processes 64-frame blocks; Browser reads actual callback quantum", "Native and Browser/WASM behavior is parity-tested", "No realtime allocation, blocking, I/O, logging, unbounded work, or callback-thread GC", "P99 <= 60% and P99.9 target <= 80% of measured per-quantum deadline, with maximum/xruns recorded"]
     },
     {
@@ -74,7 +74,7 @@
       "id": "Gate5",
       "name": "Track-only performance FX",
       "status": "not_passed",
-      "evidence": [],
+      "evidence": ["shared/dsp/include/webrc/dsp/performance_fx.hpp", "shared/dsp/src/performance_fx.cpp", "shared/dsp/tests/performance_fx_tests.cpp"],
       "requiredEffects": ["BEAT SCATTER", "BEAT REPEAT", "BEAT SHIFT", "VINYL FLICK"],
       "exitRequirements": ["Track-only effects are implemented on every legal route", "Sample-accurate transitions, feedback bounds, automation, state restore, quality and realtime tests pass"]
     },
@@ -82,8 +82,22 @@
       "id": "Gate6",
       "name": "Rhythm and Kits",
       "status": "not_passed",
-      "evidence": ["dsp/spec/rhythm_index.json", "dsp/spec/kit_specs.json"],
-      "exitRequirements": ["Metadata catalog is only the indexing prerequisite", "Legal actual pattern event sources and sample-accurate playback are implemented", "All 16 kits produce verified audio from redistributable samples or original synthesis", "Voice pool, variations, fills, synchronization, state restore, quality and realtime tests pass"]
+      "evidence": ["dsp/spec/rhythm_index.json", "dsp/spec/kit_specs.json", "dsp/spec/cleanroom_rhythm_patterns.json", "dsp/spec/cleanroom_kit_profiles.json", "dsp/spec/validate_cleanroom_rhythm.py", "shared/dsp/include/webrc/dsp/rhythm.hpp", "shared/dsp/src/rhythm.cpp", "shared/dsp/src/cleanroom_rhythm_data.cpp", "shared/dsp/tests/rhythm_tests.cpp", "shared/dsp/benchmarks/results/native-rhythm-20261009T132827446Z.json", "shared/dsp/benchmarks/results/native-rhythm-20261009T132827446Z.manifest.json", "shared/dsp/benchmarks/results/native-rhythm-20261009T132827446Z.snapshot/capture/source-archive-index.json", "shared/dsp/benchmarks/results/native-rhythm-20261009T132827446Z.host-info-supplement.json"],
+      "exitRequirements": ["Metadata catalog is only the indexing prerequisite", "Legal actual pattern event sources and sample-accurate playback are implemented", "All 16 kits produce verified audio from redistributable samples or original synthesis", "Voice pool, variations, fills, synchronization, state restore, quality and realtime tests pass"],
+      "preservedRejectedEvidence": [
+        {
+          "rawResultPath": "shared/dsp/benchmarks/results/native-rhythm-20261009T130541817Z.json",
+          "rawResultSha256": "ef8d3ceb4ac4b3c55549948eb3e0ee2d95c3475377e328df9a3a0418eb3251ce",
+          "sourceArchiveIndex": "shared/dsp/benchmarks/results/native-rhythm-20261009T130541817Z.snapshot/capture/source-archive-index.json",
+          "disposition": "Earlier 10k-callback reference capture with hard-deadline overruns; retained with exact archived sources, not a pass."
+        },
+        {
+          "rawResultPath": "shared/dsp/benchmarks/results/native-rhythm-20261009T131006435Z.json",
+          "rawResultSha256": "8fb1da014085fa46f39b4fd8f04b3097421a2e71355c76325917c32246c7d8ab",
+          "sourceArchiveIndex": "shared/dsp/benchmarks/results/native-rhythm-20261009T131006435Z.snapshot/capture/source-archive-index.json",
+          "disposition": "Retained CPU timer-resolution failure evidence: GetThreadTimes callback deltas are quantized at 15.625 ms and invalid for callback CPU quantiles; wall data and source snapshot are preserved separately."
+        }
+      ]
     },
     {
       "id": "Gate7",

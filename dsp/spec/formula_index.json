@@ -8,21 +8,51 @@
       "title": "Parameter smoothing and click-free switching",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp", "shared/dsp/tests/fx_registry_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Target-path smoothing/state restore and official control automation remain unqualified.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F02",
       "title": "RBJ biquad / static EQ",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Complete mode/control mapping and whole-graph Native/Web callback evidence remain unqualified.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F03",
       "title": "TPT state-variable filter / fast modulation filter",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Full target-path modulation automation, cross-runtime cases and callback admission remain unqualified.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F04",
@@ -35,6 +65,16 @@
         "coefficient": "a=(tan(pi*fc/fs)-1)/(tan(pi*fc/fs)+1)",
         "recurrence": "y[n]=a*x[n]+x[n-1]-a*y[n-1]",
         "note": "The report's opposite-sign recurrence pairs with center Nyquist-fc for this coefficient; it is not the requested fc-centered all-pass. See RESEARCH_ERRATA.md."
+      },
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp", "docs/dsp/RESEARCH_ERRATA.md"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Corrected phase-center recurrence is tested; full product FX route and real-time qualification remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
       }
     },
     {
@@ -42,14 +82,34 @@
       "title": "Fractional delay",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp", "shared/dsp/src/spatial_temporal.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp", "shared/dsp/tests/spatial_temporal_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Fractional-delay use in all assigned FX and long cross-runtime delay trajectories remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F06",
       "title": "LFO and modulation",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp", "shared/dsp/tests/fx_registry_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Every modulation adapter, state restore and target callback load remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F07",
@@ -61,6 +121,16 @@
         "status": "corrected_against_benchmark_erratum",
         "adaaAntiderivative": "F(x)=0.75*x^2-0.125*x^4 for |x|<1; F(x)=|x|-0.375 for |x|>=1",
         "note": "The input is not clamped before integrating. The first-order divided difference has frequency-dependent small-signal group delay; zero whole-sample buffering does not mean literal zero delay."
+      },
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/nonlinear.hpp", "shared/dsp/src/nonlinear.cpp", "shared/dsp/src/primitives.cpp", "docs/dsp/RESEARCH_ERRATA.md"],
+        "tests": ["shared/dsp/tests/nonlinear_tests.cpp", "shared/dsp/tests/dsp_primitives_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Aliasing/quality sweeps and all target nonlinear routes under multi-FX load remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
       }
     },
     {
@@ -68,154 +138,382 @@
       "title": "Compressor / limiter",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp", "shared/dsp/tests/fx_registry_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Official compressor controls, all channel modes and whole-route timing remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F09",
       "title": "Pitch ratio and variable-speed read head",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/pitch.hpp", "shared/dsp/src/pitch.cpp", "shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp", "shared/dsp/include/webrc/dsp/performance_fx.hpp", "shared/dsp/src/performance_fx.cpp"],
+        "tests": ["shared/dsp/tests/pitch_tests.cpp", "shared/dsp/tests/spatial_temporal_tests.cpp", "shared/dsp/tests/performance_fx_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["LIVE_MONO/LIVE_POLY/HQ_RENDER integration, engine/license decision and target callback tails remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F10",
       "title": "YIN fundamental frequency detection",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/pitch.hpp", "shared/dsp/src/pitch.cpp"],
+        "tests": ["shared/dsp/tests/pitch_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Live pitch route and noisy/polyphonic tracking quality remain unqualified.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F11",
       "title": "TD-PSOLA / WSOLA",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/pitch.hpp", "shared/dsp/src/pitch.cpp"],
+        "tests": ["shared/dsp/tests/pitch_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Live route startup/tail latency and musical quality on target graphs remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F12",
       "title": "Phase vocoder / STFT",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/fft.hpp", "shared/dsp/src/fft.cpp", "shared/dsp/include/webrc/dsp/pitch.hpp", "shared/dsp/src/pitch.cpp", "shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp"],
+        "tests": ["shared/dsp/tests/pitch_tests.cpp", "shared/dsp/tests/spatial_temporal_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Long-form Native/Web spectral parity and actual live/HQ path deadlines remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F13",
       "title": "Vocoder",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/pitch.hpp", "shared/dsp/src/pitch.cpp"],
+        "tests": ["shared/dsp/tests/pitch_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Production carrier/modulator controls, Native/Web PCM parity and route-level performance remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F14",
       "title": "Delay and stereo feedback matrix",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp", "shared/dsp/src/fx_registry.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp", "shared/dsp/tests/fx_registry_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Every registry route, feedback stability at production limits and whole-graph load remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F15",
       "title": "Granular / Roll / Scatter",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp", "shared/dsp/include/webrc/dsp/performance_fx.hpp", "shared/dsp/src/performance_fx.cpp"],
+        "tests": ["shared/dsp/tests/spatial_temporal_tests.cpp", "shared/dsp/tests/performance_fx_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json"],
+        "remainingTargetPathRequirements": ["Production density/parameter automation, cross-runtime PCM parity and sustained worst-case callback evidence remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "Standalone module benchmark only; actual callback workload has documented caveats in SPATIAL_PITCH_ROOT_REVIEW.md and does not qualify a product route or Gate."
+      }
     },
     {
       "id": "F16",
       "title": "Slicer",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/control_dynamics.hpp", "shared/dsp/src/control_dynamics.cpp"],
+        "tests": ["shared/dsp/tests/control_dynamics_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Official FX schema mapping and complete route-level Native/Web/timing coverage remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F17",
       "title": "Feedback delay network",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp"],
+        "tests": ["shared/dsp/tests/spatial_temporal_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json"],
+        "remainingTargetPathRequirements": ["Full long IR/decay and five-track master-route callback qualification remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "Standalone module benchmark only; actual callback workload has documented caveats in SPATIAL_PITCH_ROOT_REVIEW.md and does not qualify a product route or Gate."
+      }
     },
     {
       "id": "F18",
       "title": "Partitioned convolution",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/fft.hpp", "shared/dsp/src/fft.cpp", "shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp"],
+        "tests": ["shared/dsp/tests/spatial_temporal_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json"],
+        "remainingTargetPathRequirements": ["All partition sizes, impulse assets, Native/Web parity and production tail/deadline evidence remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "Standalone module benchmark only; actual callback workload has documented caveats in SPATIAL_PITCH_ROOT_REVIEW.md and does not qualify a product route or Gate."
+      }
     },
     {
       "id": "F19",
       "title": "Spectral freeze",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/fft.hpp", "shared/dsp/src/fft.cpp", "shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp"],
+        "tests": ["shared/dsp/tests/spatial_temporal_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json"],
+        "remainingTargetPathRequirements": ["Off-hop/early/thaw transition quality, full cross-runtime parity and target timing remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "Standalone module benchmark only; actual callback workload has documented caveats in SPATIAL_PITCH_ROOT_REVIEW.md and does not qualify a product route or Gate."
+      }
     },
     {
       "id": "F20",
       "title": "Sample-accurate rhythmic scheduling",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/rhythm.hpp", "shared/dsp/src/rhythm.cpp"],
+        "tests": ["shared/dsp/tests/rhythm_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-rhythm-20261009T132827446Z.json", "shared/dsp/benchmarks/results/native-rhythm-20261009T132827446Z.manifest.json"],
+        "remainingTargetPathRequirements": ["The fresh 110k-sample seven-scenario archive includes a 64-frame hard-deadline overrun and a 256-frame collision overrun; Browser parity, 30-minute whole graph and product admission remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "110k-sample isolated rhythm timing evidence is separate from whole-graph timing; hard overruns remain and Gate6 is not passed."
+      }
     },
     {
       "id": "F21",
       "title": "Equal-power panning",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/primitives.hpp", "shared/dsp/src/primitives.cpp"],
+        "tests": ["shared/dsp/tests/dsp_primitives_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Complete stereo route mapping and whole-system gain/automation parity remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F22",
       "title": "Mid/Side",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/control_dynamics.hpp", "shared/dsp/src/control_dynamics.cpp"],
+        "tests": ["shared/dsp/tests/control_dynamics_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Full production automation, independent-stereo parity and integrated timing remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F23",
       "title": "WDF / virtual analog",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/nonlinear.hpp", "shared/dsp/src/nonlinear.cpp"],
+        "tests": ["shared/dsp/tests/nonlinear_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Circuit-family coverage, oversampling/alias-quality sweeps and target route timing remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F24",
       "title": "Drum synthesis / sample hybrid",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp", "shared/dsp/include/webrc/dsp/rhythm.hpp", "shared/dsp/src/rhythm.cpp", "shared/dsp/src/cleanroom_rhythm_data.cpp", "dsp/spec/cleanroom_kit_profiles.json"],
+        "tests": ["shared/dsp/tests/spatial_temporal_tests.cpp", "shared/dsp/tests/rhythm_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json"],
+        "remainingTargetPathRequirements": ["The present synthesis/data feature proxies are not listening acceptance; 16 kits need complete sustained quality and real-time target-path qualification.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "Standalone module benchmark only; actual callback workload has documented caveats in SPATIAL_PITCH_ROOT_REVIEW.md and does not qualify a product route or Gate."
+      }
     },
     {
       "id": "F25",
       "title": "Reverse / segment crossfade",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp", "shared/dsp/include/webrc/dsp/performance_fx.hpp", "shared/dsp/src/performance_fx.cpp"],
+        "tests": ["shared/dsp/tests/spatial_temporal_tests.cpp", "shared/dsp/tests/performance_fx_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json"],
+        "remainingTargetPathRequirements": ["Repeated segment transitions, official control mapping, cross-runtime PCM and whole-graph deadline admission remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "Standalone module benchmark only; actual callback workload has documented caveats in SPATIAL_PITCH_ROOT_REVIEW.md and does not qualify a product route or Gate."
+      }
     },
     {
       "id": "F26",
       "title": "Vinyl Flick inertia model",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/spatial_temporal.hpp", "shared/dsp/src/spatial_temporal.cpp", "shared/dsp/include/webrc/dsp/performance_fx.hpp", "shared/dsp/src/performance_fx.cpp"],
+        "tests": ["shared/dsp/tests/spatial_temporal_tests.cpp", "shared/dsp/tests/performance_fx_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": ["shared/dsp/benchmarks/results/native-spatial-temporal-20261009T114158811Z.json"],
+        "remainingTargetPathRequirements": ["Track route registration, drag/release quality under automation, host latency handling and full graph timing remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula.",
+        "timingScopeNote": "Standalone module benchmark only; actual callback workload has documented caveats in SPATIAL_PITCH_ROOT_REVIEW.md and does not qualify a product route or Gate."
+      }
     },
     {
       "id": "F27",
       "title": "Onset / Slow Gear",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/control_dynamics.hpp", "shared/dsp/src/control_dynamics.cpp"],
+        "tests": ["shared/dsp/tests/control_dynamics_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Production trigger scheduling, false-positive/negative corpus and full Native/Web route remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F28",
       "title": "Bit-depth / sample-rate reduction",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/control_dynamics.hpp", "shared/dsp/src/control_dynamics.cpp"],
+        "tests": ["shared/dsp/tests/control_dynamics_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["Quantization/noise quality sweeps, published controls and target-route timing remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     },
     {
       "id": "F29",
       "title": "Ring modulation",
       "source": "research-input/CODEX_RC505_IMPLEMENTATION_PACKAGE/01_PRIMARY_RESEARCH_REPORT.md",
       "sourceAuthority": "research recommendation; not manufacturer implementation disclosure",
-      "implementationStatus": "not_qualified_in_target_paths"
+      "implementationStatus": "not_qualified_in_target_paths",
+      "implementationEvidence": {
+        "status": "partial_source_test_and_review_references",
+        "qualifiedInTargetPaths": false,
+        "sourceFiles": ["shared/dsp/include/webrc/dsp/control_dynamics.hpp", "shared/dsp/src/control_dynamics.cpp"],
+        "tests": ["shared/dsp/tests/control_dynamics_tests.cpp"],
+        "rootReviewedEvidence": ["docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/SPATIAL_PITCH_ROOT_REVIEW.md", "docs/dsp/MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md", "docs/dsp/WASM_EXTENDED_ROOT_REVIEW.md", "docs/dsp/ASAN_ROOT_REVIEW.md"],
+        "timingEvidence": [],
+        "remainingTargetPathRequirements": ["All ring-modulator controls, Native/Web quality parity and multi-effect callback admission remain open.", "No formula is qualified by this evidence entry; Native/Web integration, per-callback timing and full-graph acceptance remain separate gates."],
+        "reviewScopeNote": "Cited root reviews cover selected shared-core snapshots and may cover only adjacent or partial functionality; no cited document individually qualifies this formula."
+      }
     }
   ],
   "qualification": "An index of candidate techniques; a formula being cataloged is not evidence of code, runtime support, quality, or a passed gate."

@@ -53,6 +53,11 @@ def find_forbidden_content(value, path="$", forbidden=None):
             find_forbidden_content(child, f"{path}[{index}]", forbidden)
 
 
+def validate_repo_evidence_path(relative_path: str, label: str) -> None:
+    path = ROOT / relative_path
+    require(path.is_file(), f"Missing {label} evidence file: {relative_path}")
+
+
 def main() -> int:
     # Source pinning: regeneration is reproducible only from the reviewed inputs.
     for name, expected in EXPECTED_SOURCE_HASHES.items():
@@ -96,6 +101,20 @@ def main() -> int:
     formulas = load_json("formula_index.json")
     formula_ids = {item["id"] for item in formulas["formulas"]}
     require(formula_ids == EXPECTED_FORMULA_IDS and formulas["count"] == 29, "Formula index must have exact F01-F29 set")
+    require(len(formulas["formulas"]) == 29, "Formula evidence must contain one record per F01-F29")
+    for item in formulas["formulas"]:
+        evidence = item.get("implementationEvidence", {})
+        require(evidence.get("qualifiedInTargetPaths") is False,
+                f"Formula {item['id']} evidence must not claim target-path qualification")
+        require(item.get("implementationStatus") == "not_qualified_in_target_paths",
+                f"Formula {item['id']} must remain unqualified until target-path evidence is accepted")
+        require(bool(evidence.get("sourceFiles")) and bool(evidence.get("tests")),
+                f"Formula {item['id']} must have source and test references")
+        require(bool(evidence.get("remainingTargetPathRequirements")),
+                f"Formula {item['id']} must list remaining target-path requirements")
+        for field in ("sourceFiles", "tests", "rootReviewedEvidence", "timingEvidence"):
+            for reference in evidence.get(field, []):
+                validate_repo_evidence_path(reference, f"{item['id']} {field}")
     for effect in effects:
         require(set(effect["formulaIds"]).issubset(formula_ids), f"Unknown formula reference in {effect['officialDisplayName']}")
     require(next(item for item in formulas["formulas"] if item["id"] == "F04")["implementationContract"]["recurrence"] == "y[n]=a*x[n]+x[n-1]-a*y[n-1]", "F04 corrected recurrence missing")
@@ -127,6 +146,19 @@ def main() -> int:
 
     gates = load_json("gates.json")["gates"]
     require([item["id"] for item in gates] == [f"Gate{index}" for index in range(8)], "Gate list must contain Gate0..Gate7 in order")
+    for item in gates:
+        for field in ("evidence", "rootReviewEvidence"):
+            for reference in item.get(field, []):
+                validate_repo_evidence_path(reference, f"{item['id']} {field}")
+        for record in item.get("preservedRejectedEvidence", []):
+            raw_path = record.get("rawResultPath", "")
+            validate_repo_evidence_path(raw_path, f"{item['id']} rejected raw-result")
+            validate_repo_evidence_path(record.get("sourceArchiveIndex", ""),
+                                        f"{item['id']} rejected source-archive index")
+            if raw_path and (ROOT / raw_path).is_file():
+                actual_hash = hashlib.sha256((ROOT / raw_path).read_bytes()).hexdigest()
+                require(actual_hash == record.get("rawResultSha256"),
+                        f"{item['id']} rejected raw-result SHA mismatch: {raw_path}")
     require(gates[0]["status"] in {"ready_for_root_review", "passed_after_root_review"}, "Unknown Gate0 state")
     if gates[0]["status"] == "passed_after_root_review":
         require(bool(gates[0].get("rootReviewEvidence")), "Gate0 passed state must include root review evidence")
