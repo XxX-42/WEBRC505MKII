@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "scope": "source review only; no execution or quality acceptance",
+  "findings": [
+    {
+      "id": "pitch-invalid-batch-fixture-profile",
+      "observed": true,
+      "defaultProfile": "LivePoly",
+      "fixtureSelectsMonoBeforePrepare": false,
+      "parameters": {
+        "Semitones": 7,
+        "FormantFactor": 1.2
+      },
+      "conclusion": "Current purported invalid batch is valid in default LivePoly; select LiveMono explicitly to test unsupported formant atomic rejection."
+    },
+    {
+      "id": "pitch-unity-dynamic-transition",
+      "observed": true,
+      "conclusion": "Hard switching between exact input and streaming wet at zero semitones requires dynamic crossing PCM continuity verification; static unity impulse alone is insufficient."
+    }
+  ],
+  "sources": {
+    "shared\\dsp\\tests\\pitch_fx_adapter_tests.cpp": "7903c3f28e53ad04d3b5b01f6c3c7938768d40ccf89d3cc4b1040aa56e84f3b6",
+    "shared\\dsp\\src\\pitch_fx_adapter.cpp": "59215e6c542eecaa6dc096c66248a6eb34c11b2f3b91ae494e7704aad5bcfe65"
+  },
+  "gateAccepted": false,
+  "capturedExcerpts": {
+    "batchFixture": "    auto batchBase = createFxProcessor(14U);\n    auto* batch = dynamic_cast<PitchFxAdapter*>(batchBase.get());\n    auto referenceBase = createFxProcessor(14U);\n    auto* reference = dynamic_cast<PitchFxAdapter*>(referenceBase.get());\n    const ProcessSpec shortSpec{48000.0f, 64U, 2U};\n    bool paired = batch && reference && batch->prepare(shortSpec) && reference->prepare(shortSpec);\n    if (paired) {\n        std::array<float, 64U> inL{}, inR{}, outL{}, outR{}, refL{}, refR{};\n        for (std::size_t i = 0U; i < 64U; ++i) {\n            inL[i] = 0.2f * std::sin(static_cast<float>(i) * 0.13f);\n            inR[i] = -0.16f * std::cos(static_cast<float>(i) * 0.09f);\n            outL[i] = outR[i] = -91.0f;\n        }\n        const float* in[]{inL.data(), inR.data()};\n        float* out[]{outL.data(), outR.data()};\n        const FxParameterEvent invalid[]{\n            {0U, FxParameterId::Semitones, 7.0f},\n            {0U, FxParameterId::FormantFactor, 1.2f},\n        };\n        const bool rejected = !batch->processBlockWithEvents(in, out, 2U, 64U, invalid, 2U);\n        bool untouched = true;\n        for (std::size_t i = 0U; i < 64U; ++i) untouched = untouched && outL[i] == -91.0f && outR[i] == -91.0f;\n        float* outAgain[]{outL.data(), outR.data()};\n        float* refOut[]{refL.data(), refR.data()};\n        const bool resumed = batch->processBlock(in, outAgain, 2U, 64U) &&\n                             reference->processBlock(in, refOut, 2U, 64U);\n        bool identical = resumed;\n        for (std::size_t i = 0U; i < 64U; ++i)\n            identical = identical && outL[i] == refL[i] && outR[i] == refR[i];\n        if (!rejected || !untouched || !identical)\n            std::fprintf(stderr, \"batch diagnostics rejected=%d untouched=%d resumed=%d identical=%d\\n\",\n                         rejected ? 1 : 0, untouched ? 1 : 0, resumed ? 1 : 0, identical ? 1 : 0);\n        check(rejected && untouched && identical,\n              \"rejected coupled formant batch leaves output and subsequent DSP PCM untouched\");\n    }\n\n",
+    "constructorDefaults": "PitchFxAdapter::PitchFxAdapter(std::uint16_t ordinal) noexcept : ordinal_(ordinal) {\n    if (ordinal_ == 18U) {\n        profile_ = PitchFxProfile::LivePoly;\n        harmonyVoiceCount_ = 2U;\n    } else {\n        // TRANSPOSE exposes formant controls in its default profile. PITCH\n        // BEND defaults to the lighter mono YIN/PSOLA route.\n        profile_ = ordinal_ == 14U ? PitchFxProfile::LivePoly : PitchFxProfile::LiveMono;\n    }\n}",
+    "unitySelection": "        const bool unityWet = std::abs(ordinal_ == 15U ? bendCurrentSemitones_ : semitones_) < 1.0e-6f &&\n            (ordinal_ == 15U || (!formantCompensation_ && formantFactor_ == 1.0f));\n        for (std::uint32_t frame = 0U; frame < chunk; ++frame) {\n            if (wetRampRemaining_ > 0U) {\n                wetCurrent_ += (wetTarget_ - wetCurrent_) / static_cast<float>(wetRampRemaining_);\n                --wetRampRemaining_;\n                if (wetRampRemaining_ == 0U) wetCurrent_ = wetTarget_;\n            }\n            const auto outputFrame = cursor + frame;\n            for (std::uint32_t channel = 0U; channel < 2U; ++channel) {\n                const auto dry = clean(input[channel][outputFrame]);\n                // The underlying streaming stretch has startup/time-axis\n                // behavior even at unity. Keep its state warm, but use the\n                // exact input as wet when no pitch/formant change is asked for\n                // so 100% mix cannot comb against an unaligned unity stream.\n                const auto wet = unityWet ? dry : clean(state_->scratch[channel][frame]);\n                output[channel][outputFrame] = dry + (wet - dry) * wetCurrent_;\n            }\n        }\n"
+  }
+}
