@@ -1,6 +1,6 @@
 # Measurement archives and their newly introduced capture inputs retain exact bytes.
-/bench/results/native_rubberband_v4_expanded_20261009T113353739Z.raw.cp936 -text
+/bench/results/native_rubberband_v4_expanded_20261009T113353739Z.raw.cp936 -text -diff
 /bench/results/native_rubberband_v4_expanded_utf8_20261009T113353739Z.json -text
-/shared/dsp/benchmarks/results/native-spatial-temporal-20261009T*.json -text
+/shared/dsp/benchmarks/results/native-spatial-temporal-20261009T*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /shared/dsp/benchmarks/native_spatial_temporal_bench.cpp -text
 /shared/dsp/benchmarks/capture_spatial_temporal_bench.ps1 -text
