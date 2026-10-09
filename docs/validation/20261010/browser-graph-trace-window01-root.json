@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "trace": "bench\\results\\browser_graph_32fx_pilot_20261010T014700Z_30min\\traces\\window-01.trace.json.gz",
+  "sampleRateHz": 48000.0,
+  "eventCount": 1825856,
+  "metadata": {
+    "schemaVersion": 1,
+    "windowIndex": 0,
+    "traceStartedAt": "2026-10-09T17:37:05.150Z",
+    "traceCompletedAt": "2026-10-09T17:37:45.487Z",
+    "traceCategorySet": "disabled-by-default-audio-worklet,disabled-by-default-audio,disabled-by-default-v8.gc",
+    "traceCompletion": {
+      "dataLossOccurred": false,
+      "streamFormat": null
+    },
+    "uncompressedSha256": "e40a50119af6fd110591301a0a0c7b89d48905463cd20b014d33a9fa63110722"
+  },
+  "audioThreads": [
+    [
+      10992,
+      36076
+    ]
+  ],
+  "graphRender": {
+    "durationUnit": "microseconds",
+    "unusableFrameMetadata": 0,
+    "byActualFrames": {
+      "128": {
+        "count": 3138,
+        "p50": 2710,
+        "p95": 4091,
+        "p99": 4576,
+        "p999": 5405,
+        "max": 5743,
+        "deadlineUs": 2666.6666666666665,
+        "overDeadline": 1622,
+        "over60Percent": 3036,
+        "over80Percent": 2322
+      }
+    }
+  },
+  "renderRequest": {
+    "durationUnit": "microseconds",
+    "unusableFrameMetadata": 0,
+    "byActualFrames": {
+      "384": {
+        "count": 209,
+        "p50": 7970,
+        "p95": 11313,
+        "p99": 11849,
+        "p999": 12750,
+        "max": 12750,
+        "deadlineUs": 8000.0,
+        "overDeadline": 103,
+        "over60Percent": 207,
+        "over80Percent": 165
+      },
+      "416": {
+        "count": 209,
+        "p50": 10744,
+        "p95": 15096,
+        "p99": 15805,
+        "p999": 17061,
+        "max": 17061,
+        "deadlineUs": 8666.666666666666,
+        "overDeadline": 158,
+        "over60Percent": 209,
+        "over80Percent": 204
+      },
+      "448": {
+        "count": 209,
+        "p50": 11056,
+        "p95": 14925,
+        "p99": 15918,
+        "p999": 17717,
+        "max": 17717,
+        "deadlineUs": 9333.333333333334,
+        "overDeadline": 136,
+        "over60Percent": 209,
+        "over80Percent": 201
+      },
+      "480": {
+        "count": 209,
+        "p50": 10758,
+        "p95": 14646,
+        "p99": 16779,
+        "p999": 17510,
+        "max": 17510,
+        "deadlineUs": 10000.0,
+        "overDeadline": 125,
+        "over60Percent": 209,
+        "over80Percent": 183
+      }
+    }
+  },
+  "worklet": {
+    "count": 28242,
+    "p50": 26,
+    "p95": 825,
+    "p99": 1099,
+    "p999": 1256,
+    "max": 1885
+  },
+  "workletsNotContainedInCompleteGraphSlice": 0,
+  "workletChildrenPerGraph": {
+    "9": 3138
+  },
+  "audioThreadGcCompleteSlices": {
+    "count": 206,
+    "p50": 4,
+    "p95": 246,
+    "p99": 343,
+    "p999": 407,
+    "max": 407
+  },
+  "phaseCounts": [
+    {
+      "name": "AudioDestination::RequestRender",
+      "phase": "B",
+      "count": 1
+    },
+    {
+      "name": "AudioDestination::RequestRender",
+      "phase": "X",
+      "count": 836
+    },
+    {
+      "name": "AudioWorkletProcessor::Process",
+      "phase": "B",
+      "count": 1
+    },
+    {
+      "name": "AudioWorkletProcessor::Process",
+      "phase": "X",
+      "count": 28242
+    },
+    {
+      "name": "RealtimeAudioDestinationHandler::Render",
+      "phase": "B",
+      "count": 1
+    },
+    {
+      "name": "RealtimeAudioDestinationHandler::Render",
+      "phase": "X",
+      "count": 3138
+    }
+  ],
+  "traceDataLossOccurred": false,
+  "qualification": "not-passed",
+  "limitations": [
+    "Captured windows only; not a continuous 30-minute timing distribution.",
+    "Wall-clock slices include scheduling and tracing overhead; not CPU-only timing.",
+    "Graph render and request scopes are separate; never sum nested child durations.",
+    "No hardware E2E latency or driver XRUN measurement.",
+    "Complete slices are measured; incomplete B/E boundary slices are not fabricated.",
+    "Trace loss must be explicitly false and continuity validated independently."
+  ]
+}

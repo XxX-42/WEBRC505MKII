@@ -1,0 +1,8 @@
+test_chunk_boundary_missing_frames_and_uncontained_worklet (__main__.AudioTraceMeasurementTests.test_chunk_boundary_missing_frames_and_uncontained_worklet) ... ok
+test_parent_scope_not_child_sum_and_pid_isolation (__main__.AudioTraceMeasurementTests.test_parent_scope_not_child_sum_and_pid_isolation) ... ok
+test_request_device_rate_is_independent_and_unknown_fails_closed (__main__.AudioTraceMeasurementTests.test_request_device_rate_is_independent_and_unknown_fails_closed) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.071s
+
+OK

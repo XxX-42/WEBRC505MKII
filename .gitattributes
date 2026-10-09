@@ -399,3 +399,9 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /docs/validation/20261010/native-finite-history-r3-root-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /docs/validation/20261010/root-native-finite-history-r3-ctest.log -text -whitespace
 /docs/dsp/FINITE_HISTORY_R3_ROOT_REVIEW.md -text
+/bench/results/browser-graph-trace-reanalysis-20261009T220400Z/** -text -whitespace
+/scripts/analyze-browser-audio-trace.py -text
+/scripts/tests/test_browser_audio_trace.py -text
+/docs/dsp/BROWSER_GRAPH_TRACE_ROOT_REVIEW.md -text
+/docs/validation/20261010/browser-graph-trace-window01-root.json -text
+/docs/validation/20261010/browser-graph-trace-window01-root-v2.json -text

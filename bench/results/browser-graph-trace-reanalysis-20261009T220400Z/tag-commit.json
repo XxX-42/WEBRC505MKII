@@ -1,0 +1,30 @@
+)]}'
+{
+  "commit": "3188f8a607ae7e067593be8aab7f02d2451fec07",
+  "tree": "83f646a69ff62ac135795fa94f1cfb80fd9b1320",
+  "parents": [
+    "42ce21f112d0b2ba486bbb5cadb225f78b4ddb97"
+  ],
+  "author": {
+    "name": "chrome-official-brancher@chops-service-accounts.iam.gserviceaccount.com",
+    "email": "chrome-official-brancher@chops-service-accounts.iam.gserviceaccount.com",
+    "time": "Thu May 28 23:26:02 2026"
+  },
+  "committer": {
+    "name": "chrome-official-brancher@chops-service-accounts.iam.gserviceaccount.com",
+    "email": "chrome-official-brancher@chops-service-accounts.iam.gserviceaccount.com",
+    "time": "Thu May 28 23:26:02 2026"
+  },
+  "message": "Incrementing VERSION to 149.0.7827.55\n\nMerge-Approval-Bypass: Chrome release infra\nChange-Id: Ie6f05b122e8307ee2130f22dcd430b29a8e11619\nReviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/7883579\nBot-Commit: chrome-official-brancher@chops-service-accounts.iam.gserviceaccount.com \u003cchrome-official-brancher@chops-service-accounts.iam.gserviceaccount.com\u003e\nCr-Commit-Position: refs/branch-heads/7827@{#1982}\nCr-Branched-From: 9f3e9aaccba63bd2ec30334e45e0bfd07ebcc8f1-refs/heads/main@{#1625079}\n",
+  "tree_diff": [
+    {
+      "type": "modify",
+      "old_id": "ff9d583a693dd71b2951cf9ae5afc15316192924",
+      "old_mode": 33188,
+      "old_path": "chrome/VERSION",
+      "new_id": "8e37f9f1b7eff6c3eda466c72fc1b75d25f18613",
+      "new_mode": 33188,
+      "new_path": "chrome/VERSION"
+    }
+  ]
+}

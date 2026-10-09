@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "scope": "One previously captured traced window; not current product or Gate 7 qualification",
+  "originalInputs": [
+    {
+      "path": "bench/results/browser_graph_32fx_pilot_20261010T014700Z_30min/traces/window-01.trace.json.gz",
+      "bytes": 32158880,
+      "sha256": "78332817063a17619119a14a01e682126aad890171608a3b7d085ae303ac6a3d"
+    },
+    {
+      "path": "bench/results/browser_graph_32fx_pilot_20261010T014700Z_30min/summary.json",
+      "bytes": 136973,
+      "sha256": "7f933a046a42d03add2183c36d0a19254e1a77fb5e6b920024e4f3ac93e7ff7e"
+    },
+    {
+      "path": "bench/results/browser_graph_32fx_pilot_20261010T014700Z_30min/browser-smoke.json",
+      "bytes": 444726,
+      "sha256": "b7d9c060f65b66d02bcd5527007235cf12283e08b4042a017a06226b85ce5f24"
+    }
+  ],
+  "payloads": [
+    {
+      "path": "bench/results/browser-graph-trace-reanalysis-20261009T220400Z/analyzer-tests.log",
+      "bytes": 581,
+      "sha256": "de19f7278b3c291425fe7593e28b1d963e00043b886278a1a21cec768fd5c941"
+    },
+    {
+      "path": "bench/results/browser-graph-trace-reanalysis-20261009T220400Z/audio_destination.cc",
+      "bytes": 29336,
+      "sha256": "e5c3029b4e25f46599b5aaedff17bccd8e3d59add58ccb316faa3ff3866e405c"
+    },
+    {
+      "path": "bench/results/browser-graph-trace-reanalysis-20261009T220400Z/chromium-source-manifest.json",
+      "bytes": 986,
+      "sha256": "18eac7b36083457bae18d8c360a6d7d384da0fe1135fdad7cdc8414ea3ccabbe"
+    },
+    {
+      "path": "bench/results/browser-graph-trace-reanalysis-20261009T220400Z/realtime_audio_destination_handler.cc",
+      "bytes": 21009,
+      "sha256": "2572d02f6606e7b4bf99b90fb3fb2639b17359d8d8dde7256a1d5fb39ef30894"
+    },
+    {
+      "path": "bench/results/browser-graph-trace-reanalysis-20261009T220400Z/tag-commit.json",
+      "bytes": 1498,
+      "sha256": "dad7af4a6def42fdecc78b00dd05468617cd735d40524380318a7d35e551af72"
+    },
+    {
+      "path": "docs/dsp/BROWSER_GRAPH_TRACE_ROOT_REVIEW.md",
+      "bytes": 4573,
+      "sha256": "8ff847e2d3263901a88c5b80dc9f2f75d59240faab6cea91328a45900fd03315"
+    },
+    {
+      "path": "docs/validation/20261010/browser-graph-trace-window01-root-v2.json",
+      "bytes": 4055,
+      "sha256": "ca83b2a94898d4dfd016adbb04b5763cebfa5b03392dc2b36eb2601ab75bbb8f"
+    },
+    {
+      "path": "docs/validation/20261010/browser-graph-trace-window01-root.json",
+      "bytes": 3938,
+      "sha256": "eb8451fbda43203a39ef73328b97a705dc574d0a886c3f9c0b481539d99f4a1e"
+    },
+    {
+      "path": "scripts/analyze-browser-audio-trace.py",
+      "bytes": 9663,
+      "sha256": "0b034b816facb4f3f8f492f8cd7215c68a72abe947de5c65d4abc8e33c8921d8"
+    },
+    {
+      "path": "scripts/tests/test_browser_audio_trace.py",
+      "bytes": 3198,
+      "sha256": "ccb6aa71feda4ba9e250f2ae079e5eb7ff308ae7f2ff9155874f848e960ba2ac"
+    }
+  ],
+  "sourceReleaseCommit": "3188f8a607ae7e067593be8aab7f02d2451fec07",
+  "tests": {
+    "passed": 3,
+    "exitCode": 0
+  },
+  "acceptedResult": "docs/validation/20261010/browser-graph-trace-window01-root-v2.json",
+  "supersededResultReason": "v1 request deadlines incorrectly used context rate for device FIFO frames; graph timings unchanged",
+  "qualification": "not-passed"
+}

@@ -1,0 +1,23 @@
+{
+  "browserVersion": "149.0.7827.55",
+  "sources": [
+    {
+      "path": "tag-commit.json",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/149.0.7827.55?format=JSON",
+      "bytes": 1498,
+      "sha256": "dad7af4a6def42fdecc78b00dd05468617cd735d40524380318a7d35e551af72"
+    },
+    {
+      "path": "realtime_audio_destination_handler.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/149.0.7827.55/third_party/blink/renderer/modules/webaudio/realtime_audio_destination_handler.cc?format=TEXT",
+      "bytes": 21009,
+      "sha256": "2572d02f6606e7b4bf99b90fb3fb2639b17359d8d8dde7256a1d5fb39ef30894"
+    },
+    {
+      "path": "audio_destination.cc",
+      "url": "https://chromium.googlesource.com/chromium/src/+/refs/tags/149.0.7827.55/third_party/blink/renderer/platform/audio/audio_destination.cc?format=TEXT",
+      "bytes": 29336,
+      "sha256": "e5c3029b4e25f46599b5aaedff17bccd8e3d59add58ccb316faa3ff3866e405c"
+    }
+  ]
+}
