@@ -1,0 +1,77 @@
+{
+  "archiveSchema": 1,
+  "createdAtUtc": "2026-10-09T13:18:08.8513342Z",
+  "historicalSmoke": {
+    "sourcePath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc505-browser-realtime-smoke-2026-10-09T13-04-37-502Z.json",
+    "archivePath": "report.json",
+    "sha256": "ab96a1da2aff54b6405c3fb48e8d577a13b5f47564a0e6bee97b7e0c022f9d2f",
+    "status": "PASS",
+    "assertions": 61,
+    "startedAt": "2026-10-09T13:04:37.502Z",
+    "completedAt": "2026-10-09T13:05:10Z",
+    "softwareOnly": true,
+    "hardwareCertified": false
+  },
+  "reportedSourceHashes": {
+    "smoke": "d4ae53ce9742f8cbc69d62368e6a7d5a995fdc6a3b1eec3eecf827a964b6f4db",
+    "browserAudioEngine": "8c0f12048a834c306b2ba3f8c49584385025d2608865c5f9f3fe940e2d469b77",
+    "realtimeProtocol": "a552d0cc92fe321a281a5ac7598aada9afc0dc50da8329c6a5a80d776dedafb0",
+    "realtimeRuntime": "ed02b54e2f7d39d7f39527b63efd0860df9a6ad795c65e007fd14e937119fc2f",
+    "looperWorklet": "65c064e05f0e511d14e65b5d353909949978acf73c257d4e0737b48f050a9329",
+    "timeStretchCore": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91"
+  },
+  "sourceCopies": {
+    "status": "Exact for all source files listed by the smoke report",
+    "files": [
+      {
+        "reportedSourceKey": "smoke",
+        "path": "exact-sources/scripts/browser-realtime-smoke.mjs",
+        "sha256": "d4ae53ce9742f8cbc69d62368e6a7d5a995fdc6a3b1eec3eecf827a964b6f4db",
+        "bytes": 87527
+      },
+      {
+        "reportedSourceKey": "browserAudioEngine",
+        "path": "exact-sources/src/audio/BrowserAudioEngine.ts",
+        "sha256": "8c0f12048a834c306b2ba3f8c49584385025d2608865c5f9f3fe940e2d469b77",
+        "bytes": 85410
+      },
+      {
+        "reportedSourceKey": "realtimeProtocol",
+        "path": "exact-sources/src/audio/browserRealtimeProtocol.ts",
+        "sha256": "a552d0cc92fe321a281a5ac7598aada9afc0dc50da8329c6a5a80d776dedafb0",
+        "bytes": 11717
+      },
+      {
+        "reportedSourceKey": "realtimeRuntime",
+        "path": "exact-sources/src/audio/BrowserRealtimeRuntime.ts",
+        "sha256": "ed02b54e2f7d39d7f39527b63efd0860df9a6ad795c65e007fd14e937119fc2f",
+        "bytes": 87352
+      },
+      {
+        "reportedSourceKey": "looperWorklet",
+        "path": "exact-sources/public/worklets/looper-processor.js",
+        "sha256": "65c064e05f0e511d14e65b5d353909949978acf73c257d4e0737b48f050a9329",
+        "bytes": 126407
+      },
+      {
+        "reportedSourceKey": "timeStretchCore",
+        "path": "exact-sources/time-stretch-core.js",
+        "sha256": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91",
+        "bytes": 20132
+      }
+    ]
+  },
+  "moduleCandidate": {
+    "path": "module-candidate/webrc-dsp.wasm",
+    "sha256": "fc7d55cefc3ea55e8570b4db599c8aab99003638e9f222ae8468bf14a918cb1b",
+    "bytes": 283381,
+    "buildManifest": "module-candidate/webrc-dsp.build.json",
+    "sourceSetSha256": "be38d084dcdf7a617335417ec1f9eb0fa72ca633babcf40c4e00f9f0cebdc200",
+    "status": "Hash-matched pre-kind-121 module candidate. The smoke report does not record a WASM module hash, so this archive cannot prove which module instance the browser loaded."
+  },
+  "limitations": [
+    "This is immutable historical evidence and corresponds to the archived exact source hashes, not current edited application source.",
+    "The report does not include raw WebAudio callback timing; it is a software behavior smoke, not real-time deadline qualification or hardware certification.",
+    "The report does not record a WASM module hash. The archived pre-kind-121 module is a hash-matched candidate from the contemporaneous build archive, not proven runtime linkage."
+  ]
+}

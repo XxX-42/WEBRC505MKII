@@ -32,3 +32,7 @@
 /bench/results/native_dsp_asan_shared_snapshot_20261009_r7.reproduction.json -text -whitespace
 /bench/results/dsp_pcm_parity_v2_1/** -text -whitespace
 /bench/results/dsp_pcm_parity_v2_1/**/*.f32le -diff
+/bench/results/browser_graph_smoke_20261009T130437502Z_61of61_historical/** -text -whitespace
+/bench/results/browser_graph_smoke_20261009T130437502Z_61of61_historical/**/*.wasm -diff
+/bench/results/browser_graph_snapshot_20261009T131900Z_preintegration/** -text -whitespace
+/bench/results/browser_graph_snapshot_20261009T131900Z_preintegration/**/*.wasm -diff
