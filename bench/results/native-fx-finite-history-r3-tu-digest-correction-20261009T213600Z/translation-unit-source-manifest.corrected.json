@@ -1,0 +1,277 @@
+{
+  "schema": "native-fx-finite-history-r3-tu-digest-correction-v1",
+  "createdAtUtc": "2026-10-09T21:36:00Z",
+  "originalArchive": "../native-fx-finite-history-r3-delta-20261009T2117Z",
+  "originalSupplementPath": "build-evidence-tu-supplement.json",
+  "originalSupplementSha256": "e5ccaf63dbf7a1236bc780762767cc0e0e34915f599a1b0d7e6ee989cf124ec7",
+  "originalClaimedTranslationUnitSourceSetSha256": "6633fd9cdd010f31b5fae538915ae65e506fc13e5398c7de959897093f0f8f95",
+  "originalClaimStatus": "not reproducible from the archived translationUnitRecords; this correction does not modify the original supplement or archive index",
+  "translationUnitCount": 64,
+  "canonicalization": {
+    "input": "unique sourceArchivePath/sourceSha256 rows from original translationUnitRecords",
+    "pathNormalization": "replace backslashes with forward slashes, then lowercase path using Unicode invariant lowercase",
+    "ordering": "ordinal ascending by normalized lowercase path",
+    "record": "path|sha256 followed by one LF byte",
+    "encoding": "UTF-8",
+    "finalNewline": true
+  },
+  "translationUnitSourceSetSha256": "42087c5d788f26b9237d82fbff01007032ea26317e03f24270b813ef4b5203b7",
+  "records": [
+    {
+      "path": "dependency-snapshot/native-mvp/build-v145/_deps/rtaudio_src-src/rtaudio.cpp",
+      "sha256": "d880f065bdb65536ce5cf4619b6a2408a360ad0103b8b38600f1a29a11ff1e1e"
+    },
+    {
+      "path": "dependency-snapshot/native-mvp/build-v145/_deps/rtaudio_src-src/rtaudio_c.cpp",
+      "sha256": "612df6aa7338eb72dabf0180208263ab41f2147144031ec99cbcadb07e2f2ed4"
+    },
+    {
+      "path": "dependency-snapshot/native-mvp/build-v145/_deps/rtaudio_src-src/tests/apinames.cpp",
+      "sha256": "a50a103cd0ebd788ee87723ad90739674753b01110f0c158864bf89c8ba4d3d7"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/benchmarks/native_looper_bench.cpp",
+      "sha256": "eded4f7ed47e2943850e38fb2abde9d0091b1b6982f21b4d9361880d20ddc3ba"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/src/looper_core.cpp",
+      "sha256": "0a7e7a0f217cefa3071fa44971991272b4aab2cff26ec991eef9987352f21ec4"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/src/multitrack_looper_core.cpp",
+      "sha256": "d66efc7d94ece27982e5f7e0735f7bfb89e66e564547258ca50b67c54a32a949"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/src/native_audio_core.cpp",
+      "sha256": "7ba31020ca21a645167a1c587ef436de35edddfec7fd7facff0a2f036480bcc5"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/src/native_bridge_host.cpp",
+      "sha256": "a6ba9cf1ab93e2aad3ef2438f93c95abda98cbb1d68fc2fb516f274fe076749e"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/src/native_fx_graph.cpp",
+      "sha256": "686d107ac7451235dd62de6f2eeaf5012bb184dc93116e6442c29f4f1b889abf"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/src/native_track_host.cpp",
+      "sha256": "1228968a00a7a8915d8f35f353da2d1a155036494b910b35f5552e3979b9ff9a"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/tests/looper_core_tests.cpp",
+      "sha256": "06df554165322d90f094da35d04f2157ca86a639652727fe0d313d6345b3f977"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp",
+      "sha256": "b074a25776ca05f4f3ccf7547d02e2591ef001fd9c7065a55da2d25035b9b600"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/tests/native_fx_graph_tests.cpp",
+      "sha256": "b5ab351b7139649e4253afabb4e6234b86a5e4d0992f40d02982f8ab47745b74"
+    },
+    {
+      "path": "source-snapshot/native-mvp/engine-cpp/tests/native_track_host_tests.cpp",
+      "sha256": "a9c01dcf56cb7646d4018b4f7eac51320a4a061bbbe54257aeb091e6023eb5a0"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/benchmarks/native_dsp_primitives_bench.cpp",
+      "sha256": "056335fa77ec9a05d6439fdf5b9582c5f844c896fad301eddf48a884dc9c63cd"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/composite_fx.cpp",
+      "sha256": "77009dbb0dba1cc90cc2da1e6b42aee2106bff4b2d8f81d70f96eacb86bb95c1"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/control_dynamics.cpp",
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/distortion_fx.cpp",
+      "sha256": "51e6cec0e1be392478ea68ae63c570eb6c966d792154a5a1a87cab7ae7346b19"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/fx_registry.cpp",
+      "sha256": "42f379b4ad093f494496d4a7e70283abecf9f28aae7f7d487b463aff64463568"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/live_mono_pitch.cpp",
+      "sha256": "c1589c4df2b5d14f79a680e78b8681d3d4a89ee3fdccb9c9336d16da1b5f5b64"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/modulated_delay_fx.cpp",
+      "sha256": "aac4540053f5f281280085d7c8876ea8d79176dbe9969fd3aa70ca236883e68b"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/modulation_fx.cpp",
+      "sha256": "8b9368db27cd7934d9eb6a7005a4088b7585ffafd1d641a2e7e8cc02e3a3b685"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/nonlinear.cpp",
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/octave_fx.cpp",
+      "sha256": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/octave_models.cpp",
+      "sha256": "a718f4dea1f2890a0f00a2798c74887b77eaee8088eec3c093dc6c5bb9027fbb"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/performance_fx.cpp",
+      "sha256": "f819c3daf034b2d8b44a95f5a974d0fa9faba5ea03287e901759500304fa6998"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/pitch.cpp",
+      "sha256": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/pitch_profiles.cpp",
+      "sha256": "2a8756b53c08e2a22ee586a53eed079980991fc8a21bb47e61a1061a51fb80c5"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/preamp_fx.cpp",
+      "sha256": "84fd4eed5c2c630e7e896c90d9b0f8af745b9617758f7cd452d6952a9e299047"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/preamp_models.cpp",
+      "sha256": "4df8bad1a5ac319fd71f961d0be2fcd49b02702c657a73a66dd5f8b83923e9a4"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/reconstruction_fx_adapter.cpp",
+      "sha256": "d2d506c63ee20b6e4af9771f5b3ad241cad311795371ca244b6abce36a003f00"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/rhythm.cpp",
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/rhythmic_fx.cpp",
+      "sha256": "58ba3849b3c75ec8aeef65e93133cedcf38149650750844b7fde36fdc3f0df58"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/signalsmith_adapter.cpp",
+      "sha256": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/spatial_fx_adapters.cpp",
+      "sha256": "e9be597c12760c6824be141f6c6c794d45200bf59fcda78d881b66899680abd6"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/streaming_yin.cpp",
+      "sha256": "09d75ea4c26f9df826c97c839a091984959587470a9f4fd56adcaa6757de7a8f"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/src/temporal_fx_adapters.cpp",
+      "sha256": "9a1857af252019f45459e9aa6e32dcd0b769e1d581a09534af1ca101c5c9a8b4"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/composite_fx_tests.cpp",
+      "sha256": "30b63684b6f11500f92a5c1d9d7327945d856cf29c62a634c932a4a5bf3fdbd3"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/control_dynamics_tests.cpp",
+      "sha256": "b0b7d8c95eb5051bc43af47e67c789db4d0e092fde86f09d977919553d0bea2a"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/distortion_fx_tests.cpp",
+      "sha256": "f40c23d10fd3a087489a0d967616928c9c6cb17c1854a136ccb14c6d8df18fb2"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/dsp_primitives_tests.cpp",
+      "sha256": "b6b0ae270d4c2b87ac6935c0b853b16865e5bc74771528173fdccc57181cc44a"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/fx_registry_tests.cpp",
+      "sha256": "2e7ea365550c75492976c494a3f12014ebf5766cbd7594c6da5e969aba7cb098"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/live_mono_pitch_tests.cpp",
+      "sha256": "adde7eb4b6ead88bfc1b25213c45ed714065ee49901aa22400876876452cdbad"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/modulated_delay_fx_tests.cpp",
+      "sha256": "dadc3a6c1dfb1f054f72697efdb3d661baf8a0bc5b1eb6b7214dd7225c09af28"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/modulation_fx_tests.cpp",
+      "sha256": "45685053034741ed7b32fd58ce5239e77001fc7c1cda71b52b268da2d101eae6"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/nonlinear_tests.cpp",
+      "sha256": "e3a8801ffe3829fb732d19100fec2e46ba2a98c5ae7814002691a70d069b0915"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/octave_fx_tests.cpp",
+      "sha256": "8fb4f3616e48111ca2b73de853d13fbf05b63b6d900ae6dcf0aba72534cffddf"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/octave_models_tests.cpp",
+      "sha256": "e60677d78cdb03fdc311873ee8cd8bd56e7f7482e45145fbd7ac4966c8f59b0a"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/performance_fx_tests.cpp",
+      "sha256": "bd31fb62e8517ee06a3597940a0fdb67e7bc995634080f2e1a0b7c7a259a8078"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/pitch_profiles_tests.cpp",
+      "sha256": "d31757d18da85ca16b099f3ff2afd7ac01660a3799759cc127f74d2b04615abb"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/pitch_tests.cpp",
+      "sha256": "60b324c2d2da304a9383056307670a0261b5959a4897baea68036ea8099b694a"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/preamp_fx_tests.cpp",
+      "sha256": "f761a8ca8dc3903f9fc13365d206ccf55b0cea490442602245ac3eb5042e7f50"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/preamp_models_tests.cpp",
+      "sha256": "6b150e9125e99d63c23b1ea7fb477ba1bdf8e814ce50924b0f2d6e15a1feb214"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/reconstruction_fx_adapter_tests.cpp",
+      "sha256": "3b557795c23cdb6efc3767a531205f6e1a02cecc74d652a950f4ef50f698aeae"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/rhythm_tests.cpp",
+      "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/rhythmic_fx_tests.cpp",
+      "sha256": "0b8ef7218ee3d5a15b65bc0f64bbe9d79e21f02872c0e9c40fe221661fc7f76e"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/spatial_fx_adapters_tests.cpp",
+      "sha256": "36dd67e7fdb4e73c8dfe5a10e14fe6982be9550b8cd3dd9ff7eba4baf305348a"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/spatial_temporal_tests.cpp",
+      "sha256": "773bb40c41ada0046ec5282b85c00358a7e291b6eed17f0f7916fb1d9c1ec751"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/streaming_yin_tests.cpp",
+      "sha256": "baabddae1472bd18a5e15f24c42c46ca5560f4d410b4822dcf294872300234eb"
+    },
+    {
+      "path": "source-snapshot/shared/dsp/tests/temporal_fx_adapters_tests.cpp",
+      "sha256": "56e77795e518e6ba4bf4de297ddb88c541348225dd1a37a215754a3d2fddb841"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-native-finite-history-r3-copy-20261010T2121Z
+      Start  1: looper_core_tests
+ 1/28 Test  #1: looper_core_tests .................   Passed    0.04 sec
+      Start  2: native_multitrack_core_tests
+ 2/28 Test  #2: native_multitrack_core_tests ......   Passed    0.08 sec
+      Start  3: native_track_host_tests
+ 3/28 Test  #3: native_track_host_tests ...........   Passed    0.10 sec
+      Start  4: native_fx_graph_tests
+ 4/28 Test  #4: native_fx_graph_tests .............   Passed    5.69 sec
+      Start  5: dsp_primitives_tests
+ 5/28 Test  #5: dsp_primitives_tests ..............   Passed    0.15 sec
+      Start  6: control_dynamics_tests
+ 6/28 Test  #6: control_dynamics_tests ............   Passed    0.06 sec
+      Start  7: nonlinear_tests
+ 7/28 Test  #7: nonlinear_tests ...................   Passed    0.33 sec
+      Start  8: spatial_temporal_tests
+ 8/28 Test  #8: spatial_temporal_tests ............   Passed    0.88 sec
+      Start  9: pitch_tests
+ 9/28 Test  #9: pitch_tests .......................   Passed    0.84 sec
+      Start 10: pitch_profiles_tests
+10/28 Test #10: pitch_profiles_tests ..............   Passed    0.35 sec
+      Start 11: streaming_yin_tests
+11/28 Test #11: streaming_yin_tests ...............   Passed    0.21 sec
+      Start 12: live_mono_pitch_tests
+12/28 Test #12: live_mono_pitch_tests .............   Passed    0.30 sec
+      Start 13: fx_registry_tests
+13/28 Test #13: fx_registry_tests .................   Passed    0.45 sec
+      Start 14: performance_fx_tests
+14/28 Test #14: performance_fx_tests ..............   Passed    0.38 sec
+      Start 15: modulation_fx_tests
+15/28 Test #15: modulation_fx_tests ...............   Passed    0.13 sec
+      Start 16: rhythm_tests
+16/28 Test #16: rhythm_tests ......................   Passed    1.15 sec
+      Start 17: composite_fx_tests
+17/28 Test #17: composite_fx_tests ................   Passed    0.56 sec
+      Start 18: modulated_delay_fx_tests
+18/28 Test #18: modulated_delay_fx_tests ..........   Passed    0.84 sec
+      Start 19: rhythmic_fx_tests
+19/28 Test #19: rhythmic_fx_tests .................   Passed    0.31 sec
+      Start 20: spatial_fx_adapters_tests
+20/28 Test #20: spatial_fx_adapters_tests .........   Passed    0.16 sec
+      Start 21: preamp_fx_tests
+21/28 Test #21: preamp_fx_tests ...................   Passed    1.88 sec
+      Start 22: preamp_models_tests
+22/28 Test #22: preamp_models_tests ...............   Passed    7.11 sec
+      Start 23: distortion_fx_tests
+23/28 Test #23: distortion_fx_tests ...............   Passed    0.58 sec
+      Start 24: octave_fx_tests
+24/28 Test #24: octave_fx_tests ...................   Passed    1.10 sec
+      Start 25: octave_models_tests
+25/28 Test #25: octave_models_tests ...............   Passed    4.30 sec
+      Start 26: temporal_fx_adapters_tests
+26/28 Test #26: temporal_fx_adapters_tests ........   Passed    1.17 sec
+      Start 27: reconstruction_fx_adapter_tests
+27/28 Test #27: reconstruction_fx_adapter_tests ...   Passed    0.12 sec
+      Start 28: apinames
+28/28 Test #28: apinames ..........................   Passed    0.06 sec
+
+100% tests passed out of 28
+
+Total Test time (real) =  29.47 sec

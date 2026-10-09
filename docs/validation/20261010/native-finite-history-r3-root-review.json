@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T21:38:08.635184+00:00",
+  "archive": "bench/results/native-fx-finite-history-r3-delta-20261009T2117Z",
+  "archiveIndexSha256": "1ed91767a2f60af6376cb350bec53066e34c8cf122535ac1d67e5a8283071778",
+  "archivedPayloadsVerified": 1755,
+  "sourceSnapshotFiles": 162,
+  "sourceSetSha256": "86c96ac534cf6b12d7b0c481a68b914c13fad38dba82f7467bf4edfa9cd0f9b7",
+  "overlayFiles": 8,
+  "baseCheckoutLineEndingDifferences": [
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_primitives_bench.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 10381,
+      "gitBlobSha256": "44d39c7d5f4fe2a8c51c9710c753356fe3dd3fa9396b0edd02879129a56b9188",
+      "snapshotBytes": 10641,
+      "snapshotSha256": "056335fa77ec9a05d6439fdf5b9582c5f844c896fad301eddf48a884dc9c63cd"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_primitives_golden.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 5349,
+      "gitBlobSha256": "e75e8811e6418f501363575c90dc9ad81359321141bf2b4cf62b95625e9afcea",
+      "snapshotBytes": 5473,
+      "snapshotSha256": "86ccf7898cda6bcfb6a0a0340faf16b6b028de9c5632d7f5fd355bdcd0c23a8c"
+    },
+    {
+      "path": "shared/dsp/tests/control_dynamics_tests.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 16890,
+      "gitBlobSha256": "d4bcde0c6b3f467fee27969ae1da6f1310ba4c3e8c5fcd0a6cd196e6ec78ef54",
+      "snapshotBytes": 17205,
+      "snapshotSha256": "b0b7d8c95eb5051bc43af47e67c789db4d0e092fde86f09d977919553d0bea2a"
+    },
+    {
+      "path": "shared/dsp/tests/dsp_primitives_tests.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 25336,
+      "gitBlobSha256": "e2789ef2e2f3c0176218e5296fe32c7b636ec591c95fe7e65a343315808afdd3",
+      "snapshotBytes": 25828,
+      "snapshotSha256": "b6b0ae270d4c2b87ac6935c0b853b16865e5bc74771528173fdccc57181cc44a"
+    },
+    {
+      "path": "shared/dsp/tests/nonlinear_tests.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 33033,
+      "gitBlobSha256": "de0c5b395d74d57adbe6c88310fec15de9615aba95eabe92bedca0f228ac11e3",
+      "snapshotBytes": 33617,
+      "snapshotSha256": "e3a8801ffe3829fb732d19100fec2e46ba2a98c5ae7814002691a70d069b0915"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/dsp-wasm-worklet-processor.js",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 9109,
+      "gitBlobSha256": "885af2dc7a3dcd552ed84f655d2a9dc3cd020e3f992f4d8c38859ed32db18f16",
+      "snapshotBytes": 9325,
+      "snapshotSha256": "1bb767db4ee86963a1ff01ee7161c5fd2955db822e3d76931d05fcd0a12fc35c"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke-page.js",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 8309,
+      "gitBlobSha256": "a335eb373897bb0fbadc8bfb837e7a53d2ddae2aba6631f512f6a2fead47ffa0",
+      "snapshotBytes": 8547,
+      "snapshotSha256": "6277f58a3ec538f7e9601eef850afb2362880681fb3069eb1c32ffcbeafba84a"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.html",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 430,
+      "gitBlobSha256": "d64fecd639b00e55f328279f645859fc527931332ae8b769e9411f44c50fce61",
+      "snapshotBytes": 443,
+      "snapshotSha256": "c1c13e2ffea56074ef4d5b1ce57bd34e1ec6efaef60b14d45ab3cb8f93568dc1"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.mjs",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 21503,
+      "gitBlobSha256": "d4e98d1fc8f33904822766b2fea86f41485c1b74d073a91d40bfd8a51921622e",
+      "snapshotBytes": 21952,
+      "snapshotSha256": "3433d1bad4f36b3a85f1c170ef3633f4b3854f083ecd1c599eb55fa99c613355"
+    }
+  ],
+  "fetchContentPayloadsMatchedToPriorAcceptedSnapshot": 1259,
+  "nestedGitMetadataExcluded": 84,
+  "compiledObjects": 66,
+  "uniqueTranslationUnits": 64,
+  "buildOutputsVerified": 107,
+  "correctedTranslationUnitSourceSetSha256": "42087c5d788f26b9237d82fbff01007032ea26317e03f24270b813ef4b5203b7",
+  "tuDigestCorrection": {
+    "path": "bench/results/native-fx-finite-history-r3-tu-digest-correction-20261009T213600Z/translation-unit-source-manifest.corrected.json",
+    "sha256": "4196bb419162f8ff7b6a442aacc2e3349d69b6a2ab355144500d0ab8ab8bbbb9",
+    "preservedOriginalDigestStatus": "not reproducible; superseded by explicit normalized-path correction"
+  },
+  "generatedBuildEvidenceFilesVerified": 152,
+  "compilerHeaderDependenciesVerified": {
+    "copied-source-snapshot": 36,
+    "MSVC-toolchain": 121,
+    "Windows-SDK": 208,
+    "FetchContent-cache-mirrored": 49
+  },
+  "originalBuildAndExternalToolchainChecked": true,
+  "rootCTest": {
+    "tests": 28,
+    "passed": 28,
+    "failed": 0,
+    "filtered": false,
+    "log": "docs/validation/20261010/root-native-finite-history-r3-ctest.log",
+    "logSha256": "1442017ba0daea79afdf6a84ff0ce3df1bf009424e1484722026a8fae34b208a",
+    "results": [
+      {
+        "name": "looper_core_tests",
+        "seconds": 0.04
+      },
+      {
+        "name": "native_multitrack_core_tests",
+        "seconds": 0.08
+      },
+      {
+        "name": "native_track_host_tests",
+        "seconds": 0.1
+      },
+      {
+        "name": "native_fx_graph_tests",
+        "seconds": 5.69
+      },
+      {
+        "name": "dsp_primitives_tests",
+        "seconds": 0.15
+      },
+      {
+        "name": "control_dynamics_tests",
+        "seconds": 0.06
+      },
+      {
+        "name": "nonlinear_tests",
+        "seconds": 0.33
+      },
+      {
+        "name": "spatial_temporal_tests",
+        "seconds": 0.88
+      },
+      {
+        "name": "pitch_tests",
+        "seconds": 0.84
+      },
+      {
+        "name": "pitch_profiles_tests",
+        "seconds": 0.35
+      },
+      {
+        "name": "streaming_yin_tests",
+        "seconds": 0.21
+      },
+      {
+        "name": "live_mono_pitch_tests",
+        "seconds": 0.3
+      },
+      {
+        "name": "fx_registry_tests",
+        "seconds": 0.45
+      },
+      {
+        "name": "performance_fx_tests",
+        "seconds": 0.38
+      },
+      {
+        "name": "modulation_fx_tests",
+        "seconds": 0.13
+      },
+      {
+        "name": "rhythm_tests",
+        "seconds": 1.15
+      },
+      {
+        "name": "composite_fx_tests",
+        "seconds": 0.56
+      },
+      {
+        "name": "modulated_delay_fx_tests",
+        "seconds": 0.84
+      },
+      {
+        "name": "rhythmic_fx_tests",
+        "seconds": 0.31
+      },
+      {
+        "name": "spatial_fx_adapters_tests",
+        "seconds": 0.16
+      },
+      {
+        "name": "preamp_fx_tests",
+        "seconds": 1.88
+      },
+      {
+        "name": "preamp_models_tests",
+        "seconds": 7.11
+      },
+      {
+        "name": "distortion_fx_tests",
+        "seconds": 0.58
+      },
+      {
+        "name": "octave_fx_tests",
+        "seconds": 1.1
+      },
+      {
+        "name": "octave_models_tests",
+        "seconds": 4.3
+      },
+      {
+        "name": "temporal_fx_adapters_tests",
+        "seconds": 1.17
+      },
+      {
+        "name": "reconstruction_fx_adapter_tests",
+        "seconds": 0.12
+      },
+      {
+        "name": "apinames",
+        "seconds": 0.06
+      }
+    ]
+  },
+  "limitations": [
+    "FetchContent source hashes were captured after compilation; prior snapshot equality is corroboration.",
+    "Nine base checkout files differ from raw Git blobs only by LF/CRLF conversion; the raw compiled copies are archived.",
+    "Original dependency manifest retains hashes of 84 local nested .git metadata files, which are excluded from Git publication.",
+    "Original TU supplement has an unreproducible aggregate digest; individual TU hashes are verified and a separate canonical correction is preserved.",
+    "Finite-history startup bounds describe required input history, not acoustic latency or recursive-feedback convergence.",
+    "This suite does not qualify all 53 FX, real-time performance, 30-minute stress, audio quality, or hardware latency."
+  ]
+}

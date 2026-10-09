@@ -1,0 +1,1003 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-10-09T21:33:11.837461+00:00",
+  "baseCommit": "7b5623822947fdd0c11f46c246c3e974dec1feab",
+  "baseCheckoutLineEndingDifferences": [
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_primitives_bench.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 10381,
+      "gitBlobSha256": "44d39c7d5f4fe2a8c51c9710c753356fe3dd3fa9396b0edd02879129a56b9188",
+      "snapshotBytes": 10641,
+      "snapshotSha256": "056335fa77ec9a05d6439fdf5b9582c5f844c896fad301eddf48a884dc9c63cd"
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_dsp_primitives_golden.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 5349,
+      "gitBlobSha256": "e75e8811e6418f501363575c90dc9ad81359321141bf2b4cf62b95625e9afcea",
+      "snapshotBytes": 5473,
+      "snapshotSha256": "86ccf7898cda6bcfb6a0a0340faf16b6b028de9c5632d7f5fd355bdcd0c23a8c"
+    },
+    {
+      "path": "shared/dsp/tests/control_dynamics_tests.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 16890,
+      "gitBlobSha256": "d4bcde0c6b3f467fee27969ae1da6f1310ba4c3e8c5fcd0a6cd196e6ec78ef54",
+      "snapshotBytes": 17205,
+      "snapshotSha256": "b0b7d8c95eb5051bc43af47e67c789db4d0e092fde86f09d977919553d0bea2a"
+    },
+    {
+      "path": "shared/dsp/tests/dsp_primitives_tests.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 25336,
+      "gitBlobSha256": "e2789ef2e2f3c0176218e5296fe32c7b636ec591c95fe7e65a343315808afdd3",
+      "snapshotBytes": 25828,
+      "snapshotSha256": "b6b0ae270d4c2b87ac6935c0b853b16865e5bc74771528173fdccc57181cc44a"
+    },
+    {
+      "path": "shared/dsp/tests/nonlinear_tests.cpp",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 33033,
+      "gitBlobSha256": "de0c5b395d74d57adbe6c88310fec15de9615aba95eabe92bedca0f228ac11e3",
+      "snapshotBytes": 33617,
+      "snapshotSha256": "e3a8801ffe3829fb732d19100fec2e46ba2a98c5ae7814002691a70d069b0915"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/dsp-wasm-worklet-processor.js",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 9109,
+      "gitBlobSha256": "885af2dc7a3dcd552ed84f655d2a9dc3cd020e3f992f4d8c38859ed32db18f16",
+      "snapshotBytes": 9325,
+      "snapshotSha256": "1bb767db4ee86963a1ff01ee7161c5fd2955db822e3d76931d05fcd0a12fc35c"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke-page.js",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 8309,
+      "gitBlobSha256": "a335eb373897bb0fbadc8bfb837e7a53d2ddae2aba6631f512f6a2fead47ffa0",
+      "snapshotBytes": 8547,
+      "snapshotSha256": "6277f58a3ec538f7e9601eef850afb2362880681fb3069eb1c32ffcbeafba84a"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.html",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 430,
+      "gitBlobSha256": "d64fecd639b00e55f328279f645859fc527931332ae8b769e9411f44c50fce61",
+      "snapshotBytes": 443,
+      "snapshotSha256": "c1c13e2ffea56074ef4d5b1ce57bd34e1ec6efaef60b14d45ab3cb8f93568dc1"
+    },
+    {
+      "path": "shared/dsp/wasm/tests/worklet-smoke.mjs",
+      "onlyCRLFConversion": true,
+      "gitBlobBytes": 21503,
+      "gitBlobSha256": "d4e98d1fc8f33904822766b2fea86f41485c1b74d073a91d40bfd8a51921622e",
+      "snapshotBytes": 21952,
+      "snapshotSha256": "3433d1bad4f36b3a85f1c170ef3633f4b3854f083ecd1c599eb55fa99c613355"
+    }
+  ],
+  "generatedBuildEvidence": [
+    {
+      "buildRelativePath": "CMakeFiles/4.4.2/CMakeCXXCompiler.cmake",
+      "archivePath": "evidence/generated-build/CMakeFiles/4.4.2/CMakeCXXCompiler.cmake",
+      "bytes": 6658,
+      "sha256": "a6bf7faafd30fedf601d1ac066f3ae1c05bba089ef33510a738e569d1dbe205c"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/looper_core_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/looper_core_tests.dir/build.make",
+      "bytes": 11093,
+      "sha256": "a58d7b98bfdb85cbdb1229485340f97199a714ef0f776f7280e8af809a113f0d"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/looper_core_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/looper_core_tests.dir/flags.make",
+      "bytes": 1162,
+      "sha256": "49a951efcbe314af77e109f04e953d3b94eee76862d6104b9e32d8138534b4fb"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/looper_core_tests.dir/src/looper_core.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/looper_core_tests.dir/src/looper_core.cpp.obj.d",
+      "bytes": 7257,
+      "sha256": "5641c5b321d342d6fae6035e6eb107ec06a8b77bdab5f773d1e86aa84b8dbb88"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/looper_core_tests.dir/tests/looper_core_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/looper_core_tests.dir/tests/looper_core_tests.cpp.obj.d",
+      "bytes": 30805,
+      "sha256": "ecc848a6079591c5b30f12fb3dfdd83097523a282f34b7532fe3b89f4a0a2115"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_audio_core.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_audio_core.dir/build.make",
+      "bytes": 10095,
+      "sha256": "ff0918ffec74ce922a3219a30d008df6f187741821fd9cfe8c4ae70a99ddf5f2"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_audio_core.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_audio_core.dir/flags.make",
+      "bytes": 1273,
+      "sha256": "6ad096d546f9b5738430a548350d815995de0ecb99a20cda2989dc11c5723425"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_audio_core.dir/src/looper_core.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_audio_core.dir/src/looper_core.cpp.obj.d",
+      "bytes": 7173,
+      "sha256": "34340df0d864cf158db05f7f07e49e9daed0e466ff20ccce04431763da68a4a7"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_audio_core.dir/src/native_audio_core.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_audio_core.dir/src/native_audio_core.cpp.obj.d",
+      "bytes": 30729,
+      "sha256": "94ef9f22c75a033e043c0077e035cfc06f8da5d90ad289312f53addaeed95ce2"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_bridge_host.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_bridge_host.dir/build.make",
+      "bytes": 8269,
+      "sha256": "740957e6e825ba3ef7223102344ec3750aab19aebae25decd5d7c21d6646124e"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_bridge_host.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_bridge_host.dir/flags.make",
+      "bytes": 1401,
+      "sha256": "1299998a8341dc90617b0712eb71636f240570c044557f06bce9fdb923191420"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_bridge_host.dir/src/native_bridge_host.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_bridge_host.dir/src/native_bridge_host.cpp.obj.d",
+      "bytes": 32669,
+      "sha256": "6edc07ad7848ef5e01ddc7e6336e07cf478665d38c970e94b590283e630c7754"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_fx_graph_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_fx_graph_tests.dir/build.make",
+      "bytes": 8150,
+      "sha256": "1a8a3c58c479a71c4795b627c73269c8571ed11e6e7d6637e121c29da4321fc1"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_fx_graph_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_fx_graph_tests.dir/flags.make",
+      "bytes": 1036,
+      "sha256": "e0682558e3ff6fb9b10976e67ad251f25e1a9a7696cc7060ce1c3817e44e14e9"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_fx_graph_tests.dir/tests/native_fx_graph_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_fx_graph_tests.dir/tests/native_fx_graph_tests.cpp.obj.d",
+      "bytes": 12622,
+      "sha256": "3d7bcedbc1100326a5ba5ef9abff708576d4e44a24443cae42f1804a641230f5"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_looper_bench.dir/benchmarks/native_looper_bench.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_looper_bench.dir/benchmarks/native_looper_bench.cpp.obj.d",
+      "bytes": 11527,
+      "sha256": "8b90632390a0b17f471d926eedf146b67b0406bb656a01cd38960e463c0baf56"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_looper_bench.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_looper_bench.dir/build.make",
+      "bytes": 10862,
+      "sha256": "8b3dfc9ebc8812741122fe909fe7d33beaba3255d8d6ce31d3dbd19e9c45eb90"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_looper_bench.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_looper_bench.dir/flags.make",
+      "bytes": 515,
+      "sha256": "15e1a82f8dd05043d62a0d3e83abda85817f5d8efc56383c6cc5e30063a39f45"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_looper_bench.dir/src/looper_core.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_looper_bench.dir/src/looper_core.cpp.obj.d",
+      "bytes": 6974,
+      "sha256": "e203b6434259f0c396c225816f983c25d7c9d84e0e206efc3083f4d9ff10d3eb"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_multitrack_core.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_multitrack_core.dir/build.make",
+      "bytes": 7449,
+      "sha256": "0b2bf62e2c6a09441c491adfdfaabb91229cfcfff9e9c24aef511112f7329049"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_multitrack_core.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_multitrack_core.dir/flags.make",
+      "bytes": 1036,
+      "sha256": "e0682558e3ff6fb9b10976e67ad251f25e1a9a7696cc7060ce1c3817e44e14e9"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_multitrack_core.dir/src/multitrack_looper_core.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_multitrack_core.dir/src/multitrack_looper_core.cpp.obj.d",
+      "bytes": 10043,
+      "sha256": "fa65d1c02bfac7ba8605a6fd00d70a2db0032fb671ebb609c70735d9dd63c78b"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_multitrack_core_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_multitrack_core_tests.dir/build.make",
+      "bytes": 8554,
+      "sha256": "337eecdf54d1d156fc594386fea9d0200d6ee98b9eca301c05ff0f62c10ffc41"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_multitrack_core_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_multitrack_core_tests.dir/flags.make",
+      "bytes": 1036,
+      "sha256": "e0682558e3ff6fb9b10976e67ad251f25e1a9a7696cc7060ce1c3817e44e14e9"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_multitrack_core_tests.dir/tests/multitrack_looper_core_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_multitrack_core_tests.dir/tests/multitrack_looper_core_tests.cpp.obj.d",
+      "bytes": 11463,
+      "sha256": "17394b8cd33093ac70f87891a89039efe778ef62edee2333f8fcf788f8112f82"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_track_host.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_track_host.dir/build.make",
+      "bytes": 10167,
+      "sha256": "3153154d7f9fac2603566bdfda76be52bd2c5fd831184b2c197a7abc7580e53a"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_track_host.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_track_host.dir/flags.make",
+      "bytes": 1036,
+      "sha256": "e0682558e3ff6fb9b10976e67ad251f25e1a9a7696cc7060ce1c3817e44e14e9"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_track_host.dir/src/native_fx_graph.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_track_host.dir/src/native_fx_graph.cpp.obj.d",
+      "bytes": 8884,
+      "sha256": "996a2f677b38cd64121f6581d81234b28e571e38d7c3292416b843d5105bbac9"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_track_host.dir/src/native_track_host.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_track_host.dir/src/native_track_host.cpp.obj.d",
+      "bytes": 10720,
+      "sha256": "462e34b78f2184dd95e180a267a215b254c5aa1ed9eb300638244c5fb65f60bd"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_track_host_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_track_host_tests.dir/build.make",
+      "bytes": 8288,
+      "sha256": "8b97cd4b77eb1ce092d96f42bbf142214c7c1aa3272b57b012401fa9ba839113"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_track_host_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_track_host_tests.dir/flags.make",
+      "bytes": 1036,
+      "sha256": "e0682558e3ff6fb9b10976e67ad251f25e1a9a7696cc7060ce1c3817e44e14e9"
+    },
+    {
+      "buildRelativePath": "CMakeFiles/native_track_host_tests.dir/tests/native_track_host_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/CMakeFiles/native_track_host_tests.dir/tests/native_track_host_tests.cpp.obj.d",
+      "bytes": 12238,
+      "sha256": "7556d93ac4b28fb23a861c886ec1e82ba7cea140ac1714c95f828f81469ee322"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/RtAudio.cpp.obj.d",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/RtAudio.cpp.obj.d",
+      "bytes": 31421,
+      "sha256": "dcae3e51ec1db3ac280cf0dc00a4703197aebbdc9b3fa25f650e698b5e89e9f4"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/build.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/build.make",
+      "bytes": 11436,
+      "sha256": "0754f1b35f8b770cbb2676194486808fa2e41df01b825cd6d868577e9dcb07e1"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/flags.make",
+      "bytes": 611,
+      "sha256": "9a578c24b7ba8bb292f87599d5b6216450e90ce4ccb8026308fd3c6a15e19732"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/rtaudio_c.cpp.obj.d",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/rtaudio_c.cpp.obj.d",
+      "bytes": 27574,
+      "sha256": "11803221f1ee524a61d11e16ce305130fd55eadb64d218e698b04038dccfa47d"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/apinames.cpp.obj.d",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/apinames.cpp.obj.d",
+      "bytes": 27592,
+      "sha256": "1c75182c1195fbbc94b4dfe29b5e8acadebde3eeda63dd42e8451ab23bd50c96"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/build.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/build.make",
+      "bytes": 8904,
+      "sha256": "d14859d8125e0ca58ccfb804951c33c2e3b42ff62fde8541b54cdc11f52f3660"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/audioprobe.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/audioprobe.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/duplex.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/duplex.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/playraw.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/playraw.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/playsaw.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/playsaw.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/record.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/record.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/testall.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/testall.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "_deps/rtaudio_src-build/tests/CMakeFiles/teststops.dir/flags.make",
+      "archivePath": "evidence/generated-build/_deps/rtaudio_src-build/tests/CMakeFiles/teststops.dir/flags.make",
+      "bytes": 811,
+      "sha256": "f2a927809fec26d0d392e4e77085fae8134287b7036d0c048b726bf540db8485"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/composite_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/composite_fx_tests.dir/build.make",
+      "bytes": 9066,
+      "sha256": "076982b5ded204d48d87370cd822e60de7ca17358ab64ed562e711b4ea89976e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/composite_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/composite_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/composite_fx_tests.dir/tests/composite_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/composite_fx_tests.dir/tests/composite_fx_tests.cpp.obj.d",
+      "bytes": 8233,
+      "sha256": "9d69a59203c135959d92a79e2ea8668c5f02d1dd48d2fa2abde0df346177ba27"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/control_dynamics_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/control_dynamics_tests.dir/build.make",
+      "bytes": 9334,
+      "sha256": "64f4059d49d86740248324bf39d49c4289a35b97beb1ca7abaef416ce98f805d"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/control_dynamics_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/control_dynamics_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj.d",
+      "bytes": 8047,
+      "sha256": "fd3aac398ae8159c757782e6795ad1f0149f128d9e606cd13406cd197cfb590e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/distortion_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/distortion_fx_tests.dir/build.make",
+      "bytes": 9133,
+      "sha256": "186bdb120a8f471b0c639819adcc99d0f816785bcadf4d57da7761b2d28a4f95"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/distortion_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/distortion_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/distortion_fx_tests.dir/tests/distortion_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/distortion_fx_tests.dir/tests/distortion_fx_tests.cpp.obj.d",
+      "bytes": 8227,
+      "sha256": "96423c5d70b824ba73f75235a8b95cb9be1b0e2205c3a94bdf15baae9e1df992"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/dsp_primitives_golden.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/dsp_primitives_golden.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/dsp_primitives_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/dsp_primitives_tests.dir/build.make",
+      "bytes": 9200,
+      "sha256": "663b24e584c4a1078cf53a12ec2ec01f4f91817b2fa5ea054617d81ddf04dbce"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/dsp_primitives_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/dsp_primitives_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj.d",
+      "bytes": 8069,
+      "sha256": "01b2d44a9e8987df4175e56894f85feb80b3f16ed166bac31271ada8b8b65cc6"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/fx_registry_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/fx_registry_tests.dir/build.make",
+      "bytes": 8999,
+      "sha256": "e3e0fffdcf286a79c93052d48adad8e0e3c84da2cd29da9db81519f386c65560"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/fx_registry_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/fx_registry_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj.d",
+      "bytes": 8961,
+      "sha256": "98d2efcadf56a33d14f15bbbd7c01ba9d61dad2656d861558ac958ba4f0227da"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/build.make",
+      "bytes": 9267,
+      "sha256": "b6db6cf0e86eae8ff3a73e20afc23f1ba16f059bc2657d51c2e0d27e7950120a"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/tests/live_mono_pitch_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/tests/live_mono_pitch_tests.cpp.obj.d",
+      "bytes": 11976,
+      "sha256": "bc91b83a8f009c5c3caed8a0537edfad8b6b8944c614d910fadeae7b9a6f80a8"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/modulated_delay_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/modulated_delay_fx_tests.dir/build.make",
+      "bytes": 9468,
+      "sha256": "5c438204154e94f6f9c506169f73707ee7dcc2c4614e9e579cba8e30df32b20f"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/modulated_delay_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/modulated_delay_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/modulated_delay_fx_tests.dir/tests/modulated_delay_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/modulated_delay_fx_tests.dir/tests/modulated_delay_fx_tests.cpp.obj.d",
+      "bytes": 8049,
+      "sha256": "5cf9d611496e20954c5f1a4f473a6d11317008dd0594f255d6a418e579863fc6"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/modulation_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/modulation_fx_tests.dir/build.make",
+      "bytes": 9133,
+      "sha256": "9490125431f4491b7098ac4a91ec687426ca57827009b8529e6c3ecdd45facf9"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/modulation_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/modulation_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/modulation_fx_tests.dir/tests/modulation_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/modulation_fx_tests.dir/tests/modulation_fx_tests.cpp.obj.d",
+      "bytes": 8234,
+      "sha256": "f35591d66554af6ca1f0b900ef3e769f3c2c95a68876909be819b8a53e19edcb"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_dsp_parity_v21_generator.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_dsp_parity_v21_generator.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_dsp_pcm_fixture_generator.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_dsp_pcm_fixture_generator.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj.d",
+      "bytes": 12087,
+      "sha256": "7b0ee3330c7cfc1ffe385c7953e1665e0f42bfa287b34dc53ea3ebb531b43582"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/build.make",
+      "bytes": 9759,
+      "sha256": "41b3e06649fdc1c84373eb93b6f107215e3a0dc2550116636481bcabc45af590"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_dsp_sustained_bench.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_dsp_sustained_bench.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_rhythm_bench.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_rhythm_bench.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/native_streaming_yin_bench.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/native_streaming_yin_bench.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/nonlinear_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/nonlinear_tests.dir/build.make",
+      "bytes": 8865,
+      "sha256": "d6c096205236f539bca80b1b413ade6fe5a65f2dca61629de2ff95bd5107c13d"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/nonlinear_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/nonlinear_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj.d",
+      "bytes": 10958,
+      "sha256": "95e188b950e91b9d1f141dc2a43fd53c3e779bf161cc78c9c8c7818951842b4a"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/octave_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/octave_fx_tests.dir/build.make",
+      "bytes": 8865,
+      "sha256": "c54db19b4b23a66025e9f0b6b237ec9ca4f0c1099d19fb0cfb39626598e59df8"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/octave_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/octave_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/octave_fx_tests.dir/tests/octave_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/octave_fx_tests.dir/tests/octave_fx_tests.cpp.obj.d",
+      "bytes": 11783,
+      "sha256": "bb9450e1250756a77abb1db6cd4e88b67138839a6bd6ad2db60eadabf6e4f694"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/octave_models_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/octave_models_tests.dir/build.make",
+      "bytes": 9133,
+      "sha256": "d9bd98fcab7d9645c6961628d7e7f46fca30c62de3ac3db9a6d2d292fd099a96"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/octave_models_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/octave_models_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/octave_models_tests.dir/tests/octave_models_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/octave_models_tests.dir/tests/octave_models_tests.cpp.obj.d",
+      "bytes": 11970,
+      "sha256": "dd09852ef0e7087f44e37647c259609f8db944ee009b1552aa835d80cb927727"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/performance_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/performance_fx_tests.dir/build.make",
+      "bytes": 9200,
+      "sha256": "e9812aecd0049b89ba50b8df79c4dc4888d2002aa0bf4a455a545ef68a60dd32"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/performance_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/performance_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/performance_fx_tests.dir/tests/performance_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/performance_fx_tests.dir/tests/performance_fx_tests.cpp.obj.d",
+      "bytes": 8045,
+      "sha256": "31c71d3ab251b4d19991190c55338cf82f0b8557f8d4eab75a63d350206dbe8b"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/pitch_profiles_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/pitch_profiles_tests.dir/build.make",
+      "bytes": 9200,
+      "sha256": "9965eb7125ee8b1789557008630c53090b3923b1ec5ee4f9987f11b031c54212"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/pitch_profiles_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/pitch_profiles_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/pitch_profiles_tests.dir/tests/pitch_profiles_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/pitch_profiles_tests.dir/tests/pitch_profiles_tests.cpp.obj.d",
+      "bytes": 14157,
+      "sha256": "469ef413b02435748d8f0770245794dbf290e7110faa3b7d045c1a344a5f6f05"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/pitch_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/pitch_tests.dir/build.make",
+      "bytes": 8597,
+      "sha256": "82fbe416656769477531b391b5e4db073da45f3659292b974914821d36c8f782"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/pitch_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/pitch_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj.d",
+      "bytes": 13877,
+      "sha256": "92d3de472f096e143c204b26440a46680d5d745c382697b59612ea5a01f348bc"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/preamp_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/preamp_fx_tests.dir/build.make",
+      "bytes": 8865,
+      "sha256": "7382bfc122a4756a2f000fc051dd3eecdb94d94e7dc4430ae52a4b7326fc0945"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/preamp_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/preamp_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/preamp_fx_tests.dir/tests/preamp_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/preamp_fx_tests.dir/tests/preamp_fx_tests.cpp.obj.d",
+      "bytes": 11977,
+      "sha256": "f3e6d0872e6b37894f8a2ac2bb6fe8d78769403eeaa72c2d137ed848278ea828"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/preamp_models_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/preamp_models_tests.dir/build.make",
+      "bytes": 9133,
+      "sha256": "df827a7898e1e9e348a3dd8030435521d6c4d9c6c207aace6bd4baa2d166c6ca"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/preamp_models_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/preamp_models_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/preamp_models_tests.dir/tests/preamp_models_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/preamp_models_tests.dir/tests/preamp_models_tests.cpp.obj.d",
+      "bytes": 12164,
+      "sha256": "26ee0feb92867904ecbdc3082d87bda548bf3e7eed4e7b3a0999b47d9f1e613e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/reconstruction_fx_adapter_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/reconstruction_fx_adapter_tests.dir/build.make",
+      "bytes": 9937,
+      "sha256": "e5c2c103f6326d742319883bf705bd0282ef5646171805682d6d209c1c06038f"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/reconstruction_fx_adapter_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/reconstruction_fx_adapter_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/reconstruction_fx_adapter_tests.dir/tests/reconstruction_fx_adapter_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/reconstruction_fx_adapter_tests.dir/tests/reconstruction_fx_adapter_tests.cpp.obj.d",
+      "bytes": 13328,
+      "sha256": "d8c59afcc9f77d7562b957e8c839bf31ab1eb66fb2f2ffc74e11d58d653a2c64"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/rhythm_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/rhythm_tests.dir/build.make",
+      "bytes": 8664,
+      "sha256": "4aac497464d177dedbe1f9afa668562828ca87e352c692c8c67eeef4c83500fd"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/rhythm_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/rhythm_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/rhythm_tests.dir/tests/rhythm_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/rhythm_tests.dir/tests/rhythm_tests.cpp.obj.d",
+      "bytes": 11986,
+      "sha256": "22515cb8a3238253256671c2b53ee913932918e1fdc2e016087b382e40692068"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/rhythmic_fx_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/rhythmic_fx_tests.dir/build.make",
+      "bytes": 8999,
+      "sha256": "a47d8d1f11135703eef94dc04e0acd709326a4325786b8520094bcfe07a591bb"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/rhythmic_fx_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/rhythmic_fx_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/rhythmic_fx_tests.dir/tests/rhythmic_fx_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/rhythmic_fx_tests.dir/tests/rhythmic_fx_tests.cpp.obj.d",
+      "bytes": 8042,
+      "sha256": "739f24805c9a0fa452c0862155b8a930056bdd498cff4f4e077dbb0ae3829dcf"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/spatial_fx_adapters_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/spatial_fx_adapters_tests.dir/build.make",
+      "bytes": 9535,
+      "sha256": "fefc27acb9ef15ca696f08be732eb5b5a2327235d7456a49ce2047bc6f15cba6"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/spatial_fx_adapters_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/spatial_fx_adapters_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/spatial_fx_adapters_tests.dir/tests/spatial_fx_adapters_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/spatial_fx_adapters_tests.dir/tests/spatial_fx_adapters_tests.cpp.obj.d",
+      "bytes": 11804,
+      "sha256": "37114ed474ae439a60753c739385309458894ee7dbb0215f6b6e5039064df098"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/spatial_temporal_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/spatial_temporal_tests.dir/build.make",
+      "bytes": 9334,
+      "sha256": "fdbde1e187fdae7cec4619fc219774e246e0ebf25d6292f9c21df4fdf8032823"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/spatial_temporal_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/spatial_temporal_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj.d",
+      "bytes": 11788,
+      "sha256": "3fdc2137a49dcc9c01b5b1503fae986ca6a169cb0bdeee7ccfe7eb12a00cedd7"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/streaming_yin_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/streaming_yin_tests.dir/build.make",
+      "bytes": 9133,
+      "sha256": "8bd3e24e89892a9db2c04bb19e9d4251469f7ff4980eb2a273d6b42905b8e099"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/streaming_yin_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/streaming_yin_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/streaming_yin_tests.dir/tests/streaming_yin_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/streaming_yin_tests.dir/tests/streaming_yin_tests.cpp.obj.d",
+      "bytes": 11787,
+      "sha256": "477f13e02da789cd90dc8766e6a1fcf7d9e713aec2e8aa8e093bffac93fa901e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/temporal_fx_adapters_tests.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/temporal_fx_adapters_tests.dir/build.make",
+      "bytes": 9602,
+      "sha256": "f6b14f03ceb6bf7878f7bc0694cc14fa812bf703285c693597f06a19f2985dec"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/temporal_fx_adapters_tests.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/temporal_fx_adapters_tests.dir/flags.make",
+      "bytes": 865,
+      "sha256": "7eeac0cd7fb9186f8bf9c2aeab6a0d799e0b7f5255fee7b50f83eff8df2ffb77"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/temporal_fx_adapters_tests.dir/tests/temporal_fx_adapters_tests.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/temporal_fx_adapters_tests.dir/tests/temporal_fx_adapters_tests.cpp.obj.d",
+      "bytes": 12176,
+      "sha256": "7aaefbf3c880d13293408fd06d0c50437856d9af2de1bab9b2fb72687bd122a6"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/build.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/build.make",
+      "bytes": 96388,
+      "sha256": "1da43eead35d258e9abadb1039ca10ee846f7f4549e035e3f67fcd35edc9a06a"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/flags.make",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/flags.make",
+      "bytes": 882,
+      "sha256": "9abd1ea33749749cfb7f8f5d9e01e8072f9b6434246068556acd8c7a5f864c33"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/cleanroom_rhythm_data.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/cleanroom_rhythm_data.cpp.obj.d",
+      "bytes": 11878,
+      "sha256": "2106e2f716f32310b78309f595c708d8ec6614d1506f80fdf91400fea9996938"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/composite_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/composite_fx.cpp.obj.d",
+      "bytes": 7735,
+      "sha256": "d467673a68a979707c48c0c7d861420fb22e3329a76e70a2de84f2c8f937c154"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj.d",
+      "bytes": 7549,
+      "sha256": "45a7743b0245d44a8add011abb30a82099481e369bab196be14cd7df03717fc4"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/distortion_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/distortion_fx.cpp.obj.d",
+      "bytes": 7729,
+      "sha256": "51ed2f0606cfe0705908b3d15660aa03dfb37e97365a0790ef634e6fd603420a"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj.d",
+      "bytes": 11097,
+      "sha256": "00995529d884d199982b8468198ec56b450adc4fb845c1b918b6e9767d7b636c"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj.d",
+      "bytes": 14854,
+      "sha256": "653017b29f044a2a0abd378099bbc4583c4f64e0016f3e765305161a5a3f84b9"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/live_mono_pitch.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/live_mono_pitch.cpp.obj.d",
+      "bytes": 11976,
+      "sha256": "bc91b83a8f009c5c3caed8a0537edfad8b6b8944c614d910fadeae7b9a6f80a8"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/modulated_delay_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/modulated_delay_fx.cpp.obj.d",
+      "bytes": 7551,
+      "sha256": "348c997758a5d40ff6fc7b717e4c24903829d2088aab1d882863be49368651b2"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/modulation_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/modulation_fx.cpp.obj.d",
+      "bytes": 7442,
+      "sha256": "c6c04a26c2deb26fc513ea330343eafbb93e9eca685e18ae1a34b54aa00029dd"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj.d",
+      "bytes": 7542,
+      "sha256": "cbaf4bcb20cb5425e33aafc89471c934a72a523ca7270ec6396654b0c9f8d694"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/octave_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/octave_fx.cpp.obj.d",
+      "bytes": 11960,
+      "sha256": "1c1896a7532f8475ec1574ee91483edb32e1ea2b9cf225bb80b0f3c01285f636"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/octave_models.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/octave_models.cpp.obj.d",
+      "bytes": 11970,
+      "sha256": "dd09852ef0e7087f44e37647c259609f8db944ee009b1552aa835d80cb927727"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/performance_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/performance_fx.cpp.obj.d",
+      "bytes": 7547,
+      "sha256": "86eb83104dacfb104b1467a8dd30d2f21f68f17301e48bcd7108b49771503e21"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj.d",
+      "bytes": 11777,
+      "sha256": "22aa77b1b9f890993690e4ece10f9cd3795d9bc2ee43a77321a8c4a83c522a9e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/pitch_profiles.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/pitch_profiles.cpp.obj.d",
+      "bytes": 14157,
+      "sha256": "469ef413b02435748d8f0770245794dbf290e7110faa3b7d045c1a344a5f6f05"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/preamp_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/preamp_fx.cpp.obj.d",
+      "bytes": 12154,
+      "sha256": "cc873e0477ca0ae5ac2e23dd0300bedb23b1e8a98039f14de1f61ac31c312a1e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/preamp_models.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/preamp_models.cpp.obj.d",
+      "bytes": 12341,
+      "sha256": "6c2ecb39c35005591bc990e64440e5793ca37e01c2969e1248730c12dfdac152"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj.d",
+      "bytes": 7255,
+      "sha256": "bad0912e24907eb7e58f0173d1fe9898f6214bd0cde48f606d37abfb5707b46e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/reconstruction_fx_adapter.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/reconstruction_fx_adapter.cpp.obj.d",
+      "bytes": 13328,
+      "sha256": "d8c59afcc9f77d7562b957e8c839bf31ab1eb66fb2f2ffc74e11d58d653a2c64"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/rhythm.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/rhythm.cpp.obj.d",
+      "bytes": 11986,
+      "sha256": "22515cb8a3238253256671c2b53ee913932918e1fdc2e016087b382e40692068"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/rhythmic_fx.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/rhythmic_fx.cpp.obj.d",
+      "bytes": 7544,
+      "sha256": "c78102ab3e8abfad1214ed200982f17e00b4535a0069263f1ae0aee0808505e4"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj.d",
+      "bytes": 13414,
+      "sha256": "dca22c2570367d0184ded0d8832596cae86852430623efd74323d89c9372ff5d"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/spatial_fx_adapters.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/spatial_fx_adapters.cpp.obj.d",
+      "bytes": 11804,
+      "sha256": "37114ed474ae439a60753c739385309458894ee7dbb0215f6b6e5039064df098"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj.d",
+      "bytes": 11788,
+      "sha256": "92a7fbd413f7a864c290d84a33250ab32cdd2a7bafc15333e76ad39f1da61f5b"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/streaming_yin.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/streaming_yin.cpp.obj.d",
+      "bytes": 11787,
+      "sha256": "477f13e02da789cd90dc8766e6a1fcf7d9e713aec2e8aa8e093bffac93fa901e"
+    },
+    {
+      "buildRelativePath": "shared_dsp/CMakeFiles/webrc_dsp.dir/src/temporal_fx_adapters.cpp.obj.d",
+      "archivePath": "evidence/generated-build/shared_dsp/CMakeFiles/webrc_dsp.dir/src/temporal_fx_adapters.cpp.obj.d",
+      "bytes": 12176,
+      "sha256": "7aaefbf3c880d13293408fd06d0c50437856d9af2de1bab9b2fb72687bd122a6"
+    }
+  ],
+  "publicationScope": {
+    "nestedGitMetadataExcluded": 84,
+    "fetchContentPayloads": 1259,
+    "originalDependencyManifestPreserved": true,
+    "reason": "Nested .git metadata are local provenance records, not compilation inputs or publishable workspace files; their original manifest hashes remain unchanged."
+  },
+  "limitations": [
+    "All FetchContent mirrors were captured after compilation, not pre-build.",
+    "Startup finite-history bounds do not prove recursive-state settling or hardware latency."
+  ]
+}

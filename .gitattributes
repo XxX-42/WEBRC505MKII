@@ -393,3 +393,9 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /dsp/spec/cleanroom_kit_profiles.json -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 /dsp/spec/validate_cleanroom_rhythm.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 /docs/dsp/CATALOG_PROGRESS_ROOT_REVIEW.md -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/bench/results/native-fx-finite-history-r3-delta-20261009T2117Z/** -text -whitespace
+/bench/results/native-fx-finite-history-r3-tu-digest-correction-20261009T213600Z/** -text -whitespace
+/scripts/review-native-finite-history-r3.py -text
+/docs/validation/20261010/native-finite-history-r3-root-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/docs/validation/20261010/root-native-finite-history-r3-ctest.log -text -whitespace
+/docs/dsp/FINITE_HISTORY_R3_ROOT_REVIEW.md -text
