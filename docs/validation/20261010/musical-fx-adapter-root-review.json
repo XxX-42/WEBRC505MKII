@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-10-09T20:43:44.409088+00:00",
+  "archive": "shared/dsp/benchmarks/results/musical-fx-adapter-fresh-closure-20261009T203400Z",
+  "indexSha256": "1a173829f2849f16766ee3d25512e0905162d59d7c87e5107c97b037db6f50cf",
+  "indexedFilesVerifiedBeforeAndAfterRootRun": 54,
+  "copiedSourceFilesVerified": 19,
+  "liveSourceHashesMatchCopiedSource": true,
+  "producerBeforeAfterSourceTreesEqual": true,
+  "compiledTranslationUnits": [
+    "primitives.cpp",
+    "fft.cpp",
+    "pitch.cpp",
+    "streaming_yin.cpp",
+    "control_dynamics.cpp",
+    "voice_fx.cpp",
+    "synthesis_pitch_fx.cpp",
+    "vocoder_fx.cpp",
+    "musical_fx_adapter.cpp",
+    "musical_fx_adapter_tests.cpp"
+  ],
+  "rootTestExitCode": 0,
+  "rootTestLog": "docs/validation/20261010/root-musical-fx-adapter-test.log",
+  "rootTestLogSha256": "466b415ba4fa5a15cca6b6199fa238a60535c56f0c953ec34bb76a3126bbed3f",
+  "executableSha256": "21735376724162434c92c0903900149db6fb1176e35a52adbcb1b67adf16386f",
+  "carrierEnergy": {
+    "left": 1.88125543,
+    "right": 1.06895568e-09
+  },
+  "coverageReviewed": {
+    "kindsAndOrdinals": [
+      {
+        "kind": "Synth",
+        "ordinal": 6
+      },
+      {
+        "kind": "GuitarToBass",
+        "ordinal": 10
+      },
+      {
+        "kind": "AutoRiff",
+        "ordinal": 12
+      },
+      {
+        "kind": "Robot",
+        "ordinal": 16
+      },
+      {
+        "kind": "Electric",
+        "ordinal": 17
+      },
+      {
+        "kind": "HarmonyAuto",
+        "ordinal": 19
+      },
+      {
+        "kind": "VocoderExternalCarrier",
+        "ordinal": 20
+      },
+      {
+        "kind": "OscVocMidi",
+        "ordinal": 21
+      },
+      {
+        "kind": "OscBot",
+        "ordinal": 22
+      }
+    ],
+    "totalMixedEventsLimit": 64,
+    "test65EventCombinedRejection": true,
+    "test64ParameterMidiAcceptance": true,
+    "invalidFinalParameterAtomic": true,
+    "invalidFinalMidiAtomic": true,
+    "carrierNullAndWrongRouteAtomic": true,
+    "channelZeroMidiOnly": true,
+    "nonzeroChannelRejected": true,
+    "stereoIsolationKinds": [
+      "GuitarToBass",
+      "Robot",
+      "Electric",
+      "Vocoder external carrier"
+    ],
+    "timedMidiSplitFrames": [
+      64,
+      128,
+      64
+    ],
+    "callbackNewCount": 0,
+    "callbackDeleteCount": 0
+  },
+  "limitations": [
+    "Nine standalone adapter kinds only; no factory/Native graph/WASM route is added by this checkpoint",
+    "MIDI channel 0 only; external-carrier VOCODER20 ordinary processing deliberately rejects",
+    "C++ new/delete instrumentation covers tested callback calls only, not OS heap, locks or browser GC",
+    "No callback timing benchmark, full graph stress, official control-schema completeness, musical quality or Gate pass",
+    "The archive pins copied product sources and executable but does not capture a full compiler/SDK dependency closure",
+    "No-exceptions compilation covers the adapter translation unit, not a complete WASM link"
+  ]
+}

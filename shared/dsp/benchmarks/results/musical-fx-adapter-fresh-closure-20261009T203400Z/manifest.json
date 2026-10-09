@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "artifact": "musical-fx-adapter standalone fresh Release closure",
+  "createdUtc": "2026-10-09T20:36:14.1037743Z",
+  "sourceSnapshot": "source/",
+  "sourceHashes": [
+    "source-hashes-before.json",
+    "source-hashes-after.json"
+  ],
+  "sourceTreeBeforeAfterIdentical": true,
+  "buildScript": "build_release.cmd",
+  "compiler": {
+    "product": "Microsoft Visual Studio 2019 Build Tools",
+    "compiler": "MSVC 19.29.30159.0",
+    "linker": "14.29.30159.0",
+    "architecture": "x64",
+    "flags": [
+      "/std:c++17",
+      "/O2",
+      "/EHsc",
+      "/W4",
+      "/permissive-",
+      "/fp:precise",
+      "/bigobj"
+    ],
+    "noExceptionsAdapterFlags": [
+      "/std:c++17",
+      "/O2",
+      "/EHs-c-",
+      "/D_HAS_EXCEPTIONS=0",
+      "/W4",
+      "/permissive-",
+      "/fp:precise",
+      "/bigobj"
+    ],
+    "vcvars": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+  },
+  "environment": {
+    "os": "Microsoft Windows 11 专业版",
+    "version": "10.0.26200",
+    "cpu": "AMD Ryzen 9 5900HX with Radeon Graphics        "
+  },
+  "translationUnits": [
+    "primitives.cpp",
+    "fft.cpp",
+    "pitch.cpp",
+    "streaming_yin.cpp",
+    "control_dynamics.cpp",
+    "voice_fx.cpp",
+    "synthesis_pitch_fx.cpp",
+    "vocoder_fx.cpp",
+    "musical_fx_adapter.cpp",
+    "musical_fx_adapter_tests.cpp"
+  ],
+  "result": {
+    "exitCode": 0,
+    "summary": "VOCODER20_CARRIER_LR_ENERGY 1.88125543 1.06895568e-09\r\nmusical_fx_adapter_tests: PASS",
+    "stderr": "",
+    "executable": {
+      "path": "build/musical_fx_adapter_tests.exe",
+      "sha256": "21735376724162434c92c0903900149db6fb1176e35a52adbcb1b67adf16386f",
+      "bytes": 352768
+    },
+    "noExceptionsObject": {
+      "path": "build/musical_fx_adapter_noexceptions.obj",
+      "sha256": "2dd7183e4d201870d7550848c7eb3b38d2f387e0f44ac1533ba1f047f811f2bb",
+      "bytes": 524377
+    }
+  },
+  "coverage": {
+    "kindsAndOrdinals": [
+      {
+        "kind": "Synth",
+        "ordinal": 6
+      },
+      {
+        "kind": "GuitarToBass",
+        "ordinal": 10
+      },
+      {
+        "kind": "AutoRiff",
+        "ordinal": 12
+      },
+      {
+        "kind": "Robot",
+        "ordinal": 16
+      },
+      {
+        "kind": "Electric",
+        "ordinal": 17
+      },
+      {
+        "kind": "HarmonyAuto",
+        "ordinal": 19
+      },
+      {
+        "kind": "VocoderExternalCarrier",
+        "ordinal": 20
+      },
+      {
+        "kind": "OscVocMidi",
+        "ordinal": 21
+      },
+      {
+        "kind": "OscBot",
+        "ordinal": 22
+      }
+    ],
+    "totalMixedEventsLimit": 64,
+    "test65EventCombinedRejection": true,
+    "test64ParameterMidiAcceptance": true,
+    "invalidFinalParameterAtomic": true,
+    "invalidFinalMidiAtomic": true,
+    "carrierNullAndWrongRouteAtomic": true,
+    "channelZeroMidiOnly": true,
+    "nonzeroChannelRejected": true,
+    "stereoIsolationKinds": [
+      "GuitarToBass",
+      "Robot",
+      "Electric",
+      "Vocoder external carrier"
+    ],
+    "timedMidiSplitFrames": [
+      64,
+      128,
+      64
+    ],
+    "callbackNewCount": 0,
+    "callbackDeleteCount": 0
+  },
+  "limitations": [
+    "Adapter remains unregistered; no CMake, global registry, Native graph, or WASM C ABI files were changed.",
+    "The shared FxProcessor planar API lacks explicit carrier and typed MIDI context; integration proposal is reported separately.",
+    "The wrapped implementations currently support only channel 0 for note controls; nonzero channels are rejected.",
+    "Underlying audio-quality, per-callback deadline, whole-graph, and hardware gates are outside this adapter closure.",
+    "No full official UI contract is asserted; options and local semantic parameters delegate to existing clean-room DSP classes."
+  ]
+}
