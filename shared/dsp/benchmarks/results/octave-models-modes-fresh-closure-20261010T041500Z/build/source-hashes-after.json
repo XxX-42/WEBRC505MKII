@@ -1,0 +1,13 @@
+﻿{
+    "shared/dsp/include/webrc/dsp/fft.hpp":  "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+    "shared/dsp/include/webrc/dsp/octave_fx.hpp":  "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7",
+    "shared/dsp/include/webrc/dsp/octave_models.hpp":  "d588f8367dd06f35997b8edef10c5fc7c8840714de8698de1ec0e2536910c565",
+    "shared/dsp/include/webrc/dsp/pitch.hpp":  "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784",
+    "shared/dsp/include/webrc/dsp/primitives.hpp":  "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+    "shared/dsp/src/fft.cpp":  "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+    "shared/dsp/src/octave_fx.cpp":  "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292",
+    "shared/dsp/src/octave_models.cpp":  "a718f4dea1f2890a0f00a2798c74887b77eaee8088eec3c093dc6c5bb9027fbb",
+    "shared/dsp/src/pitch.cpp":  "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6",
+    "shared/dsp/src/primitives.cpp":  "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+    "shared/dsp/tests/octave_models_tests.cpp":  "e60677d78cdb03fdc311873ee8cd8bd56e7f7482e45145fbd7ac4966c8f59b0a"
+}

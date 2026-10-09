@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "artifact": "OCTAVE -1/-2/dual mode standalone copied-source Release closure",
+  "capturedAtUtc": "2026-10-09T19:28:07.1162185Z",
+  "disposition": "candidate; standalone functional tests pass; runtime factory integration, transient quality, real-time deadline, Native/WASM parity, and device qualification remain pending",
+  "build": {
+    "compilerFamily": "MSVC x64",
+    "compilerVersion": "19.29.30159.0 (VS2019 toolset 14.29.30133)",
+    "compilerVersionLog": "build/compiler-version.log",
+    "flags": [
+      "/std:c++17",
+      "/O2",
+      "/EHsc",
+      "/W4",
+      "/permissive-"
+    ],
+    "command": "capture_release.ps1 invokes build_release.cmd from the copied source closure",
+    "translationUnits": [
+      "octave_models.cpp",
+      "octave_fx.cpp",
+      "pitch.cpp",
+      "fft.cpp",
+      "primitives.cpp",
+      "octave_models_tests.cpp"
+    ],
+    "sourceHashesStableBeforeAndAfter": true,
+    "sourceHashCount": 11,
+    "executable": "build/octave_models_tests.exe",
+    "executableSha256": "b281cfed5e29288d03b15ea412d2125d4ca54dfb33f1fdfd662a808a63548119",
+    "sourceHashesBefore": {
+      "shared/dsp/include/webrc/dsp/fft.hpp": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "shared/dsp/include/webrc/dsp/octave_fx.hpp": "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7",
+      "shared/dsp/include/webrc/dsp/octave_models.hpp": "d588f8367dd06f35997b8edef10c5fc7c8840714de8698de1ec0e2536910c565",
+      "shared/dsp/include/webrc/dsp/pitch.hpp": "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784",
+      "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "shared/dsp/src/fft.cpp": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "shared/dsp/src/octave_fx.cpp": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292",
+      "shared/dsp/src/octave_models.cpp": "a718f4dea1f2890a0f00a2798c74887b77eaee8088eec3c093dc6c5bb9027fbb",
+      "shared/dsp/src/pitch.cpp": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6",
+      "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "shared/dsp/tests/octave_models_tests.cpp": "e60677d78cdb03fdc311873ee8cd8bd56e7f7482e45145fbd7ac4966c8f59b0a"
+    },
+    "sourceHashesAfter": {
+      "shared/dsp/include/webrc/dsp/fft.hpp": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "shared/dsp/include/webrc/dsp/octave_fx.hpp": "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7",
+      "shared/dsp/include/webrc/dsp/octave_models.hpp": "d588f8367dd06f35997b8edef10c5fc7c8840714de8698de1ec0e2536910c565",
+      "shared/dsp/include/webrc/dsp/pitch.hpp": "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784",
+      "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "shared/dsp/src/fft.cpp": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "shared/dsp/src/octave_fx.cpp": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292",
+      "shared/dsp/src/octave_models.cpp": "a718f4dea1f2890a0f00a2798c74887b77eaee8088eec3c093dc6c5bb9027fbb",
+      "shared/dsp/src/pitch.cpp": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6",
+      "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "shared/dsp/tests/octave_models_tests.cpp": "e60677d78cdb03fdc311873ee8cd8bd56e7f7482e45145fbd7ac4966c8f59b0a"
+    },
+    "captureStartUtc": "2026-10-09T19:27:49.5436655Z",
+    "captureEndUtc": "2026-10-09T19:28:07.1162185Z",
+    "exitCode": 0
+  },
+  "test": {
+    "schemaVersion": 1,
+    "suite": "octave-models-fx",
+    "sampleRate": 48000,
+    "modeToneMinima": [
+      0.284120784,
+      0.0794895155,
+      0.0397448944
+    ],
+    "oneOctaveChannelPeaks": [
+      0.344731798,
+      0.284120784
+    ],
+    "twoOctaveChannelPeaks": [
+      0.0794895155,
+      0.189985174
+    ],
+    "dualTonePeaks": [
+      0.172366093,
+      0.0397448944,
+      0.142074404,
+      0.0950122887
+    ],
+    "rightChannelLeakageRms": 0,
+    "preEventDifference": 0,
+    "postEventDifference": 0.0438693910837,
+    "coldImpulseFirstSample": 514,
+    "warmImpulseDifferenceFirstSample": 940,
+    "fixedMixedPathSamples": 4096,
+    "gatedDurationMs": 528,
+    "partitionMaximumDifference": 0,
+    "preparedBytes": 1630184,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "failures": 0
+  },
+  "memory": {
+    "requiredPrepareBytes": 1630184,
+    "replacementPeakBytes": 3260368,
+    "accounting": "three existing octave voice instances plus scratch, delayed alignment rings, object storage, and conservative allocator allowance",
+    "failureBehavior": "prepare only fresh inactive instances; replacement is host-staged; in no-exception builds preflight cannot recover allocator OOM"
+  },
+  "latency": {
+    "fixedMixedPathSamples": 4096,
+    "sampleRate": 48000,
+    "coldImpulseFirstNonzeroSample": 514,
+    "warmImpulseDifferenceFirstSample": 940,
+    "meaning": "fixed mixed-path timeline alignment is distinct from cold/warm wet onset and end-to-end host latency"
+  },
+  "publishedUiContract": {
+    "path": "reference/dsp/spec/official_fx_ui_contracts.json",
+    "sha256": "3615e2d18adc18237c0429cc29b8bfe04cdacd73efb1ce033fd52576a29ee7c6",
+    "effectId": "rc505mkii.fx.octave",
+    "printedPage": 39,
+    "octaveChoices": [
+      "-1OCT",
+      "-2OCT",
+      "-1OCT&-2OCT"
+    ]
+  },
+  "algorithmScope": {
+    "downOne": "one existing -12 semitone phase-vocoder stage",
+    "downTwo": "two independent -12 semitone stages cascaded in series",
+    "dual": "constant-sum 0.5/0.5 mix of aligned -12 and -24 voices",
+    "channelPolicy": "independent left/right processing; no cross-channel detector or averaging",
+    "limitation": "the existing phase vocoder uses spectral-bin interpolation without transient phase locking; cascaded transient/spectral quality is not qualified"
+  }
+}

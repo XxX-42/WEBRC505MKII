@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-10-09T19:34:18.103920+00:00",
+  "result": "STANDALONE-FUNCTIONAL-PASS; FINAL-ALGORITHM-AND-QUALITY-NOT-QUALIFIED",
+  "archive": "shared/dsp/benchmarks/results/octave-models-modes-fresh-closure-20261010T041500Z",
+  "inventoryVerified": 31,
+  "inventorySha256": "7a17b27d4fa04e8955f104b0fbe1cb12425d01324f08541e4fe10c3de981c07e",
+  "manifestSha256": "1cc10d2c0bc0e9dd1f4b690c783e1ee54b762d37cd4b6d18e7ae22fe117494e0",
+  "copiedAndLiveInputsByteIdentical": 11,
+  "executableSha256": "b281cfed5e29288d03b15ea412d2125d4ca54dfb33f1fdfd662a808a63548119",
+  "independentExecutableRerunPassed": true,
+  "capturedStdoutFormat": "JSON metrics on first line followed by a plain-text PASS line; the original test-output.json filename is not strict whole-file JSON.",
+  "metrics": {
+    "schemaVersion": 1,
+    "suite": "octave-models-fx",
+    "sampleRate": 48000,
+    "modeToneMinima": [
+      0.284120784,
+      0.0794895155,
+      0.0397448944
+    ],
+    "oneOctaveChannelPeaks": [
+      0.344731798,
+      0.284120784
+    ],
+    "twoOctaveChannelPeaks": [
+      0.0794895155,
+      0.189985174
+    ],
+    "dualTonePeaks": [
+      0.172366093,
+      0.0397448944,
+      0.142074404,
+      0.0950122887
+    ],
+    "rightChannelLeakageRms": 0,
+    "preEventDifference": 0,
+    "postEventDifference": 0.0438693910837,
+    "coldImpulseFirstSample": 514,
+    "warmImpulseDifferenceFirstSample": 940,
+    "fixedMixedPathSamples": 4096,
+    "gatedDurationMs": 528,
+    "partitionMaximumDifference": 0,
+    "preparedBytes": 1630184,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "failures": 0
+  },
+  "archiveUnchangedAfterRerun": true,
+  "limitations": [
+    "Cascades the existing phase-vocoder -12 stage for -24; spectral-bin interpolation and missing transient/identity phase locking remain.",
+    "Tone projection for -2 depends strongly on fixture frequency; amplitude transparency is not established.",
+    "4096 samples is the authored dry-alignment anchor; earliest wet onset514/cold and940/warm do not establish matched wet/dry group delay.",
+    "No external compiler-header byte closure, complete graph deadlines, Native/WASM parity or hardware E2E latency qualification.",
+    "A separate direct Signalsmith .5/.25 stereo candidate is under development; selector availability does not establish final quality."
+  ]
+}
