@@ -43,8 +43,8 @@
     {
       "id": "Gate1",
       "name": "Shared DSP primitives",
-      "status": "not_passed",
-      "evidence": [],
+      "status": "in_progress",
+      "evidence": ["docs/dsp/PRIMITIVES_FOUNDATION.md", "docs/dsp/CONTROL_NONLINEAR_ROOT_REVIEW.md", "docs/dsp/WASM_INTERFACE_ROOT_REVIEW.md"],
       "exitRequirements": ["Required F01-F29 primitives pass their numerical/quality test plan", "Native processes 64-frame blocks; Browser reads actual callback quantum", "Native and Browser/WASM behavior is parity-tested", "No realtime allocation, blocking, I/O, logging, unbounded work, or callback-thread GC", "P99 <= 60% and P99.9 target <= 80% of measured per-quantum deadline, with maximum/xruns recorded"]
     },
     {
