@@ -1,0 +1,329 @@
+{
+  "startedAt": "2026-10-09T13:49:42.221Z",
+  "softwareOnly": true,
+  "hardwareCertified": false,
+  "validationConfig": {
+    "layoutVersion": 4,
+    "sampleRate": 48000,
+    "quantumFrames": null,
+    "audioSink": "none",
+    "input": "synthetic oscillators"
+  },
+  "sharedDspBuild": {
+    "buildManifestSha256": "a2f61db6b5a3fa3c4628d5d984bee91a17dacc2f5492e67ab3350c30d716cde5",
+    "sourceSetSha256": "7b955f0bc281c2210628d9414cb6aa42e3482fd37a6e13eeecc1f3cce96892b6",
+    "candidateArtifactSha256": "bc6d4b49ba34aa579aba31d975b024708ac67bea8c1ae3a86aabe7441003e201",
+    "candidateArtifactBytes": 525893,
+    "runtimeResponse": {
+      "status": 200,
+      "urlPath": "/dsp/webrc-dsp.wasm",
+      "byteLength": 525893,
+      "sha256": "bc6d4b49ba34aa579aba31d975b024708ac67bea8c1ae3a86aabe7441003e201",
+      "matchesManifest": true
+    }
+  },
+  "sourceSha256": {
+    "smoke": "a23719e757953d9c1c31c73dec45718683402eb56bcc31880f5c99a5fda66d0b",
+    "browserAudioEngine": "cb1294f70f9d6982077ae6be93dcd8fc552611055f68e21ae9684d451abbcee3",
+    "realtimeProtocol": "37ce0b343d71fac3bbffab5fd2456dd36513e4e93d90ccbe43640d80339949cd",
+    "realtimeRuntime": "55d7bd211d633e44081434892348ec3e5d7189449663c1619d4eb941d76dc116",
+    "audioEngine": "590fd09fac7698167f7bf299687d1a2dc3dae27852cadbb550a0bd752b17b7ed",
+    "browserRouting": "5d97e5303fa155502b9a0f348532d0f9c651c22f2febdada6598b9395fd03b4d",
+    "rhythmEngine": "f578ad1c3f29f9c171251cc4ab61fba81f615d3da9d0fb0570282d56a81715eb",
+    "rhythmTypes": "f5882984079f2d2b9f807d02aa8e5216d971cfad4305683c03b10b1d8441285b",
+    "rhythmDocuments": "8b22cf5bc4389650a65d3bd2c93a011424d8e26fca888424861468d1eb8198a6",
+    "cleanRoomRhythmCatalog": "bb1775c80e77750aa3fb7f1165393e0a70f75d0e4b9b3584012993750b98f188",
+    "rhythmEditor": "3e074ce76b9a5634dfab32f055f80b503acf6a8ac5e0cf9be2ddc9cc259daf04",
+    "looperWorklet": "33f60d04b7e1feca46f568eb79d391bb47b77d7e64d8f1c1e971c024f4c5a16b",
+    "timeStretchCore": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91"
+  },
+  "status": "FAIL",
+  "assertions": [
+    {
+      "name": "all audio output is redirected away from physical devices",
+      "passed": true,
+      "contexts": [
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        },
+        {
+          "destinationRerouted": true,
+          "sinkIdNone": true,
+          "sinkError": null,
+          "destinationError": null,
+          "contextSampleRate": 48000,
+          "contextSinkId": {}
+        }
+      ]
+    },
+    {
+      "name": "browser realtime engine is initialized",
+      "passed": true
+    },
+    {
+      "name": "the Browser fetched the exact shared-DSP module named by its build manifest",
+      "passed": true,
+      "details": {
+        "sharedDspBuild": {
+          "buildManifestSha256": "a2f61db6b5a3fa3c4628d5d984bee91a17dacc2f5492e67ab3350c30d716cde5",
+          "sourceSetSha256": "7b955f0bc281c2210628d9414cb6aa42e3482fd37a6e13eeecc1f3cce96892b6",
+          "candidateArtifactSha256": "bc6d4b49ba34aa579aba31d975b024708ac67bea8c1ae3a86aabe7441003e201",
+          "candidateArtifactBytes": 525893,
+          "runtimeResponse": {
+            "status": 200,
+            "urlPath": "/dsp/webrc-dsp.wasm",
+            "byteLength": 525893,
+            "sha256": "bc6d4b49ba34aa579aba31d975b024708ac67bea8c1ae3a86aabe7441003e201",
+            "matchesManifest": true
+          }
+        }
+      }
+    }
+  ],
+  "browserConsoleErrors": [
+    "console: Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameOriginAfterDefaultedToSameOriginByCoep"
+  ],
+  "note": "Synthetic oscillator input and software taps only; no physical input/output or hardware latency certification.",
+  "chromiumVersion": "149.0.7827.55",
+  "executablePath": "C:\\Users\\user1000\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe",
+  "crossOriginIsolated": true,
+  "sharedArrayBufferAvailable": true,
+  "engineStatus": {
+    "ready": true,
+    "lastError": "",
+    "message": "BROWSER AUDIO READY"
+  },
+  "softwareSmoke": {
+    "assertions": [
+      {
+        "name": "all audio output is redirected away from physical devices",
+        "passed": true,
+        "contexts": [
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          },
+          {
+            "destinationRerouted": true,
+            "sinkIdNone": true,
+            "sinkError": null,
+            "destinationError": null,
+            "contextSampleRate": 48000,
+            "contextSinkId": {}
+          }
+        ]
+      },
+      {
+        "name": "browser realtime engine is initialized",
+        "passed": true
+      },
+      {
+        "name": "the Browser fetched the exact shared-DSP module named by its build manifest",
+        "passed": true,
+        "details": {
+          "sharedDspBuild": {
+            "buildManifestSha256": "a2f61db6b5a3fa3c4628d5d984bee91a17dacc2f5492e67ab3350c30d716cde5",
+            "sourceSetSha256": "7b955f0bc281c2210628d9414cb6aa42e3482fd37a6e13eeecc1f3cce96892b6",
+            "candidateArtifactSha256": "bc6d4b49ba34aa579aba31d975b024708ac67bea8c1ae3a86aabe7441003e201",
+            "candidateArtifactBytes": 525893,
+            "runtimeResponse": {
+              "status": 200,
+              "urlPath": "/dsp/webrc-dsp.wasm",
+              "byteLength": 525893,
+              "sha256": "bc6d4b49ba34aa579aba31d975b024708ac67bea8c1ae3a86aabe7441003e201",
+              "matchesManifest": true
+            }
+          }
+        }
+      }
+    ],
+    "status": "FAIL",
+    "error": "TypeError: Cannot set properties of undefined (setting 'quantumFrames')",
+    "contextSafety": [
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      },
+      {
+        "destinationRerouted": true,
+        "sinkIdNone": true,
+        "sinkError": null,
+        "destinationError": null,
+        "contextSampleRate": 48000,
+        "contextSinkId": {}
+      }
+    ],
+    "metricsAtFailure": {
+      "sampleRate": 48000,
+      "quantumFrames": 128,
+      "renderedFrame": 75392,
+      "underruns": 0,
+      "commandQueueDepth": 0,
+      "loopFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "recordingFrames": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackStates": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "trackPositions": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "outputMonitorEnabled": false,
+      "backendMode": "sab-worklet",
+      "lastAckSequence": 4,
+      "commandOverruns": 0,
+      "processDeadlineMisses": null,
+      "deadlineMetricAvailable": false,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0,
+      "maxTrackFrames": 67108864,
+      "trackCapacityFrames": [
+        131072,
+        131072,
+        131072,
+        131072,
+        131072
+      ],
+      "inputDropoutFrames": 0,
+      "sharedDspProcessFailures": 0,
+      "storageAllocatedBytes": 5821440,
+      "storageGrowthRequests": 0,
+      "storageGrowthFailures": 0,
+      "historyDepth": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "storageSegments": [
+        8,
+        8,
+        8,
+        8,
+        8
+      ]
+    },
+    "ioSnapshot": {
+      "contextSampleRate": 48000,
+      "contextBaseLatencyMs": 10,
+      "contextOutputLatencyMs": 24,
+      "loopRecordingChannelCount": 2,
+      "loopPlaybackOutputChannelCount": 2,
+      "loopChannelLayout": "stereo planar LR; stereo input preserved and mono input duplicated to LR",
+      "inputDeviceId": "smoke-stereo-input",
+      "inputLabel": "MediaStreamAudioDestinationNode",
+      "inputSampleRate": 48000,
+      "inputChannelCount": 2,
+      "inputLatencyMs": 10,
+      "echoCancellation": null,
+      "noiseSuppression": null,
+      "autoGainControl": null,
+      "outputDeviceId": null,
+      "outputLabel": null,
+      "outputSinkType": "none",
+      "rhythmRoutingDelayFrames": 128
+    },
+    "latencyInfo": {
+      "mode": "browser",
+      "backend": "BROWSER",
+      "sampleRate": 48000,
+      "bufferFrames": 128,
+      "inputLatencyMs": null,
+      "outputLatencyMs": 24,
+      "baseLatencyMs": 10,
+      "estimatedMonitoringLatencyMs": null,
+      "roundTripLatencyMs": null,
+      "physicalRoundTripMs": null,
+      "inputLatencySource": null,
+      "outputLatencySource": "AudioContext.outputLatency API",
+      "driverReportedStreamLatencyMs": null,
+      "driverReportedStreamLatencySource": null,
+      "roundTripLatencyNote": "No correlated output-to-input loopback calibration is stored for the active device route and capture format.",
+      "inputPeak": 0,
+      "outputPeak": 0,
+      "xrunsOrDropouts": null,
+      "callbackStatusFaults": null,
+      "inputQueueOverruns": null,
+      "outputQueueUnderruns": null,
+      "callbackFrameLimitViolations": null,
+      "droppedCommands": null,
+      "outputQueueDepthBlocks": null,
+      "outputQueueCapacityBlocks": null,
+      "callbackTicks": null,
+      "inputCallbackTicks": null,
+      "outputCallbackTicks": null,
+      "callbackCountSkew": null,
+      "bridgeAvailable": true,
+      "engineRunning": true
+    }
+  },
+  "error": "TypeError: Cannot set properties of undefined (setting 'quantumFrames')",
+  "completedAt": "2026-10-09T13:49:47.807Z",
+  "softwareContexts": [
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    },
+    {
+      "destinationRerouted": true,
+      "sinkIdNone": true,
+      "sinkError": null,
+      "destinationError": null,
+      "sampleRate": 48000,
+      "sinkId": {}
+    }
+  ],
+  "syntheticInputContextCount": 1,
+  "syntheticInputLayouts": [
+    {
+      "requestedDeviceId": "",
+      "mono": false,
+      "sourceChannels": 2,
+      "trackSettings": {
+        "channelCount": 2,
+        "deviceId": "smoke-stereo-input",
+        "latency": 0.01,
+        "sampleRate": 48000,
+        "sampleSize": 16
+      }
+    }
+  ],
+  "outputFile": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc505-browser-realtime-smoke-2026-10-09T13-49-42-221Z.json"
+}

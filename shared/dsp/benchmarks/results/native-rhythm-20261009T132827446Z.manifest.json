@@ -1,0 +1,1077 @@
+{
+  "schemaVersion": "webrc-native-rhythm-capture-manifest-v2",
+  "capturedUtc": "2026-10-09T13:28:27.446Z",
+  "qualification": "isolated shared RhythmRenderer reference; not product realtime Gate 1/6/7 qualification",
+  "postProcessing": {
+    "status": "completed_by_python_finalizer",
+    "powerShellIssue": "The benchmark and Python raw-array verification completed, then the PowerShell postprocessor grew to approximately 14 GB working set and was interrupted before manifest output. Raw data, fresh CTest log, compiler log, compile commands, and copied source tree were retained. This happened after the timed benchmark; it is not renderer memory use.",
+    "timedKernelEnvironment": "System-level contention was not fully sampled during this run; wall-clock max remains included. Calibrated cycle estimates are diagnostic and are not used to remove outliers."
+  },
+  "snapshotDirectory": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z",
+  "archivedSourceDirectory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-rhythm-20261009T132827446Z.snapshot",
+  "sourceArchiveMatchesBuiltSnapshot": true,
+  "snapshotFingerprintBeforeAndAfterBuild": {
+    "aggregateSha256": "e40b4801ec0851f0c1b33ca13e19199bde275960ce8c172c463afb19a589f5e9",
+    "files": [
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "e649a9728edb8ce256b340afa7f837d35c3fe8ee4cea6b44ea31b3bbd600f8e4",
+        "bytes": 1112
+      },
+      {
+        "path": "dsp/spec/build_cleanroom_rhythm.py",
+        "sha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+        "bytes": 26399
+      },
+      {
+        "path": "dsp/spec/cleanroom_kit_profiles.json",
+        "sha256": "af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0",
+        "bytes": 30419
+      },
+      {
+        "path": "dsp/spec/cleanroom_rhythm_patterns.json",
+        "sha256": "d0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115",
+        "bytes": 3521899
+      },
+      {
+        "path": "shared/dsp/benchmarks/capture_native_rhythm_bench.ps1",
+        "sha256": "a9641f7e3be28964980e22b03ce36d83a71ef159497d5fec260a01ca3713ee02",
+        "bytes": 12448
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+        "sha256": "f937741268a2ea6f3c337f3e518bc488fa65ce946eb4051a1a0bd218d72648ed",
+        "bytes": 38401
+      },
+      {
+        "path": "shared/dsp/benchmarks/summarize_native_rhythm_capture.py",
+        "sha256": "f1e5104a5453e83f5823acb8d58aa524798e946bd2cdc2277378fd4575af1a53",
+        "bytes": 7948
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+        "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+        "bytes": 392
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+        "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+        "bytes": 6746
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+        "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+        "bytes": 548
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+        "sha256": "f1a66db1be9cd80c626cf9437d083b1bf9dfbe52a44818d7fe9bf6a29e5a0a7b",
+        "bytes": 6102
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+        "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+        "bytes": 4181
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+        "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+        "bytes": 9082
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+        "bytes": 10933
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+        "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e",
+        "bytes": 9386
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+        "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+        "bytes": 3415
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+        "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+        "bytes": 23156
+      },
+      {
+        "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+        "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+        "bytes": 1035520
+      },
+      {
+        "path": "shared/dsp/src/fft.cpp",
+        "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+        "bytes": 3129
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+        "bytes": 38017
+      },
+      {
+        "path": "shared/dsp/src/rhythm.cpp",
+        "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+        "bytes": 27973
+      },
+      {
+        "path": "shared/dsp/src/spatial_temporal.cpp",
+        "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+        "bytes": 88577
+      },
+      {
+        "path": "shared/dsp/tests/rhythm_tests.cpp",
+        "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7",
+        "bytes": 41653
+      }
+    ]
+  },
+  "archivedSourceFingerprint": {
+    "aggregateSha256": "e40b4801ec0851f0c1b33ca13e19199bde275960ce8c172c463afb19a589f5e9",
+    "files": [
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "e649a9728edb8ce256b340afa7f837d35c3fe8ee4cea6b44ea31b3bbd600f8e4",
+        "bytes": 1112
+      },
+      {
+        "path": "dsp/spec/build_cleanroom_rhythm.py",
+        "sha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+        "bytes": 26399
+      },
+      {
+        "path": "dsp/spec/cleanroom_kit_profiles.json",
+        "sha256": "af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0",
+        "bytes": 30419
+      },
+      {
+        "path": "dsp/spec/cleanroom_rhythm_patterns.json",
+        "sha256": "d0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115",
+        "bytes": 3521899
+      },
+      {
+        "path": "shared/dsp/benchmarks/capture_native_rhythm_bench.ps1",
+        "sha256": "a9641f7e3be28964980e22b03ce36d83a71ef159497d5fec260a01ca3713ee02",
+        "bytes": 12448
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+        "sha256": "f937741268a2ea6f3c337f3e518bc488fa65ce946eb4051a1a0bd218d72648ed",
+        "bytes": 38401
+      },
+      {
+        "path": "shared/dsp/benchmarks/summarize_native_rhythm_capture.py",
+        "sha256": "f1e5104a5453e83f5823acb8d58aa524798e946bd2cdc2277378fd4575af1a53",
+        "bytes": 7948
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+        "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+        "bytes": 392
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+        "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+        "bytes": 6746
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+        "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+        "bytes": 548
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+        "sha256": "f1a66db1be9cd80c626cf9437d083b1bf9dfbe52a44818d7fe9bf6a29e5a0a7b",
+        "bytes": 6102
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+        "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+        "bytes": 4181
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+        "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+        "bytes": 9082
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+        "bytes": 10933
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+        "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e",
+        "bytes": 9386
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+        "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+        "bytes": 3415
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+        "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+        "bytes": 23156
+      },
+      {
+        "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+        "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+        "bytes": 1035520
+      },
+      {
+        "path": "shared/dsp/src/fft.cpp",
+        "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+        "bytes": 3129
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+        "bytes": 38017
+      },
+      {
+        "path": "shared/dsp/src/rhythm.cpp",
+        "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+        "bytes": 27973
+      },
+      {
+        "path": "shared/dsp/src/spatial_temporal.cpp",
+        "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+        "bytes": 88577
+      },
+      {
+        "path": "shared/dsp/tests/rhythm_tests.cpp",
+        "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7",
+        "bytes": 41653
+      }
+    ]
+  },
+  "sourceIndexPath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-rhythm-20261009T132827446Z.snapshot\\capture\\source-archive-index.json",
+  "sourceSnapshotUnchanged": true,
+  "compilerVersionOutput": "\u7528\u4e8e x64 \u7684 Microsoft (R) C/C++ \u4f18\u5316\u7f16\u8bd1\u5668 19.29.30159 \u7248\n\u7248\u6743\u6240\u6709(C) Microsoft Corporation\u3002\u4fdd\u7559\u6240\u6709\u6743\u5229\u3002\n\n\u7f16\u8bd1\u5668\u626b\u63cf\u904d\u6570:\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe:        \u7248\u672c 19.29.30159.0\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1.dll:        \u7248\u672c 19.29.30159.0\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1xx.dll:      \u7248\u672c 19.29.30159.0\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c2.dll:        \u7248\u672c 19.29.30159.0\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1xx.dll:      \u7248\u672c 19.29.30159.0\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe:      \u7248\u672c 14.29.30159.0\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\mspdb140.dll:  \u7248\u672c 14.29.30159.0\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\2052\\clui.dll: \u7248\u672c 19.29.30159.0\n\ncl: \u547d\u4ee4\u884c error D8003 :\u7f3a\u5c11\u6e90\u6587\u4ef6\u540d\n",
+  "compileCommands": [
+    {
+      "source": "shared/dsp/tests/rhythm_tests.cpp",
+      "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\tests\\rhythm_tests.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\tests\\rhythm_tests.cpp"
+    },
+    {
+      "source": "shared/dsp/src/rhythm.cpp",
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\rhythm.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\rhythm.cpp"
+    },
+    {
+      "source": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp"
+    },
+    {
+      "source": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\primitives.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\primitives.cpp"
+    },
+    {
+      "source": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\fft.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\fft.cpp"
+    },
+    {
+      "source": "shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\spatial_temporal.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\spatial_temporal.cpp"
+    },
+    {
+      "source": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+      "sha256": "f937741268a2ea6f3c337f3e518bc488fa65ce946eb4051a1a0bd218d72648ed",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\benchmarks\\native_rhythm_bench.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\benchmarks\\native_rhythm_bench.cpp"
+    },
+    {
+      "source": "shared/dsp/src/rhythm.cpp",
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\rhythm.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\rhythm.cpp"
+    },
+    {
+      "source": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp"
+    },
+    {
+      "source": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\primitives.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\primitives.cpp"
+    },
+    {
+      "source": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\fft.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\fft.cpp"
+    },
+    {
+      "source": "shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\spatial_temporal.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\spatial_temporal.cpp"
+    }
+  ],
+  "ctestOutput": "Test project C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132827446Z/build\n    Start 1: rhythm_tests\n1/1 Test #1: rhythm_tests .....................   Passed    0.64 sec\n\n100% tests passed out of 1\n\nTotal Test time (real) =   0.69 sec\n",
+  "rawResultPath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-rhythm-20261009T132827446Z.json",
+  "rawResultSha256": "d848369a0619f9845d7b9d970fb30f43b11797433792959a7733dfe5cd8df707",
+  "summaryPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\capture-summary.json",
+  "summarySha256": "dc205841e9193b4f51bb5795272c91d12c44b076c1f7f942acf5e24ed919d96e",
+  "rawChronologicalTimingSampleCount": 110000,
+  "timingRecomputedByScenario": [
+    {
+      "scenario": "sustained_cleanroom",
+      "patternSource": "clean_room_table",
+      "patternIndex": 37,
+      "blockFrames": 64,
+      "callbackCount": 50000,
+      "wall": {
+        "count": 50000,
+        "p99Ns": 124800,
+        "p999Ns": 237900,
+        "maxNs": 1176600,
+        "over60PercentBudget": 3,
+        "over80PercentBudget": 1,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 26300,
+          "p999Ns": 26300,
+          "maxNs": 26300,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 44,
+          "p99Ns": 142400,
+          "p999Ns": 142400,
+          "maxNs": 142400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 89,
+          "p99Ns": 160200,
+          "p999Ns": 160200,
+          "maxNs": 160200,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 50000,
+        "p99Ns": 114614,
+        "p999Ns": 135283,
+        "maxNs": 149919,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 3,
+      "maxActiveDrumVoices": 7,
+      "maxActiveBrushVoices": 0,
+      "maxRetiringBrushVoices": 0,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "sustained_cleanroom",
+      "patternSource": "clean_room_table",
+      "patternIndex": 37,
+      "blockFrames": 128,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 230600,
+        "p999Ns": 393400,
+        "maxNs": 1667100,
+        "over60PercentBudget": 1,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 51500,
+          "p999Ns": 51500,
+          "maxNs": 51500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 17,
+          "p99Ns": 178500,
+          "p999Ns": 178500,
+          "maxNs": 178500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 36,
+          "p99Ns": 216800,
+          "p999Ns": 216800,
+          "maxNs": 216800,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 220626,
+        "p999Ns": 254248,
+        "maxNs": 274719,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 3,
+      "maxActiveDrumVoices": 7,
+      "maxActiveBrushVoices": 0,
+      "maxRetiringBrushVoices": 0,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "sustained_cleanroom",
+      "patternSource": "clean_room_table",
+      "patternIndex": 37,
+      "blockFrames": 256,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 503800,
+        "p999Ns": 688000,
+        "maxNs": 1008100,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 109700,
+          "p999Ns": 109700,
+          "maxNs": 109700,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 35,
+          "p99Ns": 469400,
+          "p999Ns": 469400,
+          "maxNs": 469400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 72,
+          "p99Ns": 506500,
+          "p999Ns": 506500,
+          "maxNs": 506500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 467754,
+        "p999Ns": 528671,
+        "maxNs": 593543,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 3,
+      "maxActiveDrumVoices": 7,
+      "maxActiveBrushVoices": 0,
+      "maxRetiringBrushVoices": 0,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "maximum_event_collisions",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 64,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 153600,
+        "p999Ns": 196400,
+        "maxNs": 536200,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 115600,
+          "p999Ns": 115600,
+          "maxNs": 115600,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 22,
+          "p99Ns": 126100,
+          "p999Ns": 126100,
+          "maxNs": 126100,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 46,
+          "p99Ns": 136200,
+          "p999Ns": 136200,
+          "maxNs": 136200,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 147842,
+        "p999Ns": 166335,
+        "maxNs": 180674,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 117,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "maximum_event_collisions",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 128,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 329000,
+        "p999Ns": 445900,
+        "maxNs": 814200,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 402100,
+          "p999Ns": 402100,
+          "maxNs": 402100,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 44,
+          "p99Ns": 455500,
+          "p999Ns": 455500,
+          "maxNs": 455500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 45,
+          "p99Ns": 455500,
+          "p999Ns": 455500,
+          "maxNs": 455500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 315066,
+        "p999Ns": 357194,
+        "maxNs": 449064,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 192,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "maximum_event_collisions",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 256,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 737400,
+        "p999Ns": 1159200,
+        "maxNs": 4189000,
+        "over60PercentBudget": 1,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 378300,
+          "p999Ns": 378300,
+          "maxNs": 378300,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 88,
+          "p99Ns": 802400,
+          "p999Ns": 802400,
+          "maxNs": 802400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 89,
+          "p99Ns": 802400,
+          "p999Ns": 802400,
+          "maxNs": 802400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 691446,
+        "p999Ns": 764921,
+        "maxNs": 802402,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 192,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "fill_tempo_variation_boundaries",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 64,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 170600,
+        "p999Ns": 204700,
+        "maxNs": 285800,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 149200,
+          "p999Ns": 149200,
+          "maxNs": 149200,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 8,
+          "p99Ns": 184100,
+          "p999Ns": 184100,
+          "maxNs": 184100,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 48,
+          "p99Ns": 203600,
+          "p999Ns": 203600,
+          "maxNs": 203600,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 8,
+          "p99Ns": 163900,
+          "p999Ns": 163900,
+          "maxNs": 163900,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 164357,
+        "p999Ns": 192343,
+        "maxNs": 204209,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 117,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 8,
+      "fillCommands": 2
+    }
+  ],
+  "cycleCalibration": {
+    "valid": true,
+    "method": "QueryThreadCycleTime delta calibrated against GetThreadTimes user+kernel over a busy interval",
+    "threadCpuNs": 1937500000,
+    "cycles": 6453700956,
+    "wallNs": 2000071600,
+    "nsPerCycle": 0.30021533585294313,
+    "cyclesPerThreadCpuSecond": 3330942428.903226,
+    "limitation": "The earlier per-callback GetThreadTimes probe was observed quantized at 15.625 ms and is not valid for callback CPU percentiles. QueryThreadCycleTime estimates are scaled by this interval; DVFS, turbo, thermal, and power-state changes can alter the ratio. Estimated CPU time does not remove or discount any wall-clock maximum."
+  },
+  "earlierWindowsCpuResolutionEvidence": {
+    "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-rhythm-20261009T131006435Z.json",
+    "sha256": "8fb1da014085fa46f39b4fd8f04b3097421a2e71355c76325917c32246c7d8ab",
+    "disposition": "Preserved only as evidence: per-callback GetThreadTimes deltas were quantized in 15.625 ms steps and are invalid for callback CPU quantiles."
+  },
+  "kitSingleEventFeatureProxyMinima": [
+    {
+      "instrument": "kick",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.029238265001466517
+    },
+    {
+      "instrument": "snare",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.03553621840073009
+    },
+    {
+      "instrument": "closed_hat",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.024629379941510824
+    },
+    {
+      "instrument": "tom_low_modal",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.021741815683698207
+    },
+    {
+      "instrument": "brush_sweep",
+      "frames": 18000,
+      "minNormalizedFeatureDistance": 0.0055572424600624495
+    }
+  ],
+  "kitSustainedPolyphony": {
+    "sampleRate": 48000,
+    "tempoBpm": 120,
+    "bars": 2,
+    "eventsPerBar": 52,
+    "eventFixture": "four downbeat clusters with all 13 instrument kinds; fixed schedule and velocity across kits",
+    "interpretation": "voice-load and PCM proxies; no listening evaluation",
+    "kits": [
+      {
+        "kitIndex": 0,
+        "kitName": "STUDIO",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.015589813853283584,
+        "peak": 0.317377507686615,
+        "finite": true
+      },
+      {
+        "kitIndex": 1,
+        "kitName": "LIVE",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018709537910765097,
+        "peak": 0.33087247610092163,
+        "finite": true
+      },
+      {
+        "kitIndex": 2,
+        "kitName": "LIGHT",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.016162788742562165,
+        "peak": 0.3205200135707855,
+        "finite": true
+      },
+      {
+        "kitIndex": 3,
+        "kitName": "HEAVY",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018072024360775745,
+        "peak": 0.34671828150749207,
+        "finite": true
+      },
+      {
+        "kitIndex": 4,
+        "kitName": "ROCK",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01789203559639115,
+        "peak": 0.32888826727867126,
+        "finite": true
+      },
+      {
+        "kitIndex": 5,
+        "kitName": "METAL",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01661033134216848,
+        "peak": 0.35526326298713684,
+        "finite": true
+      },
+      {
+        "kitIndex": 6,
+        "kitName": "JAZZ",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01904710188679839,
+        "peak": 0.3069792091846466,
+        "finite": true
+      },
+      {
+        "kitIndex": 7,
+        "kitName": "BRUSH",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01889451946123384,
+        "peak": 0.34078872203826904,
+        "finite": true
+      },
+      {
+        "kitIndex": 8,
+        "kitName": "CAJON",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.016306595963330558,
+        "peak": 0.29902127385139465,
+        "finite": true
+      },
+      {
+        "kitIndex": 9,
+        "kitName": "DRUM&BASS",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.019128979506228536,
+        "peak": 0.37171244621276855,
+        "finite": true
+      },
+      {
+        "kitIndex": 10,
+        "kitName": "R&B",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01718249979845442,
+        "peak": 0.33339816331863403,
+        "finite": true
+      },
+      {
+        "kitIndex": 11,
+        "kitName": "DANCE",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01694421802728102,
+        "peak": 0.3539252281188965,
+        "finite": true
+      },
+      {
+        "kitIndex": 12,
+        "kitName": "TECHNO",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01929378185944542,
+        "peak": 0.3437573313713074,
+        "finite": true
+      },
+      {
+        "kitIndex": 13,
+        "kitName": "DANCE BEATS",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01800634482187032,
+        "peak": 0.31387490034103394,
+        "finite": true
+      },
+      {
+        "kitIndex": 14,
+        "kitName": "HIPHOP",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018932740725847642,
+        "peak": 0.31200918555259705,
+        "finite": true
+      },
+      {
+        "kitIndex": 15,
+        "kitName": "808+909",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018664134909695984,
+        "peak": 0.3197622001171112,
+        "finite": true
+      }
+    ]
+  },
+  "brushOverlapQuality": {
+    "sampleRate": 8000,
+    "tempoBpm": 400,
+    "eventCount": 40,
+    "durationTicks": 240,
+    "frames": 512,
+    "maxActiveVoices": 4,
+    "maxRetiringVoices": 22,
+    "rms": 0.00851118667057418,
+    "peak": 0.05301473289728165,
+    "maxAdjacentStep": 0.08740662038326263,
+    "maxEventBoundaryStep": 0.08740662038326263,
+    "normalizedAdjacentStep": 10.269616184715407,
+    "interpretation": "numeric transient proxy only; no perceptual or listening evaluation"
+  },
+  "realtimeInterpretation": "Wall-clock maxima and exceedances remain authoritative. Calibrated cycle-time CPU estimates are diagnostic only and subject to calibration error and DVFS/turbo/thermal/power-state variation. This isolated benchmark does not qualify hardware E2E or product Gate 1/7.",
+  "audioMetricLimitation": "numeric spectral/envelope/transient proxies only; no perceptual or listening evaluation"
+}

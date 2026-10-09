@@ -1,0 +1,74 @@
+[
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\tests\\rhythm_tests.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\tests\\rhythm_tests.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/tests/rhythm_tests.cpp",
+  "output": "CMakeFiles/rhythm_tests.dir/shared/dsp/tests/rhythm_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\rhythm.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\rhythm.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/rhythm.cpp",
+  "output": "CMakeFiles/rhythm_tests.dir/shared/dsp/src/rhythm.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/cleanroom_rhythm_data.cpp",
+  "output": "CMakeFiles/rhythm_tests.dir/shared/dsp/src/cleanroom_rhythm_data.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\primitives.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\primitives.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/primitives.cpp",
+  "output": "CMakeFiles/rhythm_tests.dir/shared/dsp/src/primitives.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\fft.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\fft.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/fft.cpp",
+  "output": "CMakeFiles/rhythm_tests.dir/shared/dsp/src/fft.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\spatial_temporal.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\spatial_temporal.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/spatial_temporal.cpp",
+  "output": "CMakeFiles/rhythm_tests.dir/shared/dsp/src/spatial_temporal.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\benchmarks\\native_rhythm_bench.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\benchmarks\\native_rhythm_bench.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/benchmarks/native_rhythm_bench.cpp",
+  "output": "CMakeFiles/native_rhythm_bench.dir/shared/dsp/benchmarks/native_rhythm_bench.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\rhythm.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\rhythm.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/rhythm.cpp",
+  "output": "CMakeFiles/native_rhythm_bench.dir/shared/dsp/src/rhythm.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/cleanroom_rhythm_data.cpp",
+  "output": "CMakeFiles/native_rhythm_bench.dir/shared/dsp/src/cleanroom_rhythm_data.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\primitives.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\primitives.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/primitives.cpp",
+  "output": "CMakeFiles/native_rhythm_bench.dir/shared/dsp/src/primitives.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\fft.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\fft.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/fft.cpp",
+  "output": "CMakeFiles/native_rhythm_bench.dir/shared/dsp/src/fft.cpp.obj"
+},
+{
+  "directory": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/build",
+  "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\spatial_temporal.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132335197Z\\shared\\dsp\\src\\spatial_temporal.cpp",
+  "file": "C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T132335197Z/shared/dsp/src/spatial_temporal.cpp",
+  "output": "CMakeFiles/native_rhythm_bench.dir/shared/dsp/src/spatial_temporal.cpp.obj"
+}
+]

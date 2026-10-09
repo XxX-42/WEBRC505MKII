@@ -1,0 +1,973 @@
+{
+  "schemaVersion": "1.0.0",
+  "generator": "webrc-cleanroom-rhythm-v1",
+  "generatorSha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+  "sourceCsv": "dsp/spec/source/kits_16_algorithm_matrix.csv",
+  "sourceCsvSha256": "c684c32b1011b651a8221b94265be955282d48b461f9a9a8bfe98a5af89a62c5",
+  "count": 16,
+  "implementationStatus": "native_procedural_reference_implemented_browser_integration_pending",
+  "factoryAudioImported": false,
+  "factoryMidiImported": false,
+  "profiles": [
+    {
+      "id": "CR-KIT-01",
+      "index": 1,
+      "displayName": "STUDIO",
+      "designIntentLabel": "Tight close-mic acoustic kit, controlled room",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 142,
+          "endFrequencyHz": 47,
+          "sweepSeconds": 0.075,
+          "decaySeconds": 0.56,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 190,
+          "bodyDecaySeconds": 0.28,
+          "noiseDecaySeconds": 0.2,
+          "noiseLevel": 0.62,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 6100,
+          "decaySeconds": 0.16,
+          "noiseLevel": 0.42,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 5612,
+          "decaySeconds": 0.44799999999999995,
+          "noiseLevel": 0.4536,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 82,
+          "decaySeconds": 0.62,
+          "tone": 0.4,
+          "noise": 0.02,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.14500000000000002,
+          "durationSeconds": 0.165,
+          "highpassHz": 4500
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-02",
+      "index": 2,
+      "displayName": "LIVE",
+      "designIntentLabel": "Larger room and stage bleed, broader stereo image",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 154,
+          "endFrequencyHz": 45,
+          "sweepSeconds": 0.085,
+          "decaySeconds": 0.72,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 176,
+          "bodyDecaySeconds": 0.34,
+          "noiseDecaySeconds": 0.25,
+          "noiseLevel": 0.7,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 5600,
+          "decaySeconds": 0.23,
+          "noiseLevel": 0.46,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 5152,
+          "decaySeconds": 0.644,
+          "noiseLevel": 0.4968000000000001,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 74,
+          "decaySeconds": 0.85,
+          "tone": 0.46,
+          "noise": 0.03,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.16,
+          "durationSeconds": 0.19,
+          "highpassHz": 4800
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-03",
+      "index": 3,
+      "displayName": "LIGHT",
+      "designIntentLabel": "Small shells, short decay, low transient mass",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 126,
+          "endFrequencyHz": 54,
+          "sweepSeconds": 0.06,
+          "decaySeconds": 0.4,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 220,
+          "bodyDecaySeconds": 0.22,
+          "noiseDecaySeconds": 0.16,
+          "noiseLevel": 0.5,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 7200,
+          "decaySeconds": 0.12,
+          "noiseLevel": 0.36,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 6624,
+          "decaySeconds": 0.33599999999999997,
+          "noiseLevel": 0.38880000000000003,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 96,
+          "decaySeconds": 0.44,
+          "tone": 0.35,
+          "noise": 0.01,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.175,
+          "durationSeconds": 0.14,
+          "highpassHz": 5100
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-04",
+      "index": 4,
+      "displayName": "HEAVY",
+      "designIntentLabel": "Large shells, deep kick, parallel-compressed room",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 168,
+          "endFrequencyHz": 42,
+          "sweepSeconds": 0.09,
+          "decaySeconds": 0.82,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 160,
+          "bodyDecaySeconds": 0.39,
+          "noiseDecaySeconds": 0.29,
+          "noiseLevel": 0.78,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 6600,
+          "decaySeconds": 0.25,
+          "noiseLevel": 0.48,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 6072,
+          "decaySeconds": 0.7,
+          "noiseLevel": 0.5184,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 66,
+          "decaySeconds": 1.05,
+          "tone": 0.52,
+          "noise": 0.04,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.13,
+          "durationSeconds": 0.165,
+          "highpassHz": 5400
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-05",
+      "index": 5,
+      "displayName": "ROCK",
+      "designIntentLabel": "Strong attack, medium room, controlled gated ambience",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 150,
+          "endFrequencyHz": 44,
+          "sweepSeconds": 0.08,
+          "decaySeconds": 0.68,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 184,
+          "bodyDecaySeconds": 0.32,
+          "noiseDecaySeconds": 0.23,
+          "noiseLevel": 0.69,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 6400,
+          "decaySeconds": 0.19,
+          "noiseLevel": 0.43,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 5888,
+          "decaySeconds": 0.5319999999999999,
+          "noiseLevel": 0.46440000000000003,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 78,
+          "decaySeconds": 0.78,
+          "tone": 0.44,
+          "noise": 0.025,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.14500000000000002,
+          "durationSeconds": 0.19,
+          "highpassHz": 4200
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-06",
+      "index": 6,
+      "displayName": "METAL",
+      "designIntentLabel": "Click-forward kick, bright snare/cymbals, fast decay",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 188,
+          "endFrequencyHz": 38,
+          "sweepSeconds": 0.045,
+          "decaySeconds": 0.52,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 235,
+          "bodyDecaySeconds": 0.2,
+          "noiseDecaySeconds": 0.13,
+          "noiseLevel": 0.86,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 8100,
+          "decaySeconds": 0.13,
+          "noiseLevel": 0.56,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 7452,
+          "decaySeconds": 0.364,
+          "noiseLevel": 0.6048000000000001,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 58,
+          "decaySeconds": 0.58,
+          "tone": 0.58,
+          "noise": 0.02,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.16,
+          "durationSeconds": 0.14,
+          "highpassHz": 4500
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-07",
+      "index": 7,
+      "displayName": "JAZZ",
+      "designIntentLabel": "Ride-led, open dynamics, natural room",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 118,
+          "endFrequencyHz": 52,
+          "sweepSeconds": 0.07,
+          "decaySeconds": 0.48,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 205,
+          "bodyDecaySeconds": 0.36,
+          "noiseDecaySeconds": 0.26,
+          "noiseLevel": 0.48,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 5400,
+          "decaySeconds": 0.4,
+          "noiseLevel": 0.38,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 4968,
+          "decaySeconds": 0.7,
+          "noiseLevel": 0.41040000000000004,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 110,
+          "decaySeconds": 1.2,
+          "tone": 0.33,
+          "noise": 0.01,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.175,
+          "durationSeconds": 0.165,
+          "highpassHz": 4800
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-08",
+      "index": 8,
+      "displayName": "BRUSH",
+      "designIntentLabel": "Brush taps, sweeps and softer snare articulations",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 112,
+          "endFrequencyHz": 56,
+          "sweepSeconds": 0.095,
+          "decaySeconds": 0.42,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 248,
+          "bodyDecaySeconds": 0.42,
+          "noiseDecaySeconds": 0.33,
+          "noiseLevel": 0.38,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 4700,
+          "decaySeconds": 0.48,
+          "noiseLevel": 0.31,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 4324,
+          "decaySeconds": 0.7,
+          "noiseLevel": 0.33480000000000004,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 126,
+          "decaySeconds": 1.35,
+          "tone": 0.26,
+          "noise": 0.015,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.34,
+          "durationSeconds": 0.42,
+          "highpassHz": 2400
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-09",
+      "index": 9,
+      "displayName": "CAJON",
+      "designIntentLabel": "Bass/body/slap articulations with wooden resonance",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 132,
+          "endFrequencyHz": 63,
+          "sweepSeconds": 0.055,
+          "decaySeconds": 0.36,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 310,
+          "bodyDecaySeconds": 0.24,
+          "noiseDecaySeconds": 0.17,
+          "noiseLevel": 0.38,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 5700,
+          "decaySeconds": 0.2,
+          "noiseLevel": 0.34,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 5244,
+          "decaySeconds": 0.5599999999999999,
+          "noiseLevel": 0.3672,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 148,
+          "decaySeconds": 0.72,
+          "tone": 0.3,
+          "noise": 0.02,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.14500000000000002,
+          "durationSeconds": 0.14,
+          "highpassHz": 5400
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-10",
+      "index": 10,
+      "displayName": "DRUM&BASS",
+      "designIntentLabel": "Tight breakbeat transients, electronic sub and edited hats",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 170,
+          "endFrequencyHz": 46,
+          "sweepSeconds": 0.05,
+          "decaySeconds": 0.48,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 198,
+          "bodyDecaySeconds": 0.18,
+          "noiseDecaySeconds": 0.14,
+          "noiseLevel": 0.82,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 9200,
+          "decaySeconds": 0.11,
+          "noiseLevel": 0.52,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 8464,
+          "decaySeconds": 0.308,
+          "noiseLevel": 0.5616000000000001,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 64,
+          "decaySeconds": 0.54,
+          "tone": 0.58,
+          "noise": 0.01,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.16,
+          "durationSeconds": 0.165,
+          "highpassHz": 4200
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-11",
+      "index": 11,
+      "displayName": "R&B",
+      "designIntentLabel": "Round kick, soft snare/clap, restrained hats",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 136,
+          "endFrequencyHz": 50,
+          "sweepSeconds": 0.08,
+          "decaySeconds": 0.62,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 174,
+          "bodyDecaySeconds": 0.31,
+          "noiseDecaySeconds": 0.25,
+          "noiseLevel": 0.54,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 5900,
+          "decaySeconds": 0.22,
+          "noiseLevel": 0.4,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 5428,
+          "decaySeconds": 0.616,
+          "noiseLevel": 0.43200000000000005,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 70,
+          "decaySeconds": 0.76,
+          "tone": 0.36,
+          "noise": 0.02,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.175,
+          "durationSeconds": 0.19,
+          "highpassHz": 4500
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-12",
+      "index": 12,
+      "displayName": "DANCE",
+      "designIntentLabel": "Club kick, bright clap and open electronic hats",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 184,
+          "endFrequencyHz": 43,
+          "sweepSeconds": 0.042,
+          "decaySeconds": 0.58,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 212,
+          "bodyDecaySeconds": 0.16,
+          "noiseDecaySeconds": 0.14,
+          "noiseLevel": 0.9,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 7600,
+          "decaySeconds": 0.15,
+          "noiseLevel": 0.5,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 6992,
+          "decaySeconds": 0.42,
+          "noiseLevel": 0.54,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 60,
+          "decaySeconds": 0.62,
+          "tone": 0.57,
+          "noise": 0.03,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.13,
+          "durationSeconds": 0.14,
+          "highpassHz": 4800
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-13",
+      "index": 13,
+      "displayName": "TECHNO",
+      "designIntentLabel": "Hard electronic kick, resonant percussion, saturated hats",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 196,
+          "endFrequencyHz": 40,
+          "sweepSeconds": 0.038,
+          "decaySeconds": 0.63,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 228,
+          "bodyDecaySeconds": 0.17,
+          "noiseDecaySeconds": 0.12,
+          "noiseLevel": 0.88,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 8800,
+          "decaySeconds": 0.12,
+          "noiseLevel": 0.54,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 8096,
+          "decaySeconds": 0.33599999999999997,
+          "noiseLevel": 0.5832,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 54,
+          "decaySeconds": 0.56,
+          "tone": 0.61,
+          "noise": 0.02,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.14500000000000002,
+          "durationSeconds": 0.165,
+          "highpassHz": 5100
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-14",
+      "index": 14,
+      "displayName": "DANCE BEATS",
+      "designIntentLabel": "Layered modern dance kit with broad macro range",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 162,
+          "endFrequencyHz": 44,
+          "sweepSeconds": 0.062,
+          "decaySeconds": 0.55,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 188,
+          "bodyDecaySeconds": 0.24,
+          "noiseDecaySeconds": 0.2,
+          "noiseLevel": 0.74,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 7000,
+          "decaySeconds": 0.18,
+          "noiseLevel": 0.44,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 6440,
+          "decaySeconds": 0.504,
+          "noiseLevel": 0.4752,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 72,
+          "decaySeconds": 0.74,
+          "tone": 0.48,
+          "noise": 0.025,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.16,
+          "durationSeconds": 0.19,
+          "highpassHz": 5400
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-15",
+      "index": 15,
+      "displayName": "HIPHOP",
+      "designIntentLabel": "Low-passed drums, clap/snare layering, vinyl coloration",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 128,
+          "endFrequencyHz": 49,
+          "sweepSeconds": 0.09,
+          "decaySeconds": 0.78,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 152,
+          "bodyDecaySeconds": 0.27,
+          "noiseDecaySeconds": 0.3,
+          "noiseLevel": 0.58,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 5200,
+          "decaySeconds": 0.26,
+          "noiseLevel": 0.37,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 4784,
+          "decaySeconds": 0.7,
+          "noiseLevel": 0.3996,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 68,
+          "decaySeconds": 0.92,
+          "tone": 0.31,
+          "noise": 0.045,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.175,
+          "durationSeconds": 0.14,
+          "highpassHz": 4200
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    },
+    {
+      "id": "CR-KIT-16",
+      "index": 16,
+      "displayName": "808+909",
+      "designIntentLabel": "Classic analog drum-machine hybrid",
+      "voiceParameters": {
+        "kick": {
+          "startFrequencyHz": 205,
+          "endFrequencyHz": 36,
+          "sweepSeconds": 0.03,
+          "decaySeconds": 0.5,
+          "amplitude": 0.82
+        },
+        "snare": {
+          "bodyFrequencyHz": 260,
+          "bodyDecaySeconds": 0.15,
+          "noiseDecaySeconds": 0.12,
+          "noiseLevel": 0.94,
+          "amplitude": 0.7,
+          "stereoWidth": 0.0
+        },
+        "closedHat": {
+          "baseFrequencyHz": 9400,
+          "decaySeconds": 0.1,
+          "noiseLevel": 0.58,
+          "amplitude": 0.42,
+          "stereoWidth": 0.0
+        },
+        "openHat": {
+          "baseFrequencyHz": 8648,
+          "decaySeconds": 0.27999999999999997,
+          "noiseLevel": 0.6264,
+          "amplitude": 0.5,
+          "stereoWidth": 0.08
+        },
+        "modal": {
+          "fundamentalHz": 48,
+          "decaySeconds": 0.48,
+          "tone": 0.65,
+          "noise": 0.015,
+          "amplitude": 0.58,
+          "stereoWidth": 0.0
+        },
+        "brushSweep": {
+          "amplitude": 0.13,
+          "durationSeconds": 0.165,
+          "highpassHz": 4500
+        }
+      },
+      "factorySamplesPresent": false,
+      "factoryMidiPresent": false,
+      "nativeReferencePlaybackImplemented": true,
+      "browserPlaybackImplemented": false,
+      "audioQualityGatePassed": false,
+      "provenance": {
+        "kind": "clean_room_procedural_profile",
+        "sourceUse": "official kit name and design-intent label only; numeric voice parameters authored as original procedural settings",
+        "voiceEngine": "webrc::dsp::DrumVoicePool"
+      }
+    }
+  ]
+}

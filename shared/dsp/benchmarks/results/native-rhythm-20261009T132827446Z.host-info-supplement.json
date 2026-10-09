@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "webrc-post-capture-host-info-supplement-v1",
+  "collectedUtc": "2026-10-09T13:51:43.2376615Z",
+  "relatedRawResult": "native-rhythm-20261009T132827446Z.json",
+  "relationshipToBenchmark": "This information was collected on the current executor host after the benchmark. The raw capture did not record CPU/OS metadata at run time; this supplement cannot prove the host state was unchanged during the capture and is not retroactive capture-time evidence.",
+  "cpuReportedAtCollection": {
+    "name": "AMD Ryzen 9 5900HX with Radeon Graphics",
+    "manufacturer": "AuthenticAMD",
+    "physicalCores": 8,
+    "logicalProcessors": 16,
+    "reportedMaxClockMHz": 3301,
+    "clockCaveat": "Reported maximum only; actual frequency may vary with DVFS, turbo, thermal, and power state."
+  },
+  "operatingSystemReportedAtCollection": {
+    "caption": "Microsoft Windows 11 Professional",
+    "version": "10.0.26200",
+    "buildNumber": "26200",
+    "architecture": "64-bit"
+  },
+  "collectionMethod": "PowerShell Get-CimInstance Win32_Processor and Win32_OperatingSystem; Get-Date -AsUTC"
+}

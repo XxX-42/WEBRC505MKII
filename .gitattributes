@@ -36,3 +36,9 @@
 /bench/results/browser_graph_smoke_20261009T130437502Z_61of61_historical/**/*.wasm -diff
 /bench/results/browser_graph_snapshot_20261009T131900Z_preintegration/** -text -whitespace
 /bench/results/browser_graph_snapshot_20261009T131900Z_preintegration/**/*.wasm -diff
+/shared/dsp/benchmarks/results/native-rhythm-20261009T*.json -text -whitespace
+/shared/dsp/benchmarks/results/native-rhythm-20261009T*.snapshot/** -text -whitespace
+/bench/results/browser_graph_rhythm_build_20261009T134432Z/** -text -whitespace
+/bench/results/browser_graph_rhythm_smoke_20261009T134923Z/** -text -whitespace
+/bench/results/browser_graph_rhythm_smoke_20261009T135026Z/** -text -whitespace
+/bench/results/browser_graph_rhythm_*/**/*.wasm -diff
