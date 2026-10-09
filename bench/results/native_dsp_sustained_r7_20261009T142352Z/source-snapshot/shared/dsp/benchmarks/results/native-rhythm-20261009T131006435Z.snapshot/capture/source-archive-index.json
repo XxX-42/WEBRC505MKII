@@ -1,0 +1,372 @@
+{
+  "schemaVersion": "webrc-rhythm-source-archive-index-v1",
+  "sourceStatus": "post_run_copy_only; consult sourceSnapshotUnchanged before treating as compiled-source proof",
+  "sourceSnapshotUnchanged": true,
+  "originalBeforeFingerprint": {
+    "aggregateSha256": "f4a7c6ac70f6975f85da6173b03793289b34d76373566f21d4140f10dc650e3a",
+    "files": [
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "e649a9728edb8ce256b340afa7f837d35c3fe8ee4cea6b44ea31b3bbd600f8e4",
+        "bytes": 1112
+      },
+      {
+        "path": "dsp/spec/build_cleanroom_rhythm.py",
+        "sha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+        "bytes": 26399
+      },
+      {
+        "path": "dsp/spec/cleanroom_kit_profiles.json",
+        "sha256": "af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0",
+        "bytes": 30419
+      },
+      {
+        "path": "dsp/spec/cleanroom_rhythm_patterns.json",
+        "sha256": "d0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115",
+        "bytes": 3521899
+      },
+      {
+        "path": "shared/dsp/benchmarks/capture_native_rhythm_bench.ps1",
+        "sha256": "dc4d2dd4689db6be3e80a962a7a77fee8fcee82a5e656726f4050efa21cea024",
+        "bytes": 12121
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+        "sha256": "39d205a1cfdff3132a697cb97ab7296df7838b6bc9b58ad11ffe6bcf032c5f2b",
+        "bytes": 24194
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+        "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+        "bytes": 392
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+        "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+        "bytes": 6746
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+        "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+        "bytes": 548
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+        "sha256": "f1a66db1be9cd80c626cf9437d083b1bf9dfbe52a44818d7fe9bf6a29e5a0a7b",
+        "bytes": 6102
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+        "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+        "bytes": 4181
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+        "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+        "bytes": 9082
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+        "bytes": 10933
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+        "sha256": "636d207997a7d5b428dcbccab2bbefb24a016ba9d27a421691a24346b3060be2",
+        "bytes": 8564
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+        "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+        "bytes": 3415
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+        "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+        "bytes": 23156
+      },
+      {
+        "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+        "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+        "bytes": 1035520
+      },
+      {
+        "path": "shared/dsp/src/fft.cpp",
+        "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+        "bytes": 3129
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+        "bytes": 38017
+      },
+      {
+        "path": "shared/dsp/src/rhythm.cpp",
+        "sha256": "53f646a4a5578eb5cf9222443efc8b1b42c7ba1ca07816577497b06be1ceeb8c",
+        "bytes": 26248
+      },
+      {
+        "path": "shared/dsp/src/spatial_temporal.cpp",
+        "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+        "bytes": 88577
+      },
+      {
+        "path": "shared/dsp/tests/rhythm_tests.cpp",
+        "sha256": "2045c398a8f7e80d9efbdbd18bf439e7b0432dcd98bf0b47a5a0f730fbbf4915",
+        "bytes": 36963
+      }
+    ]
+  },
+  "originalAfterFingerprint": {
+    "aggregateSha256": "f4a7c6ac70f6975f85da6173b03793289b34d76373566f21d4140f10dc650e3a",
+    "files": [
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "e649a9728edb8ce256b340afa7f837d35c3fe8ee4cea6b44ea31b3bbd600f8e4",
+        "bytes": 1112
+      },
+      {
+        "path": "dsp/spec/build_cleanroom_rhythm.py",
+        "sha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+        "bytes": 26399
+      },
+      {
+        "path": "dsp/spec/cleanroom_kit_profiles.json",
+        "sha256": "af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0",
+        "bytes": 30419
+      },
+      {
+        "path": "dsp/spec/cleanroom_rhythm_patterns.json",
+        "sha256": "d0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115",
+        "bytes": 3521899
+      },
+      {
+        "path": "shared/dsp/benchmarks/capture_native_rhythm_bench.ps1",
+        "sha256": "dc4d2dd4689db6be3e80a962a7a77fee8fcee82a5e656726f4050efa21cea024",
+        "bytes": 12121
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+        "sha256": "39d205a1cfdff3132a697cb97ab7296df7838b6bc9b58ad11ffe6bcf032c5f2b",
+        "bytes": 24194
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+        "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+        "bytes": 392
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+        "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+        "bytes": 6746
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+        "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+        "bytes": 548
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+        "sha256": "f1a66db1be9cd80c626cf9437d083b1bf9dfbe52a44818d7fe9bf6a29e5a0a7b",
+        "bytes": 6102
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+        "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+        "bytes": 4181
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+        "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+        "bytes": 9082
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+        "bytes": 10933
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+        "sha256": "636d207997a7d5b428dcbccab2bbefb24a016ba9d27a421691a24346b3060be2",
+        "bytes": 8564
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+        "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+        "bytes": 3415
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+        "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+        "bytes": 23156
+      },
+      {
+        "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+        "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+        "bytes": 1035520
+      },
+      {
+        "path": "shared/dsp/src/fft.cpp",
+        "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+        "bytes": 3129
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+        "bytes": 38017
+      },
+      {
+        "path": "shared/dsp/src/rhythm.cpp",
+        "sha256": "53f646a4a5578eb5cf9222443efc8b1b42c7ba1ca07816577497b06be1ceeb8c",
+        "bytes": 26248
+      },
+      {
+        "path": "shared/dsp/src/spatial_temporal.cpp",
+        "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+        "bytes": 88577
+      },
+      {
+        "path": "shared/dsp/tests/rhythm_tests.cpp",
+        "sha256": "2045c398a8f7e80d9efbdbd18bf439e7b0432dcd98bf0b47a5a0f730fbbf4915",
+        "bytes": 36963
+      }
+    ]
+  },
+  "archivedSourceFiles": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "e649a9728edb8ce256b340afa7f837d35c3fe8ee4cea6b44ea31b3bbd600f8e4",
+      "bytes": 1112
+    },
+    {
+      "path": "dsp/spec/build_cleanroom_rhythm.py",
+      "sha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+      "bytes": 26399
+    },
+    {
+      "path": "dsp/spec/cleanroom_kit_profiles.json",
+      "sha256": "af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0",
+      "bytes": 30419
+    },
+    {
+      "path": "dsp/spec/cleanroom_rhythm_patterns.json",
+      "sha256": "d0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115",
+      "bytes": 3521899
+    },
+    {
+      "path": "shared/dsp/benchmarks/capture_native_rhythm_bench.ps1",
+      "sha256": "dc4d2dd4689db6be3e80a962a7a77fee8fcee82a5e656726f4050efa21cea024",
+      "bytes": 12121
+    },
+    {
+      "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+      "sha256": "39d205a1cfdff3132a697cb97ab7296df7838b6bc9b58ad11ffe6bcf032c5f2b",
+      "bytes": 24194
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+      "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+      "bytes": 392
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+      "bytes": 6746
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "bytes": 548
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "sha256": "f1a66db1be9cd80c626cf9437d083b1bf9dfbe52a44818d7fe9bf6a29e5a0a7b",
+      "bytes": 6102
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+      "bytes": 4181
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+      "bytes": 9082
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "bytes": 10933
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+      "sha256": "636d207997a7d5b428dcbccab2bbefb24a016ba9d27a421691a24346b3060be2",
+      "bytes": 8564
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+      "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+      "bytes": 3415
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "bytes": 23156
+    },
+    {
+      "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+      "bytes": 1035520
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "bytes": 3129
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "bytes": 38017
+    },
+    {
+      "path": "shared/dsp/src/rhythm.cpp",
+      "sha256": "53f646a4a5578eb5cf9222443efc8b1b42c7ba1ca07816577497b06be1ceeb8c",
+      "bytes": 26248
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "bytes": 88577
+    },
+    {
+      "path": "shared/dsp/tests/rhythm_tests.cpp",
+      "sha256": "2045c398a8f7e80d9efbdbd18bf439e7b0432dcd98bf0b47a5a0f730fbbf4915",
+      "bytes": 36963
+    }
+  ],
+  "rawResultPath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-rhythm-20261009T131006435Z.json",
+  "rawResultSha256": "8fb1da014085fa46f39b4fd8f04b3097421a2e71355c76325917c32246c7d8ab",
+  "timingRecomputed": {
+    "p99Ns": 539400,
+    "p999Ns": 2412000,
+    "maxNs": 34704200.0,
+    "over60PercentBudget": 71,
+    "over80PercentBudget": 58,
+    "over100PercentBudget": 46,
+    "p99TargetNs": 1599999,
+    "p999TargetNs": 2133333,
+    "deadlineBudgetNs": 2666666
+  },
+  "threadCpuTimingRecomputed": {
+    "validSampleCount": 50000,
+    "timingFailures": 0,
+    "p99Ns": 15625000,
+    "p999Ns": 15625000,
+    "maxNs": 15625000.0,
+    "over60PercentBudget": 826,
+    "over80PercentBudget": 826,
+    "over100PercentBudget": 826,
+    "clockMethod": "Windows GetThreadTimes user+kernel delta (100ns units) or CLOCK_THREAD_CPUTIME_ID"
+  },
+  "note": "Archive preserves the exact available TEMP copies and timing evidence. Where pre/post fingerprints differ, the archive is not represented as proof of which version produced the compiled executable."
+}

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "qualificationKind": "supplemental-realtime-deadline-analysis",
+  "rawReport": "native_dsp_sustained_20261009T142444554Z_e11491528046.json",
+  "rawReportSha256": "335fed6a71eef1083dc31dc6c3e7cefbe462e2e87c673d10a7e4511c4a0b0e62",
+  "sourceSnapshotFingerprintSha256": "e11491528046825cfed5e9932742f5b75ab7e7f08d80b1ebdacea69545350ba4",
+  "sampleRateHz": 48000,
+  "callbackFrames": 64,
+  "callbackDeadlineNs": 1333333,
+  "caseCount": 49,
+  "callbacksPerCase": 11792,
+  "processOperatorNewCalls": 0,
+  "processFunctionStatus": "PASS",
+  "strictRealtimeStatus": "NOT_PASS",
+  "totalHardDeadlineOverruns": 20,
+  "overrunsByCase": [
+    {
+      "id": "OversampledNonlinear_4x_ADAA",
+      "overBudgetCallbacks": 6,
+      "stages": [
+        {
+          "stage": "steady",
+          "overBudgetCallbacks": 6,
+          "p999Ns": 1000500.0,
+          "maxNs": 5182300
+        }
+      ],
+      "steadyP999Ns": 1000500.0,
+      "steadyMaxNs": 5182300
+    },
+    {
+      "id": "PartitionedConvolver_4096tap",
+      "overBudgetCallbacks": 1,
+      "stages": [
+        {
+          "stage": "steady",
+          "overBudgetCallbacks": 1,
+          "p999Ns": 329400,
+          "maxNs": 2604100
+        }
+      ],
+      "steadyP999Ns": 329400,
+      "steadyMaxNs": 2604100
+    },
+    {
+      "id": "GranularTexture_32Slot",
+      "overBudgetCallbacks": 2,
+      "stages": [
+        {
+          "stage": "steady",
+          "overBudgetCallbacks": 2,
+          "p999Ns": 409800,
+          "maxNs": 3781900
+        }
+      ],
+      "steadyP999Ns": 409800,
+      "steadyMaxNs": 3781900
+    },
+    {
+      "id": "YinPitchDetector_2048EveryCallback",
+      "overBudgetCallbacks": 11,
+      "stages": [
+        {
+          "stage": "warmup",
+          "overBudgetCallbacks": 2,
+          "p999Ns": 1366800.0,
+          "maxNs": 3425100
+        },
+        {
+          "stage": "steady",
+          "overBudgetCallbacks": 9,
+          "p999Ns": 1224300.0,
+          "maxNs": 6130600
+        }
+      ],
+      "steadyP999Ns": 1224300.0,
+      "steadyMaxNs": 6130600
+    }
+  ],
+  "yinEveryCallbackSteadyP999Ns": 1224300.0,
+  "yinEveryCallbackSteadyP999PercentOfDeadline": 91.8225,
+  "scope": "Software-only 64-frame processor calls; not a full graph, 30-minute soak, audio-device XRUN, or hardware result."
+}

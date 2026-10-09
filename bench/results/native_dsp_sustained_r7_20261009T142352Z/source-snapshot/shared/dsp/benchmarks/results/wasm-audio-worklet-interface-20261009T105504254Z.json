@@ -1,0 +1,62 @@
+{
+  "status": "failed",
+  "testError": "page.evaluate: Error: Error: Worklet smoke timed out after 12000 ms.\n    at poll (http://127.0.0.1:6192/worklet-smoke-page.js:152:20)\n    at poll (http://127.0.0.1:6192/worklet-smoke-page.js:152:20)\n    at eval (eval at evaluate (:290:30), <anonymous>:2:45)\n    at UtilityScript.evaluate (<anonymous>:292:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\wasm\\tests\\worklet-smoke.mjs:285:20",
+  "browser": "Playwright Chromium headless",
+  "browserVersion": "154.0.8037.99",
+  "toolScope": "one diagnostic shared-core biquad in a real AudioWorklet process callback; synthetic software input; sink none or zero-gain destination",
+  "gateScope": "interface and callback behavior only; not full app graph, 53 FX, 30-minute stress, or Gate 2 acceptance",
+  "wasm": {
+    "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\test-results\\dsp-wasm\\webrc-dsp.wasm",
+    "byteLength": 52229,
+    "sha256": "9dddba363d50b231c2c006d7505202378f471de147c0a109d23224581c7249b9"
+  },
+  "sourceFingerprintSha256": {
+    "primitiveHeader": "13f21489d280ad31665e4c7053c62a9c00d64b14dc234cd5e20367b063352603",
+    "primitiveSource": "2cab389670cc5fe7e2f0c40ae6d3da861b5a85f80a92a9a2eb550a3a7b17b9ec",
+    "wasmWrapperHeader": "ea2091811b17e0160465a2bf7ef8c3473aab591fd7b15f7b156c4c7fd0c2643d",
+    "wasmWrapperSource": "8401b3ae569bf63e05c3b40466baf19a362adec1501acacfb9161dc7d1749f9d",
+    "workletProcessor": "4059f3a5feec5d8445e0e6c3368646b28d2bf460e5c07fd6b1ab22701c3ba98c",
+    "workletPage": "714488f3450adf1c92e8c52bf207c23c7a0c0d586a5ae0cf0909fe9d7c65012f",
+    "workletRunner": "6ae29d1d632ad3e1056a15a5325462c50de7319a35b19b6e0f31de7b078b9d3f",
+    "buildScript": "3c0e1199603f5fab872262118d662e1318ad90e0b82903663bd8755644e9c13b",
+    "nativeGolden": "44dae0d6ee9c2c90008c0cc75a2790b621e19e1ffb7d4c0a666eb6f7fa8b0d37",
+    "wasmModule": "9dddba363d50b231c2c006d7505202378f471de147c0a109d23224581c7249b9"
+  },
+  "rawTraceSha256": "7368322c39bc8917f79794c688e50b6464494bd0441875ff4a1f3782cb7e7cee",
+  "run": null,
+  "trace": {
+    "durationStatus": "unavailable; Worklet run did not complete",
+    "rawTraceEventCount": 513146,
+    "processDurationEventCount": 0,
+    "audioWorkletProcessorThreadIds": [],
+    "p50Us": null,
+    "p95Us": null,
+    "p99Us": null,
+    "maxUs": null,
+    "lostTraceEventsCheck": {
+      "status": "not-assessed",
+      "lossDetected": null
+    }
+  },
+  "rawTracePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\test-results\\dsp-wasm\\audio-worklet-smoke-trace.json",
+  "immutableArchive": {
+    "summaryPath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\wasm-audio-worklet-interface-20261009T105504254Z.json",
+    "tracePath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\wasm-audio-worklet-interface-20261009T105504254Z.trace.json"
+  },
+  "traceCapture": {
+    "startMode": "ReportEvents with record-until-full",
+    "startWarning": null,
+    "completionReceived": true,
+    "rawEventCount": 513146
+  },
+  "pageErrors": [],
+  "traceArchive": {
+    "file": "wasm-audio-worklet-interface-20261009T105504254Z.trace.json.gz",
+    "rawFile": "wasm-audio-worklet-interface-20261009T105504254Z.trace.json",
+    "rawBytes": 95687943,
+    "compressedBytes": 8635502,
+    "rawSha256": "7368322c39bc8917f79794c688e50b6464494bd0441875ff4a1f3782cb7e7cee",
+    "compressedSha256": "1f574498cbe12da1fe28e0c99e16618179775e9bb7299c67d8d90b7eae78170d",
+    "restoredByteIdentityVerified": true
+  }
+}

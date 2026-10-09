@@ -1,0 +1,307 @@
+{
+  "schemaVersion": "webrc-rhythm-source-archive-index-v1",
+  "snapshotFingerprint": {
+    "aggregateSha256": "e40b4801ec0851f0c1b33ca13e19199bde275960ce8c172c463afb19a589f5e9",
+    "files": [
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "e649a9728edb8ce256b340afa7f837d35c3fe8ee4cea6b44ea31b3bbd600f8e4",
+        "bytes": 1112
+      },
+      {
+        "path": "dsp/spec/build_cleanroom_rhythm.py",
+        "sha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+        "bytes": 26399
+      },
+      {
+        "path": "dsp/spec/cleanroom_kit_profiles.json",
+        "sha256": "af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0",
+        "bytes": 30419
+      },
+      {
+        "path": "dsp/spec/cleanroom_rhythm_patterns.json",
+        "sha256": "d0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115",
+        "bytes": 3521899
+      },
+      {
+        "path": "shared/dsp/benchmarks/capture_native_rhythm_bench.ps1",
+        "sha256": "a9641f7e3be28964980e22b03ce36d83a71ef159497d5fec260a01ca3713ee02",
+        "bytes": 12448
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+        "sha256": "f937741268a2ea6f3c337f3e518bc488fa65ce946eb4051a1a0bd218d72648ed",
+        "bytes": 38401
+      },
+      {
+        "path": "shared/dsp/benchmarks/summarize_native_rhythm_capture.py",
+        "sha256": "f1e5104a5453e83f5823acb8d58aa524798e946bd2cdc2277378fd4575af1a53",
+        "bytes": 7948
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+        "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+        "bytes": 392
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+        "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+        "bytes": 6746
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+        "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+        "bytes": 548
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+        "sha256": "f1a66db1be9cd80c626cf9437d083b1bf9dfbe52a44818d7fe9bf6a29e5a0a7b",
+        "bytes": 6102
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+        "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+        "bytes": 4181
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+        "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+        "bytes": 9082
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+        "bytes": 10933
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+        "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e",
+        "bytes": 9386
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+        "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+        "bytes": 3415
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+        "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+        "bytes": 23156
+      },
+      {
+        "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+        "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+        "bytes": 1035520
+      },
+      {
+        "path": "shared/dsp/src/fft.cpp",
+        "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+        "bytes": 3129
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+        "bytes": 38017
+      },
+      {
+        "path": "shared/dsp/src/rhythm.cpp",
+        "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+        "bytes": 27973
+      },
+      {
+        "path": "shared/dsp/src/spatial_temporal.cpp",
+        "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+        "bytes": 88577
+      },
+      {
+        "path": "shared/dsp/tests/rhythm_tests.cpp",
+        "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7",
+        "bytes": 41653
+      }
+    ]
+  },
+  "archiveFingerprint": {
+    "aggregateSha256": "e40b4801ec0851f0c1b33ca13e19199bde275960ce8c172c463afb19a589f5e9",
+    "files": [
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "e649a9728edb8ce256b340afa7f837d35c3fe8ee4cea6b44ea31b3bbd600f8e4",
+        "bytes": 1112
+      },
+      {
+        "path": "dsp/spec/build_cleanroom_rhythm.py",
+        "sha256": "1ce5bd1321e218368bcb2747a2b4e3e14b9c5dcd8a0c5ffe0f52699b58dbc6df",
+        "bytes": 26399
+      },
+      {
+        "path": "dsp/spec/cleanroom_kit_profiles.json",
+        "sha256": "af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0",
+        "bytes": 30419
+      },
+      {
+        "path": "dsp/spec/cleanroom_rhythm_patterns.json",
+        "sha256": "d0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115",
+        "bytes": 3521899
+      },
+      {
+        "path": "shared/dsp/benchmarks/capture_native_rhythm_bench.ps1",
+        "sha256": "a9641f7e3be28964980e22b03ce36d83a71ef159497d5fec260a01ca3713ee02",
+        "bytes": 12448
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+        "sha256": "f937741268a2ea6f3c337f3e518bc488fa65ce946eb4051a1a0bd218d72648ed",
+        "bytes": 38401
+      },
+      {
+        "path": "shared/dsp/benchmarks/summarize_native_rhythm_capture.py",
+        "sha256": "f1e5104a5453e83f5823acb8d58aa524798e946bd2cdc2277378fd4575af1a53",
+        "bytes": 7948
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+        "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+        "bytes": 392
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+        "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+        "bytes": 6746
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+        "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+        "bytes": 548
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+        "sha256": "f1a66db1be9cd80c626cf9437d083b1bf9dfbe52a44818d7fe9bf6a29e5a0a7b",
+        "bytes": 6102
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+        "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+        "bytes": 4181
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+        "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+        "bytes": 9082
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+        "bytes": 10933
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+        "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e",
+        "bytes": 9386
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+        "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+        "bytes": 3415
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+        "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+        "bytes": 23156
+      },
+      {
+        "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+        "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+        "bytes": 1035520
+      },
+      {
+        "path": "shared/dsp/src/fft.cpp",
+        "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+        "bytes": 3129
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+        "bytes": 38017
+      },
+      {
+        "path": "shared/dsp/src/rhythm.cpp",
+        "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+        "bytes": 27973
+      },
+      {
+        "path": "shared/dsp/src/spatial_temporal.cpp",
+        "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+        "bytes": 88577
+      },
+      {
+        "path": "shared/dsp/tests/rhythm_tests.cpp",
+        "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7",
+        "bytes": 41653
+      }
+    ]
+  },
+  "matches": true,
+  "compiledTranslationUnits": [
+    {
+      "source": "shared/dsp/tests/rhythm_tests.cpp",
+      "sha256": "8e4b5175af9c6bdb5197b48b14da9411376c927ec26ab56f30c318f3fef4d2a7",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\tests\\rhythm_tests.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\tests\\rhythm_tests.cpp"
+    },
+    {
+      "source": "shared/dsp/src/rhythm.cpp",
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\rhythm.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\rhythm.cpp"
+    },
+    {
+      "source": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp"
+    },
+    {
+      "source": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\primitives.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\primitives.cpp"
+    },
+    {
+      "source": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\fft.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\fft.cpp"
+    },
+    {
+      "source": "shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\rhythm_tests.dir\\shared\\dsp\\src\\spatial_temporal.cpp.obj /FdCMakeFiles\\rhythm_tests.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\spatial_temporal.cpp"
+    },
+    {
+      "source": "shared/dsp/benchmarks/native_rhythm_bench.cpp",
+      "sha256": "f937741268a2ea6f3c337f3e518bc488fa65ce946eb4051a1a0bd218d72648ed",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\benchmarks\\native_rhythm_bench.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\benchmarks\\native_rhythm_bench.cpp"
+    },
+    {
+      "source": "shared/dsp/src/rhythm.cpp",
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\rhythm.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\rhythm.cpp"
+    },
+    {
+      "source": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\cleanroom_rhythm_data.cpp"
+    },
+    {
+      "source": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\primitives.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\primitives.cpp"
+    },
+    {
+      "source": "shared/dsp/src/fft.cpp",
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\fft.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\fft.cpp"
+    },
+    {
+      "source": "shared/dsp/src/spatial_temporal.cpp",
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "command": "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"  /nologo /TP  -IC:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\include /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -std:c++17 -MD /W4 /FoCMakeFiles\\native_rhythm_bench.dir\\shared\\dsp\\src\\spatial_temporal.cpp.obj /FdCMakeFiles\\native_rhythm_bench.dir\\ /FS -c C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\shared\\dsp\\src\\spatial_temporal.cpp"
+    }
+  ],
+  "note": "These source files were copied into an isolated TEMP tree, compiled there, compared before/after by the capture script, then copied into this archive. The separately referenced raw JSON contains the chronological benchmark samples."
+}

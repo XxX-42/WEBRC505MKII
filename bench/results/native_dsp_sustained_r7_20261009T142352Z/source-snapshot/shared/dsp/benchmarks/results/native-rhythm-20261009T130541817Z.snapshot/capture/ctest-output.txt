@@ -1,0 +1,7 @@
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-rhythm-capture-20261009T130541817Z/build
+    Start 1: rhythm_tests
+1/1 Test #1: rhythm_tests .....................   Passed    0.59 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.64 sec

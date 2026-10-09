@@ -50,3 +50,4 @@
 /native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp -text
 /native-mvp/engine-cpp/tests/native_track_host_tests.cpp -text
 /bench/results/native_stereo_pan_20261009T142245Z/** -text -whitespace
+/bench/results/native_dsp_sustained_r7_20261009T142352Z/** -text -whitespace

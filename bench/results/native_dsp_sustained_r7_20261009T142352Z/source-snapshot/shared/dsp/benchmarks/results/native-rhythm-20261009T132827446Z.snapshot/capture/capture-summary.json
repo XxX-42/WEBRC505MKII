@@ -1,0 +1,759 @@
+{
+  "schemaVersion": "webrc-native-rhythm-capture-summary-v1",
+  "rawResultPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-rhythm-capture-20261009T132827446Z\\rhythm-bench.json",
+  "rawResultSha256": "d848369a0619f9845d7b9d970fb30f43b11797433792959a7733dfe5cd8df707",
+  "totalChronologicalTimingSamples": 110000,
+  "timingSummaries": [
+    {
+      "scenario": "sustained_cleanroom",
+      "patternSource": "clean_room_table",
+      "patternIndex": 37,
+      "blockFrames": 64,
+      "callbackCount": 50000,
+      "wall": {
+        "count": 50000,
+        "p99Ns": 124800,
+        "p999Ns": 237900,
+        "maxNs": 1176600,
+        "over60PercentBudget": 3,
+        "over80PercentBudget": 1,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 26300,
+          "p999Ns": 26300,
+          "maxNs": 26300,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 44,
+          "p99Ns": 142400,
+          "p999Ns": 142400,
+          "maxNs": 142400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 89,
+          "p99Ns": 160200,
+          "p999Ns": 160200,
+          "maxNs": 160200,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 50000,
+        "p99Ns": 114614,
+        "p999Ns": 135283,
+        "maxNs": 149919,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 3,
+      "maxActiveDrumVoices": 7,
+      "maxActiveBrushVoices": 0,
+      "maxRetiringBrushVoices": 0,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "sustained_cleanroom",
+      "patternSource": "clean_room_table",
+      "patternIndex": 37,
+      "blockFrames": 128,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 230600,
+        "p999Ns": 393400,
+        "maxNs": 1667100,
+        "over60PercentBudget": 1,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 51500,
+          "p999Ns": 51500,
+          "maxNs": 51500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 17,
+          "p99Ns": 178500,
+          "p999Ns": 178500,
+          "maxNs": 178500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 36,
+          "p99Ns": 216800,
+          "p999Ns": 216800,
+          "maxNs": 216800,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 220626,
+        "p999Ns": 254248,
+        "maxNs": 274719,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 3,
+      "maxActiveDrumVoices": 7,
+      "maxActiveBrushVoices": 0,
+      "maxRetiringBrushVoices": 0,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "sustained_cleanroom",
+      "patternSource": "clean_room_table",
+      "patternIndex": 37,
+      "blockFrames": 256,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 503800,
+        "p999Ns": 688000,
+        "maxNs": 1008100,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 109700,
+          "p999Ns": 109700,
+          "maxNs": 109700,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 35,
+          "p99Ns": 469400,
+          "p999Ns": 469400,
+          "maxNs": 469400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 72,
+          "p99Ns": 506500,
+          "p999Ns": 506500,
+          "maxNs": 506500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 467754,
+        "p999Ns": 528671,
+        "maxNs": 593543,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 3,
+      "maxActiveDrumVoices": 7,
+      "maxActiveBrushVoices": 0,
+      "maxRetiringBrushVoices": 0,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "maximum_event_collisions",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 64,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 153600,
+        "p999Ns": 196400,
+        "maxNs": 536200,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 115600,
+          "p999Ns": 115600,
+          "maxNs": 115600,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 22,
+          "p99Ns": 126100,
+          "p999Ns": 126100,
+          "maxNs": 126100,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 46,
+          "p99Ns": 136200,
+          "p999Ns": 136200,
+          "maxNs": 136200,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 147842,
+        "p999Ns": 166335,
+        "maxNs": 180674,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 117,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "maximum_event_collisions",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 128,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 329000,
+        "p999Ns": 445900,
+        "maxNs": 814200,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 402100,
+          "p999Ns": 402100,
+          "maxNs": 402100,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 44,
+          "p99Ns": 455500,
+          "p999Ns": 455500,
+          "maxNs": 455500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 45,
+          "p99Ns": 455500,
+          "p999Ns": 455500,
+          "maxNs": 455500,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 315066,
+        "p999Ns": 357194,
+        "maxNs": 449064,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 192,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "maximum_event_collisions",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 256,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 737400,
+        "p999Ns": 1159200,
+        "maxNs": 4189000,
+        "over60PercentBudget": 1,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 378300,
+          "p999Ns": 378300,
+          "maxNs": 378300,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 88,
+          "p99Ns": 802400,
+          "p999Ns": 802400,
+          "maxNs": 802400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 89,
+          "p99Ns": 802400,
+          "p999Ns": 802400,
+          "maxNs": 802400,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 0,
+          "p99Ns": 0,
+          "p999Ns": 0,
+          "maxNs": 0,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 691446,
+        "p999Ns": 764921,
+        "maxNs": 802402,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 192,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 0,
+      "fillCommands": 0
+    },
+    {
+      "scenario": "fill_tempo_variation_boundaries",
+      "patternSource": "synthetic_max_collision_192_event_section",
+      "patternIndex": -1,
+      "blockFrames": 64,
+      "callbackCount": 10000,
+      "wall": {
+        "count": 10000,
+        "p99Ns": 170600,
+        "p999Ns": 204700,
+        "maxNs": 285800,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "wallClasses": {
+        "startup": {
+          "count": 1,
+          "p99Ns": 149200,
+          "p999Ns": 149200,
+          "maxNs": 149200,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "barBoundary": {
+          "count": 8,
+          "p99Ns": 184100,
+          "p999Ns": 184100,
+          "maxNs": 184100,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "eventCollision": {
+          "count": 48,
+          "p99Ns": 203600,
+          "p999Ns": 203600,
+          "maxNs": 203600,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        },
+        "commandBoundary": {
+          "count": 8,
+          "p99Ns": 163900,
+          "p999Ns": 163900,
+          "maxNs": 163900,
+          "over60PercentBudget": 0,
+          "over80PercentBudget": 0,
+          "over100PercentBudget": 0
+        }
+      },
+      "threadCpuOrCalibratedCycleEstimate": {
+        "count": 10000,
+        "p99Ns": 164357,
+        "p999Ns": 192343,
+        "maxNs": 204209,
+        "over60PercentBudget": 0,
+        "over80PercentBudget": 0,
+        "over100PercentBudget": 0
+      },
+      "threadCpuTimingFailures": 0,
+      "maxEventsTriggeredInOneCallback": 117,
+      "maxActiveDrumVoices": 8,
+      "maxActiveBrushVoices": 4,
+      "maxRetiringBrushVoices": 5,
+      "commandBoundaries": 8,
+      "fillCommands": 2
+    }
+  ],
+  "cycleCalibration": {
+    "valid": true,
+    "method": "QueryThreadCycleTime delta calibrated against GetThreadTimes user+kernel over a busy interval",
+    "threadCpuNs": 1937500000,
+    "cycles": 6453700956,
+    "wallNs": 2000071600,
+    "nsPerCycle": 0.30021533585294313,
+    "cyclesPerThreadCpuSecond": 3330942428.903226,
+    "limitation": "The earlier per-callback GetThreadTimes probe was observed quantized at 15.625 ms and is not valid for callback CPU percentiles. QueryThreadCycleTime estimates are scaled by this interval; DVFS, turbo, thermal, and power-state changes can alter the ratio. Estimated CPU time does not remove or discount any wall-clock maximum."
+  },
+  "earlierWindowsCpuResolutionEvidence": {
+    "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-rhythm-20261009T131006435Z.json",
+    "sha256": "8fb1da014085fa46f39b4fd8f04b3097421a2e71355c76325917c32246c7d8ab",
+    "disposition": "Preserved only as evidence: per-callback GetThreadTimes deltas were quantized in 15.625 ms steps and are invalid for callback CPU quantiles."
+  },
+  "kitSingleEventFeatureProxyMinima": [
+    {
+      "instrument": "kick",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.029238265001466517
+    },
+    {
+      "instrument": "snare",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.03553621840073009
+    },
+    {
+      "instrument": "closed_hat",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.024629379941510824
+    },
+    {
+      "instrument": "tom_low_modal",
+      "frames": 8192,
+      "minNormalizedFeatureDistance": 0.021741815683698207
+    },
+    {
+      "instrument": "brush_sweep",
+      "frames": 18000,
+      "minNormalizedFeatureDistance": 0.0055572424600624495
+    }
+  ],
+  "kitSustainedPolyphony": {
+    "sampleRate": 48000,
+    "tempoBpm": 120,
+    "bars": 2,
+    "eventsPerBar": 52,
+    "eventFixture": "four downbeat clusters with all 13 instrument kinds; fixed schedule and velocity across kits",
+    "interpretation": "voice-load and PCM proxies; no listening evaluation",
+    "kits": [
+      {
+        "kitIndex": 0,
+        "kitName": "STUDIO",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.015589813853283584,
+        "peak": 0.317377507686615,
+        "finite": true
+      },
+      {
+        "kitIndex": 1,
+        "kitName": "LIVE",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018709537910765097,
+        "peak": 0.33087247610092163,
+        "finite": true
+      },
+      {
+        "kitIndex": 2,
+        "kitName": "LIGHT",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.016162788742562165,
+        "peak": 0.3205200135707855,
+        "finite": true
+      },
+      {
+        "kitIndex": 3,
+        "kitName": "HEAVY",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018072024360775745,
+        "peak": 0.34671828150749207,
+        "finite": true
+      },
+      {
+        "kitIndex": 4,
+        "kitName": "ROCK",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01789203559639115,
+        "peak": 0.32888826727867126,
+        "finite": true
+      },
+      {
+        "kitIndex": 5,
+        "kitName": "METAL",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01661033134216848,
+        "peak": 0.35526326298713684,
+        "finite": true
+      },
+      {
+        "kitIndex": 6,
+        "kitName": "JAZZ",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01904710188679839,
+        "peak": 0.3069792091846466,
+        "finite": true
+      },
+      {
+        "kitIndex": 7,
+        "kitName": "BRUSH",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01889451946123384,
+        "peak": 0.34078872203826904,
+        "finite": true
+      },
+      {
+        "kitIndex": 8,
+        "kitName": "CAJON",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.016306595963330558,
+        "peak": 0.29902127385139465,
+        "finite": true
+      },
+      {
+        "kitIndex": 9,
+        "kitName": "DRUM&BASS",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.019128979506228536,
+        "peak": 0.37171244621276855,
+        "finite": true
+      },
+      {
+        "kitIndex": 10,
+        "kitName": "R&B",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01718249979845442,
+        "peak": 0.33339816331863403,
+        "finite": true
+      },
+      {
+        "kitIndex": 11,
+        "kitName": "DANCE",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01694421802728102,
+        "peak": 0.3539252281188965,
+        "finite": true
+      },
+      {
+        "kitIndex": 12,
+        "kitName": "TECHNO",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01929378185944542,
+        "peak": 0.3437573313713074,
+        "finite": true
+      },
+      {
+        "kitIndex": 13,
+        "kitName": "DANCE BEATS",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.01800634482187032,
+        "peak": 0.31387490034103394,
+        "finite": true
+      },
+      {
+        "kitIndex": 14,
+        "kitName": "HIPHOP",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018932740725847642,
+        "peak": 0.31200918555259705,
+        "finite": true
+      },
+      {
+        "kitIndex": 15,
+        "kitName": "808+909",
+        "triggeredEvents": 104,
+        "maxEventsPerCallback": 13,
+        "maxActiveDrumVoices": 8,
+        "maxActiveBrushVoices": 1,
+        "maxRetiringBrushVoices": 0,
+        "rms": 0.018664134909695984,
+        "peak": 0.3197622001171112,
+        "finite": true
+      }
+    ]
+  },
+  "brushOverlapQuality": {
+    "sampleRate": 8000,
+    "tempoBpm": 400,
+    "eventCount": 40,
+    "durationTicks": 240,
+    "frames": 512,
+    "maxActiveVoices": 4,
+    "maxRetiringVoices": 22,
+    "rms": 0.00851118667057418,
+    "peak": 0.05301473289728165,
+    "maxAdjacentStep": 0.08740662038326263,
+    "maxEventBoundaryStep": 0.08740662038326263,
+    "normalizedAdjacentStep": 10.269616184715407,
+    "interpretation": "numeric transient proxy only; no perceptual or listening evaluation"
+  },
+  "realtimeInterpretation": "Wall-clock maxima and exceedances remain authoritative. Calibrated cycle-time CPU estimates are diagnostic only and subject to calibration error and DVFS/turbo/thermal/power-state variation. This isolated benchmark does not qualify hardware E2E or product Gate 1/7.",
+  "audioMetricLimitation": "numeric spectral/envelope/transient proxies only; no perceptual or listening evaluation"
+}

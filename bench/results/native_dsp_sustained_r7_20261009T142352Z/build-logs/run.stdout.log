@@ -1,0 +1,3 @@
+cases=49 host_frames=64 sample_rate=48000 calls_per_case=256+1024+10000+512
+scope=software-only 64-frame processor measurements; no device/XRUN/full-graph/30-minute-soak qualification
+json=C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-sustained-r7_20261009T142352Z\build\native_dsp_sustained_3f498678cb4a4c12951b2b44be3ff653.json
