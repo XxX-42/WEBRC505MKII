@@ -18,6 +18,8 @@ This is an intermediate review, not an acceptance report. Gate 0 has passed; no 
 
 The subsequent shelf-control/freeze snapshot has independently reproduced WASM golden/extended tests and verified archive/snapshot hashes; see `WASM_EXTENDED_ROOT_REVIEW.md`. Warm freeze capture now preserves the prior populated frame when input stops at the control event. This is a partial functional correction, not a new spatial timing result or completed transition-quality gate.
 
+A later immutable shared-core snapshot now has archived exact sources and independently rerun ASan CTest 6/6, including an initial FX-registry test entry. It precedes subsequent coupled-EQ/memory-accounting and rhythm changes; see `ASAN_ROOT_REVIEW.md`. This acceptance remains tied to its exact snapshot.
+
 FFT/spatial and pitch modules have accepted partial functional and shared-core sanitizer evidence. Longer cross-runtime PCM fixtures, ABI-wrapper validation, complete callback allocation coverage and all-module timing distributions remain required. Native 64 frames and Browser actual output-array quantum remain separate measurement configurations.
 
 Spatial review caught and requested fixes for convolution size overflow, frequency-unit confusion in spectral freeze, grain-window edge normalization, reverse capture/play cadence, drum modal amplitude normalization, and voice-pool discontinuities. The current absolute-frame reverse design removes the unequal capture/play cadence, but its startup transition and repeated voice stealing still need quantitative coverage. Timing archives that contain only percentiles and source hashes collected after running an external executable cannot establish full source/build provenance or raw callback acceptance.

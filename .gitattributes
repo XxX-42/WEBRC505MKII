@@ -25,3 +25,5 @@
 /shared/dsp/include/webrc/dsp/spatial_temporal.hpp -text
 /shared/dsp/src/spatial_temporal.cpp -text
 /shared/dsp/tests/spatial_temporal_tests.cpp -text
+# Immutable source/log copies retain exact bytes, including upstream whitespace.
+/bench/results/native_dsp_asan_shared_snapshot_20261009_r5/** -text -whitespace

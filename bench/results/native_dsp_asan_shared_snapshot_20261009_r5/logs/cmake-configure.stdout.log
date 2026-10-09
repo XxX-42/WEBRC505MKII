@@ -1,0 +1,9 @@
+-- The CXX compiler identification is Clang 23.1.3 with MSVC-like command-line
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Users/user1000/AppData/Local/Temp/llvm-23.1.3-asan-probe/clang+llvm-23.1.3-x86_64-pc-windows-msvc/bin/clang-cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (5.0s)
+-- Generating done (0.9s)
+-- Build files have been written to: C:/Users/user1000/AppData/Local/Temp/webrc-native-dsp-asan-9c92f73302374dfcba7bf2a4d2cc00ff
