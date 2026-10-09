@@ -1,0 +1,9 @@
+# Native shared-core AddressSanitizer review
+
+On 2026-10-09 the coordinator independently verified every archived log/script size and SHA256, the copied source manifest hash and all 68 files in its immutable TEMP snapshot. The accepted source input fingerprint is `e99086e891f7571655949879b7a36de4d9c2f701661da5b076fc2081bb7b7ce5`, with 41 fingerprint inputs; copied-tree fingerprint is `97f3f610713c9878449df5d0a035791bbe575259746c2d77e4bb6cc491c9a924`.
+
+The archived configure/cache/runner evidence uses clang-cl 23.1.3, `/fsanitize=address /Zi /EHsc`, the official matching x64 dynamic ASan import library/runtime thunk and an explicit interceptor, with VS2019/MSVC 14.29/Windows SDK 10.0.19041. The bounded runtime preflight has an explicit child exit-code file of zero. CTest's original archived run passes all five shared-core suites in 2.00 seconds. The coordinator then independently reran the instrumented snapshot binaries: **5/5 passed in 1.93 seconds**, with suite times 0.10/0.05/0.21/0.93/0.63 seconds. No sanitizer diagnostics appeared.
+
+This qualifies the exercised shared-core tests under Windows ASan. It does not qualify the separately built WASM base/extended ABI wrappers, malformed raw WebAssembly pointers, Windows leak detection, production audio graphs, real-time deadlines or device XRUNs. A copied file being in the provenance manifest does not mean that file was compiled into these five test binaries. The earlier MSVC initialization failure and concurrent-source stale run remain rejected.
+
+Evidence: `bench/results/native_dsp_asan_clang23_snapshot_r4_20261009/result.json` and its byte-preserved source manifest, verifier copies and 19 log/artifact files. The reusable verifier is `scripts/native-dsp-sanitize.ps1`; its optional portable `-ClangClPath` requires the matching runtime and linker. Build and compiler intermediate output remains under TEMP. No hardware stream was opened.

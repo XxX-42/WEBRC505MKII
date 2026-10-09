@@ -1,0 +1,30 @@
+[  4%] Building CXX object CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj
+[  9%] Building CXX object CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj
+[ 13%] Building CXX object CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj
+[ 18%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj
+[ 22%] Building CXX object CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj
+[ 27%] Building CXX object CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj
+[ 31%] Building CXX object CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj
+[ 36%] Linking CXX static library webrc_dsp.lib
+[ 36%] Built target webrc_dsp
+[ 40%] Building CXX object CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj
+[ 45%] Linking CXX executable dsp_primitives_tests.exe
+[ 45%] Built target dsp_primitives_tests
+[ 50%] Building CXX object CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj
+[ 54%] Linking CXX executable control_dynamics_tests.exe
+[ 54%] Built target control_dynamics_tests
+[ 59%] Building CXX object CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj
+[ 63%] Linking CXX executable nonlinear_tests.exe
+[ 63%] Built target nonlinear_tests
+[ 68%] Building CXX object CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj
+[ 72%] Linking CXX executable spatial_temporal_tests.exe
+[ 72%] Built target spatial_temporal_tests
+[ 77%] Building CXX object CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj
+[ 81%] Linking CXX executable pitch_tests.exe
+[ 81%] Built target pitch_tests
+[ 86%] Building CXX object CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj
+[ 90%] Linking CXX executable native_dsp_primitives_bench.exe
+[ 90%] Built target native_dsp_primitives_bench
+[ 95%] Building CXX object CMakeFiles/dsp_primitives_golden.dir/benchmarks/native_dsp_primitives_golden.cpp.obj
+[100%] Linking CXX executable dsp_primitives_golden.exe
+[100%] Built target dsp_primitives_golden

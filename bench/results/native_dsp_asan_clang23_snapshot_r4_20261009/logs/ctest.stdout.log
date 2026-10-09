@@ -1,0 +1,15 @@
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-native-dsp-asan-clang23-snapshot-r4-20261009
+    Start 1: dsp_primitives_tests
+1/5 Test #1: dsp_primitives_tests .............   Passed    0.10 sec
+    Start 2: control_dynamics_tests
+2/5 Test #2: control_dynamics_tests ...........   Passed    0.06 sec
+    Start 3: nonlinear_tests
+3/5 Test #3: nonlinear_tests ..................   Passed    0.21 sec
+    Start 4: spatial_temporal_tests
+4/5 Test #4: spatial_temporal_tests ...........   Passed    0.90 sec
+    Start 5: pitch_tests
+5/5 Test #5: pitch_tests ......................   Passed    0.58 sec
+
+100% tests passed out of 5
+
+Total Test time (real) =   2.00 sec

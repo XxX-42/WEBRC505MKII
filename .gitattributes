@@ -4,3 +4,5 @@
 /shared/dsp/benchmarks/results/native-spatial-temporal-20261009T*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /shared/dsp/benchmarks/native_spatial_temporal_bench.cpp -text
 /shared/dsp/benchmarks/capture_spatial_temporal_bench.ps1 -text
+/bench/results/native_dsp_asan_clang23_snapshot_r4_20261009/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/bench/results/native_dsp_asan_clang23_snapshot_r4_20261009/logs/** -whitespace

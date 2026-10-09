@@ -24,9 +24,9 @@ The replacement `shared/dsp/benchmarks/results/native-spatial-temporal-20261009T
 
 Workload limits found during source review: the drum pool receives eight initial triggers and then decays, so this is not sustained eight-voice processing; granular pool capacity is 32 but 80 grains/second and 150-ms duration imply roughly 12 concurrent grains; freeze is enabled before populated capture, so its timing fixture measures zero-spectrum work. The separate freeze quality fixture does capture nonzero tones. These preserved timing records are not worst-case admissions. Sustained/retriggered voice, active-count and populated-freeze benchmarks remain required.
 
-## AddressSanitizer is not passed
+## AddressSanitizer: accepted alternative after rejected initial runs
 
-The independent MSVC AddressSanitizer build compiled every target, then its first test stalled at startup with near-zero CPU. The coordinator stopped only the owned TEMP test and CTest process after 111.60 seconds. The run failed; no sanitizer pass is claimed. An independent minimal MSVC ASan program exits with `0xC0000142`, and the installed Emscripten host clang lacks `clang_rt.asan_dynamic.lib`. The first sanitizer recipe also replaced MSVC default flags and omitted `/EHsc`; the revised recipe must include it, bound preflight/test execution and record unavailable-runtime outcomes explicitly. Alternative usable sanitizer evidence remains required.
+The independent MSVC AddressSanitizer build compiled every target, then its first test stalled at startup with near-zero CPU. The coordinator stopped only the owned TEMP test and CTest process after 111.60 seconds. That run failed. An independent minimal MSVC ASan program exits with `0xC0000142`, and the installed Emscripten host clang lacks `clang_rt.asan_dynamic.lib`. The first recipe also omitted `/EHsc`. The revised bounded verifier uses a verified official LLVM 23.1.3 runtime, explicit ASan linkage and immutable source snapshots. Its accepted archive and independent coordinator CTest rerun now pass **5/5**; see `ASAN_ROOT_REVIEW.md` for source identity and coverage limits. Earlier failures are not reclassified as passes.
 
 ## Scope of acceptance
 

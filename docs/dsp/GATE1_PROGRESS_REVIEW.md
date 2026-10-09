@@ -10,11 +10,11 @@ This is an intermediate review, not an acceptance report. Gate 0 has passed; no 
 
 ## Additional accepted functional and standalone evidence
 
-`df038ca` has independent combined shared-core Native CTest 5/5, a later final pitch assertion 1/1, fresh pinned-Emscripten pitch tests, and an immutable Native parent snapshot build with CTest 6/6. `f647ac9` adds fresh spatial timing arrays with independently recomputed quantiles/source hashes and the corrected standalone Rubber Band comparison. See `SPATIAL_PITCH_ROOT_REVIEW.md` and `RUBBERBAND_ROOT_REVIEW.md` for their actual scope. A newly reported immutable LLVM 23.1.3 AddressSanitizer 5/5 pass is awaiting coordinator log/manifest review; the earlier concurrent-source run remains stale.
+`df038ca` has independent combined shared-core Native CTest 5/5, a later final pitch assertion 1/1, fresh pinned-Emscripten pitch tests, and an immutable Native parent snapshot build with CTest 6/6. `f647ac9` adds fresh spatial timing arrays with independently recomputed quantiles/source hashes and the corrected standalone Rubber Band comparison. See `SPATIAL_PITCH_ROOT_REVIEW.md` and `RUBBERBAND_ROOT_REVIEW.md` for their actual scope. The immutable LLVM 23.1.3 AddressSanitizer archive has now passed coordinator log/manifest review and an independent instrumented CTest rerun 5/5. See `ASAN_ROOT_REVIEW.md`; the earlier concurrent-source run remains stale.
 
 ## Source review still requiring full qualification
 
-FFT/spatial and pitch modules have accepted partial functional evidence. Longer cross-runtime PCM fixtures, a reviewed sanitizer archive, complete callback allocation coverage and all-module timing distributions remain required. Native 64 frames and Browser actual output-array quantum remain separate measurement configurations.
+FFT/spatial and pitch modules have accepted partial functional and shared-core sanitizer evidence. Longer cross-runtime PCM fixtures, ABI-wrapper validation, complete callback allocation coverage and all-module timing distributions remain required. Native 64 frames and Browser actual output-array quantum remain separate measurement configurations.
 
 Spatial review caught and requested fixes for convolution size overflow, frequency-unit confusion in spectral freeze, grain-window edge normalization, reverse capture/play cadence, drum modal amplitude normalization, and voice-pool discontinuities. The current absolute-frame reverse design removes the unequal capture/play cadence, but its startup transition and repeated voice stealing still need quantitative coverage. Timing archives that contain only percentiles and source hashes collected after running an external executable cannot establish full source/build provenance or raw callback acceptance.
 
