@@ -1,0 +1,13 @@
+# Initial shared DSP foundation
+
+This batch adds a portable C++17 foundation used by the Native tests and the developing WASM adapter. It is a subset of Gate 1, not a completed F01–F29 implementation or production FX graph.
+
+The batch includes parameter smoothing/equal-power helpers, RBJ DF2T low/high/band/peaking filters, TPT SVF, a first-order all-pass, Lagrange fractional delay, sinc8 reads, recursive LFO/polyBLEP oscillators, a saturated-cubic ADAA primitive, a linked stereo peak/RMS compressor, a bounded stereo feedback matrix and seeded PCG. Oversampling, full effect topologies and the other required primitives remain pending.
+
+The coordinating agent ran a fresh MSVC 19.29 Release build through `scripts/native-dsp-verify.ps1`; CTest passed 1/1. Numerical tests cover the corrected all-pass phase center, filter boundary stability, oscillator DC/alias behavior, fractional-buffer boundary safety, extreme finite and NaN/Inf input recovery, and prepared processing with automation and no counted C++ heap allocations. Allocation instrumentation covers the tested paths and is not proof for future graphs or all host allocations.
+
+The controlled software microbenchmark measures one complete primitive-stack block per `steady_clock` interval. At 48 kHz / 64 frames, the deadline is 1333.333 microseconds. Its 20,000 steady-state measurements reported P50 24.6, P95 40.3, P99 45.8, P99.9 74.1 and max 273.4 microseconds. Startup's first 1024 measurements reported P99 36.8, P99.9 42.0 and max 71.5 microseconds. Raw ordered measurements, compiler/CPU/OS and source fingerprint are preserved in `bench/results/native_primitives_root_20261009.json`.
+
+A preliminary executor run reported P99 77.8, P99.9 329.1 and max 5723.3 microseconds under concurrent development activity, before the coordinator's final source/build verification. That spike is retained as a limitation; a lower controlled-run maximum does not establish a bound on future scheduling stalls. The preliminary raw file was overwritten by the subsequent verification, so its values have only the executor's captured output as evidence.
+
+These numbers measure synchronous software compute, not a physical device callback, hardware latency or XRUN acceptance. The test does not contain five tracks, complete FX banks, rhythm/kits, master reverb, live pitch, UI/file/MIDI load or a 30-minute run. Gate 1 and Gates 2–7 remain unpassed. Filters and zero-lookahead compressor have no intentional whole-sample buffering; filter phase delay and ADAA's approximately half-sample small-signal group delay are separate from that statement. Intentional fractional delay and sinc read lookahead must be accounted for by their callers.
