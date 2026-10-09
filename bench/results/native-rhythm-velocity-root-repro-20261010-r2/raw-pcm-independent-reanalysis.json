@@ -1,0 +1,29 @@
+{
+  "scope": "Independent Python reanalysis of captured kit0 Float32 stereo bytes. Instrument IDs read from actual captured filenames, not guessed enum ordinals.",
+  "cases": [
+    {
+      "instrument": 0,
+      "samples": 16384,
+      "fittedGain": 3.5000000812758576,
+      "gainRemovedRmsResidual": 5.063920542087299e-08
+    },
+    {
+      "instrument": 1,
+      "samples": 16384,
+      "fittedGain": 3.499999828818773,
+      "gainRemovedRmsResidual": 4.966515894322894e-08
+    },
+    {
+      "instrument": 2,
+      "samples": 16384,
+      "fittedGain": 3.500000148897328,
+      "gainRemovedRmsResidual": 4.9622641197536674e-08
+    },
+    {
+      "instrument": 5,
+      "samples": 16384,
+      "fittedGain": 3.5000002500902365,
+      "gainRemovedRmsResidual": 4.946536122014852e-08
+    }
+  ]
+}

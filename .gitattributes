@@ -429,3 +429,6 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /bench/results/native-fx-config-preflight-root-repro-20261009T224524Z/** -text -whitespace
 /bench/results/native-fx-config-preflight-root-fixed-20261010-r1/** -text -whitespace
 /bench/results/browser-context50-root-kernel-20261010-r1/** -text -whitespace
+/bench/results/native-rhythm-velocity-root-repro-20261010-r1/** -text -whitespace
+/bench/results/native-rhythm-velocity-root-repro-20261010-r2/** -text -whitespace
+/bench/native-rhythm-velocity-root-repro.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol

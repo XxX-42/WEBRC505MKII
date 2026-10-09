@@ -1,0 +1,3 @@
+{
+"scope":"software shared RhythmRenderer velocity gain-removal probe",
+"sampleRateHz":48000,"blockFrames":64,"framesPerHit":8192,"cases":[

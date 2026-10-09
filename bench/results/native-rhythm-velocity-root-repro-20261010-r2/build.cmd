@@ -1,0 +1,6 @@
+@echo off
+setlocal
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" x64 -vcvars_ver=14.29
+if errorlevel 1 exit /b %errorlevel%
+cl /nologo /O2 /Ob2 /DNDEBUG /MD /EHsc /std:c++17 /showIncludes /I"C:\Users\user1000\AppData\Local\Temp\webrc-native-config-preflight-v1-source\shared\dsp\include" /Fo"D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-rhythm-velocity-root-repro-20261010-r2\repro.obj" /Fe"D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-rhythm-velocity-root-repro-20261010-r2\repro.exe" "D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-rhythm-velocity-root-repro-20261010-r2\native-rhythm-velocity-root-repro.cpp" "C:\Users\user1000\AppData\Local\Temp\webrc-native-config-preflight-v1-build\shared_dsp\webrc_dsp.lib"
+exit /b %errorlevel%

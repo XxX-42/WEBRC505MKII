@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "build.cmd",
+      "bytes": 905,
+      "sha256": "ae74a5129c909797febc90af28c0aa475e865e8774a6fac958c916496b16c3cb"
+    },
+    {
+      "path": "build.raw.log",
+      "bytes": 15715,
+      "sha256": "2be05c9df557a278d8daf45ca2a2bfa30e8deb152adac12adf88756da43a025d"
+    },
+    {
+      "path": "native-rhythm-velocity-root-repro.cpp",
+      "bytes": 3154,
+      "sha256": "46386202ee530a5f65196f8bb52a4c8c1732efe02419d1419da66d392426e39a"
+    },
+    {
+      "path": "README.md",
+      "bytes": 393,
+      "sha256": "dfe85aa8e618c7b74b3235de3cbff9741d71be2bdd32066341f72dd78487e238"
+    },
+    {
+      "path": "repro.exe",
+      "bytes": 308224,
+      "sha256": "3a7187f988c5a4f6b95aca95eb931fab2fa2580ca25c70b856a82897a3916e5a"
+    },
+    {
+      "path": "repro.obj",
+      "bytes": 172799,
+      "sha256": "650c0e94c50e1ec6343d3d70305879576f13a1bab43cd86666bd5a211be9445f"
+    },
+    {
+      "path": "result.json",
+      "bytes": 143,
+      "sha256": "fa9f83c8bbc39a3a5a5043ac356387870a5c0657e8f253ef9c4946929db6557c"
+    },
+    {
+      "path": "run.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

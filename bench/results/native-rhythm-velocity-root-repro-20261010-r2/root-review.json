@@ -1,0 +1,40 @@
+{
+  "scope": "Existing copied preflight-v1 DSP library linked by a fresh standalone root fixture; not a new full library rebuild.",
+  "runExitCode": 0,
+  "expectedDefectExitCode": 0,
+  "fixtureSha256": "c0d96459c809322234c6a73b5198246b4f44d5d1c8dd64bdfed3976a7f57690c",
+  "libraryPath": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-config-preflight-v1-build\\shared_dsp\\webrc_dsp.lib",
+  "librarySha256": "9a2bce6a895fa902df7171b603be52d0ec0d287da3760a27a83faaaedd0a533f",
+  "sourceComparison": [
+    {
+      "path": "shared/dsp/src/rhythm.cpp",
+      "frozenSha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+      "liveSha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1",
+      "identical": true
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "frozenSha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "liveSha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "identical": true
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+      "frozenSha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e",
+      "liveSha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e",
+      "identical": true
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "frozenSha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "liveSha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "identical": true
+    }
+  ],
+  "caseCount": 64,
+  "maxRelativeGainRemovedResidual": 5.35469e-08,
+  "allTestedVelocitiesOnlyChangeGain": true,
+  "floatResidualTolerance": 1e-05,
+  "rawPcmFormat": "IEEE754 little-endian Float32 interleaved stereo;48000Hz;8192frames;kit0 four instruments,32/112 velocities",
+  "initialHarnessFailure": "r1 exited2 after empty intro/fill/ending failed renderer pattern validation; original prefix stdout/source/build artifacts retained. r2 supplies all mandatory sections; playback begins variationA without intro."
+}
