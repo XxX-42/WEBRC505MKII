@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "verifiedAtUtc": "2026-10-09T19:09:39.878025+00:00",
+  "archive": "shared/dsp/benchmarks/results/synthesis-pitch-fx-fresh-closure-20261009T185244190Z",
+  "inventoryEntriesVerified": 45,
+  "inventorySha256": "2b8dd431fe0b769a32a13c97227db54ba23c53d76446ccde8f171109eb4c705c",
+  "manifestSha256": "f89b18c8e7ad5eadf6ec96a2d4c4844c1cff70429bead0912a9dff418745a123",
+  "sourceClosureSha256": "4b335963745ee625a26d01b3c67dba95fee7a4d3144fd6c12b20d47d8e51c13b",
+  "copiedSourcesVerified": 16,
+  "liveCanonicalSourcesByteIdentical": 15,
+  "executableSha256": "41f3758f430e4418305fc90463b083c8fe419fdb2118fa672e68c1868a05c8c8",
+  "independentExecutableRerun": {
+    "exitCode": 0,
+    "summary": {
+      "passed": 22,
+      "failed": 0
+    },
+    "metrics": {
+      "synthLeft220Projection": 0.0674059,
+      "synthRight330Projection": 0.0698954,
+      "g2bLeft110Projection": 0.350559,
+      "g2bLeft220Projection": 0.00474496,
+      "harmonyLeft261Projection": 0.391995,
+      "harmonyMidi440Projection": 0.484394,
+      "harmonyRightRms": 0,
+      "autoRiffStepsAfterRender": 8,
+      "callbackAllocations": 0,
+      "callbackFrees": 0
+    }
+  },
+  "archiveUnchangedAfterRerun": true,
+  "notQualified": [
+    "Native registry or host integration",
+    "Browser/WASM parity",
+    "callback timing distribution",
+    "30-minute fullgraph realtime",
+    "final sound quality",
+    "hardware end-to-end latency"
+  ]
+}

@@ -1,0 +1,24 @@
+PASS synth prepare memory accounts pitch-analysis path
+PASS synth prepares clean-room oscillator and incremental pitch path
+PASS synth rejects out-of-block event transactionally
+PASS synth renders 220/330 Hz independent stereo inputs
+PASS synth follows independent left/right fundamentals
+PASS G2B prepares independent stereo PSOLA and divider paths
+PASS G2B renders independent stereo tracked input
+PASS G2B mode 2 resynthesizes true octave-down stereo fundamentals
+PASS G2B mode 1 prepares its divider-resynthesis path
+PASS G2B mode 1 renders its divider blend
+PASS G2B modes produce distinct resynthesized audio, not aliases
+PASS AUTO RIFF prepares fixed-point phrase transport
+PASS AUTO RIFF exposes 30 distinct authored eight-step phrase tables
+PASS AUTO RIFF renders continuous detected-pitch phrase
+PASS AUTO RIFF advances eight eighth-note slots over its 2-second phrase at 120 BPM
+PASS AUTO RIFF phrase control starts a new phrase at its exact sample offset
+PASS AUTO RIFF rejects invalid tempo before changing PCM
+PASS HRM AUTO prepares key-aware stereo harmony
+PASS HRM AUTO renders independent mono/stereo pitch paths
+PASS HRM AUTO selects a C-major diatonic third and keeps right-channel silence
+PASS HRM AUTO hybrid accepts a sample-accurate MIDI target override
+PASS all four processors perform callbacks without heap allocation or free
+METRICS {"synthLeft220Projection":0.0674059,"synthRight330Projection":0.0698954,"g2bLeft110Projection":0.350559,"g2bLeft220Projection":0.00474496,"harmonyLeft261Projection":0.391995,"harmonyMidi440Projection":0.484394,"harmonyRightRms":0,"autoRiffStepsAfterRender":8,"callbackAllocations":0,"callbackFrees":0}
+SUMMARY {"passed":22,"failed":0}
