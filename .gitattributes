@@ -405,3 +405,5 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /docs/dsp/BROWSER_GRAPH_TRACE_ROOT_REVIEW.md -text
 /docs/validation/20261010/browser-graph-trace-window01-root.json -text
 /docs/validation/20261010/browser-graph-trace-window01-root-v2.json -text
+/bench/native-fx-event-admission-root-repro.cpp -text
+/bench/results/native-fx-event-admission-root-repro-20261009T221100Z/** -text -whitespace

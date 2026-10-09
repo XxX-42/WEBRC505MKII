@@ -1,0 +1,6 @@
+@echo off
+setlocal
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" x64 -vcvars_ver=14.29
+if errorlevel 1 exit /b %errorlevel%
+cl /nologo /O2 /Ob2 /DNDEBUG /MD /EHsc /std:c++17 /I"D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-fx-event-admission-root-repro-20261009T221100Z\native-include" /I"D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-fx-event-admission-root-repro-20261009T221100Z\dsp-include" /Fo"C:\Users\user1000\AppData\Local\Temp\webrc-root-event-admission-20261010-r1\repro.obj" /Fe"C:\Users\user1000\AppData\Local\Temp\webrc-root-event-admission-20261010-r1\repro.exe" "D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-fx-event-admission-root-repro-20261009T221100Z\repro.cpp" "D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-fx-event-admission-root-repro-20261009T221100Z\native_track_host.lib" "D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-fx-event-admission-root-repro-20261009T221100Z\webrc_dsp.lib" "D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\bench\results\native-fx-event-admission-root-repro-20261009T221100Z\native_multitrack_core.lib"
+exit /b %errorlevel%
