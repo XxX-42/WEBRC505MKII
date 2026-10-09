@@ -1,0 +1,15 @@
+@echo off
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul
+if errorlevel 1 exit /b 1
+cd /d "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z"
+cl /Bv > "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\compiler-version.txt" 2>&1
+cl /nologo /std:c++17 /O2 /EHsc /MD /W4 /DWEBRC_PERFORMANCE_FX_BENCHMARK=1 /c /I"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\shared\dsp\include" "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\shared\dsp\benchmarks\native_performance_fx_eventburst_bench.cpp" /Fo"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\bench.obj" >> "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build.log" 2>&1
+if errorlevel 1 exit /b 1
+cl /nologo /std:c++17 /O2 /EHsc /MD /W4 /DWEBRC_PERFORMANCE_FX_BENCHMARK=1 /c /I"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\shared\dsp\include" "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\shared\dsp\src\performance_fx.cpp" /Fo"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\performance_fx.obj" >> "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build.log" 2>&1
+if errorlevel 1 exit /b 1
+cl /nologo /std:c++17 /O2 /EHsc /MD /W4 /DWEBRC_PERFORMANCE_FX_BENCHMARK=1 /c /I"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\shared\dsp\include" "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\shared\dsp\src\primitives.cpp" /Fo"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\primitives.obj" >> "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build.log" 2>&1
+if errorlevel 1 exit /b 1
+cl /nologo /O2 /MD /Fe:"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\native_performance_fx_eventburst_bench.exe" "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\bench.obj" "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\performance_fx.obj" "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\primitives.obj" >> "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build.log" 2>&1
+if errorlevel 1 exit /b 1
+"C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\build\native_performance_fx_eventburst_bench.exe" > "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\eventburst-raw.json" 2> "C:\Users\user1000\AppData\Local\Temp\webrc-performance-fx-eventburst-20261009T144617906Z\run.log"
+exit /b %ERRORLEVEL%

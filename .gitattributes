@@ -51,3 +51,8 @@
 /native-mvp/engine-cpp/tests/native_track_host_tests.cpp -text
 /bench/results/native_stereo_pan_20261009T142245Z/** -text -whitespace
 /bench/results/native_dsp_sustained_r7_20261009T142352Z/** -text -whitespace
+# Immutable BeatRepeat event-burst inputs and raw timing evidence.
+/shared/dsp/benchmarks/results/native-performance-fx-eventburst-20261009T144617906Z* -text -whitespace
+/shared/dsp/benchmarks/results/native-performance-fx-eventburst-20261009T144617906Z.snapshot/** -text -whitespace
+/shared/dsp/benchmarks/capture_native_performance_fx_eventburst.ps1 -text
+/shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp -text

@@ -1,0 +1,221 @@
+{
+  "schemaVersion": "webrc-performance-fx-eventburst-manifest-v1",
+  "capturedUtc": "2026-10-09T14:46:26.3403848Z",
+  "gitHead": "269b273d357ba51d2032596d8de8de501a3ca28f",
+  "gitBranch": "codex/instrument-grade-audio-20261007",
+  "qualification": "Isolated native BeatRepeat 64-event, 64-frame callback capture; not whole-graph realtime qualification.",
+  "os": {
+    "caption": "Microsoft Windows 11 专业版",
+    "version": "10.0.26200",
+    "buildNumber": "26200"
+  },
+  "cpu": {
+    "registryName": "AMD Ryzen 9 5900HX with Radeon Graphics        ",
+    "wmi": {
+      "Name": "AMD Ryzen 9 5900HX with Radeon Graphics        ",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 16,
+      "MaxClockSpeed": 3301
+    }
+  },
+  "processPriorityClass": "Normal; no affinity or realtime-priority change",
+  "compilerVersionOutput": "用于 x64 的 Microsoft (R) C/C++ 优化编译器 19.29.30159 版\r\n版权所有(C) Microsoft Corporation。保留所有权利。\r\n\r\n编译器扫描遍数:\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe:        版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1.dll:        版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1xx.dll:      版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c2.dll:        版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1xx.dll:      版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe:      版本 14.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\mspdb140.dll:  版本 14.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\2052\\clui.dll: 版本 19.29.30159.0\r\n\r\ncl: 命令行 error D8003 :缺少源文件名\r\n",
+  "compileFlags": [
+    "/nologo",
+    "/std:c++17",
+    "/O2",
+    "/EHsc",
+    "/MD",
+    "/W4",
+    "/DWEBRC_PERFORMANCE_FX_BENCHMARK=1"
+  ],
+  "copiedInputFingerprintBefore": {
+    "aggregateSha256": "b58e079a9d47829a69e0b8014c86e6c85e3b1f2a43ef829905eb392458f11258",
+    "files": [
+      {
+        "path": "shared/dsp/benchmarks/capture_native_performance_fx_eventburst.ps1",
+        "bytes": 9945,
+        "sha256": "9e728dd659fdb8db65e495f0f1779b86d928b52b4159ff1f79614e10f10659de"
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp",
+        "bytes": 9165,
+        "sha256": "29378ad35a9590639a575719b78d9c1ac2eef1c3d49a1e382d74b23db603276f"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+        "bytes": 8438,
+        "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "bytes": 10933,
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+      },
+      {
+        "path": "shared/dsp/src/performance_fx.cpp",
+        "bytes": 34156,
+        "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "bytes": 38017,
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+      }
+    ]
+  },
+  "copiedInputFingerprintAfter": {
+    "aggregateSha256": "b58e079a9d47829a69e0b8014c86e6c85e3b1f2a43ef829905eb392458f11258",
+    "files": [
+      {
+        "path": "shared/dsp/benchmarks/capture_native_performance_fx_eventburst.ps1",
+        "bytes": 9945,
+        "sha256": "9e728dd659fdb8db65e495f0f1779b86d928b52b4159ff1f79614e10f10659de"
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp",
+        "bytes": 9165,
+        "sha256": "29378ad35a9590639a575719b78d9c1ac2eef1c3d49a1e382d74b23db603276f"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+        "bytes": 8438,
+        "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "bytes": 10933,
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+      },
+      {
+        "path": "shared/dsp/src/performance_fx.cpp",
+        "bytes": 34156,
+        "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "bytes": 38017,
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+      }
+    ]
+  },
+  "originalInputFingerprintBefore": {
+    "aggregateSha256": "b58e079a9d47829a69e0b8014c86e6c85e3b1f2a43ef829905eb392458f11258",
+    "files": [
+      {
+        "path": "shared/dsp/benchmarks/capture_native_performance_fx_eventburst.ps1",
+        "bytes": 9945,
+        "sha256": "9e728dd659fdb8db65e495f0f1779b86d928b52b4159ff1f79614e10f10659de"
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp",
+        "bytes": 9165,
+        "sha256": "29378ad35a9590639a575719b78d9c1ac2eef1c3d49a1e382d74b23db603276f"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+        "bytes": 8438,
+        "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "bytes": 10933,
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+      },
+      {
+        "path": "shared/dsp/src/performance_fx.cpp",
+        "bytes": 34156,
+        "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "bytes": 38017,
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+      }
+    ]
+  },
+  "originalInputFingerprintAfter": {
+    "aggregateSha256": "b58e079a9d47829a69e0b8014c86e6c85e3b1f2a43ef829905eb392458f11258",
+    "files": [
+      {
+        "path": "shared/dsp/benchmarks/capture_native_performance_fx_eventburst.ps1",
+        "bytes": 9945,
+        "sha256": "9e728dd659fdb8db65e495f0f1779b86d928b52b4159ff1f79614e10f10659de"
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp",
+        "bytes": 9165,
+        "sha256": "29378ad35a9590639a575719b78d9c1ac2eef1c3d49a1e382d74b23db603276f"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+        "bytes": 8438,
+        "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "bytes": 10933,
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+      },
+      {
+        "path": "shared/dsp/src/performance_fx.cpp",
+        "bytes": 34156,
+        "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "bytes": 38017,
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+      }
+    ]
+  },
+  "archivedInputFingerprint": {
+    "aggregateSha256": "b58e079a9d47829a69e0b8014c86e6c85e3b1f2a43ef829905eb392458f11258",
+    "files": [
+      {
+        "path": "shared/dsp/benchmarks/capture_native_performance_fx_eventburst.ps1",
+        "bytes": 9945,
+        "sha256": "9e728dd659fdb8db65e495f0f1779b86d928b52b4159ff1f79614e10f10659de"
+      },
+      {
+        "path": "shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp",
+        "bytes": 9165,
+        "sha256": "29378ad35a9590639a575719b78d9c1ac2eef1c3d49a1e382d74b23db603276f"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+        "bytes": 8438,
+        "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+      },
+      {
+        "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+        "bytes": 10933,
+        "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+      },
+      {
+        "path": "shared/dsp/src/performance_fx.cpp",
+        "bytes": 34156,
+        "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+      },
+      {
+        "path": "shared/dsp/src/primitives.cpp",
+        "bytes": 38017,
+        "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+      }
+    ]
+  },
+  "sourceSnapshotUnchanged": true,
+  "repositoryInputsUnchangedDuringCapture": true,
+  "archivedSourcesMatchBuiltCopy": true,
+  "rawResultPath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-performance-fx-eventburst-20261009T144617906Z.json",
+  "rawResultSha256": "59870ab311b309425515717a9ac5bf52f5db9b511c7d00ab19e5ffa768da4e77",
+  "callbackP99Ns": 15900,
+  "callbackP999Ns": 60200,
+  "callbackMaxNs": 324100,
+  "over60PercentBudget": 0,
+  "over80PercentBudget": 0,
+  "over100PercentBudget": 0,
+  "repeatFramesCopiedPerCallbackMax": 64,
+  "timerMethod": "std::chrono::steady_clock; raw wall durations retained without overhead subtraction; an independent empty clock-pair series is retained.",
+  "archivedSourceDirectory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\native-performance-fx-eventburst-20261009T144617906Z.snapshot"
+}
