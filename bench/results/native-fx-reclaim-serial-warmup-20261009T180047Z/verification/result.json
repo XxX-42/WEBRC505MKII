@@ -1,0 +1,16 @@
+{
+    "schema":  "native-fx-reclaim-copied-build-result-v1",
+    "status":  "PASS",
+    "exitCode":  0,
+    "ctest":  "3/3 passed",
+    "sourceStableBeforeAfter":  true,
+    "sourceSetSha256":  "11516bf67c267af4e697b08d997b9a050cc09d0ab1fccdd976b354dfccca1d4a",
+    "toolchain":  "MSVC 19.29.30159.0 / VS2019 toolset 14.29.30133",
+    "testScope":  [
+                      "native_fx_graph_tests: retained old/candidate graph bytes until off-callback destruction; latency warmup and transition tests",
+                      "native_track_host_tests",
+                      "native_multitrack_core_tests"
+                  ],
+    "hardwareOpened":  false,
+    "buildRoot":  "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-serial-warmup-20261009T180047Z"
+}

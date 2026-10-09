@@ -1,0 +1,23 @@
+{
+  "stagedSourceFiles": [
+    "native-mvp/engine-cpp/CMakeLists.txt",
+    "native-mvp/engine-cpp/include/multitrack_looper_core.hpp",
+    "native-mvp/engine-cpp/include/native_audio_core.hpp",
+    "native-mvp/engine-cpp/include/native_track_host.hpp",
+    "native-mvp/engine-cpp/src/multitrack_looper_core.cpp",
+    "native-mvp/engine-cpp/src/native_audio_core.cpp",
+    "native-mvp/engine-cpp/src/native_bridge_host.cpp",
+    "native-mvp/engine-cpp/src/native_track_host.cpp",
+    "native-mvp/engine-cpp/tests/native_track_host_tests.cpp",
+    "native-mvp/engine-cpp/include/native_fx_graph.hpp",
+    "native-mvp/engine-cpp/src/native_fx_graph.cpp",
+    "native-mvp/engine-cpp/tests/native_fx_graph_tests.cpp",
+    "shared/dsp/CMakeLists.txt",
+    "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+    "shared/dsp/src/fx_registry.cpp",
+    "shared/dsp/tests/fx_registry_tests.cpp",
+    "scripts/native-verify.ps1",
+    "scripts/native-dsp-verify.ps1"
+  ],
+  "capturedBeforeFreezeRelease": true
+}

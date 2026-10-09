@@ -1,0 +1,19 @@
+**********************************************************************
+** Visual Studio 2019 Developer Command Prompt v16.11.58
+** Copyright (c) 2021 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+用于 x64 的 Microsoft (R) C/C++ 优化编译器 19.29.30159 版
+版权所有(C) Microsoft Corporation。保留所有权利。
+
+编译器扫描遍数:
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\cl.exe:        版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c1.dll:        版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c1xx.dll:      版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c2.dll:        版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c1xx.dll:      版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\link.exe:      版本 14.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\mspdb140.dll:  版本 14.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\2052\clui.dll: 版本 19.29.30159.0
+
+cl: 命令行 error D8003 :缺少源文件名

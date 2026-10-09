@@ -1,0 +1,120 @@
+MSVC toolchain: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools / 14.29.30133 (explicit parameter)
+Using cached FetchContent source(s): rtaudio_src-src, httplib_src-src, json_src-src
+CMake binary directory and MSVC /Fo object output stay under TEMP: C:\Users\user1000\AppData\Local\Temp\webrc-native-reclaim-dev
+**********************************************************************
+** Visual Studio 2019 Developer Command Prompt v16.11.58
+** Copyright (c) 2021 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE) 
+-- Compiling with support for: wasapi
+-- Using the multi-header code from D:/Documents/Codes/2024_1_WebRC505MKII/2025_WebRC505MKII_v2/native-mvp/build-v145/_deps/json_src-src/include/
+-- Configuring done (7.0s)
+-- Generating done (3.1s)
+-- Build files have been written to: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev
+[ 63%] Built target webrc_dsp
+[ 70%] Built target native_multitrack_core
+[ 76%] Built target native_track_host
+[ 86%] Built target rtaudio
+[ 93%] Built target native_audio_core
+[ 96%] Linking CXX executable native_bridge_host.exe
+[100%] Built target native_bridge_host
+[ 65%] Built target webrc_dsp
+[ 72%] Built target native_multitrack_core
+[ 79%] Built target native_track_host
+[ 89%] Built target rtaudio
+[ 93%] Linking CXX executable looper_core_tests.exe
+[100%] Built target looper_core_tests
+[ 82%] Built target webrc_dsp
+[ 91%] Built target native_multitrack_core
+[100%] Built target native_multitrack_core_tests
+[ 76%] Built target webrc_dsp
+[ 84%] Built target native_multitrack_core
+[ 92%] Built target native_track_host
+[ 96%] Linking CXX executable native_track_host_tests.exe
+[100%] Built target native_track_host_tests
+[ 76%] Built target webrc_dsp
+[ 84%] Built target native_multitrack_core
+[ 92%] Built target native_track_host
+[100%] Built target native_fx_graph_tests
+[100%] Built target native_looper_bench
+[ 90%] Built target webrc_dsp
+[100%] Built target dsp_primitives_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target control_dynamics_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target nonlinear_tests
+[ 95%] Built target webrc_dsp
+[100%] Built target spatial_temporal_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target pitch_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target streaming_yin_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target live_mono_pitch_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target fx_registry_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target performance_fx_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target modulation_fx_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target rhythm_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target composite_fx_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target modulated_delay_fx_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target rhythmic_fx_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target spatial_fx_adapters_tests
+[ 90%] Built target webrc_dsp
+[100%] Built target native_dsp_primitives_bench
+[ 75%] Built target rtaudio
+[100%] Built target apinames
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev
+      Start  1: looper_core_tests
+ 1/20 Test  #1: looper_core_tests ................   Passed    0.38 sec
+      Start  2: native_multitrack_core_tests
+ 2/20 Test  #2: native_multitrack_core_tests .....   Passed    0.07 sec
+      Start  3: native_track_host_tests
+ 3/20 Test  #3: native_track_host_tests ..........   Passed    0.13 sec
+      Start  4: native_fx_graph_tests
+ 4/20 Test  #4: native_fx_graph_tests ............   Passed    0.11 sec
+      Start  5: dsp_primitives_tests
+ 5/20 Test  #5: dsp_primitives_tests .............   Passed    0.09 sec
+      Start  6: control_dynamics_tests
+ 6/20 Test  #6: control_dynamics_tests ...........   Passed    0.05 sec
+      Start  7: nonlinear_tests
+ 7/20 Test  #7: nonlinear_tests ..................   Passed    0.21 sec
+      Start  8: spatial_temporal_tests
+ 8/20 Test  #8: spatial_temporal_tests ...........   Passed    0.71 sec
+      Start  9: pitch_tests
+ 9/20 Test  #9: pitch_tests ......................   Passed    0.58 sec
+      Start 10: streaming_yin_tests
+10/20 Test #10: streaming_yin_tests ..............   Passed    0.19 sec
+      Start 11: live_mono_pitch_tests
+11/20 Test #11: live_mono_pitch_tests ............   Passed    0.34 sec
+      Start 12: fx_registry_tests
+12/20 Test #12: fx_registry_tests ................   Passed    0.14 sec
+      Start 13: performance_fx_tests
+13/20 Test #13: performance_fx_tests .............   Passed    0.26 sec
+      Start 14: modulation_fx_tests
+14/20 Test #14: modulation_fx_tests ..............   Passed    0.15 sec
+      Start 15: rhythm_tests
+15/20 Test #15: rhythm_tests .....................   Passed    0.86 sec
+      Start 16: composite_fx_tests
+16/20 Test #16: composite_fx_tests ...............   Passed    0.38 sec
+      Start 17: modulated_delay_fx_tests
+17/20 Test #17: modulated_delay_fx_tests .........   Passed    0.62 sec
+      Start 18: rhythmic_fx_tests
+18/20 Test #18: rhythmic_fx_tests ................   Passed    0.26 sec
+      Start 19: spatial_fx_adapters_tests
+19/20 Test #19: spatial_fx_adapters_tests ........   Passed    0.17 sec
+      Start 20: apinames
+20/20 Test #20: apinames .........................   Passed    0.06 sec
+
+100% tests passed out of 20
+
+Total Test time (real) =   6.21 sec
+Native build and CTest passed. Build files and object outputs: C:\Users\user1000\AppData\Local\Temp\webrc-native-reclaim-dev

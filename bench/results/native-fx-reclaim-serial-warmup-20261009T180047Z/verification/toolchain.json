@@ -1,0 +1,16 @@
+{
+    "schema":  "native-fx-reclaim-toolchain-v1",
+    "compiler":  "MSVC 19.29.30159.0",
+    "toolset":  "14.29.30133",
+    "generator":  "NMake Makefiles",
+    "buildType":  "Release",
+    "cmakePath":  "C:\\Program Files\\CMake\\bin\\cmake.exe",
+    "cmakeVersion":  "4.4.2",
+    "compilerPath":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe",
+    "nmakePath":  "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\nmake.exe",
+    "ctestPath":  "C:\\Program Files\\CMake\\bin\\ctest.exe",
+    "sourceRoot":  "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\native-fx-reclaim-serial-warmup-20261009T180047Z\\source-snapshot",
+    "buildRoot":  "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-serial-warmup-20261009T180047Z",
+    "fetchContent":  "none (standalone CMake target; Signalsmith headers are archived under third_party)",
+    "compilerCacheMatches":  true
+}

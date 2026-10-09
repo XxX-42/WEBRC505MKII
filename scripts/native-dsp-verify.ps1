@@ -21,6 +21,7 @@ $resultsDirectory = Join-Path $repoRoot 'bench\results'
 $runId = [Guid]::NewGuid().ToString('N')
 $pendingBenchOutput = Join-Path $BuildRoot ("native_primitives_{0}.json" -f $runId)
 $pendingNonlinearOutput = Join-Path $BuildRoot ("native_nonlinear_{0}.json" -f $runId)
+$pendingRhythmOutput = Join-Path $BuildRoot ("native_rhythm_{0}.json" -f $runId)
 $sourceRevision = (& git -C $repoRoot rev-parse HEAD).Trim()
 
 function Get-DspSourceFingerprint {
@@ -87,21 +88,25 @@ $configureArgs = @('-S', $sourceDir, '-B', $BuildRoot, '-G', 'NMake Makefiles',
     "-DCMAKE_MAKE_PROGRAM=$($toolchain.NMakePath)", '-DCMAKE_BUILD_TYPE=Release')
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $configureArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
-$buildArgs = @('--build', $BuildRoot, '--target', 'dsp_primitives_tests', 'control_dynamics_tests', 'nonlinear_tests', 'spatial_temporal_tests', 'pitch_tests', 'native_dsp_primitives_bench', 'dsp_primitives_golden')
+$buildArgs = @('--build', $BuildRoot, '--target', 'dsp_primitives_tests', 'control_dynamics_tests', 'nonlinear_tests', 'spatial_temporal_tests', 'pitch_tests', 'fx_registry_tests', 'rhythm_tests', 'native_dsp_primitives_bench', 'native_rhythm_bench', 'dsp_primitives_golden')
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $buildArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
 $lines += 'set "WEBRC_DSP_BENCH_JSON={0}"' -f $pendingBenchOutput
 $lines += 'set "WEBRC_DSP_NONLINEAR_JSON={0}"' -f $pendingNonlinearOutput
+$lines += 'set "WEBRC_RHYTHM_BENCH_JSON={0}"' -f $pendingRhythmOutput
 $lines += 'set "WEBRC_DSP_SOURCE_REV={0}"' -f $sourceRevision
 $lines += 'set "WEBRC_DSP_SOURCE_HASH={0}"' -f $sourceHash
 $lines += 'set "WEBRC_DSP_BUILD_FLAGS={0}"' -f $buildFlags
 $lines += 'set "WEBRC_DSP_CPU={0}"' -f $cpuModel
 $lines += 'set "WEBRC_DSP_OS={0}"' -f $osDescription
-$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', '^(dsp_primitives_tests|control_dynamics_tests|nonlinear_tests|spatial_temporal_tests|pitch_tests)$')
+$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', '^(dsp_primitives_tests|control_dynamics_tests|nonlinear_tests|spatial_temporal_tests|pitch_tests|fx_registry_tests|rhythm_tests)$')
 $lines += '"{0}" {1}' -f $ctestPath, (ConvertTo-NativeCmdArguments $testArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
 $benchExecutable = Join-Path $BuildRoot 'native_dsp_primitives_bench.exe'
 $lines += '"{0}"' -f $benchExecutable
+$lines += 'if errorlevel 1 exit /b %errorlevel%'
+$rhythmExecutable = Join-Path $BuildRoot 'native_rhythm_bench.exe'
+$lines += '"{0}"' -f $rhythmExecutable
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
 $goldenExecutable = Join-Path $BuildRoot 'dsp_primitives_golden.exe'
 $goldenDirectory = Join-Path $repoRoot 'shared\dsp\benchmarks\results'
@@ -122,29 +127,42 @@ if ($fingerprintAfterBuild.Hash -ne $fingerprintBeforeBuild.Hash) {
     throw "DSP sources changed during this build/test run; its results are stale and were not promoted. Before=$($fingerprintBeforeBuild.Hash), after=$($fingerprintAfterBuild.Hash). Build files: $BuildRoot"
 }
 if (-not (Test-Path -LiteralPath $pendingBenchOutput -PathType Leaf) -or
-    -not (Test-Path -LiteralPath $pendingNonlinearOutput -PathType Leaf)) {
-    throw "DSP benchmark or nonlinear measurement JSON is missing; results were not promoted. Build files: $BuildRoot"
+    -not (Test-Path -LiteralPath $pendingNonlinearOutput -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $pendingRhythmOutput -PathType Leaf)) {
+    throw "DSP, nonlinear, or rhythm measurement JSON is missing; results were not promoted. Build files: $BuildRoot"
 }
 $benchProvenance = Get-Content -LiteralPath $pendingBenchOutput -Raw | ConvertFrom-Json
 $nonlinearReport = Get-Content -LiteralPath $pendingNonlinearOutput -Raw | ConvertFrom-Json
+$rhythmReport = Get-Content -LiteralPath $pendingRhythmOutput -Raw | ConvertFrom-Json
+if ($rhythmReport.schemaVersion -ne 'webrc-native-rhythm-bench-v1') {
+    throw "Unexpected rhythm benchmark schema '$($rhythmReport.schemaVersion)'."
+}
 foreach ($propertyName in @('sourceCommit', 'sourceFingerprintSha256', 'compiler', 'compilerFlags', 'cpuModel', 'os')) {
     if (-not $benchProvenance.PSObject.Properties[$propertyName]) {
         throw "Primitive benchmark JSON lacks required provenance field '$propertyName'; nonlinear report was not promoted."
     }
     $nonlinearReport | Add-Member -MemberType NoteProperty -Name $propertyName `
         -Value $benchProvenance.$propertyName -Force
+    $rhythmReport | Add-Member -MemberType NoteProperty -Name $propertyName `
+        -Value $benchProvenance.$propertyName -Force
 }
 $nonlinearJson = $nonlinearReport | ConvertTo-Json -Depth 8
 [System.IO.File]::WriteAllText($pendingNonlinearOutput, $nonlinearJson + "`n",
     [System.Text.UTF8Encoding]::new($false))
+$rhythmJson = $rhythmReport | ConvertTo-Json -Depth 16
+[System.IO.File]::WriteAllText($pendingRhythmOutput, $rhythmJson + "`n",
+    [System.Text.UTF8Encoding]::new($false))
 $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
 $benchOutput = Join-Path $resultsDirectory ("native_primitives_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
 $nonlinearOutput = Join-Path $resultsDirectory ("native_nonlinear_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
-if ((Test-Path -LiteralPath $benchOutput) -or (Test-Path -LiteralPath $nonlinearOutput)) {
+$rhythmOutput = Join-Path $resultsDirectory ("native_rhythm_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
+if ((Test-Path -LiteralPath $benchOutput) -or (Test-Path -LiteralPath $nonlinearOutput) -or (Test-Path -LiteralPath $rhythmOutput)) {
     $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ') + '_' + $runId.Substring(0, 8)
     $benchOutput = Join-Path $resultsDirectory ("native_primitives_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
     $nonlinearOutput = Join-Path $resultsDirectory ("native_nonlinear_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
+    $rhythmOutput = Join-Path $resultsDirectory ("native_rhythm_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
 }
 Move-Item -LiteralPath $pendingBenchOutput -Destination $benchOutput
 Move-Item -LiteralPath $pendingNonlinearOutput -Destination $nonlinearOutput
-Write-Output "Native DSP CTest and software benchmark passed with a stable source fingerprint. Build files: $BuildRoot; benchmark JSON: $benchOutput; measured nonlinear JSON: $nonlinearOutput"
+Move-Item -LiteralPath $pendingRhythmOutput -Destination $rhythmOutput
+Write-Output "Native DSP CTest and software benchmarks passed with a stable source fingerprint. Build files: $BuildRoot; primitive benchmark JSON: $benchOutput; nonlinear JSON: $nonlinearOutput; rhythm JSON: $rhythmOutput"

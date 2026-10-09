@@ -1,0 +1,370 @@
+Start testing: Oct 10 02:06 中国标准时间
+----------------------------------------------------------
+1/20 Testing: looper_core_tests
+1/20 Test: looper_core_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/looper_core_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev
+"looper_core_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.38 sec
+----------------------------------------------------------
+Test Passed.
+"looper_core_tests" end time: Oct 10 02:06 中国标准时间
+"looper_core_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/20 Testing: native_multitrack_core_tests
+2/20 Test: native_multitrack_core_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/native_multitrack_core_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev
+"native_multitrack_core_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.07 sec
+----------------------------------------------------------
+Test Passed.
+"native_multitrack_core_tests" end time: Oct 10 02:06 中国标准时间
+"native_multitrack_core_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/20 Testing: native_track_host_tests
+3/20 Test: native_track_host_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/native_track_host_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev
+"native_track_host_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.13 sec
+----------------------------------------------------------
+Test Passed.
+"native_track_host_tests" end time: Oct 10 02:06 中国标准时间
+"native_track_host_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/20 Testing: native_fx_graph_tests
+4/20 Test: native_fx_graph_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/native_fx_graph_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev
+"native_fx_graph_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+Native prepared FX graph tests passed.
+<end of output>
+Test time =   0.11 sec
+----------------------------------------------------------
+Test Passed.
+"native_fx_graph_tests" end time: Oct 10 02:06 中国标准时间
+"native_fx_graph_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/20 Testing: dsp_primitives_tests
+5/20 Test: dsp_primitives_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/dsp_primitives_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"dsp_primitives_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+DSP primitive tests passed
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"dsp_primitives_tests" end time: Oct 10 02:06 中国标准时间
+"dsp_primitives_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/20 Testing: control_dynamics_tests
+6/20 Test: control_dynamics_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/control_dynamics_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"control_dynamics_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+Control/dynamics tests passed
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"control_dynamics_tests" end time: Oct 10 02:06 中国标准时间
+"control_dynamics_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/20 Testing: nonlinear_tests
+7/20 Test: nonlinear_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/nonlinear_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"nonlinear_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+F23 checked accepted-parameter diode points: 648
+F07 linear-path impulse energy centroid: 2x=14.500000 4x=21.810654 base samples
+F07 ADAA extra 1 kHz phase delay: 2x=0.250000 4x=0.125000 base samples
+F07 measured 1 kHz delay: FIR 2x=14.500000 4x=21.750000; total ADAA 2x=14.750000 4x=21.875000
+F07 750 Hz aliased harmonic magnitude: naive=0.12587739 1xADAA=0.00147994037 2x=1.19335331e-06 4x=1.4063408e-05
+F07 folded harmonic tone 6999.02 Hz at bin 5117: memoryless=0.124321127 1xADAA=0.0298819776 2x=1.05075548e-05 4x=2.18119035e-05
+F07 folded harmonic tone 9999.02 Hz at bin 2051: memoryless=0.124321127 1xADAA=0.00587349309 2x=0.00513260106 4x=5.24116302e-06
+F07 folded harmonic tone 14000.98 Hz at bin 6141: memoryless=0.124321127 1xADAA=0.0204319551 2x=0.000495249359 4x=2.86368623e-06
+F07 dual-tone IMD products 2818.36/5789.06 Hz (1x,2x,4x): lower=0.2340144/0.2331982/0.2329581 upper=0.2214547/0.2300505/0.2321908
+Nonlinear/WDF tests passed
+<end of output>
+Test time =   0.21 sec
+----------------------------------------------------------
+Test Passed.
+"nonlinear_tests" end time: Oct 10 02:06 中国标准时间
+"nonlinear_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+8/20 Testing: spatial_temporal_tests
+8/20 Test: spatial_temporal_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/spatial_temporal_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"spatial_temporal_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+FDN8 stereoCorr=0.26060 band T20/T30 seconds: 100Hz 1.030/1.049, 1kHz 0.812/0.847, 4kHz 0.470/0.555
+FDN16 stereoCorr=0.28411 band T20/T30 seconds: 100Hz 0.923/0.999, 1kHz 0.738/0.793, 4kHz 0.476/0.532
+Freeze held tones: L=440.0 Hz R=997.0 Hz; RMS 0.35376 -> 0.35358
+Freeze WOLA N=256 H=128 maxIdentityError=1.1920929e-07
+Freeze WOLA N=512 H=128 maxIdentityError=8.9406967e-08
+Freeze WOLA N=1024 H=256 maxIdentityError=8.9406967e-08
+Callback allocation guard across 64/128/256 frames: new=0 delete=0
+Spatial/temporal DSP tests passed.
+<end of output>
+Test time =   0.71 sec
+----------------------------------------------------------
+Test Passed.
+"spatial_temporal_tests" end time: Oct 10 02:06 中国标准时间
+"spatial_temporal_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/20 Testing: pitch_tests
+9/20 Test: pitch_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/pitch_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"pitch_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+live-chain first-voiced=5759 (1663 samples after input onset) last-voiced=67455 count=464 YIN-window=2048 PSOLA-buffer=1800 conservative-window-plus-buffer=3848 samples (80.1667 ms); burst-first/last=5901/67360; measured-output=102.885/1246.63 Hz; measured-YIN=82.3003/997.504 Hz
+PASS: YIN; buffer/streaming TD-PSOLA; phase-vocoder spectral frames; 16-band linked-stereo vocoder; seeded Signalsmith adapter
+PSOLA 440->660.016 Hz; PV 440->550 Hz; streaming PSOLA latency=1536 samples; Signalsmith input/output latency=256/256 samples
+<end of output>
+Test time =   0.58 sec
+----------------------------------------------------------
+Test Passed.
+"pitch_tests" end time: Oct 10 02:06 中国标准时间
+"pitch_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/20 Testing: streaming_yin_tests
+10/20 Test: streaming_yin_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/streaming_yin_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"streaming_yin_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+Streaming YIN tests passed; max-work=32768/32768, analyses=5, processing-lag=0 frames.
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"streaming_yin_tests" end time: Oct 10 02:06 中国标准时间
+"streaming_yin_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/20 Testing: live_mono_pitch_tests
+11/20 Test: live_mono_pitch_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/live_mono_pitch_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"live_mono_pitch_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+LIVE_MONO route tests passed; analyses=123, maxAnalysisWork=32768/32768, estimateAge=832, outputPitch=82.498Hz.
+<end of output>
+Test time =   0.34 sec
+----------------------------------------------------------
+Test Passed.
+"live_mono_pitch_tests" end time: Oct 10 02:06 中国标准时间
+"live_mono_pitch_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/20 Testing: fx_registry_tests
+12/20 Test: fx_registry_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/fx_registry_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"fx_registry_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+FX registry tests passed.
+<end of output>
+Test time =   0.14 sec
+----------------------------------------------------------
+Test Passed.
+"fx_registry_tests" end time: Oct 10 02:06 中国标准时间
+"fx_registry_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/20 Testing: performance_fx_tests
+13/20 Test: performance_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/performance_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"performance_fx_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+BeatRepeat 20BPM/half-beat: copied=72000 frames, per64fCallback<=64, wetOnset=3 frames, boundaryMaxStep=1.1920929e-07
+BeatShift 20BPM/+2beats: expectedDelay=288240 frames (6.005 s), observedImpulse=292336, historyBudget=2754176 bytes
+PASS: track performance FX stereo history, sample events, bounded state, and noalloc tests
+<end of output>
+Test time =   0.26 sec
+----------------------------------------------------------
+Test Passed.
+"performance_fx_tests" end time: Oct 10 02:06 中国标准时间
+"performance_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/20 Testing: modulation_fx_tests
+14/20 Test: modulation_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/modulation_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"modulation_fx_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+PASS: modulation/lo-fi stereo processors, sample events, block invariance, and noalloc tests
+<end of output>
+Test time =   0.15 sec
+----------------------------------------------------------
+Test Passed.
+"modulation_fx_tests" end time: Oct 10 02:06 中国标准时间
+"modulation_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/20 Testing: rhythm_tests
+15/20 Test: rhythm_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/rhythm_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"rhythm_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+KIT_NUMERIC_FEATURES instrument=0 min_normalized_distance=0.0330326869; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=1 min_normalized_distance=0.0374543647; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=2 min_normalized_distance=0.0216036891; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=5 min_normalized_distance=0.0243516047; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=12 min_normalized_distance=0.00443461076; proxy metrics only, no perceptual/listening evaluation
+BRUSH_OVERLAP sample_rate=8000 bpm=400 events=40 max_active=4 max_retiring=22 rms=0.00851118667 peak=0.0530147329 max_step=0.0874066204 event_boundary_max_step=0.0874066204 normalized_step=10.2696162
+PASS: rhythm renderer sample timing, fractional tempo, transitions, noalloc, and kit audio tests
+<end of output>
+Test time =   0.86 sec
+----------------------------------------------------------
+Test Passed.
+"rhythm_tests" end time: Oct 10 02:06 中国标准时间
+"rhythm_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/20 Testing: composite_fx_tests
+16/20 Test: composite_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/composite_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"composite_fx_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+Radio drive automation: max audio step 0.0342999 at frame 45330; mean change 0.4206353
+Sustainer hard automation: output 0.780529 to 0.000339; max step 0.0032944
+Slow Gear 12 kHz steady carrier: max same-phase gain range 0.0000000
+Slow Gear onset/fade: base gain 0.376847, onset gain 0.160837, max step 0.011322
+PASS: radio, sustainer, slow gear and stereo enhance; stereo response, sample events, block invariance and noalloc
+<end of output>
+Test time =   0.38 sec
+----------------------------------------------------------
+Test Passed.
+"composite_fx_tests" end time: Oct 10 02:06 中国标准时间
+"composite_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/20 Testing: modulated_delay_fx_tests
+17/20 Test: modulated_delay_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/modulated_delay_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"modulated_delay_fx_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+Mod Delay preflight: 1573216 bytes, ring 131072 frames, wet window 12864.00..14016.00 samples
+Delay ordinal 5: max partition delta 0, mean stereo delta 0.135808, effect delta 4589.5424
+Delay ordinal 46: max partition delta 0, mean stereo delta 0.142986, effect delta 3957.2131
+Delay ordinal 33: max partition delta 0, mean stereo delta 0.134916, effect delta 3818.3153
+Delay ordinal 39: max partition delta 0, mean stereo delta 0.107450, effect delta 4242.9117
+Delay ordinal 37: max partition delta 0, mean stereo delta 0.111526, effect delta 4132.6821
+Vibrato impulse: peak 0.6430377, centroid 492.5262366 samples, energy 0.8279677
+Panning Delay: first L echo 0.999113, second R echo 0.498707, DC-stress peak 0.999113
+PASS: five stereo modulated delays; fractional latency, cross-feedback, bounds, automation partitions and noalloc
+<end of output>
+Test time =   0.62 sec
+----------------------------------------------------------
+Test Passed.
+"modulated_delay_fx_tests" end time: Oct 10 02:06 中国标准时间
+"modulated_delay_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/20 Testing: rhythmic_fx_tests
+18/20 Test: rhythmic_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/rhythmic_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"rhythmic_fx_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+Isolator low 80 Hz unity -0.00 dB, mute -38.28 dB
+Isolator mid 1000 Hz unity -0.00 dB, mute -29.98 dB
+Isolator high 7000 Hz unity -0.00 dB, mute -39.55 dB
+Slicer clock: tick@tempo event 240.000; partition deltas 0.0 / 0.0; gate samples 0.2500 / 0.0000 / 0.2500; max adjacent steps 0.00818 / 0.00818 / 0.00104
+PASS: stereo isolator and sample-accurate pattern/step slicers; spectra, clock, bounds and noalloc
+<end of output>
+Test time =   0.26 sec
+----------------------------------------------------------
+Test Passed.
+"rhythmic_fx_tests" end time: Oct 10 02:06 中国标准时间
+"rhythmic_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/20 Testing: spatial_fx_adapters_tests
+19/20 Test: spatial_fx_adapters_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp/spatial_fx_adapters_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/shared_dsp
+"spatial_fx_adapters_tests" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+{"schemaVersion":1,"suite":"spatial-fx-adapters","sampleRate":48000,"reverseDelay":{"segmentSeconds":0.100123,"crossfadeSeconds":0.00517,"segmentFrames":4806,"crossfadeFrames":248,"wetPathWarmupFrames":9364,"leftPeakFrame":14069,"leftPeak":0.386062264,"rightPeakFrame":13769,"rightPeak":0.390000015,"partitionMaximumDifference":0,"maximumAdjacentStep":0.0514597297},"gateReverb":{"shortEarlyEnergy":0.0013733575693971707,"shortLateEnergy":0,"longLateEnergy":5.9760636682675525e-05,"shortHoldMs":0,"shortReleaseMs":5,"longHoldMs":250,"longReleaseMs":1000,"closedWetOneMax":0,"closedHalfWetMaxError":0},"reverseReverb":{"earlyEnergy":0.20479992231506849,"lateEnergy":0.023581113994380377,"rightEnergy":0.0079708122939882841,"wetPathWarmupFrames":9364},"wetOneImpulseProbes":[{"ordinal":38,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":11169,"peakFrame":3000,"peak":0.699999988,"energy":1.0125240781578138,"leftEnergy":1.0125240781578138,"rightEnergy":0,"rightToLeftEnergyRatio":0},{"ordinal":48,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":3000,"peakFrame":3226,"peak":0.139441848,"energy":0.038273905479579554,"leftEnergy":0.031312207869169613,"rightEnergy":0.0069616976104099372,"rightToLeftEnergyRatio":0.22233173845478046},{"ordinal":49,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":9364,"peakFrame":3000,"peak":0.196339786,"energy":0.16310805150662872,"leftEnergy":0.14868045502085514,"rightEnergy":0.01442759648577357,"rightToLeftEnergyRatio":0.09703761320712824}],"eventBurst":{"maxEvents":64,"gateAllocationsAndFrees":0,"fdnAllocationsAndFrees":0,"reverseDelayAllocationsAndFrees":0}}
+Spatial FX adapter tests passed
+<end of output>
+Test time =   0.17 sec
+----------------------------------------------------------
+Test Passed.
+"spatial_fx_adapters_tests" end time: Oct 10 02:06 中国标准时间
+"spatial_fx_adapters_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/20 Testing: apinames
+20/20 Test: apinames
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/_deps/rtaudio_src-build/tests/apinames.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-reclaim-dev/_deps/rtaudio_src-build/tests
+"apinames" start time: Oct 10 02:06 中国标准时间
+Output:
+----------------------------------------------------------
+API names by identifier (C++):
+* 7 'wasapi': 'WASAPI'
+API identifiers by name (C++):
+* 'wasapi': 7
+API names by identifier (C):
+* 7 'wasapi': 'WASAPI'
+API identifiers by name (C):
+* 'wasapi': 7
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"apinames" end time: Oct 10 02:06 中国标准时间
+"apinames" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 10 02:06 中国标准时间
