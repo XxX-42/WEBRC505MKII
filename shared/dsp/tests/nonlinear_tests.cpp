@@ -63,6 +63,23 @@ double wrapPhase(double phase) {
     while (phase < -3.14159265358979323846) phase += 2.0 * 3.14159265358979323846;
     return phase;
 }
+
+struct AliasMetrics {
+    std::uint32_t fundamentalBin = 0;
+    std::uint32_t foldedHarmonicBin = 0;
+    double frequencyHz = 0.0;
+    double memoryless = 0.0;
+    double adaa1x = 0.0;
+    double oversample2x = 0.0;
+    double oversample4x = 0.0;
+};
+
+struct ImdMetrics {
+    double lowerProductHz = 0.0;
+    double upperProductHz = 0.0;
+    std::array<double, 3> lowerMagnitude{};
+    std::array<double, 3> upperMagnitude{};
+};
 } // namespace
 
 void* operator new(std::size_t size) {
@@ -299,6 +316,118 @@ int main() {
               std::fabs(fundamentalTwo - fundamentalFour) < 0.12,
           "F07 oversampled output preserves in-band fundamental level");
 
+    constexpr std::array<std::uint32_t, 3> additionalFundamentalBins{{2389, 3413, 4779}};
+    std::array<AliasMetrics, additionalFundamentalBins.size()> additionalAliasMetrics{};
+    for (std::size_t caseIndex = 0; caseIndex < additionalFundamentalBins.size(); ++caseIndex) {
+        const auto toneBin = additionalFundamentalBins[caseIndex];
+        auto& metrics = additionalAliasMetrics[caseIndex];
+        metrics.fundamentalBin = toneBin;
+        metrics.frequencyHz = static_cast<double>(toneBin) * sampleRate / analysisFrames;
+        const auto rawAliasBin = static_cast<std::uint32_t>(
+            (9ULL * toneBin) % analysisFrames);
+        metrics.foldedHarmonicBin = rawAliasBin > analysisFrames / 2
+            ? static_cast<std::uint32_t>(analysisFrames) - rawAliasBin : rawAliasBin;
+        AdaaCubicShaper additionalOneX;
+        OversampledNonlinear additionalTwoX;
+        OversampledNonlinear additionalFourX;
+        bool prepared = additionalOneX.prepare(spec) && additionalOneX.setDrive(10.0f) &&
+            additionalTwoX.prepare(spec, OversamplingFactor::x2, NonlinearModel::AdaaCubic) &&
+            additionalTwoX.setDrive(10.0f) &&
+            additionalFourX.prepare(spec, OversamplingFactor::x4, NonlinearModel::AdaaCubic) &&
+            additionalFourX.setDrive(10.0f);
+        std::array<float, analysisFrames> additionalNaive{};
+        std::array<float, analysisFrames> additionalOne{};
+        std::array<float, analysisFrames> additionalTwo{};
+        std::array<float, analysisFrames> additionalFour{};
+        for (std::size_t frame = 0; frame < warmupFrames + analysisFrames; ++frame) {
+            const float input = static_cast<float>(0.8 * std::sin(
+                2.0 * 3.14159265358979323846 * toneBin * frame / analysisFrames));
+            const float driven = input * 10.0f;
+            const float naive = driven >= 1.0f ? 1.0f :
+                (driven <= -1.0f ? -1.0f : 1.5f * driven - 0.5f * driven * driven * driven);
+            const float one = additionalOneX.processSample(input);
+            const float two = additionalTwoX.processSample(input);
+            const float four = additionalFourX.processSample(input);
+            if (frame >= warmupFrames) {
+                const auto index = frame - warmupFrames;
+                additionalNaive[index] = naive;
+                additionalOne[index] = one;
+                additionalTwo[index] = two;
+                additionalFour[index] = four;
+            }
+        }
+        metrics.memoryless = magnitudeAtBin(additionalNaive.data(), analysisFrames,
+                                             metrics.foldedHarmonicBin);
+        metrics.adaa1x = magnitudeAtBin(additionalOne.data(), analysisFrames,
+                                         metrics.foldedHarmonicBin);
+        metrics.oversample2x = magnitudeAtBin(additionalTwo.data(), analysisFrames,
+                                               metrics.foldedHarmonicBin);
+        metrics.oversample4x = magnitudeAtBin(additionalFour.data(), analysisFrames,
+                                               metrics.foldedHarmonicBin);
+        std::printf("F07 folded harmonic tone %.2f Hz at bin %u: memoryless=%.9g 1xADAA=%.9g 2x=%.9g 4x=%.9g\n",
+                    metrics.frequencyHz, metrics.foldedHarmonicBin, metrics.memoryless,
+                    metrics.adaa1x, metrics.oversample2x, metrics.oversample4x);
+        check(prepared && metrics.memoryless > 1.0e-7 &&
+                  metrics.oversample2x < metrics.memoryless &&
+                  metrics.oversample4x < metrics.memoryless,
+              "F07 2x/4x oversampling reduces a measured ninth-harmonic fold at additional coherent tones");
+    }
+
+    constexpr std::uint32_t imdToneBinA = 1300;
+    constexpr std::uint32_t imdToneBinB = 1638;
+    constexpr std::uint32_t imdLowerBin = 2 * imdToneBinA - imdToneBinB;
+    constexpr std::uint32_t imdUpperBin = 2 * imdToneBinB - imdToneBinA;
+    AdaaCubicShaper imdOneX;
+    OversampledNonlinear imdTwoX;
+    OversampledNonlinear imdFourX;
+    const bool imdPrepared = imdOneX.prepare(spec) && imdOneX.setDrive(5.0f) &&
+        imdTwoX.prepare(spec, OversamplingFactor::x2, NonlinearModel::AdaaCubic) &&
+        imdTwoX.setDrive(5.0f) &&
+        imdFourX.prepare(spec, OversamplingFactor::x4, NonlinearModel::AdaaCubic) &&
+        imdFourX.setDrive(5.0f);
+    std::array<float, analysisFrames> imdOutputOne{};
+    std::array<float, analysisFrames> imdOutputTwo{};
+    std::array<float, analysisFrames> imdOutputFour{};
+    for (std::size_t frame = 0; frame < warmupFrames + analysisFrames; ++frame) {
+        const double phaseA = 2.0 * 3.14159265358979323846 * imdToneBinA * frame / analysisFrames;
+        const double phaseB = 2.0 * 3.14159265358979323846 * imdToneBinB * frame / analysisFrames;
+        const float input = static_cast<float>(0.4 * std::sin(phaseA) + 0.4 * std::sin(phaseB));
+        const float one = imdOneX.processSample(input);
+        const float two = imdTwoX.processSample(input);
+        const float four = imdFourX.processSample(input);
+        if (frame >= warmupFrames) {
+            const auto index = frame - warmupFrames;
+            imdOutputOne[index] = one;
+            imdOutputTwo[index] = two;
+            imdOutputFour[index] = four;
+        }
+    }
+    ImdMetrics imdMetrics;
+    imdMetrics.lowerProductHz = static_cast<double>(imdLowerBin) * sampleRate / analysisFrames;
+    imdMetrics.upperProductHz = static_cast<double>(imdUpperBin) * sampleRate / analysisFrames;
+    imdMetrics.lowerMagnitude = {{
+        magnitudeAtBin(imdOutputOne.data(), analysisFrames, imdLowerBin),
+        magnitudeAtBin(imdOutputTwo.data(), analysisFrames, imdLowerBin),
+        magnitudeAtBin(imdOutputFour.data(), analysisFrames, imdLowerBin)}};
+    imdMetrics.upperMagnitude = {{
+        magnitudeAtBin(imdOutputOne.data(), analysisFrames, imdUpperBin),
+        magnitudeAtBin(imdOutputTwo.data(), analysisFrames, imdUpperBin),
+        magnitudeAtBin(imdOutputFour.data(), analysisFrames, imdUpperBin)}};
+    std::printf("F07 dual-tone IMD products %.2f/%.2f Hz (1x,2x,4x): lower=%.7g/%.7g/%.7g upper=%.7g/%.7g/%.7g\n",
+                imdMetrics.lowerProductHz, imdMetrics.upperProductHz,
+                imdMetrics.lowerMagnitude[0], imdMetrics.lowerMagnitude[1], imdMetrics.lowerMagnitude[2],
+                imdMetrics.upperMagnitude[0], imdMetrics.upperMagnitude[1], imdMetrics.upperMagnitude[2]);
+    const auto relativeDifference = [](double value, double reference) {
+        return std::fabs(value - reference) / std::max(std::fabs(reference), 1.0e-12);
+    };
+    check(imdPrepared && imdMetrics.lowerMagnitude[0] > 0.001 &&
+              imdMetrics.upperMagnitude[0] > 0.001 &&
+              relativeDifference(imdMetrics.lowerMagnitude[1], imdMetrics.lowerMagnitude[0]) < 0.35 &&
+              relativeDifference(imdMetrics.lowerMagnitude[2], imdMetrics.lowerMagnitude[0]) < 0.35 &&
+              relativeDifference(imdMetrics.upperMagnitude[1], imdMetrics.upperMagnitude[0]) < 0.35 &&
+              relativeDifference(imdMetrics.upperMagnitude[2], imdMetrics.upperMagnitude[0]) < 0.35,
+          "F07 oversampling preserves measurable in-band dual-tone third-order IMD products");
+
     constexpr std::size_t splitFrames = 1024;
     const auto checkBlockSplit = [&](OversamplingFactor factor, NonlinearModel model) {
         OversampledNonlinear samplePath;
@@ -397,12 +526,12 @@ int main() {
 
     if (const char* metricsPath = std::getenv("WEBRC_DSP_NONLINEAR_JSON");
         metricsPath && metricsPath[0] != '\0') {
-        std::ofstream metrics(metricsPath, std::ios::out | std::ios::trunc);
-        if (!metrics) {
+        std::ofstream report(metricsPath, std::ios::out | std::ios::trunc);
+        if (!report) {
             check(false, "F07 nonlinear metric report opens for writing");
         } else {
-            metrics.precision(12);
-            metrics << "{\n"
+            report.precision(12);
+            report << "{\n"
                     << "  \"schemaVersion\": 1,\n"
                     << "  \"scope\": \"shared-core nonlinear measurements; software-only; no device/XRUN claim\",\n"
                     << "  \"sampleRateHz\": " << sampleRate << ",\n"
@@ -418,11 +547,31 @@ int main() {
                     << "  \"aliasMagnitude\": {\"memoryless\": " << aliasNaive
                     << ", \"adaa1x\": " << aliasOne << ", \"oversample2x\": " << aliasTwo
                     << ", \"oversample4x\": " << aliasFour << "},\n"
+                    << "  \"additionalCoherentToneAliasMagnitude\": [\n";
+            for (std::size_t index = 0; index < additionalAliasMetrics.size(); ++index) {
+                const auto& measurement = additionalAliasMetrics[index];
+                report << "    {\"toneBin\": " << measurement.fundamentalBin
+                       << ", \"frequencyHz\": " << measurement.frequencyHz
+                       << ", \"foldedHarmonicBin\": " << measurement.foldedHarmonicBin
+                       << ", \"memoryless\": " << measurement.memoryless
+                       << ", \"adaa1x\": " << measurement.adaa1x
+                       << ", \"oversample2x\": " << measurement.oversample2x
+                       << ", \"oversample4x\": " << measurement.oversample4x << "}"
+                       << (index + 1U == additionalAliasMetrics.size() ? "\n" : ",\n");
+            }
+            report << "  ],\n"
+                    << "  \"dualToneImd\": {\"inputBins\": [" << imdToneBinA << ", " << imdToneBinB
+                    << "], \"productHz\": [" << imdMetrics.lowerProductHz << ", "
+                    << imdMetrics.upperProductHz << "], \"lowerProductMagnitude1x2x4x\": ["
+                    << imdMetrics.lowerMagnitude[0] << ", " << imdMetrics.lowerMagnitude[1] << ", "
+                    << imdMetrics.lowerMagnitude[2] << "], \"upperProductMagnitude1x2x4x\": ["
+                    << imdMetrics.upperMagnitude[0] << ", " << imdMetrics.upperMagnitude[1] << ", "
+                    << imdMetrics.upperMagnitude[2] << "]},\n"
                     << "  \"inBandFundamentalMagnitude\": {\"x2\": " << fundamentalTwo
                     << ", \"x4\": " << fundamentalFour << "},\n"
                     << "  \"testsPassed\": " << (gFailures == 0 ? "true" : "false") << "\n"
                     << "}\n";
-            if (!metrics) check(false, "F07 nonlinear metric report writes complete JSON");
+            if (!report) check(false, "F07 nonlinear metric report writes complete JSON");
         }
     }
 

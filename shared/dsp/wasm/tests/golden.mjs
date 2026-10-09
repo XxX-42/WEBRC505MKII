@@ -42,10 +42,21 @@ assert.deepEqual(wasmImports.map(({ module, name, kind }) => [module, name, kind
   ['wasi_snapshot_preview1', 'fd_write', 'function'],
   ['wasi_snapshot_preview1', 'fd_seek', 'function'],
 ], 'standalone WASM must have only the documented, unused WASI stdio imports');
+const wasiIoCalls = { fd_close: 0, fd_write: 0, fd_seek: 0 };
+const WASI_EBADF = 8;
 const wasiSnapshotPreview1 = {
-  fd_close: () => 0,
-  fd_write: () => 0,
-  fd_seek: () => 0,
+  fd_close(_fd) {
+    wasiIoCalls.fd_close += 1;
+    return WASI_EBADF;
+  },
+  fd_write(_fd, _iov, _iovcnt, _written) {
+    wasiIoCalls.fd_write += 1;
+    return WASI_EBADF;
+  },
+  fd_seek(_fd, _offset, _whence, _newOffset) {
+    wasiIoCalls.fd_seek += 1;
+    return WASI_EBADF;
+  },
 };
 const instance = await WebAssembly.instantiate(wasmModule, { wasi_snapshot_preview1: wasiSnapshotPreview1 });
 const exports = instance.exports;
@@ -344,6 +355,8 @@ for (const buffer of [input, output, outputRight, outputAux, parameters, leftGai
 }
 assert.equal(wasm._webrc_dsp_managed_memory_bytes(), 0, 'setup transfer buffers are accounted and released');
 assert.equal(wasm.HEAPF32.buffer.byteLength, bytesBefore);
+assert.deepEqual(wasiIoCalls, { fd_close: 0, fd_write: 0, fd_seek: 0 },
+  'all WASI stdio/file imports fail closed and remain unused during the DSP suite');
 
 console.log(JSON.stringify({
   suite: 'shared-dsp-wasm-golden',
@@ -352,6 +365,7 @@ console.log(JSON.stringify({
   maxBlockFramesTested: [64, 128, 256, 512],
   nativeGoldenFixturesCompared: ['biquad_lowpass', 'allpass1', 'tpt_svf',
     'adaa_cubic', 'dual_detector_compressor', 'polyblep_triangle'],
+  wasiIoCalls,
   maxDelayRingsBeforeBudgetRejection: largeDelayHandles.length,
   result: 'PASS',
 }, null, 2));
