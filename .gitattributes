@@ -363,3 +363,13 @@
 /bench/results/native-fx41-copied-closure-20261009T193630570Z/** -text -whitespace
 /docs/validation/20261010/native-fx41-root-review.json -text -whitespace
 /docs/validation/20261010/root-native-fx41-ctest.log -text -whitespace
+
+/public/worklets/looper-processor.js -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/public/worklets/master-fx-processor.js -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/src/audio/sharedDspGraph.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/src/audio/BrowserAudioEngine.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/masterFxWorklet.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/stereoWorklet.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/browserFxTransactions.spec.ts -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/bench/results/browser_serial_warmup_aa382c0_20261010T035000Z/** -text -whitespace
+/docs/validation/20261010/browser-serial-warmup-root-review.json -text -whitespace

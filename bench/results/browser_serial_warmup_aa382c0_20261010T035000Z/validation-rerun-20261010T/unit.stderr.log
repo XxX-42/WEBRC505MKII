@@ -1,0 +1,33 @@
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > records 185 accelerated seconds through real chunk growth and exports the final stereo PCM without overruns
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/unit/coreAudioBehaviors.spec.ts:468:3
+    466|   }, 30_000);
+    467| 
+    468|   it('records 185 accelerated seconds through real chunk growth and ex…
+       |   ^
+    469|     // This low-rate case makes the true 185-second duration/capacity …
+    470|     // quick. The separate 48 kHz test below verifies the production s…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/unit/trackUnit.spec.ts > TrackUnit > writes back level, filter, and reverse controls in browser mode
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/unit/trackUnit.spec.ts:97:3
+     95|   }
+     96| 
+     97|   it('writes back level, filter, and reverse controls in browser mode'…
+       |   ^
+     98|     const trackAudio = {
+     99|       state: 'EMPTY',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "reviewedAtUtc": "2026-10-09T20:02:23.913342+00:00",
+  "result": "32-FX-BASELINE-CAUSAL-REPLACEMENT-FUNCTIONAL-PASS; FULL-REALTIME-QUALIFICATION-NOT-PASSED",
+  "archive": "bench/results/browser_serial_warmup_aa382c0_20261010T035000Z",
+  "validationManifestSha256": "0f63a080f9015aa75ccbc4433d701747ea0d3054c1b49ec138a443aa3772f22d",
+  "inventorySha256": "e6debb8c636370d8e79fc981bcff9e7f7c6360e01a15b51fdf7df0110b81599f",
+  "inventoryPayloadFilesVerified": 193,
+  "gitBaselineHead": "aa382c0a9b2647724cb35921afc14b9b1eb78f25",
+  "reconstructedGitZipPlusOverlayFilesVerified": 5558,
+  "sevenLiveOverlayFilesMatch": true,
+  "reconstructedTrackedPathTreeSha256": "e369b85825783c1e5e6e90715e759c60a3a73ea883a4bba95be134c3153f3865",
+  "canonicalRuntimeSnapshotFilesVerified": 167,
+  "sourceAssetSetSha256": "5a5faa7e8fb1c89774c3dcbeecca2248cc881f5addb5d884911e4b3a4ca3a33f",
+  "wasmBaseline": {
+    "artifactSha256": "45e9cb35064cef526730c0f3ca0ac11b164a9c20a03766291182a0019755af04",
+    "artifactBytes": 664657,
+    "buildManifestSha256": "8538cb79fcb7d39b0db7f4703c49cb483ee6df86310def75d51d33a8b3310652",
+    "sourceSetSha256": "674fe623e2c1edcb1502ddbaeb87d29a4c654138bbfe90b42a75b746a4250522",
+    "emsdkCommit": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
+    "compilerIdentity": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)"
+  },
+  "actualRawBuildExitCode": 0,
+  "actualRawQuietUnitRun": {
+    "exitCode": 0,
+    "testFiles": 32,
+    "testsPassed": 200
+  },
+  "retainedConcurrentLoadUnitRunExitCode": 1,
+  "archiveUnchangedAfterReview": true,
+  "rawInventoryLogicalAliasMap": {
+    "sourceSnapshot/": "repo/bench/results/browser-graph-source/",
+    "overlay/": "repo/",
+    "validation/": "validation-rerun-20261010T/",
+    "other": "archive-root-relative"
+  },
+  "zipDisposition": "Immutable441MB ZIP retained locally and checksum-verified; excluded from Git because it exceedsGitHub100MB blob limit. Reconstruct source from Git baselineHEAD+seven exact overlays;5558 post-overlay per-file hashes are committed.",
+  "limitations": [
+    "Source provenance is HEADaa382c0 plus seven overlays; trackedTreeSha covers post-overlay tracked paths, not untouchedHEAD bytes.",
+    "Original193-entry inventory uses logical aliases rather than physical archive-relative paths; explicit mapping from seal-validation.mjs is recorded above.",
+    "Runtime baseline is the old32-FX45e9cb WASM, not the pending41-FX module.",
+    "Concurrent-load unit run had two timeout failures; quiet rerun passed. Unit timing is not realtime callback qualification.",
+    "node_modules is a junction to live installation with pinned package-lock; installed dependency bytes are not fully independently snapshotted.",
+    "Current stage history ceiling100ms rejects longer chains; variable-delay startup query and running/stopped admission need subsequent revision.",
+    "PREAMP prepare selectors require subsequent create_v2 WASM API.",
+    "Partial-finalize failure after state publication needs a separate state/resource recovery regression and fix.",
+    "Input/Track\u2192Master sequencing is tested by mocked Engine transaction order; actual complete Track2+Master2/Track4+Master4PCM replacement coverage is still pending.",
+    "Suspended setup/destruction still occurs on Worklet thread; callback-thread GC and complete peak transition deadlines are not qualified.",
+    "No hardware E2E, zero-XRUN or whole-system30-minute pass is claimed."
+  ]
+}

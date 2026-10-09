@@ -1,0 +1,26 @@
+
+> webrc505mkii-v2@0.0.0 prebuild
+> node scripts/verify-shared-dsp-assets.mjs
+
+{
+  "result": "VERIFIED",
+  "byteLength": 664657,
+  "wasmSha256": "45e9cb35064cef526730c0f3ca0ac11b164a9c20a03766291182a0019755af04",
+  "sourceSetSha256": "674fe623e2c1edcb1502ddbaeb87d29a4c654138bbfe90b42a75b746a4250522",
+  "sourceCount": 60,
+  "emsdkCommit": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
+  "compilerIdentity": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)"
+}
+
+> webrc505mkii-v2@0.0.0 build
+> vue-tsc -b && vite build
+
+vite v7.2.4 building client environment for production...
+transforming...
+✓ 145 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.86 kB │ gzip:   0.46 kB
+dist/assets/index-DgngC0Dr.css   73.03 kB │ gzip:  13.92 kB
+dist/assets/index-BFF6mE68.js   527.45 kB │ gzip: 150.69 kB
+✓ built in 4.48s
