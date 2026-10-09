@@ -1,0 +1,325 @@
+{
+  "scope": "Independent raw PCM and process-plan reanalysis only; not an execution rerun, perceptual quality acceptance, latency measurement, or real Browser graph test.",
+  "wasmSha256": "65960fceaf4cc343629d2cbaaed560a898233c4d3e2d3cda7c9c365fdeca4f5e",
+  "sourceSetSha256": "0584854a72abc19c3911637a8ed1629609c0ee42621f6092d3e14d29a10deb53",
+  "fixtureCount": 6,
+  "allWorkerCAbiCropsByteIdentical": true,
+  "maxChunkedUpstreamVsWorker": 0.00029125437140464783,
+  "maxSingleCallExactVsChunked": 0.02587217092514038,
+  "fixtures": [
+    {
+      "id": "livepoly-long-half",
+      "profile": "LIVE_POLY",
+      "rate": 0.5,
+      "crop": [
+        0,
+        96000
+      ],
+      "processBlocksContiguousAndBounded": true,
+      "channels": [
+        {
+          "channel": "left",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 96000,
+            "maxAbs": 0.00029125437140464783,
+            "rms": 1.5591181262170743e-05
+          },
+          "singleCallExactVsChunked": {
+            "frames": 96000,
+            "maxAbs": 0.0038735270500183105,
+            "rms": 0.00016756866862517334
+          },
+          "last256WorkerRms": 0.057754738702046365
+        },
+        {
+          "channel": "right",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 96000,
+            "maxAbs": 0.00012340769171714783,
+            "rms": 7.773031794117691e-06
+          },
+          "singleCallExactVsChunked": {
+            "frames": 96000,
+            "maxAbs": 0.016136012971401215,
+            "rms": 0.0001414061455028863
+          },
+          "last256WorkerRms": 0.06574179363787623
+        }
+      ]
+    },
+    {
+      "id": "livepoly-long-unity",
+      "profile": "LIVE_POLY",
+      "rate": 1,
+      "crop": [
+        0,
+        48000
+      ],
+      "processBlocksContiguousAndBounded": true,
+      "channels": [
+        {
+          "channel": "left",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 48000,
+            "maxAbs": 2.5331974029541016e-07,
+            "rms": 1.6288885138670706e-08
+          },
+          "singleCallExactVsChunked": {
+            "frames": 48000,
+            "maxAbs": 0.0,
+            "rms": 0.0
+          },
+          "last256WorkerRms": 0.10215454262085595
+        },
+        {
+          "channel": "right",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 48000,
+            "maxAbs": 5.960464477539063e-08,
+            "rms": 9.533577683727024e-09
+          },
+          "singleCallExactVsChunked": {
+            "frames": 48000,
+            "maxAbs": 0.0,
+            "rms": 0.0
+          },
+          "last256WorkerRms": 0.08370741582894377
+        }
+      ]
+    },
+    {
+      "id": "livepoly-long-oneandhalf-tail",
+      "profile": "LIVE_POLY",
+      "rate": 1.5,
+      "crop": [
+        0,
+        32000
+      ],
+      "processBlocksContiguousAndBounded": true,
+      "channels": [
+        {
+          "channel": "left",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 32000,
+            "maxAbs": 8.940696716308594e-08,
+            "rms": 1.4511338842009703e-08
+          },
+          "singleCallExactVsChunked": {
+            "frames": 32000,
+            "maxAbs": 0.007524382323026657,
+            "rms": 0.0005024552612081972
+          },
+          "last256WorkerRms": 0.004654847933324952
+        },
+        {
+          "channel": "right",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 32000,
+            "maxAbs": 1.989305019378662e-06,
+            "rms": 2.2123637274332975e-08
+          },
+          "singleCallExactVsChunked": {
+            "frames": 32000,
+            "maxAbs": 0.02587217092514038,
+            "rms": 0.0003407469781545268
+          },
+          "last256WorkerRms": 0.005165333668590484
+        }
+      ]
+    },
+    {
+      "id": "hq-long-double",
+      "profile": "HQ_RENDER",
+      "rate": 2,
+      "crop": [
+        0,
+        24000
+      ],
+      "processBlocksContiguousAndBounded": true,
+      "channels": [
+        {
+          "channel": "left",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 24000,
+            "maxAbs": 1.7881393432617188e-07,
+            "rms": 1.609428374633155e-08
+          },
+          "singleCallExactVsChunked": {
+            "frames": 24000,
+            "maxAbs": 0.0,
+            "rms": 0.0
+          },
+          "last256WorkerRms": 0.18058145350391835
+        },
+        {
+          "channel": "right",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 24000,
+            "maxAbs": 1.2852251529693604e-07,
+            "rms": 1.616450066435667e-08
+          },
+          "singleCallExactVsChunked": {
+            "frames": 24000,
+            "maxAbs": 0.0,
+            "rms": 0.0
+          },
+          "last256WorkerRms": 0.18700987227838536
+        }
+      ]
+    },
+    {
+      "id": "hq-short-unity-crop",
+      "profile": "HQ_RENDER",
+      "rate": 1,
+      "crop": [
+        16384,
+        21184
+      ],
+      "processBlocksContiguousAndBounded": true,
+      "channels": [
+        {
+          "channel": "left",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 4800,
+            "maxAbs": 4.470348358154297e-08,
+            "rms": 1.0095543216719448e-08
+          },
+          "singleCallExactVsChunked": {
+            "frames": 37568,
+            "maxAbs": 0.0,
+            "rms": 0.0
+          },
+          "last256WorkerRms": 0.164634193659505
+        },
+        {
+          "channel": "right",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 4800,
+            "maxAbs": 4.470348358154297e-08,
+            "rms": 9.076088692773555e-09
+          },
+          "singleCallExactVsChunked": {
+            "frames": 37568,
+            "maxAbs": 0.0,
+            "rms": 0.0
+          },
+          "last256WorkerRms": 0.12938632026039637
+        }
+      ]
+    },
+    {
+      "id": "hq-short-oneandhalf-crop",
+      "profile": "HQ_RENDER",
+      "rate": 1.5,
+      "crop": [
+        13654,
+        16854
+      ],
+      "processBlocksContiguousAndBounded": true,
+      "channels": [
+        {
+          "channel": "left",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 3200,
+            "maxAbs": 2.1606683731079102e-07,
+            "rms": 3.5114600112257963e-08
+          },
+          "singleCallExactVsChunked": {
+            "frames": 30508,
+            "maxAbs": 0.00010813772678375244,
+            "rms": 8.908270421867702e-06
+          },
+          "last256WorkerRms": 0.13763725167364416
+        },
+        {
+          "channel": "right",
+          "workerVsCAbiByteIdentical": true,
+          "chunkedUpstreamVsWorker": {
+            "frames": 3200,
+            "maxAbs": 1.6748905181884766e-05,
+            "rms": 7.116787362644247e-07
+          },
+          "singleCallExactVsChunked": {
+            "frames": 30508,
+            "maxAbs": 7.204711437225342e-05,
+            "rms": 6.668211077563093e-06
+          },
+          "last256WorkerRms": 0.09822773558041953
+        }
+      ]
+    }
+  ],
+  "rawInputHashes": {
+    "livepoly-long-half.input.left.f32le": "7f4a23908191ca5fac9d45547aa621b6e5557651ae98854837679f4e8fc40a68",
+    "livepoly-long-half.worker.left.f32le": "ca8d6de4615321b59b1365f886605cb72583d6536f53ea43702cf17a1e497738",
+    "livepoly-long-half.direct-cabi.full.left.f32le": "ca8d6de4615321b59b1365f886605cb72583d6536f53ea43702cf17a1e497738",
+    "livepoly-long-half.upstream-chunked.full.left.f32le": "e0b11e4ff00b516a14fa353d32d640944a1d974223612a41247924d4666926f5",
+    "livepoly-long-half.upstream-exact.full.left.f32le": "33f94a47d8ccdf6f86959609e294e086a83d595a8e96293f999d59fa888cbfa7",
+    "livepoly-long-half.input.right.f32le": "28b373c23896f2534209141712b422c6d4cf38872bf9fe1f94d6514339dc734e",
+    "livepoly-long-half.worker.right.f32le": "655421b402d3179c579410f911e18a4d2ae8d7d8b3d02ad93bae50f3cede162e",
+    "livepoly-long-half.direct-cabi.full.right.f32le": "655421b402d3179c579410f911e18a4d2ae8d7d8b3d02ad93bae50f3cede162e",
+    "livepoly-long-half.upstream-chunked.full.right.f32le": "efda4c43cf2b7a060c1f989131aaeb24bbb6ffc1f21d60e8f33bc1f8165493bb",
+    "livepoly-long-half.upstream-exact.full.right.f32le": "439e251bb9f74b94bc0bb823822376ac9d690af4f7936a7d133f0ee945da542d",
+    "livepoly-long-unity.input.left.f32le": "462fb9515818c75aef90deb0ebc7cdde43134cf4a8ec939a36eeb8ab1c483771",
+    "livepoly-long-unity.worker.left.f32le": "66db25ea9fe64df8ccfee3684e7a3fed4725d1ffbd5d0ede46e60b2aa73b73f9",
+    "livepoly-long-unity.direct-cabi.full.left.f32le": "66db25ea9fe64df8ccfee3684e7a3fed4725d1ffbd5d0ede46e60b2aa73b73f9",
+    "livepoly-long-unity.upstream-chunked.full.left.f32le": "6b459d697b2423bf0253fda255aaea14ffcae8c34b83e6b80f85f2a1be8ac1d9",
+    "livepoly-long-unity.upstream-exact.full.left.f32le": "6b459d697b2423bf0253fda255aaea14ffcae8c34b83e6b80f85f2a1be8ac1d9",
+    "livepoly-long-unity.input.right.f32le": "b9b723e178c3f396929abbbe38f0343d60387d535f9c365bc5448c8b66784a42",
+    "livepoly-long-unity.worker.right.f32le": "d862dc45ffb376db67911cab56900806fa75b263c7c30009594f01caeb3acd7a",
+    "livepoly-long-unity.direct-cabi.full.right.f32le": "d862dc45ffb376db67911cab56900806fa75b263c7c30009594f01caeb3acd7a",
+    "livepoly-long-unity.upstream-chunked.full.right.f32le": "55a74055cc97c6f530bbc9a06d90ef756e2d63b1732c698d7861b5630c5d466b",
+    "livepoly-long-unity.upstream-exact.full.right.f32le": "55a74055cc97c6f530bbc9a06d90ef756e2d63b1732c698d7861b5630c5d466b",
+    "livepoly-long-oneandhalf-tail.input.left.f32le": "22b6277f65092fee1314f97f58aee711e8be6610c70dda9d8c5d049de0727ed9",
+    "livepoly-long-oneandhalf-tail.worker.left.f32le": "ebd156a975f47fe8a1bff5a0c4c68cc324cc808d5e67f64147239420153015d9",
+    "livepoly-long-oneandhalf-tail.direct-cabi.full.left.f32le": "ebd156a975f47fe8a1bff5a0c4c68cc324cc808d5e67f64147239420153015d9",
+    "livepoly-long-oneandhalf-tail.upstream-chunked.full.left.f32le": "656d4364837768de8772569fcc4280fbfcfc27b6f21d2b07c51bfb913db58692",
+    "livepoly-long-oneandhalf-tail.upstream-exact.full.left.f32le": "9533ca45840cd47cb25dfca0b40267a18c7a7116fada73930482a169d70e3ccb",
+    "livepoly-long-oneandhalf-tail.input.right.f32le": "6fff9e671a5d6cb12346e8d374c4f066023dd02ec408691d63fc7bfb33ab93d1",
+    "livepoly-long-oneandhalf-tail.worker.right.f32le": "54caf167cd7dd42d47137e3a4d00bc65ec2268e6b86acb0cc2be7378c665ed9b",
+    "livepoly-long-oneandhalf-tail.direct-cabi.full.right.f32le": "54caf167cd7dd42d47137e3a4d00bc65ec2268e6b86acb0cc2be7378c665ed9b",
+    "livepoly-long-oneandhalf-tail.upstream-chunked.full.right.f32le": "647b35122ddcac947771b6ea5ac143515c4969a4c95fee3217c1a1e7b9b3c5cb",
+    "livepoly-long-oneandhalf-tail.upstream-exact.full.right.f32le": "42a020082b1e8a475eb03ba7ab28c72967c1a483a85cb5152e40eee01bfd0664",
+    "hq-long-double.input.left.f32le": "3bba1a2522aa86718be867e16bc3b9b3351e16b624e897fe9750dddfeffd7f5c",
+    "hq-long-double.worker.left.f32le": "01ab7060ca25fa0f5d57bfd486cf230cfc2545a3075c741bd07d7eb5c31689c9",
+    "hq-long-double.direct-cabi.full.left.f32le": "01ab7060ca25fa0f5d57bfd486cf230cfc2545a3075c741bd07d7eb5c31689c9",
+    "hq-long-double.upstream-chunked.full.left.f32le": "0b724ca8efcfce3e9d50970175f278e2e63d0243f8d9999b6f43953cbfae3532",
+    "hq-long-double.upstream-exact.full.left.f32le": "0b724ca8efcfce3e9d50970175f278e2e63d0243f8d9999b6f43953cbfae3532",
+    "hq-long-double.input.right.f32le": "a1b72ca2ff777605f28bfe8933749d8f2ce29d60f78ec2fb2882b028199036d7",
+    "hq-long-double.worker.right.f32le": "4984daa2ea8af67f2e9c4ed74583aafc9f6f5a47d5bbb3fdf884aef057f5e879",
+    "hq-long-double.direct-cabi.full.right.f32le": "4984daa2ea8af67f2e9c4ed74583aafc9f6f5a47d5bbb3fdf884aef057f5e879",
+    "hq-long-double.upstream-chunked.full.right.f32le": "65f280a3e611bb9e379903ede3704505d4a7bddcdfbb6da8be0b8758d76bb9ef",
+    "hq-long-double.upstream-exact.full.right.f32le": "65f280a3e611bb9e379903ede3704505d4a7bddcdfbb6da8be0b8758d76bb9ef",
+    "hq-short-unity-crop.input.left.f32le": "1b810d7416d6428dad32c790a7fa863fa897a5eaac98db213c49f8fe351c56f5",
+    "hq-short-unity-crop.worker.left.f32le": "87d7a435345076a3eb068776d19762096c9be5a9ae25bc4c23d367e1ea38566e",
+    "hq-short-unity-crop.direct-cabi.full.left.f32le": "a3baa222018b9ea0b5bf36b57ffff953f7882032263f2a9a57f2fbc1cb3065b2",
+    "hq-short-unity-crop.upstream-chunked.full.left.f32le": "b3191e97500cc015dbfeec1df1bbbdc334769b3ebebf948d7707e36211859457",
+    "hq-short-unity-crop.upstream-exact.full.left.f32le": "b3191e97500cc015dbfeec1df1bbbdc334769b3ebebf948d7707e36211859457",
+    "hq-short-unity-crop.input.right.f32le": "9570ae6ba3d69ea65ed21947ce179145973e5f23382e7e42c4f0e5ea1507d0ff",
+    "hq-short-unity-crop.worker.right.f32le": "a1fcb49f20f29dcb197976a5b5a37816e313dea8e5b883fa208a2e9b7241a195",
+    "hq-short-unity-crop.direct-cabi.full.right.f32le": "0ae63f4910baa35ff7e46a8d9f7f2113e93570623ce8b647b324478fecb2f663",
+    "hq-short-unity-crop.upstream-chunked.full.right.f32le": "53a172d67cecc26e5b61e0c5b161c53caa6100018e976d6e639e74b0059defb0",
+    "hq-short-unity-crop.upstream-exact.full.right.f32le": "53a172d67cecc26e5b61e0c5b161c53caa6100018e976d6e639e74b0059defb0",
+    "hq-short-oneandhalf-crop.input.left.f32le": "705e3a31bd5b3dfa95b0d8e1a4fcc7c31b3f341cbb421349185244c253d41406",
+    "hq-short-oneandhalf-crop.worker.left.f32le": "162f58570c3129c786909497ba20b78e4ca3bdfcf3d5765643b7fee26a3f6955",
+    "hq-short-oneandhalf-crop.direct-cabi.full.left.f32le": "e92375f8543bc0589e31f632705ed4751cff71148c309afe47bf0d1c7b146985",
+    "hq-short-oneandhalf-crop.upstream-chunked.full.left.f32le": "aaf556164be29598cd50b1ddfd027110d3c2a02b4a171ade24f9038c4b6ace56",
+    "hq-short-oneandhalf-crop.upstream-exact.full.left.f32le": "4ca6d848b38e27455507ea34868c5649086e6aca09515b54ad679ef5bd6d5c57",
+    "hq-short-oneandhalf-crop.input.right.f32le": "5c65ccfa5637a49148ec2fc94f40ad98e79796c990154ac3921c52808aa1d15e",
+    "hq-short-oneandhalf-crop.worker.right.f32le": "d494e855e7e7bd35b8f9c49cbccb2dedf4563a7940c93acfde53e5e54a2c9a1f",
+    "hq-short-oneandhalf-crop.direct-cabi.full.right.f32le": "49546d44f1d25b0c6c1bb78923a5cd59c88100be34b42d8bdd51e9680179f330",
+    "hq-short-oneandhalf-crop.upstream-chunked.full.right.f32le": "f7af3d6d69c4b2ac4f8a0a0e2be195f9096398645447e4dcc157e52863d39300",
+    "hq-short-oneandhalf-crop.upstream-exact.full.right.f32le": "37e67a7fbfd9a10459ae09e3ea1904c0f1479731ee683d374d08c26d63342ea9"
+  }
+}

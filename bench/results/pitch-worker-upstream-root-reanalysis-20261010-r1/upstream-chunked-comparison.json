@@ -1,0 +1,771 @@
+{
+  "schemaVersion": 1,
+  "suite": "upstream-chunked-seek-process-flush-vs-wasm-cabi-worker",
+  "wasmSha256": "65960fceaf4cc343629d2cbaaed560a898233c4d3e2d3cda7c9c365fdeca4f5e",
+  "sourceSetSha256": "0584854a72abc19c3911637a8ed1629609c0ee42621f6092d3e14d29a10deb53",
+  "fixtureCount": 6,
+  "fixtures": [
+    {
+      "id": "livepoly-long-half",
+      "profile": "LIVE_POLY",
+      "seed": 24301,
+      "alignedInputFrames": 48000,
+      "crop": [
+        0,
+        96000
+      ],
+      "chunkedUpstreamSha256": [
+        "e0b11e4ff00b516a14fa353d32d640944a1d974223612a41247924d4666926f5",
+        "efda4c43cf2b7a060c1f989131aaeb24bbb6ffc1f21d60e8f33bc1f8165493bb"
+      ],
+      "chunkedUpstreamVsCAbiFull": [
+        {
+          "frames": 96000,
+          "maxAbs": 0.00029125437140464783,
+          "rms": 1.5591181262170743e-05
+        },
+        {
+          "frames": 96000,
+          "maxAbs": 0.00012340769171714783,
+          "rms": 7.773031794117691e-06
+        }
+      ],
+      "chunkedUpstreamVsWorkerCrop": [
+        {
+          "frames": 96000,
+          "maxAbs": 0.00029125437140464783,
+          "rms": 1.5591181262170743e-05
+        },
+        {
+          "frames": 96000,
+          "maxAbs": 0.00012340769171714783,
+          "rms": 7.773031794117691e-06
+        }
+      ],
+      "singleCallExactVsChunkedFull": [
+        {
+          "frames": 96000,
+          "maxAbs": 0.0038735270500183105,
+          "rms": 0.00016756866862517334
+        },
+        {
+          "frames": 96000,
+          "maxAbs": 0.016136012971401215,
+          "rms": 0.0001414061455028863
+        }
+      ],
+      "tailWindows": [
+        {
+          "frames": 64,
+          "workerRms": [
+            0.05418377806728182,
+            0.08253646502365872
+          ],
+          "upstreamChunkedRms": [
+            0.054215602249984576,
+            0.08254567643457891
+          ],
+          "upstreamExactRms": [
+            0.05473651298016556,
+            0.0826912153233643
+          ]
+        },
+        {
+          "frames": 128,
+          "workerRms": [
+            0.04821150838695986,
+            0.07744564595781842
+          ],
+          "upstreamChunkedRms": [
+            0.04823831425166424,
+            0.0774566611008309
+          ],
+          "upstreamExactRms": [
+            0.048713744523237394,
+            0.07756468409248173
+          ]
+        },
+        {
+          "frames": 256,
+          "workerRms": [
+            0.057754738702046365,
+            0.06574179363787623
+          ],
+          "upstreamChunkedRms": [
+            0.057817189989331025,
+            0.06573250630052711
+          ],
+          "upstreamExactRms": [
+            0.058537592319061346,
+            0.06563902441560492
+          ]
+        },
+        {
+          "frames": 512,
+          "workerRms": [
+            0.07382099737952233,
+            0.06980357491885528
+          ],
+          "upstreamChunkedRms": [
+            0.07377683390426515,
+            0.06979777666267376
+          ],
+          "upstreamExactRms": [
+            0.07327744761176654,
+            0.06973750705556583
+          ]
+        },
+        {
+          "frames": 1024,
+          "workerRms": [
+            0.10276759243948258,
+            0.08710948777060411
+          ],
+          "upstreamChunkedRms": [
+            0.10276031738983221,
+            0.08710860442446677
+          ],
+          "upstreamExactRms": [
+            0.10267501720443509,
+            0.0870988531180349
+          ]
+        }
+      ]
+    },
+    {
+      "id": "livepoly-long-unity",
+      "profile": "LIVE_POLY",
+      "seed": 24302,
+      "alignedInputFrames": 48000,
+      "crop": [
+        0,
+        48000
+      ],
+      "chunkedUpstreamSha256": [
+        "6b459d697b2423bf0253fda255aaea14ffcae8c34b83e6b80f85f2a1be8ac1d9",
+        "55a74055cc97c6f530bbc9a06d90ef756e2d63b1732c698d7861b5630c5d466b"
+      ],
+      "chunkedUpstreamVsCAbiFull": [
+        {
+          "frames": 48000,
+          "maxAbs": 2.5331974029541016e-07,
+          "rms": 1.6288885138670706e-08
+        },
+        {
+          "frames": 48000,
+          "maxAbs": 5.960464477539063e-08,
+          "rms": 9.533577683727024e-09
+        }
+      ],
+      "chunkedUpstreamVsWorkerCrop": [
+        {
+          "frames": 48000,
+          "maxAbs": 2.5331974029541016e-07,
+          "rms": 1.6288885138670706e-08
+        },
+        {
+          "frames": 48000,
+          "maxAbs": 5.960464477539063e-08,
+          "rms": 9.533577683727024e-09
+        }
+      ],
+      "singleCallExactVsChunkedFull": [
+        {
+          "frames": 48000,
+          "maxAbs": 0.0,
+          "rms": 0.0
+        },
+        {
+          "frames": 48000,
+          "maxAbs": 0.0,
+          "rms": 0.0
+        }
+      ],
+      "tailWindows": [
+        {
+          "frames": 64,
+          "workerRms": [
+            4.017230820207688e-08,
+            2.8949752931572442e-08
+          ],
+          "upstreamChunkedRms": [
+            3.620940716583239e-08,
+            3.0278947913614325e-08
+          ],
+          "upstreamExactRms": [
+            3.620940716583239e-08,
+            3.0278947913614325e-08
+          ]
+        },
+        {
+          "frames": 128,
+          "workerRms": [
+            4.9376204322692213e-08,
+            2.7550093560902275e-08
+          ],
+          "upstreamChunkedRms": [
+            4.969542554618486e-08,
+            2.8158402582326223e-08
+          ],
+          "upstreamExactRms": [
+            4.969542554618486e-08,
+            2.8158402582326223e-08
+          ]
+        },
+        {
+          "frames": 256,
+          "workerRms": [
+            0.10215454262085595,
+            0.08370741582894377
+          ],
+          "upstreamChunkedRms": [
+            0.10215454028573846,
+            0.08370741499239268
+          ],
+          "upstreamExactRms": [
+            0.10215454028573846,
+            0.08370741499239268
+          ]
+        },
+        {
+          "frames": 512,
+          "workerRms": [
+            0.13883186093524594,
+            0.10417147900605243
+          ],
+          "upstreamChunkedRms": [
+            0.1388318610790657,
+            0.10417147957369659
+          ],
+          "upstreamExactRms": [
+            0.1388318610790657,
+            0.10417147957369659
+          ]
+        },
+        {
+          "frames": 1024,
+          "workerRms": [
+            0.15280071057249606,
+            0.11581790746613792
+          ],
+          "upstreamChunkedRms": [
+            0.15280071027144704,
+            0.11581790777980167
+          ],
+          "upstreamExactRms": [
+            0.15280071027144704,
+            0.11581790777980167
+          ]
+        }
+      ]
+    },
+    {
+      "id": "livepoly-long-oneandhalf-tail",
+      "profile": "LIVE_POLY",
+      "seed": 24303,
+      "alignedInputFrames": 48000,
+      "crop": [
+        0,
+        32000
+      ],
+      "chunkedUpstreamSha256": [
+        "656d4364837768de8772569fcc4280fbfcfc27b6f21d2b07c51bfb913db58692",
+        "647b35122ddcac947771b6ea5ac143515c4969a4c95fee3217c1a1e7b9b3c5cb"
+      ],
+      "chunkedUpstreamVsCAbiFull": [
+        {
+          "frames": 32000,
+          "maxAbs": 8.940696716308594e-08,
+          "rms": 1.4511338842009703e-08
+        },
+        {
+          "frames": 32000,
+          "maxAbs": 1.989305019378662e-06,
+          "rms": 2.2123637274332975e-08
+        }
+      ],
+      "chunkedUpstreamVsWorkerCrop": [
+        {
+          "frames": 32000,
+          "maxAbs": 8.940696716308594e-08,
+          "rms": 1.4511338842009703e-08
+        },
+        {
+          "frames": 32000,
+          "maxAbs": 1.989305019378662e-06,
+          "rms": 2.2123637274332975e-08
+        }
+      ],
+      "singleCallExactVsChunkedFull": [
+        {
+          "frames": 32000,
+          "maxAbs": 0.007524382323026657,
+          "rms": 0.0005024552612081972
+        },
+        {
+          "frames": 32000,
+          "maxAbs": 0.02587217092514038,
+          "rms": 0.0003407469781545268
+        }
+      ],
+      "tailWindows": [
+        {
+          "frames": 64,
+          "workerRms": [
+            0.007551976399693986,
+            0.002152289850477165
+          ],
+          "upstreamChunkedRms": [
+            0.007551979553356615,
+            0.0021522872282565913
+          ],
+          "upstreamExactRms": [
+            0.007327060737131382,
+            0.0022521601408595554
+          ]
+        },
+        {
+          "frames": 128,
+          "workerRms": [
+            0.005955434107987839,
+            0.002846758683899884
+          ],
+          "upstreamChunkedRms": [
+            0.005955436554437801,
+            0.002846756995527303
+          ],
+          "upstreamExactRms": [
+            0.005796596667282617,
+            0.0028956780929731375
+          ]
+        },
+        {
+          "frames": 256,
+          "workerRms": [
+            0.004654847933324952,
+            0.005165333668590484
+          ],
+          "upstreamChunkedRms": [
+            0.004654849387015609,
+            0.005165333068903792
+          ],
+          "upstreamExactRms": [
+            0.0045924191820429835,
+            0.005187422139415078
+          ]
+        },
+        {
+          "frames": 512,
+          "workerRms": [
+            0.01265887449511028,
+            0.007286938629453939
+          ],
+          "upstreamChunkedRms": [
+            0.012658875433145204,
+            0.007286938857406893
+          ],
+          "upstreamExactRms": [
+            0.012384286844936981,
+            0.0072797213461808525
+          ]
+        },
+        {
+          "frames": 1024,
+          "workerRms": [
+            0.08992054571799041,
+            0.0682755807741247
+          ],
+          "upstreamChunkedRms": [
+            0.08992054512632658,
+            0.06827558034621428
+          ],
+          "upstreamExactRms": [
+            0.08978768397160121,
+            0.06830166026159805
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hq-long-double",
+      "profile": "HQ_RENDER",
+      "seed": 24304,
+      "alignedInputFrames": 48000,
+      "crop": [
+        0,
+        24000
+      ],
+      "chunkedUpstreamSha256": [
+        "0b724ca8efcfce3e9d50970175f278e2e63d0243f8d9999b6f43953cbfae3532",
+        "65f280a3e611bb9e379903ede3704505d4a7bddcdfbb6da8be0b8758d76bb9ef"
+      ],
+      "chunkedUpstreamVsCAbiFull": [
+        {
+          "frames": 24000,
+          "maxAbs": 1.7881393432617188e-07,
+          "rms": 1.609428374633155e-08
+        },
+        {
+          "frames": 24000,
+          "maxAbs": 1.2852251529693604e-07,
+          "rms": 1.616450066435667e-08
+        }
+      ],
+      "chunkedUpstreamVsWorkerCrop": [
+        {
+          "frames": 24000,
+          "maxAbs": 1.7881393432617188e-07,
+          "rms": 1.609428374633155e-08
+        },
+        {
+          "frames": 24000,
+          "maxAbs": 1.2852251529693604e-07,
+          "rms": 1.616450066435667e-08
+        }
+      ],
+      "singleCallExactVsChunkedFull": [
+        {
+          "frames": 24000,
+          "maxAbs": 0.0,
+          "rms": 0.0
+        },
+        {
+          "frames": 24000,
+          "maxAbs": 0.0,
+          "rms": 0.0
+        }
+      ],
+      "tailWindows": [
+        {
+          "frames": 64,
+          "workerRms": [
+            0.19058410027994416,
+            0.21054703269617803
+          ],
+          "upstreamChunkedRms": [
+            0.19058421351588614,
+            0.21054699143844394
+          ],
+          "upstreamExactRms": [
+            0.19058421351588614,
+            0.21054699143844394
+          ]
+        },
+        {
+          "frames": 128,
+          "workerRms": [
+            0.17352309149156403,
+            0.20368080222545057
+          ],
+          "upstreamChunkedRms": [
+            0.1735231872418172,
+            0.20368077987749844
+          ],
+          "upstreamExactRms": [
+            0.1735231872418172,
+            0.20368077987749844
+          ]
+        },
+        {
+          "frames": 256,
+          "workerRms": [
+            0.18058145350391835,
+            0.18700987227838536
+          ],
+          "upstreamChunkedRms": [
+            0.18058151705304526,
+            0.18700985779852974
+          ],
+          "upstreamExactRms": [
+            0.18058151705304526,
+            0.18700985779852974
+          ]
+        },
+        {
+          "frames": 512,
+          "workerRms": [
+            0.16639908754987986,
+            0.16794929754192414
+          ],
+          "upstreamChunkedRms": [
+            0.1663991358511742,
+            0.16794929180414678
+          ],
+          "upstreamExactRms": [
+            0.1663991358511742,
+            0.16794929180414678
+          ]
+        },
+        {
+          "frames": 1024,
+          "workerRms": [
+            0.1573608740911439,
+            0.15432713829095315
+          ],
+          "upstreamChunkedRms": [
+            0.15736091211303985,
+            0.15432714650931173
+          ],
+          "upstreamExactRms": [
+            0.15736091211303985,
+            0.15432714650931173
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hq-short-unity-crop",
+      "profile": "HQ_RENDER",
+      "seed": 24305,
+      "alignedInputFrames": 37568,
+      "crop": [
+        16384,
+        21184
+      ],
+      "chunkedUpstreamSha256": [
+        "b3191e97500cc015dbfeec1df1bbbdc334769b3ebebf948d7707e36211859457",
+        "53a172d67cecc26e5b61e0c5b161c53caa6100018e976d6e639e74b0059defb0"
+      ],
+      "chunkedUpstreamVsCAbiFull": [
+        {
+          "frames": 37568,
+          "maxAbs": 4.470348358154297e-08,
+          "rms": 3.74028494011486e-09
+        },
+        {
+          "frames": 37568,
+          "maxAbs": 4.470348358154297e-08,
+          "rms": 3.4220823570900936e-09
+        }
+      ],
+      "chunkedUpstreamVsWorkerCrop": [
+        {
+          "frames": 4800,
+          "maxAbs": 4.470348358154297e-08,
+          "rms": 1.0095543216719448e-08
+        },
+        {
+          "frames": 4800,
+          "maxAbs": 4.470348358154297e-08,
+          "rms": 9.076088692773555e-09
+        }
+      ],
+      "singleCallExactVsChunkedFull": [
+        {
+          "frames": 37568,
+          "maxAbs": 0.0,
+          "rms": 0.0
+        },
+        {
+          "frames": 37568,
+          "maxAbs": 0.0,
+          "rms": 0.0
+        }
+      ],
+      "tailWindows": [
+        {
+          "frames": 64,
+          "workerRms": [
+            0.18002958948278658,
+            0.13247572255904186
+          ],
+          "upstreamChunkedRms": [
+            0.18002958976730427,
+            0.13247572222655743
+          ],
+          "upstreamExactRms": [
+            0.18002958976730427,
+            0.13247572222655743
+          ]
+        },
+        {
+          "frames": 128,
+          "workerRms": [
+            0.15898464677927707,
+            0.12957887731830223
+          ],
+          "upstreamChunkedRms": [
+            0.15898464700936765,
+            0.12957887809952318
+          ],
+          "upstreamExactRms": [
+            0.15898464700936765,
+            0.12957887809952318
+          ]
+        },
+        {
+          "frames": 256,
+          "workerRms": [
+            0.164634193659505,
+            0.12938632026039637
+          ],
+          "upstreamChunkedRms": [
+            0.16463419412986247,
+            0.12938632039688128
+          ],
+          "upstreamExactRms": [
+            0.16463419412986247,
+            0.12938632039688128
+          ]
+        },
+        {
+          "frames": 512,
+          "workerRms": [
+            0.1722658673535369,
+            0.12925556496452398
+          ],
+          "upstreamChunkedRms": [
+            0.17226586838832497,
+            0.1292555648301845
+          ],
+          "upstreamExactRms": [
+            0.17226586838832497,
+            0.1292555648301845
+          ]
+        },
+        {
+          "frames": 1024,
+          "workerRms": [
+            0.1686868398190166,
+            0.12809387040777212
+          ],
+          "upstreamChunkedRms": [
+            0.16868684032356965,
+            0.12809386927492014
+          ],
+          "upstreamExactRms": [
+            0.16868684032356965,
+            0.12809386927492014
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hq-short-oneandhalf-crop",
+      "profile": "HQ_RENDER",
+      "seed": 24306,
+      "alignedInputFrames": 45762,
+      "crop": [
+        13654,
+        16854
+      ],
+      "chunkedUpstreamSha256": [
+        "aaf556164be29598cd50b1ddfd027110d3c2a02b4a171ade24f9038c4b6ace56",
+        "f7af3d6d69c4b2ac4f8a0a0e2be195f9096398645447e4dcc157e52863d39300"
+      ],
+      "chunkedUpstreamVsCAbiFull": [
+        {
+          "frames": 30508,
+          "maxAbs": 4.7031790018081665e-07,
+          "rms": 1.5065600101632667e-08
+        },
+        {
+          "frames": 30508,
+          "maxAbs": 1.6748905181884766e-05,
+          "rms": 2.487771353013388e-07
+        }
+      ],
+      "chunkedUpstreamVsWorkerCrop": [
+        {
+          "frames": 3200,
+          "maxAbs": 2.1606683731079102e-07,
+          "rms": 3.5114600112257963e-08
+        },
+        {
+          "frames": 3200,
+          "maxAbs": 1.6748905181884766e-05,
+          "rms": 7.116787362644247e-07
+        }
+      ],
+      "singleCallExactVsChunkedFull": [
+        {
+          "frames": 30508,
+          "maxAbs": 0.00010813772678375244,
+          "rms": 8.908270421867702e-06
+        },
+        {
+          "frames": 30508,
+          "maxAbs": 7.204711437225342e-05,
+          "rms": 6.668211077563093e-06
+        }
+      ],
+      "tailWindows": [
+        {
+          "frames": 64,
+          "workerRms": [
+            0.1482636958313722,
+            0.10209541457150631
+          ],
+          "upstreamChunkedRms": [
+            0.14826369381442256,
+            0.10209542119583019
+          ],
+          "upstreamExactRms": [
+            0.14820178650175994,
+            0.10205515150644222
+          ]
+        },
+        {
+          "frames": 128,
+          "workerRms": [
+            0.12548192008320366,
+            0.09983408380708748
+          ],
+          "upstreamChunkedRms": [
+            0.1254819192463796,
+            0.09983409036525995
+          ],
+          "upstreamExactRms": [
+            0.12543184989729056,
+            0.0997966835798451
+          ]
+        },
+        {
+          "frames": 256,
+          "workerRms": [
+            0.13763725167364416,
+            0.09822773558041953
+          ],
+          "upstreamChunkedRms": [
+            0.1376372515304372,
+            0.09822773605527939
+          ],
+          "upstreamExactRms": [
+            0.1376022935335093,
+            0.09819876086600692
+          ]
+        },
+        {
+          "frames": 512,
+          "workerRms": [
+            0.147712136249489,
+            0.10026410041303939
+          ],
+          "upstreamChunkedRms": [
+            0.14771213456147791,
+            0.10026410057066039
+          ],
+          "upstreamExactRms": [
+            0.1476887424191806,
+            0.1002427717180985
+          ]
+        },
+        {
+          "frames": 1024,
+          "workerRms": [
+            0.14703026042070547,
+            0.10660032722183743
+          ],
+          "upstreamChunkedRms": [
+            0.147030260060872,
+            0.10660032694909509
+          ],
+          "upstreamExactRms": [
+            0.14700877995893213,
+            0.10658238235428895
+          ]
+        }
+      ]
+    }
+  ]
+}
