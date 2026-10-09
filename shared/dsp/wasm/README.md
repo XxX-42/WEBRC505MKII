@@ -54,3 +54,73 @@ locks, module fetch, or instantiation is allowed.
 
 The C ABI and enum values live in `webrc_dsp_wasm.h`. `webrc_dsp_wasm.cpp`
 only adapts calls to the shared C++ primitives.
+
+## Versioned extended kinds
+
+`webrc_dsp_abi_version()` returns `2`, `webrc_dsp_extended_api_version()`
+returns `1`, and capability bits `0x1`/`0x2` advertise the base and extended
+APIs respectively. `webrc_dsp_extended.h` assigns stable C ABI kind IDs that
+are separate from the formula references in `dsp/spec/formula_index.json`.
+Creating and exercising a kind through this bridge does not mean that a named
+product FX, all 53 FX, or a full application graph has passed acceptance.
+
+| Extended kind | C ABI ID | Formula reference |
+| --- | ---: | --- |
+| WDF symmetric diode | 100 | F23 |
+| Oversampled nonlinear | 101 | F07 |
+| Pattern slicer | 102 | F16 |
+| Sample-accurate scheduler | 103 | F20 |
+| Mid/Side width | 104 | F22 |
+| Onset detector | 105 | F27 |
+| Bit-rate reducer | 106 | F28 |
+| Ring modulator | 107 | F29 |
+| YIN pitch detector | 108 | F10 |
+| Offline TD-PSOLA | 109 | F11 |
+| Streaming TD-PSOLA | 110 | F11 |
+| Phase vocoder | 111 | F12 |
+| Multiband vocoder | 112 | F13 |
+| Signalsmith stretch adapter | 113 | F11/F12 adapter; dependency identity is separate |
+| Granular texture | 114 | F15 |
+| FDN reverb | 115 | F17 |
+| Partitioned convolver | 116 | F18 |
+| Spectral freeze | 117 | F19 |
+| Reverse segment | 118 | F25 |
+| Platter inertia | 119 | F26 |
+| Drum voice pool | 120 | F24 |
+
+## Setup, processing, and pointer boundaries
+
+The ABI operations `create`, `create_convolver`, `destroy`, `reset`,
+`configure`, transfer allocation/free, and FDN early-impulse installation are
+setup or graph-control operations. Do them on an inactive candidate or under
+serialization with the processor; do not call them concurrently with its
+process method. Convolver IRs are copied during candidate creation. The
+`set_impulse_response` function is only for prepared FDN early taps and does
+not reconfigure a convolver. Publish a replacement graph only after candidate
+preparation succeeds. The fixed 48 MiB ledger limits accounted module payload
+inside the fixed 64 MiB WASM memory; it cannot recover a WebAssembly trap from
+an allocator failure, so the host must preflight active plus staged memory and
+isolate candidate preparation from the active module/graph.
+
+Prepared `process_*` entry points and bounded scheduler/event/drum operations
+do not allocate or lock in the shared implementation. This is a code-path
+property, not proof of callback deadline performance. The FFT utility runs
+in place with caller-owned scratch and no allocation. YIN frame analysis is
+bounded but compute-heavy; measure it before scheduling on a realtime thread.
+No operation may race another operation on the same handle unless its API
+explicitly defines that concurrency.
+
+Every pointer passed to the C ABI must describe a readable or writable span
+inside this module's current `memory.buffer`, sized for the declared frame or
+parameter count and aligned for its C type. The C ABI does not validate
+arbitrary host addresses. The JavaScript boundary should obtain these spans
+from live transfer tokens, verify address/byte-length/alignment before making
+typed views, and discard views after any memory-buffer replacement. The legacy
+raw-address free API is setup-only and cannot protect against stale-free ABA;
+new code should retain the generation token returned by
+`webrc_dsp_alloc_f32_token` and use it for address lookup and release.
+
+The Node suites validate WASM ABI and PCM compute paths without hardware I/O.
+They do not include JS/Worklet copy overhead, prove current Chrome's callback
+deadline, qualify all FX chains, or substitute for the integrated browser
+stress and long-PCM cross-compiler parity gates.

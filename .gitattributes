@@ -6,3 +6,12 @@
 /shared/dsp/benchmarks/capture_spatial_temporal_bench.ps1 -text
 /bench/results/native_dsp_asan_clang23_snapshot_r4_20261009/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /bench/results/native_dsp_asan_clang23_snapshot_r4_20261009/logs/** -whitespace
+/bench/results/wasm_extended_20261009_root/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Keep the exact compiler input bytes recorded by the standalone WASM manifests.
+/shared/dsp/wasm/*.cpp -text
+/shared/dsp/wasm/*.h -text
+/shared/dsp/wasm/*.hpp -text
+/shared/dsp/wasm/build-*.ps1 -text
+/shared/dsp/wasm/tests/golden.mjs -text
+/shared/dsp/wasm/tests/extended-smoke.mjs -text
+/shared/dsp/wasm/tests/run-pitch-tests.mjs -text

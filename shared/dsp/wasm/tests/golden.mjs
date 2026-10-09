@@ -63,12 +63,16 @@ const exports = instance.exports;
 exports._initialize();
 const wasm = { ...exports, HEAPF32: new Float32Array(exports.memory.buffer) };
 for (const name of [
-  'webrc_dsp_api_version', 'webrc_dsp_max_block_frames', 'webrc_dsp_last_create_status',
+  'webrc_dsp_api_version', 'webrc_dsp_abi_version', 'webrc_dsp_extended_api_version',
+  'webrc_dsp_capabilities', 'webrc_dsp_max_block_frames', 'webrc_dsp_last_create_status',
   'webrc_dsp_managed_memory_bytes', 'webrc_dsp_managed_memory_capacity_bytes',
   'webrc_dsp_create', 'webrc_dsp_destroy', 'webrc_dsp_reset', 'webrc_dsp_configure',
   'webrc_dsp_seed', 'webrc_dsp_process', 'webrc_dsp_equal_power_crossfade',
   'webrc_dsp_equal_power_pan', 'webrc_dsp_sinc8_read', 'webrc_dsp_sinc8_lookahead_samples',
-  'webrc_dsp_alloc_f32', 'webrc_dsp_free',
+  'webrc_dsp_alloc_f32', 'webrc_dsp_free', 'webrc_dsp_alloc_f32_token',
+  'webrc_dsp_transfer_address', 'webrc_dsp_free_transfer_token',
+  'webrc_dsp_extended_create', 'webrc_dsp_extended_last_create_status',
+  'webrc_dsp_extended_destroy', 'webrc_dsp_extended_process_mono',
 ]) {
   wasm[`_${name}`] = exports[name];
 }
@@ -79,17 +83,23 @@ const Kind = {
   biquad: 2,
   svf: 3,
   lagrange: 5,
+  delayMatrix: 10,
 };
 const Control = {
   smootherTarget: 1,
   biquadLowpass: 2,
   svfFrequencyQ: 6,
+  delayMatrixFeedback: 13,
 };
 const Status = { ok: 0, badHandle: -1, blockTooLarge: -4, memoryBudget: -7, badKind: -3 };
+const ExtKind = { wdfDiode: 100 };
 const MAX_BLOCK = 512;
 const bytesBefore = wasm.HEAPF32.buffer.byteLength;
 assert.equal(bytesBefore, 64 * 1024 * 1024, 'WASM memory is fixed at the build-time reservation');
 assert.equal(wasm._webrc_dsp_api_version(), 1);
+assert.equal(wasm._webrc_dsp_abi_version(), 2);
+assert.equal(wasm._webrc_dsp_extended_api_version(), 1);
+assert.equal(wasm._webrc_dsp_capabilities(), 0x00000003);
 assert.equal(wasm.malloc, undefined, 'raw malloc is not exported to callback clients');
 let transferAllocationBytes = 0;
 
@@ -104,6 +114,20 @@ function create(kind, maxDelaySamples = 0) {
   const handle = wasm._webrc_dsp_create(kind, SAMPLE_RATE, MAX_BLOCK, 1, maxDelaySamples);
   assert.ok(handle !== 0, `create failed with status ${wasm._webrc_dsp_last_create_status()}`);
   assert.equal(wasm._webrc_dsp_last_create_status(), Status.ok);
+  return handle;
+}
+
+function createExtended(kind, parameters = [], seed = 1n) {
+  let parameterAddress = 0;
+  if (parameters.length) {
+    const buffer = allocate(parameters.length);
+    buffer.view.set(parameters);
+    parameterAddress = buffer.address;
+  }
+  const handle = wasm._webrc_dsp_extended_create(kind, SAMPLE_RATE, MAX_BLOCK, 1,
+    parameterAddress, parameters.length, seed);
+  assert.ok(handle !== 0, `extended create failed with status ${wasm._webrc_dsp_extended_last_create_status()}`);
+  assert.equal(wasm._webrc_dsp_extended_last_create_status(), Status.ok);
   return handle;
 }
 
@@ -125,6 +149,28 @@ const leftGain = allocate(1);
 const rightGain = allocate(1);
 const scalar = allocate(1);
 
+const firstTransferToken = wasm._webrc_dsp_alloc_f32_token(64);
+assert.ok(firstTransferToken !== 0, 'token-aware transfer allocation succeeds');
+const firstTransferAddress = wasm._webrc_dsp_transfer_address(firstTransferToken);
+assert.ok(firstTransferAddress !== 0, 'valid transfer token resolves its address');
+assert.equal(wasm._webrc_dsp_destroy(firstTransferToken), Status.badKind,
+  'base destroy rejects a transfer-domain token');
+assert.equal(wasm._webrc_dsp_free_transfer_token(firstTransferToken), Status.ok);
+assert.equal(wasm._webrc_dsp_free_transfer_token(firstTransferToken), Status.badHandle,
+  'double token free is rejected');
+assert.equal(wasm._webrc_dsp_transfer_address(firstTransferToken), 0,
+  'stale token cannot resolve an address');
+const replacementTransferToken = wasm._webrc_dsp_alloc_f32_token(64);
+assert.ok(replacementTransferToken !== 0 && replacementTransferToken !== firstTransferToken,
+  'transfer slot reuse advances its generation');
+const replacementTransferAddress = wasm._webrc_dsp_transfer_address(replacementTransferToken);
+assert.equal(replacementTransferAddress, firstTransferAddress,
+  'the allocator reuses this same-size freed transfer address in the stale-token regression');
+assert.equal(wasm._webrc_dsp_free_transfer_token(firstTransferToken), Status.badHandle,
+  'stale free cannot release a later transfer even if malloc reuses its address');
+assert.equal(wasm._webrc_dsp_transfer_address(replacementTransferToken), replacementTransferAddress);
+assert.equal(wasm._webrc_dsp_free_transfer_token(replacementTransferToken), Status.ok);
+
 assert.equal(wasm._webrc_dsp_equal_power_crossfade(1, 0, 0.5, scalar.address), Status.ok);
 assertPcm([scalar.view[0]], [0.7071067811865476], 'equal-power center crossfade', 2e-8);
 assert.equal(wasm._webrc_dsp_equal_power_pan(0, leftGain.address, rightGain.address), Status.ok);
@@ -133,6 +179,10 @@ assertPcm([leftGain.view[0], rightGain.view[0]],
 assert.equal(wasm._webrc_dsp_sinc8_lookahead_samples(), 4);
 
 const smoother = create(Kind.smoother);
+assert.equal(wasm._webrc_dsp_extended_destroy(smoother), Status.badKind,
+  'extended destroy rejects a live base-domain handle');
+assert.equal(wasm._webrc_dsp_free_transfer_token(smoother), Status.badKind,
+  'transfer free rejects a live base-domain handle');
 const smootherControl = allocate(2);
 smootherControl.view.set([1, 10]);
 assert.equal(wasm._webrc_dsp_configure(smoother, Control.smootherTarget,
@@ -206,6 +256,34 @@ const sincInput = allocate(8);
 sincInput.view.set([0, 0, 1, 0, 0, 0, 0, 0]);
 const sincOutput = wasm._webrc_dsp_sinc8_read(sincInput.address, 8, 2, 0);
 assert.ok(Math.abs(sincOutput - 1) < 2e-7, `sinc8 integer read expected unity, got ${sincOutput}`);
+
+const delayMatrix = create(Kind.delayMatrix);
+const delayFeedbackControl = allocate(2);
+delayFeedbackControl.view.set([0.2, 0.1]);
+assert.equal(wasm._webrc_dsp_configure(delayMatrix, Control.delayMatrixFeedback,
+  delayFeedbackControl.address, 2), Status.ok);
+input.view.fill(0, 0, 2);
+input.view[0] = 1;
+outputRight.view.fill(0, 0, 2);
+parameters.view.fill(0, 0, 4);
+parameters.view[0] = 0.5;
+parameters.view[2] = 0.25;
+assert.equal(wasm._webrc_dsp_process(delayMatrix, input.address, outputRight.address,
+  output.address, outputAux.address, 0, parameters.address, 2), Status.ok);
+assertPcm([output.view[0], outputAux.view[0]], [1.125, 0.1], 'stereo delay feedback matrix');
+assert.equal(wasm._webrc_dsp_reset(delayMatrix), Status.ok);
+
+const extendedWdf = createExtended(ExtKind.wdfDiode);
+assert.equal(wasm._webrc_dsp_destroy(extendedWdf), Status.badKind,
+  'base destroy rejects an extended-domain handle');
+assert.equal(wasm._webrc_dsp_extended_destroy(biquad), Status.badKind,
+  'extended destroy rejects a base-domain handle');
+assert.equal(wasm._webrc_dsp_extended_process_mono(biquad, input.address, output.address, 8), Status.badKind,
+  'extended processor rejects a base-domain handle');
+input.view.fill(0, 0, 32);
+input.view[0] = 1;
+assert.equal(wasm._webrc_dsp_extended_process_mono(extendedWdf, input.address, output.address, 32), Status.ok);
+const preservedExtendedPcm = Array.from(output.view.subarray(0, 32));
 
 const fixtureHandles = [];
 const fixtureBuffers = [];
@@ -314,6 +392,13 @@ assert.equal(wasm._webrc_dsp_process(biquad, input.address, 0, output.address,
   0, 0, 0, MAX_BLOCK + 1), Status.blockTooLarge,
 'oversize block must be rejected before touching the DSP state');
 
+input.view.fill(0, 0, 32);
+input.view[0] = 1;
+assert.equal(wasm._webrc_dsp_reset(biquad), Status.ok);
+assert.equal(wasm._webrc_dsp_process(biquad, input.address, 0, output.address, 0, 0, 0, 32), Status.ok);
+const preservedPcm = Array.from(output.view.subarray(0, 32));
+assert.equal(wasm._webrc_dsp_reset(biquad), Status.ok);
+
 const staleHandle = lagrange;
 assert.equal(wasm._webrc_dsp_destroy(staleHandle), Status.ok);
 const reusedSlot = create(Kind.smoother);
@@ -335,21 +420,34 @@ assert.ok(largeDelayHandles.length > 0, 'budget test filled multiple prepared de
 assert.ok(wasm._webrc_dsp_managed_memory_bytes() <= wasm._webrc_dsp_managed_memory_capacity_bytes());
 assert.ok(wasm._webrc_dsp_managed_memory_bytes() > memoryBeforeOversizeCreate);
 input.view.fill(0.25, 0, 64);
-assert.equal(wasm._webrc_dsp_process(biquad, input.address, 0, output.address, 0, 0, 0, 64), Status.ok,
+input.view.fill(0, 0, 32);
+input.view[0] = 1;
+assert.equal(wasm._webrc_dsp_process(biquad, input.address, 0, output.address, 0, 0, 0, 32), Status.ok,
   'an allocation-budget rejection must leave previously created DSP states usable');
+assertPcm(output.view.subarray(0, 32), preservedPcm,
+  'allocation-budget rejection leaves the active processor state/configuration usable', 1e-7);
+input.view.fill(0, 0, 32);
+input.view[0] = 1;
+assert.equal(wasm._webrc_dsp_extended_process_mono(extendedWdf, input.address, output.address, 32), Status.ok,
+  'the shared ledger rejection leaves an extended processor active');
+assertPcm(output.view.subarray(0, 32), preservedExtendedPcm,
+  'shared-ledger rejection leaves extended PCM unchanged', 1e-7);
 
 const bytesAfterRendering = wasm.HEAPF32.buffer.byteLength;
 assert.equal(bytesAfterRendering, bytesBefore, 'process calls never grow linear memory');
 
 for (const handle of largeDelayHandles) assert.equal(wasm._webrc_dsp_destroy(handle), Status.ok);
-for (const handle of [...fixtureHandles, smoother, biquad, svf, reusedSlot]) {
+for (const handle of [...fixtureHandles, smoother, biquad, svf, delayMatrix, reusedSlot]) {
   assert.equal(wasm._webrc_dsp_destroy(handle), Status.ok);
 }
+assert.equal(wasm._webrc_dsp_extended_destroy(extendedWdf), Status.ok);
+assert.equal(wasm._webrc_dsp_extended_destroy(extendedWdf), Status.badHandle,
+  'extended destroy rejects a stale/double-destroyed handle');
 assert.equal(wasm._webrc_dsp_managed_memory_bytes(), transferMemoryBytes,
   'destroy releases DSP states while leaving setup transfer buffers reserved');
 
 for (const buffer of [input, output, outputRight, outputAux, parameters, leftGain,
-  rightGain, scalar, smootherControl, filterControl, svfControl, sincInput,
+  rightGain, scalar, smootherControl, filterControl, svfControl, delayFeedbackControl, sincInput,
   ...fixtureBuffers]) {
   wasm._webrc_dsp_free(buffer.address);
 }
@@ -361,6 +459,7 @@ assert.deepEqual(wasiIoCalls, { fd_close: 0, fd_write: 0, fd_seek: 0 },
 console.log(JSON.stringify({
   suite: 'shared-dsp-wasm-golden',
   apiVersion: wasm._webrc_dsp_api_version(),
+  abiVersion: wasm._webrc_dsp_abi_version(),
   wasmMemoryBytes: bytesBefore,
   maxBlockFramesTested: [64, 128, 256, 512],
   nativeGoldenFixturesCompared: ['biquad_lowpass', 'allpass1', 'tpt_svf',

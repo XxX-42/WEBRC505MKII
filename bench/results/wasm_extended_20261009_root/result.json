@@ -1,0 +1,65 @@
+{
+  "schema": "webrc.wasm-extended-root-review.v1",
+  "result": "PASS",
+  "capturedUtc": "2026-10-09T12:06:08.572895+00:00",
+  "artifactSha256": "05685575f1f00e3b73822bf07878ad530d005ae899459af84ba9dc8bc41275ef",
+  "sourceSetSha256": "169428fe254d318bc179d3ee8ea977143565a8f67f5fdbc24931e12b64e4c578",
+  "buildManifestSha256": "07b98014c4652a59a21cff7aca1d4fbe220cf25def98e2facf0758804e5a4c43",
+  "independentBuild": true,
+  "pinnedCompiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)",
+  "functionalSuites": {
+    "baseGolden": "PASS",
+    "extendedSmoke": "PASS",
+    "extendedKinds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120
+    ],
+    "baseBlockFrames": [
+      64,
+      128,
+      256,
+      512
+    ],
+    "transferGenerationalAddressReuse": "PASS",
+    "delayMatrixVariantFeedbackRegression": "PASS",
+    "invalidFreezeControlPreservesState": "PASS",
+    "fixedMemoryBytes": 67108864,
+    "wasiIoCalls": {
+      "fd_close": 0,
+      "fd_write": 0,
+      "fd_seek": 0
+    }
+  },
+  "pitchFunctionalRunner": {
+    "result": "PASS",
+    "sourceSetSha256": "456e5e77ebb16be8288d5e219f9f38d0ca8ebc1a0e6099b7b9cd3cfc94a4afb0",
+    "manifestMatchedInputs": 26
+  },
+  "scope": [
+    "standalone Node compute/ABI only",
+    "base Native parity contains six 32-sample fixtures",
+    "not long PCM parity",
+    "not actual AudioWorklet timing",
+    "not full FX graph acceptance",
+    "no hardware stream"
+  ]
+}

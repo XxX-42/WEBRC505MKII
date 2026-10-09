@@ -51,6 +51,9 @@ enum WebrcDspStatus {
 };
 
 uint32_t webrc_dsp_api_version(void);
+uint32_t webrc_dsp_abi_version(void);
+uint32_t webrc_dsp_extended_api_version(void);
+uint32_t webrc_dsp_capabilities(void);
 uint32_t webrc_dsp_max_block_frames(WebrcDspHandle handle);
 int32_t webrc_dsp_last_create_status(void);
 uint32_t webrc_dsp_managed_memory_bytes(void);
@@ -85,10 +88,16 @@ float webrc_dsp_sinc8_read(const float* input, uint32_t frames, double position,
                            uint32_t boundary_mode);
 uint32_t webrc_dsp_sinc8_lookahead_samples(void);
 
-// Allocate/release transfer or test buffers during setup only. Returned
-// addresses remain stable because the module is built with memory growth off.
+// Legacy raw-address allocation/release for compatibility. Setup only; stale
+// frees are not generation-protected if the allocator later reuses an address.
+// New clients should use the token-aware allocation functions below.
 uint32_t webrc_dsp_alloc_f32(uint32_t frames);
 void webrc_dsp_free(uint32_t address);
+// Preferred token-aware setup allocation API. A stale/double-freed generation
+// token cannot release a later allocation even if the allocator reuses its address.
+uint32_t webrc_dsp_alloc_f32_token(uint32_t frames);
+uint32_t webrc_dsp_transfer_address(uint32_t token);
+int32_t webrc_dsp_free_transfer_token(uint32_t token);
 
 #if defined(__cplusplus)
 }
