@@ -35,10 +35,7 @@ struct PreampFxEvent {
 struct PreampCabinetIr {
     // The responses are copied into the partitioned convolver during prepare.
     // A null right response reuses the left response. Channels remain dual
-    // mono; this API does not add cross-channel cabinet leakage. Each channel
-    // must have an absolute tap sum <= 64.0 L1.
-    // The IR is never normalized or clipped; oversized responses are rejected
-    // at prepare so ordinary audio is not given a hidden output limiter.
+    // mono; this API does not add cross-channel cabinet leakage.
     std::uint32_t frames = 0U;
     const float* left = nullptr;
     const float* right = nullptr;
@@ -80,7 +77,6 @@ class PreampFxProcessor final {
 public:
     static constexpr std::uint32_t kMaximumControlEventsPerBlock = 64U;
     static constexpr std::uint32_t kMaximumCabinetIrFrames = 16384U;
-    static constexpr double kMaximumCabinetIrL1 = 64.0;
 
     [[nodiscard]] static std::size_t requiredPrepareBytes(
         const ProcessSpec& spec, const PreampFxOptions& options,

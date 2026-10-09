@@ -1,0 +1,5 @@
+vocoder_fx.cpp
+pitch.cpp
+primitives.cpp
+fft.cpp
+vocoder_fx_tests.cpp

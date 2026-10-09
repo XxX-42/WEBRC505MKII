@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "capture": "preamp-fx-max-control-fixed-frozen-release-copy",
+  "createdLocal": "2026-10-10T01:45:53.8470431+08:00",
+  "sourceOrigin": "shared/dsp/benchmarks/results/preamp-fx-release-20261010T005907588/source",
+  "buildOrigin": "shared/dsp/benchmarks/results/preamp-fx-release-20261010T005907588/build",
+  "originalBuildTimestampUtc": "2026-10-09T17:31:28Z to 2026-10-09T17:31:37Z (artifact timestamps)",
+  "buildWasRerun": false,
+  "buildCommand": "build_release.cmd; MSVC 19.29.30159 / MSVC toolset 14.29.30133, x64; /std:c++17 /O2 /EHsc /W4 /permissive-",
+  "logLimitation": "Original build_release.cmd did not redirect compiler/link stdout into a build.log. Captured outputs include vcvars.log and test-output.json; this archive copies the prior build artifacts byte-for-byte and does not claim to recreate an unrecorded console log.",
+  "result": {
+    "schemaVersion": 1,
+    "suite": "preamp-fx",
+    "sampleRate": 48000,
+    "defaultNonlinearModel": "WdfSymmetricDiode4x",
+    "callbackAllocationsAndFrees": [
+      0,
+      0
+    ],
+    "partitionMaximumDifference": 0,
+    "toneLowFrequencyPlusMinusRatio": 4.96892605,
+    "cabinetChangedResponseRms": 0.110846214122,
+    "dryImpulseFrame": 86,
+    "wetImpulseFirstFrame": 73,
+    "wetImpulsePeakFrame": 86,
+    "maximumLegalOutputPeak": 24.5499191,
+    "maximumLegalOutputSamplesOver16": 18600,
+    "failures": 0
+  },
+  "sourceClosure": [
+    {
+      "path": "source/shared/dsp/include/webrc/dsp/fft.hpp",
+      "bytes": 548,
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "lastWriteTimeUtc": "2026-10-09T10:38:36.9954072Z"
+    },
+    {
+      "path": "source/shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "bytes": 4181,
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+      "lastWriteTimeUtc": "2026-10-09T10:54:42.7853978Z"
+    },
+    {
+      "path": "source/shared/dsp/include/webrc/dsp/preamp_fx.hpp",
+      "bytes": 5638,
+      "sha256": "0ac1777795635cf0637d1dd853ff71a7ea6a4b379a9183cdaa95f6b6890c2f2d",
+      "lastWriteTimeUtc": "2026-10-09T17:27:14.8578203Z"
+    },
+    {
+      "path": "source/shared/dsp/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "lastWriteTimeUtc": "2026-10-09T10:56:41.3226234Z"
+    },
+    {
+      "path": "source/shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "bytes": 23156,
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "lastWriteTimeUtc": "2026-10-09T12:20:07.5243385Z"
+    },
+    {
+      "path": "source/shared/dsp/src/fft.cpp",
+      "bytes": 3129,
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "lastWriteTimeUtc": "2026-10-09T10:49:40.0044292Z"
+    },
+    {
+      "path": "source/shared/dsp/src/nonlinear.cpp",
+      "bytes": 10185,
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+      "lastWriteTimeUtc": "2026-10-09T10:57:14.9836851Z"
+    },
+    {
+      "path": "source/shared/dsp/src/preamp_fx.cpp",
+      "bytes": 18163,
+      "sha256": "84fd4eed5c2c630e7e896c90d9b0f8af745b9617758f7cd452d6952a9e299047",
+      "lastWriteTimeUtc": "2026-10-09T17:27:21.6260549Z"
+    },
+    {
+      "path": "source/shared/dsp/src/primitives.cpp",
+      "bytes": 38017,
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "lastWriteTimeUtc": "2026-10-09T10:56:52.4819273Z"
+    },
+    {
+      "path": "source/shared/dsp/src/spatial_temporal.cpp",
+      "bytes": 88577,
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "lastWriteTimeUtc": "2026-10-09T12:20:11.2576702Z"
+    },
+    {
+      "path": "source/shared/dsp/tests/preamp_fx_tests.cpp",
+      "bytes": 22045,
+      "sha256": "f761a8ca8dc3903f9fc13365d206ccf55b0cea490442602245ac3eb5042e7f50",
+      "lastWriteTimeUtc": "2026-10-09T17:31:20.7607657Z"
+    }
+  ],
+  "buildArtifacts": [
+    {
+      "path": "build/fft.obj",
+      "bytes": 12718,
+      "sha256": "ecc038e0b0d6e135423203d09ec0fd6f644e57b130e9eea7902086818261f977",
+      "lastWriteTimeUtc": "2026-10-09T17:31:33.4577522Z"
+    },
+    {
+      "path": "build/nonlinear.obj",
+      "bytes": 34435,
+      "sha256": "ce6ab4ab91a1b2340d862c7bd63893acf4b6d00457ec757c65026e123c9f8016",
+      "lastWriteTimeUtc": "2026-10-09T17:31:31.0765813Z"
+    },
+    {
+      "path": "build/preamp_fx_tests.exe",
+      "bytes": 251392,
+      "sha256": "ccc8bd3fd50877590ff22174b3058c87173423ca0bac341922f2ab74e1c2317c",
+      "lastWriteTimeUtc": "2026-10-09T17:31:35.3845883Z"
+    },
+    {
+      "path": "build/preamp_fx_tests.obj",
+      "bytes": 195498,
+      "sha256": "bed087c3022d03ef238be57fb4f2b01f057ab5da66f06aa51a0bb0041dc46dbc",
+      "lastWriteTimeUtc": "2026-10-09T17:31:35.2409716Z"
+    },
+    {
+      "path": "build/preamp_fx.obj",
+      "bytes": 108464,
+      "sha256": "72cbe4c72617c903f05bfd6262df2b1d8ddd6ba653788070340d3f7fe240c3f8",
+      "lastWriteTimeUtc": "2026-10-09T17:31:30.2215116Z"
+    },
+    {
+      "path": "build/primitives.obj",
+      "bytes": 124611,
+      "sha256": "0837b221c905ca0b688c183395bef2e51bfd0782bb243402e83f6a66034d302e",
+      "lastWriteTimeUtc": "2026-10-09T17:31:34.0211647Z"
+    },
+    {
+      "path": "build/spatial_temporal.obj",
+      "bytes": 328461,
+      "sha256": "dfc29d099ec254d97f0b5f12636016638eddf1fc1152fbb79ae12359f68a446e",
+      "lastWriteTimeUtc": "2026-10-09T17:31:32.7433391Z"
+    },
+    {
+      "path": "build/test-output.json",
+      "bytes": 421,
+      "sha256": "cb5bef258fa2ba921faf858c23d7b60d71e92fd364ae22e83be681a1eb191756",
+      "lastWriteTimeUtc": "2026-10-09T17:31:37.1602828Z"
+    },
+    {
+      "path": "build/vcvars.log",
+      "bytes": 299,
+      "sha256": "3a48173132a5d5f173d16e0aa51fe08080bdfb703250aa8d21b8eef8e86a8bdb",
+      "lastWriteTimeUtc": "2026-10-09T17:31:28.7379709Z"
+    }
+  ],
+  "exactByteCopyVerified": true,
+  "scope": "Standalone PREAMP unit/quality suite only; no complete effect registry, Browser/Native integration, realtime or hardware qualification."
+}

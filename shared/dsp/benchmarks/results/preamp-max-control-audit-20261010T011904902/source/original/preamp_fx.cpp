@@ -28,6 +28,7 @@ constexpr std::uint32_t kMaximumBlockFrames = 8192U;
 constexpr std::uint64_t kMaximumExactlyRepresentableFrame = 9007199254740992ULL;
 constexpr std::uint64_t kMaximumPreparedBytes = 32U * 1024U * 1024U;
 constexpr float kInputGuard = 8.0f;
+constexpr float kOutputGuard = 16.0f;
 
 [[nodiscard]] bool finiteRange(float value, float minimum, float maximum) noexcept {
     return std::isfinite(value) && value >= minimum && value <= maximum;
@@ -49,8 +50,6 @@ constexpr float kInputGuard = 8.0f;
     const float* right = cabinetIr.right == nullptr ? cabinetIr.left : cabinetIr.right;
     double leftEnergy = 0.0;
     double rightEnergy = 0.0;
-    double leftL1 = 0.0;
-    double rightL1 = 0.0;
     for (std::uint32_t i = 0U; i < cabinetIr.frames; ++i) {
         const float left = cabinetIr.left[i];
         const float rightSample = right[i];
@@ -58,12 +57,8 @@ constexpr float kInputGuard = 8.0f;
             std::fabs(left) > 8.0f || std::fabs(rightSample) > 8.0f) return false;
         leftEnergy += static_cast<double>(left) * left;
         rightEnergy += static_cast<double>(rightSample) * rightSample;
-        leftL1 += std::fabs(static_cast<double>(left));
-        rightL1 += std::fabs(static_cast<double>(rightSample));
     }
-    return leftEnergy > 1.0e-20 && rightEnergy > 1.0e-20 &&
-           leftL1 <= PreampFxProcessor::kMaximumCabinetIrL1 &&
-           rightL1 <= PreampFxProcessor::kMaximumCabinetIrL1;
+    return leftEnergy > 1.0e-20 && rightEnergy > 1.0e-20;
 }
 
 [[nodiscard]] std::uint32_t shaperAlignment(const PreampFxOptions& options,
@@ -362,9 +357,9 @@ bool PreampFxProcessor::processBlock(std::uint64_t blockStartFrame,
         const float shapedLeft = shapers_[0U].processSample(drivenLeft);
         const float shapedRight = shapers_[1U].processSample(drivenRight);
         cabinetInputOutput_[0U][frame] = cleanAudio(
-            processTone(0U, shapedLeft) * outputGainCurrent_);
+            std::clamp(processTone(0U, shapedLeft) * outputGainCurrent_, -16.0f, 16.0f));
         cabinetInputOutput_[1U][frame] = cleanAudio(
-            processTone(1U, shapedRight) * outputGainCurrent_);
+            std::clamp(processTone(1U, shapedRight) * outputGainCurrent_, -16.0f, 16.0f));
         blendBlock_[frame] = std::clamp(activeCurrent_ * mixCurrent_, 0.0f, 1.0f);
     }
 
@@ -374,12 +369,14 @@ bool PreampFxProcessor::processBlock(std::uint64_t blockStartFrame,
 
     for (std::uint32_t frame = 0U; frame < frames; ++frame) {
         const float blend = blendBlock_[frame];
-        const float wetLeft = cleanAudio(cabinetInputOutput_[0U][frame]);
-        const float wetRight = cleanAudio(cabinetInputOutput_[1U][frame]);
-        interleaved[frame].left = cleanAudio(alignedDryBlock_[0U][frame] +
-            (wetLeft - alignedDryBlock_[0U][frame]) * blend);
-        interleaved[frame].right = cleanAudio(alignedDryBlock_[1U][frame] +
-            (wetRight - alignedDryBlock_[1U][frame]) * blend);
+        const float wetLeft = std::clamp(cleanAudio(cabinetInputOutput_[0U][frame]),
+                                         -kOutputGuard, kOutputGuard);
+        const float wetRight = std::clamp(cleanAudio(cabinetInputOutput_[1U][frame]),
+                                          -kOutputGuard, kOutputGuard);
+        interleaved[frame].left = std::clamp(cleanAudio(alignedDryBlock_[0U][frame] +
+            (wetLeft - alignedDryBlock_[0U][frame]) * blend), -kOutputGuard, kOutputGuard);
+        interleaved[frame].right = std::clamp(cleanAudio(alignedDryBlock_[1U][frame] +
+            (wetRight - alignedDryBlock_[1U][frame]) * blend), -kOutputGuard, kOutputGuard);
     }
     expectedFrame_ = blockStartFrame + frames;
     hasExpectedFrame_ = true;
@@ -397,3 +394,4 @@ PreampFxLatency PreampFxProcessor::latency() const noexcept {
 
 #undef WEBRC_PREAMP_TRY
 #undef WEBRC_PREAMP_CATCH_ALL
+

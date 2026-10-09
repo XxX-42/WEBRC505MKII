@@ -1,0 +1,449 @@
+{
+  "capture": "preamp-max-control-before-after-harmonics",
+  "schemaVersion": 1,
+  "flags": "/std:c++17 /O2 /EHsc /W4 /permissive- /fp:precise",
+  "variants": [
+    {
+      "name": "baseline",
+      "result": {
+        "schemaVersion": 1,
+        "suite": "preamp-max-control-before-after-harmonics",
+        "sampleRate": 48000,
+        "inputPeak": 0.72,
+        "settings": {
+          "drive": 24,
+          "bassDb": 12,
+          "midDb": 12,
+          "trebleDb": 12,
+          "presenceDb": 12,
+          "outputDb": 12
+        },
+        "windowFrames": 8192,
+        "window": "hann",
+        "harmonics": [
+          1,
+          9
+        ],
+        "cases": [
+          {
+            "name": "100Hz",
+            "preCabinetPeak": 7.19726944,
+            "wouldClip16Samples": 0,
+            "outputPeak": 7.1971674,
+            "outputRms": 3.95620047,
+            "fundamentalAmplitude": 5.12681655,
+            "harmonicToFundamental": 0.373442737
+          },
+          {
+            "name": "800Hz",
+            "preCabinetPeak": 16.3380356,
+            "wouldClip16Samples": 3082,
+            "outputPeak": 15.9997721,
+            "outputRms": 7.30809579,
+            "fundamentalAmplitude": 9.11695429,
+            "harmonicToFundamental": 0.526398619
+          },
+          {
+            "name": "3800Hz",
+            "preCabinetPeak": 18.2709846,
+            "wouldClip16Samples": 17128,
+            "outputPeak": 15.9997778,
+            "outputRms": 9.79143104,
+            "fundamentalAmplitude": 13.518251,
+            "harmonicToFundamental": 0.262516429
+          },
+          {
+            "name": "5200Hz",
+            "preCabinetPeak": 24.5502625,
+            "wouldClip16Samples": 48878,
+            "outputPeak": 15.9997816,
+            "outputRms": 13.1800109,
+            "fundamentalAmplitude": 18.5545132,
+            "harmonicToFundamental": 0.163097575
+          },
+          {
+            "name": "10000Hz",
+            "preCabinetPeak": 14.0893736,
+            "wouldClip16Samples": 0,
+            "outputPeak": 14.0891829,
+            "outputRms": 9.75659073,
+            "fundamentalAmplitude": 13.9311972,
+            "harmonicToFundamental": 0.0329904573
+          }
+        ],
+        "failures": 0
+      },
+      "sourceClosure": [
+        {
+          "sha256": "76ce62136d7464100f9eb87f593cc4891f965d817d997969f28397a5816d3a9d",
+          "bytes": 3486,
+          "path": "benchmark/preamp_max_control_compare.cpp"
+        },
+        {
+          "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+          "bytes": 548,
+          "path": "shared/dsp/include/webrc/dsp/fft.hpp"
+        },
+        {
+          "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+          "bytes": 4181,
+          "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp"
+        },
+        {
+          "sha256": "43c9301f85605e0aa3e3422659b996e8c0b18eb30898ac28e31549f36fa81c5f",
+          "bytes": 5367,
+          "path": "shared/dsp/include/webrc/dsp/preamp_fx.hpp"
+        },
+        {
+          "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+          "bytes": 10933,
+          "path": "shared/dsp/include/webrc/dsp/primitives.hpp"
+        },
+        {
+          "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+          "bytes": 23156,
+          "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp"
+        },
+        {
+          "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+          "bytes": 3129,
+          "path": "shared/dsp/src/fft.cpp"
+        },
+        {
+          "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+          "bytes": 10185,
+          "path": "shared/dsp/src/nonlinear.cpp"
+        },
+        {
+          "sha256": "eaa51c8a81bd9545417c2cf90adecd6d9574efca15e050e36a42c54db34ea64d",
+          "bytes": 18730,
+          "path": "shared/dsp/src/preamp_fx.cpp"
+        },
+        {
+          "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+          "bytes": 38017,
+          "path": "shared/dsp/src/primitives.cpp"
+        },
+        {
+          "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+          "bytes": 88577,
+          "path": "shared/dsp/src/spatial_temporal.cpp"
+        }
+      ],
+      "buildArtifacts": [
+        {
+          "sha256": "1c6fb626b0dc64fb5e99a968b9460d43611d28888138f885e853605f1cd0900f",
+          "bytes": 109,
+          "path": "baseline/build/build.log"
+        },
+        {
+          "sha256": "0079e431336b294dbadacea2b38c161d65fad8f2ef35b16847d1d2faabc34914",
+          "bytes": 47859,
+          "path": "baseline/build/compiler_probe.obj"
+        },
+        {
+          "sha256": "2821ab9c4a51c97931d1061c3bd58a23dfef31f37cb343a433263f3c60d3cf6d",
+          "bytes": 1202,
+          "path": "baseline/build/compiler-version.txt"
+        },
+        {
+          "sha256": "96e43da6bacc8ed6f7443f8b0c9f0cb282691b263c804ef072cfc8955bdd7827",
+          "bytes": 12734,
+          "path": "baseline/build/fft.obj"
+        },
+        {
+          "sha256": "2ef7467d7c3fd94e24ee9b0c98fbe202ce38264feff10a51dc25ac2149e18231",
+          "bytes": 34455,
+          "path": "baseline/build/nonlinear.obj"
+        },
+        {
+          "sha256": "dce96a428b2e02a5310594ff579293e9484e924099ccfadefddf22cdb35eab12",
+          "bytes": 108788,
+          "path": "baseline/build/preamp_fx.obj"
+        },
+        {
+          "sha256": "fe88605d2f2d93085099f0786f40c5812e55e754912a982be25cacfb73a619d5",
+          "bytes": 231424,
+          "path": "baseline/build/preamp_max_control_compare.exe"
+        },
+        {
+          "sha256": "e10611981ff2abc90ef92bf0cbc1c9a4397addbdf02a7e1f0399cb9150b700e8",
+          "bytes": 47871,
+          "path": "baseline/build/preamp_max_control_compare.obj"
+        },
+        {
+          "sha256": "acbf52ee4b51c7f1ee9dbc943653509d575c8313f70c6e9605eb08022f20c04f",
+          "bytes": 124631,
+          "path": "baseline/build/primitives.obj"
+        },
+        {
+          "sha256": "22c81d131ee35276889a3177322f39bc78f2af6a6b81f4d8d1845d6158e1683d",
+          "bytes": 1216,
+          "path": "baseline/build/results.json"
+        },
+        {
+          "sha256": "50d5de8585b17e7ad872ccf22cf073492935da117503081f9787a215369f76a2",
+          "bytes": 328477,
+          "path": "baseline/build/spatial_temporal.obj"
+        },
+        {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "path": "baseline/build/stderr.txt"
+        }
+      ]
+    },
+    {
+      "name": "corrected",
+      "result": {
+        "schemaVersion": 1,
+        "suite": "preamp-max-control-before-after-harmonics",
+        "sampleRate": 48000,
+        "inputPeak": 0.72,
+        "settings": {
+          "drive": 24,
+          "bassDb": 12,
+          "midDb": 12,
+          "trebleDb": 12,
+          "presenceDb": 12,
+          "outputDb": 12
+        },
+        "windowFrames": 8192,
+        "window": "hann",
+        "harmonics": [
+          1,
+          9
+        ],
+        "cases": [
+          {
+            "name": "100Hz",
+            "preCabinetPeak": 7.19726944,
+            "wouldClip16Samples": 0,
+            "outputPeak": 7.1971674,
+            "outputRms": 3.95620047,
+            "fundamentalAmplitude": 5.12681655,
+            "harmonicToFundamental": 0.373442737
+          },
+          {
+            "name": "800Hz",
+            "preCabinetPeak": 16.3380356,
+            "wouldClip16Samples": 3082,
+            "outputPeak": 16.3378048,
+            "outputRms": 7.33178602,
+            "fundamentalAmplitude": 9.127672,
+            "harmonicToFundamental": 0.530240919
+          },
+          {
+            "name": "3800Hz",
+            "preCabinetPeak": 18.2709846,
+            "wouldClip16Samples": 17128,
+            "outputPeak": 18.2707272,
+            "outputRms": 10.1876677,
+            "fundamentalAmplitude": 13.9976725,
+            "harmonicToFundamental": 0.284170877
+          },
+          {
+            "name": "5200Hz",
+            "preCabinetPeak": 24.5502625,
+            "wouldClip16Samples": 48878,
+            "outputPeak": 24.5499229,
+            "outputRms": 16.6640248,
+            "fundamentalAmplitude": 23.6299027,
+            "harmonicToFundamental": 0.123011285
+          },
+          {
+            "name": "10000Hz",
+            "preCabinetPeak": 14.0893736,
+            "wouldClip16Samples": 0,
+            "outputPeak": 14.0891829,
+            "outputRms": 9.75659073,
+            "fundamentalAmplitude": 13.9311972,
+            "harmonicToFundamental": 0.0329904573
+          }
+        ],
+        "failures": 0
+      },
+      "sourceClosure": [
+        {
+          "sha256": "76ce62136d7464100f9eb87f593cc4891f965d817d997969f28397a5816d3a9d",
+          "bytes": 3486,
+          "path": "benchmark/preamp_max_control_compare.cpp"
+        },
+        {
+          "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+          "bytes": 548,
+          "path": "shared/dsp/include/webrc/dsp/fft.hpp"
+        },
+        {
+          "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+          "bytes": 4181,
+          "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp"
+        },
+        {
+          "sha256": "0ac1777795635cf0637d1dd853ff71a7ea6a4b379a9183cdaa95f6b6890c2f2d",
+          "bytes": 5638,
+          "path": "shared/dsp/include/webrc/dsp/preamp_fx.hpp"
+        },
+        {
+          "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+          "bytes": 10933,
+          "path": "shared/dsp/include/webrc/dsp/primitives.hpp"
+        },
+        {
+          "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+          "bytes": 23156,
+          "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp"
+        },
+        {
+          "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+          "bytes": 3129,
+          "path": "shared/dsp/src/fft.cpp"
+        },
+        {
+          "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+          "bytes": 10185,
+          "path": "shared/dsp/src/nonlinear.cpp"
+        },
+        {
+          "sha256": "b8f0ef2c7a5833537da312c0dde1829a1974cac3f7523e2bab65fe1ddd6d7323",
+          "bytes": 18689,
+          "path": "shared/dsp/src/preamp_fx.cpp"
+        },
+        {
+          "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+          "bytes": 38017,
+          "path": "shared/dsp/src/primitives.cpp"
+        },
+        {
+          "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+          "bytes": 88577,
+          "path": "shared/dsp/src/spatial_temporal.cpp"
+        }
+      ],
+      "buildArtifacts": [
+        {
+          "sha256": "1c6fb626b0dc64fb5e99a968b9460d43611d28888138f885e853605f1cd0900f",
+          "bytes": 109,
+          "path": "corrected/build/build.log"
+        },
+        {
+          "sha256": "d2444103920932c9b1617bed246a62e1481d1a5746b1af5fe490c9dcf79b683a",
+          "bytes": 47859,
+          "path": "corrected/build/compiler_probe.obj"
+        },
+        {
+          "sha256": "2821ab9c4a51c97931d1061c3bd58a23dfef31f37cb343a433263f3c60d3cf6d",
+          "bytes": 1202,
+          "path": "corrected/build/compiler-version.txt"
+        },
+        {
+          "sha256": "0008e7ad5ab7d4932784b935fcf479bab0bc04c350e554fd4aa9949bcb1fce7b",
+          "bytes": 12734,
+          "path": "corrected/build/fft.obj"
+        },
+        {
+          "sha256": "c534151723b268d3e4fff09d5b9c449168d8398c164a2117727ff420af6d73cd",
+          "bytes": 34455,
+          "path": "corrected/build/nonlinear.obj"
+        },
+        {
+          "sha256": "50ac83ca2bfb5431aad6c1d0a4b33e63f88304470f13b0526bafe9d420f12bf4",
+          "bytes": 109033,
+          "path": "corrected/build/preamp_fx.obj"
+        },
+        {
+          "sha256": "f7757d88f78737d0ea8ee8c894dfb171892731d49e6dd49befc37e79c010900b",
+          "bytes": 231424,
+          "path": "corrected/build/preamp_max_control_compare.exe"
+        },
+        {
+          "sha256": "18558b56d10e8635c8c221f4fd5dae9616cfbfbbfd906bd32c84be880fa96ea2",
+          "bytes": 47871,
+          "path": "corrected/build/preamp_max_control_compare.obj"
+        },
+        {
+          "sha256": "d215c458adfc3f01bce584766c45d9b9c6aeb953de2005ce0444dcfcdaa13b8c",
+          "bytes": 124631,
+          "path": "corrected/build/primitives.obj"
+        },
+        {
+          "sha256": "25493cfafadb6af821c4d47f80a21ae06b7089e2a5ea9776854785c90c72eff6",
+          "bytes": 1215,
+          "path": "corrected/build/results.json"
+        },
+        {
+          "sha256": "87dbd17fb34c1724c1bf3a0888c39293ba41e62f1363cc13f4d19fa1dba0c4b4",
+          "bytes": 328481,
+          "path": "corrected/build/spatial_temporal.obj"
+        },
+        {
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "path": "corrected/build/stderr.txt"
+        }
+      ]
+    }
+  ],
+  "createdLocal": "2026-10-10T01:36:23.5269666+08:00",
+  "toolchain": "MSVC 19.29.30159 / MSVC toolset 14.29.30133, x64",
+  "originalFailureEvidence": {
+    "path": "shared/dsp/benchmarks/results/preamp-max-control-audit-20261010T011904902/build/audit.json",
+    "sha256": "06ef87f47c96be7f0187a692b04d8097a513ff123182a2741e047448f6baf9bc"
+  },
+  "buildCommand": "build_compare.cmd",
+  "liveSourceFingerprints": [
+    {
+      "sha256": "0ac1777795635cf0637d1dd853ff71a7ea6a4b379a9183cdaa95f6b6890c2f2d",
+      "bytes": 5638,
+      "path": "shared/dsp/include/webrc/dsp/preamp_fx.hpp"
+    },
+    {
+      "sha256": "84fd4eed5c2c630e7e896c90d9b0f8af745b9617758f7cd452d6952a9e299047",
+      "bytes": 18163,
+      "path": "shared/dsp/src/preamp_fx.cpp"
+    },
+    {
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+      "bytes": 4181,
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp"
+    },
+    {
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+      "bytes": 10185,
+      "path": "shared/dsp/src/nonlinear.cpp"
+    },
+    {
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "bytes": 23156,
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp"
+    },
+    {
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "bytes": 88577,
+      "path": "shared/dsp/src/spatial_temporal.cpp"
+    },
+    {
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "bytes": 10933,
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp"
+    },
+    {
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "bytes": 38017,
+      "path": "shared/dsp/src/primitives.cpp"
+    },
+    {
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "bytes": 548,
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp"
+    },
+    {
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "bytes": 3129,
+      "path": "shared/dsp/src/fft.cpp"
+    }
+  ],
+  "scope": "Comparative PREAMP standalone software evidence only; no final quality, alias rejection, host routing, realtime whole graph or hardware qualification.",
+  "sourceInstrumentation": "Corrected preamp_fx.cpp includes only external benchmark counters before the cabinet samples, with no sample-affecting behavior. Baseline is the prior archived clamp implementation. Both variants compiled the same compare harness and dependency snapshots.",
+  "analysis": "48 kHz, one-second stereo sine fixtures at 0.72 peak, 100/800/3800/5200/10000 Hz; all four tone controls +12 dB, Drive 24, Output +12 dB, unit impulse cabinet IR. Harmonic amplitudes use direct sine projection with a Hann window over final 8192 frames; ratio is sqrt(sum(h2..h9^2))/h1."
+}

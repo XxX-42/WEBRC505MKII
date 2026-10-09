@@ -237,3 +237,8 @@
 /dsp/spec/official_fx_ui_contracts.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /docs/validation/20261010/official-fx-ui-root-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /dsp/spec/official_fx_parameters_candidate_visual_glyphs.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/results/preamp-fx-max-control-fixed-20261010T014553132/** -text -whitespace
+/shared/dsp/benchmarks/results/preamp-max-control-compare-20261010T013314655/** -text -whitespace
+/shared/dsp/benchmarks/results/preamp-max-control-audit-20261010T011904902/** -text -whitespace
+/shared/dsp/benchmarks/results/vocoder-fx-chord-carrier-20261010T013535969/** -text -whitespace
+/docs/validation/20261010/preamp-vocoder-root-review.json -text -whitespace

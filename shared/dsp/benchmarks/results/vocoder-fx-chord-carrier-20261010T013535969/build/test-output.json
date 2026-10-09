@@ -1,0 +1,1 @@
+{"schemaVersion":1,"suite":"vocoder-fx","sampleRate":48000,"bands":16,"fixedVocoderWetRms":0.172633684,"midiNote48Rms":0.0974441657,"midiNote72Rms":0.0857770607,"partitionMaxRmsDifference":0,"callbackAllocations":0,"callbackFrees":0,"failures":0}

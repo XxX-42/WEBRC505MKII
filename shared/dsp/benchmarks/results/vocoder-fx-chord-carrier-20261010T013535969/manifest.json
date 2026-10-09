@@ -1,0 +1,165 @@
+{
+  "sourceClosure": [
+    {
+      "sha256": "50f202c757843ff18d786ee05b328294d0f972c6dbb4f77e68c995fdae38d3fa",
+      "path": "source/shared/dsp/include/webrc/dsp/vocoder_fx.hpp",
+      "bytes": 8373,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+      "path": "source/shared/dsp/include/webrc/dsp/pitch.hpp",
+      "bytes": 9082,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "path": "source/shared/dsp/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "path": "source/shared/dsp/include/webrc/dsp/fft.hpp",
+      "bytes": 548,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "12f0f43dbec22e7b3c4ecb1b926950b0a1aaa5065ed006623865c1841682d9e1",
+      "path": "source/shared/dsp/src/vocoder_fx.cpp",
+      "bytes": 34067,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957",
+      "path": "source/shared/dsp/src/pitch.cpp",
+      "bytes": 36950,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "path": "source/shared/dsp/src/primitives.cpp",
+      "bytes": 38017,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "path": "source/shared/dsp/src/fft.cpp",
+      "bytes": 3129,
+      "role": "compiled-source"
+    },
+    {
+      "sha256": "b172352d1b9679ae643b7ad8379395303da2b033bafd03fd9e48983a027c8cfb",
+      "path": "source/shared/dsp/tests/vocoder_fx_tests.cpp",
+      "bytes": 36204,
+      "role": "compiled-source"
+    }
+  ],
+  "buildCommand": "build_release.cmd",
+  "result": {
+    "schemaVersion": 1,
+    "suite": "vocoder-fx",
+    "sampleRate": 48000,
+    "bands": 16,
+    "fixedVocoderWetRms": 0.172633684,
+    "midiNote48Rms": 0.0974441657,
+    "midiNote72Rms": 0.0857770607,
+    "partitionMaxRmsDifference": 0,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "failures": 0
+  },
+  "createdLocal": "2026-10-10T01:36:07.9218357+08:00",
+  "liveSourceComparison": [
+    {
+      "livePath": "shared/dsp/include/webrc/dsp/vocoder_fx.hpp",
+      "matches": true,
+      "snapshotSha256": "50f202c757843ff18d786ee05b328294d0f972c6dbb4f77e68c995fdae38d3fa",
+      "snapshotPath": "source/shared/dsp/include/webrc/dsp/vocoder_fx.hpp",
+      "liveSha256": "50f202c757843ff18d786ee05b328294d0f972c6dbb4f77e68c995fdae38d3fa"
+    },
+    {
+      "livePath": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "matches": true,
+      "snapshotSha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163",
+      "snapshotPath": "source/shared/dsp/include/webrc/dsp/pitch.hpp",
+      "liveSha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163"
+    },
+    {
+      "livePath": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "matches": true,
+      "snapshotSha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "snapshotPath": "source/shared/dsp/include/webrc/dsp/primitives.hpp",
+      "liveSha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "livePath": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "matches": true,
+      "snapshotSha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "snapshotPath": "source/shared/dsp/include/webrc/dsp/fft.hpp",
+      "liveSha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "livePath": "shared/dsp/src/vocoder_fx.cpp",
+      "matches": true,
+      "snapshotSha256": "12f0f43dbec22e7b3c4ecb1b926950b0a1aaa5065ed006623865c1841682d9e1",
+      "snapshotPath": "source/shared/dsp/src/vocoder_fx.cpp",
+      "liveSha256": "12f0f43dbec22e7b3c4ecb1b926950b0a1aaa5065ed006623865c1841682d9e1"
+    },
+    {
+      "livePath": "shared/dsp/src/pitch.cpp",
+      "matches": true,
+      "snapshotSha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957",
+      "snapshotPath": "source/shared/dsp/src/pitch.cpp",
+      "liveSha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957"
+    },
+    {
+      "livePath": "shared/dsp/src/primitives.cpp",
+      "matches": true,
+      "snapshotSha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "snapshotPath": "source/shared/dsp/src/primitives.cpp",
+      "liveSha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "livePath": "shared/dsp/src/fft.cpp",
+      "matches": true,
+      "snapshotSha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "snapshotPath": "source/shared/dsp/src/fft.cpp",
+      "liveSha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "livePath": "shared/dsp/tests/vocoder_fx_tests.cpp",
+      "matches": true,
+      "snapshotSha256": "b172352d1b9679ae643b7ad8379395303da2b033bafd03fd9e48983a027c8cfb",
+      "snapshotPath": "source/shared/dsp/tests/vocoder_fx_tests.cpp",
+      "liveSha256": "b172352d1b9679ae643b7ad8379395303da2b033bafd03fd9e48983a027c8cfb"
+    }
+  ],
+  "capture": "vocoder-fx-chord-external-carrier",
+  "outputs": [
+    {
+      "sha256": "794fa3daf08b067023ebf127b909d5c7c600aa26e3e0aa485a7e25fc87fa1d68",
+      "path": "build/test-output.json",
+      "bytes": 248
+    },
+    {
+      "sha256": "a50f9d809e22058333bacc171ecc2f32c039e9b10334f1067ba713dc53246be9",
+      "path": "build/build.log",
+      "bytes": 74
+    },
+    {
+      "sha256": "dea8cc5f74984156c4552b2a9fed4fa3ade8699b7084319a3b583b7aee9c61c7",
+      "path": "build/compiler-version.txt",
+      "bytes": 1192
+    },
+    {
+      "sha256": "a413cc209af5357c1a18a3388f7ec895d93329c12526ae4a1b5ea28b8603a119",
+      "path": "build/vocoder_fx_tests.exe",
+      "bytes": 259584
+    }
+  ],
+  "qualification": "Standalone source/test evidence only; not registry, host routing, browser integration, final DSP-quality, realtime whole-graph or hardware qualification.",
+  "flags": "/std:c++17 /O2 /EHsc /W4 /permissive- /fp:precise",
+  "schemaVersion": 1,
+  "toolchain": "MSVC 19.29.30159 / MSVC toolset 14.29.30133, x64"
+}

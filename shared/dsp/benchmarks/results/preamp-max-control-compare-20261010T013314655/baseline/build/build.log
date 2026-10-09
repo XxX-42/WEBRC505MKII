@@ -1,0 +1,6 @@
+preamp_fx.cpp
+nonlinear.cpp
+spatial_temporal.cpp
+fft.cpp
+primitives.cpp
+preamp_max_control_compare.cpp

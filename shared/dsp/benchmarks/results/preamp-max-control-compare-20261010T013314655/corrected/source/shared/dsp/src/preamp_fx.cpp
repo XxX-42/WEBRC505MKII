@@ -1,6 +1,8 @@
 #include "webrc/dsp/preamp_fx.hpp"
 
 #include "webrc/dsp/fft.hpp"
+extern "C" double gPreCabinetPeak;
+extern "C" std::uint64_t gPreCabinetSamplesOver16;
 
 #include <algorithm>
 #include <cmath>
@@ -361,10 +363,14 @@ bool PreampFxProcessor::processBlock(std::uint64_t blockStartFrame,
         const float drivenRight = std::clamp(input.right * driveCurrent_, -192.0f, 192.0f);
         const float shapedLeft = shapers_[0U].processSample(drivenLeft);
         const float shapedRight = shapers_[1U].processSample(drivenRight);
-        cabinetInputOutput_[0U][frame] = cleanAudio(
-            processTone(0U, shapedLeft) * outputGainCurrent_);
-        cabinetInputOutput_[1U][frame] = cleanAudio(
-            processTone(1U, shapedRight) * outputGainCurrent_);
+        const float preCabinetLeft = processTone(0U, shapedLeft) * outputGainCurrent_;
+        const float preCabinetRight = processTone(1U, shapedRight) * outputGainCurrent_;
+        gPreCabinetPeak = std::max(gPreCabinetPeak, static_cast<double>(std::fabs(preCabinetLeft)));
+        gPreCabinetPeak = std::max(gPreCabinetPeak, static_cast<double>(std::fabs(preCabinetRight)));
+        if (std::fabs(preCabinetLeft) > 16.0f) ++gPreCabinetSamplesOver16;
+        if (std::fabs(preCabinetRight) > 16.0f) ++gPreCabinetSamplesOver16;
+        cabinetInputOutput_[0U][frame] = cleanAudio(preCabinetLeft);
+        cabinetInputOutput_[1U][frame] = cleanAudio(preCabinetRight);
         blendBlock_[frame] = std::clamp(activeCurrent_ * mixCurrent_, 0.0f, 1.0f);
     }
 
@@ -397,3 +403,4 @@ PreampFxLatency PreampFxProcessor::latency() const noexcept {
 
 #undef WEBRC_PREAMP_TRY
 #undef WEBRC_PREAMP_CATCH_ALL
+
