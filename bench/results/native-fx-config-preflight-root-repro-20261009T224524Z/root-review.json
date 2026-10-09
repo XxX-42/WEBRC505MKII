@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-09T22:45:24.733897+00:00",
+  "parentCommit": "2a3ad8d11051f3574c75820245008d89b024c8e0",
+  "softwareOnly": true,
+  "hardwareStreamStarted": false,
+  "sourceCppSha256": "f5dc74a93c58a830fd15a50feea2b51e6ead945c772a862e6e874834caa10dbd",
+  "scope": "Independent fresh MSVC harness linked to captured precompiled Native r3 libraries; not a full source build or performance qualification",
+  "reproduced": {
+    "softwareOnly": true,
+    "hardwareStreamStarted": false,
+    "cases": [
+      {
+        "name": "one-byte-remaining-budget",
+        "status": 17,
+        "allocationsBeforeRejection": 2,
+        "allocatedBytesBeforeRejection": 448,
+        "correctRejection": true
+      },
+      {
+        "name": "unprepared-host",
+        "status": 1,
+        "allocationsBeforeRejection": 1,
+        "allocatedBytesBeforeRejection": 224,
+        "correctRejection": true
+      },
+      {
+        "name": "sample-rate-mismatch",
+        "status": 3,
+        "allocationsBeforeRejection": 1,
+        "allocatedBytesBeforeRejection": 224,
+        "correctRejection": true
+      },
+      {
+        "name": "nyquist-invalid",
+        "status": 11,
+        "allocationsBeforeRejection": 1,
+        "allocatedBytesBeforeRejection": 224,
+        "correctRejection": true
+      }
+    ],
+    "defectReproduced": true
+  },
+  "fixRequired": "Reject impossible host/rate/budget/Nyquist configurations before constructing shadow processors; avoid repeated allocating validation"
+}

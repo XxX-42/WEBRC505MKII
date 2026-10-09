@@ -425,3 +425,5 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /scripts/review-browser-fx41-checkpoint.py -text
 /docs/dsp/BROWSER_FX41_ROOT_REVIEW.md -text
 /docs/validation/20261010/browser-fx41-root-review.json -text
+/bench/native-fx-config-preflight-root-repro.cpp -text
+/bench/results/native-fx-config-preflight-root-repro-20261009T224524Z/** -text -whitespace
