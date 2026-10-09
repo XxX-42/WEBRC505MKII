@@ -1,0 +1,93 @@
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\src\fx_registry.cpp(186,17): warning: 29 enumeration values not handled in switch: 'RateHz', 'Depth', 'Feedback'... [-Wswitch]
+  186 |         switch (id) {
+      |                 ^~
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\src\fx_registry.cpp(199,17): warning: 29 enumeration values not handled in switch: 'RateHz', 'Depth', 'Feedback'... [-Wswitch]
+  199 |         switch (id) {
+      |                 ^~
+2 warnings generated.
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\tests\nonlinear_tests.cpp(527,40): warning: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  527 |     if (const char* metricsPath = std::getenv("WEBRC_DSP_NONLINEAR_JSON");
+      |                                        ^
+C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h(1183,20): note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(320,55): note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  320 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(310,47): note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  310 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+1 warning generated.
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\benchmarks\native_dsp_primitives_bench.cpp(247,35): warning: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  247 |     const char* outputPath = std::getenv("WEBRC_DSP_BENCH_JSON");
+      |                                   ^
+C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h(1183,20): note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(320,55): note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  320 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(310,47): note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  310 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\benchmarks\native_dsp_primitives_bench.cpp(249,25): warning: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  249 |                    std::getenv("WEBRC_DSP_SOURCE_REV"),
+      |                         ^
+C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h(1183,20): note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(320,55): note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  320 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(310,47): note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  310 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\benchmarks\native_dsp_primitives_bench.cpp(250,25): warning: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  250 |                    std::getenv("WEBRC_DSP_SOURCE_HASH"),
+      |                         ^
+C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h(1183,20): note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(320,55): note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  320 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(310,47): note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  310 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\benchmarks\native_dsp_primitives_bench.cpp(251,25): warning: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  251 |                    std::getenv("WEBRC_DSP_BUILD_FLAGS"),
+      |                         ^
+C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h(1183,20): note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(320,55): note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  320 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(310,47): note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  310 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\benchmarks\native_dsp_primitives_bench.cpp(252,25): warning: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  252 |                    std::getenv("WEBRC_DSP_CPU"),
+      |                         ^
+C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h(1183,20): note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(320,55): note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  320 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(310,47): note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  310 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:\Users\user1000\AppData\Local\Temp\webrc-native-dsp-asan-snapshot-r6-20261009\shared\dsp\benchmarks\native_dsp_primitives_bench.cpp(253,25): warning: 'getenv' is deprecated: This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  253 |                    std::getenv("WEBRC_DSP_OS"))) {
+      |                         ^
+C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h(1183,20): note: 'getenv' has been explicitly marked deprecated here
+ 1183 |     _Check_return_ _CRT_INSECURE_DEPRECATE(_dupenv_s)
+      |                    ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(320,55): note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  320 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\include\vcruntime.h(310,47): note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  310 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+6 warnings generated.

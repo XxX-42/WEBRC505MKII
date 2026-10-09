@@ -1,0 +1,48 @@
+[  2%] Building CXX object CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj
+[  5%] Building CXX object CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj
+[  8%] Building CXX object CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj
+[ 11%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj
+[ 14%] Building CXX object CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj
+[ 17%] Building CXX object CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj
+[ 20%] Building CXX object CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj
+[ 22%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj
+[ 25%] Building CXX object CMakeFiles/webrc_dsp.dir/src/rhythm.cpp.obj
+[ 28%] Building CXX object CMakeFiles/webrc_dsp.dir/src/cleanroom_rhythm_data.cpp.obj
+[ 31%] Linking CXX static library webrc_dsp.lib
+[ 31%] Built target webrc_dsp
+[ 34%] Building CXX object CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj
+[ 37%] Linking CXX executable dsp_primitives_tests.exe
+[ 37%] Built target dsp_primitives_tests
+[ 40%] Building CXX object CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj
+[ 42%] Linking CXX executable control_dynamics_tests.exe
+[ 42%] Built target control_dynamics_tests
+[ 45%] Building CXX object CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj
+[ 48%] Linking CXX executable nonlinear_tests.exe
+[ 48%] Built target nonlinear_tests
+[ 51%] Building CXX object CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj
+[ 54%] Linking CXX executable spatial_temporal_tests.exe
+[ 54%] Built target spatial_temporal_tests
+[ 57%] Building CXX object CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj
+[ 60%] Linking CXX executable pitch_tests.exe
+[ 60%] Built target pitch_tests
+[ 62%] Building CXX object CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj
+[ 65%] Linking CXX executable fx_registry_tests.exe
+[ 65%] Built target fx_registry_tests
+[ 68%] Building CXX object CMakeFiles/rhythm_tests.dir/tests/rhythm_tests.cpp.obj
+[ 71%] Linking CXX executable rhythm_tests.exe
+[ 71%] Built target rhythm_tests
+[ 74%] Building CXX object CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj
+[ 77%] Linking CXX executable native_dsp_primitives_bench.exe
+[ 77%] Built target native_dsp_primitives_bench
+[ 80%] Building CXX object CMakeFiles/dsp_primitives_golden.dir/benchmarks/native_dsp_primitives_golden.cpp.obj
+[ 82%] Linking CXX executable dsp_primitives_golden.exe
+[ 82%] Built target dsp_primitives_golden
+[ 85%] Building CXX object CMakeFiles/native_dsp_pcm_fixture_generator.dir/benchmarks/native_dsp_pcm_fixture_generator.cpp.obj
+[ 88%] Linking CXX executable native_dsp_pcm_fixture_generator.exe
+[ 88%] Built target native_dsp_pcm_fixture_generator
+[ 91%] Building CXX object CMakeFiles/native_dsp_parity_v21_generator.dir/benchmarks/native_dsp_parity_v21_generator.cpp.obj
+[ 94%] Linking CXX executable native_dsp_parity_v21_generator.exe
+[ 94%] Built target native_dsp_parity_v21_generator
+[ 97%] Building CXX object CMakeFiles/native_rhythm_bench.dir/benchmarks/native_rhythm_bench.cpp.obj
+[100%] Linking CXX executable native_rhythm_bench.exe
+[100%] Built target native_rhythm_bench

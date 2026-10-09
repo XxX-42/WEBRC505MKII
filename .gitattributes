@@ -27,3 +27,8 @@
 /shared/dsp/tests/spatial_temporal_tests.cpp -text
 # Immutable source/log copies retain exact bytes, including upstream whitespace.
 /bench/results/native_dsp_asan_shared_snapshot_20261009_r5/** -text -whitespace
+/bench/results/native_dsp_asan_shared_snapshot_20261009_r6/** -text -whitespace
+/bench/results/native_dsp_asan_shared_snapshot_20261009_r7/** -text -whitespace
+/bench/results/native_dsp_asan_shared_snapshot_20261009_r7.reproduction.json -text -whitespace
+/bench/results/dsp_pcm_parity_v2_1/** -text -whitespace
+/bench/results/dsp_pcm_parity_v2_1/**/*.f32le -diff

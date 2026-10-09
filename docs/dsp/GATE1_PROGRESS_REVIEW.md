@@ -36,4 +36,6 @@ The expanded corrected archive now calibrates the estimator, fits sine/cosine/DC
 
 ## Remaining acceptance work
 
+The corrected 114-case primitive/pitch-kernel Native/WASM archive now has independently verified full raw outputs, numerical errors, source identities and partition checks; see `MULTIMODULE_PCM_PARITY_ROOT_REVIEW.md`. A later immutable shared-core snapshot also passes independently rerun ASan CTest 7/7, including the actual rhythm renderer; see `ASAN_ROOT_REVIEW.md`. Neither result constitutes full product-graph or timing acceptance. The new standalone rhythm capture has wall-clock deadline overruns that remain open.
+
 All F01-F29 target paths, parameter smoothing, switching, resets, malformed inputs, stable memory and raw per-callback tails require evidence. Official FX control extraction remains fail-closed until its source geometry/defaults are reviewed. Full FX registries, actual rhythm patterns/16 kits, full Native/Web integration, and 30-minute integrated stress remain required later gates. Hardware end-to-end latency and device XRUN are unmeasured under the user's software-only scope. Existing application features and pre-existing user edits remain preserved.

@@ -1,0 +1,6 @@
+**********************************************************************
+** Visual Studio 2019 Developer Command Prompt v16.11.58
+** Copyright (c) 2021 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+Running the AddressSanitizer runtime preflight with a bounded parent timeout.

@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "webrc-native-dsp-asan-result-v1",
+  "status": "PASS",
+  "scope": "shared DSP source snapshot AddressSanitizer build plus seven CTest executables; no full graph, device callback, hardware output, or XRUN claim",
+  "repositoryHeadAtSnapshot": "0afd5b19072b0575ebebaabb49c9899a213597c6",
+  "sourceSnapshot": {
+    "relativePath": "source-snapshot",
+    "manifestPath": "snapshot-manifest.json",
+    "manifestSha256": "5a9128d4afa3f1cb62f829080cdaa49603dcad96eac526d2eae92c16b182dca4",
+    "sourceFingerprintSha256": "a74dc0357b1539dc9c5877862a7a0bd72e84484f589cfb36cff8e79161c9c25f",
+    "manifestFileCount": 57,
+    "fingerprintInputCount": 52
+  },
+  "compiler": {
+    "compiler": "Clang 23.1.3, MSVC command-line target x86_64-pc-windows-msvc",
+    "versionText": "clang version 23.1.3 (https://github.com/llvm/llvm-project 0d261d1ca552c95a8f007e061c787ac7132fbcbc)\r\nTarget: x86_64-pc-windows-msvc\r\nThread model: posix\r\nInstalledDir: C:\\Users\\user1000\\AppData\\Local\\Temp\\llvm-23.1.3-asan-probe\\clang+llvm-23.1.3-x86_64-pc-windows-msvc\\bin\r\nBuild config: +alloc:rpmalloc",
+    "pathAtRun": "C:\\Users\\user1000\\AppData\\Local\\Temp\\llvm-23.1.3-asan-probe\\clang+llvm-23.1.3-x86_64-pc-windows-msvc\\bin\\clang-cl.exe",
+    "compileFlags": "/fsanitize=address /Zi /EHsc",
+    "linkerFlags": "/DEBUG, /WHOLEARCHIVE:clang_rt.asan_dynamic-x86_64.lib, /INCLUDE:__asan_seh_interceptor",
+    "runtimeSha256": [
+      {
+        "file": "clang_rt.asan_dynamic-x86_64.dll",
+        "bytes": 532480,
+        "sha256": "10eb44b5bf951af91591476ad25d5cc3d34689cbc699b1d0bb1a95220a5427ba"
+      },
+      {
+        "file": "clang_rt.asan_dynamic-x86_64.lib",
+        "bytes": 110938,
+        "sha256": "d7b1528432b69fe4fc924b29bf17729ec1eac1e2a9f6ff3384059ae71743d00c"
+      },
+      {
+        "file": "clang_rt.asan_dynamic_runtime_thunk-x86_64.lib",
+        "bytes": 131472,
+        "sha256": "1c90b0c5db2fe394ce867ab3245250aa2c480281599249476547a729dead53fe"
+      }
+    ]
+  },
+  "platform": {
+    "os": "Windows",
+    "generator": "NMake Makefiles",
+    "configuration": "RelWithDebInfo"
+  },
+  "preflight": {
+    "timeoutSeconds": 10,
+    "exitCode": 0,
+    "result": "PASS"
+  },
+  "ctest": {
+    "testTimeoutSeconds": 90,
+    "passed": 7,
+    "failed": 0,
+    "totalSeconds": 3.38,
+    "tests": [
+      {
+        "name": "dsp_primitives_tests",
+        "seconds": 0.12
+      },
+      {
+        "name": "control_dynamics_tests",
+        "seconds": 0.07
+      },
+      {
+        "name": "nonlinear_tests",
+        "seconds": 0.2
+      },
+      {
+        "name": "spatial_temporal_tests",
+        "seconds": 0.94
+      },
+      {
+        "name": "pitch_tests",
+        "seconds": 0.7
+      },
+      {
+        "name": "fx_registry_tests",
+        "seconds": 0.09
+      },
+      {
+        "name": "rhythm_tests",
+        "seconds": 1.04
+      }
+    ]
+  },
+  "logsRelativePath": "logs",
+  "releaseEvidenceRelativePath": "release-results"
+}

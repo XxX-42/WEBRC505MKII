@@ -1,0 +1,15 @@
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-dsp-parity-v21-3147a0b08cd14a0689e49daf6a951215
+    Start 1: dsp_primitives_tests
+1/5 Test #1: dsp_primitives_tests .............   Passed    0.07 sec
+    Start 2: control_dynamics_tests
+2/5 Test #2: control_dynamics_tests ...........   Passed    0.06 sec
+    Start 3: nonlinear_tests
+3/5 Test #3: nonlinear_tests ..................   Passed    0.14 sec
+    Start 4: spatial_temporal_tests
+4/5 Test #4: spatial_temporal_tests ...........   Passed    0.41 sec
+    Start 5: pitch_tests
+5/5 Test #5: pitch_tests ......................   Passed    0.28 sec
+
+100% tests passed out of 5
+
+Total Test time (real) =   1.09 sec

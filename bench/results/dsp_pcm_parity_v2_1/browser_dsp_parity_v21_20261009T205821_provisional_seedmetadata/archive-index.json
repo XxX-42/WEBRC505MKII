@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "status": "PROVISIONAL_NOT_ACCEPTED",
+  "reason": "The prior numeric comparison was PASS, but its Native PCG32 fixture metadata disagreed between top-level and settings seedState/seedSequence. Current comparator hard-fails this inconsistency. Preserve the old bytes as historical diagnostic only; use the corrected immutable Native manifest for acceptance.",
+  "createdLocal": "2026-10-09T20:58:24.6580304+08:00",
+  "originalComparison": {
+    "file": "comparison.provisional.json",
+    "sha256": "9197ebfa9f5328c8a2d7f518dc26f62491fd4655ce70908370e25440e8f44fd9"
+  },
+  "nativeManifest": {
+    "originalRelativePath": "bench/results/dsp_pcm_parity_v2_1/native_dsp_parity_v21_20261009T124354279Z_cb4bd378/manifest.json",
+    "sha256": "357764af457072785cb232ef928fddc96199fa792c31e4d9669db478cb26b3cb",
+    "fixtureCount": 114,
+    "pcgFixtureCount": 5,
+    "pcgSeedConsistency": "inconsistent"
+  },
+  "wasm": {
+    "sha256": "fc7d55cefc3ea55e8570b4db599c8aab99003638e9f222ae8468bf14a918cb1b",
+    "bytes": 283381,
+    "sourceSetSha256": "be38d084dcdf7a617335417ec1f9eb0fa72ca633babcf40c4e00f9f0cebdc200",
+    "buildManifestSha256": "f52798c16919dc0e33ca9b6b02bad77bfc2364704c86c934e06e47b29dbc03c9"
+  },
+  "wasmPcmSidecarCount": 113,
+  "runner": {
+    "archivedCurrentHardeningSnapshot": "multimodule-pcm-parity-v2.mjs",
+    "sha256": "4906f8ce6375bd930bcfd9a4929584a4fac7e8dcdb1be7d16cd238b9f585a824",
+    "historicalRunnerHashKnown": false,
+    "note": "Runner was hardened after the provisional comparison; archived hash is not attributed as the exact runner that produced the old comparison."
+  },
+  "originalRunOutputWasNotModified": true,
+  "correctedNativeManifest": "bench/results/dsp_pcm_parity_v2_1/native_dsp_parity_v21_20261009T2056Z_corrected_seed/manifest.json"
+}

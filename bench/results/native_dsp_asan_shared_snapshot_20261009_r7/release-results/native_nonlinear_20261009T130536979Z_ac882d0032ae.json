@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "scope": "shared-core nonlinear measurements; software-only; no device/XRUN claim",
+  "sampleRateHz": 48000,
+  "wdfParameterGridCases": 648,
+  "firImpulseEnergyCentroidBaseSamples": {
+    "x2": 14.5,
+    "x4": 21.8106538361
+  },
+  "phaseDelayAtHz": {
+    "frequencyHz": 1000,
+    "firOnlyBaseSamples": {
+      "x2": 14.5,
+      "x4": 21.7499999998
+    },
+    "adaaExtraBaseSamples": {
+      "x2": 0.250000028516,
+      "x4": 0.124999970466
+    },
+    "totalBaseSamples": {
+      "x2": 14.7500000285,
+      "x4": 21.8749999702
+    }
+  },
+  "foldedHarmonicAtHz": 750,
+  "aliasMagnitude": {
+    "memoryless": 0.125877390482,
+    "adaa1x": 0.00147994036755,
+    "oversample2x": 1.193353312E-06,
+    "oversample4x": 1.40634080345E-05
+  },
+  "additionalCoherentToneAliasMagnitude": [
+    {
+      "toneBin": 2389,
+      "frequencyHz": 6999.0234375,
+      "foldedHarmonicBin": 5117,
+      "memoryless": 0.124321127379,
+      "adaa1x": 0.0298819775985,
+      "oversample2x": 1.05075547505E-05,
+      "oversample4x": 2.18119034909E-05
+    },
+    {
+      "toneBin": 3413,
+      "frequencyHz": 9999.0234375,
+      "foldedHarmonicBin": 2051,
+      "memoryless": 0.124321127379,
+      "adaa1x": 0.00587349308578,
+      "oversample2x": 0.00513260105757,
+      "oversample4x": 5.24116302062E-06
+    },
+    {
+      "toneBin": 4779,
+      "frequencyHz": 14000.9765625,
+      "foldedHarmonicBin": 6141,
+      "memoryless": 0.124321127379,
+      "adaa1x": 0.0204319551216,
+      "oversample2x": 0.000495249359449,
+      "oversample4x": 2.86368622566E-06
+    }
+  ],
+  "dualToneImd": {
+    "inputBins": [
+      1300,
+      1638
+    ],
+    "productHz": [
+      2818.359375,
+      5789.0625
+    ],
+    "lowerProductMagnitude1x2x4x": [
+      0.234014403153,
+      0.233198158126,
+      0.232958144228
+    ],
+    "upperProductMagnitude1x2x4x": [
+      0.221454694742,
+      0.230050508377,
+      0.232190846903
+    ]
+  },
+  "inBandFundamentalMagnitude": {
+    "x2": 1.26498095983,
+    "x4": 1.26974348912
+  },
+  "testsPassed": true,
+  "sourceCommit": "0afd5b19072b0575ebebaabb49c9899a213597c6",
+  "sourceFingerprintSha256": "ac882d0032ae8375aa3c9c9593e2df874f81d8fb61890962ea08c12ceb1f2b3c",
+  "compiler": "MSVC 1929",
+  "compilerFlags": "MSVC 14.29.30133 Release /O2 /Ob2 /DNDEBUG /MD /std:c++17; default precise floating point; no /fp:fast",
+  "cpuModel": "AMD Ryzen 9 5900HX with Radeon Graphics",
+  "os": "Microsoft Windows 10.0.26200"
+}

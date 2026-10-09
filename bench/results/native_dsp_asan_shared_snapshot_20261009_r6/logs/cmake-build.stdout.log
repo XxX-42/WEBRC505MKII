@@ -1,0 +1,40 @@
+[  3%] Building CXX object CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj
+[  6%] Building CXX object CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj
+[ 10%] Building CXX object CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj
+[ 13%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj
+[ 17%] Building CXX object CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj
+[ 20%] Building CXX object CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj
+[ 24%] Building CXX object CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj
+[ 27%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj
+[ 31%] Linking CXX static library webrc_dsp.lib
+[ 31%] Built target webrc_dsp
+[ 34%] Building CXX object CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj
+[ 37%] Linking CXX executable dsp_primitives_tests.exe
+[ 37%] Built target dsp_primitives_tests
+[ 41%] Building CXX object CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj
+[ 44%] Linking CXX executable control_dynamics_tests.exe
+[ 44%] Built target control_dynamics_tests
+[ 48%] Building CXX object CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj
+[ 51%] Linking CXX executable nonlinear_tests.exe
+[ 51%] Built target nonlinear_tests
+[ 55%] Building CXX object CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj
+[ 58%] Linking CXX executable spatial_temporal_tests.exe
+[ 58%] Built target spatial_temporal_tests
+[ 62%] Building CXX object CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj
+[ 65%] Linking CXX executable pitch_tests.exe
+[ 65%] Built target pitch_tests
+[ 68%] Building CXX object CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj
+[ 72%] Linking CXX executable fx_registry_tests.exe
+[ 72%] Built target fx_registry_tests
+[ 75%] Building CXX object CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj
+[ 79%] Linking CXX executable native_dsp_primitives_bench.exe
+[ 79%] Built target native_dsp_primitives_bench
+[ 82%] Building CXX object CMakeFiles/dsp_primitives_golden.dir/benchmarks/native_dsp_primitives_golden.cpp.obj
+[ 86%] Linking CXX executable dsp_primitives_golden.exe
+[ 86%] Built target dsp_primitives_golden
+[ 89%] Building CXX object CMakeFiles/native_dsp_pcm_fixture_generator.dir/benchmarks/native_dsp_pcm_fixture_generator.cpp.obj
+[ 93%] Linking CXX executable native_dsp_pcm_fixture_generator.exe
+[ 93%] Built target native_dsp_pcm_fixture_generator
+[ 96%] Building CXX object CMakeFiles/native_dsp_parity_v21_generator.dir/benchmarks/native_dsp_parity_v21_generator.cpp.obj
+[100%] Linking CXX executable native_dsp_parity_v21_generator.exe
+[100%] Built target native_dsp_parity_v21_generator

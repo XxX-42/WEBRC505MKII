@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "status": "NUMERIC_PARITY_PASS; GATE1_PARTIAL_ONLY",
+  "scope": "114 deterministic primitive/pitch PCM or analysis fixtures; no full 53-FX graph, Browser real-time admission, 30-minute stress, rhythm catalog, acoustic quality gate, hardware, or Gate 1 complete claim.",
+  "createdUtc": "2026-10-09T12:59:05.5076445Z",
+  "native": {
+    "originalManifest": "bench\\results\\dsp_pcm_parity_v2_1\\native_dsp_parity_v21_20261009T2056Z_corrected_seed/manifest.json",
+    "archivedManifest": "native-reference/manifest.json",
+    "manifestSha256": "c532ff22b931848f3ad738a02463b415b898003de09408518236258ca4b11269",
+    "sourceTreeSha256": "5200f136c00b5b00d71567afa9e7c476b52e06da33b3500d5b077b0d84329f7d",
+    "fixtureCount": 114,
+    "nativeTests": {
+      "status": "PASS",
+      "testsPassed": 6,
+      "testsFailed": 0,
+      "outputLog": "logs/ctest.stdout.log"
+    }
+  },
+  "comparison": {
+    "originalProvisionalOutput": "test-results/dsp-wasm-browser-graph-20261009/multimodule-pcm-parity-v21-corrected.compare.json",
+    "archivedFile": "comparison.json",
+    "sha256": "dac090976e0500eaba87636b32e5b91c3cb2acd771578d45ecb3e2ba228bf4a8",
+    "result": "PASS",
+    "fixtureCount": 114,
+    "failures": 0,
+    "maxAbsoluteError": 8.940696716308594E-08,
+    "maxPerFixtureRmsError": 3.589675977917313E-09,
+    "wasiCalls": {
+      "fd_close": 0,
+      "fd_write": 0,
+      "fd_seek": 0
+    }
+  },
+  "wasm": {
+    "file": "webrc-dsp.wasm",
+    "sha256": "fc7d55cefc3ea55e8570b4db599c8aab99003638e9f222ae8468bf14a918cb1b",
+    "byteLength": 283381,
+    "buildManifest": "webrc-dsp.build.json",
+    "buildManifestSha256": "f52798c16919dc0e33ca9b6b02bad77bfc2364704c86c934e06e47b29dbc03c9",
+    "sourceSetSha256": "be38d084dcdf7a617335417ec1f9eb0fa72ca633babcf40c4e00f9f0cebdc200",
+    "sourceFilesStableDuringBuild": true,
+    "emsdkCommit": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
+    "compilerIdentity": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)"
+  },
+  "runner": {
+    "file": "multimodule-pcm-parity-v2.mjs",
+    "sha256": "4906f8ce6375bd930bcfd9a4929584a4fac7e8dcdb1be7d16cd238b9f585a824"
+  },
+  "wasmPcmSidecarCount": 113,
+  "outputShapeChecks": "WASM PCM and complex output metadata/byte shapes validated; complex outputs carry fftFrames; all PCM sidecar values validated finite.",
+  "sourceFingerprintCheck": "WASM build sources match build manifest; Native/WASM source intersection checked by comparator."
+}

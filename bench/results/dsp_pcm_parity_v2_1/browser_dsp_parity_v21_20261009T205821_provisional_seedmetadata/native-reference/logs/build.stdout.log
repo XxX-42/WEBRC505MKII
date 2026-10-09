@@ -1,0 +1,426 @@
+[  9%] Building CXX object CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj
+primitives.cpp
+[ 18%] Building CXX object CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj
+control_dynamics.cpp
+[ 27%] Building CXX object CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj
+nonlinear.cpp
+[ 36%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj
+fft.cpp
+[ 45%] Building CXX object CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj
+spatial_temporal.cpp
+[ 54%] Building CXX object CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj
+pitch.cpp
+[ 63%] Building CXX object CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj
+signalsmith_adapter.cpp
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(530): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥渃onst Sample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::DynamicSTFT<Sample,false,1>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\shared\dsp\src\signalsmith_adapter.cpp(94): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::stretch::SignalsmithStretch<float,void>鈥濈殑寮曠敤
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(50): warning C4305: 鈥滃弬鏁扳€? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(49): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::stretch::SignalsmithStretch<float,void>::reset(void)鈥濇椂
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\shared\dsp\src\signalsmith_adapter.cpp(127): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::stretch::SignalsmithStretch<float,void>::reset(void)鈥濈殑寮曠敤
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\shared\dsp\src\signalsmith_adapter.cpp(94): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::stretch::SignalsmithStretch<float,void>鈥濈殑寮曠敤
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(554): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渟ize_t鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(544): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(91): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::DynamicSTFT<Sample,false,1>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(980): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(970): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(37): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(19): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::RealFFT<Sample,false,true>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(985): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(991): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(115): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(112): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::SimpleFFT<Sample>::resize(size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(109): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SimpleFFT<Sample>::resize(size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(321): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::SimpleFFT<Sample>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(328): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::Pow2FFT<Sample>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(960): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::SplitFFT<Sample,false>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(667): warning C4458: 鈥渘orm鈥濈殑澹版槑闅愯棌浜嗙被鎴愬憳
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(543): note: 鍙傝鈥渟ignalsmith::linear::DynamicSTFT<Sample,false,1>::norm鈥濈殑澹版槑
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(287): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(75): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(672): warning C4244: 鈥?鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(677): warning C4244: 鈥?=鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(635): warning C4244: 鈥?鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(640): warning C4244: 鈥?=鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(692): warning C4244: 鈥?=鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): warning C4127: 鏉′欢琛ㄨ揪寮忔槸甯搁噺
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): note: 鑰冭檻鏀圭敤 "if constexpr" 璇彞
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(408): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): warning C4127: 鏉′欢琛ㄨ揪寮忔槸甯搁噺
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): note: 鑰冭檻鏀圭敤 "if constexpr" 璇彞
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(330): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(337): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1222): warning C4456: 鈥渉Size鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1183): note: 鍙傝鈥渉Size鈥濈殑澹版槑
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1181): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(426): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1015): warning C4456: 鈥渉Size鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1011): note: 鍙傝鈥渉Size鈥濈殑澹版槑
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1009): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(386): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(1012): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渇loat鈥濊浆鎹㈠埌鈥渋nt鈥濓紝鍙兘涓㈠け鏁版嵁
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(972): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)鈥濇椂
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(691): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)鈥濈殑寮曠敤
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(682): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(623): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(623): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(456): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(456): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(455): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1220): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(682): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥渃onst Sample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(777): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(629): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(629): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(778): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(779): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(780): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(849): warning C4456: 鈥渟umR鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(840): note: 鍙傝鈥渟umR鈥濈殑澹版槑
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(632): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(632): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(849): warning C4456: 鈥渟umI鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(840): note: 鍙傝鈥渟umI鈥濈殑澹版槑
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(744): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(547): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(547): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(448): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(448): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(447): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(1274): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(745): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(746): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(747): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(818): warning C4456: 鈥渟um鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(811): note: 鍙傝鈥渟um鈥濈殑澹版槑
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(550): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-snapshot-9dfc010c510b49ccbbed3e4c1e91c801\third_party\signalsmith-linear\./fft.h(550): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+[ 72%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj
+fx_registry.cpp
+[ 81%] Linking CXX static library webrc_dsp.lib
+[ 81%] Built target webrc_dsp
+[ 90%] Building CXX object CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj
+dsp_primitives_tests.cpp
+[100%] Linking CXX executable dsp_primitives_tests.exe
+[100%] Built target dsp_primitives_tests
+[ 81%] Built target webrc_dsp
+[ 90%] Building CXX object CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj
+control_dynamics_tests.cpp
+[100%] Linking CXX executable control_dynamics_tests.exe
+[100%] Built target control_dynamics_tests
+[ 81%] Built target webrc_dsp
+[ 90%] Building CXX object CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj
+nonlinear_tests.cpp
+[100%] Linking CXX executable nonlinear_tests.exe
+[100%] Built target nonlinear_tests
+[ 81%] Built target webrc_dsp
+[ 90%] Building CXX object CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj
+spatial_temporal_tests.cpp
+[100%] Linking CXX executable spatial_temporal_tests.exe
+[100%] Built target spatial_temporal_tests
+[ 81%] Built target webrc_dsp
+[ 90%] Building CXX object CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj
+pitch_tests.cpp
+[100%] Linking CXX executable pitch_tests.exe
+[100%] Built target pitch_tests
+[ 81%] Built target webrc_dsp
+[ 90%] Building CXX object CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj
+fx_registry_tests.cpp
+[100%] Linking CXX executable fx_registry_tests.exe
+[100%] Built target fx_registry_tests
+[ 81%] Built target webrc_dsp
+[ 90%] Building CXX object CMakeFiles/native_dsp_parity_v21_generator.dir/benchmarks/native_dsp_parity_v21_generator.cpp.obj
+native_dsp_parity_v21_generator.cpp
+?敞鎰? 鍖呭惈鏂囦欢:       C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\ucrt\stdlib.h
+[100%] Linking CXX executable native_dsp_parity_v21_generator.exe
+[100%] Built target native_dsp_parity_v21_generator
