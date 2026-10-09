@@ -18,27 +18,54 @@ if (-not $BuildRoot.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgno
 $toolchain = Resolve-NativeToolchain -VsInstallPath $VsInstallPath -VsWherePath $VsWherePath -ToolsetVersion $ToolsetVersion
 $sourceDir = Join-Path $repoRoot 'shared\dsp'
 $resultsDirectory = Join-Path $repoRoot 'bench\results'
-$benchOutput = Join-Path $resultsDirectory 'native_primitives_latest.json'
+$runId = [Guid]::NewGuid().ToString('N')
+$pendingBenchOutput = Join-Path $BuildRoot ("native_primitives_{0}.json" -f $runId)
+$pendingNonlinearOutput = Join-Path $BuildRoot ("native_nonlinear_{0}.json" -f $runId)
 $sourceRevision = (& git -C $repoRoot rev-parse HEAD).Trim()
-$sourceFiles = @(
-    'shared/dsp/include/webrc/dsp/primitives.hpp',
-    'shared/dsp/src/primitives.cpp',
-    'shared/dsp/benchmarks/native_dsp_primitives_bench.cpp',
-    'shared/dsp/CMakeLists.txt'
-)
-$hashParts = foreach ($relativePath in $sourceFiles) {
-    $filePath = Join-Path $repoRoot ($relativePath -replace '/', '\')
-    $fileHash = (Get-FileHash -LiteralPath $filePath -Algorithm SHA256).Hash.ToLowerInvariant()
-    "$relativePath=$fileHash"
+
+function Get-DspSourceFingerprint {
+    $extensions = @('.c', '.cc', '.cpp', '.cxx', '.h', '.hh', '.hpp', '.hxx', '.ipp', '.inl', '.cmake')
+    $roots = @($sourceDir)
+    foreach ($vendorRoot in @(
+        (Join-Path $repoRoot 'third_party\signalsmith-stretch'),
+        (Join-Path $repoRoot 'third_party\signalsmith-linear')
+    )) {
+        if (Test-Path -LiteralPath $vendorRoot -PathType Container) { $roots += $vendorRoot }
+    }
+    $files = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($rootPath in $roots) {
+        foreach ($file in (Get-ChildItem -LiteralPath $rootPath -File -Recurse -ErrorAction Stop)) {
+            if ($extensions -contains $file.Extension.ToLowerInvariant() -or $file.Name -eq 'CMakeLists.txt') {
+                $files.Add($file.FullName)
+            }
+        }
+    }
+    foreach ($relativePath in @('scripts/native-dsp-verify.ps1', 'scripts/native-build-common.ps1')) {
+        $files.Add((Join-Path $repoRoot ($relativePath -replace '/', '\')))
+    }
+    $hashParts = foreach ($filePath in ($files | Sort-Object -Unique)) {
+        $relativePath = $filePath.Substring($repoRoot.Length).TrimStart('\', '/').Replace('\', '/')
+        $fileHash = (Get-FileHash -LiteralPath $filePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$relativePath=$fileHash"
+    }
+    $hashText = [string]::Join("`n", $hashParts)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $fingerprint = [System.BitConverter]::ToString(
+            $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($hashText))
+        ).Replace('-', '').ToLowerInvariant()
+    } finally {
+        $sha256.Dispose()
+    }
+    return [pscustomobject]@{ Hash = $fingerprint; FileCount = @($files | Sort-Object -Unique).Count }
 }
-$hashText = [string]::Join("`n", $hashParts)
-$sha256 = [System.Security.Cryptography.SHA256]::Create()
-$sourceHash = [System.BitConverter]::ToString($sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($hashText))).Replace('-', '').ToLowerInvariant()
-$sha256.Dispose()
+
+$fingerprintBeforeBuild = Get-DspSourceFingerprint
+$sourceHash = $fingerprintBeforeBuild.Hash
 $cpuModel = 'unknown'
 try { $cpuModel = (Get-CimInstance -ClassName Win32_Processor | Select-Object -First 1 -ExpandProperty Name).Trim() } catch { }
 $osDescription = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
-$buildFlags = "MSVC $($toolchain.ToolsetVersion) Release /O2 /Ob2 /DNDEBUG /MD; default precise floating point; no /fp:fast"
+$buildFlags = "MSVC $($toolchain.ToolsetVersion) Release /O2 /Ob2 /DNDEBUG /MD /std:c++17; default precise floating point; no /fp:fast"
 New-Item -ItemType Directory -Force -Path $resultsDirectory | Out-Null
 $cmakeCommand = Get-Command cmake.exe -ErrorAction Stop | Select-Object -First 1
 $cmake = $cmakeCommand.Source
@@ -60,19 +87,20 @@ $configureArgs = @('-S', $sourceDir, '-B', $BuildRoot, '-G', 'NMake Makefiles',
     "-DCMAKE_MAKE_PROGRAM=$($toolchain.NMakePath)", '-DCMAKE_BUILD_TYPE=Release')
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $configureArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
-$buildArgs = @('--build', $BuildRoot, '--target', 'dsp_primitives_tests', 'native_dsp_primitives_bench', 'dsp_primitives_golden')
+$buildArgs = @('--build', $BuildRoot, '--target', 'dsp_primitives_tests', 'control_dynamics_tests', 'nonlinear_tests', 'native_dsp_primitives_bench', 'dsp_primitives_golden')
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $buildArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
-$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', '^dsp_primitives_tests$')
-$lines += '"{0}" {1}' -f $ctestPath, (ConvertTo-NativeCmdArguments $testArgs)
-$lines += 'if errorlevel 1 exit /b %errorlevel%'
-$benchExecutable = Join-Path $BuildRoot 'native_dsp_primitives_bench.exe'
-$lines += 'set "WEBRC_DSP_BENCH_JSON={0}"' -f $benchOutput
+$lines += 'set "WEBRC_DSP_BENCH_JSON={0}"' -f $pendingBenchOutput
+$lines += 'set "WEBRC_DSP_NONLINEAR_JSON={0}"' -f $pendingNonlinearOutput
 $lines += 'set "WEBRC_DSP_SOURCE_REV={0}"' -f $sourceRevision
 $lines += 'set "WEBRC_DSP_SOURCE_HASH={0}"' -f $sourceHash
 $lines += 'set "WEBRC_DSP_BUILD_FLAGS={0}"' -f $buildFlags
 $lines += 'set "WEBRC_DSP_CPU={0}"' -f $cpuModel
 $lines += 'set "WEBRC_DSP_OS={0}"' -f $osDescription
+$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', '^(dsp_primitives_tests|control_dynamics_tests|nonlinear_tests)$')
+$lines += '"{0}" {1}' -f $ctestPath, (ConvertTo-NativeCmdArguments $testArgs)
+$lines += 'if errorlevel 1 exit /b %errorlevel%'
+$benchExecutable = Join-Path $BuildRoot 'native_dsp_primitives_bench.exe'
 $lines += '"{0}"' -f $benchExecutable
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
 $goldenExecutable = Join-Path $BuildRoot 'dsp_primitives_golden.exe'
@@ -86,6 +114,25 @@ $lines += 'exit /b %errorlevel%'
 
 Write-Output "MSVC toolchain: $($toolchain.VsInstallPath) / $($toolchain.ToolsetVersion) ($($toolchain.Source))"
 Write-Output "DSP-only build and CTest run in TEMP: $BuildRoot"
+Write-Output "Fingerprint includes $($fingerprintBeforeBuild.FileCount) C++/CMake inputs, this verifier, and the shared build helper."
 & $env:ComSpec /d /c "`"$runner`""
 if ($LASTEXITCODE -ne 0) { throw "Native DSP verification failed with exit code $LASTEXITCODE. Build files: $BuildRoot" }
-Write-Output "Native DSP CTest and software benchmark passed. Build files: $BuildRoot; benchmark JSON: $benchOutput"
+$fingerprintAfterBuild = Get-DspSourceFingerprint
+if ($fingerprintAfterBuild.Hash -ne $fingerprintBeforeBuild.Hash) {
+    throw "DSP sources changed during this build/test run; its results are stale and were not promoted. Before=$($fingerprintBeforeBuild.Hash), after=$($fingerprintAfterBuild.Hash). Build files: $BuildRoot"
+}
+if (-not (Test-Path -LiteralPath $pendingBenchOutput -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $pendingNonlinearOutput -PathType Leaf)) {
+    throw "DSP benchmark or nonlinear measurement JSON is missing; results were not promoted. Build files: $BuildRoot"
+}
+$stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ')
+$benchOutput = Join-Path $resultsDirectory ("native_primitives_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
+$nonlinearOutput = Join-Path $resultsDirectory ("native_nonlinear_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
+if ((Test-Path -LiteralPath $benchOutput) -or (Test-Path -LiteralPath $nonlinearOutput)) {
+    $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ') + '_' + $runId.Substring(0, 8)
+    $benchOutput = Join-Path $resultsDirectory ("native_primitives_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
+    $nonlinearOutput = Join-Path $resultsDirectory ("native_nonlinear_{0}_{1}.json" -f $stamp, $sourceHash.Substring(0, 12))
+}
+Move-Item -LiteralPath $pendingBenchOutput -Destination $benchOutput
+Move-Item -LiteralPath $pendingNonlinearOutput -Destination $nonlinearOutput
+Write-Output "Native DSP CTest and software benchmark passed with a stable source fingerprint. Build files: $BuildRoot; benchmark JSON: $benchOutput; measured nonlinear JSON: $nonlinearOutput"

@@ -84,6 +84,10 @@ public:
     bool setHighpass(float frequencyHz, float q, float smoothingMs = 5.0f) noexcept;
     bool setBandpass(float frequencyHz, float q, float smoothingMs = 5.0f) noexcept;
     bool setPeaking(float frequencyHz, float q, float gainDb, float smoothingMs = 5.0f) noexcept;
+    bool setLowShelf(float frequencyHz, float gainDb, float slope = 1.0f,
+                     float smoothingMs = 5.0f) noexcept;
+    bool setHighShelf(float frequencyHz, float gainDb, float slope = 1.0f,
+                      float smoothingMs = 5.0f) noexcept;
     [[nodiscard]] float processSample(float input) noexcept;
     bool processBlock(const float* input, float* output, std::uint32_t frames) noexcept;
     [[nodiscard]] const BiquadCoefficients& coefficients() const noexcept { return coefficients_; }
@@ -92,6 +96,8 @@ public:
 private:
     bool makeRbJ(float frequencyHz, float q, float gainDb, unsigned int type,
                  float smoothingMs) noexcept;
+    bool makeRbJShelf(float frequencyHz, float gainDb, float slope, bool highShelf,
+                      float smoothingMs) noexcept;
     void advanceCoefficients() noexcept;
 
     double sampleRate_ = 48000.0;

@@ -159,6 +159,80 @@ int main() {
         }
         ratio = std::sqrt(outEnergy / inEnergy);
         check(std::fabs(ratio - 0.7071) < 0.025, "RBJ lowpass -3 dB at cutoff");
+
+        BiquadDf2T shelf;
+        check(shelf.prepare(spec) && shelf.setLowShelf(800.0f, 0.0f, 1.0f, 0.0f),
+              "RBJ low shelf unity setup");
+        double unityShelfError = 0.0;
+        for (std::size_t i = 0; i < analysisFrames; ++i) {
+            input[i] = static_cast<float>(0.5 * std::sin(
+                2.0 * 3.14159265358979323846 * 1000.0 * i / sampleRate));
+            output[i] = shelf.processSample(input[i]);
+            unityShelfError = std::max(unityShelfError,
+                                       std::fabs(static_cast<double>(output[i] - input[i])));
+        }
+        check(unityShelfError < 1.0e-6,
+              "RBJ shelf at 0 dB is unity across the band");
+
+        shelf.reset();
+        check(shelf.setLowShelf(500.0f, 6.0f, 1.0f, 0.0f),
+              "RBJ low shelf positive gain setup");
+        for (std::size_t i = 0; i < analysisFrames; ++i) {
+            input[i] = static_cast<float>(0.25 * std::sin(
+                2.0 * 3.14159265358979323846 * 100.0 * i / sampleRate));
+            output[i] = shelf.processSample(input[i]);
+        }
+        double lowInEnergy = 0.0;
+        double lowOutEnergy = 0.0;
+        for (std::size_t i = analysisFrames / 2; i < analysisFrames; ++i) {
+            lowInEnergy += static_cast<double>(input[i]) * input[i];
+            lowOutEnergy += static_cast<double>(output[i]) * output[i];
+        }
+        const double lowShelfGain = std::sqrt(lowOutEnergy / lowInEnergy);
+        check(std::fabs(lowShelfGain - std::pow(10.0, 6.0 / 20.0)) < 0.04,
+              "RBJ low shelf measures +6 dB well below its corner");
+
+        shelf.reset();
+        check(shelf.setHighShelf(4000.0f, -6.0f, 1.0f, 0.0f),
+              "RBJ high shelf negative gain setup");
+        for (std::size_t i = 0; i < analysisFrames; ++i) {
+            input[i] = static_cast<float>(0.25 * std::sin(
+                2.0 * 3.14159265358979323846 * 16000.0 * i / sampleRate));
+            output[i] = shelf.processSample(input[i]);
+        }
+        double highInEnergy = 0.0;
+        double highOutEnergy = 0.0;
+        for (std::size_t i = analysisFrames / 2; i < analysisFrames; ++i) {
+            highInEnergy += static_cast<double>(input[i]) * input[i];
+            highOutEnergy += static_cast<double>(output[i]) * output[i];
+        }
+        const double highShelfGain = std::sqrt(highOutEnergy / highInEnergy);
+        check(std::fabs(highShelfGain - std::pow(10.0, -6.0 / 20.0)) < 0.04,
+              "RBJ high shelf measures -6 dB well above its corner");
+        check(!shelf.setLowShelf(1000.0f, 37.0f, 1.0f, 0.0f) &&
+                  !shelf.setHighShelf(1000.0f, 6.0f, 0.0f, 0.0f),
+              "RBJ shelves reject out-of-range gain and slope");
+
+        double maxAutomatedShelfOutput = 0.0;
+        shelf.reset();
+        shelf.setLowShelf(100.0f, -36.0f, 0.1f, 0.0f);
+        for (std::size_t i = 0; i < analysisFrames; ++i) {
+            if (i % 256U == 0U) {
+                const float gain = (i / 256U) % 2U == 0U ? 36.0f : -36.0f;
+                const float frequency = (i / 512U) % 2U == 0U ? 120.0f : 12000.0f;
+                check(shelf.setLowShelf(frequency, gain, 0.1f, 5.0f) &&
+                          shelf.setHighShelf(frequency, -gain, 1.0f, 5.0f),
+                      "RBJ shelf automation accepts legal coefficient transitions");
+            }
+            input[i] = static_cast<float>(0.2 * std::sin(
+                2.0 * 3.14159265358979323846 * 700.0 * i / sampleRate));
+            output[i] = shelf.processSample(input[i]);
+            check(std::isfinite(output[i]), "RBJ shelf automation remains finite");
+            maxAutomatedShelfOutput = std::max(maxAutomatedShelfOutput,
+                                               std::fabs(static_cast<double>(output[i])));
+        }
+        check(maxAutomatedShelfOutput < 20.0,
+              "RBJ shelf rapid smoothing stays bounded through +/-36 dB automation");
     }
 
     AllPass1 allpass;
@@ -324,7 +398,7 @@ int main() {
         DelayMatrix2 guardMatrix;
         Pcg32 guardRng;
         bool setupOk = guardBiquad.prepare(localSpec) && guardSmoother.prepare(localSpec) &&
-                       guardBiquad.setLowpass(1000.0f, 0.707f, 0.0f) &&
+                       guardBiquad.setLowShelf(1000.0f, 0.0f, 1.0f, 0.0f) &&
                        guardSvf.prepare(localSpec) &&
                        guardSvf.setFrequencyQ(1000.0f, 0.707f, 0.0f) &&
                        guardAllpass.prepare(localSpec) &&
@@ -363,7 +437,11 @@ int main() {
         for (unsigned block = 0; block < 48; ++block) {
             if (block % 6 == 0) {
                 const float shift = static_cast<float>(block % 12) * 35.0f;
-                setupOk = setupOk && guardBiquad.setLowpass(1000.0f + shift, 0.707f, 3.0f) &&
+                const float shelfGain = block % 12 < 6 ? 6.0f : -6.0f;
+                setupOk = setupOk && guardBiquad.setLowShelf(250.0f + shift, shelfGain,
+                                                              0.7f, 3.0f) &&
+                          guardBiquad.setHighShelf(5000.0f + shift, -shelfGain,
+                                                   0.8f, 3.0f) &&
                           guardSvf.setFrequencyQ(800.0f + shift, 1.1f, 3.0f) &&
                           guardAllpass.setFrequency(1400.0f + shift, 3.0f) &&
                           guardLfo.setFrequency(4.0f + shift * 0.001f) &&

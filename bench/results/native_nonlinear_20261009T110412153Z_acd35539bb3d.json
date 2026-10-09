@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "scope": "shared-core nonlinear measurements; software-only; no device/XRUN claim",
+  "sampleRateHz": 48000,
+  "wdfParameterGridCases": 648,
+  "firImpulseEnergyCentroidBaseSamples": {"x2": 14.5, "x4": 21.8106538361},
+  "phaseDelayAtHz": {"frequencyHz": 1000, "firOnlyBaseSamples": {"x2": 14.5, "x4": 21.7499999998}, "adaaExtraBaseSamples": {"x2": 0.250000028516, "x4": 0.124999970466}, "totalBaseSamples": {"x2": 14.7500000285, "x4": 21.8749999702}},
+  "foldedHarmonicAtHz": 750,
+  "aliasMagnitude": {"memoryless": 0.125877390482, "adaa1x": 0.00147994036755, "oversample2x": 1.193353312e-06, "oversample4x": 1.40634080345e-05},
+  "inBandFundamentalMagnitude": {"x2": 1.26498095983, "x4": 1.26974348912},
+  "testsPassed": true
+}

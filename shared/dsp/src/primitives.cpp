@@ -252,6 +252,61 @@ bool BiquadDf2T::setPeaking(float frequencyHz, float q, float gainDb,
     return makeRbJ(frequencyHz, q, gainDb, 3, smoothingMs);
 }
 
+bool BiquadDf2T::makeRbJShelf(float frequencyHz, float gainDb, float slope,
+                              bool highShelf, float smoothingMs) noexcept {
+    if (!prepared_ || !std::isfinite(frequencyHz) || frequencyHz < 0.5f ||
+        frequencyHz > sampleRate_ * 0.49 || !std::isfinite(gainDb) ||
+        gainDb < -36.0f || gainDb > 36.0f || !std::isfinite(slope) ||
+        slope < 0.1f || slope > 1.0f || !std::isfinite(smoothingMs) ||
+        smoothingMs < 0.0f || smoothingMs > 10000.0f) {
+        return false;
+    }
+
+    const double amplitude = std::pow(10.0, static_cast<double>(gainDb) / 40.0);
+    const double w0 = 2.0 * kPi * static_cast<double>(frequencyHz) / sampleRate_;
+    const double cosine = std::cos(w0);
+    const double sine = std::sin(w0);
+    const double slopeTerm = (amplitude + 1.0 / amplitude) *
+                             (1.0 / static_cast<double>(slope) - 1.0) + 2.0;
+    if (!finite(amplitude) || !finite(slopeTerm) || slopeTerm <= 0.0) return false;
+    const double alpha = 0.5 * sine * std::sqrt(slopeTerm);
+    const double beta = 2.0 * std::sqrt(amplitude) * alpha;
+    double b0 = 0.0;
+    double b1 = 0.0;
+    double b2 = 0.0;
+    double a0 = 0.0;
+    double a1 = 0.0;
+    double a2 = 0.0;
+    if (!highShelf) {
+        b0 = amplitude * ((amplitude + 1.0) - (amplitude - 1.0) * cosine + beta);
+        b1 = 2.0 * amplitude * ((amplitude - 1.0) - (amplitude + 1.0) * cosine);
+        b2 = amplitude * ((amplitude + 1.0) - (amplitude - 1.0) * cosine - beta);
+        a0 = (amplitude + 1.0) + (amplitude - 1.0) * cosine + beta;
+        a1 = -2.0 * ((amplitude - 1.0) + (amplitude + 1.0) * cosine);
+        a2 = (amplitude + 1.0) + (amplitude - 1.0) * cosine - beta;
+    } else {
+        b0 = amplitude * ((amplitude + 1.0) + (amplitude - 1.0) * cosine + beta);
+        b1 = -2.0 * amplitude * ((amplitude - 1.0) + (amplitude + 1.0) * cosine);
+        b2 = amplitude * ((amplitude + 1.0) + (amplitude - 1.0) * cosine - beta);
+        a0 = (amplitude + 1.0) - (amplitude - 1.0) * cosine + beta;
+        a1 = 2.0 * ((amplitude - 1.0) - (amplitude + 1.0) * cosine);
+        a2 = (amplitude + 1.0) - (amplitude - 1.0) * cosine - beta;
+    }
+    if (!finite(a0) || a0 <= 0.0) return false;
+    return setCoefficients({b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0},
+                           smoothingMs);
+}
+
+bool BiquadDf2T::setLowShelf(float frequencyHz, float gainDb, float slope,
+                             float smoothingMs) noexcept {
+    return makeRbJShelf(frequencyHz, gainDb, slope, false, smoothingMs);
+}
+
+bool BiquadDf2T::setHighShelf(float frequencyHz, float gainDb, float slope,
+                              float smoothingMs) noexcept {
+    return makeRbJShelf(frequencyHz, gainDb, slope, true, smoothingMs);
+}
+
 void BiquadDf2T::advanceCoefficients() noexcept {
     if (coefficientRampRemaining_ == 0) {
         return;
