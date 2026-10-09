@@ -1,0 +1,36 @@
+{
+  "schema": "native-fx-startup-warmup-delta-v1",
+  "createdAtUtc": "2026-10-09T20:11:45.8712290Z",
+  "baseHead": "aa382c0a9b2647724cb35921afc14b9b1eb78f25",
+  "baseSourceSetSha256": "292d9ec0dbf6c51b11b37829ca5e5398adda8c88b1e16b3688a1fa4aa211273e",
+  "baseManifestSha256": "a39fbc172673e73d05254b9ad93d6521b957c2edd6593214594fce83b04f3dbf",
+  "overlayFiles": [
+    {
+      "path": "native-mvp/engine-cpp/include/native_fx_graph.hpp",
+      "bytes": 16980,
+      "sha256": "2f4f26366f04423b69bcad061715e4e71437ca41453d487e04eb4bf8d906ac18"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_fx_graph.cpp",
+      "bytes": 59881,
+      "sha256": "f0e17972aedc026fd913d55075ef24de9422b3d09e6a6abd179d260eb3eab33b"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/native_fx_graph_tests.cpp",
+      "bytes": 70565,
+      "sha256": "f0cb4de1e33e40a37f7c7504cbb2f8bae0410fa762cb7d9a91e16471fd0f92fd"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "bytes": 9317,
+      "sha256": "2a7d1f00d5039dce1cdf05ea2a3c208822ed9b35262207489c0e235e8964808a"
+    },
+    {
+      "path": "shared/dsp/src/fx_registry.cpp",
+      "bytes": 147729,
+      "sha256": "025a9ba2561ca0c7e0021b1804474884e7c5f1efbfcb986ab9097a9426f8cbbb"
+    }
+  ],
+  "postOverlaySourceSetSha256": "0a425619e802822507ecb815d73b5e2fb1bdb58dd6aad328ed5cfa813465eb96",
+  "postOverlayFileCount": 1415
+}

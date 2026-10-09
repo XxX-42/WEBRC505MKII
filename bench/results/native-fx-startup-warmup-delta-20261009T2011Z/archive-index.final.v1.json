@@ -1,0 +1,676 @@
+{
+  "schema": "native-fx-startup-warmup-delta-archive-index-v1",
+  "fileCount": 134,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2021,
+      "sha256": "d1591d0c361a668cc8497a586a5bd5e6cfedd012c399df6cbee631118fa9bcce"
+    },
+    {
+      "path": "base-copy.log",
+      "bytes": 400,
+      "sha256": "8d8733cb0b7b0fd0a964694d74046062da2af06efb54a098243ebb483bb9c440"
+    },
+    {
+      "path": "ctest-unfiltered.log",
+      "bytes": 3287,
+      "sha256": "195a943ec9cd69f05a83afce7746a13b5fd6eac06c5576627212b2b23b5e2e1a"
+    },
+    {
+      "path": "delta-manifest.json",
+      "bytes": 1436,
+      "sha256": "c43709790db8a99d581245f9e195c1faa646a9a56778a12e90412e9c4fe2862c"
+    },
+    {
+      "path": "delta/native-mvp/engine-cpp/include/native_fx_graph.hpp",
+      "bytes": 16980,
+      "sha256": "2f4f26366f04423b69bcad061715e4e71437ca41453d487e04eb4bf8d906ac18"
+    },
+    {
+      "path": "delta/native-mvp/engine-cpp/src/native_fx_graph.cpp",
+      "bytes": 59881,
+      "sha256": "f0e17972aedc026fd913d55075ef24de9422b3d09e6a6abd179d260eb3eab33b"
+    },
+    {
+      "path": "delta/native-mvp/engine-cpp/tests/native_fx_graph_tests.cpp",
+      "bytes": 70565,
+      "sha256": "f0cb4de1e33e40a37f7c7504cbb2f8bae0410fa762cb7d9a91e16471fd0f92fd"
+    },
+    {
+      "path": "delta/shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "bytes": 9317,
+      "sha256": "2a7d1f00d5039dce1cdf05ea2a3c208822ed9b35262207489c0e235e8964808a"
+    },
+    {
+      "path": "delta/shared/dsp/src/fx_registry.cpp",
+      "bytes": 147729,
+      "sha256": "025a9ba2561ca0c7e0021b1804474884e7c5f1efbfcb986ab9097a9426f8cbbb"
+    },
+    {
+      "path": "evidence/LastTest.log",
+      "bytes": 32192,
+      "sha256": "4137a2ba5c4313a308484600c80ccf5342dd462c3e3cc3a8780c6a94ee466874"
+    },
+    {
+      "path": "evidence/compiler-closure-delta.v1.json",
+      "bytes": 281528,
+      "sha256": "3efd74b5abf667f6d5170e449dd184388c63e5725fbd9b9ce722dc0a665fad89"
+    },
+    {
+      "path": "evidence/configure/CMakeCache.txt",
+      "bytes": 30385,
+      "sha256": "6aa17f18b778f1830cb3d4f3a064b6858b3b3b59debb12f516c4ba9994499285"
+    },
+    {
+      "path": "evidence/configure/CTestTestfile.cmake",
+      "bytes": 2472,
+      "sha256": "66e3420c859f4cad734d494d44522c803d546e41e40cd18244488b65b9163d60"
+    },
+    {
+      "path": "evidence/configure/ctest-files/CTestTestfile.cmake",
+      "bytes": 2472,
+      "sha256": "66e3420c859f4cad734d494d44522c803d546e41e40cd18244488b65b9163d60"
+    },
+    {
+      "path": "evidence/configure/ctest-files/_deps/rtaudio_src-build/CTestTestfile.cmake",
+      "bytes": 469,
+      "sha256": "6a026a95ed6632cf0c707a580d916ba0c8994e96e64402abb611dc2014ff480a"
+    },
+    {
+      "path": "evidence/configure/ctest-files/_deps/rtaudio_src-build/tests/CTestTestfile.cmake",
+      "bytes": 986,
+      "sha256": "db60aacb752458d89855418931e6fd9297dbdaeebcd3f8eba16e059b918c79be"
+    },
+    {
+      "path": "evidence/configure/ctest-files/shared_dsp/CTestTestfile.cmake",
+      "bytes": 11002,
+      "sha256": "7c540420c4fc8b949bc3815e64c9062622060da29c9a8b60cc73eb2cfa7e5290"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/4.4.2/CompilerIdCXX/CMakeCXXCompilerId.exe",
+      "bytes": 96256,
+      "sha256": "583cbf22321156458a26ddb7bf0d3f6cd972399309406bc4980537e6a5d02f66"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/4.4.2/CompilerIdCXX/CMakeCXXCompilerId.obj",
+      "bytes": 2058,
+      "sha256": "f188613a06de08cdf86f0badd5cf86215ba959d3af224c59a92e7867f6e33932"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/ShowIncludes/main.obj",
+      "bytes": 682,
+      "sha256": "a00c0ffb8b6d984b24f9620aceabcc15bb5b3dd587eac6eee6e464c17d3c650e"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/looper_core_tests.dir/src/looper_core.cpp.obj",
+      "bytes": 43630,
+      "sha256": "7def3a04a356ff0eee408e9a430fdc8f5cfdef52e5e3eb58ff3363d464af1523"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/looper_core_tests.dir/tests/looper_core_tests.cpp.obj",
+      "bytes": 119508,
+      "sha256": "05b33afc3dd9791e8f1e0bdeac2482524a7cf486cb86c76be40ba23b2dc3e94d"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_audio_core.dir/src/looper_core.cpp.obj",
+      "bytes": 43630,
+      "sha256": "c9fd5facd510cfd1ae3b0fc4d78f4dc419552e664b1f78e565cd5b494d839668"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_audio_core.dir/src/native_audio_core.cpp.obj",
+      "bytes": 931323,
+      "sha256": "2e74a6bd68b4832ccdbea37a25755b809d82581a62b29ba5f50c72a41777b228"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_bridge_host.dir/src/native_bridge_host.cpp.obj",
+      "bytes": 8180197,
+      "sha256": "29a6f459ee0713906cde11fc50dc89ccf2f24e7ce0ca3ededa42cf1290a02693"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_fx_graph_tests.dir/tests/native_fx_graph_tests.cpp.obj",
+      "bytes": 262402,
+      "sha256": "26e6905a8af130cd9ab64d2c0756606e40efc5b72fd99734eeae7530db13ec82"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_looper_bench.dir/benchmarks/native_looper_bench.cpp.obj",
+      "bytes": 142647,
+      "sha256": "5179d87eba20e26a5a5acbe327ff7142025a461ee252ac0321d1c49eecad6c27"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_looper_bench.dir/src/looper_core.cpp.obj",
+      "bytes": 43630,
+      "sha256": "e31446f7ff2cd78e3eec039e7ebb551f07183455f04afc69c8d62ad042261146"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_multitrack_core.dir/src/multitrack_looper_core.cpp.obj",
+      "bytes": 81500,
+      "sha256": "fb6bc8fceb3d0764aba5642414863891af129d5baafd8a7fad29309bc13ebf6c"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_multitrack_core_tests.dir/tests/multitrack_looper_core_tests.cpp.obj",
+      "bytes": 73520,
+      "sha256": "adfe37658cad0896f947ff78626f90a3cb57cf672093afdd6810b19b757918ff"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_track_host.dir/src/native_fx_graph.cpp.obj",
+      "bytes": 146251,
+      "sha256": "ff8b7716db48c17128d573209b24b5aa449b641a8f29620ea2aefe383d71186f"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_track_host.dir/src/native_track_host.cpp.obj",
+      "bytes": 92297,
+      "sha256": "2a84487e0e884f0047e17c8c6d98818cb724f916eaadc67c6940f03867e1b906"
+    },
+    {
+      "path": "evidence/outputs/build-root/CMakeFiles/native_track_host_tests.dir/tests/native_track_host_tests.cpp.obj",
+      "bytes": 115097,
+      "sha256": "4a818dbbb4476689960fdc1fb0a89a11045f7e37059f7599b290c303a0e2ca74"
+    },
+    {
+      "path": "evidence/outputs/build-root/_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/RtAudio.cpp.obj",
+      "bytes": 662384,
+      "sha256": "cfb506d7bfe8e700985987a26d409b4ac537a53b247898e8f511a0d096ff6b78"
+    },
+    {
+      "path": "evidence/outputs/build-root/_deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/rtaudio_c.cpp.obj",
+      "bytes": 117124,
+      "sha256": "7000b22194f0f082b0df63f1aba9ce4bb3cd477f2d28a24baf9512e457fa4f97"
+    },
+    {
+      "path": "evidence/outputs/build-root/_deps/rtaudio_src-build/rtaudio.lib",
+      "bytes": 1011696,
+      "sha256": "5dd979053b9e768863da728ea8a6da4df6c46c61f2560414d12267d4e0fbb5ec"
+    },
+    {
+      "path": "evidence/outputs/build-root/_deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/apinames.cpp.obj",
+      "bytes": 71746,
+      "sha256": "935b9d36b31afe92f9216d6b2f3f2900fea6e65cba5bd379fd607b4f2ab622c5"
+    },
+    {
+      "path": "evidence/outputs/build-root/_deps/rtaudio_src-build/tests/apinames.exe",
+      "bytes": 97792,
+      "sha256": "1f51a6fceef57a9300eb4f92182eb4c1cfdf627f30ddaa4e74a806ddd63d1ce0"
+    },
+    {
+      "path": "evidence/outputs/build-root/_deps/rtaudio_src-build/tests/apinames.exp",
+      "bytes": 20200,
+      "sha256": "2afc5bb6a14e2d28de002be333e0dd925df0e4ff07c1ac178926fa6f90f09810"
+    },
+    {
+      "path": "evidence/outputs/build-root/_deps/rtaudio_src-build/tests/apinames.lib",
+      "bytes": 33784,
+      "sha256": "c91ac2db801aa2c46f9452ad20bb1d2fea8b2870f986b8f14e1a52a538920957"
+    },
+    {
+      "path": "evidence/outputs/build-root/looper_core_tests.exe",
+      "bytes": 24576,
+      "sha256": "c5e5fe609b1c9572db5453630f2a996916045b75fde0fdb25049a53ede3341fd"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_audio_core.lib",
+      "bytes": 1365252,
+      "sha256": "05be0688068d5a21824bb2ace91267ef3f79538ab4ac5a77754a2a753eed4cf2"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_bridge_host.exe",
+      "bytes": 539648,
+      "sha256": "ca3356bfdf91a1093252e3c0c389b51584bd903944f3bb2b93557a669ab7c76e"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_bridge_host.exp",
+      "bytes": 16210,
+      "sha256": "6870e4cbc5da55b08036498af04e629d84bff839471d65f133d7f63788a49aa3"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_bridge_host.lib",
+      "bytes": 28026,
+      "sha256": "1882298af5ac5fe6c7162ecc1e59a92c2e526d989c0d67f28d29dbb20f7c23f0"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_fx_graph_tests.exe",
+      "bytes": 404992,
+      "sha256": "3301e1dc41b3a79dfe064bbd72fe416cce0d7fa60f5f7de4523bdc8ae7237ab4"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_looper_bench.exe",
+      "bytes": 29184,
+      "sha256": "05f1c6d1d743ea1d938dee3577ac4c5150c8d6ffc0e3921eaa271e2f45aa2d8c"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_multitrack_core.lib",
+      "bytes": 101448,
+      "sha256": "dbb6442e1e09bde82c68cb6df617eae6ffcc3afe4135f2a7b06a6421dbe8900f"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_multitrack_core_tests.exe",
+      "bytes": 41472,
+      "sha256": "9526bd1ffeceaa98076970c390c9b3cfa3b4cd3009eb810c4185557d362a8406"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_track_host.lib",
+      "bytes": 300208,
+      "sha256": "c2f71786ce3cfce882a01af1901149057bb502172851cdb113a5b477a5617202"
+    },
+    {
+      "path": "evidence/outputs/build-root/native_track_host_tests.exe",
+      "bytes": 359424,
+      "sha256": "c94065e73e8826cf6de30317490ce8e9cdcaf91b7eaa17a913468a5a051dd898"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/composite_fx_tests.dir/tests/composite_fx_tests.cpp.obj",
+      "bytes": 171547,
+      "sha256": "3e3f3b26c73e08a26c11412339d4015b10f0e6d2766421c7362d7f31a44591e9"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj",
+      "bytes": 65333,
+      "sha256": "de7f8a868a03e5d02ea206e19aa5a789faaac7ab69f863c3c6f92dadaf931dcd"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/distortion_fx_tests.dir/tests/distortion_fx_tests.cpp.obj",
+      "bytes": 157355,
+      "sha256": "566d6b018b5c9e906c5f3507a33ff5ba5488a01350bcbaf6606c1481ff3b2250"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj",
+      "bytes": 94730,
+      "sha256": "80411d32cc99d8433b3de3fc09e0224ae1314869c4f82d966a23f4ff42498fc8"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj",
+      "bytes": 86796,
+      "sha256": "b9e675257d2097d1c7733b23332a87befbd508adda1cc3ec2f857627f1392d46"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/tests/live_mono_pitch_tests.cpp.obj",
+      "bytes": 89243,
+      "sha256": "f3ca7bee4aaaec885f9b9b4f1be1a4e428b5cb72b86d04c01937726469d94417"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/modulated_delay_fx_tests.dir/tests/modulated_delay_fx_tests.cpp.obj",
+      "bytes": 107832,
+      "sha256": "a407b3c04fe23fcfa419efed7ff8d1ad25dd7caa32f75f5799364b7a3f459ba3"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/modulation_fx_tests.dir/tests/modulation_fx_tests.cpp.obj",
+      "bytes": 123928,
+      "sha256": "2e0dd5f7ff1026aa35f3c963ec6f97b1711fa850f222037fe5fab52472d23a12"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj",
+      "bytes": 235718,
+      "sha256": "900382e2d67fd1ce61e4401eafa36cc363296f6746c1f08f2ee938fbf87b994b"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj",
+      "bytes": 181539,
+      "sha256": "334b00050f8186971a5c3c7f318e8ee97a87d23c2572ea73f2e3faa442cee1d7"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/octave_fx_tests.dir/tests/octave_fx_tests.cpp.obj",
+      "bytes": 128934,
+      "sha256": "e61b05ed22388ab18ad9c6ded53fcdcfa5919e55d4440bd3b37d66a8dce451e0"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/octave_models_tests.dir/tests/octave_models_tests.cpp.obj",
+      "bytes": 151770,
+      "sha256": "0b196077438352f7d038491bbab576fd2fa6df0be48aee29283416f1d1df8c6e"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/performance_fx_tests.dir/tests/performance_fx_tests.cpp.obj",
+      "bytes": 174952,
+      "sha256": "f9d4df60d3454a3dff74cb351ae4cda8f8f09f9b5b7471432ebb3a6114d51982"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/pitch_profiles_tests.dir/tests/pitch_profiles_tests.cpp.obj",
+      "bytes": 131235,
+      "sha256": "4ca3c317f74b1752a59dc7edf8af912487f67d31e692380328618314efd4e155"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj",
+      "bytes": 238034,
+      "sha256": "11547889b9feffe2cab9462861727ea4c5807db7b2d6b3c90b740c8108ec803d"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/preamp_fx_tests.dir/tests/preamp_fx_tests.cpp.obj",
+      "bytes": 189213,
+      "sha256": "dce344d6b7d5bfb03e4a0d3f27d911336227d8785cc634c7bd7ae842fff9b288"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/preamp_models_tests.dir/tests/preamp_models_tests.cpp.obj",
+      "bytes": 167319,
+      "sha256": "473415535f0747ccf79a95381ec22b9cfe8074c24f36578175b05be42b4ca783"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/reconstruction_fx_adapter_tests.dir/tests/reconstruction_fx_adapter_tests.cpp.obj",
+      "bytes": 143372,
+      "sha256": "8e563da52dbf128d702f91acc61ad819d39d1387fc7b6881fcedcc309de2b431"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/rhythm_tests.dir/tests/rhythm_tests.cpp.obj",
+      "bytes": 174244,
+      "sha256": "0c2e6e3d99d5c51090b78cbdc50e8d44bf713fe1cc47c2d2bfbfb545cd9d5281"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/rhythmic_fx_tests.dir/tests/rhythmic_fx_tests.cpp.obj",
+      "bytes": 102052,
+      "sha256": "ff30d718bc708928c15d02c66c1a044c10cee68c2ae64378e37175a9909bb0de"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/spatial_fx_adapters_tests.dir/tests/spatial_fx_adapters_tests.cpp.obj",
+      "bytes": 145543,
+      "sha256": "195b499c51c7f79cc37fe89448c37ec3cdd689c56a625913095d1b8ac8a6efeb"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj",
+      "bytes": 305873,
+      "sha256": "e2dc777367015c99cf6882da90c19d1969e9869212e2abc5b035c3625800ff9d"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/streaming_yin_tests.dir/tests/streaming_yin_tests.cpp.obj",
+      "bytes": 75452,
+      "sha256": "07507708b7ac97606419cc6077bad36ca640d7892a86d117275adfbd658b82ca"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/temporal_fx_adapters_tests.dir/tests/temporal_fx_adapters_tests.cpp.obj",
+      "bytes": 245047,
+      "sha256": "99949979b3028bdfc3c29cdb5e174ae4baa2f20c2420c2b8f0c54961841d60c2"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/cleanroom_rhythm_data.cpp.obj",
+      "bytes": 265259,
+      "sha256": "23647c2d3f3b289fcb425329995c40cef6a02b26201f282c068e40a19517ef55"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/composite_fx.cpp.obj",
+      "bytes": 39746,
+      "sha256": "204e13971c2ddfde083a182aa41741ededb6c6ceeb347b314e32fa3fa319fd15"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj",
+      "bytes": 63031,
+      "sha256": "9c90986704aade6efb7ea199cfe51355e44c8d6d4709a72a67e50e381713fe25"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/distortion_fx.cpp.obj",
+      "bytes": 30232,
+      "sha256": "2d4bdbd4df855e0fb5ed1a011f3aa72e10807a472059d3918c1af4c803594e25"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj",
+      "bytes": 12711,
+      "sha256": "c889c03dabc741f85105a5ebf38fe26d234ae1202867def8d52b617c6e62f6e4"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj",
+      "bytes": 1366285,
+      "sha256": "a31f511562b4dcad87b9b84ebda07d8246d1450c6055dc9983cb111e75c90ae9"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/live_mono_pitch.cpp.obj",
+      "bytes": 60251,
+      "sha256": "6d43e7efd34c2836baca7062fa4ae61b76c022b92b0d12b237a6e8b069864b7b"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/modulated_delay_fx.cpp.obj",
+      "bytes": 88013,
+      "sha256": "42ceda77af97c105ea81c20a5ae513247e95805d350dd509e7420778d3bea52a"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/modulation_fx.cpp.obj",
+      "bytes": 27148,
+      "sha256": "0f6fba2a8e06a8fee772b5a3363136bb4c6ca0ee314fba079daca2730c6b8ec6"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj",
+      "bytes": 34459,
+      "sha256": "cd448d7cf3a09e3a98c2a3bd9408f2027cd82e96c2633de6992bac7c57038a6e"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/octave_fx.cpp.obj",
+      "bytes": 165133,
+      "sha256": "866dcdd50005a57dbd4a3e64193896072583210cf5313870bd7eb4648de286ed"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/octave_models.cpp.obj",
+      "bytes": 112440,
+      "sha256": "e48e2055dbfc2308ffe3ac721a9466b9e6b17b277f46dacef68f94c90ff3865e"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/performance_fx.cpp.obj",
+      "bytes": 81339,
+      "sha256": "dd563e5828c50712f260259c6f56a96916143a343f940e3b2cd3989e2cfe1ef1"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj",
+      "bytes": 246242,
+      "sha256": "69742474eaf34cf26d2341cf2221c039b20b26c6cdfd032dff44fca48c0e718a"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/pitch_profiles.cpp.obj",
+      "bytes": 77260,
+      "sha256": "b3418e8da643ad491fe003dbb4ffc511d86e7a5bc4a5b73a82c46985e67a9104"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/preamp_fx.cpp.obj",
+      "bytes": 108947,
+      "sha256": "22bebb504becf037dcec0892ee1ec816edbc8e9a8164796a102d6e89a0e7e7db"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/preamp_models.cpp.obj",
+      "bytes": 97499,
+      "sha256": "90b3e8f5c267a6076e6db2e3a9e2542025e43235680a3c700909dc65e14b2d53"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj",
+      "bytes": 125102,
+      "sha256": "ee5a987cb63c1e8374770db478c46a6fbe5a1e1bdb6538249e88551b3372c370"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/reconstruction_fx_adapter.cpp.obj",
+      "bytes": 344820,
+      "sha256": "f3d11ad7b52066812e6902b99581cb22ababaedcce51cfce33282dd62bb13d5b"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/rhythm.cpp.obj",
+      "bytes": 50411,
+      "sha256": "5c4c39e1bdcd558b787dba67e06eab75c0e41f604077442e1c78a6a6128a6d31"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/rhythmic_fx.cpp.obj",
+      "bytes": 58435,
+      "sha256": "3f39d883c4022bae9adca1b1c23e886ce6f778f173abafd66c6f27047408704c"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj",
+      "bytes": 539519,
+      "sha256": "d9d477ca2e382ce761b995a265ab703ef94371badc056efc6ff308670d0a0ae3"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/spatial_fx_adapters.cpp.obj",
+      "bytes": 35419,
+      "sha256": "3b7371861ab385879e0d8c6f9e7efd22f05cf0a08134688b17551fb023626994"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj",
+      "bytes": 329032,
+      "sha256": "51124c88c0f0df59b854d362d224b017ee8fcda721ddf3eec408fa487c5059bf"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/streaming_yin.cpp.obj",
+      "bytes": 135591,
+      "sha256": "500c91a32c1bc6483ede3f278f1d21275160cea2be672710f7b2f63c5ce1cc9e"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/CMakeFiles/webrc_dsp.dir/src/temporal_fx_adapters.cpp.obj",
+      "bytes": 107716,
+      "sha256": "ca4428bf36692c2dfa66e56adfa1d36cb77493cebdd696c08c2dcca9d52e4d12"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/composite_fx_tests.exe",
+      "bytes": 74240,
+      "sha256": "b21c7be3968b83935c644d083bcef900bbff7592abef67d048e20f8205cfca88"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/control_dynamics_tests.exe",
+      "bytes": 38912,
+      "sha256": "cd3301efb9162d41328f508767b912e408cde50514ec8e9ee57060cddf6e3ef6"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/distortion_fx_tests.exe",
+      "bytes": 41984,
+      "sha256": "6f5e539310d08b65462062d89c389ae86a8bbf977172c69d14237ff90afe3ff4"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/dsp_primitives_tests.exe",
+      "bytes": 54784,
+      "sha256": "0be3a46ea2de0670a55b2fb798be454ce3c807f546ae8d00e9d3190e161a71e8"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/fx_registry_tests.exe",
+      "bytes": 337408,
+      "sha256": "0a7da2ba2c2eb7132799bc3f4617cd742175f6d1585b698168638601c1c8d817"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/live_mono_pitch_tests.exe",
+      "bytes": 53760,
+      "sha256": "2f2954a202eec671b5ee65b54cbbce56b9c1909b1ae9c7fd39c6ef6a15283e20"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/modulated_delay_fx_tests.exe",
+      "bytes": 38912,
+      "sha256": "306bb17945cfd91f48e12f3c792165392c8235a1be3e48d23b41df6683058e51"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/modulation_fx_tests.exe",
+      "bytes": 43520,
+      "sha256": "dd5ec19fc213c387035d0bbe039a91c2d3180736e9f2d46bb0536a4f030e5b29"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/native_dsp_primitives_bench.exe",
+      "bytes": 60416,
+      "sha256": "e67df2ee1e2d544a3e661f7da90f452e44c3ed82074f4f0f907001e4f21b758e"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/nonlinear_tests.exe",
+      "bytes": 53760,
+      "sha256": "19f8ec040f7cf7b2681d8956807444656c89553dc4a9a602574daf90f3882ae9"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/octave_fx_tests.exe",
+      "bytes": 51712,
+      "sha256": "2c6e3300ee3bb51c535be53a72ed6b411de876d7395d53dc4dd525bdccd8a4c1"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/octave_models_tests.exe",
+      "bytes": 69632,
+      "sha256": "5db4e3c22d44099aca4c8345a82ca7a20b026e3b329238aea368fc9068630665"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/performance_fx_tests.exe",
+      "bytes": 60928,
+      "sha256": "13af44e5f4726573e6f645b3dca98539f72a712517d75977b6618daeba48e08d"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/pitch_profiles_tests.exe",
+      "bytes": 130048,
+      "sha256": "80920bd5093210aceb419b9ff4065fba9e635aa68a1a5c9e0c039091ccf0c6f5"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/pitch_tests.exe",
+      "bytes": 147456,
+      "sha256": "b03b6b63afc9f12c82550a59b5ce2527e476958678aa2de8f9b3f2bf2adb6a4e"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/preamp_fx_tests.exe",
+      "bytes": 70144,
+      "sha256": "6090d5c4b76582f1bd68690fa7868be93189e363408b75030094af32278ee858"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/preamp_models_tests.exe",
+      "bytes": 81920,
+      "sha256": "f44b4e4dd1d434ca0601e5cd07abf33a744e1cf8efdcb2ba9faeebf002dd6ae3"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/reconstruction_fx_adapter_tests.exe",
+      "bytes": 153088,
+      "sha256": "502341892a4d6c320ea94159597b8ebb5b7b74831ed4708be4dd0efa01bb7ada"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/rhythm_tests.exe",
+      "bytes": 322560,
+      "sha256": "a3b5ce5e5a6250f5de0fb107c820abd37987e576210b12e1c195328b6c483d62"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/rhythmic_fx_tests.exe",
+      "bytes": 46080,
+      "sha256": "6534885ed9a3715a423eb5e37442f6489b15c8d12c39006e814077c691001868"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/spatial_fx_adapters_tests.exe",
+      "bytes": 59392,
+      "sha256": "b1731a47cffdbaabec20d9c5f98cce58c706570243ea41657820991672f4bf5b"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/spatial_temporal_tests.exe",
+      "bytes": 131072,
+      "sha256": "272b0df8b67728d49141bce273e646755962e26a7c96aee924715613f739ff2e"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/streaming_yin_tests.exe",
+      "bytes": 38400,
+      "sha256": "fbb3bb207936256d48e1208ef8a8474efbdfff8b28082b1de48caf25f8321fae"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/temporal_fx_adapters_tests.exe",
+      "bytes": 115712,
+      "sha256": "b7be41681620c6bbc3509a1ad6c9c27d2e17239529ef720b11d9ac9d96180d11"
+    },
+    {
+      "path": "evidence/outputs/build-root/shared_dsp/webrc_dsp.lib",
+      "bytes": 5428746,
+      "sha256": "21dc738e03a2150075181ec3e883d88e649facac2599f5ff6f05ad3948683ccd"
+    },
+    {
+      "path": "finalize_delta.py",
+      "bytes": 14033,
+      "sha256": "9e53a6a8648a3511cb95fbca493081253d2b28c32f54b41259fa2b0aa809121c"
+    },
+    {
+      "path": "native-verify-copied-source-build-ctest.log",
+      "bytes": 51907,
+      "sha256": "b8f1c0ee81dea6671e909b0510e5c0aea8497292e86040e6a5022d18cdeaa753"
+    },
+    {
+      "path": "native-verify-copied-source-instrumented-build-ctest.log",
+      "bytes": 88701,
+      "sha256": "0b4090361888610b02edeb48c6c08888f318c6721c4242ab0d14a1f5ff4c2ee1"
+    },
+    {
+      "path": "native-verify-showincludes-instrumented.log",
+      "bytes": 88701,
+      "sha256": "0b4090361888610b02edeb48c6c08888f318c6721c4242ab0d14a1f5ff4c2ee1"
+    },
+    {
+      "path": "native-verify-showincludes.log",
+      "bytes": 51907,
+      "sha256": "b8f1c0ee81dea6671e909b0510e5c0aea8497292e86040e6a5022d18cdeaa753"
+    },
+    {
+      "path": "post-overlay-source-manifest.json",
+      "bytes": 305738,
+      "sha256": "386bea4f663518b40cd07df663f9216fab636898a8452dfad270b6185605784b"
+    },
+    {
+      "path": "prebuild-source-verification.json",
+      "bytes": 304240,
+      "sha256": "92e2cf6fb8a6b9bcabcbfc7100b851bfc6a5069a482de350311fdb741b299189"
+    },
+    {
+      "path": "run-verify-showincludes.cmd",
+      "bytes": 3038,
+      "sha256": "266a1eb89cde720110bcb784bdec55ebc9e37586aa656c6907c72a73834691f6"
+    }
+  ]
+}

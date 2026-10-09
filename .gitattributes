@@ -377,3 +377,7 @@ bench/results/rubberband-r2r3-independent-20261009T195900Z/** -text -whitespace
 bench/results/rubberband-r2r3-additive-stable-window-audit-v2-20261009T201400Z/** -text -whitespace
 bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whitespace
 /docs/validation/20261009/rubberband-independent-root-review.json -text -whitespace
+/bench/results/native-fx-startup-warmup-delta-20261009T2011Z/** -text -whitespace
+/docs/validation/20261010/native-startup-warmup-delta-root-review.json -text -whitespace
+/docs/validation/20261010/root-native-startup-warmup-delta-ctest.log -text -whitespace
+/scripts/review-native-startup-warmup-delta.py -text -whitespace

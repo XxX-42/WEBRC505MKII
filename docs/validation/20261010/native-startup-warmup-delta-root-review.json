@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-10-09T20:32:50.243415+00:00",
+  "archive": "bench/results/native-fx-startup-warmup-delta-20261009T2011Z",
+  "archiveIndexSha256": "2dc51649fd515b5f12119356528ac823a9da3590709095ed901ab6d6984f5153",
+  "indexedFilesVerifiedBeforeAndAfterRootCTest": 134,
+  "baseSourceFilesVerified": 1415,
+  "overlayFilesVerified": 5,
+  "postOverlaySourceSetSha256": "0a425619e802822507ecb815d73b5e2fb1bdb58dd6aad328ed5cfa813465eb96",
+  "actualCompiledTranslationUnitsVerified": 66,
+  "preservedBuildArtifactsVerifiedBeforeAndAfter": 109,
+  "inheritedCompilerDependencyCandidatesRehashed": 478,
+  "copiedSourceInputCandidates": 149,
+  "externalToolchainInputCandidates": 329,
+  "includeDirectiveComparison": [
+    {
+      "path": "native-mvp/engine-cpp/include/native_fx_graph.hpp",
+      "includeDirectivesIdentical": true,
+      "added": [],
+      "removed": []
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_fx_graph.cpp",
+      "includeDirectivesIdentical": false,
+      "added": [],
+      "removed": [
+        "#include \"webrc/dsp/preamp_models.hpp\""
+      ]
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/native_fx_graph_tests.cpp",
+      "includeDirectivesIdentical": true,
+      "added": [],
+      "removed": []
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "includeDirectivesIdentical": true,
+      "added": [],
+      "removed": []
+    },
+    {
+      "path": "shared/dsp/src/fx_registry.cpp",
+      "includeDirectivesIdentical": true,
+      "added": [],
+      "removed": []
+    }
+  ],
+  "dependencyGraphMethod": "Inherited from accepted base closure graph (66 TUs / 478 unique inputs). The five overlay files are already dependencies in that graph; source-snapshot dependency paths were rebound to this copied tree and all hashes refreshed. The five code edits are implementation-only and add no include directives. All external toolchain dependency files were rehashed against the pinned base rows before sealing.",
+  "rootCTest": {
+    "tests": 28,
+    "passed": 28,
+    "failed": 0,
+    "filtered": false,
+    "exitCode": 0,
+    "log": "docs/validation/20261010/root-native-startup-warmup-delta-ctest.log",
+    "logSha256": "1389a6e0dd2f3cf05eadbf66595bcc2e421d78b8e75d4021a6a0ab044a64437f",
+    "testResults": [
+      {
+        "name": "looper_core_tests",
+        "seconds": 0.03
+      },
+      {
+        "name": "native_multitrack_core_tests",
+        "seconds": 0.05
+      },
+      {
+        "name": "native_track_host_tests",
+        "seconds": 0.06
+      },
+      {
+        "name": "native_fx_graph_tests",
+        "seconds": 0.08
+      },
+      {
+        "name": "dsp_primitives_tests",
+        "seconds": 0.05
+      },
+      {
+        "name": "control_dynamics_tests",
+        "seconds": 0.04
+      },
+      {
+        "name": "nonlinear_tests",
+        "seconds": 0.19
+      },
+      {
+        "name": "spatial_temporal_tests",
+        "seconds": 0.52
+      },
+      {
+        "name": "pitch_tests",
+        "seconds": 0.44
+      },
+      {
+        "name": "pitch_profiles_tests",
+        "seconds": 0.19
+      },
+      {
+        "name": "streaming_yin_tests",
+        "seconds": 0.09
+      },
+      {
+        "name": "live_mono_pitch_tests",
+        "seconds": 0.17
+      },
+      {
+        "name": "fx_registry_tests",
+        "seconds": 0.25
+      },
+      {
+        "name": "performance_fx_tests",
+        "seconds": 0.15
+      },
+      {
+        "name": "modulation_fx_tests",
+        "seconds": 0.09
+      },
+      {
+        "name": "rhythm_tests",
+        "seconds": 0.57
+      },
+      {
+        "name": "composite_fx_tests",
+        "seconds": 0.2
+      },
+      {
+        "name": "modulated_delay_fx_tests",
+        "seconds": 0.34
+      },
+      {
+        "name": "rhythmic_fx_tests",
+        "seconds": 0.17
+      },
+      {
+        "name": "spatial_fx_adapters_tests",
+        "seconds": 0.1
+      },
+      {
+        "name": "preamp_fx_tests",
+        "seconds": 1.07
+      },
+      {
+        "name": "preamp_models_tests",
+        "seconds": 4.42
+      },
+      {
+        "name": "distortion_fx_tests",
+        "seconds": 0.38
+      },
+      {
+        "name": "octave_fx_tests",
+        "seconds": 0.8
+      },
+      {
+        "name": "octave_models_tests",
+        "seconds": 2.87
+      },
+      {
+        "name": "temporal_fx_adapters_tests",
+        "seconds": 0.92
+      },
+      {
+        "name": "reconstruction_fx_adapter_tests",
+        "seconds": 0.06
+      },
+      {
+        "name": "apinames",
+        "seconds": 0.04
+      }
+    ]
+  },
+  "limitations": [
+    "Only API/PREAMP warmup/rate fix is covered; older finite-history FX bounds remain incomplete",
+    "Dependency graph inherited from accepted base; no successful fresh include trace in this delta",
+    "native_fx_graph.cpp removed preamp_models.hpp; inherited dependency candidates are a conservative base graph rather than a newly measured exact graph",
+    "Original source prebuild verification was preserved; root rehash occurs after the producer build",
+    "PREAMP fixed alignment and input-history warmup are different quantities",
+    "Known FourByTwelve comment label mismatch is preserved; actual 19ms model is EightByTwelve",
+    "No hardware, full realtime qualification, 53-FX completion or Gate pass"
+  ]
+}
