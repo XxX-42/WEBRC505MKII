@@ -1,0 +1,158 @@
+{
+  "schema": "native-bridge-checkpoint-v1",
+  "createdAtUtc": "20261009T152628Z",
+  "scope": "Native five-stereo host/bridge sources; Native verification script; current Native TS facade/proxy/bridge and targeted tests; shared DSP reference points to committed 62-input checkpoint.",
+  "sourceCaptureNote": "Native C++ input files were copied immediately after the completed build; no complete before/after live-tree fingerprint was recorded, so this archive identifies the copied tree, not a proven exact build-time source snapshot. Root should independently rerun against live commit candidate before promotion.",
+  "nativeBuild": {
+    "exitCode": 0,
+    "configuration": "Release/NMake",
+    "cacheSha256": "ccccaf19f3149ef365b636e2910aa7d5af01446f44fafc45deb181e5e26886c4",
+    "compiler": "MSVC 19.50.35721.0",
+    "logSha256": "5b7c619eb909dd548f6f6cd45ad67c9366ea41d37a49bf33ec67609263a7131f",
+    "buildRoot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-full-checkpoint-20261009",
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native-verify.ps1 -BuildRoot C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-full-checkpoint-20261009",
+    "ctest": "15/15 passed including host core, 11 shared DSP tests, apinames",
+    "hardware": "not opened"
+  },
+  "nativeSources": [
+    {
+      "path": "native-mvp/engine-cpp/CMakeLists.txt",
+      "bytes": 3885,
+      "sha256": "64e310a1ca3aee770e7fe5e7ed6cabae6d922a7cc573eb245487e0c3f40f0d4b"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/looper_core.hpp",
+      "bytes": 1611,
+      "sha256": "cc74e02f732331d605c2ac6852dfa4feba37da4a5eb368a1c12aab9d175e72f2"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/native_audio_core.hpp",
+      "bytes": 11147,
+      "sha256": "a8f9c135244aebe4411c923dc18abd9646e2b822541944585fedce938adf6bf5"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/native_track_host.hpp",
+      "bytes": 4052,
+      "sha256": "4aad07d5a1eb9d6ad6559b7ff6f4ec311f217b0d91b84fdb349c075ab1f19255"
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/multitrack_looper_core.hpp",
+      "bytes": 6070,
+      "sha256": "f0121a8e092aff0bc9d75faa34ac8dc450bee7b35a7755367cd8a5cc21174783"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/looper_core.cpp",
+      "bytes": 5638,
+      "sha256": "0a7e7a0f217cefa3071fa44971991272b4aab2cff26ec991eef9987352f21ec4"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_audio_core.cpp",
+      "bytes": 37117,
+      "sha256": "cd0ac8fe06a612c638624ea0759d086821cb612bf83f82c1a4eea505e22bd6ac"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_bridge_host.cpp",
+      "bytes": 13624,
+      "sha256": "52d029eb44cf16affd316b3859e189d9f7b9129fc1ce868854f08f4a8140e18a"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_track_host.cpp",
+      "bytes": 12068,
+      "sha256": "20a28484a9f0c9e5f700b2add78117c759860a09c24865323adc233a5dc25dc3"
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/multitrack_looper_core.cpp",
+      "bytes": 20186,
+      "sha256": "5a83c21d0dc57447a7ebc3048215ca40c0806af455df21bea229a614dd38237d"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/looper_core_tests.cpp",
+      "bytes": 5941,
+      "sha256": "06df554165322d90f094da35d04f2157ca86a639652727fe0d313d6345b3f977"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp",
+      "bytes": 16855,
+      "sha256": "b074a25776ca05f4f3ccf7547d02e2591ef001fd9c7065a55da2d25035b9b600"
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/native_track_host_tests.cpp",
+      "bytes": 10208,
+      "sha256": "a4289f63a67f7951357c898ad74973a4875c66228d527520919163423694b48b"
+    },
+    {
+      "path": "native-mvp/engine-cpp/benchmarks/native_looper_bench.cpp",
+      "bytes": 9365,
+      "sha256": "eded4f7ed47e2943850e38fb2abde9d0091b1b6982f21b4d9361880d20ddc3ba"
+    },
+    {
+      "path": "scripts/native-verify.ps1",
+      "bytes": 4380,
+      "sha256": "02dbd2c96c59d6f725ace2772e8c380eb5e129f20fa297f70c2d47b0099cd5fb"
+    },
+    {
+      "path": "scripts/native-build-common.ps1",
+      "bytes": 8776,
+      "sha256": "aa58d312bb9283cd9c0a051ba4be48e8a0f3cebe5b314e841b6bbc0446832ad3"
+    }
+  ],
+  "typescript": {
+    "manifestSha256": "35156405924a9ef60996057e6b28cd7f14729b378033fe24766ffffc6a83c000",
+    "targetedTests": "7/7 PASS",
+    "evidenceSha256": "7dd4abb76b779447e7356d039e5faaa0bf84cd10686f600c122c78ec7f8f299e",
+    "baseCommit": "d6bceb7fab5b0f00a88a4d22d23f8830d08d8128",
+    "typecheckAndBuild": "PASS",
+    "files": [
+      "AudioEngine.ts Native hunks retained; only Browser selectCleanRoomRhythm method omitted",
+      "NativeAudioEngine.ts",
+      "NativeBridgeClient.ts",
+      "NativeTrackProxy.ts",
+      "useControlDispatcher.ts",
+      "tests/unit/audioEngine.spec.ts",
+      "tests/unit/nativeBridgeClient.spec.ts"
+    ]
+  },
+  "sharedDspReference": {
+    "archivePath": "bench/results/native_shared_dsp_checkpoint_20261009T151930Z",
+    "manifestPath": "bench/results/native_shared_dsp_checkpoint_20261009T151930Z/source-manifest.json",
+    "manifestSha256": "7883259e6512385dea7138277cfaf806a1f2d65cdf17647cf29e0cef39cefdde",
+    "aggregateSha256": "e66b8890c310aa490bd04a944dce1cc8bc6e4de452b89a8699d2b309ff36b3f4"
+  },
+  "archivedFiles": {
+    "source-snapshot/native-mvp/engine-cpp/include/multitrack_looper_core.hpp": "f0121a8e092aff0bc9d75faa34ac8dc450bee7b35a7755367cd8a5cc21174783",
+    "typescript-snapshot/tests/unit/nativeBridgeClient.spec.ts": "c9a27445b1689c7873868a9debac4409a2daa8f3e8af65d8545ae41538af8707",
+    "source-snapshot/native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp": "b074a25776ca05f4f3ccf7547d02e2591ef001fd9c7065a55da2d25035b9b600",
+    "source-snapshot/native-mvp/engine-cpp/tests/native_track_host_tests.cpp": "a4289f63a67f7951357c898ad74973a4875c66228d527520919163423694b48b",
+    "typescript-snapshot/tests/unit/audioEngine.spec.ts": "28683a264af85434ad4d54d8e7078e7b7f79e1227dc46ffa417bddeccf50d98c",
+    "source-snapshot/native-mvp/engine-cpp/src/multitrack_looper_core.cpp": "5a83c21d0dc57447a7ebc3048215ca40c0806af455df21bea229a614dd38237d",
+    "source-snapshot/native-mvp/engine-cpp/include/looper_core.hpp": "cc74e02f732331d605c2ac6852dfa4feba37da4a5eb368a1c12aab9d175e72f2",
+    "compiler-flags/native_bridge_host.dir/flags.make": "1d814a35d296c5720650ab3410caae5ec30fdaa26a81b30e569c30633e92c8ea",
+    "typecheck-build.log": "f8f021f3eb9d46759252537df42f537be6ee2e0051fdf93316b80ac3f0ffa70a",
+    "compiler-flags/native_multitrack_core.dir/flags.make": "3d9dac2d19761a212d6dde0349c7e0db0b6c57022fb944bd533a3761fedd28ce",
+    "compiler-flags/native_audio_core.dir/flags.make": "eaf9a8b6fb8f98ec101bfb9c33117830a8cee077ea2bb6bb96353818e7830fcd",
+    "compiler-flags/native_track_host.dir/flags.make": "3d9dac2d19761a212d6dde0349c7e0db0b6c57022fb944bd533a3761fedd28ce",
+    "typescript-snapshot/src/audio/NativeBridgeClient.ts": "22abb45d509a38cd2ae2ed5a38d365f66c457841f67929d2527ba0331478dccd",
+    "native-verify.log": "5b7c619eb909dd548f6f6cd45ad67c9366ea41d37a49bf33ec67609263a7131f",
+    "source-snapshot/native-mvp/engine-cpp/include/native_audio_core.hpp": "a8f9c135244aebe4411c923dc18abd9646e2b822541944585fedce938adf6bf5",
+    "snapshot-manifest.json": "35156405924a9ef60996057e6b28cd7f14729b378033fe24766ffffc6a83c000",
+    "evidence.json": "7dd4abb76b779447e7356d039e5faaa0bf84cd10686f600c122c78ec7f8f299e",
+    "typescript-snapshot/src/audio/AudioEngine.ts": "a7c0718aaa200fac1c85ea553a520ed4f5291115cfe185d7e840cd9a2c42cc73",
+    "source-snapshot/scripts/native-verify.ps1": "02dbd2c96c59d6f725ace2772e8c380eb5e129f20fa297f70c2d47b0099cd5fb",
+    "CMakeCache.txt": "ccccaf19f3149ef365b636e2910aa7d5af01446f44fafc45deb181e5e26886c4",
+    "source-snapshot/native-mvp/engine-cpp/tests/looper_core_tests.cpp": "06df554165322d90f094da35d04f2157ca86a639652727fe0d313d6345b3f977",
+    "source-snapshot/native-mvp/engine-cpp/src/native_track_host.cpp": "20a28484a9f0c9e5f700b2add78117c759860a09c24865323adc233a5dc25dc3",
+    "source-snapshot/native-mvp/engine-cpp/src/native_audio_core.cpp": "cd0ac8fe06a612c638624ea0759d086821cb612bf83f82c1a4eea505e22bd6ac",
+    "shared-dsp-freeze-ref.json": "c0a8fa06f842560f1ea27ba87a1098f004a6e1ce4407a7d72494003bb3ad8bfa",
+    "typescript-snapshot/src/composables/useControlDispatcher.ts": "4d79dddc46fb523e8bc32271cf3a8e0e5468f4c2c96cb21c96cb7118cfdbfdfb",
+    "source-snapshot/native-mvp/engine-cpp/benchmarks/native_looper_bench.cpp": "eded4f7ed47e2943850e38fb2abde9d0091b1b6982f21b4d9361880d20ddc3ba",
+    "typescript-snapshot/src/audio/NativeTrackProxy.ts": "444fd3c2c12c70eb7ec9b87ff94dce25b4ac26e201e98d7e95630f06e6ccc5b5",
+    "native-targeted-tests.log": "54164c314aaa9e7e772da4b4e8daf36174098ce633b07b1352ae783021e59b31",
+    "source-snapshot/native-mvp/engine-cpp/CMakeLists.txt": "64e310a1ca3aee770e7fe5e7ed6cabae6d922a7cc573eb245487e0c3f40f0d4b",
+    "source-snapshot/native-mvp/engine-cpp/src/looper_core.cpp": "0a7e7a0f217cefa3071fa44971991272b4aab2cff26ec991eef9987352f21ec4",
+    "typescript-snapshot/src/audio/NativeAudioEngine.ts": "30ac383744b79237986d48f1a32cf124248f33f5b0df2711af44fa39f55e1685",
+    "head-src-tests-config.zip": "1c531a807dbae5cfc5b60c95e712b227dfc082adcee45169bad209eb0276da27",
+    "source-snapshot/native-mvp/engine-cpp/src/native_bridge_host.cpp": "52d029eb44cf16affd316b3859e189d9f7b9129fc1ce868854f08f4a8140e18a",
+    "source-snapshot/scripts/native-build-common.ps1": "aa58d312bb9283cd9c0a051ba4be48e8a0f3cebe5b314e841b6bbc0446832ad3",
+    "source-snapshot/native-mvp/engine-cpp/include/native_track_host.hpp": "4aad07d5a1eb9d6ad6559b7ff6f4ec311f217b0d91b84fdb349c075ab1f19255"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "native-ts-checkpoint-evidence-v1",
+  "manifestSha256": "35156405924a9ef60996057e6b28cd7f14729b378033fe24766ffffc6a83c000",
+  "trackedHeadArchiveSha256": "1c531a807dbae5cfc5b60c95e712b227dfc082adcee45169bad209eb0276da27",
+  "baseCommit": "d6bceb7fab5b0f00a88a4d22d23f8830d08d8128",
+  "overlays": [
+    {
+      "path": "src/audio/NativeAudioEngine.ts",
+      "sha256": "30ac383744b79237986d48f1a32cf124248f33f5b0df2711af44fa39f55e1685"
+    },
+    {
+      "path": "src/audio/NativeBridgeClient.ts",
+      "sha256": "22abb45d509a38cd2ae2ed5a38d365f66c457841f67929d2527ba0331478dccd"
+    },
+    {
+      "path": "src/audio/NativeTrackProxy.ts",
+      "sha256": "444fd3c2c12c70eb7ec9b87ff94dce25b4ac26e201e98d7e95630f06e6ccc5b5"
+    },
+    {
+      "path": "src/composables/useControlDispatcher.ts",
+      "sha256": "4d79dddc46fb523e8bc32271cf3a8e0e5468f4c2c96cb21c96cb7118cfdbfdfb"
+    },
+    {
+      "path": "tests/unit/audioEngine.spec.ts",
+      "sha256": "28683a264af85434ad4d54d8e7078e7b7f79e1227dc46ffa417bddeccf50d98c"
+    },
+    {
+      "path": "tests/unit/nativeBridgeClient.spec.ts",
+      "sha256": "c9a27445b1689c7873868a9debac4409a2daa8f3e8af65d8545ae41538af8707"
+    },
+    {
+      "path": "src/audio/AudioEngine.ts",
+      "sha256": "a7c0718aaa200fac1c85ea553a520ed4f5291115cfe185d7e840cd9a2c42cc73",
+      "note": "Native v2 capability changes retained; Browser-only selectCleanRoomRhythm method removed"
+    }
+  ],
+  "validation": {
+    "logSha256": "f8f021f3eb9d46759252537df42f537be6ee2e0051fdf93316b80ac3f0ffa70a",
+    "meaning": "vue-tsc -b and Vite production build",
+    "exitCode": 0,
+    "log": "typecheck-build.log",
+    "command": "npm run build"
+  },
+  "targetedTests": {
+    "exitCode": 0,
+    "logSha256": "54164c314aaa9e7e772da4b4e8daf36174098ce633b07b1352ae783021e59b31",
+    "log": "native-targeted-tests.log",
+    "files": 2,
+    "failed": 0,
+    "passed": 7,
+    "command": "npm run test:unit -- tests/unit/audioEngine.spec.ts tests/unit/nativeBridgeClient.spec.ts --maxWorkers=4 --minWorkers=1"
+  },
+  "notes": [
+    "Source tree is a filtered HEAD archive for src/tests/public/config; bench artifacts excluded.",
+    "Native files overlaid from current working tree.",
+    "AudioEngine.ts retains Native v2 changes with only Browser-only selectCleanRoomRhythm method removed.",
+    "node_modules is a junction to the working checkout; tests use the installed dependency versions present there."
+  ]
+}

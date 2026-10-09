@@ -1,0 +1,55 @@
+{
+  "schema": "native-bridge-buildaudit-file-index-v1",
+  "files": [
+    {
+      "path": "audit.json",
+      "bytes": 7362,
+      "sha256": "3bbe40cd877641c42f9491e0027e8d223dccf9349a7cf6a3ff7a6b2e46c3c953"
+    },
+    {
+      "path": "build-inputs/CMakeCache.txt",
+      "bytes": 30837,
+      "sha256": "dec6397c537b3cd15745866b0858a67651d30b301ac9440ee78e2da0030de0f5"
+    },
+    {
+      "path": "build-inputs/CMakeCXXCompiler.cmake",
+      "bytes": 6658,
+      "sha256": "a6bf7faafd30fedf601d1ac066f3ae1c05bba089ef33510a738e569d1dbe205c"
+    },
+    {
+      "path": "build-inputs/LastTest.log",
+      "bytes": 15783,
+      "sha256": "68b8c7958e5afe6d9c6564b23a8bf6be5da45b98c02e987bf2f41d3a43639361"
+    },
+    {
+      "path": "build-inputs/native_bridge_host.build.make",
+      "bytes": 8308,
+      "sha256": "7c4df211734c50c85785cf6322aafa3179932ab296f955c0dc573995f1d387a1"
+    },
+    {
+      "path": "build-inputs/native-verify-transcript.log",
+      "bytes": 45218,
+      "sha256": "ef7c1d0df95858a2d6588483b6576ffa3bf1711211881bd9d06256856d412bad"
+    },
+    {
+      "path": "build-inputs/run-verify.cmd",
+      "bytes": 2466,
+      "sha256": "e3bf9201d14166c80e181298b60f05e48ef659d99ee9f048c5a954f67bf8188d"
+    },
+    {
+      "path": "build-inputs/webrc_dsp.build.make",
+      "bytes": 55847,
+      "sha256": "c930d7c7cfa04e6344a9033a5c29758a666f172d3e8df336ae3765caf1dae729"
+    },
+    {
+      "path": "combined-source-manifest.json",
+      "bytes": 24720,
+      "sha256": "ddb7567b8a6d358933290663510ba7db3c891735252db5d592cc2f61e17f0c2e"
+    },
+    {
+      "path": "toolchain.log",
+      "bytes": 3146,
+      "sha256": "0fd22b5827e48196ae606c6c551a7d86bf6e48e99a3d3e23b4b711645c6c0653"
+    }
+  ]
+}

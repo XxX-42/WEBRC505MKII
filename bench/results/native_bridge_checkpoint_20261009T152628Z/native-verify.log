@@ -1,0 +1,588 @@
+MSVC toolchain: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools / 14.29.30133 (vswhere)
+Using cached FetchContent source(s): rtaudio_src-src, httplib_src-src, json_src-src
+CMake binary directory and MSVC /Fo object output stay under TEMP: C:\Users\user1000\AppData\Local\Temp\webrc-native-full-checkpoint-20261009
+**********************************************************************
+** Visual Studio 2019 Developer Command Prompt v16.11.58
+** Copyright (c) 2021 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+-- The CXX compiler identification is MSVC 19.29.30159.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE) 
+-- Looking for gettimeofday
+-- Looking for gettimeofday - not found
+-- Compiling with support for: wasapi
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Using the multi-header code from D:/Documents/Codes/2024_1_WebRC505MKII/2025_WebRC505MKII_v2/native-mvp/build-v145/_deps/json_src-src/include/
+-- Configuring done (11.4s)
+-- Generating done (1.8s)
+-- Build files have been written to: C:/Users/user1000/AppData/Local/Temp/webrc-native-full-checkpoint-20261009
+[  3%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj
+primitives.cpp
+[  7%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj
+control_dynamics.cpp
+[ 11%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj
+nonlinear.cpp
+[ 14%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj
+fft.cpp
+[ 18%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj
+spatial_temporal.cpp
+[ 22%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj
+pitch.cpp
+[ 25%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj
+signalsmith_adapter.cpp
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(530): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥渃onst Sample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::DynamicSTFT<Sample,false,1>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\src\signalsmith_adapter.cpp(94): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::stretch::SignalsmithStretch<float,void>鈥濈殑寮曠敤
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(50): warning C4305: 鈥滃弬鏁扳€? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(49): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::stretch::SignalsmithStretch<float,void>::reset(void)鈥濇椂
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\src\signalsmith_adapter.cpp(127): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::stretch::SignalsmithStretch<float,void>::reset(void)鈥濈殑寮曠敤
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\shared\dsp\src\signalsmith_adapter.cpp(94): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::stretch::SignalsmithStretch<float,void>鈥濈殑寮曠敤
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(554): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渟ize_t鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(544): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(91): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::DynamicSTFT<Sample,false,1>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(980): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(970): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(37): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(19): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::RealFFT<Sample,false,true>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(985): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(991): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(115): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(112): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::SimpleFFT<Sample>::resize(size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(109): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SimpleFFT<Sample>::resize(size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(321): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::SimpleFFT<Sample>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(328): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::Pow2FFT<Sample>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(960): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑 绫?妯℃澘 瀹炰緥鍖栤€渟ignalsmith::linear::SplitFFT<Sample,false>鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(667): warning C4458: 鈥渘orm鈥濈殑澹版槑闅愯棌浜嗙被鎴愬憳
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(543): note: 鍙傝鈥渟ignalsmith::linear::DynamicSTFT<Sample,false,1>::norm鈥濈殑澹版槑
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(287): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(75): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(672): warning C4244: 鈥?鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(677): warning C4244: 鈥?=鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(635): warning C4244: 鈥?鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(640): warning C4244: 鈥?=鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(692): warning C4244: 鈥?=鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淿Ty鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            _Ty=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): warning C4127: 鏉′欢琛ㄨ揪寮忔槸甯搁噺
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(420): note: 鑰冭檻鏀圭敤 "if constexpr" 璇彞
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(408): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep(size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): warning C4127: 鏉′欢琛ㄨ揪寮忔槸甯搁噺
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(387): note: 鑰冭檻鏀圭敤 "if constexpr" 璇彞
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(330): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(337): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep(size_t,size_t)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1222): warning C4456: 鈥渉Size鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1183): note: 鍙傝鈥渉Size鈥濈殑澹版槑
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1181): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(426): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1015): warning C4456: 鈥渉Size鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1011): note: 鍙傝鈥渉Size鈥濈殑澹版槑
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1009): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(386): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(1012): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渇loat鈥濊浆鎹㈠埌鈥渋nt鈥濓紝鍙兘涓㈠け鏁版嵁
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(972): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)鈥濇椂
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(691): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)鈥濈殑寮曠敤
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(682): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥淪ample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(623): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(623): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(456): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(456): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(455): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1220): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(682): warning C4244: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濊浆鎹㈠埌鈥渃onst Sample鈥濓紝鍙兘涓㈠け鏁版嵁
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(777): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(629): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(629): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(778): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(779): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(780): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(849): warning C4456: 鈥渟umR鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(840): note: 鍙傝鈥渟umR鈥濈殑澹版槑
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(632): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(632): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(849): warning C4456: 鈥渟umI鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(840): note: 鍙傝鈥渟umI鈥濈殑澹版槑
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(744): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(547): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(547): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(448): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(448): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(447): note: 鍦ㄧ紪璇?绫?妯℃澘 鎴愬憳鍑芥暟鈥渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)鈥濇椂
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(1274): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(745): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(746): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(747): warning C4305: 鈥滃垵濮嬪寲鈥? 浠庘€渄ouble鈥濆埌鈥淪ample鈥濇埅鏂?
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(818): warning C4456: 鈥渟um鈥濈殑澹版槑闅愯棌浜嗕笂涓€涓湰鍦板０鏄?
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(811): note: 鍙傝鈥渟um鈥濈殑澹版槑
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(550): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\third_party\signalsmith-linear\./fft.h(550): note: 鏌ョ湅瀵规鍦ㄧ紪璇戠殑鍑芥暟 妯℃澘 瀹炰緥鍖栤€渧oid signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)鈥濈殑寮曠敤
+        with
+        [
+            Sample=float
+        ]
+[ 29%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/streaming_yin.cpp.obj
+streaming_yin.cpp
+[ 33%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/live_mono_pitch.cpp.obj
+live_mono_pitch.cpp
+[ 37%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj
+fx_registry.cpp
+[ 40%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/performance_fx.cpp.obj
+performance_fx.cpp
+[ 44%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/modulation_fx.cpp.obj
+modulation_fx.cpp
+[ 48%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/rhythm.cpp.obj
+rhythm.cpp
+[ 51%] Building CXX object shared_dsp/CMakeFiles/webrc_dsp.dir/src/cleanroom_rhythm_data.cpp.obj
+cleanroom_rhythm_data.cpp
+[ 55%] Linking CXX static library webrc_dsp.lib
+[ 55%] Built target webrc_dsp
+[ 59%] Building CXX object CMakeFiles/native_multitrack_core.dir/src/multitrack_looper_core.cpp.obj
+multitrack_looper_core.cpp
+[ 62%] Linking CXX static library native_multitrack_core.lib
+[ 62%] Built target native_multitrack_core
+[ 66%] Building CXX object CMakeFiles/native_track_host.dir/src/native_track_host.cpp.obj
+native_track_host.cpp
+[ 70%] Linking CXX static library native_track_host.lib
+[ 70%] Built target native_track_host
+[ 74%] Building CXX object _deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/RtAudio.cpp.obj
+RtAudio.cpp
+[ 77%] Building CXX object _deps/rtaudio_src-build/CMakeFiles/rtaudio.dir/rtaudio_c.cpp.obj
+rtaudio_c.cpp
+[ 81%] Linking CXX static library rtaudio.lib
+[ 81%] Built target rtaudio
+[ 85%] Building CXX object CMakeFiles/native_audio_core.dir/src/looper_core.cpp.obj
+looper_core.cpp
+[ 88%] Building CXX object CMakeFiles/native_audio_core.dir/src/native_audio_core.cpp.obj
+native_audio_core.cpp
+D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\native-mvp\engine-cpp\src\native_audio_core.cpp(1): warning C4819: 璇ユ枃浠跺寘鍚笉鑳藉湪褰撳墠浠ｇ爜椤?936)涓〃绀虹殑瀛楃銆傝灏嗚鏂囦欢淇濆瓨涓?Unicode 鏍煎紡浠ラ槻姝㈡暟鎹涪澶?
+[ 92%] Linking CXX static library native_audio_core.lib
+[ 92%] Built target native_audio_core
+[ 96%] Building CXX object CMakeFiles/native_bridge_host.dir/src/native_bridge_host.cpp.obj
+native_bridge_host.cpp
+?敞鎰? 鍖呭惈鏂囦欢:       C:\Program Files (x86)\Windows Kits\10\include\10.0.19041.0\shared\poppack.h
+[100%] Linking CXX executable native_bridge_host.exe
+[100%] Built target native_bridge_host
+[ 60%] Built target webrc_dsp
+[ 68%] Built target native_multitrack_core
+[ 76%] Built target native_track_host
+[ 88%] Built target rtaudio
+[ 92%] Building CXX object CMakeFiles/looper_core_tests.dir/tests/looper_core_tests.cpp.obj
+looper_core_tests.cpp
+[ 96%] Building CXX object CMakeFiles/looper_core_tests.dir/src/looper_core.cpp.obj
+looper_core.cpp
+[100%] Linking CXX executable looper_core_tests.exe
+[100%] Built target looper_core_tests
+[ 78%] Built target webrc_dsp
+[ 89%] Built target native_multitrack_core
+[ 94%] Building CXX object CMakeFiles/native_multitrack_core_tests.dir/tests/multitrack_looper_core_tests.cpp.obj
+multitrack_looper_core_tests.cpp
+[100%] Linking CXX executable native_multitrack_core_tests.exe
+[100%] Built target native_multitrack_core_tests
+[ 71%] Built target webrc_dsp
+[ 80%] Built target native_multitrack_core
+[ 90%] Built target native_track_host
+[ 95%] Building CXX object CMakeFiles/native_track_host_tests.dir/tests/native_track_host_tests.cpp.obj
+native_track_host_tests.cpp
+[100%] Linking CXX executable native_track_host_tests.exe
+[100%] Built target native_track_host_tests
+[ 33%] Building CXX object CMakeFiles/native_looper_bench.dir/benchmarks/native_looper_bench.cpp.obj
+native_looper_bench.cpp
+[ 66%] Building CXX object CMakeFiles/native_looper_bench.dir/src/looper_core.cpp.obj
+looper_core.cpp
+[100%] Linking CXX executable native_looper_bench.exe
+[100%] Built target native_looper_bench
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj
+dsp_primitives_tests.cpp
+[100%] Linking CXX executable dsp_primitives_tests.exe
+[100%] Built target dsp_primitives_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj
+control_dynamics_tests.cpp
+[100%] Linking CXX executable control_dynamics_tests.exe
+[100%] Built target control_dynamics_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj
+nonlinear_tests.cpp
+[100%] Linking CXX executable nonlinear_tests.exe
+[100%] Built target nonlinear_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj
+spatial_temporal_tests.cpp
+[100%] Linking CXX executable spatial_temporal_tests.exe
+[100%] Built target spatial_temporal_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj
+pitch_tests.cpp
+[100%] Linking CXX executable pitch_tests.exe
+[100%] Built target pitch_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/streaming_yin_tests.dir/tests/streaming_yin_tests.cpp.obj
+streaming_yin_tests.cpp
+[100%] Linking CXX executable streaming_yin_tests.exe
+[100%] Built target streaming_yin_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/live_mono_pitch_tests.dir/tests/live_mono_pitch_tests.cpp.obj
+live_mono_pitch_tests.cpp
+[100%] Linking CXX executable live_mono_pitch_tests.exe
+[100%] Built target live_mono_pitch_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj
+fx_registry_tests.cpp
+[100%] Linking CXX executable fx_registry_tests.exe
+[100%] Built target fx_registry_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/performance_fx_tests.dir/tests/performance_fx_tests.cpp.obj
+performance_fx_tests.cpp
+[100%] Linking CXX executable performance_fx_tests.exe
+[100%] Built target performance_fx_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/modulation_fx_tests.dir/tests/modulation_fx_tests.cpp.obj
+modulation_fx_tests.cpp
+[100%] Linking CXX executable modulation_fx_tests.exe
+[100%] Built target modulation_fx_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/rhythm_tests.dir/tests/rhythm_tests.cpp.obj
+rhythm_tests.cpp
+[100%] Linking CXX executable rhythm_tests.exe
+[100%] Built target rhythm_tests
+[ 88%] Built target webrc_dsp
+[ 94%] Building CXX object shared_dsp/CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj
+native_dsp_primitives_bench.cpp
+[100%] Linking CXX executable native_dsp_primitives_bench.exe
+[100%] Built target native_dsp_primitives_bench
+[ 60%] Built target rtaudio
+[ 80%] Building CXX object _deps/rtaudio_src-build/tests/CMakeFiles/apinames.dir/apinames.cpp.obj
+apinames.cpp
+[100%] Linking CXX executable apinames.exe
+[100%] Built target apinames
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-native-full-checkpoint-20261009
+      Start  1: looper_core_tests
+ 1/15 Test  #1: looper_core_tests ................   Passed    0.28 sec
+      Start  2: native_multitrack_core_tests
+ 2/15 Test  #2: native_multitrack_core_tests .....   Passed    0.10 sec
+      Start  3: native_track_host_tests
+ 3/15 Test  #3: native_track_host_tests ..........   Passed    0.08 sec
+      Start  4: dsp_primitives_tests
+ 4/15 Test  #4: dsp_primitives_tests .............   Passed    0.13 sec
+      Start  5: control_dynamics_tests
+ 5/15 Test  #5: control_dynamics_tests ...........   Passed    0.09 sec
+      Start  6: nonlinear_tests
+ 6/15 Test  #6: nonlinear_tests ..................   Passed    0.20 sec
+      Start  7: spatial_temporal_tests
+ 7/15 Test  #7: spatial_temporal_tests ...........   Passed    0.57 sec
+      Start  8: pitch_tests
+ 8/15 Test  #8: pitch_tests ......................   Passed    0.33 sec
+      Start  9: streaming_yin_tests
+ 9/15 Test  #9: streaming_yin_tests ..............   Passed    0.13 sec
+      Start 10: live_mono_pitch_tests
+10/15 Test #10: live_mono_pitch_tests ............   Passed    0.21 sec
+      Start 11: fx_registry_tests
+11/15 Test #11: fx_registry_tests ................   Passed    0.08 sec
+      Start 12: performance_fx_tests
+12/15 Test #12: performance_fx_tests .............   Passed    0.23 sec
+      Start 13: modulation_fx_tests
+13/15 Test #13: modulation_fx_tests ..............   Passed    0.19 sec
+      Start 14: rhythm_tests
+14/15 Test #14: rhythm_tests .....................   Passed    1.09 sec
+      Start 15: apinames
+15/15 Test #15: apinames .........................   Passed    0.09 sec
+
+100% tests passed out of 15
+
+Total Test time (real) =   4.67 sec
+Native build and CTest passed. Build files and object outputs: C:\Users\user1000\AppData\Local\Temp\webrc-native-full-checkpoint-20261009

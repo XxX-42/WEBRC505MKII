@@ -1,0 +1,17 @@
+
+> webrc505mkii-v2@0.0.0 build
+> vue-tsc -b && vite build
+
+vite v7.2.4 building client environment for production...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+transforming...
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 142 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.86 kB │ gzip:   0.46 kB
+dist/assets/index-D3qLTK3I.css   72.28 kB │ gzip:  13.78 kB
+dist/assets/index-B4jrhWwd.js   478.74 kB │ gzip: 138.39 kB
+✓ built in 4.94s

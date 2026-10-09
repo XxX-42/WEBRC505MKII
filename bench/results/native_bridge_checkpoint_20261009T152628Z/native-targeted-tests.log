@@ -1,0 +1,19 @@
+
+> webrc505mkii-v2@0.0.0 test:unit
+> vitest run tests/unit/audioEngine.spec.ts tests/unit/nativeBridgeClient.spec.ts --maxWorkers=4 --minWorkers=1
+
+
+ RUN  v3.2.4 C:/Users/user1000/AppData/Local/Temp/webrc-native-ts-checkpoint-clean-20261009/repo
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ tests/unit/nativeBridgeClient.spec.ts (2 tests) 17ms
+stdout | tests/unit/audioEngine.spec.ts > AudioEngine capabilities > keeps an unverified browser route calibration separate from physical round-trip latency
+Unverified active-route loopback calibration: 8.00 ms
+
+ ✓ tests/unit/audioEngine.spec.ts (5 tests) 1946ms
+
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+   Start at  23:20:50
+   Duration  5.70s (transform 951ms, setup 248ms, collect 101ms, tests 1.96s, environment 4.79s, prepare 624ms)
+

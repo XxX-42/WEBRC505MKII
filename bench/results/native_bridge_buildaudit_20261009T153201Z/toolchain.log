@@ -1,0 +1,33 @@
+Audit UTC: 2026-10-09T15:33:31.050Z
+cl path: C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe
+用于 x64 的 Microsoft (R) C/C++ 优化编译器 19.29.30159 版
+版权所有(C) Microsoft Corporation。保留所有权利。
+
+编译器扫描遍数:
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\cl.exe:        版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c1.dll:        版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c1xx.dll:      版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c2.dll:        版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\c1xx.dll:      版本 19.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\link.exe:      版本 14.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\mspdb140.dll:  版本 14.29.30159.0
+ C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\2052\clui.dll: 版本 19.29.30159.0
+
+cl: 命令行 error D8003 :缺少源文件名
+CMake path: C:\Program Files\CMake\bin\cmake.exe
+cmake version 4.4.2
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+CTest path: C:\Program Files\CMake\bin\ctest.exe
+ctest version 4.4.2
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+NMake path: C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/nmake.exe
+Generator: NMake Makefiles
+Build type: Release
+CMAKE_HOME_DIRECTORY: C:/Users/user1000/AppData/Local/Temp/webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff/repo/native-mvp/engine-cpp
+CMake configure source: C:\Users\user1000\AppData\Local\Temp\webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff\repo\native-mvp\engine-cpp
+vcvarsall: C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC\Auxiliary\Build\vcvarsall.bat amd64 -vcvars_ver=14.29
+Verify script: C:\Users\user1000\AppData\Local\Temp\webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff\repo\scripts\native-verify.ps1
+Build command: powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\user1000\AppData\Local\Temp\webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff\repo\scripts\native-verify.ps1" -BuildRoot "C:\Users\user1000\AppData\Local\Temp\webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff\build-msvc-14.29" -VsInstallPath "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools" -ToolsetVersion 14.29.30133 -CachedDependencyRoot "D:\Documents\Codes\2024_1_WebRC505MKII\2025_WebRC505MKII_v2\native-mvp\build-v145\_deps"
+No audio hardware opened.

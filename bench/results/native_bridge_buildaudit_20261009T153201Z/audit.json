@@ -1,0 +1,154 @@
+{
+  "schema": "native-bridge-build-audit-supplement-v1",
+  "createdAtUtc": "2026-10-09T15:33:31.05Z",
+  "scope": "Fresh copied-source Native bridge build audit; supplement, does not overwrite original checkpoint index or raw log.",
+  "correction": {
+    "originalCompilerClaim": "MSVC 19.50.35721.0",
+    "originalIndexPath": "bench/results/native_bridge_checkpoint_20261009T152628Z/archive-index.json",
+    "reason": "Original archive CMakeCache and fresh copied-source CMake configure both point to Visual Studio 2019 MSVC 14.29.30133. Original compiler label was wrong; preserved unchanged.",
+    "correctCompiler": "MSVC 19.29.30159.0 (toolset 14.29.30133)",
+    "originalIndexSha256": "558c96d9a00561dcd2155632df9e8682ea181870289f41eb2035b474fdbcc4ab"
+  },
+  "inputSources": {
+    "sharedDspArchive": "bench/results/native_shared_dsp_checkpoint_20261009T151930Z/source-snapshot",
+    "combinedSourceManifestPath": "combined-source-manifest.json",
+    "nativeArchiveIndexSha256": "558c96d9a00561dcd2155632df9e8682ea181870289f41eb2035b474fdbcc4ab",
+    "temporaryBuildSnapshot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff\\repo",
+    "nativeArchive": "bench/results/native_bridge_checkpoint_20261009T152628Z/source-snapshot",
+    "sharedDspSourceManifestSha256": "7883259e6512385dea7138277cfaf806a1f2d65cdf17647cf29e0cef39cefdde",
+    "allInputHashesUnchangedAcrossBuild": true,
+    "combinedAggregateSha256": "eea2b1d0b5da50c622493d590e1915e7289946442b41bd4b15ede21b3c286b9f",
+    "sourceFiles": 78,
+    "nativeInputCount": 16,
+    "sharedDspInputCount": 62,
+    "beforeBuildHashSource": "Before launching native-verify, the 16 Native and 62 shared input files copied from the two immutable archives were each checked for expected byte length and SHA-256. Individual precheck rows are represented by beforeSha256, directly from the immutable source manifests. The copy-validation command output was not saved as a separate log.",
+    "afterBuildCheck": "After build, all 78 copied input files were re-hashed; every byte count and hash matched beforeSha256.",
+    "liveTreeComparison": {
+      "checkedAtUtc": "2026-10-09T15:35:35.914Z",
+      "archivedNativeAndSharedSourcesCompared": 78,
+      "matching": 78,
+      "mismatches": 0,
+      "result": "all current Native and shared DSP files match the copied build input set"
+    }
+  },
+  "build": {
+    "cmakePath": "C:\\Program Files\\CMake\\bin\\cmake.exe",
+    "compilerVersion": "19.29.30159.0",
+    "hardware": "not opened",
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/native-verify.ps1 -BuildRoot <TEMP build root> -VsInstallPath \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\" -ToolsetVersion 14.29.30133 -CachedDependencyRoot <repo native-mvp/build-v145/_deps>",
+    "cmakeVersion": "4.4.2",
+    "configuration": "Release",
+    "compilerBanner": "MSVC 19.29.30159.0",
+    "verifyScriptRelative": "scripts/native-verify.ps1",
+    "nmakePath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/nmake.exe",
+    "warnings": "Build passed. Transcript contains warnings from vendored Signalsmith conversions and a source encoding warning; no warning filter was applied.",
+    "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe",
+    "exitCode": 0,
+    "ctestPath": "C:\\Program Files\\CMake\\bin\\ctest.exe",
+    "generator": "NMake Makefiles",
+    "cmakeHomeDirectory": "C:/Users/user1000/AppData/Local/Temp/webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff/repo/native-mvp/engine-cpp",
+    "buildRoot": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-buildaudit-20261009-feb30f749afe430eb303e08119c21aff\\build-msvc-14.29",
+    "ctest": "15/15 passed (3 Native tests, 11 shared DSP tests, 1 RtAudio apinames test)"
+  },
+  "artifacts": [
+    {
+      "path": "combined-source-manifest.json",
+      "bytes": 24720,
+      "sha256": "ddb7567b8a6d358933290663510ba7db3c891735252db5d592cc2f61e17f0c2e"
+    },
+    {
+      "path": "toolchain.log",
+      "bytes": 3146,
+      "sha256": "0fd22b5827e48196ae606c6c551a7d86bf6e48e99a3d3e23b4b711645c6c0653"
+    },
+    {
+      "path": "build-inputs/CMakeCache.txt",
+      "bytes": 30837,
+      "sha256": "dec6397c537b3cd15745866b0858a67651d30b301ac9440ee78e2da0030de0f5"
+    },
+    {
+      "path": "build-inputs/CMakeCXXCompiler.cmake",
+      "bytes": 6658,
+      "sha256": "a6bf7faafd30fedf601d1ac066f3ae1c05bba089ef33510a738e569d1dbe205c"
+    },
+    {
+      "path": "build-inputs/LastTest.log",
+      "bytes": 15783,
+      "sha256": "68b8c7958e5afe6d9c6564b23a8bf6be5da45b98c02e987bf2f41d3a43639361"
+    },
+    {
+      "path": "build-inputs/native_bridge_host.build.make",
+      "bytes": 8308,
+      "sha256": "7c4df211734c50c85785cf6322aafa3179932ab296f955c0dc573995f1d387a1"
+    },
+    {
+      "path": "build-inputs/native-verify-transcript.log",
+      "bytes": 45218,
+      "sha256": "ef7c1d0df95858a2d6588483b6576ffa3bf1711211881bd9d06256856d412bad"
+    },
+    {
+      "path": "build-inputs/run-verify.cmd",
+      "bytes": 2466,
+      "sha256": "e3bf9201d14166c80e181298b60f05e48ef659d99ee9f048c5a954f67bf8188d"
+    },
+    {
+      "path": "build-inputs/webrc_dsp.build.make",
+      "bytes": 55847,
+      "sha256": "c930d7c7cfa04e6344a9033a5c29758a666f172d3e8df336ae3765caf1dae729"
+    }
+  ],
+  "dependencyCache": {
+    "root": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\native-mvp\\build-v145\\_deps",
+    "preBuildObservationPersistedAtCapture": false,
+    "preBuildObservationNote": "The pre-build Git query output in the task session reported these exact HEADs and clean working trees; it was not separately persisted before build.",
+    "observedBeforeBuild": [
+      {
+        "name": "rtaudio_src",
+        "declaredTag": "6.0.1",
+        "gitHead": "b4f04903312e0e0efffbe77655172e0f060dc085",
+        "workingTreeDirty": false,
+        "status": []
+      },
+      {
+        "name": "httplib_src",
+        "declaredTag": "v0.16.3",
+        "gitHead": "af56b7ec0ba9d18b788ed064f76d936eb52c5db5",
+        "workingTreeDirty": false,
+        "status": []
+      },
+      {
+        "name": "json_src",
+        "declaredTag": "v3.11.3",
+        "gitHead": "9cca280a4d0ccf0c08f47a99aa71d1b0e52f8d03",
+        "workingTreeDirty": false,
+        "status": []
+      }
+    ],
+    "observedAfterBuild": [
+      {
+        "name": "rtaudio_src",
+        "declaredTag": "6.0.1",
+        "resolvedTag": "6.0.1",
+        "gitHead": "b4f04903312e0e0efffbe77655172e0f060dc085",
+        "workingTreeDirty": false,
+        "status": []
+      },
+      {
+        "name": "httplib_src",
+        "declaredTag": "v0.16.3",
+        "resolvedTag": "v0.16.3",
+        "gitHead": "af56b7ec0ba9d18b788ed064f76d936eb52c5db5",
+        "workingTreeDirty": false,
+        "status": []
+      },
+      {
+        "name": "json_src",
+        "declaredTag": "v3.11.3",
+        "resolvedTag": "v3.11.3",
+        "gitHead": "9cca280a4d0ccf0c08f47a99aa71d1b0e52f8d03",
+        "workingTreeDirty": false,
+        "status": []
+      }
+    ]
+  }
+}

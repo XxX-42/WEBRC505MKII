@@ -97,3 +97,16 @@
 /shared/dsp/tests/live_mono_pitch_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /bench/results/native_shared_dsp_checkpoint_20261009T151930Z/** -text -whitespace
 /bench/results/native_streaming_yin_callback_20261009T150826Z/** -text -whitespace
+/bench/results/native_bridge_checkpoint_20261009T152628Z/** -text -whitespace
+/bench/results/native_bridge_buildaudit_20261009T153201Z/** -text -whitespace
+/native-mvp/engine-cpp/include/looper_core.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/include/native_track_host.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/include/multitrack_looper_core.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/src/looper_core.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/src/native_track_host.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/src/multitrack_looper_core.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/tests/looper_core_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/tests/native_track_host_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/benchmarks/native_looper_bench.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/scripts/native-build-common.ps1 -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
