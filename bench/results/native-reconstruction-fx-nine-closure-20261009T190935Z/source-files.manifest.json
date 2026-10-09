@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "canonicalization": "Ordinal-sorted relative paths; UTF-8 path=lowercase_sha256 plus LF per row including final row",
+  "sourceTreeSha256": "17516b920c358874b77e27e7bf236b0a1187ad89e781fef4bd1a92c6214caec9",
+  "fileCount": 41,
+  "files": [
+    {
+      "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+      "bytes": 392,
+      "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/composite_fx.hpp",
+      "bytes": 6360,
+      "sha256": "158843f620cc17debaac0015263e30921eb801c8f91eb018c6415bf97da4917b",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "bytes": 6746,
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/distortion_fx.hpp",
+      "bytes": 3627,
+      "sha256": "a8f073e3718c1ba057d3142fd5ad39505c38b53d8e6066ae009fc9ecd0402474",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "bytes": 548,
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "bytes": 7863,
+      "sha256": "85d2f23fc029ddc0696b6ecd0b8be59bf077134da73bb2aeaf2bd5f7dd169028",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/live_mono_pitch.hpp",
+      "bytes": 3109,
+      "sha256": "55dddf6a8b0263d3ba1bfb68752b78b08476f33287f34290c4c5949ebf2bcf34",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/modulated_delay_fx.hpp",
+      "bytes": 4879,
+      "sha256": "8bb7c51ffd70461e45064cca7f4b8f46da394c6fd2c98971c307a4cccda3af73",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/modulation_fx.hpp",
+      "bytes": 5101,
+      "sha256": "ea5667f70bfc56a8ec001656c200e33fb83683c2fa18ec6a991f666806dc50b6",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "bytes": 4181,
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/octave_fx.hpp",
+      "bytes": 4139,
+      "sha256": "549d20a76aab6d7fe73fa72a4551a54f034ba6cd6330aa2c5ed4f9706dd6daa7",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+      "bytes": 8438,
+      "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch_profiles.hpp",
+      "bytes": 4104,
+      "sha256": "89d8f959eeccb6c50f24ec4c2fa31ab768f15ee4dfc4703bf5139317136a19c0",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "bytes": 9802,
+      "sha256": "85ec1533939d8524019135de1c4a13d18567a1c758e0a68ad5929b2e6542b784",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/preamp_fx.hpp",
+      "bytes": 5638,
+      "sha256": "0ac1777795635cf0637d1dd853ff71a7ea6a4b379a9183cdaa95f6b6890c2f2d",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/preamp_models.hpp",
+      "bytes": 6897,
+      "sha256": "6ba7b266eecf4d3d15c3c6687f001fe5867bed0f7efce4776563fbdfc0b2b162",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/reconstruction_fx_adapter.hpp",
+      "bytes": 4348,
+      "sha256": "31c29b63ca4ca684055896a5ac951ea25a5c772270719b09b589f67350ed4068",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+      "bytes": 9386,
+      "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythmic_fx.hpp",
+      "bytes": 6656,
+      "sha256": "40ce7b8cc8fb5b31ff8d062baedc72d0224588dae2aebfc6819a9757bb8fe94c",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+      "bytes": 3415,
+      "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_fx_adapters.hpp",
+      "bytes": 5301,
+      "sha256": "c550d1aa7cfd4b93c000e1eec5236542044a5647e941da01888730f0df05db23",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "bytes": 23156,
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/streaming_yin.hpp",
+      "bytes": 5066,
+      "sha256": "bd780750e77bdda94bf6cb28a181e4a60ea5a40775555d7845fc8cdd21cba697",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/synthesis_pitch_fx.hpp",
+      "bytes": 13066,
+      "sha256": "817c5a5018662aec00e466837d94a6a6fd74bb4141374b3973b455e9c9cb6718",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/temporal_fx_adapters.hpp",
+      "bytes": 7366,
+      "sha256": "e524dd57116023d6dbd32b23833b2b37d6e8cc88ecfdb5dbb30c51ac0b81bfbc",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/vocoder_fx.hpp",
+      "bytes": 8963,
+      "sha256": "a986df401507d0c2cdacf299be51ad53d60da5d0d108199e6367580df178ddef",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/voice_fx.hpp",
+      "bytes": 15371,
+      "sha256": "318f7e43e624439193b8090fc33eefc29b50f718057afef8c3a2e749219d8315",
+      "kind": "header-snapshot"
+    },
+    {
+      "path": "shared/dsp/src/control_dynamics.cpp",
+      "bytes": 18208,
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/distortion_fx.cpp",
+      "bytes": 9975,
+      "sha256": "51e6cec0e1be392478ea68ae63c570eb6c966d792154a5a1a87cab7ae7346b19",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "bytes": 3129,
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/nonlinear.cpp",
+      "bytes": 10185,
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/octave_fx.cpp",
+      "bytes": 13804,
+      "sha256": "c43d1b9e5b0d6ae8b64808e6a47543d9fd0529d966a44fb0817d0ad002f0a292",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/performance_fx.cpp",
+      "bytes": 34156,
+      "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "bytes": 41764,
+      "sha256": "1652f7beeb15410efabac97c9a5c0dd5d417026d799984fbc5c7ba0fa92b46e6",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/preamp_fx.cpp",
+      "bytes": 18163,
+      "sha256": "84fd4eed5c2c630e7e896c90d9b0f8af745b9617758f7cd452d6952a9e299047",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "bytes": 38017,
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/reconstruction_fx_adapter.cpp",
+      "bytes": 19108,
+      "sha256": "d2d506c63ee20b6e4af9771f5b3ad241cad311795371ca244b6abce36a003f00",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "bytes": 88577,
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/src/temporal_fx_adapters.cpp",
+      "bytes": 36152,
+      "sha256": "9a1857af252019f45459e9aa6e32dcd0b769e1d581a09534af1ca101c5c9a8b4",
+      "kind": "translation-unit"
+    },
+    {
+      "path": "shared/dsp/tests/reconstruction_fx_adapter_tests.cpp",
+      "bytes": 9982,
+      "sha256": "3b557795c23cdb6efc3767a531205f6e1a02cecc74d652a950f4ef50f698aeae",
+      "kind": "translation-unit"
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Supplemental exact build outputs for the previously sealed nine-adapter source archive; the original archive was not modified.",
+  "sourceArchive": "bench/results/native-reconstruction-fx-nine-closure-20261009T190935Z/",
+  "sourceArchiveManifestSha256": "61f797aeeed901bd6492a4deaf10f7431519142b817dced5129ffcdbd3b1d538",
+  "sourceArchiveSourceFilesManifestSha256": "0309799dbc2ffd5fc4cd0022f5734cac7a40d8af208310032eaaccb6c2dc077c",
+  "sourceArchiveSha256SumsSha256": "1dfbb1e407513722176707931245df7246c48aaef04fe76a8683de7ce0c9c5b4",
+  "sourceTreeSha256": "17516b920c358874b77e27e7bf236b0a1187ad89e781fef4bd1a92c6214caec9",
+  "buildRootAtCapture": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build",
+  "compiler": "MSVC cl.exe 19.29.30159.0; VS2019 BuildTools 16.11.58; toolset 14.29.30133",
+  "flags": [
+    "/std:c++17",
+    "/EHsc",
+    "/O2",
+    "/MD",
+    "/W4",
+    "/permissive-",
+    "/fp:precise",
+    "/showIncludes"
+  ],
+  "objectFileCount": 13,
+  "executableFileCount": 1,
+  "copiedOutputs": [
+    {
+      "path": "tested-binaries/control_dynamics.obj",
+      "bytes": 62975,
+      "sha256": "583bc196584309ff6472ad180689eb36ca0d9e9b2ec4148b15487b64247869a4",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\control_dynamics.obj"
+    },
+    {
+      "path": "tested-binaries/distortion_fx.obj",
+      "bytes": 30176,
+      "sha256": "a23bceb114febe47ddaf875f1f9d07a5d0bea79891814e019f2c3f327f287812",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\distortion_fx.obj"
+    },
+    {
+      "path": "tested-binaries/fft.obj",
+      "bytes": 12655,
+      "sha256": "48f4daec171ffa020b5dd3a185a5451bf6945e1355d273f4979a55509fe900d8",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\fft.obj"
+    },
+    {
+      "path": "tested-binaries/nonlinear.obj",
+      "bytes": 34403,
+      "sha256": "a28bf65d467cbda1390ea62dd1c5b56c7fd4c461d7878270b0b33fed40fccdf6",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\nonlinear.obj"
+    },
+    {
+      "path": "tested-binaries/octave_fx.obj",
+      "bytes": 165077,
+      "sha256": "a1670c9ed3c74a856989ddb56a8226cec197f4c333c7400fe314d778642e5e76",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\octave_fx.obj"
+    },
+    {
+      "path": "tested-binaries/performance_fx.obj",
+      "bytes": 81283,
+      "sha256": "3de8f846bac3f5c291cf675b4bf45181a9d55bef4d69886e4f0d94c10aa887db",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\performance_fx.obj"
+    },
+    {
+      "path": "tested-binaries/pitch.obj",
+      "bytes": 246186,
+      "sha256": "863d3fa3d5c49c389fe4c499ef74adf2ab166f8f2ad97a20706409fcef0e155b",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\pitch.obj"
+    },
+    {
+      "path": "tested-binaries/preamp_fx.obj",
+      "bytes": 108891,
+      "sha256": "943afc9b1ecdee175dd9b19a1a45acff7b32ce234c198c126809943b6df166e9",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\preamp_fx.obj"
+    },
+    {
+      "path": "tested-binaries/primitives.obj",
+      "bytes": 125046,
+      "sha256": "840b3da942317d945ac07ba6756a62651c2ccc89711304757c9ad5acd823af63",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\primitives.obj"
+    },
+    {
+      "path": "tested-binaries/reconstruction_fx_adapter_tests.exe",
+      "bytes": 156160,
+      "sha256": "b1acda4c7c6514f1bafdc5fccb0ecd67be1f2e3737256b4d37eb0c10b7539170",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\reconstruction_fx_adapter_tests.exe"
+    },
+    {
+      "path": "tested-binaries/reconstruction_fx_adapter_tests.obj",
+      "bytes": 144850,
+      "sha256": "1b8d8dc0ddcea64d215c7c7f2ab054a161549b8bbedf2a0b69185c15dd358309",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\reconstruction_fx_adapter_tests.obj"
+    },
+    {
+      "path": "tested-binaries/reconstruction_fx_adapter.obj",
+      "bytes": 344764,
+      "sha256": "49f72b37d3749617c17ca270456ece7a7568d5eadc9a2eaa70bf4ee1163cce08",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\reconstruction_fx_adapter.obj"
+    },
+    {
+      "path": "tested-binaries/spatial_temporal.obj",
+      "bytes": 328976,
+      "sha256": "5d416bf05a0943d513168173a3c7bcd507da84f6a66e9843e0c4abf923cd99d8",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\spatial_temporal.obj"
+    },
+    {
+      "path": "tested-binaries/temporal_fx_adapters.obj",
+      "bytes": 107660,
+      "sha256": "31b34c3933917e247c093c1b7c12e75af64659c3eb02fc111ebf4ae9151769a3",
+      "copiedFrom": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-reconstruction-fx-nine-build\\temporal_fx_adapters.obj"
+    }
+  ],
+  "originalLogs": {
+    "build.log": {
+      "path": "logs/build.log",
+      "bytes": 174993,
+      "sha256": "90d1fccc1a71700038e46d00e7568fb8f1b2de028d833d25b7d704faf0447180"
+    },
+    "toolchain.log": {
+      "path": "logs/toolchain.log",
+      "bytes": 1350,
+      "sha256": "00eacddb6dcbaff4a38517cdd201438fb7405f4b0523a7cd3d43dabd64761d99"
+    },
+    "test.log": {
+      "path": "logs/test.log",
+      "bytes": 41,
+      "sha256": "a1295a33fa655b29053055cde3cff6965a632bd7b0469a32463f9f8fdb3066ed"
+    }
+  },
+  "executableTestResult": "PASS; see linked test.log; re-run copied executable to verify binary is runnable",
+  "hardwareAudioOpened": false
+}

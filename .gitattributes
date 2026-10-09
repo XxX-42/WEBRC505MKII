@@ -317,3 +317,11 @@
 /docs/validation/20261010/chromium-memory-aba-pair-root-review.json -text -whitespace
 /bench/results/browser_graph_chromium_149_154_memory_aba_pair_20261009T183000Z/** -text -whitespace
 /bench/results/browser_graph_snapshot_20261009T182455Z_core32_memory_ABA_pair/** -text -whitespace
+
+/docs/validation/20261010/nine-reconstruction-fx-root-review.json -text -whitespace
+/shared/dsp/include/webrc/dsp/reconstruction_fx_adapter.hpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/reconstruction_fx_adapter.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/reconstruction_fx_adapter_tests.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/bench/results/native-reconstruction-fx-nine-closure-20261009T190935Z/** -text -whitespace
+/bench/results/native-reconstruction-fx-nine-binary-supplement-20261010T191643784Z/** -text -whitespace
+/bench/results/native-reconstruction-fx-nine-root-fresh-20261009T191909Z/** -text -whitespace

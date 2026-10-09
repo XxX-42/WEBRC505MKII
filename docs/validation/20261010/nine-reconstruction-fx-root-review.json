@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "originalInventoryVerified": 54,
+  "supplementInventoryVerified": 15,
+  "allCopiedSourcesVerified": 41,
+  "liveCompiledSourcesVerified": 25,
+  "externalHeadersPinnedThisFreshBuild": 116,
+  "supplementExecutableSha256": "b1acda4c7c6514f1bafdc5fccb0ecd67be1f2e3737256b4d37eb0c10b7539170",
+  "freshArchive": "bench/results/native-reconstruction-fx-nine-root-fresh-20261009T191909Z",
+  "freshArchiveManifestSha256": "554a88180aa2e9a7db18686bd559c13ff57717783c398736914e9cdc6eb6d6ac",
+  "freshArchiveInventorySha256": "47fe48f4aa13bea2f10d1bf0327d967432e3eb7a7cd09e542272c59ca7a2bfac",
+  "freshExecutableSha256": "d5124bcb3167d1265639dc598db9f8b5aa6085d5977a990eaee936b90c970adf",
+  "originalAndFreshExecutableTestsPassed": true,
+  "originalArchivesUnchanged": true,
+  "notQualified": [
+    "Shared factory/runtime integration",
+    "WASM parity",
+    "callback duration distribution",
+    "final sound quality",
+    "hardware audio"
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "objective": "Independent fresh Native build of nine reconstruction adapters; not registered in shared RuntimeFx yet",
+  "result": "PASS",
+  "effectOrdinals": [
+    23,
+    24,
+    28,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45
+  ],
+  "coverage": {
+    "test": "real prepare/process for each ordinal, supported controls, no-allocation repeated 64-frame blocks, transactional invalid-event rejection, memory preflight and invalid PREAMP IR rejection",
+    "temporalOrdinals": [
+      40,
+      41,
+      42,
+      43,
+      44,
+      45
+    ],
+    "preampOrdinal": 23,
+    "distortionOrdinal": 24,
+    "octaveOrdinal": 28
+  },
+  "build": {
+    "translationUnits": [
+      "shared/dsp/tests/reconstruction_fx_adapter_tests.cpp",
+      "shared/dsp/src/reconstruction_fx_adapter.cpp",
+      "shared/dsp/src/temporal_fx_adapters.cpp",
+      "shared/dsp/src/distortion_fx.cpp",
+      "shared/dsp/src/preamp_fx.cpp",
+      "shared/dsp/src/octave_fx.cpp",
+      "shared/dsp/src/primitives.cpp",
+      "shared/dsp/src/control_dynamics.cpp",
+      "shared/dsp/src/nonlinear.cpp",
+      "shared/dsp/src/fft.cpp",
+      "shared/dsp/src/spatial_temporal.cpp",
+      "shared/dsp/src/pitch.cpp",
+      "shared/dsp/src/performance_fx.cpp"
+    ],
+    "toolchainLog": "logs/toolchain.log",
+    "logFile": "logs/build.log",
+    "warningMatches": 0,
+    "visualStudio": "VS2019 BuildTools 16.11.58",
+    "linkerVersion": "14.29.30159.0",
+    "toolset": "14.29.30133",
+    "compiler": "MSVC cl.exe",
+    "flags": [
+      "/std:c++17",
+      "/EHsc",
+      "/O2",
+      "/MD",
+      "/W4",
+      "/permissive-",
+      "/fp:precise",
+      "/showIncludes"
+    ],
+    "target": "x64",
+    "commandFile": "build.cmd",
+    "compilerVersion": "19.29.30159.0",
+    "exactTranslationUnitCount": 13,
+    "projectHeaderInputCount": 12,
+    "copiedHeaderSupersetUnusedCount": 16,
+    "compilerInputsFile": "compiler-inputs.json",
+    "rawLogEncoding": "CP936/OEM code page 936"
+  },
+  "test": {
+    "logFile": "logs/test.log",
+    "summary": "Reconstruction FX adapter tests passed.",
+    "exitCode": 0
+  },
+  "source": {
+    "sourceRoot": "source-snapshot/",
+    "copiedHeaderSupersetCount": 28,
+    "sourceFileManifestSha256": "0309799dbc2ffd5fc4cd0022f5734cac7a40d8af208310032eaaccb6c2dc077c",
+    "sourceFileCount": 41,
+    "sourceWasCopiedBeforeBuild": true,
+    "sourceTreeSha256": "17516b920c358874b77e27e7bf236b0a1187ad89e781fef4bd1a92c6214caec9",
+    "vendoredThirdPartySources": [],
+    "fileManifest": "source-files.manifest.json",
+    "hardwareAudioOpened": false,
+    "copyMatchesLiveAtCapture": true,
+    "capturedHeaderSupersetCount": 28,
+    "postCaptureLiveDrift": [
+      {
+        "path": "shared/dsp/include/webrc/dsp/preamp_models.hpp",
+        "status": "new unrelated ordinal-23 selector header appeared after this archive snapshot; not in direct TUs or /showIncludes project headers",
+        "archivedAtCapture": false,
+        "compiled": false
+      }
+    ],
+    "captureScopeNote": "The exact copied sources and included project headers are recorded in source-files.manifest.json and compiler-inputs.json. A header superset is retained; later-added preamp_models.hpp is neither copied nor compiled."
+  }
+}

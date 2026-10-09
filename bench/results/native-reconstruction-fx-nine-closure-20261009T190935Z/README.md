@@ -1,0 +1,9 @@
+# Nine standalone reconstruction FX adapters — Native build closure
+
+The independent `ReconstructionFxAdapter` test build wraps actual existing processors for catalog ordinals 23 PREAMP, 24 DIST, 28 OCTAVE, and 40–45 temporal effects. This is a standalone adapter layer; it is not yet wired into the shared `RuntimeFx` registry or Native product UI. It does not claim the official manufacturer parameter domains or curve mapping. PREAMP requires a caller-supplied validated cabinet IR; no factory IR is included.
+
+`build.cmd` compiles from the copied source snapshot, with all compiler outputs under `%TEMP%\webrc-reconstruction-fx-nine-build`. It uses VS2019 BuildTools 16.11.58 / MSVC toolset 14.29.30133 / compiler 19.29.30159.0. The command line and `/showIncludes` output are in `logs/build.log`; the test output is `logs/test.log`. The 13 direct translation units are listed in `manifest.json`. All 28 DSP public headers are copied as a header snapshot superset; the build log identifies the headers actually included.
+
+The test executable reported `Reconstruction FX adapter tests passed.` It exercised all nine ordinal prepares/process calls, 64 repeated 64-frame blocks with allocation counting, supported control events, explicit latency/preflight, transactionally rejected events, and invalid PREAMP IR preflight. This does not qualify deadline performance, WASM parity, or full Native graph/UI routing.
+
+The compiler log is preserved byte-for-byte as logs/build.log.raw.cp936 (OEM code page 936); readable UTF-8 copies are provided. compiler-inputs.json separates the 13 direct TUs, project headers actually reported by /showIncludes, copied-but-unused public-header superset, and external SDK headers. The subsequently added preamp_models.hpp selector header is outside this snapshot and was not used by this standalone test.
