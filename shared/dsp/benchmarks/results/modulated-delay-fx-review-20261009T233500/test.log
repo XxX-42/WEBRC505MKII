@@ -1,0 +1,9 @@
+Mod Delay preflight: 1573216 bytes, ring 131072 frames, wet window 12864.00..14016.00 samples
+Delay ordinal 5: max partition delta 0, mean stereo delta 0.135808, effect delta 4589.5424
+Delay ordinal 46: max partition delta 0, mean stereo delta 0.142986, effect delta 3957.2131
+Delay ordinal 33: max partition delta 0, mean stereo delta 0.134916, effect delta 3818.3153
+Delay ordinal 39: max partition delta 0, mean stereo delta 0.107450, effect delta 4242.9117
+Delay ordinal 37: max partition delta 0, mean stereo delta 0.111526, effect delta 4132.6821
+Vibrato impulse: peak 0.6430377, centroid 492.5262366 samples, energy 0.8279677
+Panning Delay: first L echo 0.999113, second R echo 0.498707, DC-stress peak 0.999113
+PASS: five stereo modulated delays; fractional latency, cross-feedback, bounds, automation partitions and noalloc

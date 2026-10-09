@@ -1,0 +1,11 @@
+# Five standalone stereo modulated delays
+
+The implemented family covers Flanger (5), Vibrato (33), Panning Delay (37), Mod Delay (39) and Chorus (46). It uses independently stored stereo history, an eight-tap windowed-sinc interpolator, smoothed controls and DC-blocked bounded feedback. Preparation allocates admitted storage; audio processing handles at most 64 ordered sample-offset events without allocation. Reset is a setup operation; generation wrap can clear history tags.
+
+The upper history bound is checked transactionally: base delay plus depth must fit the selected family. The 2000+50 ms case is rejected without changing audio/control state; 1950+50 ms is accepted at the boundary. No fixed render-block latency is inserted; the wet path has its configured variable delay. The Vibrato impulse fixture measures centroid 492.526 frames against the configured 492.5 frames; this is a kernel fixture, not host or end-to-end latency.
+
+Root independently checked all six current and archived inputs, the canonical fingerprint `f0b35e08fee3406390b14334c4566f3a9604ce501b7a9b5269c2c19d241b63dc`, and reran the hash-verified Release test executable successfully. The tests cover 50,000-frame 64/256 partition equality, stereo differences, fractional delay, panning feedback, hostile bounds, transactional rejection and process-allocation counts. The reproducible snapshot and unfiltered logs are in `shared/dsp/benchmarks/results/modulated-delay-fx-review-20261009T233500`.
+
+The raw benchmark contains ten chronological arrays of 10,000 callbacks each, five kinds with ordinary and 64-event scenarios. Root independently reconstructed nearest-rank P50/P95/P99/P99.9, maxima and threshold counts. At 48 kHz / 64 frames, P99 spans 58.5–135.4 microseconds and P99.9 spans 143.0–477.6 microseconds. Nine measurements exceed the 1333.333-microsecond deadline; the largest is 3345.5 microseconds. These misses remain in the record. Concurrent work was present; no scheduler attribution was established.
+
+Run `python scripts/verify-modulated-delay-capture.py` to verify archived source and raw timing integrity. This checkpoint commits actual processor source and its standalone evidence. Registry, Native graph and Browser/WASM integration are still pending. It does not pass the full-graph realtime or 30-minute stress gates.
