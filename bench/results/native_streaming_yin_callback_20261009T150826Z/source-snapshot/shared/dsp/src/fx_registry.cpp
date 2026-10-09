@@ -1,0 +1,1386 @@
+#include "webrc/dsp/fx_registry.hpp"
+
+#include "webrc/dsp/performance_fx.hpp"
+#include "webrc/dsp/modulation_fx.hpp"
+#include "webrc/dsp/spatial_temporal.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <limits>
+#include <new>
+#include <utility>
+#include <variant>
+
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)
+#define WEBRC_FX_TRY try
+#define WEBRC_FX_CATCH_ALL catch (...)
+#else
+// Browser/WASM builds rely on the memory preflight API and compile with exceptions off.
+#define WEBRC_FX_TRY if (true)
+#define WEBRC_FX_CATCH_ALL else if (false)
+#endif
+
+namespace webrc::dsp {
+namespace {
+
+constexpr FxReadiness kFilterReady = FxReadiness::ProcessorAvailable;
+constexpr FxReadiness kProcessorReady = FxReadiness::ProcessorAvailable;
+constexpr FxReadiness kMetadata = FxReadiness::MetadataOnly;
+
+constexpr std::array<FxDescriptor, kFxCatalogSize> kCatalog{{
+    {1,"rc505mkii.fx.lpf","LPF","Filter",true,true,kFilterReady,false},
+    {2,"rc505mkii.fx.bpf","BPF","Filter",true,true,kFilterReady,false},
+    {3,"rc505mkii.fx.hpf","HPF","Filter",true,true,kFilterReady,false},
+    {4,"rc505mkii.fx.phaser","PHASER","Modulation",true,true,kProcessorReady,false},
+    {5,"rc505mkii.fx.flanger","FLANGER","Modulated delay",true,true,kMetadata,false},
+    {6,"rc505mkii.fx.synth","SYNTH","Pitch/synthesis",true,true,kMetadata,false},
+    {7,"rc505mkii.fx.lo-fi","LO-FI","Lo-fi",true,true,kProcessorReady,false},
+    {8,"rc505mkii.fx.radio","RADIO","Lo-fi",true,true,kMetadata,false},
+    {9,"rc505mkii.fx.ring-mod","RING.MOD","Modulation",true,true,kProcessorReady,false},
+    {10,"rc505mkii.fx.g2b","G2B","Pitch",true,true,kMetadata,false},
+    {11,"rc505mkii.fx.sustainer","SUSTAINER","Dynamics",true,true,kMetadata,false},
+    {12,"rc505mkii.fx.auto-riff","AUTO RIFF","Pitch/sequencer",true,true,kMetadata,false},
+    {13,"rc505mkii.fx.slow-gear","SLOW GEAR","Envelope",true,true,kMetadata,false},
+    {14,"rc505mkii.fx.transpose","TRANSPOSE","Pitch",true,true,kMetadata,false},
+    {15,"rc505mkii.fx.pitch-bend","PITCH BEND","Pitch",true,true,kMetadata,false},
+    {16,"rc505mkii.fx.robot","ROBOT","Voice",true,true,kMetadata,false},
+    {17,"rc505mkii.fx.electric","ELECTRIC","Voice character",true,true,kMetadata,false},
+    {18,"rc505mkii.fx.hrm-manual","HRM MANUAL","Harmony",true,true,kMetadata,false},
+    {19,"rc505mkii.fx.hrm-auto-m","HRM AUTO (M)","Harmony/MIDI",true,true,kMetadata,false},
+    {20,"rc505mkii.fx.vocoder","VOCODER","Vocoder",true,true,kMetadata,false},
+    {21,"rc505mkii.fx.osc-voc-m","OSC VOC (M)","Vocoder/MIDI",true,true,kMetadata,false},
+    {22,"rc505mkii.fx.osc-bot","OSC BOT","Voice/synthesis",true,true,kMetadata,false},
+    {23,"rc505mkii.fx.preamp","PREAMP","Amp simulation",true,true,kMetadata,false},
+    {24,"rc505mkii.fx.dist","DIST","Nonlinear",true,true,kMetadata,false},
+    {25,"rc505mkii.fx.dynamics","DYNAMICS","Dynamics",true,true,kProcessorReady,false},
+    {26,"rc505mkii.fx.eq","EQ","EQ",true,true,kProcessorReady,false},
+    {27,"rc505mkii.fx.isolator","ISOLATOR","Multiband/gate",true,true,kMetadata,false},
+    {28,"rc505mkii.fx.octave","OCTAVE","Pitch",true,true,kMetadata,false},
+    {29,"rc505mkii.fx.auto-pan","AUTO PAN","Pan modulation",true,true,kProcessorReady,false},
+    {30,"rc505mkii.fx.manual-pan","MANUAL PAN","Pan",true,true,kProcessorReady,false},
+    {31,"rc505mkii.fx.stereo-enhance","STEREO ENHANCE","Stereo",true,true,kMetadata,false},
+    {32,"rc505mkii.fx.tremolo","TREMOLO","Amplitude modulation",true,true,kProcessorReady,false},
+    {33,"rc505mkii.fx.vibrato","VIBRATO","Modulated delay",true,true,kMetadata,false},
+    {34,"rc505mkii.fx.pattern-slicer","PATTERN SLICER","Rhythmic gate",true,true,kMetadata,false},
+    {35,"rc505mkii.fx.step-slicer","STEP SLICER","Rhythmic gate",true,true,kMetadata,false},
+    {36,"rc505mkii.fx.delay","DELAY","Delay",true,true,kProcessorReady,false},
+    {37,"rc505mkii.fx.panning-delay","PANNING DELAY","Stereo delay",true,true,kMetadata,false},
+    {38,"rc505mkii.fx.reverse-delay","REVERSE DELAY","Reverse delay",true,true,kMetadata,false},
+    {39,"rc505mkii.fx.mod-delay","MOD DELAY","Modulated delay",true,true,kMetadata,false},
+    {40,"rc505mkii.fx.tape-echo","TAPE ECHO","Tape delay",true,true,kMetadata,false},
+    {41,"rc505mkii.fx.granular-delay","GRANULAR DELAY","Granular",true,true,kMetadata,false},
+    {42,"rc505mkii.fx.warp","WARP","Granular/freeze macro",true,true,kMetadata,false},
+    {43,"rc505mkii.fx.twist","TWIST","Performance macro",true,true,kMetadata,false},
+    {44,"rc505mkii.fx.roll","ROLL","Beat repeat",true,true,kMetadata,false},
+    {45,"rc505mkii.fx.freeze","FREEZE","Freeze",true,true,kMetadata,false},
+    {46,"rc505mkii.fx.chorus","CHORUS","Modulated delay",true,true,kMetadata,false},
+    {47,"rc505mkii.fx.reverb","REVERB","Reverb",true,true,kProcessorReady,false},
+    {48,"rc505mkii.fx.gate-reverb","GATE REVERB","Reverb/gate",true,true,kMetadata,false},
+    {49,"rc505mkii.fx.reverse-reverb","REVERSE REVERB","Reverse reverb",true,true,kMetadata,false},
+    {50,"rc505mkii.fx.beat-scatter","BEAT SCATTER","Track-only beat FX",false,true,kProcessorReady,false},
+    {51,"rc505mkii.fx.beat-repeat","BEAT REPEAT","Track-only beat FX",false,true,kProcessorReady,false},
+    {52,"rc505mkii.fx.beat-shift","BEAT SHIFT","Track-only beat FX",false,true,kProcessorReady,false},
+    {53,"rc505mkii.fx.vinyl-flick","VINYL FLICK","Track-only transport FX",false,true,kProcessorReady,false},
+}};
+
+constexpr std::array<FxParameterDescriptor, 4> kFilterParameters{{
+    {FxParameterId::FrequencyHz,"frequencyHz","Hz",20.0f,20000.0f,1000.0f,
+     FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Q,"q","Q",0.1f,20.0f,0.70710678f,
+     FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f,
+     FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SmoothingMs,"smoothingMs","ms",0.0f,100.0f,5.0f,
+     FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 6> kPhaserParameters{{
+    {FxParameterId::FrequencyHz,"centerHz","Hz",40.0f,8000.0f,700.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::RateHz,"rateHz","Hz",0.05f,8.0f,0.35f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Depth,"depthOctaves","octaves",0.0f,2.0f,0.7f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Feedback,"feedback","linear",-0.85f,0.85f,0.25f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Mix,"mix","linear",0.0f,1.0f,0.5f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SmoothingMs,"smoothingMs","ms",0.0f,100.0f,5.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 9> kDynamicsParameters{{
+    {FxParameterId::ThresholdDb,"thresholdDb","dB",-60.0f,0.0f,-18.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Ratio,"ratio","ratio",1.0f,20.0f,4.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::KneeDb,"kneeDb","dB",0.0f,24.0f,6.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::AttackMs,"attackMs","ms",0.1f,1000.0f,5.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::ReleaseMs,"releaseMs","ms",1.0f,5000.0f,80.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::RmsMix,"rmsMix","linear",0.0f,1.0f,0.5f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::MakeupDb,"makeupDb","dB",-24.0f,24.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SmoothingMs,"smoothingMs","ms",0.0f,100.0f,5.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 14> kEqParameters{{
+    {FxParameterId::EqLowFrequencyHz,"lowShelfFrequencyHz","Hz",20.0f,2000.0f,120.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqLowGainDb,"lowShelfGainDb","dB",-18.0f,18.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqLowSlope,"lowShelfSlope","slope",0.1f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqLowMidFrequencyHz,"lowMidFrequencyHz","Hz",40.0f,8000.0f,500.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqLowMidGainDb,"lowMidGainDb","dB",-18.0f,18.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqLowMidQ,"lowMidQ","Q",0.1f,20.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqHighMidFrequencyHz,"highMidFrequencyHz","Hz",100.0f,16000.0f,3000.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqHighMidGainDb,"highMidGainDb","dB",-18.0f,18.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqHighMidQ,"highMidQ","Q",0.1f,20.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqHighFrequencyHz,"highShelfFrequencyHz","Hz",1000.0f,20000.0f,3000.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqHighGainDb,"highShelfGainDb","dB",-18.0f,18.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::EqHighSlope,"highShelfSlope","slope",0.1f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SmoothingMs,"smoothingMs","ms",0.0f,100.0f,5.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 4> kDelayParameters{{
+    {FxParameterId::DelayMs,"delayMs","ms",0.3f,2000.0f,375.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Feedback,"feedback","linear",0.0f,0.95f,0.35f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Mix,"mix","linear",0.0f,1.0f,0.35f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SmoothingMs,"smoothingMs","ms",0.0f,100.0f,10.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 7> kReverbParameters{{
+    {FxParameterId::ReverbTimeSeconds,"rt60Seconds","s",0.1f,20.0f,1.8f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::DampingHz,"dampingHz","Hz",50.0f,18000.0f,2000.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::ModulationRateHz,"modulationRateHz","Hz",0.0f,8.0f,0.25f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::ModulationDepthMs,"modulationDepthMs","ms",0.0f,5.0f,0.8f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::MaximumFeedback,"maximumFeedback","linear",0.0f,0.9995f,0.98f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,0.35f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SmoothingMs,"smoothingMs","ms",0.0f,100.0f,20.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 7> kBeatScatterParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::TempoBpm,"tempoBpm","BPM",20.0f,300.0f,120.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SubdivisionBeats,"subdivisionBeats","beats",0.125f,4.0f,0.25f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Feedback,"feedback","linear",0.0f,0.95f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::ScatterAmount,"scatterAmount","linear",0.0f,1.0f,0.5f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::PitchRatio,"pitchRatio","ratio",-2.0f,2.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 5> kBeatRepeatParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::TempoBpm,"tempoBpm","BPM",20.0f,300.0f,120.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SubdivisionBeats,"subdivisionBeats","beats",0.125f,0.5f,0.25f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Feedback,"feedback","linear",0.0f,0.95f,0.72f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 6> kBeatShiftParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::TempoBpm,"tempoBpm","BPM",20.0f,300.0f,120.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::SubdivisionBeats,"subdivisionBeats","beats",0.125f,4.0f,0.25f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Feedback,"feedback","linear",0.0f,0.95f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::ShiftBeats,"shiftBeats","beats",0.0f,2.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 3> kVinylFlickParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::FlickImpulse,"flickImpulse","linear",-1.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 5> kLoFiParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::BitDepth,"bitDepth","bits",4.0f,16.0f,8.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::HoldFrames,"holdFrames","frames",1.0f,64.0f,4.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Dither,"dither","linear",0.0f,1.0f,0.5f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 4> kRingModParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::RateHz,"rateHz","Hz",1.0f,8000.0f,110.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Waveform,"waveform","enum",0.0f,3.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 5> kAutoPanParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::RateHz,"rateHz","Hz",0.01f,20.0f,0.5f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Depth,"depth","linear",0.0f,1.0f,0.5f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Pan,"pan","linear",-1.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 3> kManualPanParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Pan,"pan","linear",-1.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+constexpr std::array<FxParameterDescriptor, 4> kTremoloParameters{{
+    {FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Wet,"wet","linear",0.0f,1.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::RateHz,"rateHz","Hz",0.01f,20.0f,1.0f,FxParameterOrigin::ReconstructionSafeBounds},
+    {FxParameterId::Depth,"depth","linear",0.0f,1.0f,0.5f,FxParameterOrigin::ReconstructionSafeBounds},
+}};
+
+class TptFilterProcessor final : public FxProcessor {
+public:
+    explicit TptFilterProcessor(std::uint16_t ordinal) noexcept : ordinal_(ordinal) {}
+
+    std::uint16_t ordinal() const noexcept override { return ordinal_; }
+
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec) || (spec.channels != 1U && spec.channels != 2U) ||
+            frequencyHz_ > static_cast<float>(spec.sampleRate * 0.49)) return false;
+        std::array<TptStateVariableFilter, 2> candidateFilters{};
+        for (auto& filter : candidateFilters) {
+            if (!filter.prepare(spec)) return false;
+            if (!filter.setFrequencyQ(frequencyHz_, q_, smoothingMs_)) return false;
+        }
+        ParameterSmoother candidateMix{};
+        if (!candidateMix.prepare(spec)) return false;
+        candidateMix.reset(mixTarget_);
+        filters_ = candidateFilters;
+        mix_ = candidateMix;
+        spec_ = spec;
+        prepared_ = true;
+        return true;
+    }
+
+    void reset() noexcept override {
+        for (auto& filter : filters_) filter.reset();
+        mix_.reset(mixTarget_);
+    }
+
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == spec_.channels && channels > 0U && channels <= 2U &&
+               frames <= spec_.maxBlockFrames;
+    }
+
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        switch (id) {
+        case FxParameterId::FrequencyHz:
+            return value >= 20.0f && value <= 20000.0f &&
+                   (!prepared_ || value <= static_cast<float>(spec_.sampleRate * 0.49));
+        case FxParameterId::Q: return value >= 0.1f && value <= 20.0f;
+        case FxParameterId::Mix: return value >= 0.0f && value <= 1.0f;
+        case FxParameterId::SmoothingMs: return value >= 0.0f && value <= 100.0f;
+        }
+        return false;
+    }
+
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!validParameter(id, value)) return false;
+        switch (id) {
+        case FxParameterId::FrequencyHz: frequencyHz_ = value; break;
+        case FxParameterId::Q: q_ = value; break;
+        case FxParameterId::Mix:
+            mixTarget_ = value;
+            return !prepared_ || mix_.setTarget(value, smoothingMs_);
+        case FxParameterId::SmoothingMs: smoothingMs_ = value; break;
+        }
+        if (prepared_) {
+            for (auto& filter : filters_) {
+                if (!filter.setFrequencyQ(frequencyHz_, q_, smoothingMs_)) return false;
+            }
+        }
+        return true;
+    }
+
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) ||
+            (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        for (std::uint32_t channel = 0; channel < channels; ++channel) {
+            if (!input[channel] || !output[channel]) return false;
+        }
+        for (std::uint32_t i = 0; i < frames; ++i) {
+            const float mix = mix_.next();
+            for (std::uint32_t channel = 0; channel < channels; ++channel) {
+                const float dry = sanitize(input[channel][i]);
+                const auto result = filters_[channel].processSample(dry);
+                float wet = result.low;
+                if (ordinal_ == 2U) wet = result.band;
+                else if (ordinal_ == 3U) wet = result.high;
+                output[channel][i] = sanitize(dry + mix * (wet - dry));
+            }
+        }
+        return true;
+    }
+
+    std::int32_t fixedLatencySamples() const noexcept override { return 0; }
+    bool latencyIsFrequencyDependent() const noexcept override { return true; }
+
+private:
+    std::uint16_t ordinal_ = 0;
+    ProcessSpec spec_{};
+    std::array<TptStateVariableFilter, 2> filters_{};
+    ParameterSmoother mix_{};
+    float frequencyHz_ = 1000.0f;
+    float q_ = 0.70710678f;
+    float smoothingMs_ = 5.0f;
+    float mixTarget_ = 1.0f;
+    bool prepared_ = false;
+};
+
+class PhaserProcessor final : public FxProcessor {
+public:
+    std::uint16_t ordinal() const noexcept override { return 4U; }
+
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec) || centerHz_ > spec.sampleRate * 0.45f) return false;
+        std::array<AllPass1, 8> candidateStages{};
+        for (std::size_t channel = 0; channel < 2U; ++channel) {
+            for (std::size_t stage = 0; stage < 4U; ++stage) {
+                auto& filter = candidateStages[channel * 4U + stage];
+                if (!filter.prepare(spec) || !filter.setFrequency(stageFrequency(centerHz_, stage, spec), 0.0f))
+                    return false;
+            }
+        }
+        Lfo candidateLfo{};
+        if (!candidateLfo.prepare(spec) || !candidateLfo.setFrequency(rateHz_)) return false;
+        std::array<ParameterSmoother, 4> candidateSmoothers{};
+        for (std::size_t i = 0; i < candidateSmoothers.size(); ++i) {
+            if (!candidateSmoothers[i].prepare(spec)) return false;
+        }
+        candidateSmoothers[0].reset(centerHz_);
+        candidateSmoothers[1].reset(depthOctaves_);
+        candidateSmoothers[2].reset(feedback_);
+        candidateSmoothers[3].reset(mix_);
+        stages_ = candidateStages;
+        lfo_ = candidateLfo;
+        smoothers_ = candidateSmoothers;
+        spec_ = spec;
+        feedbackState_ = {};
+        prepared_ = true;
+        return true;
+    }
+
+    void reset() noexcept override {
+        for (auto& stage : stages_) stage.reset();
+        feedbackState_ = {};
+        for (std::size_t i = 0; i < smoothers_.size(); ++i)
+            smoothers_[i].reset(i == 0U ? centerHz_ : i == 1U ? depthOctaves_ : i == 2U ? feedback_ : mix_);
+        lfo_.reset();
+    }
+
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == spec_.channels && channels > 0U && channels <= 2U &&
+               frames <= spec_.maxBlockFrames;
+    }
+
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        switch (id) {
+        case FxParameterId::FrequencyHz:
+            return value >= 40.0f && value <= 8000.0f &&
+                   (!prepared_ || value <= spec_.sampleRate * 0.45f);
+        case FxParameterId::RateHz: return value >= 0.05f && value <= 8.0f;
+        case FxParameterId::Depth: return value >= 0.0f && value <= 2.0f;
+        case FxParameterId::Feedback: return value >= -0.85f && value <= 0.85f;
+        case FxParameterId::Mix: return value >= 0.0f && value <= 1.0f;
+        case FxParameterId::SmoothingMs: return value >= 0.0f && value <= 100.0f;
+        default: return false;
+        }
+    }
+
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!validParameter(id, value)) return false;
+        switch (id) {
+        case FxParameterId::FrequencyHz: centerHz_ = value; return setSmooth(0U, value);
+        case FxParameterId::RateHz: rateHz_ = value; return !prepared_ || lfo_.setFrequency(value);
+        case FxParameterId::Depth: depthOctaves_ = value; return setSmooth(1U, value);
+        case FxParameterId::Feedback: feedback_ = value; return setSmooth(2U, value);
+        case FxParameterId::Mix: mix_ = value; return setSmooth(3U, value);
+        case FxParameterId::SmoothingMs: smoothingMs_ = value; return retargetSmoothers();
+        default: return false;
+        }
+    }
+
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) ||
+            (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        for (std::uint32_t c = 0; c < channels; ++c) if (!input[c] || !output[c]) return false;
+        constexpr std::array<float, 4> stageRatios{{0.5f,0.75f,1.5f,2.0f}};
+        for (std::uint32_t i = 0; i < frames; ++i) {
+            const float center = smoothers_[0].next();
+            const float depth = smoothers_[1].next();
+            const float feedback = smoothers_[2].next();
+            const float mix = smoothers_[3].next();
+            const float sweep = static_cast<float>(center * std::exp2(depth * lfo_.next()));
+            for (std::uint32_t c = 0; c < channels; ++c) {
+                const float dry = sanitize(input[c][i]);
+                float wet = sanitize(dry + feedback * feedbackState_[c]);
+                for (std::uint32_t stage = 0; stage < 4U; ++stage) {
+                    const float frequency = std::clamp(sweep * stageRatios[stage], 0.5f,
+                                                       static_cast<float>(spec_.sampleRate * 0.45));
+                    (void)stages_[c * 4U + stage].setFrequency(frequency, 0.0f);
+                    wet = stages_[c * 4U + stage].processSample(wet);
+                }
+                feedbackState_[c] = wet;
+                output[c][i] = sanitize(dry + mix * (wet - dry));
+            }
+        }
+        return true;
+    }
+
+    std::int32_t fixedLatencySamples() const noexcept override { return 0; }
+    bool latencyIsFrequencyDependent() const noexcept override { return true; }
+
+private:
+    static float stageFrequency(float center, std::size_t stage, const ProcessSpec& spec) noexcept {
+        constexpr std::array<float, 4> ratios{{0.5f,0.75f,1.5f,2.0f}};
+        return std::clamp(center * ratios[stage], 0.5f, static_cast<float>(spec.sampleRate * 0.45));
+    }
+    bool setSmooth(std::size_t index, float value) noexcept {
+        return !prepared_ || smoothers_[index].setTarget(value, smoothingMs_);
+    }
+    bool retargetSmoothers() noexcept {
+        return !prepared_ || (smoothers_[0].setTarget(centerHz_, smoothingMs_) &&
+                              smoothers_[1].setTarget(depthOctaves_, smoothingMs_) &&
+                              smoothers_[2].setTarget(feedback_, smoothingMs_) &&
+                              smoothers_[3].setTarget(mix_, smoothingMs_));
+    }
+
+    ProcessSpec spec_{};
+    std::array<AllPass1, 8> stages_{};
+    Lfo lfo_{};
+    std::array<ParameterSmoother, 4> smoothers_{};
+    std::array<float, 2> feedbackState_{};
+    float centerHz_ = 700.0f;
+    float rateHz_ = 0.35f;
+    float depthOctaves_ = 0.7f;
+    float feedback_ = 0.25f;
+    float mix_ = 0.5f;
+    float smoothingMs_ = 5.0f;
+    bool prepared_ = false;
+};
+
+class DynamicsProcessor final : public FxProcessor {
+public:
+    std::uint16_t ordinal() const noexcept override { return 25U; }
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec) || spec.channels != 2U) return false;
+        DualDetectorCompressor candidateCompressor;
+        if (!candidateCompressor.prepare(spec) ||
+            !candidateCompressor.setParameters(thresholdDb_, ratio_, kneeDb_, attackMs_, releaseMs_, rmsMix_, makeupDb_))
+            return false;
+        ParameterSmoother mix;
+        if (!mix.prepare(spec)) return false;
+        mix.reset(mixTarget_);
+        compressor_ = candidateCompressor;
+        spec_ = spec;
+        mix_ = mix;
+        prepared_ = true;
+        return true;
+    }
+    void reset() noexcept override { compressor_.reset(); mix_.reset(mixTarget_); }
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == spec_.channels && channels == 2U && frames <= spec_.maxBlockFrames;
+    }
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        switch (id) {
+        case FxParameterId::ThresholdDb: return value >= -60.0f && value <= 0.0f;
+        case FxParameterId::Ratio: return value >= 1.0f && value <= 20.0f;
+        case FxParameterId::KneeDb: return value >= 0.0f && value <= 24.0f;
+        case FxParameterId::AttackMs: return value >= 0.1f && value <= 1000.0f;
+        case FxParameterId::ReleaseMs: return value >= 1.0f && value <= 5000.0f;
+        case FxParameterId::RmsMix: case FxParameterId::Mix: return value >= 0.0f && value <= 1.0f;
+        case FxParameterId::MakeupDb: return value >= -24.0f && value <= 24.0f;
+        case FxParameterId::SmoothingMs: return value >= 0.0f && value <= 100.0f;
+        default: return false;
+        }
+    }
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!validParameter(id, value)) return false;
+        switch (id) {
+        case FxParameterId::ThresholdDb: thresholdDb_ = value; break;
+        case FxParameterId::Ratio: ratio_ = value; break;
+        case FxParameterId::KneeDb: kneeDb_ = value; break;
+        case FxParameterId::AttackMs: attackMs_ = value; break;
+        case FxParameterId::ReleaseMs: releaseMs_ = value; break;
+        case FxParameterId::RmsMix: rmsMix_ = value; break;
+        case FxParameterId::MakeupDb: makeupDb_ = value; break;
+        case FxParameterId::Mix:
+            mixTarget_ = value;
+            return !prepared_ || mix_.setTarget(value, smoothingMs_);
+        case FxParameterId::SmoothingMs:
+            smoothingMs_ = value;
+            return !prepared_ || mix_.setTarget(mixTarget_, smoothingMs_);
+        default: return false;
+        }
+        return !prepared_ || applyCompressorParameters();
+    }
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) || (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        if (!input[0] || !input[1] || !output[0] || !output[1]) return false;
+        for (std::uint32_t i = 0; i < frames; ++i) {
+            const float dryL = sanitize(input[0][i]);
+            const float dryR = sanitize(input[1][i]);
+            const auto wet = compressor_.processSample(dryL, dryR);
+            const float mix = mix_.next();
+            output[0][i] = sanitize(dryL + mix * (wet.left - dryL));
+            output[1][i] = sanitize(dryR + mix * (wet.right - dryR));
+        }
+        return true;
+    }
+    std::int32_t fixedLatencySamples() const noexcept override { return 0; }
+    bool latencyIsFrequencyDependent() const noexcept override { return false; }
+private:
+    bool applyCompressorParameters() noexcept {
+        return compressor_.setParameters(thresholdDb_, ratio_, kneeDb_, attackMs_, releaseMs_, rmsMix_, makeupDb_);
+    }
+    ProcessSpec spec_{};
+    DualDetectorCompressor compressor_{};
+    ParameterSmoother mix_{};
+    float thresholdDb_ = -18.0f, ratio_ = 4.0f, kneeDb_ = 6.0f;
+    float attackMs_ = 5.0f, releaseMs_ = 80.0f, rmsMix_ = 0.5f, makeupDb_ = 0.0f;
+    float mixTarget_ = 1.0f, smoothingMs_ = 5.0f;
+    bool prepared_ = false;
+};
+
+class EqProcessor final : public FxProcessor {
+public:
+    std::uint16_t ordinal() const noexcept override { return 26U; }
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec)) return false;
+        std::array<BiquadDf2T, 8> candidate{};
+        for (auto& filter : candidate) {
+            if (!filter.prepare(spec)) return false;
+        }
+        ParameterSmoother mix;
+        if (!mix.prepare(spec)) return false;
+        mix.reset(mixTarget_);
+        for (std::size_t section = 0; section < 4U; ++section)
+            if (!configureSection(candidate, section, spec)) return false;
+        filters_ = std::move(candidate);
+        mix_ = mix;
+        spec_ = spec;
+        prepared_ = true;
+        return true;
+    }
+    void reset() noexcept override { for (auto& filter : filters_) filter.reset(); mix_.reset(mixTarget_); }
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == spec_.channels && channels > 0U && channels <= 2U && frames <= spec_.maxBlockFrames;
+    }
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        const float nyquist = prepared_ ? static_cast<float>(spec_.sampleRate * 0.49) : 384000.0f * 0.49f;
+        switch (id) {
+        case FxParameterId::EqLowFrequencyHz: return value >= 20.0f && value <= std::min(2000.0f, nyquist);
+        case FxParameterId::EqLowGainDb: case FxParameterId::EqLowMidGainDb:
+        case FxParameterId::EqHighMidGainDb: case FxParameterId::EqHighGainDb: return value >= -18.0f && value <= 18.0f;
+        // S <= 1 keeps the RBJ shelf radicand non-negative throughout the
+        // supported +/-18 dB gain range, including event batches.
+        case FxParameterId::EqLowSlope: case FxParameterId::EqHighSlope: return value >= 0.1f && value <= 1.0f;
+        case FxParameterId::EqLowMidFrequencyHz: return value >= 40.0f && value <= std::min(8000.0f, nyquist);
+        case FxParameterId::EqLowMidQ: case FxParameterId::EqHighMidQ: return value >= 0.1f && value <= 20.0f;
+        case FxParameterId::EqHighMidFrequencyHz: return value >= 100.0f && value <= std::min(16000.0f, nyquist);
+        case FxParameterId::EqHighFrequencyHz: return value >= 1000.0f && value <= std::min(20000.0f, nyquist);
+        case FxParameterId::Mix: return value >= 0.0f && value <= 1.0f;
+        case FxParameterId::SmoothingMs: return value >= 0.0f && value <= 100.0f;
+        default: return false;
+        }
+    }
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!validParameter(id, value)) return false;
+        if (id == FxParameterId::Mix) { mixTarget_ = value; return !prepared_ || mix_.setTarget(value, smoothingMs_); }
+        if (id == FxParameterId::SmoothingMs) { smoothingMs_ = value; return !prepared_ || updateAllSections(); }
+        float* target = nullptr;
+        std::size_t section = 0U;
+        switch (id) {
+        case FxParameterId::EqLowFrequencyHz: target = &lowHz_; section = 0U; break;
+        case FxParameterId::EqLowGainDb: target = &lowDb_; section = 0U; break;
+        case FxParameterId::EqLowSlope: target = &lowSlope_; section = 0U; break;
+        case FxParameterId::EqLowMidFrequencyHz: target = &lowMidHz_; section = 1U; break;
+        case FxParameterId::EqLowMidGainDb: target = &lowMidDb_; section = 1U; break;
+        case FxParameterId::EqLowMidQ: target = &lowMidQ_; section = 1U; break;
+        case FxParameterId::EqHighMidFrequencyHz: target = &highMidHz_; section = 2U; break;
+        case FxParameterId::EqHighMidGainDb: target = &highMidDb_; section = 2U; break;
+        case FxParameterId::EqHighMidQ: target = &highMidQ_; section = 2U; break;
+        case FxParameterId::EqHighFrequencyHz: target = &highHz_; section = 3U; break;
+        case FxParameterId::EqHighGainDb: target = &highDb_; section = 3U; break;
+        case FxParameterId::EqHighSlope: target = &highSlope_; section = 3U; break;
+        default: return false;
+        }
+        const float old = *target;
+        *target = value;
+        if (prepared_ && !updateSection(section)) { *target = old; (void)updateSection(section); return false; }
+        return true;
+    }
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) || (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        for (std::uint32_t c = 0; c < channels; ++c) if (!input[c] || !output[c]) return false;
+        for (std::uint32_t i = 0; i < frames; ++i) {
+            const float mix = mix_.next();
+            for (std::uint32_t c = 0; c < channels; ++c) {
+                const float dry = sanitize(input[c][i]);
+                float wet = dry;
+                for (std::size_t section = 0; section < 4U; ++section)
+                    wet = filters_[c * 4U + section].processSample(wet);
+                output[c][i] = sanitize(dry + mix * (wet - dry));
+            }
+        }
+        return true;
+    }
+    std::int32_t fixedLatencySamples() const noexcept override { return 0; }
+    bool latencyIsFrequencyDependent() const noexcept override { return true; }
+private:
+    bool configureSection(std::array<BiquadDf2T, 8>& filters, std::size_t section,
+                          const ProcessSpec& spec) const noexcept {
+        const float nyquist = static_cast<float>(spec.sampleRate * 0.49);
+        const float frequency = section == 0U ? lowHz_ : section == 1U ? lowMidHz_ :
+                                section == 2U ? highMidHz_ : highHz_;
+        if (frequency > nyquist) return false;
+        for (std::size_t channel = 0; channel < 2U; ++channel) {
+            auto& filter = filters[channel * 4U + section];
+            bool ok = false;
+            if (section == 0U) ok = filter.setLowShelf(lowHz_, lowDb_, lowSlope_, smoothingMs_);
+            else if (section == 1U) ok = filter.setPeaking(lowMidHz_, lowMidQ_, lowMidDb_, smoothingMs_);
+            else if (section == 2U) ok = filter.setPeaking(highMidHz_, highMidQ_, highMidDb_, smoothingMs_);
+            else if (section == 3U) ok = filter.setHighShelf(highHz_, highDb_, highSlope_, smoothingMs_);
+            if (!ok) return false;
+        }
+        return true;
+    }
+    bool updateSection(std::size_t section) noexcept {
+        return configureSection(filters_, section, spec_);
+    }
+    bool updateAllSections() noexcept {
+        for (std::size_t section = 0; section < 4U; ++section) if (!updateSection(section)) return false;
+        return true;
+    }
+    ProcessSpec spec_{};
+    std::array<BiquadDf2T, 8> filters_{};
+    ParameterSmoother mix_{};
+    float lowHz_=120.0f, lowDb_=0.0f, lowSlope_=1.0f;
+    float lowMidHz_=500.0f, lowMidDb_=0.0f, lowMidQ_=1.0f;
+    float highMidHz_=3000.0f, highMidDb_=0.0f, highMidQ_=1.0f;
+    float highHz_=8000.0f, highDb_=0.0f, highSlope_=1.0f;
+    float mixTarget_=1.0f, smoothingMs_=5.0f;
+    bool prepared_=false;
+};
+
+class DelayProcessor final : public FxProcessor {
+public:
+    std::uint16_t ordinal() const noexcept override { return 36U; }
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec) || (spec.channels != 1U && spec.channels != 2U)) return false;
+        const auto maxDelay = static_cast<std::uint32_t>(spec.sampleRate * 2.0f);
+        std::array<LagrangeDelay, 2> candidate{};
+        WEBRC_FX_TRY {
+            for (auto& delay : candidate) if (!delay.prepare(spec, maxDelay)) return false;
+        } WEBRC_FX_CATCH_ALL {
+            return false;
+        }
+        std::array<ParameterSmoother, 3> candidateSmooth{};
+        for (auto& smoother : candidateSmooth) if (!smoother.prepare(spec)) return false;
+        candidateSmooth[0].reset(delayMs_);
+        candidateSmooth[1].reset(feedback_);
+        candidateSmooth[2].reset(mix_);
+        delays_ = std::move(candidate);
+        smoothers_ = candidateSmooth;
+        spec_ = spec;
+        feedbackState_ = {};
+        prepared_ = true;
+        return true;
+    }
+    void reset() noexcept override {
+        for (auto& delay : delays_) delay.reset();
+        feedbackState_ = {};
+        smoothers_[0].reset(delayMs_); smoothers_[1].reset(feedback_); smoothers_[2].reset(mix_);
+    }
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == spec_.channels && channels > 0U && channels <= 2U && frames <= spec_.maxBlockFrames;
+    }
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        switch (id) {
+        case FxParameterId::DelayMs:
+            return value >= std::max(0.3f, prepared_ ? 2500.0f / spec_.sampleRate : 0.3f) && value <= 2000.0f;
+        case FxParameterId::Feedback: return value >= 0.0f && value <= 0.95f;
+        case FxParameterId::Mix: return value >= 0.0f && value <= 1.0f;
+        case FxParameterId::SmoothingMs: return value >= 0.0f && value <= 100.0f;
+        default: return false;
+        }
+    }
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!validParameter(id, value)) return false;
+        if (id == FxParameterId::DelayMs) { delayMs_ = value; return !prepared_ || smoothers_[0].setTarget(value, smoothingMs_); }
+        if (id == FxParameterId::Feedback) { feedback_ = value; return !prepared_ || smoothers_[1].setTarget(value, smoothingMs_); }
+        if (id == FxParameterId::Mix) { mix_ = value; return !prepared_ || smoothers_[2].setTarget(value, smoothingMs_); }
+        if (id == FxParameterId::SmoothingMs) {
+            smoothingMs_ = value;
+            return !prepared_ || (smoothers_[0].setTarget(delayMs_, smoothingMs_) &&
+                                  smoothers_[1].setTarget(feedback_, smoothingMs_) &&
+                                  smoothers_[2].setTarget(mix_, smoothingMs_));
+        }
+        return false;
+    }
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) || (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        for (std::uint32_t c = 0; c < channels; ++c) if (!input[c] || !output[c]) return false;
+        for (std::uint32_t i = 0; i < frames; ++i) {
+            const float delaySamples = std::clamp(smoothers_[0].next() * spec_.sampleRate * 0.001f,
+                                                  LagrangeDelay::minimumDelaySamples(),
+                                                  static_cast<float>(delays_[0].maxDelaySamples()));
+            const float feedback = smoothers_[1].next();
+            const float mix = smoothers_[2].next();
+            for (std::uint32_t c = 0; c < channels; ++c) {
+                const float dry = sanitize(input[c][i]);
+                const float delayed = delays_[c].processSample(dry + feedback * feedbackState_[c], delaySamples);
+                feedbackState_[c] = delayed;
+                output[c][i] = sanitize(dry + mix * (delayed - dry));
+            }
+        }
+        return true;
+    }
+    std::int32_t fixedLatencySamples() const noexcept override { return -1; }
+    bool latencyIsFrequencyDependent() const noexcept override { return false; }
+private:
+    ProcessSpec spec_{};
+    std::array<LagrangeDelay, 2> delays_{};
+    std::array<ParameterSmoother, 3> smoothers_{};
+    std::array<float, 2> feedbackState_{};
+    float delayMs_=375.0f, feedback_=0.35f, mix_=0.35f, smoothingMs_=10.0f;
+    bool prepared_=false;
+};
+
+class ReverbProcessor final : public FxProcessor {
+public:
+    std::uint16_t ordinal() const noexcept override { return 47U; }
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec) || spec.channels != 2U) return false;
+        WEBRC_FX_TRY {
+            FdnReverb candidate;
+            if (!candidate.prepare(spec, FdnLineCount::Eight, 0.12f) ||
+                !candidate.setParameters(rt60_, dampingHz_, modRateHz_, modDepthMs_, maximumFeedback_, wet_, smoothingMs_))
+                return false;
+            reverb_ = std::move(candidate);
+            spec_ = spec;
+            prepared_ = true;
+            return true;
+        } WEBRC_FX_CATCH_ALL {
+            return false;
+        }
+    }
+    void reset() noexcept override { reverb_.reset(); }
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == spec_.channels && channels == 2U && frames <= spec_.maxBlockFrames;
+    }
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        switch (id) {
+        case FxParameterId::ReverbTimeSeconds: return value >= 0.1f && value <= 20.0f;
+        case FxParameterId::DampingHz: return value >= 50.0f && value <= (prepared_ ? spec_.sampleRate * 0.49f : 18000.0f);
+        case FxParameterId::ModulationRateHz: return value >= 0.0f && value <= 8.0f;
+        case FxParameterId::ModulationDepthMs: return value >= 0.0f && value <= 5.0f;
+        case FxParameterId::MaximumFeedback: return value >= 0.0f && value <= 0.9995f;
+        case FxParameterId::Wet: case FxParameterId::Mix: return value >= 0.0f && value <= 1.0f;
+        case FxParameterId::SmoothingMs: return value >= 0.0f && value <= 100.0f;
+        default: return false;
+        }
+    }
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!validParameter(id, value)) return false;
+        switch (id) {
+        case FxParameterId::ReverbTimeSeconds: rt60_ = value; break;
+        case FxParameterId::DampingHz: dampingHz_ = value; break;
+        case FxParameterId::ModulationRateHz: modRateHz_ = value; break;
+        case FxParameterId::ModulationDepthMs: modDepthMs_ = value; break;
+        case FxParameterId::MaximumFeedback: maximumFeedback_ = value; break;
+        case FxParameterId::Wet: case FxParameterId::Mix: wet_ = value; break;
+        case FxParameterId::SmoothingMs: smoothingMs_ = value; break;
+        default: return false;
+        }
+        return !prepared_ || reverb_.setParameters(rt60_, dampingHz_, modRateHz_, modDepthMs_, maximumFeedback_, wet_, smoothingMs_);
+    }
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) || (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        return input[0] && input[1] && output[0] && output[1] &&
+               reverb_.processBlock(input[0], input[1], output[0], output[1], frames);
+    }
+    std::int32_t fixedLatencySamples() const noexcept override { return 0; }
+    bool latencyIsFrequencyDependent() const noexcept override { return true; }
+private:
+    ProcessSpec spec_{};
+    FdnReverb reverb_{};
+    float rt60_=1.8f, dampingHz_=7000.0f, modRateHz_=0.25f, modDepthMs_=0.8f;
+    float maximumFeedback_=0.98f, wet_=0.35f, smoothingMs_=20.0f;
+    bool prepared_=false;
+};
+
+using PerformanceVariant = std::variant<BeatScatter, BeatRepeat, BeatShift, VinylFlick>;
+
+bool parameterControl(FxParameterId id, PerformanceFxControl& control) noexcept {
+    switch (id) {
+    case FxParameterId::Active: control = PerformanceFxControl::Active; return true;
+    case FxParameterId::TempoBpm: control = PerformanceFxControl::TempoBpm; return true;
+    case FxParameterId::SubdivisionBeats: control = PerformanceFxControl::SubdivisionBeats; return true;
+    case FxParameterId::Wet: control = PerformanceFxControl::Wet; return true;
+    case FxParameterId::Feedback: control = PerformanceFxControl::Feedback; return true;
+    case FxParameterId::ScatterAmount: control = PerformanceFxControl::ScatterAmount; return true;
+    case FxParameterId::PitchRatio: control = PerformanceFxControl::PitchRatio; return true;
+    case FxParameterId::ShiftBeats: control = PerformanceFxControl::ShiftBeats; return true;
+    case FxParameterId::FlickImpulse: control = PerformanceFxControl::FlickImpulse; return true;
+    default: return false;
+    }
+}
+
+PerformanceFxKind performanceKindForOrdinal(std::uint16_t ordinal) noexcept {
+    switch (ordinal) {
+    case 50U: return PerformanceFxKind::BeatScatter;
+    case 51U: return PerformanceFxKind::BeatRepeat;
+    case 52U: return PerformanceFxKind::BeatShift;
+    default: return PerformanceFxKind::VinylFlick;
+    }
+}
+
+class PerformanceFxAdapter final : public FxProcessor {
+public:
+    explicit PerformanceFxAdapter(std::uint16_t ordinal) noexcept
+        : ordinal_(ordinal), kind_(performanceKindForOrdinal(ordinal)) {}
+
+    std::uint16_t ordinal() const noexcept override { return ordinal_; }
+
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec) || spec.channels != 2U) return false;
+        WEBRC_FX_TRY {
+            PerformanceVariant candidate{};
+            switch (ordinal_) {
+            case 50U: candidate.emplace<BeatScatter>(); break;
+            case 51U: candidate.emplace<BeatRepeat>(); break;
+            case 52U: candidate.emplace<BeatShift>(); break;
+            case 53U: candidate.emplace<VinylFlick>(); break;
+            default: return false;
+            }
+            const bool candidateReady = std::visit([&spec](auto& processor) {
+                return processor.prepare(spec);
+            }, candidate);
+            if (!candidateReady) return false;
+            std::vector<StereoFrame> candidateScratch(spec.maxBlockFrames);
+            processor_ = std::move(candidate);
+            interleavedScratch_ = std::move(candidateScratch);
+            spec_ = spec;
+            nextFrame_ = 0U;
+            pendingCount_ = 0U;
+            prepared_ = true;
+            restoreParameterState();
+            return true;
+        } WEBRC_FX_CATCH_ALL {
+            return false;
+        }
+    }
+
+    void reset() noexcept override {
+        if (!prepared_) return;
+        std::visit([](auto& processor) { processor.reset(0U); }, processor_);
+        nextFrame_ = 0U;
+        pendingCount_ = 0U;
+        restoreParameterState();
+    }
+
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == 2U && channels == spec_.channels &&
+               frames <= spec_.maxBlockFrames;
+    }
+
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        PerformanceFxControl control{};
+        if (!parameterControl(id, control)) return false;
+        switch (control) {
+        case PerformanceFxControl::Active:
+            return value == 0.0f || value == 1.0f;
+        case PerformanceFxControl::TempoBpm:
+            return kind_ != PerformanceFxKind::VinylFlick && value >= 20.0f && value <= 300.0f;
+        case PerformanceFxControl::SubdivisionBeats:
+            return kind_ != PerformanceFxKind::VinylFlick && value >= 0.125f &&
+                   value <= (kind_ == PerformanceFxKind::BeatRepeat ? 0.5f : 4.0f);
+        case PerformanceFxControl::Wet:
+            return value >= 0.0f && value <= 1.0f;
+        case PerformanceFxControl::Feedback:
+            return kind_ != PerformanceFxKind::VinylFlick && value >= 0.0f && value <= 0.95f;
+        case PerformanceFxControl::ScatterAmount:
+            return kind_ == PerformanceFxKind::BeatScatter && value >= 0.0f && value <= 1.0f;
+        case PerformanceFxControl::PitchRatio:
+            return kind_ == PerformanceFxKind::BeatScatter &&
+                   ((value >= 0.25f && value <= 2.0f) || (value <= -0.25f && value >= -2.0f));
+        case PerformanceFxControl::ShiftBeats:
+            return kind_ == PerformanceFxKind::BeatShift && value >= 0.0f && value <= 2.0f;
+        case PerformanceFxControl::FlickImpulse:
+            return kind_ == PerformanceFxKind::VinylFlick && value >= -1.0f && value <= 1.0f;
+        }
+        return false;
+    }
+
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!prepared_ || !validParameter(id, value) ||
+            pendingCount_ >= PerformanceFxProcessor::kMaximumControlEventsPerBlock) return false;
+        PerformanceFxControl control{};
+        if (!parameterControl(id, control)) return false;
+        const auto index = static_cast<std::size_t>(control);
+        const PerformanceFxEvent event{0U, control, value};
+        parameterState_[index] = event;
+        hasParameterState_[index] = true;
+        pendingEvents_[pendingCount_++] = event;
+        return true;
+    }
+
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) || (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        if (!input[0] || !input[1] || !output[0] || !output[1] ||
+            nextFrame_ >= kMaximumExactFrame || frames > kMaximumExactFrame - nextFrame_) return false;
+
+        for (std::uint32_t frame = 0U; frame < frames; ++frame) {
+            interleavedScratch_[frame] = {sanitize(input[0][frame]), sanitize(input[1][frame])};
+        }
+        const bool processed = std::visit([this, frames](auto& processor) {
+            return processor.processBlock(nextFrame_, interleavedScratch_.data(), frames,
+                                          pendingEvents_.data(), pendingCount_);
+        }, processor_);
+        if (!processed) return false;
+        for (std::uint32_t frame = 0U; frame < frames; ++frame) {
+            output[0][frame] = sanitize(interleavedScratch_[frame].left);
+            output[1][frame] = sanitize(interleavedScratch_[frame].right);
+        }
+        nextFrame_ += frames;
+        pendingCount_ = 0U;
+        return true;
+    }
+
+    std::uint32_t maximumParameterEventsPerBlock() const noexcept override {
+        return PerformanceFxProcessor::kMaximumControlEventsPerBlock;
+    }
+
+    bool canAcceptParameterEvents(std::uint32_t eventCount) const noexcept override {
+        return eventCount <= pendingEvents_.size() - pendingCount_;
+    }
+
+    std::int32_t fixedLatencySamples() const noexcept override {
+        if (!prepared_) return -1;
+        if (kind_ != PerformanceFxKind::VinylFlick) return -1;
+        return static_cast<std::int32_t>(std::visit([](const auto& processor) {
+            return processor.algorithmicLatencySamples();
+        }, processor_));
+    }
+    bool latencyIsFrequencyDependent() const noexcept override { return false; }
+
+private:
+    static constexpr std::uint64_t kMaximumExactFrame = 1ULL << 53U;
+
+    void restoreParameterState() noexcept {
+        for (std::size_t i = 0U; i < parameterState_.size(); ++i) {
+            if (hasParameterState_[i] && pendingCount_ < pendingEvents_.size())
+                pendingEvents_[pendingCount_++] = parameterState_[i];
+        }
+    }
+
+    std::uint16_t ordinal_ = 0U;
+    PerformanceFxKind kind_ = PerformanceFxKind::BeatScatter;
+    PerformanceVariant processor_{};
+    ProcessSpec spec_{};
+    std::vector<StereoFrame> interleavedScratch_;
+    std::array<PerformanceFxEvent, PerformanceFxProcessor::kMaximumControlEventsPerBlock> pendingEvents_{};
+    std::array<PerformanceFxEvent, 9U> parameterState_{};
+    std::array<bool, 9U> hasParameterState_{};
+    std::uint64_t nextFrame_ = 0U;
+    std::uint32_t pendingCount_ = 0U;
+    bool prepared_ = false;
+};
+
+
+
+using ModulationVariant = std::variant<LoFi, StereoRingModulatorFx, AutoPan, ManualPan, Tremolo>;
+
+ModulationFxKind modulationKindForOrdinal(std::uint16_t ordinal) noexcept {
+    switch (ordinal) {
+    case 7U: return ModulationFxKind::LoFi;
+    case 9U: return ModulationFxKind::RingModulator;
+    case 29U: return ModulationFxKind::AutoPan;
+    case 30U: return ModulationFxKind::ManualPan;
+    default: return ModulationFxKind::Tremolo;
+    }
+}
+
+bool modulationControlForParameter(FxParameterId id, ModulationFxControl& control) noexcept {
+    switch (id) {
+    case FxParameterId::Active: control = ModulationFxControl::Active; return true;
+    case FxParameterId::Wet: control = ModulationFxControl::Wet; return true;
+    case FxParameterId::RateHz: control = ModulationFxControl::RateHz; return true;
+    case FxParameterId::Depth: control = ModulationFxControl::Depth; return true;
+    case FxParameterId::Pan: control = ModulationFxControl::Pan; return true;
+    case FxParameterId::BitDepth: control = ModulationFxControl::BitDepth; return true;
+    case FxParameterId::HoldFrames: control = ModulationFxControl::HoldFrames; return true;
+    case FxParameterId::Dither: control = ModulationFxControl::Dither; return true;
+    case FxParameterId::Waveform: control = ModulationFxControl::Waveform; return true;
+    default: return false;
+    }
+}
+
+class ModulationFxAdapter final : public FxProcessor {
+public:
+    explicit ModulationFxAdapter(std::uint16_t ordinal) noexcept
+        : ordinal_(ordinal), kind_(modulationKindForOrdinal(ordinal)) {}
+
+    std::uint16_t ordinal() const noexcept override { return ordinal_; }
+
+    bool prepare(const ProcessSpec& spec) noexcept override {
+        if (!validProcessSpec(spec) || spec.channels != 2U ||
+            ModulationFxProcessor::requiredPrepareBytes(spec, kind_) == 0U) return false;
+        WEBRC_FX_TRY {
+            ModulationVariant candidate{};
+            switch (ordinal_) {
+            case 7U: candidate.emplace<LoFi>(); break;
+            case 9U: candidate.emplace<StereoRingModulatorFx>(); break;
+            case 29U: candidate.emplace<AutoPan>(); break;
+            case 30U: candidate.emplace<ManualPan>(); break;
+            case 32U: candidate.emplace<Tremolo>(); break;
+            default: return false;
+            }
+            if (!std::visit([&spec](auto& processor) { return processor.prepare(spec); }, candidate))
+                return false;
+            std::vector<StereoFrame> candidateScratch(spec.maxBlockFrames);
+            processor_ = std::move(candidate);
+            interleavedScratch_ = std::move(candidateScratch);
+            spec_ = spec;
+            nextFrame_ = 0U;
+            pendingCount_ = 0U;
+            prepared_ = true;
+            restoreParameterState();
+            return true;
+        } WEBRC_FX_CATCH_ALL {
+            return false;
+        }
+    }
+
+    void reset() noexcept override {
+        if (!prepared_) return;
+        std::visit([](auto& processor) { processor.reset(0U); }, processor_);
+        nextFrame_ = 0U;
+        pendingCount_ = 0U;
+        restoreParameterState();
+    }
+
+    bool validateBlockRequest(std::uint32_t channels, std::uint32_t frames) const noexcept override {
+        return prepared_ && channels == 2U && channels == spec_.channels &&
+               frames <= spec_.maxBlockFrames;
+    }
+
+    bool validParameter(FxParameterId id, float value) const noexcept override {
+        if (!std::isfinite(value)) return false;
+        ModulationFxControl control{};
+        if (!modulationControlForParameter(id, control)) return false;
+        const float sampleRate = prepared_ ? spec_.sampleRate : 192000.0f;
+        switch (control) {
+        case ModulationFxControl::Active:
+            return value == 0.0f || value == 1.0f;
+        case ModulationFxControl::Wet:
+            return value >= 0.0f && value <= 1.0f;
+        case ModulationFxControl::RateHz:
+            if (kind_ == ModulationFxKind::RingModulator)
+                return value >= 1.0f && value <= std::min(8000.0f, sampleRate * 0.45f);
+            return (kind_ == ModulationFxKind::AutoPan || kind_ == ModulationFxKind::Tremolo) &&
+                   value >= 0.01f && value <= std::min(20.0f, sampleRate * 0.25f);
+        case ModulationFxControl::Depth:
+            return (kind_ == ModulationFxKind::AutoPan || kind_ == ModulationFxKind::Tremolo) &&
+                   value >= 0.0f && value <= 1.0f;
+        case ModulationFxControl::Pan:
+            return (kind_ == ModulationFxKind::AutoPan || kind_ == ModulationFxKind::ManualPan) &&
+                   value >= -1.0f && value <= 1.0f;
+        case ModulationFxControl::BitDepth:
+            return kind_ == ModulationFxKind::LoFi && value >= 4.0f && value <= 16.0f &&
+                   std::floor(value) == value;
+        case ModulationFxControl::HoldFrames:
+            return kind_ == ModulationFxKind::LoFi && value >= 1.0f && value <= 64.0f &&
+                   std::floor(value) == value;
+        case ModulationFxControl::Dither:
+            return kind_ == ModulationFxKind::LoFi && value >= 0.0f && value <= 1.0f;
+        case ModulationFxControl::Waveform:
+            return kind_ == ModulationFxKind::RingModulator && value >= 0.0f && value <= 3.0f &&
+                   std::floor(value) == value;
+        }
+        return false;
+    }
+
+    bool setParameter(FxParameterId id, float value) noexcept override {
+        if (!validParameter(id, value)) return false;
+        ModulationFxControl control{};
+        if (!modulationControlForParameter(id, control)) return false;
+        const auto index = static_cast<std::size_t>(control);
+        const ModulationFxEvent event{0U, control, value};
+        if (prepared_) {
+            if (pendingCount_ >= pendingEvents_.size()) return false;
+            pendingEvents_[pendingCount_++] = event;
+        }
+        parameterState_[index] = event;
+        hasParameterState_[index] = true;
+        return true;
+    }
+
+    bool canAcceptParameterEvents(std::uint32_t eventCount) const noexcept override {
+        return eventCount <= pendingEvents_.size() - pendingCount_;
+    }
+
+    bool processBlock(const float* const* input, float* const* output,
+                      std::uint32_t channels, std::uint32_t frames) noexcept override {
+        if (!validateBlockRequest(channels, frames) || (frames > 0U && (!input || !output))) return false;
+        if (frames == 0U) return true;
+        if (!input[0] || !input[1] || !output[0] || !output[1] ||
+            nextFrame_ >= kMaximumExactFrame || frames > kMaximumExactFrame - nextFrame_) return false;
+        for (std::uint32_t frame = 0U; frame < frames; ++frame)
+            interleavedScratch_[frame] = {sanitize(input[0][frame]), sanitize(input[1][frame])};
+        const bool processed = std::visit([this, frames](auto& processor) {
+            return processor.processBlock(nextFrame_, interleavedScratch_.data(), frames,
+                                          pendingEvents_.data(), pendingCount_);
+        }, processor_);
+        if (!processed) return false;
+        for (std::uint32_t frame = 0U; frame < frames; ++frame) {
+            output[0][frame] = sanitize(interleavedScratch_[frame].left);
+            output[1][frame] = sanitize(interleavedScratch_[frame].right);
+        }
+        nextFrame_ += frames;
+        pendingCount_ = 0U;
+        return true;
+    }
+
+    std::uint32_t maximumParameterEventsPerBlock() const noexcept override {
+        return ModulationFxProcessor::kMaximumControlEventsPerBlock;
+    }
+
+    std::int32_t fixedLatencySamples() const noexcept override {
+        return prepared_ ? static_cast<std::int32_t>(ModulationFxProcessor::algorithmicLatencySamples()) : -1;
+    }
+    bool latencyIsFrequencyDependent() const noexcept override { return false; }
+
+private:
+    static constexpr std::uint64_t kMaximumExactFrame = 1ULL << 53U;
+
+    void restoreParameterState() noexcept {
+        for (std::size_t i = 0U; i < parameterState_.size(); ++i) {
+            if (hasParameterState_[i] && pendingCount_ < pendingEvents_.size())
+                pendingEvents_[pendingCount_++] = parameterState_[i];
+        }
+    }
+
+    std::uint16_t ordinal_ = 0U;
+    ModulationFxKind kind_ = ModulationFxKind::LoFi;
+    ModulationVariant processor_{};
+    ProcessSpec spec_{};
+    std::vector<StereoFrame> interleavedScratch_;
+    std::array<ModulationFxEvent, ModulationFxProcessor::kMaximumControlEventsPerBlock> pendingEvents_{};
+    std::array<ModulationFxEvent, 9U> parameterState_{};
+    std::array<bool, 9U> hasParameterState_{};
+    std::uint64_t nextFrame_ = 0U;
+    std::uint32_t pendingCount_ = 0U;
+    bool prepared_ = false;
+};
+
+} // namespace
+
+FxMemoryRequirement fxMemoryRequirement(std::uint16_t ordinal,
+                                         const ProcessSpec& spec) noexcept {
+    FxMemoryRequirement result{};
+    if (!validProcessSpec(spec)) return result;
+
+    std::uint64_t preparedBytes = 0;
+    switch (ordinal) {
+    case 1U: case 2U: case 3U:
+        result.objectBytes = sizeof(TptFilterProcessor);
+        break;
+    case 4U:
+        result.objectBytes = sizeof(PhaserProcessor);
+        break;
+    case 25U:
+        if (spec.channels != 2U) return {};
+        result.objectBytes = sizeof(DynamicsProcessor);
+        break;
+    case 26U:
+        result.objectBytes = sizeof(EqProcessor);
+        break;
+    case 36U: {
+        if (spec.channels != 1U && spec.channels != 2U) return {};
+        result.objectBytes = sizeof(DelayProcessor);
+        const auto maxDelaySamples = static_cast<std::uint64_t>(spec.sampleRate * 2.0f);
+        const auto oneDelayBytes = (maxDelaySamples + 4U) * sizeof(float);
+        if (oneDelayBytes > std::numeric_limits<std::uint64_t>::max() / 2U) return {};
+        preparedBytes = oneDelayBytes * 2U; // two candidate LagrangeDelay buffers
+        break;
+    }
+    case 47U: {
+        if (spec.channels != 2U) return {};
+        result.objectBytes = sizeof(ReverbProcessor);
+        preparedBytes = FdnReverb::requiredPrepareBytes(spec, FdnLineCount::Eight, 0.12f);
+        if (preparedBytes == 0U) return {};
+        break;
+    }
+    case 50U: case 51U: case 52U: case 53U: {
+        if (spec.channels != 2U) return {};
+        result.objectBytes = sizeof(PerformanceFxAdapter);
+        const auto kind = performanceKindForOrdinal(ordinal);
+        const auto processorBytes = PerformanceFxProcessor::requiredPrepareBytes(spec, kind);
+        const auto scratchBytes = static_cast<std::uint64_t>(spec.maxBlockFrames) * sizeof(StereoFrame);
+        if (processorBytes == 0U || processorBytes > std::numeric_limits<std::uint64_t>::max() - scratchBytes)
+            return {};
+        preparedBytes = static_cast<std::uint64_t>(processorBytes) + scratchBytes;
+        break;
+    }
+    case 7U: case 9U: case 29U: case 30U: case 32U: {
+        if (spec.channels != 2U) return {};
+        result.objectBytes = sizeof(ModulationFxAdapter);
+        const auto processorBytes = ModulationFxProcessor::requiredPrepareBytes(
+            spec, modulationKindForOrdinal(ordinal));
+        const auto scratchBytes = static_cast<std::uint64_t>(spec.maxBlockFrames) * sizeof(StereoFrame);
+        if (processorBytes == 0U || scratchBytes > std::numeric_limits<std::uint64_t>::max() / 2U)
+            return {};
+        // The fixed DSP state is embedded in ModulationVariant (objectBytes);
+        // only the planar adapter scratch is separately allocated. Reprepare
+        // keeps one current and one candidate scratch buffer alive.
+        preparedBytes = scratchBytes;
+        result.persistentPreparedBytes = preparedBytes;
+        result.prepareScratchBytes = scratchBytes;
+        result.supported = true;
+        return result;
+    }
+    default:
+        return result;
+    }
+
+    // Delay and FDN preparation builds a candidate while any active instance is
+    // still alive. Reserve both sides of that transactional reprepare peak.
+    result.persistentPreparedBytes = preparedBytes;
+    result.prepareScratchBytes = preparedBytes;
+    result.supported = true;
+    return result;
+}
+
+const FxDescriptor* fxCatalogData() noexcept { return kCatalog.data(); }
+std::size_t fxCatalogSize() noexcept { return kCatalog.size(); }
+
+const FxDescriptor* findFxByOrdinal(std::uint16_t ordinal) noexcept {
+    if (ordinal == 0U || ordinal > kCatalog.size()) return nullptr;
+    const auto& result = kCatalog[ordinal - 1U];
+    return result.ordinal == ordinal ? &result : nullptr;
+}
+
+const FxDescriptor* findFxById(std::string_view id) noexcept {
+    const auto found = std::find_if(kCatalog.begin(), kCatalog.end(),
+                                    [id](const FxDescriptor& descriptor) { return descriptor.id == id; });
+    return found == kCatalog.end() ? nullptr : &*found;
+}
+
+const FxParameterDescriptor* fxParameterDescriptors(std::uint16_t ordinal,
+                                                     std::size_t& count) noexcept {
+    count = 0;
+    switch (ordinal) {
+    case 1U: case 2U: case 3U:
+        count = kFilterParameters.size(); return kFilterParameters.data();
+    case 4U:
+        count = kPhaserParameters.size(); return kPhaserParameters.data();
+    case 25U:
+        count = kDynamicsParameters.size(); return kDynamicsParameters.data();
+    case 26U:
+        count = kEqParameters.size(); return kEqParameters.data();
+    case 36U:
+        count = kDelayParameters.size(); return kDelayParameters.data();
+    case 47U:
+        count = kReverbParameters.size(); return kReverbParameters.data();
+    case 50U:
+        count = kBeatScatterParameters.size(); return kBeatScatterParameters.data();
+    case 51U:
+        count = kBeatRepeatParameters.size(); return kBeatRepeatParameters.data();
+    case 52U:
+        count = kBeatShiftParameters.size(); return kBeatShiftParameters.data();
+    case 53U:
+        count = kVinylFlickParameters.size(); return kVinylFlickParameters.data();
+    case 7U:
+        count = kLoFiParameters.size(); return kLoFiParameters.data();
+    case 9U:
+        count = kRingModParameters.size(); return kRingModParameters.data();
+    case 29U:
+        count = kAutoPanParameters.size(); return kAutoPanParameters.data();
+    case 30U:
+        count = kManualPanParameters.size(); return kManualPanParameters.data();
+    case 32U:
+        count = kTremoloParameters.size(); return kTremoloParameters.data();
+    default: return nullptr;
+    }
+}
+
+bool FxProcessor::processBlockWithEvents(const float* const* input,
+                                         float* const* output,
+                                         std::uint32_t channels,
+                                         std::uint32_t frames,
+                                         const FxParameterEvent* events,
+                                         std::uint32_t eventCount) noexcept {
+    if (!validateBlockRequest(channels, frames) || eventCount > kFxEventCapacity ||
+        eventCount > maximumParameterEventsPerBlock() || !canAcceptParameterEvents(eventCount) ||
+        (eventCount > 0U && (!events || frames == 0U)) ||
+        (frames > 0U && (!input || !output))) return false;
+    for (std::uint32_t channel = 0; channel < channels && frames > 0U; ++channel) {
+        if (!input[channel] || !output[channel]) return false;
+    }
+    if (eventCount == 0U) return processBlock(input, output, channels, frames);
+    std::uint32_t previousOffset = 0;
+    for (std::uint32_t i = 0; i < eventCount; ++i) {
+        const auto& event = events[i];
+        if (event.frameOffset > frames || (i > 0U && event.frameOffset < previousOffset)) return false;
+        previousOffset = event.frameOffset;
+    }
+    if (!validateParameterEvents(events, eventCount)) return false;
+    std::uint32_t cursor = 0;
+    for (std::uint32_t i = 0; i < eventCount; ++i) {
+        const auto& event = events[i];
+        const auto segment = event.frameOffset - cursor;
+        if (segment > 0U) {
+            const float* inOffset[2]{};
+            float* outOffset[2]{};
+            for (std::uint32_t channel = 0; channel < channels && channel < 2U; ++channel) {
+                inOffset[channel] = input[channel] + cursor;
+                outOffset[channel] = output[channel] + cursor;
+            }
+            if (!processBlock(inOffset, outOffset, channels, segment)) return false;
+        }
+        if (!setParameter(event.parameter, event.value)) return false;
+        cursor = event.frameOffset;
+    }
+    if (cursor < frames) {
+        const float* inOffset[2]{};
+        float* outOffset[2]{};
+        for (std::uint32_t channel = 0; channel < channels && channel < 2U; ++channel) {
+            inOffset[channel] = input[channel] + cursor;
+            outOffset[channel] = output[channel] + cursor;
+        }
+        if (!processBlock(inOffset, outOffset, channels, frames - cursor)) return false;
+    }
+    return true;
+}
+
+std::unique_ptr<FxProcessor> createFxProcessor(std::uint16_t ordinal) noexcept {
+    const auto* descriptor = findFxByOrdinal(ordinal);
+    if (!descriptor || descriptor->readiness != FxReadiness::ProcessorAvailable) return nullptr;
+    if (ordinal <= 3U) return std::unique_ptr<FxProcessor>(new (std::nothrow) TptFilterProcessor(ordinal));
+    if (ordinal == 4U) return std::unique_ptr<FxProcessor>(new (std::nothrow) PhaserProcessor());
+    if (ordinal == 25U) return std::unique_ptr<FxProcessor>(new (std::nothrow) DynamicsProcessor());
+    if (ordinal == 26U) return std::unique_ptr<FxProcessor>(new (std::nothrow) EqProcessor());
+    if (ordinal == 36U) return std::unique_ptr<FxProcessor>(new (std::nothrow) DelayProcessor());
+    if (ordinal == 47U) return std::unique_ptr<FxProcessor>(new (std::nothrow) ReverbProcessor());
+    if (ordinal >= 50U && ordinal <= 53U)
+        return std::unique_ptr<FxProcessor>(new (std::nothrow) PerformanceFxAdapter(ordinal));
+    if (ordinal == 7U || ordinal == 9U || ordinal == 29U || ordinal == 30U || ordinal == 32U)
+        return std::unique_ptr<FxProcessor>(new (std::nothrow) ModulationFxAdapter(ordinal));
+    return nullptr;
+}
+
+} // namespace webrc::dsp

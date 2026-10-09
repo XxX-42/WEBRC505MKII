@@ -1,0 +1,482 @@
+[  1%] Building CXX object CMakeFiles/webrc_dsp.dir/src/primitives.cpp.obj
+primitives.cpp
+[  3%] Building CXX object CMakeFiles/webrc_dsp.dir/src/control_dynamics.cpp.obj
+control_dynamics.cpp
+[  5%] Building CXX object CMakeFiles/webrc_dsp.dir/src/nonlinear.cpp.obj
+nonlinear.cpp
+[  7%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fft.cpp.obj
+fft.cpp
+[  9%] Building CXX object CMakeFiles/webrc_dsp.dir/src/spatial_temporal.cpp.obj
+spatial_temporal.cpp
+[ 11%] Building CXX object CMakeFiles/webrc_dsp.dir/src/pitch.cpp.obj
+pitch.cpp
+[ 13%] Building CXX object CMakeFiles/webrc_dsp.dir/src/signalsmith_adapter.cpp.obj
+signalsmith_adapter.cpp
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(530): warning C4305: 'initializing': truncation from 'double' to 'const Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(530): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(94): note: see reference to class template instantiation 'signalsmith::stretch::SignalsmithStretch<float,void>' being compiled
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: see reference to class template instantiation 'signalsmith::linear::DynamicSTFT<Sample,false,1>' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(50): warning C4305: 'argument': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(50): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(94): note: see reference to class template instantiation 'signalsmith::stretch::SignalsmithStretch<float,void>' being compiled
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(49): note: while compiling class template member function 'void signalsmith::stretch::SignalsmithStretch<float,void>::reset(void)'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(127): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::reset' in 'webrc::dsp::SignalsmithStretchAdapter::reset'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(667): warning C4458: declaration of 'norm' hides class member
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(543): note: see declaration of 'signalsmith::linear::DynamicSTFT<Sample,false,1>::norm'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(667): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(520): note: see reference to class template instantiation 'signalsmith::linear::DynamicSTFT<Sample,false,1>' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(287): note: while compiling class template member function 'void signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval(size_t,signalsmith::linear::DynamicSTFT<Sample,false,1>::WindowShape,Sample)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(75): note: see the first reference to 'signalsmith::linear::DynamicSTFT<Sample,false,1>::setInterval' in 'signalsmith::stretch::SignalsmithStretch<float,void>::configure'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(96): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::configure' in 'webrc::dsp::SignalsmithStretchAdapter::prepare'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(293): note: see reference to function template instantiation 'void signalsmith::linear::DynamicSTFT<Sample,false,1>::ApproximateConfinedGaussian::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const' being compiled
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(672): warning C4244: '=': conversion from 'double' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(677): warning C4244: '*=': conversion from 'double' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(635): warning C4244: '=': conversion from 'double' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(635): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(296): note: see reference to function template instantiation 'void signalsmith::linear::DynamicSTFT<Sample,false,1>::Kaiser::fill<std::vector<float,std::allocator<float>>&>(Data,size_t,double,bool) const' being compiled
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(640): warning C4244: '*=': conversion from 'double' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(692): warning C4244: '*=': conversion from 'double' to '_Ty', possible loss of data
+        with
+        [
+            _Ty=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(692): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(303): note: see reference to function template instantiation 'void signalsmith::linear::DynamicSTFT<Sample,false,1>::forcePerfectReconstruction<std::vector<float,std::allocator<float>>&>(Data,size_t,size_t)' being compiled
+        with
+        [
+            Sample=float,
+            Data=std::vector<float,std::allocator<float>> &
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1222): warning C4456: declaration of 'hSize' hides previous local declaration
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1183): note: see declaration of 'hSize'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1222): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(19): note: see reference to class template instantiation 'signalsmith::linear::RealFFT<Sample,false,true>' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1181): note: while compiling class template member function 'void signalsmith::linear::RealFFT<Sample,false,true>::ifft(size_t,const std::complex<float> *,Sample *)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(426): note: see the first reference to 'signalsmith::linear::RealFFT<Sample,false,true>::ifft' in 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: see the first reference to 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep' in 'signalsmith::stretch::SignalsmithStretch<float,void>::process'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(176): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::process' in 'webrc::dsp::SignalsmithStretchAdapter::process'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1015): warning C4456: declaration of 'hSize' hides previous local declaration
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1011): note: see declaration of 'hSize'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1015): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1009): note: while compiling class template member function 'void signalsmith::linear::RealFFT<Sample,false,true>::fft(size_t,const Sample *,std::complex<float> *)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(386): note: see the first reference to 'signalsmith::linear::RealFFT<Sample,false,true>::fft' in 'signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(337): note: see the first reference to 'signalsmith::linear::DynamicSTFT<Sample,false,1>::analyseStep' in 'signalsmith::stretch::SignalsmithStretch<float,void>::process'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(176): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::process' in 'webrc::dsp::SignalsmithStretchAdapter::process'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(980): warning C4244: 'initializing': conversion from 'double' to 'Sample', possible loss of data
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(980): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(970): note: while compiling class template member function 'void signalsmith::linear::RealFFT<Sample,false,true>::resize(size_t)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(967): note: see the first reference to 'signalsmith::linear::RealFFT<Sample,false,true>::resize' in 'signalsmith::linear::RealFFT<Sample,false,true>::RealFFT'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(696): note: see the first reference to 'signalsmith::linear::RealFFT<Sample,false,true>::RealFFT' in 'signalsmith::linear::DynamicSTFT<Sample,false,1>::DynamicSTFT'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(985): warning C4244: 'initializing': conversion from 'double' to 'Sample', possible loss of data
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(991): warning C4244: 'initializing': conversion from 'double' to 'Sample', possible loss of data
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(554): warning C4244: 'initializing': conversion from 'size_t' to 'Sample', possible loss of data
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(554): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(544): note: while compiling class template member function 'void signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct(void)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(410): note: see the first reference to 'signalsmith::linear::DynamicSTFT<Sample,false,1>::addWindowProduct' in 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: see the first reference to 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep' in 'signalsmith::stretch::SignalsmithStretch<float,void>::process'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(176): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::process' in 'webrc::dsp::SignalsmithStretchAdapter::process'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(1012): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(1012): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(972): note: while compiling class template member function 'void signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants(size_t)'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(691): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::updateFormants' in 'signalsmith::stretch::SignalsmithStretch<float,void>::processSpectrum'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(379): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::processSpectrum' in 'signalsmith::stretch::SignalsmithStretch<float,void>::process'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(176): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::process' in 'webrc::dsp::SignalsmithStretchAdapter::process'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(682): warning C4244: 'initializing': conversion from 'double' to 'Sample', possible loss of data
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(682): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(960): note: see reference to class template instantiation 'signalsmith::linear::SplitFFT<Sample,false>' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(455): note: while compiling class template member function 'void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const Sample *,const Sample *,Sample *,Sample *)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1220): note: see the first reference to 'signalsmith::linear::SplitFFT<Sample,false>::ifft' in 'signalsmith::linear::RealFFT<Sample,false,true>::ifft'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(426): note: see the first reference to 'signalsmith::linear::RealFFT<Sample,false,true>::ifft' in 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: see the first reference to 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep' in 'signalsmith::stretch::SignalsmithStretch<float,void>::process'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(176): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::process' in 'webrc::dsp::SignalsmithStretchAdapter::process'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(456): note: see reference to function template instantiation 'void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const Sample *,const Sample *,Sample *,Sample *)' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(623): note: see reference to function template instantiation 'void signalsmith::linear::SplitFFT<Sample,false>::finalPass3<true>(Sample *,Sample *)' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(682): warning C4244: 'initializing': conversion from 'double' to 'const Sample', possible loss of data
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(777): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(777): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(629): note: see reference to function template instantiation 'void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(Sample *,Sample *)' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(778): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(779): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(780): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(849): warning C4456: declaration of 'sumR' hides previous local declaration
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(840): note: see declaration of 'sumR'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(849): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(632): note: see reference to function template instantiation 'void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(Sample *,Sample *)' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(849): warning C4456: declaration of 'sumI' hides previous local declaration
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(840): note: see declaration of 'sumI'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(744): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(744): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(447): note: while compiling class template member function 'void signalsmith::linear::SplitFFT<Sample,false>::ifft(size_t,const std::complex<float> *,std::complex<float> *)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(1274): note: see the first reference to 'signalsmith::linear::SplitFFT<Sample,false>::ifft' in 'signalsmith::linear::RealFFT<Sample,false,true>::ifft'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(426): note: see the first reference to 'signalsmith::linear::RealFFT<Sample,false,true>::ifft' in 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-stretch\include\signalsmith-stretch\../../signalsmith-stretch.h(398): note: see the first reference to 'signalsmith::linear::DynamicSTFT<Sample,false,1>::synthesiseStep' in 'signalsmith::stretch::SignalsmithStretch<float,void>::process'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\shared\dsp\src\signalsmith_adapter.cpp(176): note: see the first reference to 'signalsmith::stretch::SignalsmithStretch<float,void>::process' in 'webrc::dsp::SignalsmithStretchAdapter::process'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(448): note: see reference to function template instantiation 'void signalsmith::linear::SplitFFT<Sample,false>::fftStep<true>(signalsmith::linear::SplitFFT<Sample,false>::Step,const std::complex<float> *,std::complex<float> *)' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(547): note: see reference to function template instantiation 'void signalsmith::linear::SplitFFT<Sample,false>::finalPass5<true>(std::complex<float> *)' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(745): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(746): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(747): warning C4305: 'initializing': truncation from 'double' to 'Sample'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(818): warning C4456: declaration of 'sum' hides previous local declaration
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(811): note: see declaration of 'sum'
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(818): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(550): note: see reference to function template instantiation 'void signalsmith::linear::SplitFFT<Sample,false>::finalPassN<true>(std::complex<float> *)' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(115): warning C4244: 'initializing': conversion from 'double' to 'Sample', possible loss of data
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(115): note: the template instantiation context (the oldest one first) is
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(328): note: see reference to class template instantiation 'signalsmith::linear::Pow2FFT<Sample>' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(321): note: see reference to class template instantiation 'signalsmith::linear::SimpleFFT<Sample>' being compiled
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(112): note: while compiling class template member function 'void signalsmith::linear::SimpleFFT<Sample>::resize(size_t)'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(109): note: see the first reference to 'signalsmith::linear::SimpleFFT<Sample>::resize' in 'signalsmith::linear::SimpleFFT<Sample>::SimpleFFT'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(293): note: see the first reference to 'signalsmith::linear::SimpleFFT<Sample>::SimpleFFT' in 'signalsmith::linear::Pow2FFT<Sample>::Pow2FFT'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(342): note: see the first reference to 'signalsmith::linear::Pow2FFT<Sample>::Pow2FFT' in 'signalsmith::linear::SplitFFT<Sample,false>::SplitFFT'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\./fft.h(966): note: see the first reference to 'signalsmith::linear::SplitFFT<Sample,false>::SplitFFT' in 'signalsmith::linear::RealFFT<Sample,false,true>::RealFFT'
+        with
+        [
+            Sample=float
+        ]
+C:\Users\user1000\AppData\Local\Temp\webrc-native-stable17-snapshot-r2-20261009\repo\third_party\signalsmith-linear\include\signalsmith-linear\../../stft.h(696): note: see the first reference to 'signalsmith::linear::RealFFT<Sample,false,true>::RealFFT' in 'signalsmith::linear::DynamicSTFT<Sample,false,1>::DynamicSTFT'
+        with
+        [
+            Sample=float
+        ]
+[ 15%] Building CXX object CMakeFiles/webrc_dsp.dir/src/streaming_yin.cpp.obj
+streaming_yin.cpp
+[ 17%] Building CXX object CMakeFiles/webrc_dsp.dir/src/live_mono_pitch.cpp.obj
+live_mono_pitch.cpp
+[ 19%] Building CXX object CMakeFiles/webrc_dsp.dir/src/fx_registry.cpp.obj
+fx_registry.cpp
+[ 21%] Building CXX object CMakeFiles/webrc_dsp.dir/src/performance_fx.cpp.obj
+performance_fx.cpp
+[ 23%] Building CXX object CMakeFiles/webrc_dsp.dir/src/modulation_fx.cpp.obj
+modulation_fx.cpp
+[ 25%] Building CXX object CMakeFiles/webrc_dsp.dir/src/rhythm.cpp.obj
+rhythm.cpp
+[ 27%] Building CXX object CMakeFiles/webrc_dsp.dir/src/cleanroom_rhythm_data.cpp.obj
+cleanroom_rhythm_data.cpp
+[ 29%] Linking CXX static library webrc_dsp.lib
+[ 29%] Built target webrc_dsp
+[ 31%] Building CXX object CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.obj
+dsp_primitives_tests.cpp
+[ 33%] Linking CXX executable dsp_primitives_tests.exe
+[ 33%] Built target dsp_primitives_tests
+[ 35%] Building CXX object CMakeFiles/control_dynamics_tests.dir/tests/control_dynamics_tests.cpp.obj
+control_dynamics_tests.cpp
+[ 37%] Linking CXX executable control_dynamics_tests.exe
+[ 37%] Built target control_dynamics_tests
+[ 39%] Building CXX object CMakeFiles/nonlinear_tests.dir/tests/nonlinear_tests.cpp.obj
+nonlinear_tests.cpp
+[ 41%] Linking CXX executable nonlinear_tests.exe
+[ 41%] Built target nonlinear_tests
+[ 43%] Building CXX object CMakeFiles/spatial_temporal_tests.dir/tests/spatial_temporal_tests.cpp.obj
+spatial_temporal_tests.cpp
+[ 45%] Linking CXX executable spatial_temporal_tests.exe
+[ 45%] Built target spatial_temporal_tests
+[ 47%] Building CXX object CMakeFiles/pitch_tests.dir/tests/pitch_tests.cpp.obj
+pitch_tests.cpp
+[ 49%] Linking CXX executable pitch_tests.exe
+[ 49%] Built target pitch_tests
+[ 50%] Building CXX object CMakeFiles/streaming_yin_tests.dir/tests/streaming_yin_tests.cpp.obj
+streaming_yin_tests.cpp
+[ 52%] Linking CXX executable streaming_yin_tests.exe
+[ 52%] Built target streaming_yin_tests
+[ 54%] Building CXX object CMakeFiles/live_mono_pitch_tests.dir/tests/live_mono_pitch_tests.cpp.obj
+live_mono_pitch_tests.cpp
+[ 56%] Linking CXX executable live_mono_pitch_tests.exe
+[ 56%] Built target live_mono_pitch_tests
+[ 58%] Building CXX object CMakeFiles/fx_registry_tests.dir/tests/fx_registry_tests.cpp.obj
+fx_registry_tests.cpp
+[ 60%] Linking CXX executable fx_registry_tests.exe
+[ 60%] Built target fx_registry_tests
+[ 62%] Building CXX object CMakeFiles/performance_fx_tests.dir/tests/performance_fx_tests.cpp.obj
+performance_fx_tests.cpp
+[ 64%] Linking CXX executable performance_fx_tests.exe
+[ 64%] Built target performance_fx_tests
+[ 66%] Building CXX object CMakeFiles/modulation_fx_tests.dir/tests/modulation_fx_tests.cpp.obj
+modulation_fx_tests.cpp
+[ 68%] Linking CXX executable modulation_fx_tests.exe
+[ 68%] Built target modulation_fx_tests
+[ 70%] Building CXX object CMakeFiles/rhythm_tests.dir/tests/rhythm_tests.cpp.obj
+rhythm_tests.cpp
+[ 72%] Linking CXX executable rhythm_tests.exe
+[ 72%] Built target rhythm_tests
+[ 74%] Building CXX object CMakeFiles/native_dsp_primitives_bench.dir/benchmarks/native_dsp_primitives_bench.cpp.obj
+native_dsp_primitives_bench.cpp
+[ 76%] Linking CXX executable native_dsp_primitives_bench.exe
+[ 76%] Built target native_dsp_primitives_bench
+[ 78%] Building CXX object CMakeFiles/dsp_primitives_golden.dir/benchmarks/native_dsp_primitives_golden.cpp.obj
+native_dsp_primitives_golden.cpp
+[ 80%] Linking CXX executable dsp_primitives_golden.exe
+[ 80%] Built target dsp_primitives_golden
+[ 82%] Building CXX object CMakeFiles/native_dsp_pcm_fixture_generator.dir/benchmarks/native_dsp_pcm_fixture_generator.cpp.obj
+native_dsp_pcm_fixture_generator.cpp
+[ 84%] Linking CXX executable native_dsp_pcm_fixture_generator.exe
+[ 84%] Built target native_dsp_pcm_fixture_generator
+[ 86%] Building CXX object CMakeFiles/native_dsp_parity_v21_generator.dir/benchmarks/native_dsp_parity_v21_generator.cpp.obj
+native_dsp_parity_v21_generator.cpp
+[ 88%] Linking CXX executable native_dsp_parity_v21_generator.exe
+[ 88%] Built target native_dsp_parity_v21_generator
+[ 90%] Building CXX object CMakeFiles/native_rhythm_bench.dir/benchmarks/native_rhythm_bench.cpp.obj
+native_rhythm_bench.cpp
+[ 92%] Linking CXX executable native_rhythm_bench.exe
+[ 92%] Built target native_rhythm_bench
+[ 94%] Building CXX object CMakeFiles/native_dsp_sustained_bench.dir/benchmarks/native_dsp_sustained_bench.cpp.obj
+native_dsp_sustained_bench.cpp
+[ 96%] Linking CXX executable native_dsp_sustained_bench.exe
+[ 96%] Built target native_dsp_sustained_bench
+[ 98%] Building CXX object CMakeFiles/native_streaming_yin_bench.dir/benchmarks/native_streaming_yin_bench.cpp.obj
+native_streaming_yin_bench.cpp
+[100%] Linking CXX executable native_streaming_yin_bench.exe
+[100%] Built target native_streaming_yin_bench

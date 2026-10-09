@@ -56,3 +56,44 @@
 /shared/dsp/benchmarks/results/native-performance-fx-eventburst-20261009T144617906Z.snapshot/** -text -whitespace
 /shared/dsp/benchmarks/capture_native_performance_fx_eventburst.ps1 -text
 /shared/dsp/benchmarks/native_performance_fx_eventburst_bench.cpp -text
+# Preserve exact tested Native bridge and shared processor compiler inputs.
+/native-mvp/engine-cpp/CMakeLists.txt -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/include/native_audio_core.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/src/native_audio_core.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/native-mvp/engine-cpp/src/native_bridge_host.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/scripts/native-verify.ps1 -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/scripts/native-dsp-verify.ps1 -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/CMakeLists.txt -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/fx_registry.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/fx_registry.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/fx_registry_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/performance_fx.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/performance_fx.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/performance_fx_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/modulation_fx.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/modulation_fx.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/modulation_fx_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/rhythm.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/rhythm.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/rhythm_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/cleanroom_rhythm_data.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/streaming_yin.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/streaming_yin.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/streaming_yin_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/native_streaming_yin_bench.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/native_dsp_parity_v21_generator.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/native_dsp_sustained_bench.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/native_rhythm_bench.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/audio/NativeAudioEngine.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/audio/NativeBridgeClient.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/audio/NativeTrackProxy.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/audio/AudioEngine.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/src/composables/useControlDispatcher.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/audioEngine.spec.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/tests/unit/nativeBridgeClient.spec.ts -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/live_mono_pitch.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/live_mono_pitch.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/live_mono_pitch_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/bench/results/native_shared_dsp_checkpoint_20261009T151930Z/** -text -whitespace
+/bench/results/native_streaming_yin_callback_20261009T150826Z/** -text -whitespace

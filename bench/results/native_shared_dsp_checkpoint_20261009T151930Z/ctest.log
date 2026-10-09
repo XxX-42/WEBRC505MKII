@@ -1,0 +1,27 @@
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-native-stable17-snapshot-r2-20261009/build
+      Start  1: dsp_primitives_tests
+ 1/11 Test  #1: dsp_primitives_tests .............   Passed    0.09 sec
+      Start  2: control_dynamics_tests
+ 2/11 Test  #2: control_dynamics_tests ...........   Passed    0.08 sec
+      Start  3: nonlinear_tests
+ 3/11 Test  #3: nonlinear_tests ..................   Passed    0.22 sec
+      Start  4: spatial_temporal_tests
+ 4/11 Test  #4: spatial_temporal_tests ...........   Passed    0.45 sec
+      Start  5: pitch_tests
+ 5/11 Test  #5: pitch_tests ......................   Passed    0.29 sec
+      Start  6: streaming_yin_tests
+ 6/11 Test  #6: streaming_yin_tests ..............   Passed    0.10 sec
+      Start  7: live_mono_pitch_tests
+ 7/11 Test  #7: live_mono_pitch_tests ............   Passed    0.18 sec
+      Start  8: fx_registry_tests
+ 8/11 Test  #8: fx_registry_tests ................   Passed    0.06 sec
+      Start  9: performance_fx_tests
+ 9/11 Test  #9: performance_fx_tests .............   Passed    0.19 sec
+      Start 10: modulation_fx_tests
+10/11 Test #10: modulation_fx_tests ..............   Passed    0.13 sec
+      Start 11: rhythm_tests
+11/11 Test #11: rhythm_tests .....................   Passed    0.48 sec
+
+100% tests passed out of 11
+
+Total Test time (real) =   2.62 sec

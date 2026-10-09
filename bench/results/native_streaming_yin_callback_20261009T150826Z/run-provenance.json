@@ -1,0 +1,43 @@
+{
+  "schema": "native-streaming-yin-run-provenance-v1",
+  "capturedAtUtc": "20261009T150826Z",
+  "scope": "single IncrementalYinDetector processBlock callback; no device/hardware; not whole graph or XRUN qualification",
+  "archiveFiles": {
+    "benchmarkSourceSha256": "113ef3094defc414a80b6c435e93aa7b8115418d1b570387d16687822eac9565",
+    "sourceManifestSha256": "f18d768428b1e0080fe96ebdfe923cb2c83ffbf0d66b7c0ec4df33b78cc60379",
+    "rawJsonSha256": "54f234d9c453b7a56e6436124618d677042fad0cec033628a69b17fb94d2db2d",
+    "benchmarkSourcePath": "shared/dsp/benchmarks/native_streaming_yin_bench.cpp",
+    "sharedCoreSourceEntries": 55,
+    "sharedCoreAggregateSha256": "073ad878579fd12c4e8be05e41dca0054a5743e191bbc3ffa0d658cc9f5a7f94",
+    "executableSha256": "b00ae9b7e8f57f6747758a086df73728efedf982eb5584ede9486ba5d398da40"
+  },
+  "build": {
+    "root": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-native-checkpoint-20261009\\build",
+    "msvcVersion": "19.50.35721.0",
+    "compiler": "D:/Applications/VisualStudio/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe",
+    "flags": "/std:c++17 /O2 /Ob2 /DNDEBUG /MD /W4 /permissive-",
+    "configuration": "Release",
+    "generator": "NMake Makefiles"
+  },
+  "environment": {
+    "os": "Microsoft Windows 11 专业版",
+    "cpu": "AMD Ryzen 9 5900HX with Radeon Graphics        ",
+    "concurrencyNote": "Captured while parallel project work was active; no CPU isolation or host-jitter attribution. Preserve raw long-tail data; informational only."
+  },
+  "metrics": {
+    "p50Ns": 246000,
+    "callbackFrames": 64,
+    "maxNs": 45825800,
+    "finiteOutput": true,
+    "overHardDeadline": 91,
+    "sampleRateHz": 48000,
+    "inputPeak": 0.306274444,
+    "callbacks": 20000,
+    "p99Ns": 869000,
+    "over80PercentDeadline": 128,
+    "p95Ns": 473500,
+    "analysisCount": 2492,
+    "allocations": 0,
+    "p999Ns": 3639000
+  }
+}
