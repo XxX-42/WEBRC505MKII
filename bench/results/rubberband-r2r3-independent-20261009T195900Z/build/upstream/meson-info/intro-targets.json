@@ -1,0 +1,151 @@
+[
+  {
+    "name": "rubberband_objlib",
+    "id": "rubberband_objlib@sta",
+    "type": "static library",
+    "defined_in": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\meson.build",
+    "filename": [
+      "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\librubberband_objlib.a"
+    ],
+    "build_by_default": true,
+    "target_sources": [
+      {
+        "language": "cpp",
+        "machine": "host",
+        "compiler": [
+          "cl"
+        ],
+        "parameters": [
+          "-ID:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\librubberband_objlib.a.p",
+          "-ID:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+          "-ID:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source",
+          "-ID:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\rubberband",
+          "-ID:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src",
+          "/MD",
+          "/nologo",
+          "/utf-8",
+          "/Zc:__cplusplus",
+          "/W4",
+          "/EHsc",
+          "/std:c++14",
+          "/permissive-",
+          "/O2",
+          "/Gw",
+          "/showIncludes",
+          "-DUSE_BUILTIN_FFT",
+          "-DUSE_BQRESAMPLER",
+          "-DLACK_SINCOS",
+          "-DNO_THREAD_CHECKS",
+          "-DNO_TIMING",
+          "-DNDEBUG",
+          "-D_WIN32",
+          "-DNOMINMAX",
+          "-D_USE_MATH_DEFINES",
+          "-DGETOPT_API="
+        ],
+        "sources": [
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\rubberband-c.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\RubberBandStretcher.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\RubberBandLiveShifter.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\AudioCurveCalculator.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\CompoundAudioCurve.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\HighFrequencyAudioCurve.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\SilentAudioCurve.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\PercussiveAudioCurve.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\R2Stretcher.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\StretcherChannelData.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\StretcherProcess.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\Allocators.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\FFT.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\Log.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\Profiler.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\Resampler.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\StretchCalculator.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\sysutils.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\mathmisc.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\Thread.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\finer\\R3Stretcher.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\finer\\R3LiveShifter.cpp",
+          "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\common\\BQResampler.cpp"
+        ],
+        "generated_sources": [],
+        "unity_sources": []
+      },
+      {
+        "linker": [
+          "lib"
+        ],
+        "parameters": [
+          "/NOLOGO"
+        ]
+      }
+    ],
+    "extra_files": [],
+    "subproject": null,
+    "dependencies": [
+      "threads",
+      ""
+    ],
+    "depends": [],
+    "installed": false
+  },
+  {
+    "name": "rubberband",
+    "id": "rubberband@sta",
+    "type": "static library",
+    "defined_in": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\meson.build",
+    "filename": [
+      "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\librubberband.a"
+    ],
+    "build_by_default": true,
+    "target_sources": [
+      {
+        "linker": [
+          "lib"
+        ],
+        "parameters": [
+          "/NOLOGO"
+        ]
+      }
+    ],
+    "extra_files": [],
+    "subproject": null,
+    "dependencies": [
+      "threads",
+      ""
+    ],
+    "depends": [],
+    "installed": true,
+    "install_filename": [
+      "c:\\lib\\librubberband.a"
+    ]
+  },
+  {
+    "name": "rubberband-static",
+    "id": "rubberband-static.lib@sta",
+    "type": "static library",
+    "defined_in": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\meson.build",
+    "filename": [
+      "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\rubberband-static.lib"
+    ],
+    "build_by_default": true,
+    "target_sources": [
+      {
+        "linker": [
+          "lib"
+        ],
+        "parameters": [
+          "/NOLOGO"
+        ]
+      }
+    ],
+    "extra_files": [],
+    "subproject": null,
+    "dependencies": [],
+    "depends": [],
+    "installed": true,
+    "install_filename": [
+      "c:\\lib\\rubberband-static.lib"
+    ]
+  }
+]

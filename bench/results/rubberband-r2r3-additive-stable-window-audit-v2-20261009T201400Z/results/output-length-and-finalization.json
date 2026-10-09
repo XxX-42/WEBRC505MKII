@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "timeRatioConfigured": 1.0,
+  "schedule": "prepend preferred zero pad; process positive-sized blocks and mark last padded input block final=true; after every process call repeatedly retrieve while available()>0; no extra zero-frame final process or injected silence.",
+  "apiTrace": "Header documents final=true as the last input block and available()==-1 once processing is complete and all output is read. R3 enters Finished after final=true; R2 available() returns -1 when completion is known and no output remains. The captured harness does not separately save terminal available() (0 versus -1).",
+  "qualification": "Observed lengths below describe this final-input/immediate-drain schedule only. timeRatio=1.0 does not prove exact final duration.",
+  "timingContext": {
+    "runStartedUtc": "2026-10-09T19:57:14.5945827Z",
+    "runEndedUtc": "2026-10-09T19:59:37.0579373Z",
+    "processLoadCaptured": false,
+    "parentReportedConcurrentNativeAndWasmBuilds": true,
+    "disposition": "Keep previous raw timing, maxima, and overruns as loaded-run data; no fresh timing run in this archive."
+  },
+  "runs": [
+    {
+      "runId": "R2-b64-tone55-p0.50",
+      "engine": "R2",
+      "blockFrames": 64,
+      "pitchScale": 0.5,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 512,
+      "rawOutputFrames": 288512,
+      "reportedStartDelayTrimFrames": 1024,
+      "postTrimOutputFrames": 287488,
+      "postTrimMinusInputFrames": -512,
+      "durationDeltaMilliseconds": -10.666666666666666,
+      "finalInputCallback": {
+        "callbackIndex": 4507,
+        "inputStartFrame": 288448,
+        "inputFrames": 64,
+        "outputFramesAfterFinalCallAndImmediateDrain": 288512,
+        "elapsedNs": 1059000,
+        "budgetNs": 1333333
+      }
+    },
+    {
+      "runId": "R2-b64-tone55-p0.25",
+      "engine": "R2",
+      "blockFrames": 64,
+      "pitchScale": 0.25,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 256,
+      "rawOutputFrames": 288256,
+      "reportedStartDelayTrimFrames": 1024,
+      "postTrimOutputFrames": 287232,
+      "postTrimMinusInputFrames": -768,
+      "durationDeltaMilliseconds": -16.0,
+      "finalInputCallback": {
+        "callbackIndex": 4503,
+        "inputStartFrame": 288192,
+        "inputFrames": 64,
+        "outputFramesAfterFinalCallAndImmediateDrain": 288256,
+        "elapsedNs": 1163500,
+        "budgetNs": 1333333
+      }
+    },
+    {
+      "runId": "R2-b128-tone55-p0.50",
+      "engine": "R2",
+      "blockFrames": 128,
+      "pitchScale": 0.5,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 512,
+      "rawOutputFrames": 288512,
+      "reportedStartDelayTrimFrames": 1024,
+      "postTrimOutputFrames": 287488,
+      "postTrimMinusInputFrames": -512,
+      "durationDeltaMilliseconds": -10.666666666666666,
+      "finalInputCallback": {
+        "callbackIndex": 2253,
+        "inputStartFrame": 288384,
+        "inputFrames": 128,
+        "outputFramesAfterFinalCallAndImmediateDrain": 288512,
+        "elapsedNs": 1239200,
+        "budgetNs": 2666666
+      }
+    },
+    {
+      "runId": "R2-b128-tone55-p0.25",
+      "engine": "R2",
+      "blockFrames": 128,
+      "pitchScale": 0.25,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 256,
+      "rawOutputFrames": 288256,
+      "reportedStartDelayTrimFrames": 1024,
+      "postTrimOutputFrames": 287232,
+      "postTrimMinusInputFrames": -768,
+      "durationDeltaMilliseconds": -16.0,
+      "finalInputCallback": {
+        "callbackIndex": 2251,
+        "inputStartFrame": 288128,
+        "inputFrames": 128,
+        "outputFramesAfterFinalCallAndImmediateDrain": 288256,
+        "elapsedNs": 4349100,
+        "budgetNs": 2666666
+      }
+    },
+    {
+      "runId": "R2-b256-tone55-p0.50",
+      "engine": "R2",
+      "blockFrames": 256,
+      "pitchScale": 0.5,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 512,
+      "rawOutputFrames": 288512,
+      "reportedStartDelayTrimFrames": 1024,
+      "postTrimOutputFrames": 287488,
+      "postTrimMinusInputFrames": -512,
+      "durationDeltaMilliseconds": -10.666666666666666,
+      "finalInputCallback": {
+        "callbackIndex": 1126,
+        "inputStartFrame": 288256,
+        "inputFrames": 256,
+        "outputFramesAfterFinalCallAndImmediateDrain": 288512,
+        "elapsedNs": 1986600,
+        "budgetNs": 5333333
+      }
+    },
+    {
+      "runId": "R2-b256-tone55-p0.25",
+      "engine": "R2",
+      "blockFrames": 256,
+      "pitchScale": 0.25,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 256,
+      "rawOutputFrames": 288256,
+      "reportedStartDelayTrimFrames": 1024,
+      "postTrimOutputFrames": 287232,
+      "postTrimMinusInputFrames": -768,
+      "durationDeltaMilliseconds": -16.0,
+      "finalInputCallback": {
+        "callbackIndex": 1125,
+        "inputStartFrame": 288000,
+        "inputFrames": 256,
+        "outputFramesAfterFinalCallAndImmediateDrain": 288256,
+        "elapsedNs": 4824900,
+        "budgetNs": 5333333
+      }
+    },
+    {
+      "runId": "R3-b64-tone55-p0.50",
+      "engine": "R3",
+      "blockFrames": 64,
+      "pitchScale": 0.5,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 1024,
+      "rawOutputFrames": 293378,
+      "reportedStartDelayTrimFrames": 2048,
+      "postTrimOutputFrames": 291330,
+      "postTrimMinusInputFrames": 3330,
+      "durationDeltaMilliseconds": 69.375,
+      "finalInputCallback": {
+        "callbackIndex": 4515,
+        "inputStartFrame": 288960,
+        "inputFrames": 64,
+        "outputFramesAfterFinalCallAndImmediateDrain": 293378,
+        "elapsedNs": 21080200,
+        "budgetNs": 1333333
+      }
+    },
+    {
+      "runId": "R3-b64-tone55-p0.25",
+      "engine": "R3",
+      "blockFrames": 64,
+      "pitchScale": 0.25,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 512,
+      "rawOutputFrames": 292608,
+      "reportedStartDelayTrimFrames": 2048,
+      "postTrimOutputFrames": 290560,
+      "postTrimMinusInputFrames": 2560,
+      "durationDeltaMilliseconds": 53.333333333333336,
+      "finalInputCallback": {
+        "callbackIndex": 4507,
+        "inputStartFrame": 288448,
+        "inputFrames": 64,
+        "outputFramesAfterFinalCallAndImmediateDrain": 292608,
+        "elapsedNs": 25530500,
+        "budgetNs": 1333333
+      }
+    },
+    {
+      "runId": "R3-b128-tone55-p0.50",
+      "engine": "R3",
+      "blockFrames": 128,
+      "pitchScale": 0.5,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 1024,
+      "rawOutputFrames": 293377,
+      "reportedStartDelayTrimFrames": 2048,
+      "postTrimOutputFrames": 291329,
+      "postTrimMinusInputFrames": 3329,
+      "durationDeltaMilliseconds": 69.35416666666667,
+      "finalInputCallback": {
+        "callbackIndex": 2257,
+        "inputStartFrame": 288896,
+        "inputFrames": 128,
+        "outputFramesAfterFinalCallAndImmediateDrain": 293377,
+        "elapsedNs": 27068700,
+        "budgetNs": 2666666
+      }
+    },
+    {
+      "runId": "R3-b128-tone55-p0.25",
+      "engine": "R3",
+      "blockFrames": 128,
+      "pitchScale": 0.25,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 512,
+      "rawOutputFrames": 292608,
+      "reportedStartDelayTrimFrames": 2048,
+      "postTrimOutputFrames": 290560,
+      "postTrimMinusInputFrames": 2560,
+      "durationDeltaMilliseconds": 53.333333333333336,
+      "finalInputCallback": {
+        "callbackIndex": 2253,
+        "inputStartFrame": 288384,
+        "inputFrames": 128,
+        "outputFramesAfterFinalCallAndImmediateDrain": 292608,
+        "elapsedNs": 28843900,
+        "budgetNs": 2666666
+      }
+    },
+    {
+      "runId": "R3-b256-tone55-p0.50",
+      "engine": "R3",
+      "blockFrames": 256,
+      "pitchScale": 0.5,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 1024,
+      "rawOutputFrames": 293344,
+      "reportedStartDelayTrimFrames": 2048,
+      "postTrimOutputFrames": 291296,
+      "postTrimMinusInputFrames": 3296,
+      "durationDeltaMilliseconds": 68.66666666666667,
+      "finalInputCallback": {
+        "callbackIndex": 1128,
+        "inputStartFrame": 288768,
+        "inputFrames": 256,
+        "outputFramesAfterFinalCallAndImmediateDrain": 293344,
+        "elapsedNs": 34142100,
+        "budgetNs": 5333333
+      }
+    },
+    {
+      "runId": "R3-b256-tone55-p0.25",
+      "engine": "R3",
+      "blockFrames": 256,
+      "pitchScale": 0.25,
+      "timeRatio": 1.0,
+      "inputFrames": 288000,
+      "preferredStartPadFrames": 512,
+      "rawOutputFrames": 292608,
+      "reportedStartDelayTrimFrames": 2048,
+      "postTrimOutputFrames": 290560,
+      "postTrimMinusInputFrames": 2560,
+      "durationDeltaMilliseconds": 53.333333333333336,
+      "finalInputCallback": {
+        "callbackIndex": 1126,
+        "inputStartFrame": 288256,
+        "inputFrames": 256,
+        "outputFramesAfterFinalCallAndImmediateDrain": 292608,
+        "elapsedNs": 24904400,
+        "budgetNs": 5333333
+      }
+    }
+  ]
+}

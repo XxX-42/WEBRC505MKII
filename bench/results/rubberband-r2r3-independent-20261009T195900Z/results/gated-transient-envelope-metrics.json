@@ -1,0 +1,769 @@
+{
+  "schemaVersion": 1,
+  "sampleRate": 48000,
+  "fixture": "deterministic-gated-two-note-plus-three-decaying-noise-clicks",
+  "envelope": {
+    "hopFrames": 120,
+    "windowFrames": 120,
+    "thresholdRule": "per-note 10% of local output peak RMS, minimum 0.025"
+  },
+  "alignment": "remove Rubber Band getStartDelay as documented; preferred start pad recorded separately",
+  "records": [
+    {
+      "runId": "R2-b64-gated-transient-3s-p0.50",
+      "engine": "R2",
+      "blockFrames": 64,
+      "pitchScale": 0.5,
+      "startPadFrames": 512,
+      "startDelayFramesRemoved": 1024,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 143488,
+      "alignedDurationErrorFrames": -512,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04412418812539297,
+          "outputActivity": {
+            "firstFrame": 11280,
+            "lastFrameExclusive": 40920,
+            "activeSteps": 247
+          },
+          "outputStartErrorFrames": -720,
+          "outputEndErrorFrames": 120
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.025,
+          "outputActivity": {
+            "firstFrame": 59160,
+            "lastFrameExclusive": 91800,
+            "activeSteps": 272
+          },
+          "outputStartErrorFrames": -840,
+          "outputEndErrorFrames": 600
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13606,
+          "peakAbs": 0.6145622134208679,
+          "offsetFrames": 1606
+        },
+        {
+          "peakFrame": 60272,
+          "peakAbs": 0.29128438234329224,
+          "offsetFrames": 272
+        },
+        {
+          "peakFrame": 105747,
+          "peakAbs": 0.11325381696224213,
+          "offsetFrames": 147
+        }
+      ],
+      "alignedStereoRms": 0.14007449835,
+      "alignedPeak": 0.614562213421
+    },
+    {
+      "runId": "R2-b64-gated-transient-3s-p0.25",
+      "engine": "R2",
+      "blockFrames": 64,
+      "pitchScale": 0.25,
+      "startPadFrames": 256,
+      "startDelayFramesRemoved": 1024,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 143232,
+      "alignedDurationErrorFrames": -768,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04408249072355356,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 40920,
+            "activeSteps": 242
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 120
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.04330410697412861,
+          "outputActivity": {
+            "firstFrame": 59280,
+            "lastFrameExclusive": 91200,
+            "activeSteps": 266
+          },
+          "outputStartErrorFrames": -720,
+          "outputEndErrorFrames": 0
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 12974,
+          "peakAbs": 0.568986713886261,
+          "offsetFrames": 974
+        },
+        {
+          "peakFrame": 61783,
+          "peakAbs": 0.4953538477420807,
+          "offsetFrames": 1783
+        },
+        {
+          "peakFrame": 105440,
+          "peakAbs": 0.022532707080245018,
+          "offsetFrames": -160
+        }
+      ],
+      "alignedStereoRms": 0.186217599645,
+      "alignedPeak": 0.613420128822
+    },
+    {
+      "runId": "R2-b128-gated-transient-3s-p0.50",
+      "engine": "R2",
+      "blockFrames": 128,
+      "pitchScale": 0.5,
+      "startPadFrames": 512,
+      "startDelayFramesRemoved": 1024,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 143488,
+      "alignedDurationErrorFrames": -512,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04412418812539297,
+          "outputActivity": {
+            "firstFrame": 11280,
+            "lastFrameExclusive": 40920,
+            "activeSteps": 247
+          },
+          "outputStartErrorFrames": -720,
+          "outputEndErrorFrames": 120
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.025,
+          "outputActivity": {
+            "firstFrame": 59160,
+            "lastFrameExclusive": 91800,
+            "activeSteps": 272
+          },
+          "outputStartErrorFrames": -840,
+          "outputEndErrorFrames": 600
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13606,
+          "peakAbs": 0.6145622134208679,
+          "offsetFrames": 1606
+        },
+        {
+          "peakFrame": 60272,
+          "peakAbs": 0.29128438234329224,
+          "offsetFrames": 272
+        },
+        {
+          "peakFrame": 105747,
+          "peakAbs": 0.11325381696224213,
+          "offsetFrames": 147
+        }
+      ],
+      "alignedStereoRms": 0.14007449835,
+      "alignedPeak": 0.614562213421
+    },
+    {
+      "runId": "R2-b128-gated-transient-3s-p0.25",
+      "engine": "R2",
+      "blockFrames": 128,
+      "pitchScale": 0.25,
+      "startPadFrames": 256,
+      "startDelayFramesRemoved": 1024,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 143232,
+      "alignedDurationErrorFrames": -768,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04408249072355356,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 40920,
+            "activeSteps": 242
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 120
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.04330410697412861,
+          "outputActivity": {
+            "firstFrame": 59280,
+            "lastFrameExclusive": 91200,
+            "activeSteps": 266
+          },
+          "outputStartErrorFrames": -720,
+          "outputEndErrorFrames": 0
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 12974,
+          "peakAbs": 0.568986713886261,
+          "offsetFrames": 974
+        },
+        {
+          "peakFrame": 61783,
+          "peakAbs": 0.4953538477420807,
+          "offsetFrames": 1783
+        },
+        {
+          "peakFrame": 105440,
+          "peakAbs": 0.022532707080245018,
+          "offsetFrames": -160
+        }
+      ],
+      "alignedStereoRms": 0.186217599645,
+      "alignedPeak": 0.613420128822
+    },
+    {
+      "runId": "R2-b256-gated-transient-3s-p0.50",
+      "engine": "R2",
+      "blockFrames": 256,
+      "pitchScale": 0.5,
+      "startPadFrames": 512,
+      "startDelayFramesRemoved": 1024,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 143488,
+      "alignedDurationErrorFrames": -512,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04412418812539297,
+          "outputActivity": {
+            "firstFrame": 11280,
+            "lastFrameExclusive": 40920,
+            "activeSteps": 247
+          },
+          "outputStartErrorFrames": -720,
+          "outputEndErrorFrames": 120
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.025,
+          "outputActivity": {
+            "firstFrame": 59160,
+            "lastFrameExclusive": 91800,
+            "activeSteps": 272
+          },
+          "outputStartErrorFrames": -840,
+          "outputEndErrorFrames": 600
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13606,
+          "peakAbs": 0.6145622134208679,
+          "offsetFrames": 1606
+        },
+        {
+          "peakFrame": 60272,
+          "peakAbs": 0.29128438234329224,
+          "offsetFrames": 272
+        },
+        {
+          "peakFrame": 105747,
+          "peakAbs": 0.11325381696224213,
+          "offsetFrames": 147
+        }
+      ],
+      "alignedStereoRms": 0.14007449835,
+      "alignedPeak": 0.614562213421
+    },
+    {
+      "runId": "R2-b256-gated-transient-3s-p0.25",
+      "engine": "R2",
+      "blockFrames": 256,
+      "pitchScale": 0.25,
+      "startPadFrames": 256,
+      "startDelayFramesRemoved": 1024,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 143232,
+      "alignedDurationErrorFrames": -768,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04408249072355356,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 40920,
+            "activeSteps": 242
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 120
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.04330410697412861,
+          "outputActivity": {
+            "firstFrame": 59280,
+            "lastFrameExclusive": 91200,
+            "activeSteps": 266
+          },
+          "outputStartErrorFrames": -720,
+          "outputEndErrorFrames": 0
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 12974,
+          "peakAbs": 0.568986713886261,
+          "offsetFrames": 974
+        },
+        {
+          "peakFrame": 61783,
+          "peakAbs": 0.4953538477420807,
+          "offsetFrames": 1783
+        },
+        {
+          "peakFrame": 105440,
+          "peakAbs": 0.022532707080245018,
+          "offsetFrames": -160
+        }
+      ],
+      "alignedStereoRms": 0.186217599645,
+      "alignedPeak": 0.613420128822
+    },
+    {
+      "runId": "R3-b64-gated-transient-3s-p0.50",
+      "engine": "R3",
+      "blockFrames": 64,
+      "pitchScale": 0.5,
+      "startPadFrames": 1024,
+      "startDelayFramesRemoved": 2048,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 147262,
+      "alignedDurationErrorFrames": 3262,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.042764757351526045,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 41040,
+            "activeSteps": 243
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 240
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.04259671144302615,
+          "outputActivity": {
+            "firstFrame": 59880,
+            "lastFrameExclusive": 91440,
+            "activeSteps": 263
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 240
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13002,
+          "peakAbs": 0.5840989947319031,
+          "offsetFrames": 1002
+        },
+        {
+          "peakFrame": 60834,
+          "peakAbs": 0.5904234647750854,
+          "offsetFrames": 834
+        },
+        {
+          "peakFrame": 105553,
+          "peakAbs": 0.129651740193367,
+          "offsetFrames": -47
+        }
+      ],
+      "alignedStereoRms": 0.236711851358,
+      "alignedPeak": 0.590423464775
+    },
+    {
+      "runId": "R3-b64-gated-transient-3s-p0.25",
+      "engine": "R3",
+      "blockFrames": 64,
+      "pitchScale": 0.25,
+      "startPadFrames": 512,
+      "startDelayFramesRemoved": 2048,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 146560,
+      "alignedDurationErrorFrames": 2560,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04270528970982162,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 41160,
+            "activeSteps": 244
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 360
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.042532790565083155,
+          "outputActivity": {
+            "firstFrame": 59880,
+            "lastFrameExclusive": 91560,
+            "activeSteps": 264
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 360
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13008,
+          "peakAbs": 0.5810700058937073,
+          "offsetFrames": 1008
+        },
+        {
+          "peakFrame": 60866,
+          "peakAbs": 0.5816806554794312,
+          "offsetFrames": 866
+        },
+        {
+          "peakFrame": 105607,
+          "peakAbs": 0.09926208853721619,
+          "offsetFrames": 7
+        }
+      ],
+      "alignedStereoRms": 0.235125164168,
+      "alignedPeak": 0.581680655479
+    },
+    {
+      "runId": "R3-b128-gated-transient-3s-p0.50",
+      "engine": "R3",
+      "blockFrames": 128,
+      "pitchScale": 0.5,
+      "startPadFrames": 1024,
+      "startDelayFramesRemoved": 2048,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 147224,
+      "alignedDurationErrorFrames": 3224,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04273205378911575,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 41040,
+            "activeSteps": 243
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 240
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.042595830660058315,
+          "outputActivity": {
+            "firstFrame": 59880,
+            "lastFrameExclusive": 91440,
+            "activeSteps": 263
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 240
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13003,
+          "peakAbs": 0.5840320587158203,
+          "offsetFrames": 1003
+        },
+        {
+          "peakFrame": 60834,
+          "peakAbs": 0.5905093550682068,
+          "offsetFrames": 834
+        },
+        {
+          "peakFrame": 105555,
+          "peakAbs": 0.1292002648115158,
+          "offsetFrames": -45
+        }
+      ],
+      "alignedStereoRms": 0.236741342322,
+      "alignedPeak": 0.590509355068
+    },
+    {
+      "runId": "R3-b128-gated-transient-3s-p0.25",
+      "engine": "R3",
+      "blockFrames": 128,
+      "pitchScale": 0.25,
+      "startPadFrames": 512,
+      "startDelayFramesRemoved": 2048,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 146560,
+      "alignedDurationErrorFrames": 2560,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04270528970982162,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 41160,
+            "activeSteps": 244
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 360
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.042532790565083155,
+          "outputActivity": {
+            "firstFrame": 59880,
+            "lastFrameExclusive": 91560,
+            "activeSteps": 264
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 360
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13008,
+          "peakAbs": 0.5810700058937073,
+          "offsetFrames": 1008
+        },
+        {
+          "peakFrame": 60866,
+          "peakAbs": 0.5816806554794312,
+          "offsetFrames": 866
+        },
+        {
+          "peakFrame": 105607,
+          "peakAbs": 0.09926208853721619,
+          "offsetFrames": 7
+        }
+      ],
+      "alignedStereoRms": 0.235125164168,
+      "alignedPeak": 0.581680655479
+    },
+    {
+      "runId": "R3-b256-gated-transient-3s-p0.50",
+      "engine": "R3",
+      "blockFrames": 256,
+      "pitchScale": 0.5,
+      "startPadFrames": 1024,
+      "startDelayFramesRemoved": 2048,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 147228,
+      "alignedDurationErrorFrames": 3228,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04270813514601924,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 41040,
+            "activeSteps": 243
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 240
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.04249554659142701,
+          "outputActivity": {
+            "firstFrame": 59880,
+            "lastFrameExclusive": 91440,
+            "activeSteps": 263
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 240
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13004,
+          "peakAbs": 0.5840668678283691,
+          "offsetFrames": 1004
+        },
+        {
+          "peakFrame": 60837,
+          "peakAbs": 0.5905243754386902,
+          "offsetFrames": 837
+        },
+        {
+          "peakFrame": 105556,
+          "peakAbs": 0.12862317264080048,
+          "offsetFrames": -44
+        }
+      ],
+      "alignedStereoRms": 0.236737955978,
+      "alignedPeak": 0.590524375439
+    },
+    {
+      "runId": "R3-b256-gated-transient-3s-p0.25",
+      "engine": "R3",
+      "blockFrames": 256,
+      "pitchScale": 0.25,
+      "startPadFrames": 512,
+      "startDelayFramesRemoved": 2048,
+      "inputFrames": 144000,
+      "alignedOutputFrames": 146560,
+      "alignedDurationErrorFrames": 2560,
+      "noteActivityWindows": [
+        {
+          "expectedInputStartFrame": 12000,
+          "expectedInputEndFrameExclusive": 40800,
+          "inputLocalRmsAtStart": 0.4076671052720871,
+          "outputThresholdRms": 0.04270528970982162,
+          "outputActivity": {
+            "firstFrame": 11880,
+            "lastFrameExclusive": 41160,
+            "activeSteps": 244
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 360
+        },
+        {
+          "expectedInputStartFrame": 60000,
+          "expectedInputEndFrameExclusive": 91200,
+          "inputLocalRmsAtStart": 0.41519643486946695,
+          "outputThresholdRms": 0.042532790565083155,
+          "outputActivity": {
+            "firstFrame": 59880,
+            "lastFrameExclusive": 91560,
+            "activeSteps": 264
+          },
+          "outputStartErrorFrames": -120,
+          "outputEndErrorFrames": 360
+        }
+      ],
+      "clickEventFrames": [
+        12000,
+        60000,
+        105600
+      ],
+      "clickPeaksAfterStartDelayTrim": [
+        {
+          "peakFrame": 13008,
+          "peakAbs": 0.5810700058937073,
+          "offsetFrames": 1008
+        },
+        {
+          "peakFrame": 60866,
+          "peakAbs": 0.5816806554794312,
+          "offsetFrames": 866
+        },
+        {
+          "peakFrame": 105607,
+          "peakAbs": 0.09926208853721619,
+          "offsetFrames": 7
+        }
+      ],
+      "alignedStereoRms": 0.235125164168,
+      "alignedPeak": 0.581680655479
+    }
+  ]
+}

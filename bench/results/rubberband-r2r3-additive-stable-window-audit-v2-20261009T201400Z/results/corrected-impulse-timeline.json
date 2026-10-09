@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "sampleRate": 48000,
+  "inputImpulseFrame": 9600,
+  "inputImpulseAmplitudes": [
+    0.8999999761581421,
+    -0.3499999940395355
+  ],
+  "thresholdMethod": "Per channel, first abs(sample)>=max(1e-7,0.01*channelPeak) in the original harness region [delay+event-8192,delay+event+8192); peak is max abs in that region.",
+  "coordinates": {
+    "paddedInputEvent": "preferredStartPad+inputImpulseFrame",
+    "rawVsPaddedOffset": "rawIndex-(preferredStartPad+inputImpulseFrame)",
+    "postTrimIndex": "rawIndex-reportedStartDelay",
+    "postTrimReference": "original inputImpulseFrame",
+    "oldNegativeOffset": "Subtracting both pad and delay from the raw peak double-counted alignment. It is a coordinate error, not negative physical latency."
+  },
+  "runs": [
+    {
+      "runId": "R2-b64-impulse-offset-9600-p1.00",
+      "engine": "R2",
+      "blockFrames": 64,
+      "preferredStartPadFrames": 1024,
+      "reportedStartDelayTrimFrames": 1024,
+      "getLatencyAliasFrames": 1024,
+      "rawOutputFrames": 145024,
+      "postTrimOutputFrames": 144000,
+      "analysisRawFrames": [
+        2432,
+        18816
+      ],
+      "channels": {
+        "left": {
+          "threshold": 0.008999997973442078,
+          "rawFirstAboveThresholdFrame": 10624,
+          "rawPeakFrame": 10624,
+          "rawPeakAbs": 0.8999997973442078,
+          "paddedInputEventFrame": 10624,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        },
+        "right": {
+          "threshold": 0.0034999993443489076,
+          "rawFirstAboveThresholdFrame": 10624,
+          "rawPeakFrame": 10624,
+          "rawPeakAbs": 0.34999993443489075,
+          "paddedInputEventFrame": 10624,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        }
+      },
+      "oldHarnessFields": {
+        "firstRawAboveThreshold": 10624,
+        "peakRawFrame": 10624,
+        "impulseOnsetOffsetAfterPad": 0,
+        "impulsePeakOffsetAfterPadAndStartDelay": -1024
+      }
+    },
+    {
+      "runId": "R2-b128-impulse-offset-9600-p1.00",
+      "engine": "R2",
+      "blockFrames": 128,
+      "preferredStartPadFrames": 1024,
+      "reportedStartDelayTrimFrames": 1024,
+      "getLatencyAliasFrames": 1024,
+      "rawOutputFrames": 145024,
+      "postTrimOutputFrames": 144000,
+      "analysisRawFrames": [
+        2432,
+        18816
+      ],
+      "channels": {
+        "left": {
+          "threshold": 0.008999997973442078,
+          "rawFirstAboveThresholdFrame": 10624,
+          "rawPeakFrame": 10624,
+          "rawPeakAbs": 0.8999997973442078,
+          "paddedInputEventFrame": 10624,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        },
+        "right": {
+          "threshold": 0.0034999993443489076,
+          "rawFirstAboveThresholdFrame": 10624,
+          "rawPeakFrame": 10624,
+          "rawPeakAbs": 0.34999993443489075,
+          "paddedInputEventFrame": 10624,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        }
+      },
+      "oldHarnessFields": {
+        "firstRawAboveThreshold": 10624,
+        "peakRawFrame": 10624,
+        "impulseOnsetOffsetAfterPad": 0,
+        "impulsePeakOffsetAfterPadAndStartDelay": -1024
+      }
+    },
+    {
+      "runId": "R2-b256-impulse-offset-9600-p1.00",
+      "engine": "R2",
+      "blockFrames": 256,
+      "preferredStartPadFrames": 1024,
+      "reportedStartDelayTrimFrames": 1024,
+      "getLatencyAliasFrames": 1024,
+      "rawOutputFrames": 145024,
+      "postTrimOutputFrames": 144000,
+      "analysisRawFrames": [
+        2432,
+        18816
+      ],
+      "channels": {
+        "left": {
+          "threshold": 0.008999997973442078,
+          "rawFirstAboveThresholdFrame": 10624,
+          "rawPeakFrame": 10624,
+          "rawPeakAbs": 0.8999997973442078,
+          "paddedInputEventFrame": 10624,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        },
+        "right": {
+          "threshold": 0.0034999993443489076,
+          "rawFirstAboveThresholdFrame": 10624,
+          "rawPeakFrame": 10624,
+          "rawPeakAbs": 0.34999993443489075,
+          "paddedInputEventFrame": 10624,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        }
+      },
+      "oldHarnessFields": {
+        "firstRawAboveThreshold": 10624,
+        "peakRawFrame": 10624,
+        "impulseOnsetOffsetAfterPad": 0,
+        "impulsePeakOffsetAfterPadAndStartDelay": -1024
+      }
+    },
+    {
+      "runId": "R3-b64-impulse-offset-9600-p1.00",
+      "engine": "R3",
+      "blockFrames": 64,
+      "preferredStartPadFrames": 2048,
+      "reportedStartDelayTrimFrames": 2048,
+      "getLatencyAliasFrames": 2048,
+      "rawOutputFrames": 150272,
+      "postTrimOutputFrames": 148224,
+      "analysisRawFrames": [
+        3456,
+        19840
+      ],
+      "channels": {
+        "left": {
+          "threshold": 0.00898011028766632,
+          "rawFirstAboveThresholdFrame": 11648,
+          "rawPeakFrame": 11648,
+          "rawPeakAbs": 0.8980110287666321,
+          "paddedInputEventFrame": 11648,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        },
+        "right": {
+          "threshold": 0.003491818308830261,
+          "rawFirstAboveThresholdFrame": 11648,
+          "rawPeakFrame": 11648,
+          "rawPeakAbs": 0.3491818308830261,
+          "paddedInputEventFrame": 11648,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        }
+      },
+      "oldHarnessFields": {
+        "firstRawAboveThreshold": 11648,
+        "peakRawFrame": 11648,
+        "impulseOnsetOffsetAfterPad": 0,
+        "impulsePeakOffsetAfterPadAndStartDelay": -2048
+      }
+    },
+    {
+      "runId": "R3-b128-impulse-offset-9600-p1.00",
+      "engine": "R3",
+      "blockFrames": 128,
+      "preferredStartPadFrames": 2048,
+      "reportedStartDelayTrimFrames": 2048,
+      "getLatencyAliasFrames": 2048,
+      "rawOutputFrames": 150272,
+      "postTrimOutputFrames": 148224,
+      "analysisRawFrames": [
+        3456,
+        19840
+      ],
+      "channels": {
+        "left": {
+          "threshold": 0.00898011028766632,
+          "rawFirstAboveThresholdFrame": 11648,
+          "rawPeakFrame": 11648,
+          "rawPeakAbs": 0.8980110287666321,
+          "paddedInputEventFrame": 11648,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        },
+        "right": {
+          "threshold": 0.003491818308830261,
+          "rawFirstAboveThresholdFrame": 11648,
+          "rawPeakFrame": 11648,
+          "rawPeakAbs": 0.3491818308830261,
+          "paddedInputEventFrame": 11648,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        }
+      },
+      "oldHarnessFields": {
+        "firstRawAboveThreshold": 11648,
+        "peakRawFrame": 11648,
+        "impulseOnsetOffsetAfterPad": 0,
+        "impulsePeakOffsetAfterPadAndStartDelay": -2048
+      }
+    },
+    {
+      "runId": "R3-b256-impulse-offset-9600-p1.00",
+      "engine": "R3",
+      "blockFrames": 256,
+      "preferredStartPadFrames": 2048,
+      "reportedStartDelayTrimFrames": 2048,
+      "getLatencyAliasFrames": 2048,
+      "rawOutputFrames": 150272,
+      "postTrimOutputFrames": 148224,
+      "analysisRawFrames": [
+        3456,
+        19840
+      ],
+      "channels": {
+        "left": {
+          "threshold": 0.00898011028766632,
+          "rawFirstAboveThresholdFrame": 11648,
+          "rawPeakFrame": 11648,
+          "rawPeakAbs": 0.8980110287666321,
+          "paddedInputEventFrame": 11648,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        },
+        "right": {
+          "threshold": 0.003491818308830261,
+          "rawFirstAboveThresholdFrame": 11648,
+          "rawPeakFrame": 11648,
+          "rawPeakAbs": 0.3491818308830261,
+          "paddedInputEventFrame": 11648,
+          "rawOnsetOffsetFromPaddedInput": 0,
+          "rawPeakOffsetFromPaddedInput": 0,
+          "postTrimOnsetFrame": 9600,
+          "postTrimPeakFrame": 9600,
+          "postTrimOnsetOffsetFromOriginalInputEvent": 0,
+          "postTrimPeakOffsetFromOriginalInputEvent": 0
+        }
+      },
+      "oldHarnessFields": {
+        "firstRawAboveThreshold": 11648,
+        "peakRawFrame": 11648,
+        "impulseOnsetOffsetAfterPad": 0,
+        "impulsePeakOffsetAfterPadAndStartDelay": -2048
+      }
+    }
+  ]
+}

@@ -1,0 +1,2449 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-10-09T20:27:27.572547+00:00",
+  "disposition": "Research evidence verified; no product adoption, timing qualification or Gate pass",
+  "tooling": {
+    "python": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+    "numpy": "2.5.3",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "captures": {
+    "rubberBand": {
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\rubberband-r2r3-independent-20261009T195900Z",
+      "indexedFiles": 399,
+      "indexedBytes": 211353228,
+      "indexSha256": "a5267d3af8fd4e47fc359d11ba9322f81fd1fd8fb0ef4188afa19ef62509eddd",
+      "allIndexedHashesMatch": true
+    },
+    "correctedStableWindowAudit": {
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\rubberband-r2r3-additive-stable-window-audit-v2-20261009T201400Z",
+      "indexedFiles": 41,
+      "indexedBytes": 41558026,
+      "indexSha256": "5fb4d4ca988b681663b164406dcdab5b9129dfe380eedbf12a4239f50ab31ccf",
+      "allIndexedHashesMatch": true
+    }
+  },
+  "upstream": {
+    "project": "Rubber Band Library",
+    "version": "4.0.0",
+    "commit": "1d95888bec3ae0a17c0c4af791810d5a63f6bc35",
+    "license": "GPL-2.0-or-later; separate commercial license offered by upstream",
+    "sourceTarSha256": "8c491fb9736a4f14b3a6cc4aadad5db34cdec41af72c36070f52cddba960b27b",
+    "builtEngines": [
+      2,
+      3
+    ],
+    "buildFeatures": {
+      "resampler": "built-in",
+      "threads": "ThreadingNever",
+      "mode": "RealTime",
+      "staticLibrary": true,
+      "FFT": "built-in"
+    },
+    "beforeAfterSourceHashesMatch": true,
+    "actualVerifiedUpstreamFiles": 169,
+    "completeExternalSdkBuildClosureVerified": false
+  },
+  "inputPairing": {
+    "exact55HzInputBytesMatch": true,
+    "inputSha256": "7c0e73a6e78bcb84009593deff57b30b9b718a0b3f8536d6e67fd7bc6711ca21",
+    "auditSelfComparisonWasTautological": true,
+    "rootVerifiedActualRubberBandInputInstead": true
+  },
+  "timing": {
+    "totalCallbacks": 165861,
+    "all72RunsRecomputed": true,
+    "percentilePolicy": "nearest rank ceil(p*N)-1; startup and final callbacks retained",
+    "qualification": "Loaded-run microbenchmark only; overlapping builds reported, process load metadata absent",
+    "allocationScope": "Calling-thread C++ new/delete only; malloc/OS heap/locks not intercepted",
+    "perRun": {
+      "R2-b64-tone55-p0.50": {
+        "callbackCount": 4508,
+        "p50Ns": 85100,
+        "p99Ns": 502300,
+        "p999Ns": 1059000,
+        "maxNs": 1963300,
+        "over60": 8,
+        "over80": 4,
+        "over100": 2,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone55"
+      },
+      "R2-b64-tone55-p0.25": {
+        "callbackCount": 4504,
+        "p50Ns": 312100,
+        "p99Ns": 606800,
+        "p999Ns": 883300,
+        "maxNs": 1187500,
+        "over60": 7,
+        "over80": 3,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone55"
+      },
+      "R2-b128-tone55-p0.50": {
+        "callbackCount": 2254,
+        "p50Ns": 330500,
+        "p99Ns": 607100,
+        "p999Ns": 1239200,
+        "maxNs": 2297900,
+        "over60": 1,
+        "over80": 1,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone55"
+      },
+      "R2-b128-tone55-p0.25": {
+        "callbackCount": 2252,
+        "p50Ns": 643700,
+        "p99Ns": 2302100,
+        "p999Ns": 8887700,
+        "maxNs": 37821200,
+        "over60": 49,
+        "over80": 27,
+        "over100": 19,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone55"
+      },
+      "R2-b256-tone55-p0.50": {
+        "callbackCount": 1127,
+        "p50Ns": 553700,
+        "p99Ns": 1234200,
+        "p999Ns": 2918800,
+        "maxNs": 3144200,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone55"
+      },
+      "R2-b256-tone55-p0.25": {
+        "callbackCount": 1126,
+        "p50Ns": 1060100,
+        "p99Ns": 2387500,
+        "p999Ns": 4146900,
+        "maxNs": 4824900,
+        "over60": 6,
+        "over80": 1,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone55"
+      },
+      "R3-b64-tone55-p0.50": {
+        "callbackCount": 4516,
+        "p50Ns": 63900,
+        "p99Ns": 1255300,
+        "p999Ns": 2259500,
+        "maxNs": 21080200,
+        "over60": 393,
+        "over80": 139,
+        "over100": 29,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone55"
+      },
+      "R3-b64-tone55-p0.25": {
+        "callbackCount": 4508,
+        "p50Ns": 336800,
+        "p99Ns": 1588500,
+        "p999Ns": 3472000,
+        "maxNs": 25530500,
+        "over60": 892,
+        "over80": 344,
+        "over100": 128,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone55"
+      },
+      "R3-b128-tone55-p0.50": {
+        "callbackCount": 2258,
+        "p50Ns": 858900,
+        "p99Ns": 1942600,
+        "p999Ns": 3758800,
+        "maxNs": 27068700,
+        "over60": 81,
+        "over80": 15,
+        "over100": 5,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone55"
+      },
+      "R3-b128-tone55-p0.25": {
+        "callbackCount": 2254,
+        "p50Ns": 1497900,
+        "p99Ns": 4167200,
+        "p999Ns": 7307500,
+        "maxNs": 28843900,
+        "over60": 839,
+        "over80": 182,
+        "over100": 77,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone55"
+      },
+      "R3-b256-tone55-p0.50": {
+        "callbackCount": 1129,
+        "p50Ns": 1629500,
+        "p99Ns": 3486500,
+        "p999Ns": 8915400,
+        "maxNs": 34142100,
+        "over60": 28,
+        "over80": 5,
+        "over100": 2,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone55"
+      },
+      "R3-b256-tone55-p0.25": {
+        "callbackCount": 1127,
+        "p50Ns": 3002300,
+        "p99Ns": 5908400,
+        "p999Ns": 17338500,
+        "maxNs": 24904400,
+        "over60": 447,
+        "over80": 63,
+        "over100": 18,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone55"
+      },
+      "R2-b64-tone110-p0.50": {
+        "callbackCount": 4508,
+        "p50Ns": 92500,
+        "p99Ns": 609000,
+        "p999Ns": 4013600,
+        "maxNs": 9167600,
+        "over60": 24,
+        "over80": 16,
+        "over100": 12,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone110"
+      },
+      "R2-b64-tone110-p0.25": {
+        "callbackCount": 4504,
+        "p50Ns": 314700,
+        "p99Ns": 655900,
+        "p999Ns": 940600,
+        "maxNs": 1634700,
+        "over60": 15,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone110"
+      },
+      "R2-b128-tone110-p0.50": {
+        "callbackCount": 2254,
+        "p50Ns": 297800,
+        "p99Ns": 539700,
+        "p999Ns": 812600,
+        "maxNs": 970600,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone110"
+      },
+      "R2-b128-tone110-p0.25": {
+        "callbackCount": 2252,
+        "p50Ns": 618200,
+        "p99Ns": 1517900,
+        "p999Ns": 3936700,
+        "maxNs": 4935700,
+        "over60": 19,
+        "over80": 11,
+        "over100": 9,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone110"
+      },
+      "R2-b256-tone110-p0.50": {
+        "callbackCount": 1127,
+        "p50Ns": 567200,
+        "p99Ns": 1094900,
+        "p999Ns": 1539600,
+        "maxNs": 2734500,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone110"
+      },
+      "R2-b256-tone110-p0.25": {
+        "callbackCount": 1126,
+        "p50Ns": 1062600,
+        "p99Ns": 2373900,
+        "p999Ns": 4023500,
+        "maxNs": 4300600,
+        "over60": 2,
+        "over80": 1,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone110"
+      },
+      "R3-b64-tone110-p0.50": {
+        "callbackCount": 4516,
+        "p50Ns": 55500,
+        "p99Ns": 1190700,
+        "p999Ns": 1514000,
+        "maxNs": 18777200,
+        "over60": 300,
+        "over80": 87,
+        "over100": 11,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone110"
+      },
+      "R3-b64-tone110-p0.25": {
+        "callbackCount": 4508,
+        "p50Ns": 317700,
+        "p99Ns": 1351200,
+        "p999Ns": 2986000,
+        "maxNs": 24755900,
+        "over60": 534,
+        "over80": 189,
+        "over100": 52,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone110"
+      },
+      "R3-b128-tone110-p0.50": {
+        "callbackCount": 2258,
+        "p50Ns": 647600,
+        "p99Ns": 1240300,
+        "p999Ns": 1476900,
+        "maxNs": 17306700,
+        "over60": 1,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone110"
+      },
+      "R3-b128-tone110-p0.25": {
+        "callbackCount": 2254,
+        "p50Ns": 913300,
+        "p99Ns": 2316500,
+        "p999Ns": 6092800,
+        "maxNs": 17788000,
+        "over60": 190,
+        "over80": 37,
+        "over100": 15,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone110"
+      },
+      "R3-b256-tone110-p0.50": {
+        "callbackCount": 1129,
+        "p50Ns": 1309900,
+        "p99Ns": 3157800,
+        "p999Ns": 8037200,
+        "maxNs": 18995200,
+        "over60": 11,
+        "over80": 6,
+        "over100": 5,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone110"
+      },
+      "R3-b256-tone110-p0.25": {
+        "callbackCount": 1127,
+        "p50Ns": 1678800,
+        "p99Ns": 3277200,
+        "p999Ns": 4785000,
+        "maxNs": 20450600,
+        "over60": 14,
+        "over80": 2,
+        "over100": 1,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone110"
+      },
+      "R2-b64-tone220-p0.50": {
+        "callbackCount": 4508,
+        "p50Ns": 68300,
+        "p99Ns": 476800,
+        "p999Ns": 690600,
+        "maxNs": 3159800,
+        "over60": 4,
+        "over80": 3,
+        "over100": 1,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone220"
+      },
+      "R2-b64-tone220-p0.25": {
+        "callbackCount": 4504,
+        "p50Ns": 311700,
+        "p99Ns": 622300,
+        "p999Ns": 908600,
+        "maxNs": 1307900,
+        "over60": 7,
+        "over80": 3,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone220"
+      },
+      "R2-b128-tone220-p0.50": {
+        "callbackCount": 2254,
+        "p50Ns": 293700,
+        "p99Ns": 507500,
+        "p999Ns": 703600,
+        "maxNs": 918200,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone220"
+      },
+      "R2-b128-tone220-p0.25": {
+        "callbackCount": 2252,
+        "p50Ns": 596600,
+        "p99Ns": 1192300,
+        "p999Ns": 6714300,
+        "maxNs": 8604300,
+        "over60": 9,
+        "over80": 7,
+        "over100": 7,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone220"
+      },
+      "R2-b256-tone220-p0.50": {
+        "callbackCount": 1127,
+        "p50Ns": 672700,
+        "p99Ns": 2239200,
+        "p999Ns": 6022900,
+        "maxNs": 6204300,
+        "over60": 5,
+        "over80": 3,
+        "over100": 3,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone220"
+      },
+      "R2-b256-tone220-p0.25": {
+        "callbackCount": 1126,
+        "p50Ns": 1149600,
+        "p99Ns": 4582300,
+        "p999Ns": 6446000,
+        "maxNs": 11100500,
+        "over60": 21,
+        "over80": 12,
+        "over100": 3,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone220"
+      },
+      "R3-b64-tone220-p0.50": {
+        "callbackCount": 4516,
+        "p50Ns": 62200,
+        "p99Ns": 1256000,
+        "p999Ns": 2145900,
+        "maxNs": 25616700,
+        "over60": 415,
+        "over80": 168,
+        "over100": 31,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone220"
+      },
+      "R3-b64-tone220-p0.25": {
+        "callbackCount": 4508,
+        "p50Ns": 553900,
+        "p99Ns": 2208300,
+        "p999Ns": 9191700,
+        "maxNs": 34048000,
+        "over60": 1522,
+        "over80": 893,
+        "over100": 522,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone220"
+      },
+      "R3-b128-tone220-p0.50": {
+        "callbackCount": 2258,
+        "p50Ns": 752000,
+        "p99Ns": 1968100,
+        "p999Ns": 5683200,
+        "maxNs": 20099100,
+        "over60": 77,
+        "over80": 15,
+        "over100": 12,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone220"
+      },
+      "R3-b128-tone220-p0.25": {
+        "callbackCount": 2254,
+        "p50Ns": 891500,
+        "p99Ns": 1977800,
+        "p999Ns": 3133800,
+        "maxNs": 20677000,
+        "over60": 100,
+        "over80": 11,
+        "over100": 3,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone220"
+      },
+      "R3-b256-tone220-p0.50": {
+        "callbackCount": 1129,
+        "p50Ns": 1321900,
+        "p99Ns": 3661800,
+        "p999Ns": 6136500,
+        "maxNs": 21714900,
+        "over60": 19,
+        "over80": 7,
+        "over100": 3,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone220"
+      },
+      "R3-b256-tone220-p0.25": {
+        "callbackCount": 1127,
+        "p50Ns": 2194900,
+        "p99Ns": 5874300,
+        "p999Ns": 12412600,
+        "maxNs": 19846000,
+        "over60": 160,
+        "over80": 38,
+        "over100": 16,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone220"
+      },
+      "R2-b64-tone880-p0.50": {
+        "callbackCount": 4508,
+        "p50Ns": 77000,
+        "p99Ns": 479900,
+        "p999Ns": 665500,
+        "maxNs": 1697500,
+        "over60": 2,
+        "over80": 2,
+        "over100": 2,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone880"
+      },
+      "R2-b64-tone880-p0.25": {
+        "callbackCount": 4504,
+        "p50Ns": 332000,
+        "p99Ns": 679500,
+        "p999Ns": 1010200,
+        "maxNs": 2514500,
+        "over60": 17,
+        "over80": 4,
+        "over100": 3,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone880"
+      },
+      "R2-b128-tone880-p0.50": {
+        "callbackCount": 2254,
+        "p50Ns": 313800,
+        "p99Ns": 577900,
+        "p999Ns": 835200,
+        "maxNs": 1019000,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone880"
+      },
+      "R2-b128-tone880-p0.25": {
+        "callbackCount": 2252,
+        "p50Ns": 673100,
+        "p99Ns": 1684900,
+        "p999Ns": 6129300,
+        "maxNs": 15129600,
+        "over60": 27,
+        "over80": 8,
+        "over100": 5,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone880"
+      },
+      "R2-b256-tone880-p0.50": {
+        "callbackCount": 1127,
+        "p50Ns": 645100,
+        "p99Ns": 1203000,
+        "p999Ns": 2600100,
+        "maxNs": 4052700,
+        "over60": 1,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone880"
+      },
+      "R2-b256-tone880-p0.25": {
+        "callbackCount": 1126,
+        "p50Ns": 1293300,
+        "p99Ns": 2468600,
+        "p999Ns": 9683900,
+        "maxNs": 11874100,
+        "over60": 6,
+        "over80": 3,
+        "over100": 3,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone880"
+      },
+      "R3-b64-tone880-p0.50": {
+        "callbackCount": 4516,
+        "p50Ns": 76400,
+        "p99Ns": 1518300,
+        "p999Ns": 2178300,
+        "maxNs": 19271900,
+        "over60": 409,
+        "over80": 230,
+        "over100": 85,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "tone880"
+      },
+      "R3-b64-tone880-p0.25": {
+        "callbackCount": 4508,
+        "p50Ns": 403900,
+        "p99Ns": 1544100,
+        "p999Ns": 4607600,
+        "maxNs": 21330300,
+        "over60": 759,
+        "over80": 321,
+        "over100": 94,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "tone880"
+      },
+      "R3-b128-tone880-p0.50": {
+        "callbackCount": 2258,
+        "p50Ns": 768000,
+        "p99Ns": 1924100,
+        "p999Ns": 2774900,
+        "maxNs": 31370800,
+        "over60": 74,
+        "over80": 9,
+        "over100": 3,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "tone880"
+      },
+      "R3-b128-tone880-p0.25": {
+        "callbackCount": 2254,
+        "p50Ns": 802800,
+        "p99Ns": 3646100,
+        "p999Ns": 15394400,
+        "maxNs": 23563500,
+        "over60": 131,
+        "over80": 61,
+        "over100": 40,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "tone880"
+      },
+      "R3-b256-tone880-p0.50": {
+        "callbackCount": 1129,
+        "p50Ns": 1383100,
+        "p99Ns": 2966600,
+        "p999Ns": 3444500,
+        "maxNs": 24976800,
+        "over60": 4,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "tone880"
+      },
+      "R3-b256-tone880-p0.25": {
+        "callbackCount": 1127,
+        "p50Ns": 1942600,
+        "p99Ns": 4697200,
+        "p999Ns": 13066700,
+        "maxNs": 26248100,
+        "over60": 101,
+        "over80": 17,
+        "over100": 5,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "tone880"
+      },
+      "R2-b64-tone220-p1.00": {
+        "callbackCount": 4516,
+        "p50Ns": 200,
+        "p99Ns": 253500,
+        "p999Ns": 417900,
+        "maxNs": 740000,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 1,
+        "scene": "tone220"
+      },
+      "R2-b128-tone220-p1.00": {
+        "callbackCount": 2258,
+        "p50Ns": 400,
+        "p99Ns": 393000,
+        "p999Ns": 1096700,
+        "maxNs": 1649900,
+        "over60": 2,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 1,
+        "scene": "tone220"
+      },
+      "R2-b256-tone220-p1.00": {
+        "callbackCount": 1129,
+        "p50Ns": 6300,
+        "p99Ns": 273100,
+        "p999Ns": 430100,
+        "maxNs": 436900,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 1,
+        "scene": "tone220"
+      },
+      "R3-b64-tone220-p1.00": {
+        "callbackCount": 4532,
+        "p50Ns": 700,
+        "p99Ns": 1683200,
+        "p999Ns": 3387700,
+        "maxNs": 40143900,
+        "over60": 707,
+        "over80": 411,
+        "over100": 138,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 1,
+        "scene": "tone220"
+      },
+      "R3-b128-tone220-p1.00": {
+        "callbackCount": 2266,
+        "p50Ns": 9900,
+        "p99Ns": 2405500,
+        "p999Ns": 5944600,
+        "maxNs": 21656000,
+        "over60": 97,
+        "over80": 38,
+        "over100": 19,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 1,
+        "scene": "tone220"
+      },
+      "R3-b256-tone220-p1.00": {
+        "callbackCount": 1133,
+        "p50Ns": 588500,
+        "p99Ns": 1109700,
+        "p999Ns": 1395600,
+        "maxNs": 16215200,
+        "over60": 1,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 1,
+        "scene": "tone220"
+      },
+      "R2-b64-impulse-offset-9600-p1.00": {
+        "callbackCount": 2266,
+        "p50Ns": 100,
+        "p99Ns": 84300,
+        "p999Ns": 113800,
+        "maxNs": 154500,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 1,
+        "scene": "impulse-offset-9600"
+      },
+      "R2-b128-impulse-offset-9600-p1.00": {
+        "callbackCount": 1133,
+        "p50Ns": 300,
+        "p99Ns": 189100,
+        "p999Ns": 272600,
+        "maxNs": 3326900,
+        "over60": 1,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 1,
+        "scene": "impulse-offset-9600"
+      },
+      "R2-b256-impulse-offset-9600-p1.00": {
+        "callbackCount": 567,
+        "p50Ns": 4100,
+        "p99Ns": 285200,
+        "p999Ns": 925700,
+        "maxNs": 925700,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 1,
+        "scene": "impulse-offset-9600"
+      },
+      "R3-b64-impulse-offset-9600-p1.00": {
+        "callbackCount": 2282,
+        "p50Ns": 500,
+        "p99Ns": 1109200,
+        "p999Ns": 1617200,
+        "maxNs": 18374800,
+        "over60": 155,
+        "over80": 30,
+        "over100": 9,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 1,
+        "scene": "impulse-offset-9600"
+      },
+      "R3-b128-impulse-offset-9600-p1.00": {
+        "callbackCount": 1141,
+        "p50Ns": 3300,
+        "p99Ns": 833400,
+        "p999Ns": 1111800,
+        "maxNs": 25736900,
+        "over60": 1,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 1,
+        "scene": "impulse-offset-9600"
+      },
+      "R3-b256-impulse-offset-9600-p1.00": {
+        "callbackCount": 571,
+        "p50Ns": 838100,
+        "p99Ns": 1954800,
+        "p999Ns": 22920300,
+        "maxNs": 22920300,
+        "over60": 2,
+        "over80": 2,
+        "over100": 2,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 1,
+        "scene": "impulse-offset-9600"
+      },
+      "R2-b64-gated-transient-3s-p0.50": {
+        "callbackCount": 2258,
+        "p50Ns": 89200,
+        "p99Ns": 487300,
+        "p999Ns": 840900,
+        "maxNs": 2083300,
+        "over60": 4,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "gated-transient-3s"
+      },
+      "R2-b64-gated-transient-3s-p0.25": {
+        "callbackCount": 2254,
+        "p50Ns": 213000,
+        "p99Ns": 643000,
+        "p999Ns": 1442700,
+        "maxNs": 1928400,
+        "over60": 16,
+        "over80": 10,
+        "over100": 6,
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "gated-transient-3s"
+      },
+      "R2-b128-gated-transient-3s-p0.50": {
+        "callbackCount": 1129,
+        "p50Ns": 224700,
+        "p99Ns": 684400,
+        "p999Ns": 1499800,
+        "maxNs": 1591800,
+        "over60": 0,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "gated-transient-3s"
+      },
+      "R2-b128-gated-transient-3s-p0.25": {
+        "callbackCount": 1127,
+        "p50Ns": 435400,
+        "p99Ns": 1033000,
+        "p999Ns": 1187200,
+        "maxNs": 2975200,
+        "over60": 1,
+        "over80": 1,
+        "over100": 1,
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "gated-transient-3s"
+      },
+      "R2-b256-gated-transient-3s-p0.50": {
+        "callbackCount": 565,
+        "p50Ns": 670000,
+        "p99Ns": 1801400,
+        "p999Ns": 3258600,
+        "maxNs": 3258600,
+        "over60": 1,
+        "over80": 0,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "gated-transient-3s"
+      },
+      "R2-b256-gated-transient-3s-p0.25": {
+        "callbackCount": 564,
+        "p50Ns": 1267100,
+        "p99Ns": 2344500,
+        "p999Ns": 3421900,
+        "maxNs": 3421900,
+        "over60": 2,
+        "over80": 1,
+        "over100": 0,
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "gated-transient-3s"
+      },
+      "R3-b64-gated-transient-3s-p0.50": {
+        "callbackCount": 2266,
+        "p50Ns": 105500,
+        "p99Ns": 2623400,
+        "p999Ns": 7703000,
+        "maxNs": 44710800,
+        "over60": 580,
+        "over80": 353,
+        "over100": 175,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "scene": "gated-transient-3s"
+      },
+      "R3-b64-gated-transient-3s-p0.25": {
+        "callbackCount": 2258,
+        "p50Ns": 339100,
+        "p99Ns": 1666700,
+        "p999Ns": 4279200,
+        "maxNs": 35680900,
+        "over60": 709,
+        "over80": 381,
+        "over100": 118,
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "scene": "gated-transient-3s"
+      },
+      "R3-b128-gated-transient-3s-p0.50": {
+        "callbackCount": 1133,
+        "p50Ns": 1006900,
+        "p99Ns": 2205900,
+        "p999Ns": 3791300,
+        "maxNs": 25846500,
+        "over60": 76,
+        "over80": 13,
+        "over100": 5,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "scene": "gated-transient-3s"
+      },
+      "R3-b128-gated-transient-3s-p0.25": {
+        "callbackCount": 1129,
+        "p50Ns": 1318700,
+        "p99Ns": 2966400,
+        "p999Ns": 4109400,
+        "maxNs": 35183200,
+        "over60": 271,
+        "over80": 55,
+        "over100": 19,
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "scene": "gated-transient-3s"
+      },
+      "R3-b256-gated-transient-3s-p0.50": {
+        "callbackCount": 567,
+        "p50Ns": 1623400,
+        "p99Ns": 3942600,
+        "p999Ns": 36422800,
+        "maxNs": 36422800,
+        "over60": 18,
+        "over80": 5,
+        "over100": 3,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "scene": "gated-transient-3s"
+      },
+      "R3-b256-gated-transient-3s-p0.25": {
+        "callbackCount": 565,
+        "p50Ns": 3254200,
+        "p99Ns": 7848900,
+        "p999Ns": 33980100,
+        "maxNs": 33980100,
+        "over60": 299,
+        "over80": 76,
+        "over100": 27,
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "scene": "gated-transient-3s"
+      }
+    },
+    "perEngineBlockRanges": [
+      {
+        "engine": "R2",
+        "blockFrames": 64,
+        "deadlineMs": 1.3333333333333333,
+        "runCount": 12,
+        "p99MsRange": [
+          0.0843,
+          0.6795
+        ],
+        "p999MsRange": [
+          0.1138,
+          4.0136
+        ],
+        "maxMs": 9.1676,
+        "over100Count": 28
+      },
+      {
+        "engine": "R2",
+        "blockFrames": 128,
+        "deadlineMs": 2.6666666666666665,
+        "runCount": 12,
+        "p99MsRange": [
+          0.1891,
+          2.3021
+        ],
+        "p999MsRange": [
+          0.2726,
+          8.8877
+        ],
+        "maxMs": 37.8212,
+        "over100Count": 42
+      },
+      {
+        "engine": "R2",
+        "blockFrames": 256,
+        "deadlineMs": 5.333333333333333,
+        "runCount": 12,
+        "p99MsRange": [
+          0.2731,
+          4.5823
+        ],
+        "p999MsRange": [
+          0.4301,
+          9.6839
+        ],
+        "maxMs": 11.8741,
+        "over100Count": 9
+      },
+      {
+        "engine": "R3",
+        "blockFrames": 64,
+        "deadlineMs": 1.3333333333333333,
+        "runCount": 12,
+        "p99MsRange": [
+          1.1092,
+          2.6234
+        ],
+        "p999MsRange": [
+          1.514,
+          9.1917
+        ],
+        "maxMs": 44.7108,
+        "over100Count": 1392
+      },
+      {
+        "engine": "R3",
+        "blockFrames": 128,
+        "deadlineMs": 2.6666666666666665,
+        "runCount": 12,
+        "p99MsRange": [
+          0.8334,
+          4.1672
+        ],
+        "p999MsRange": [
+          1.1118,
+          15.3944
+        ],
+        "maxMs": 35.1832,
+        "over100Count": 200
+      },
+      {
+        "engine": "R3",
+        "blockFrames": 256,
+        "deadlineMs": 5.333333333333333,
+        "runCount": 12,
+        "p99MsRange": [
+          1.1097,
+          7.8489
+        ],
+        "p999MsRange": [
+          1.3956,
+          36.4228
+        ],
+        "maxMs": 36.4228,
+        "over100Count": 84
+      }
+    ]
+  },
+  "stableToneBroadSpectralAudit": {
+    "runs": [
+      {
+        "runId": "Signalsmith-DownOneOctave",
+        "scale": 0.5,
+        "analysisWindowFrames": [
+          48000,
+          96000
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 27.5,
+            "rectangularExactTargetProjectionPeak": 0.052986653703568844,
+            "hannDominantSpectralComponentHz": 25.24775992956451,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 25.2685546875,
+                "hannPeakAmplitude": 0.5491240042324214
+              },
+              {
+                "binHz": 22.88818359375,
+                "hannPeakAmplitude": 0.01467177886003534
+              },
+              {
+                "binHz": 27.64892578125,
+                "hannPeakAmplitude": 0.014548764344100892
+              },
+              {
+                "binHz": 28.656005859375,
+                "hannPeakAmplitude": 0.004632719528708794
+              },
+              {
+                "binHz": 21.881103515625,
+                "hannPeakAmplitude": 0.004586382356872388
+              }
+            ],
+            "priorBoundedSearchPeakHz": 25.25,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 34.375,
+            "rectangularExactTargetProjectionPeak": 0.026886362471066145,
+            "hannDominantSpectralComponentHz": 38.997779737785535,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 39.00146484375,
+                "hannPeakAmplitude": 0.430613386291101
+              },
+              {
+                "binHz": 36.62109375,
+                "hannPeakAmplitude": 0.011522672423401822
+              },
+              {
+                "binHz": 41.3818359375,
+                "hannPeakAmplitude": 0.011413653415046573
+              },
+              {
+                "binHz": 42.388916015625,
+                "hannPeakAmplitude": 0.0036558250855097136
+              },
+              {
+                "binHz": 35.614013671875,
+                "hannPeakAmplitude": 0.0036025047717378033
+              }
+            ],
+            "priorBoundedSearchPeakHz": 37.375,
+            "priorPeakAtSearchBoundary": true
+          }
+        }
+      },
+      {
+        "runId": "Signalsmith-DownTwoOctaves",
+        "scale": 0.25,
+        "analysisWindowFrames": [
+          144000,
+          192000
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 13.75,
+            "rectangularExactTargetProjectionPeak": 0.03174900347352148,
+            "hannDominantSpectralComponentHz": 9.948020550416835,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 9.979248046875,
+                "hannPeakAmplitude": 0.5317697596884394
+              },
+              {
+                "binHz": 7.598876953125,
+                "hannPeakAmplitude": 0.014142224104023661
+              },
+              {
+                "binHz": 12.26806640625,
+                "hannPeakAmplitude": 0.014043577760351337
+              },
+              {
+                "binHz": 13.36669921875,
+                "hannPeakAmplitude": 0.0045666631094104715
+              },
+              {
+                "binHz": 6.500244140625,
+                "hannPeakAmplitude": 0.004446869805326207
+              }
+            ],
+            "priorBoundedSearchPeakHz": 10.75,
+            "priorPeakAtSearchBoundary": true
+          },
+          "right": {
+            "targetHz": 17.1875,
+            "rectangularExactTargetProjectionPeak": 0.019511642961294165,
+            "hannDominantSpectralComponentHz": 23.698237930687334,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 23.712158203125,
+                "hannPeakAmplitude": 0.4162209641631754
+              },
+              {
+                "binHz": 21.331787109375,
+                "hannPeakAmplitude": 0.011514733015939785
+              },
+              {
+                "binHz": 26.092529296875,
+                "hannPeakAmplitude": 0.010653382775252233
+              },
+              {
+                "binHz": 27.099609375,
+                "hannPeakAmplitude": 0.004180033571577464
+              },
+              {
+                "binHz": 20.32470703125,
+                "hannPeakAmplitude": 0.0029733015206771713
+              }
+            ],
+            "priorBoundedSearchPeakHz": 20.1875,
+            "priorPeakAtSearchBoundary": true
+          }
+        }
+      },
+      {
+        "runId": "R2-b64-tone55-p0.50",
+        "scale": 0.5,
+        "analysisWindowFrames": [
+          49024,
+          97024
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 27.5,
+            "rectangularExactTargetProjectionPeak": 0.24848658193172,
+            "hannDominantSpectralComponentHz": 29.19529714843202,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 29.205322265625,
+                "hannPeakAmplitude": 0.3582108655167595
+              },
+              {
+                "binHz": 25.726318359375,
+                "hannPeakAmplitude": 0.21041684393871005
+              },
+              {
+                "binHz": 23.529052734375,
+                "hannPeakAmplitude": 0.11961302015860194
+              },
+              {
+                "binHz": 20.416259765625,
+                "hannPeakAmplitude": 0.08621576610404037
+              },
+              {
+                "binHz": 35.797119140625,
+                "hannPeakAmplitude": 0.0851048174141213
+              }
+            ],
+            "priorBoundedSearchPeakHz": 29.0,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 34.375,
+            "rectangularExactTargetProjectionPeak": 0.05298553648981336,
+            "hannDominantSpectralComponentHz": 42.86770776428517,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 42.8466796875,
+                "hannPeakAmplitude": 0.2189302349493088
+              },
+              {
+                "binHz": 39.55078125,
+                "hannPeakAmplitude": 0.16928841567024916
+              },
+              {
+                "binHz": 34.332275390625,
+                "hannPeakAmplitude": 0.11843748181016019
+              },
+              {
+                "binHz": 37.353515625,
+                "hannPeakAmplitude": 0.1091817756076613
+              },
+              {
+                "binHz": 27.83203125,
+                "hannPeakAmplitude": 0.07670885551248174
+              }
+            ],
+            "priorBoundedSearchPeakHz": 34.875,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R2-b64-tone55-p0.25",
+        "scale": 0.25,
+        "analysisWindowFrames": [
+          145024,
+          193024
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 13.75,
+            "rectangularExactTargetProjectionPeak": 0.05649024175235741,
+            "hannDominantSpectralComponentHz": 12.878708788474468,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 12.908935546875,
+                "hannPeakAmplitude": 0.15152830330928588
+              },
+              {
+                "binHz": 14.556884765625,
+                "hannPeakAmplitude": 0.12054427546381608
+              },
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.08429164279493608
+              },
+              {
+                "binHz": 55.023193359375,
+                "hannPeakAmplitude": 0.07568671502317084
+              },
+              {
+                "binHz": 3.021240234375,
+                "hannPeakAmplitude": 0.043048112558207924
+              }
+            ],
+            "priorBoundedSearchPeakHz": 13.0,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 17.1875,
+            "rectangularExactTargetProjectionPeak": 0.025059853149252697,
+            "hannDominantSpectralComponentHz": 13.785858033574847,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 13.824462890625,
+                "hannPeakAmplitude": 0.3458507056284486
+              },
+              {
+                "binHz": 26.7333984375,
+                "hannPeakAmplitude": 0.0727463958183707
+              },
+              {
+                "binHz": 11.3525390625,
+                "hannPeakAmplitude": 0.03213540442767163
+              },
+              {
+                "binHz": 40.191650390625,
+                "hannPeakAmplitude": 0.025941054548661843
+              },
+              {
+                "binHz": 17.02880859375,
+                "hannPeakAmplitude": 0.023998571699555105
+              }
+            ],
+            "priorBoundedSearchPeakHz": 14.1875,
+            "priorPeakAtSearchBoundary": true
+          }
+        }
+      },
+      {
+        "runId": "R2-b128-tone55-p0.50",
+        "scale": 0.5,
+        "analysisWindowFrames": [
+          49024,
+          97024
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 27.5,
+            "rectangularExactTargetProjectionPeak": 0.24848658193172,
+            "hannDominantSpectralComponentHz": 29.19529714843202,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 29.205322265625,
+                "hannPeakAmplitude": 0.3582108655167595
+              },
+              {
+                "binHz": 25.726318359375,
+                "hannPeakAmplitude": 0.21041684393871005
+              },
+              {
+                "binHz": 23.529052734375,
+                "hannPeakAmplitude": 0.11961302015860194
+              },
+              {
+                "binHz": 20.416259765625,
+                "hannPeakAmplitude": 0.08621576610404037
+              },
+              {
+                "binHz": 35.797119140625,
+                "hannPeakAmplitude": 0.0851048174141213
+              }
+            ],
+            "priorBoundedSearchPeakHz": 29.0,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 34.375,
+            "rectangularExactTargetProjectionPeak": 0.05298553648981336,
+            "hannDominantSpectralComponentHz": 42.86770776428517,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 42.8466796875,
+                "hannPeakAmplitude": 0.2189302349493088
+              },
+              {
+                "binHz": 39.55078125,
+                "hannPeakAmplitude": 0.16928841567024916
+              },
+              {
+                "binHz": 34.332275390625,
+                "hannPeakAmplitude": 0.11843748181016019
+              },
+              {
+                "binHz": 37.353515625,
+                "hannPeakAmplitude": 0.1091817756076613
+              },
+              {
+                "binHz": 27.83203125,
+                "hannPeakAmplitude": 0.07670885551248174
+              }
+            ],
+            "priorBoundedSearchPeakHz": 34.875,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R2-b128-tone55-p0.25",
+        "scale": 0.25,
+        "analysisWindowFrames": [
+          145024,
+          193024
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 13.75,
+            "rectangularExactTargetProjectionPeak": 0.05649024175235741,
+            "hannDominantSpectralComponentHz": 12.878708788474468,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 12.908935546875,
+                "hannPeakAmplitude": 0.15152830330928588
+              },
+              {
+                "binHz": 14.556884765625,
+                "hannPeakAmplitude": 0.12054427546381608
+              },
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.08429164279493608
+              },
+              {
+                "binHz": 55.023193359375,
+                "hannPeakAmplitude": 0.07568671502317084
+              },
+              {
+                "binHz": 3.021240234375,
+                "hannPeakAmplitude": 0.043048112558207924
+              }
+            ],
+            "priorBoundedSearchPeakHz": 13.0,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 17.1875,
+            "rectangularExactTargetProjectionPeak": 0.025059853149252697,
+            "hannDominantSpectralComponentHz": 13.785858033574847,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 13.824462890625,
+                "hannPeakAmplitude": 0.3458507056284486
+              },
+              {
+                "binHz": 26.7333984375,
+                "hannPeakAmplitude": 0.0727463958183707
+              },
+              {
+                "binHz": 11.3525390625,
+                "hannPeakAmplitude": 0.03213540442767163
+              },
+              {
+                "binHz": 40.191650390625,
+                "hannPeakAmplitude": 0.025941054548661843
+              },
+              {
+                "binHz": 17.02880859375,
+                "hannPeakAmplitude": 0.023998571699555105
+              }
+            ],
+            "priorBoundedSearchPeakHz": 14.1875,
+            "priorPeakAtSearchBoundary": true
+          }
+        }
+      },
+      {
+        "runId": "R2-b256-tone55-p0.50",
+        "scale": 0.5,
+        "analysisWindowFrames": [
+          49024,
+          97024
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 27.5,
+            "rectangularExactTargetProjectionPeak": 0.24848658193172,
+            "hannDominantSpectralComponentHz": 29.19529714843202,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 29.205322265625,
+                "hannPeakAmplitude": 0.3582108655167595
+              },
+              {
+                "binHz": 25.726318359375,
+                "hannPeakAmplitude": 0.21041684393871005
+              },
+              {
+                "binHz": 23.529052734375,
+                "hannPeakAmplitude": 0.11961302015860194
+              },
+              {
+                "binHz": 20.416259765625,
+                "hannPeakAmplitude": 0.08621576610404037
+              },
+              {
+                "binHz": 35.797119140625,
+                "hannPeakAmplitude": 0.0851048174141213
+              }
+            ],
+            "priorBoundedSearchPeakHz": 29.0,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 34.375,
+            "rectangularExactTargetProjectionPeak": 0.05298553648981336,
+            "hannDominantSpectralComponentHz": 42.86770776428517,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 42.8466796875,
+                "hannPeakAmplitude": 0.2189302349493088
+              },
+              {
+                "binHz": 39.55078125,
+                "hannPeakAmplitude": 0.16928841567024916
+              },
+              {
+                "binHz": 34.332275390625,
+                "hannPeakAmplitude": 0.11843748181016019
+              },
+              {
+                "binHz": 37.353515625,
+                "hannPeakAmplitude": 0.1091817756076613
+              },
+              {
+                "binHz": 27.83203125,
+                "hannPeakAmplitude": 0.07670885551248174
+              }
+            ],
+            "priorBoundedSearchPeakHz": 34.875,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R2-b256-tone55-p0.25",
+        "scale": 0.25,
+        "analysisWindowFrames": [
+          145024,
+          193024
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 13.75,
+            "rectangularExactTargetProjectionPeak": 0.05649024175235741,
+            "hannDominantSpectralComponentHz": 12.878708788474468,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 12.908935546875,
+                "hannPeakAmplitude": 0.15152830330928588
+              },
+              {
+                "binHz": 14.556884765625,
+                "hannPeakAmplitude": 0.12054427546381608
+              },
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.08429164279493608
+              },
+              {
+                "binHz": 55.023193359375,
+                "hannPeakAmplitude": 0.07568671502317084
+              },
+              {
+                "binHz": 3.021240234375,
+                "hannPeakAmplitude": 0.043048112558207924
+              }
+            ],
+            "priorBoundedSearchPeakHz": 13.0,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 17.1875,
+            "rectangularExactTargetProjectionPeak": 0.025059853149252697,
+            "hannDominantSpectralComponentHz": 13.785858033574847,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 13.824462890625,
+                "hannPeakAmplitude": 0.3458507056284486
+              },
+              {
+                "binHz": 26.7333984375,
+                "hannPeakAmplitude": 0.0727463958183707
+              },
+              {
+                "binHz": 11.3525390625,
+                "hannPeakAmplitude": 0.03213540442767163
+              },
+              {
+                "binHz": 40.191650390625,
+                "hannPeakAmplitude": 0.025941054548661843
+              },
+              {
+                "binHz": 17.02880859375,
+                "hannPeakAmplitude": 0.023998571699555105
+              }
+            ],
+            "priorBoundedSearchPeakHz": 14.1875,
+            "priorPeakAtSearchBoundary": true
+          }
+        }
+      },
+      {
+        "runId": "R3-b64-tone55-p0.50",
+        "scale": 0.5,
+        "analysisWindowFrames": [
+          50048,
+          98048
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 27.5,
+            "rectangularExactTargetProjectionPeak": 0.5548086649045101,
+            "hannDominantSpectralComponentHz": 27.50000792332395,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.5543890656190816
+              },
+              {
+                "binHz": 29.84619140625,
+                "hannPeakAmplitude": 0.014796809503450296
+              },
+              {
+                "binHz": 25.177001953125,
+                "hannPeakAmplitude": 0.014686952896913371
+              },
+              {
+                "binHz": 24.078369140625,
+                "hannPeakAmplitude": 0.004673402218767395
+              },
+              {
+                "binHz": 30.94482421875,
+                "hannPeakAmplitude": 0.004647305093499495
+              }
+            ],
+            "priorBoundedSearchPeakHz": 27.5,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 34.375,
+            "rectangularExactTargetProjectionPeak": 0.07997713947340843,
+            "hannDominantSpectralComponentHz": 39.135717444865584,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 39.093017578125,
+                "hannPeakAmplitude": 0.20538980843324356
+              },
+              {
+                "binHz": 30.303955078125,
+                "hannPeakAmplitude": 0.1900147087605398
+              },
+              {
+                "binHz": 32.2265625,
+                "hannPeakAmplitude": 0.12695003537749983
+              },
+              {
+                "binHz": 49.072265625,
+                "hannPeakAmplitude": 0.05619190162319537
+              },
+              {
+                "binHz": 20.32470703125,
+                "hannPeakAmplitude": 0.048862274533925845
+              }
+            ],
+            "priorBoundedSearchPeakHz": 31.625,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R3-b64-tone55-p0.25",
+        "scale": 0.25,
+        "analysisWindowFrames": [
+          146048,
+          194048
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 13.75,
+            "rectangularExactTargetProjectionPeak": 0.5015735292357236,
+            "hannDominantSpectralComponentHz": 13.75000581647656,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 13.73291015625,
+                "hannPeakAmplitude": 0.5052313238703747
+              },
+              {
+                "binHz": 16.11328125,
+                "hannPeakAmplitude": 0.013548765887703186
+              },
+              {
+                "binHz": 11.3525390625,
+                "hannPeakAmplitude": 0.013440061940020051
+              },
+              {
+                "binHz": 10.345458984375,
+                "hannPeakAmplitude": 0.004232184040548218
+              },
+              {
+                "binHz": 17.120361328125,
+                "hannPeakAmplitude": 0.004176396443547813
+              }
+            ],
+            "priorBoundedSearchPeakHz": 13.75,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 17.1875,
+            "rectangularExactTargetProjectionPeak": 0.007287289219160342,
+            "hannDominantSpectralComponentHz": 27.49999986891943,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.374223160058511
+              },
+              {
+                "binHz": 29.84619140625,
+                "hannPeakAmplitude": 0.009962547401844492
+              },
+              {
+                "binHz": 25.177001953125,
+                "hannPeakAmplitude": 0.009905169414971058
+              },
+              {
+                "binHz": 30.94482421875,
+                "hannPeakAmplitude": 0.003164938322645449
+              },
+              {
+                "binHz": 24.078369140625,
+                "hannPeakAmplitude": 0.003153668557326623
+              }
+            ],
+            "priorBoundedSearchPeakHz": 19.9375,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R3-b128-tone55-p0.50",
+        "scale": 0.5,
+        "analysisWindowFrames": [
+          50048,
+          98048
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 27.5,
+            "rectangularExactTargetProjectionPeak": 0.5548085421162892,
+            "hannDominantSpectralComponentHz": 27.50001337905496,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.554388838961525
+              },
+              {
+                "binHz": 29.84619140625,
+                "hannPeakAmplitude": 0.014791535594483336
+              },
+              {
+                "binHz": 25.177001953125,
+                "hannPeakAmplitude": 0.01469254684356497
+              },
+              {
+                "binHz": 24.078369140625,
+                "hannPeakAmplitude": 0.004672683939719621
+              },
+              {
+                "binHz": 30.94482421875,
+                "hannPeakAmplitude": 0.004647699303486523
+              }
+            ],
+            "priorBoundedSearchPeakHz": 27.5,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 34.375,
+            "rectangularExactTargetProjectionPeak": 0.08042495721398298,
+            "hannDominantSpectralComponentHz": 39.13850094143026,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 39.093017578125,
+                "hannPeakAmplitude": 0.20540287861423384
+              },
+              {
+                "binHz": 30.303955078125,
+                "hannPeakAmplitude": 0.19020541388120726
+              },
+              {
+                "binHz": 32.2265625,
+                "hannPeakAmplitude": 0.12650590569652084
+              },
+              {
+                "binHz": 49.072265625,
+                "hannPeakAmplitude": 0.05621172966299116
+              },
+              {
+                "binHz": 20.32470703125,
+                "hannPeakAmplitude": 0.048880649593413664
+              }
+            ],
+            "priorBoundedSearchPeakHz": 31.625,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R3-b128-tone55-p0.25",
+        "scale": 0.25,
+        "analysisWindowFrames": [
+          146048,
+          194048
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 13.75,
+            "rectangularExactTargetProjectionPeak": 0.5015735292357236,
+            "hannDominantSpectralComponentHz": 13.75000581647656,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 13.73291015625,
+                "hannPeakAmplitude": 0.5052313238703747
+              },
+              {
+                "binHz": 16.11328125,
+                "hannPeakAmplitude": 0.013548765887703186
+              },
+              {
+                "binHz": 11.3525390625,
+                "hannPeakAmplitude": 0.013440061940020051
+              },
+              {
+                "binHz": 10.345458984375,
+                "hannPeakAmplitude": 0.004232184040548218
+              },
+              {
+                "binHz": 17.120361328125,
+                "hannPeakAmplitude": 0.004176396443547813
+              }
+            ],
+            "priorBoundedSearchPeakHz": 13.75,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 17.1875,
+            "rectangularExactTargetProjectionPeak": 0.007287289219160342,
+            "hannDominantSpectralComponentHz": 27.49999986891943,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.374223160058511
+              },
+              {
+                "binHz": 29.84619140625,
+                "hannPeakAmplitude": 0.009962547401844492
+              },
+              {
+                "binHz": 25.177001953125,
+                "hannPeakAmplitude": 0.009905169414971058
+              },
+              {
+                "binHz": 30.94482421875,
+                "hannPeakAmplitude": 0.003164938322645449
+              },
+              {
+                "binHz": 24.078369140625,
+                "hannPeakAmplitude": 0.003153668557326623
+              }
+            ],
+            "priorBoundedSearchPeakHz": 19.9375,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R3-b256-tone55-p0.50",
+        "scale": 0.5,
+        "analysisWindowFrames": [
+          50048,
+          98048
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 27.5,
+            "rectangularExactTargetProjectionPeak": 0.5548062663119588,
+            "hannDominantSpectralComponentHz": 27.500005534623842,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.5543884406714424
+              },
+              {
+                "binHz": 29.84619140625,
+                "hannPeakAmplitude": 0.014797239036646693
+              },
+              {
+                "binHz": 25.177001953125,
+                "hannPeakAmplitude": 0.014684178893657586
+              },
+              {
+                "binHz": 24.078369140625,
+                "hannPeakAmplitude": 0.004676362628313607
+              },
+              {
+                "binHz": 30.94482421875,
+                "hannPeakAmplitude": 0.004649362902939202
+              }
+            ],
+            "priorBoundedSearchPeakHz": 27.5,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 34.375,
+            "rectangularExactTargetProjectionPeak": 0.07942616380456267,
+            "hannDominantSpectralComponentHz": 39.13302423104415,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 39.093017578125,
+                "hannPeakAmplitude": 0.20580183631514173
+              },
+              {
+                "binHz": 30.303955078125,
+                "hannPeakAmplitude": 0.18983550385347917
+              },
+              {
+                "binHz": 32.318115234375,
+                "hannPeakAmplitude": 0.12697381974395
+              },
+              {
+                "binHz": 49.072265625,
+                "hannPeakAmplitude": 0.056269688353150396
+              },
+              {
+                "binHz": 20.32470703125,
+                "hannPeakAmplitude": 0.04882949738642209
+              }
+            ],
+            "priorBoundedSearchPeakHz": 31.625,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      },
+      {
+        "runId": "R3-b256-tone55-p0.25",
+        "scale": 0.25,
+        "analysisWindowFrames": [
+          146048,
+          194048
+        ],
+        "channels": {
+          "left": {
+            "targetHz": 13.75,
+            "rectangularExactTargetProjectionPeak": 0.5015735292357236,
+            "hannDominantSpectralComponentHz": 13.75000581647656,
+            "dominantOutsidePriorPlusMinus3HzSearch": false,
+            "topSpectralComponents": [
+              {
+                "binHz": 13.73291015625,
+                "hannPeakAmplitude": 0.5052313238703747
+              },
+              {
+                "binHz": 16.11328125,
+                "hannPeakAmplitude": 0.013548765887703186
+              },
+              {
+                "binHz": 11.3525390625,
+                "hannPeakAmplitude": 0.013440061940020051
+              },
+              {
+                "binHz": 10.345458984375,
+                "hannPeakAmplitude": 0.004232184040548218
+              },
+              {
+                "binHz": 17.120361328125,
+                "hannPeakAmplitude": 0.004176396443547813
+              }
+            ],
+            "priorBoundedSearchPeakHz": 13.75,
+            "priorPeakAtSearchBoundary": false
+          },
+          "right": {
+            "targetHz": 17.1875,
+            "rectangularExactTargetProjectionPeak": 0.007287289219160342,
+            "hannDominantSpectralComponentHz": 27.49999986891943,
+            "dominantOutsidePriorPlusMinus3HzSearch": true,
+            "topSpectralComponents": [
+              {
+                "binHz": 27.4658203125,
+                "hannPeakAmplitude": 0.374223160058511
+              },
+              {
+                "binHz": 29.84619140625,
+                "hannPeakAmplitude": 0.009962547401844492
+              },
+              {
+                "binHz": 25.177001953125,
+                "hannPeakAmplitude": 0.009905169414971058
+              },
+              {
+                "binHz": 30.94482421875,
+                "hannPeakAmplitude": 0.003164938322645449
+              },
+              {
+                "binHz": 24.078369140625,
+                "hannPeakAmplitude": 0.003153668557326623
+              }
+            ],
+            "priorBoundedSearchPeakHz": 19.9375,
+            "priorPeakAtSearchBoundary": false
+          }
+        }
+      }
+    ],
+    "method": "One-second Hann window; DC removed; 524288 FFT; dominant component searched over 1..200 Hz; log-bin quadratic interpolation",
+    "limitations": "Spectral components and zero crossings do not prove perceived pitch or musical quality; zero padding does not increase window resolution",
+    "priorSearchCorrection": "The v2 broad label denotes only target +/-3 Hz; boundary hits are not unconstrained dominant-frequency estimates"
+  },
+  "impulseAudit": {
+    "all6StereoImpulsesRecomputed": true,
+    "r2ReportedStartDelaySamples": 1024,
+    "r3ReportedStartDelaySamples": 2048,
+    "postTrimPeakOffsetFromOriginalEventSamples": 0,
+    "physicalHardwareLatency": "untested; offline protocol alignment is not a hardware measurement"
+  },
+  "durationAndFinalization": {
+    "schemaVersion": 1,
+    "timeRatioConfigured": 1.0,
+    "schedule": "prepend preferred zero pad; process positive-sized blocks and mark last padded input block final=true; after every process call repeatedly retrieve while available()>0; no extra zero-frame final process or injected silence.",
+    "apiTrace": "Header documents final=true as the last input block and available()==-1 once processing is complete and all output is read. R3 enters Finished after final=true; R2 available() returns -1 when completion is known and no output remains. The captured harness does not separately save terminal available() (0 versus -1).",
+    "qualification": "Observed lengths below describe this final-input/immediate-drain schedule only. timeRatio=1.0 does not prove exact final duration.",
+    "timingContext": {
+      "runStartedUtc": "2026-10-09T19:57:14.5945827Z",
+      "runEndedUtc": "2026-10-09T19:59:37.0579373Z",
+      "processLoadCaptured": false,
+      "parentReportedConcurrentNativeAndWasmBuilds": true,
+      "disposition": "Keep previous raw timing, maxima, and overruns as loaded-run data; no fresh timing run in this archive."
+    },
+    "runs": [
+      {
+        "runId": "R2-b64-tone55-p0.50",
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 512,
+        "rawOutputFrames": 288512,
+        "reportedStartDelayTrimFrames": 1024,
+        "postTrimOutputFrames": 287488,
+        "postTrimMinusInputFrames": -512,
+        "durationDeltaMilliseconds": -10.666666666666666,
+        "finalInputCallback": {
+          "callbackIndex": 4507,
+          "inputStartFrame": 288448,
+          "inputFrames": 64,
+          "outputFramesAfterFinalCallAndImmediateDrain": 288512,
+          "elapsedNs": 1059000,
+          "budgetNs": 1333333
+        }
+      },
+      {
+        "runId": "R2-b64-tone55-p0.25",
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 256,
+        "rawOutputFrames": 288256,
+        "reportedStartDelayTrimFrames": 1024,
+        "postTrimOutputFrames": 287232,
+        "postTrimMinusInputFrames": -768,
+        "durationDeltaMilliseconds": -16.0,
+        "finalInputCallback": {
+          "callbackIndex": 4503,
+          "inputStartFrame": 288192,
+          "inputFrames": 64,
+          "outputFramesAfterFinalCallAndImmediateDrain": 288256,
+          "elapsedNs": 1163500,
+          "budgetNs": 1333333
+        }
+      },
+      {
+        "runId": "R2-b128-tone55-p0.50",
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 512,
+        "rawOutputFrames": 288512,
+        "reportedStartDelayTrimFrames": 1024,
+        "postTrimOutputFrames": 287488,
+        "postTrimMinusInputFrames": -512,
+        "durationDeltaMilliseconds": -10.666666666666666,
+        "finalInputCallback": {
+          "callbackIndex": 2253,
+          "inputStartFrame": 288384,
+          "inputFrames": 128,
+          "outputFramesAfterFinalCallAndImmediateDrain": 288512,
+          "elapsedNs": 1239200,
+          "budgetNs": 2666666
+        }
+      },
+      {
+        "runId": "R2-b128-tone55-p0.25",
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 256,
+        "rawOutputFrames": 288256,
+        "reportedStartDelayTrimFrames": 1024,
+        "postTrimOutputFrames": 287232,
+        "postTrimMinusInputFrames": -768,
+        "durationDeltaMilliseconds": -16.0,
+        "finalInputCallback": {
+          "callbackIndex": 2251,
+          "inputStartFrame": 288128,
+          "inputFrames": 128,
+          "outputFramesAfterFinalCallAndImmediateDrain": 288256,
+          "elapsedNs": 4349100,
+          "budgetNs": 2666666
+        }
+      },
+      {
+        "runId": "R2-b256-tone55-p0.50",
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 512,
+        "rawOutputFrames": 288512,
+        "reportedStartDelayTrimFrames": 1024,
+        "postTrimOutputFrames": 287488,
+        "postTrimMinusInputFrames": -512,
+        "durationDeltaMilliseconds": -10.666666666666666,
+        "finalInputCallback": {
+          "callbackIndex": 1126,
+          "inputStartFrame": 288256,
+          "inputFrames": 256,
+          "outputFramesAfterFinalCallAndImmediateDrain": 288512,
+          "elapsedNs": 1986600,
+          "budgetNs": 5333333
+        }
+      },
+      {
+        "runId": "R2-b256-tone55-p0.25",
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 256,
+        "rawOutputFrames": 288256,
+        "reportedStartDelayTrimFrames": 1024,
+        "postTrimOutputFrames": 287232,
+        "postTrimMinusInputFrames": -768,
+        "durationDeltaMilliseconds": -16.0,
+        "finalInputCallback": {
+          "callbackIndex": 1125,
+          "inputStartFrame": 288000,
+          "inputFrames": 256,
+          "outputFramesAfterFinalCallAndImmediateDrain": 288256,
+          "elapsedNs": 4824900,
+          "budgetNs": 5333333
+        }
+      },
+      {
+        "runId": "R3-b64-tone55-p0.50",
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 1024,
+        "rawOutputFrames": 293378,
+        "reportedStartDelayTrimFrames": 2048,
+        "postTrimOutputFrames": 291330,
+        "postTrimMinusInputFrames": 3330,
+        "durationDeltaMilliseconds": 69.375,
+        "finalInputCallback": {
+          "callbackIndex": 4515,
+          "inputStartFrame": 288960,
+          "inputFrames": 64,
+          "outputFramesAfterFinalCallAndImmediateDrain": 293378,
+          "elapsedNs": 21080200,
+          "budgetNs": 1333333
+        }
+      },
+      {
+        "runId": "R3-b64-tone55-p0.25",
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 512,
+        "rawOutputFrames": 292608,
+        "reportedStartDelayTrimFrames": 2048,
+        "postTrimOutputFrames": 290560,
+        "postTrimMinusInputFrames": 2560,
+        "durationDeltaMilliseconds": 53.333333333333336,
+        "finalInputCallback": {
+          "callbackIndex": 4507,
+          "inputStartFrame": 288448,
+          "inputFrames": 64,
+          "outputFramesAfterFinalCallAndImmediateDrain": 292608,
+          "elapsedNs": 25530500,
+          "budgetNs": 1333333
+        }
+      },
+      {
+        "runId": "R3-b128-tone55-p0.50",
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 1024,
+        "rawOutputFrames": 293377,
+        "reportedStartDelayTrimFrames": 2048,
+        "postTrimOutputFrames": 291329,
+        "postTrimMinusInputFrames": 3329,
+        "durationDeltaMilliseconds": 69.35416666666667,
+        "finalInputCallback": {
+          "callbackIndex": 2257,
+          "inputStartFrame": 288896,
+          "inputFrames": 128,
+          "outputFramesAfterFinalCallAndImmediateDrain": 293377,
+          "elapsedNs": 27068700,
+          "budgetNs": 2666666
+        }
+      },
+      {
+        "runId": "R3-b128-tone55-p0.25",
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 512,
+        "rawOutputFrames": 292608,
+        "reportedStartDelayTrimFrames": 2048,
+        "postTrimOutputFrames": 290560,
+        "postTrimMinusInputFrames": 2560,
+        "durationDeltaMilliseconds": 53.333333333333336,
+        "finalInputCallback": {
+          "callbackIndex": 2253,
+          "inputStartFrame": 288384,
+          "inputFrames": 128,
+          "outputFramesAfterFinalCallAndImmediateDrain": 292608,
+          "elapsedNs": 28843900,
+          "budgetNs": 2666666
+        }
+      },
+      {
+        "runId": "R3-b256-tone55-p0.50",
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 1024,
+        "rawOutputFrames": 293344,
+        "reportedStartDelayTrimFrames": 2048,
+        "postTrimOutputFrames": 291296,
+        "postTrimMinusInputFrames": 3296,
+        "durationDeltaMilliseconds": 68.66666666666667,
+        "finalInputCallback": {
+          "callbackIndex": 1128,
+          "inputStartFrame": 288768,
+          "inputFrames": 256,
+          "outputFramesAfterFinalCallAndImmediateDrain": 293344,
+          "elapsedNs": 34142100,
+          "budgetNs": 5333333
+        }
+      },
+      {
+        "runId": "R3-b256-tone55-p0.25",
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "timeRatio": 1.0,
+        "inputFrames": 288000,
+        "preferredStartPadFrames": 512,
+        "rawOutputFrames": 292608,
+        "reportedStartDelayTrimFrames": 2048,
+        "postTrimOutputFrames": 290560,
+        "postTrimMinusInputFrames": 2560,
+        "durationDeltaMilliseconds": 53.333333333333336,
+        "finalInputCallback": {
+          "callbackIndex": 1126,
+          "inputStartFrame": 288256,
+          "inputFrames": 256,
+          "outputFramesAfterFinalCallAndImmediateDrain": 292608,
+          "elapsedNs": 24904400,
+          "budgetNs": 5333333
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Original and additive archives remain immutable; original comparison mixed mode windows and falsely denied the quarter-octave segment",
+    "V1 additive audit selected the wrong Signalsmith PCM and remains superseded",
+    "No evaluator benchmark or hardware test was run by this review",
+    "No full Native/Browser graph performance, exact final duration, musical-quality or realtime Gate is passed",
+    "Rubber Band is isolated research material; no product source or binary adoption in this checkpoint"
+  ]
+}

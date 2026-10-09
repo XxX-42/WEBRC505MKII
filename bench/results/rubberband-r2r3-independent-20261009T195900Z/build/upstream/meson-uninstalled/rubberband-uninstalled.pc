@@ -1,0 +1,11 @@
+prefix=D:/Documents/Codes/2024_1_WebRC505MKII/research-input/rubberband-r2r3-independent-20261009T195900Z/build/upstream
+includedir=${prefix}/include
+libdir=${prefix}/lib
+srcdir=D:/Documents/Codes/2024_1_WebRC505MKII/research-input/rubberband-r2r3-independent-20261009T195900Z/upstream-source
+
+Name: rubberband
+Description: Audio time-stretching and pitch-shifting library
+URL: https://breakfastquay.com/rubberband/
+Version: 4.0.0
+Libs: -L${libdir} -lrubberband
+Cflags: -I${includedir}

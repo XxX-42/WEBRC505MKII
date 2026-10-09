@@ -1,0 +1,2043 @@
+{
+  "schemaVersion": 1,
+  "sampleRate": 48000,
+  "input": {
+    "frames": 288000,
+    "sha256": "7c0e73a6e78bcb84009593deff57b30b9b718a0b3f8536d6e67fd7bc6711ca21",
+    "tonesHz": {
+      "left": 55.0,
+      "right": 68.75
+    },
+    "peakAmplitudes": {
+      "left": 0.55,
+      "right": 0.43
+    },
+    "rightPhaseRadians": 0.31
+  },
+  "stableWindows": {
+    "half": [
+      48000,
+      96000
+    ],
+    "quarter": [
+      144000,
+      192000
+    ]
+  },
+  "signalsmith": {
+    "archiveManifestSha256": "71422e4043de41ac0956fc3277259b368ea302ed93f190658a7b8c4f415d3485",
+    "outputFrames": 288000,
+    "reportedFixedMixedPathSamples": 8192,
+    "modeEvents": [
+      {
+        "frame": 0,
+        "mode": "DownOneOctave"
+      },
+      {
+        "frame": 96037,
+        "mode": "DownTwoOctaves"
+      },
+      {
+        "frame": 192037,
+        "mode": "DualDownOctaves"
+      }
+    ],
+    "windowPolicy": "Use the archived source test/output-frame windows as stored. Adding 8192 to the quarter window moves it to 3.1707..4.1707 s and crosses the event at 192037; the requested stable window is [144000,192000).",
+    "runs": [
+      {
+        "scale": 0.5,
+        "mode": "DownOneOctave",
+        "timelineWindowFrames": [
+          48000,
+          96000
+        ],
+        "seconds": [
+          1.0,
+          2.0
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.38720582809292825,
+              "peakAbs": 0.5493046641349792,
+              "targetHz": 27.5,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.052986653703568865,
+                "phaseRadians": -3.0085026103462473,
+                "real": -1260.4336980960468,
+                "imag": -168.74870022679926
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.00562364280671182,
+                "phaseRadians": -1.5115924509645078,
+                "real": 7.985927657784714,
+                "imag": -134.73095935201394
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 25.25,
+                "amplitudePeak": 0.545909428701872,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 25.247796485895183,
+                "positiveCrossingCount": 25,
+                "medianPeriodSamples": 1901.1560088744955,
+                "meanPeriodSamples": 1901.1577567844215
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.181818171279
+              }
+            },
+            "output": {
+              "rms": 0.30449545163807024,
+              "peakAbs": 0.43106502294540405,
+              "targetHz": 34.375,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.026886362471066173,
+                "phaseRadians": -2.888711779509425,
+                "real": -624.7502284893567,
+                "imag": -161.44351480197815
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.0036882881450867543,
+                "phaseRadians": 2.716100857972843,
+                "real": -80.62620120247178,
+                "imag": 36.53784445999154
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 37.375,
+                "amplitudePeak": 0.07762649291908448,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 38.99751581676837,
+                "positiveCrossingCount": 39,
+                "medianPeriodSamples": 1230.8476320781615,
+                "meanPeriodSamples": 1230.839156886685
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "scale": 0.25,
+        "mode": "DownTwoOctaves",
+        "timelineWindowFrames": [
+          144000,
+          192000
+        ],
+        "seconds": [
+          3.0,
+          4.0
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.37528238694725474,
+              "peakAbs": 0.5327162742614746,
+              "targetHz": 13.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.03174900347352144,
+                "phaseRadians": -0.7699843501703924,
+                "real": 547.0390614393721,
+                "imag": -530.4298416181508
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.00018775772885517127,
+                "phaseRadians": -3.0036570349176914,
+                "real": -4.463385545444556,
+                "imag": -0.6195943558098094
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 10.75,
+                "amplitudePeak": 0.12979944424322484,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 9.94857260569271,
+                "positiveCrossingCount": 10,
+                "medianPeriodSamples": 4824.812754799994,
+                "meanPeriodSamples": 4824.900153050201
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.1818181576787
+              }
+            },
+            "output": {
+              "rms": 0.2951988399734659,
+              "peakAbs": 0.4166734218597412,
+              "targetHz": 17.1875,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.01951164296129415,
+                "phaseRadians": 0.8517713572744284,
+                "real": 308.4328678171619,
+                "imag": 352.3560580071194
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.001859090405736993,
+                "phaseRadians": 0.6807004420544263,
+                "real": 34.67421172168169,
+                "imag": 28.079888037902045
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 20.1875,
+                "amplitudePeak": 0.03713216418487435,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 23.697278286346723,
+                "positiveCrossingCount": 24,
+                "medianPeriodSamples": 2025.5490702345924,
+                "meanPeriodSamples": 2025.4614150853536
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      }
+    ]
+  },
+  "rubberBand": {
+    "archiveManifestSha256": "bcfd7c602b1138a05e7dcc07968af3a9b44496f326e0f07d3fbc18fc1b776ef3",
+    "windowPolicy": "Map source frame t to raw output frame reportedStartDelay+t; analyze the same source-time interval.",
+    "runs": [
+      {
+        "runId": "R2-b64-tone55-p0.50",
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "preferredStartPadFrames": 512,
+        "reportedStartDelayTrimFrames": 1024,
+        "rawOutputFrames": 288512,
+        "postTrimOutputFrames": 287488,
+        "postTrimMinusInputFrames": -512,
+        "timelineWindowFrames": [
+          48000,
+          96000
+        ],
+        "rawWindowFrames": [
+          49024,
+          97024
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.36872593365180517,
+              "peakAbs": 0.5447179675102234,
+              "targetHz": 27.5,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.2484865819317201,
+                "phaseRadians": 0.09239828165641427,
+                "real": 5938.238794155642,
+                "imag": 550.249861470207
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.013083322015426741,
+                "phaseRadians": -1.6281897206967864,
+                "real": -18.011617910784764,
+                "imag": -313.48271250073986
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 29.0,
+                "amplitudePeak": 0.3246959750601978,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 26.937250533296037,
+                "positiveCrossingCount": 27,
+                "medianPeriodSamples": 1781.9190544584035,
+                "meanPeriodSamples": 1763.1774567388004
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.181818171279
+              }
+            },
+            "output": {
+              "rms": 0.277751676921616,
+              "peakAbs": 0.44146251678466797,
+              "targetHz": 34.375,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.05298553648981334,
+                "phaseRadians": -1.203911648812127,
+                "real": 456.15356282069234,
+                "imag": -1187.023573288784
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.02521442030206394,
+                "phaseRadians": 0.07083953674189113,
+                "real": 603.6283379712347,
+                "imag": 42.832423600657876
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 34.875,
+                "amplitudePeak": 0.10739161719904018,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 40.56637307396824,
+                "positiveCrossingCount": 38,
+                "medianPeriodSamples": 1183.2460326802538,
+                "meanPeriodSamples": 1241.1415840544948
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R2-b64-tone55-p0.25",
+        "engine": "R2",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "preferredStartPadFrames": 256,
+        "reportedStartDelayTrimFrames": 1024,
+        "rawOutputFrames": 288256,
+        "postTrimOutputFrames": 287232,
+        "postTrimMinusInputFrames": -768,
+        "timelineWindowFrames": [
+          144000,
+          192000
+        ],
+        "rawWindowFrames": [
+          145024,
+          193024
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.21259996328018918,
+              "peakAbs": 0.4372963607311249,
+              "targetHz": 13.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.056490241752357416,
+                "phaseRadians": -2.4796660475842427,
+                "real": -1069.440987101463,
+                "imag": -833.3047972582211
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.07582127158682603,
+                "phaseRadians": -1.4570215617094078,
+                "real": 206.59075355832394,
+                "imag": -1807.9454168113334
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 13.0,
+                "amplitudePeak": 0.16074227804201044,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.733355572105054,
+                "positiveCrossingCount": 15,
+                "medianPeriodSamples": 3495.139971289809,
+                "meanPeriodSamples": 3117.7325434610057
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.1818181576787
+              }
+            },
+            "output": {
+              "rms": 0.2599870149053589,
+              "peakAbs": 0.41358211636543274,
+              "targetHz": 17.1875,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.02505985314925272,
+                "phaseRadians": -1.1210080695847056,
+                "real": 261.48946017995263,
+                "imag": -541.6171123361717
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.021022801318183067,
+                "phaseRadians": -1.0665731401259724,
+                "real": 243.760616022138,
+                "imag": -441.75634803413567
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 14.1875,
+                "amplitudePeak": 0.2479792207047369,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.796755849734991,
+                "positiveCrossingCount": 14,
+                "medianPeriodSamples": 3479.0787430598757,
+                "meanPeriodSamples": 3482.6104047280774
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R2-b128-tone55-p0.50",
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "preferredStartPadFrames": 512,
+        "reportedStartDelayTrimFrames": 1024,
+        "rawOutputFrames": 288512,
+        "postTrimOutputFrames": 287488,
+        "postTrimMinusInputFrames": -512,
+        "timelineWindowFrames": [
+          48000,
+          96000
+        ],
+        "rawWindowFrames": [
+          49024,
+          97024
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.36872593365180517,
+              "peakAbs": 0.5447179675102234,
+              "targetHz": 27.5,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.2484865819317201,
+                "phaseRadians": 0.09239828165641427,
+                "real": 5938.238794155642,
+                "imag": 550.249861470207
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.013083322015426741,
+                "phaseRadians": -1.6281897206967864,
+                "real": -18.011617910784764,
+                "imag": -313.48271250073986
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 29.0,
+                "amplitudePeak": 0.3246959750601978,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 26.937250533296037,
+                "positiveCrossingCount": 27,
+                "medianPeriodSamples": 1781.9190544584035,
+                "meanPeriodSamples": 1763.1774567388004
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.181818171279
+              }
+            },
+            "output": {
+              "rms": 0.277751676921616,
+              "peakAbs": 0.44146251678466797,
+              "targetHz": 34.375,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.05298553648981334,
+                "phaseRadians": -1.203911648812127,
+                "real": 456.15356282069234,
+                "imag": -1187.023573288784
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.02521442030206394,
+                "phaseRadians": 0.07083953674189113,
+                "real": 603.6283379712347,
+                "imag": 42.832423600657876
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 34.875,
+                "amplitudePeak": 0.10739161719904018,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 40.56637307396824,
+                "positiveCrossingCount": 38,
+                "medianPeriodSamples": 1183.2460326802538,
+                "meanPeriodSamples": 1241.1415840544948
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R2-b128-tone55-p0.25",
+        "engine": "R2",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "preferredStartPadFrames": 256,
+        "reportedStartDelayTrimFrames": 1024,
+        "rawOutputFrames": 288256,
+        "postTrimOutputFrames": 287232,
+        "postTrimMinusInputFrames": -768,
+        "timelineWindowFrames": [
+          144000,
+          192000
+        ],
+        "rawWindowFrames": [
+          145024,
+          193024
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.21259996328018918,
+              "peakAbs": 0.4372963607311249,
+              "targetHz": 13.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.056490241752357416,
+                "phaseRadians": -2.4796660475842427,
+                "real": -1069.440987101463,
+                "imag": -833.3047972582211
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.07582127158682603,
+                "phaseRadians": -1.4570215617094078,
+                "real": 206.59075355832394,
+                "imag": -1807.9454168113334
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 13.0,
+                "amplitudePeak": 0.16074227804201044,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.733355572105054,
+                "positiveCrossingCount": 15,
+                "medianPeriodSamples": 3495.139971289809,
+                "meanPeriodSamples": 3117.7325434610057
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.1818181576787
+              }
+            },
+            "output": {
+              "rms": 0.2599870149053589,
+              "peakAbs": 0.41358211636543274,
+              "targetHz": 17.1875,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.02505985314925272,
+                "phaseRadians": -1.1210080695847056,
+                "real": 261.48946017995263,
+                "imag": -541.6171123361717
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.021022801318183067,
+                "phaseRadians": -1.0665731401259724,
+                "real": 243.760616022138,
+                "imag": -441.75634803413567
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 14.1875,
+                "amplitudePeak": 0.2479792207047369,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.796755849734991,
+                "positiveCrossingCount": 14,
+                "medianPeriodSamples": 3479.0787430598757,
+                "meanPeriodSamples": 3482.6104047280774
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R2-b256-tone55-p0.50",
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "preferredStartPadFrames": 512,
+        "reportedStartDelayTrimFrames": 1024,
+        "rawOutputFrames": 288512,
+        "postTrimOutputFrames": 287488,
+        "postTrimMinusInputFrames": -512,
+        "timelineWindowFrames": [
+          48000,
+          96000
+        ],
+        "rawWindowFrames": [
+          49024,
+          97024
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.36872593365180517,
+              "peakAbs": 0.5447179675102234,
+              "targetHz": 27.5,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.2484865819317201,
+                "phaseRadians": 0.09239828165641427,
+                "real": 5938.238794155642,
+                "imag": 550.249861470207
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.013083322015426741,
+                "phaseRadians": -1.6281897206967864,
+                "real": -18.011617910784764,
+                "imag": -313.48271250073986
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 29.0,
+                "amplitudePeak": 0.3246959750601978,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 26.937250533296037,
+                "positiveCrossingCount": 27,
+                "medianPeriodSamples": 1781.9190544584035,
+                "meanPeriodSamples": 1763.1774567388004
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.181818171279
+              }
+            },
+            "output": {
+              "rms": 0.277751676921616,
+              "peakAbs": 0.44146251678466797,
+              "targetHz": 34.375,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.05298553648981334,
+                "phaseRadians": -1.203911648812127,
+                "real": 456.15356282069234,
+                "imag": -1187.023573288784
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.02521442030206394,
+                "phaseRadians": 0.07083953674189113,
+                "real": 603.6283379712347,
+                "imag": 42.832423600657876
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 34.875,
+                "amplitudePeak": 0.10739161719904018,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 40.56637307396824,
+                "positiveCrossingCount": 38,
+                "medianPeriodSamples": 1183.2460326802538,
+                "meanPeriodSamples": 1241.1415840544948
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R2-b256-tone55-p0.25",
+        "engine": "R2",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "preferredStartPadFrames": 256,
+        "reportedStartDelayTrimFrames": 1024,
+        "rawOutputFrames": 288256,
+        "postTrimOutputFrames": 287232,
+        "postTrimMinusInputFrames": -768,
+        "timelineWindowFrames": [
+          144000,
+          192000
+        ],
+        "rawWindowFrames": [
+          145024,
+          193024
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.21259996328018918,
+              "peakAbs": 0.4372963607311249,
+              "targetHz": 13.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.056490241752357416,
+                "phaseRadians": -2.4796660475842427,
+                "real": -1069.440987101463,
+                "imag": -833.3047972582211
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.07582127158682603,
+                "phaseRadians": -1.4570215617094078,
+                "real": 206.59075355832394,
+                "imag": -1807.9454168113334
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 13.0,
+                "amplitudePeak": 0.16074227804201044,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.733355572105054,
+                "positiveCrossingCount": 15,
+                "medianPeriodSamples": 3495.139971289809,
+                "meanPeriodSamples": 3117.7325434610057
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.1818181576787
+              }
+            },
+            "output": {
+              "rms": 0.2599870149053589,
+              "peakAbs": 0.41358211636543274,
+              "targetHz": 17.1875,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.02505985314925272,
+                "phaseRadians": -1.1210080695847056,
+                "real": 261.48946017995263,
+                "imag": -541.6171123361717
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.021022801318183067,
+                "phaseRadians": -1.0665731401259724,
+                "real": 243.760616022138,
+                "imag": -441.75634803413567
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 14.1875,
+                "amplitudePeak": 0.2479792207047369,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.796755849734991,
+                "positiveCrossingCount": 14,
+                "medianPeriodSamples": 3479.0787430598757,
+                "meanPeriodSamples": 3482.6104047280774
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R3-b64-tone55-p0.50",
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.5,
+        "preferredStartPadFrames": 1024,
+        "reportedStartDelayTrimFrames": 2048,
+        "rawOutputFrames": 293378,
+        "postTrimOutputFrames": 291330,
+        "postTrimMinusInputFrames": 3330,
+        "timelineWindowFrames": [
+          48000,
+          96000
+        ],
+        "rawWindowFrames": [
+          50048,
+          98048
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.39230897642824114,
+              "peakAbs": 0.5548648834228516,
+              "targetHz": 27.5,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.5548086649045101,
+                "phaseRadians": -0.7871360823991412,
+                "real": 9399.037821326958,
+                "imag": -9431.764263035067
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.006756831776943561,
+                "phaseRadians": 1.1077975547827856,
+                "real": 72.42780371705956,
+                "imag": 145.090881967082
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 27.5,
+                "amplitudePeak": 0.5548086649045101,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 27.500041170352915,
+                "positiveCrossingCount": 28,
+                "medianPeriodSamples": 1745.4519323319255,
+                "meanPeriodSamples": 1745.4544549896393
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.181818171279
+              }
+            },
+            "output": {
+              "rms": 0.28498959141390157,
+              "peakAbs": 0.4329747259616852,
+              "targetHz": 34.375,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.07997713947340844,
+                "phaseRadians": -1.1131538743458913,
+                "real": 848.0796129184948,
+                "imag": -1721.9333451214234
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.006526979159139712,
+                "phaseRadians": -2.421271873823745,
+                "real": -117.735348111112,
+                "imag": -103.32873271655616
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 31.625,
+                "amplitudePeak": 0.13121065830985446,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 34.37555226213993,
+                "positiveCrossingCount": 38,
+                "medianPeriodSamples": 1396.3412030143754,
+                "meanPeriodSamples": 1273.6175938210715
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R3-b64-tone55-p0.25",
+        "engine": "R3",
+        "blockFrames": 64,
+        "pitchScale": 0.25,
+        "preferredStartPadFrames": 512,
+        "reportedStartDelayTrimFrames": 2048,
+        "rawOutputFrames": 292608,
+        "postTrimOutputFrames": 290560,
+        "postTrimMinusInputFrames": 2560,
+        "timelineWindowFrames": [
+          144000,
+          192000
+        ],
+        "rawWindowFrames": [
+          146048,
+          194048
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.355977468331965,
+              "peakAbs": 0.5059012174606323,
+              "targetHz": 13.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.5015735292357236,
+                "phaseRadians": -0.3388277172269228,
+                "real": 11353.357093868017,
+                "imag": -4001.132553613395
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.0021109797166653397,
+                "phaseRadians": 1.0838992387391257,
+                "real": 23.70473971112913,
+                "imag": 44.775851583090684
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 13.75,
+                "amplitudePeak": 0.5015735292357236,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.74989517476479,
+                "positiveCrossingCount": 14,
+                "medianPeriodSamples": 3490.9357045931883,
+                "meanPeriodSamples": 3490.8797926644256
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.1818181576787
+              }
+            },
+            "output": {
+              "rms": 0.2648196825996773,
+              "peakAbs": 0.3756061792373657,
+              "targetHz": 17.1875,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.007287289219160342,
+                "phaseRadians": 0.5326774084009621,
+                "real": 150.663327669225,
+                "imag": 88.81892914194304
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.0029043400271100044,
+                "phaseRadians": 0.7587462669092938,
+                "real": 50.58425114368104,
+                "imag": 47.9573096435074
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 19.9375,
+                "amplitudePeak": 0.01303169347270315,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 27.507926355891364,
+                "positiveCrossingCount": 28,
+                "medianPeriodSamples": 1744.9515960958597,
+                "meanPeriodSamples": 1745.4632700390493
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R3-b128-tone55-p0.50",
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.5,
+        "preferredStartPadFrames": 1024,
+        "reportedStartDelayTrimFrames": 2048,
+        "rawOutputFrames": 293377,
+        "postTrimOutputFrames": 291329,
+        "postTrimMinusInputFrames": 3329,
+        "timelineWindowFrames": [
+          48000,
+          96000
+        ],
+        "rawWindowFrames": [
+          50048,
+          98048
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.3923088883808643,
+              "peakAbs": 0.5548592805862427,
+              "targetHz": 27.5,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.5548085421162892,
+                "phaseRadians": -0.786842175046525,
+                "real": 9401.80739942643,
+                "imag": -9428.999322594467
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.006756887973754733,
+                "phaseRadians": 1.1080206541515742,
+                "real": 72.39603434605289,
+                "imag": 145.10824381381997
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 27.5,
+                "amplitudePeak": 0.5548085421162892,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 27.500022848467918,
+                "positiveCrossingCount": 28,
+                "medianPeriodSamples": 1745.4530952389437,
+                "meanPeriodSamples": 1745.4542796686335
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.181818171279
+              }
+            },
+            "output": {
+              "rms": 0.2849867196030345,
+              "peakAbs": 0.43295320868492126,
+              "targetHz": 34.375,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.08042495721398299,
+                "phaseRadians": -1.0988355032433763,
+                "real": 877.5333497991894,
+                "imag": -1719.186812386573
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.006534097077137089,
+                "phaseRadians": -2.4227976327517564,
+                "real": -118.02143238156059,
+                "imag": -103.26146462234962
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 31.625,
+                "amplitudePeak": 0.13105564754432508,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 34.375598811606885,
+                "positiveCrossingCount": 38,
+                "medianPeriodSamples": 1396.3393121690974,
+                "meanPeriodSamples": 1273.6441669175897
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R3-b128-tone55-p0.25",
+        "engine": "R3",
+        "blockFrames": 128,
+        "pitchScale": 0.25,
+        "preferredStartPadFrames": 512,
+        "reportedStartDelayTrimFrames": 2048,
+        "rawOutputFrames": 292608,
+        "postTrimOutputFrames": 290560,
+        "postTrimMinusInputFrames": 2560,
+        "timelineWindowFrames": [
+          144000,
+          192000
+        ],
+        "rawWindowFrames": [
+          146048,
+          194048
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.355977468331965,
+              "peakAbs": 0.5059012174606323,
+              "targetHz": 13.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.5015735292357236,
+                "phaseRadians": -0.3388277172269228,
+                "real": 11353.357093868017,
+                "imag": -4001.132553613395
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.0021109797166653397,
+                "phaseRadians": 1.0838992387391257,
+                "real": 23.70473971112913,
+                "imag": 44.775851583090684
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 13.75,
+                "amplitudePeak": 0.5015735292357236,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.74989517476479,
+                "positiveCrossingCount": 14,
+                "medianPeriodSamples": 3490.9357045931883,
+                "meanPeriodSamples": 3490.8797926644256
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.1818181576787
+              }
+            },
+            "output": {
+              "rms": 0.2648196825996773,
+              "peakAbs": 0.3756061792373657,
+              "targetHz": 17.1875,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.007287289219160342,
+                "phaseRadians": 0.5326774084009621,
+                "real": 150.663327669225,
+                "imag": 88.81892914194304
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.0029043400271100044,
+                "phaseRadians": 0.7587462669092938,
+                "real": 50.58425114368104,
+                "imag": 47.9573096435074
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 19.9375,
+                "amplitudePeak": 0.01303169347270315,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 27.507926355891364,
+                "positiveCrossingCount": 28,
+                "medianPeriodSamples": 1744.9515960958597,
+                "meanPeriodSamples": 1745.4632700390493
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R3-b256-tone55-p0.50",
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.5,
+        "preferredStartPadFrames": 1024,
+        "reportedStartDelayTrimFrames": 2048,
+        "rawOutputFrames": 293344,
+        "postTrimOutputFrames": 291296,
+        "postTrimMinusInputFrames": 3296,
+        "timelineWindowFrames": [
+          48000,
+          96000
+        ],
+        "rawWindowFrames": [
+          50048,
+          98048
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.570796326794891,
+                "real": 7.339906460401835e-11,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.39230727843320123,
+              "peakAbs": 0.5548603534698486,
+              "targetHz": 27.5,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.5548062663119591,
+                "phaseRadians": -0.786660816948037,
+                "real": 9403.47869730494,
+                "imag": -9427.255403212837
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.006757385351445334,
+                "phaseRadians": 1.1081111863007527,
+                "real": 72.3882252271928,
+                "imag": 145.12547935598255
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 27.5,
+                "amplitudePeak": 0.5548062663119591,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 27.49995729034244,
+                "positiveCrossingCount": 28,
+                "medianPeriodSamples": 1745.4572562866074,
+                "meanPeriodSamples": 1745.4542387407914
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135248334,
+                "real": 3125.3883297413236,
+                "imag": -9820.999357996456
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.181818171279
+              }
+            },
+            "output": {
+              "rms": 0.284972696136806,
+              "peakAbs": 0.4329260587692261,
+              "targetHz": 34.375,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.07942616380456265,
+                "phaseRadians": -1.1096724161741978,
+                "real": 848.1854762430281,
+                "imag": -1707.12809243914
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.006507542444026101,
+                "phaseRadians": -2.454746153256449,
+                "real": -120.76689405690743,
+                "imag": -99.03468023106447
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 31.625,
+                "amplitudePeak": 0.13119354555135537,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 34.37552576980936,
+                "positiveCrossingCount": 38,
+                "medianPeriodSamples": 1396.3422791385046,
+                "meanPeriodSamples": 1273.9597032183842
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      },
+      {
+        "runId": "R3-b256-tone55-p0.25",
+        "engine": "R3",
+        "blockFrames": 256,
+        "pitchScale": 0.25,
+        "preferredStartPadFrames": 512,
+        "reportedStartDelayTrimFrames": 2048,
+        "rawOutputFrames": 292608,
+        "postTrimOutputFrames": 290560,
+        "postTrimMinusInputFrames": 2560,
+        "timelineWindowFrames": [
+          144000,
+          192000
+        ],
+        "rawWindowFrames": [
+          146048,
+          194048
+        ],
+        "channels": {
+          "left": {
+            "input": {
+              "rms": 0.3889087292891045,
+              "peakAbs": 0.550000011920929,
+              "targetHz": 55.0,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.549999999485938,
+                "phaseRadians": -1.5707963267948837,
+                "real": 1.7079404557307498e-10,
+                "imag": -13199.999987662512
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 55.0,
+                "amplitudePeak": 0.549999999485938,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 54.99999999755742,
+                "positiveCrossingCount": 54,
+                "medianPeriodSamples": 872.7272727660311,
+                "meanPeriodSamples": 872.7272727565215
+              }
+            },
+            "output": {
+              "rms": 0.355977468331965,
+              "peakAbs": 0.5059012174606323,
+              "targetHz": 13.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.5015735292357236,
+                "phaseRadians": -0.3388277172269228,
+                "real": 11353.357093868017,
+                "imag": -4001.132553613395
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.0021109797166653397,
+                "phaseRadians": 1.0838992387391257,
+                "real": 23.70473971112913,
+                "imag": 44.775851583090684
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 13.75,
+                "amplitudePeak": 0.5015735292357236,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 13.74989517476479,
+                "positiveCrossingCount": 14,
+                "medianPeriodSamples": 3490.9357045931883,
+                "meanPeriodSamples": 3490.8797926644256
+              }
+            },
+            "expectedInputPhaseRadians": 0
+          },
+          "right": {
+            "input": {
+              "rms": 0.3038539416099613,
+              "peakAbs": 0.4300000071525574,
+              "targetHz": 68.75,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.4294296940772671,
+                "phaseRadians": -1.2626950135247959,
+                "real": 3125.3883297416933,
+                "imag": -9820.999357996337
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 68.75,
+                "amplitudePeak": 0.4294296940772671,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 68.75000003782017,
+                "positiveCrossingCount": 69,
+                "medianPeriodSamples": 698.1818177977402,
+                "meanPeriodSamples": 698.1818181576787
+              }
+            },
+            "output": {
+              "rms": 0.2648196825996773,
+              "peakAbs": 0.3756061792373657,
+              "targetHz": 17.1875,
+              "exactTargetProjection": {
+                "amplitudePeak": 0.007287289219160342,
+                "phaseRadians": 0.5326774084009621,
+                "real": 150.663327669225,
+                "imag": 88.81892914194304
+              },
+              "sourceFundamentalProjection": {
+                "amplitudePeak": 0.0029043400271100044,
+                "phaseRadians": 0.7587462669092938,
+                "real": 50.58425114368104,
+                "imag": 47.9573096435074
+              },
+              "broadPeakNearTarget": {
+                "frequencyHz": 19.9375,
+                "amplitudePeak": 0.01303169347270315,
+                "searchRadiusHz": 3.0,
+                "stepHz": 0.25
+              },
+              "positiveCrossingFit": {
+                "frequencyHz": 27.507926355891364,
+                "positiveCrossingCount": 28,
+                "medianPeriodSamples": 1744.9515960958597,
+                "meanPeriodSamples": 1745.4632700390493
+              }
+            },
+            "expectedInputPhaseRadians": 0.31
+          }
+        }
+      }
+    ]
+  }
+}

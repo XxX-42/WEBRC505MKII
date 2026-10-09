@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "artifact": "rubberband-r2r3-additive-stable-window-and-timeline-audit",
+  "createdUtc": "2026-10-09T20:14:26.500445+00:00",
+  "disposition": "additive correctness/quality audit; no timing rerun or qualification",
+  "tooling": {
+    "python": "3.13.14 (tags/v3.13.14:fd17997, Jun 10 2026, 13:03:48) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "numpy": "2.5.3"
+  },
+  "sourceArchives": {
+    "rubberBand": {
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z",
+      "manifestSha256": "bcfd7c602b1138a05e7dcc07968af3a9b44496f326e0f07d3fbc18fc1b776ef3",
+      "sumsSha256": "a5267d3af8fd4e47fc359d11ba9322f81fd1fd8fb0ef4188afa19ef62509eddd"
+    },
+    "signalsmith": {
+      "path": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z",
+      "manifestSha256": "71422e4043de41ac0956fc3277259b368ea302ed93f190658a7b8c4f415d3485",
+      "declaredArchiveHash": "71422e4043de41ac0956fc3277259b368ea302ed93f190658a7b8c4f415d3485"
+    }
+  },
+  "modeEvents": [
+    {
+      "frame": 0,
+      "mode": "DownOneOctave"
+    },
+    {
+      "frame": 96037,
+      "mode": "DownTwoOctaves"
+    },
+    {
+      "frame": 192037,
+      "mode": "DualDownOctaves"
+    }
+  ],
+  "stableWindows": {
+    "half": [
+      48000,
+      96000
+    ],
+    "quarter": [
+      144000,
+      192000
+    ],
+    "sampleRate": 48000
+  },
+  "verifiedCopies": [
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z\\data\\octave-signalsmith-tone-55Hz-input.f32le",
+      "archivePath": "data/tone55-input.f32le",
+      "bytes": 2304000,
+      "sha256": "7c0e73a6e78bcb84009593deff57b30b9b718a0b3f8536d6e67fd7bc6711ca21"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z\\data\\octave-signalsmith-tone-55Hz-output.f32le",
+      "archivePath": "data/signalsmith-tone55-mode-switch-output.f32le",
+      "bytes": 2304000,
+      "sha256": "7437411d4ed29cad3578abe611c0d05c40c0b7a8849a3152194d630128046a77"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\data\\input-impulse-3s.f32le",
+      "archivePath": "data/impulse-input-3s.f32le",
+      "bytes": 1152000,
+      "sha256": "d7fa9694a81ce2406944011f8b427dc6cd2ece98e6281568fbabee1e39e15436"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b64-tone55-p0.50-raw.f32le",
+      "archivePath": "data/rubberband-R2-b64-tone55-p0.50-raw.f32le",
+      "bytes": 2308096,
+      "sha256": "4e26d93fa522b49460be8afc87ec014510e8dc5a3146de5db55803c01d481a3a"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b64-tone55-p0.25-raw.f32le",
+      "archivePath": "data/rubberband-R2-b64-tone55-p0.25-raw.f32le",
+      "bytes": 2306048,
+      "sha256": "ea56f1afc55e55565d3e85990c0ac51e7fb64e92ada91d960e4ed1e0dff7b742"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b128-tone55-p0.50-raw.f32le",
+      "archivePath": "data/rubberband-R2-b128-tone55-p0.50-raw.f32le",
+      "bytes": 2308096,
+      "sha256": "4e26d93fa522b49460be8afc87ec014510e8dc5a3146de5db55803c01d481a3a"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b128-tone55-p0.25-raw.f32le",
+      "archivePath": "data/rubberband-R2-b128-tone55-p0.25-raw.f32le",
+      "bytes": 2306048,
+      "sha256": "bff35bb1e78a78c8ff901a25fd200f02aa3481d0ef9c2eec102de364ca136d4f"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b256-tone55-p0.50-raw.f32le",
+      "archivePath": "data/rubberband-R2-b256-tone55-p0.50-raw.f32le",
+      "bytes": 2308096,
+      "sha256": "335db23e5aebf73b6f2c897c95c911c5ad117cef2c97ef2c300ef21e9444238a"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b256-tone55-p0.25-raw.f32le",
+      "archivePath": "data/rubberband-R2-b256-tone55-p0.25-raw.f32le",
+      "bytes": 2306048,
+      "sha256": "169be53164b7acb9d46fbe8e739cb759cb7b414640f4d1295428d9e35605dfeb"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b64-tone55-p0.50-raw.f32le",
+      "archivePath": "data/rubberband-R3-b64-tone55-p0.50-raw.f32le",
+      "bytes": 2347024,
+      "sha256": "7c14e608bf982068c14cfb0b4b1c96afe7b2ba8cbcfa378954e2b9004fcee9d6"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b64-tone55-p0.25-raw.f32le",
+      "archivePath": "data/rubberband-R3-b64-tone55-p0.25-raw.f32le",
+      "bytes": 2340864,
+      "sha256": "0658a0f63de6c1538897b9ae998d385b2b5151f8ee0d49816556089d9dc0e480"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b128-tone55-p0.50-raw.f32le",
+      "archivePath": "data/rubberband-R3-b128-tone55-p0.50-raw.f32le",
+      "bytes": 2347016,
+      "sha256": "d109d00728b11266aedbcae2759dda315c9305641af54118d417032c6364a74d"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b128-tone55-p0.25-raw.f32le",
+      "archivePath": "data/rubberband-R3-b128-tone55-p0.25-raw.f32le",
+      "bytes": 2340864,
+      "sha256": "0658a0f63de6c1538897b9ae998d385b2b5151f8ee0d49816556089d9dc0e480"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b256-tone55-p0.50-raw.f32le",
+      "archivePath": "data/rubberband-R3-b256-tone55-p0.50-raw.f32le",
+      "bytes": 2346752,
+      "sha256": "b703907cd0e467a8bc2e41a296b0ab8e4dee8ee072b440ee2a1031db2173ec7a"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b256-tone55-p0.25-raw.f32le",
+      "archivePath": "data/rubberband-R3-b256-tone55-p0.25-raw.f32le",
+      "bytes": 2340864,
+      "sha256": "0658a0f63de6c1538897b9ae998d385b2b5151f8ee0d49816556089d9dc0e480"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b64-impulse-offset-9600-p1.00-raw.f32le",
+      "archivePath": "data/rubberband-R2-b64-impulse-offset-9600-p1.00-raw.f32le",
+      "bytes": 1160192,
+      "sha256": "34d46f4618d6df87dab8609a552a21913d3ddfcff1b066e4942b9f147065bab4"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b128-impulse-offset-9600-p1.00-raw.f32le",
+      "archivePath": "data/rubberband-R2-b128-impulse-offset-9600-p1.00-raw.f32le",
+      "bytes": 1160192,
+      "sha256": "34d46f4618d6df87dab8609a552a21913d3ddfcff1b066e4942b9f147065bab4"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R2-b256-impulse-offset-9600-p1.00-raw.f32le",
+      "archivePath": "data/rubberband-R2-b256-impulse-offset-9600-p1.00-raw.f32le",
+      "bytes": 1160192,
+      "sha256": "34d46f4618d6df87dab8609a552a21913d3ddfcff1b066e4942b9f147065bab4"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b64-impulse-offset-9600-p1.00-raw.f32le",
+      "archivePath": "data/rubberband-R3-b64-impulse-offset-9600-p1.00-raw.f32le",
+      "bytes": 1202176,
+      "sha256": "694ae96b7bd73aee867b0b17e83d2d53b7606c995c29d23f8961548573541843"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b128-impulse-offset-9600-p1.00-raw.f32le",
+      "archivePath": "data/rubberband-R3-b128-impulse-offset-9600-p1.00-raw.f32le",
+      "bytes": 1202176,
+      "sha256": "694ae96b7bd73aee867b0b17e83d2d53b7606c995c29d23f8961548573541843"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\results\\R3-b256-impulse-offset-9600-p1.00-raw.f32le",
+      "archivePath": "data/rubberband-R3-b256-impulse-offset-9600-p1.00-raw.f32le",
+      "bytes": 1202176,
+      "sha256": "694ae96b7bd73aee867b0b17e83d2d53b7606c995c29d23f8961548573541843"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\eval-src\\rubberband_r2r3_eval.cpp",
+      "archivePath": "references/rubberband_r2r3_eval.cpp",
+      "bytes": 24529,
+      "sha256": "9b712a45cf1bd9a87bffc5eff9d454591c5d82d65ef8a8e39ccda8fbb100d6d9"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\COPYING",
+      "archivePath": "references/rubberband-COPYING",
+      "bytes": 30821,
+      "sha256": "1b261ccf835014e7a64ec70d5c028ed0d6dcd685e049e8dda7c83b5a05309f06"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\rubberband\\RubberBandStretcher.h",
+      "archivePath": "references/RubberBandStretcher.h",
+      "bytes": 49665,
+      "sha256": "47d13af502c675f5da39297586d1bd28f6df511a2e77f7f73149be4111816529"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\RubberBandStretcher.cpp",
+      "archivePath": "references/RubberBandStretcher.cpp",
+      "bytes": 13941,
+      "sha256": "36ee08ee1303ff7c4096f49b7673b244c7ddee8193026811d44d7d269f4d8692"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\R2Stretcher.cpp",
+      "archivePath": "references/R2Stretcher.cpp",
+      "bytes": 44515,
+      "sha256": "4024c2f0bc99fd9b18970ab374f5070ce05d7268f0dea6023c68d47ec68399cf"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\faster\\StretcherProcess.cpp",
+      "archivePath": "references/R2StretcherProcess.cpp",
+      "bytes": 42485,
+      "sha256": "b9a27e7faa9d3695a1cbbd7ad167794df638593b0dc30db3e6301f4de08055d2"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\src\\finer\\R3Stretcher.cpp",
+      "archivePath": "references/R3Stretcher.cpp",
+      "bytes": 59250,
+      "sha256": "1b209f5425fd4e71ee4a359a1c640b15c1476b8014dc1bedb0bdd8f04d0f6838"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z\\source\\shared\\dsp\\tests\\octave_signalsmith_models_tests.cpp",
+      "archivePath": "references/octave_signalsmith_models_tests.cpp",
+      "bytes": 44816,
+      "sha256": "e34910e702d849462236dcd4b272b17ad3c25c6fd248e780bd5efed238d3c80f"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z\\source\\shared\\dsp\\src\\octave_signalsmith_models.cpp",
+      "archivePath": "references/octave_signalsmith_models.cpp",
+      "bytes": 14780,
+      "sha256": "c97d0f8fa173e4979f7848ea552739b35ac2ccf8471508b852fbcd80ad6361c6"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z\\source\\shared\\dsp\\include\\webrc\\dsp\\octave_signalsmith_models.hpp",
+      "archivePath": "references/octave_signalsmith_models.hpp",
+      "bytes": 4829,
+      "sha256": "93d577cedcf6e04064ab9e4cf11547a3a65ace466940cd0fc7071268ce0b90f9"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\manifest.json",
+      "archivePath": "references/rubberband-original-manifest.json",
+      "bytes": 268086,
+      "sha256": "bcfd7c602b1138a05e7dcc07968af3a9b44496f326e0f07d3fbc18fc1b776ef3"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\SHA256SUMS.txt",
+      "archivePath": "references/rubberband-original-SHA256SUMS.txt",
+      "bytes": 46254,
+      "sha256": "a5267d3af8fd4e47fc359d11ba9322f81fd1fd8fb0ef4188afa19ef62509eddd"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z\\manifest.json",
+      "archivePath": "references/signalsmith-original-manifest.json",
+      "bytes": 19959,
+      "sha256": "71422e4043de41ac0956fc3277259b368ea302ed93f190658a7b8c4f415d3485"
+    },
+    {
+      "source": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\shared\\dsp\\benchmarks\\results\\octave-signalsmith-models-candidate-20261009T194342Z\\SHA256SUMS.txt",
+      "archivePath": "references/signalsmith-original-SHA256SUMS.txt",
+      "bytes": 5675,
+      "sha256": "701be911a6bcc7d3eb6a08223fdad89192f660de8fad3f9db85b3508943128e4"
+    }
+  ],
+  "results": [
+    "results/stable-tone-window-metrics.json",
+    "results/corrected-impulse-timeline.json",
+    "results/output-length-and-finalization.json"
+  ]
+}

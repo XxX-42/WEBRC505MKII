@@ -1,0 +1,17 @@
+# Additive Rubber Band / Signalsmith measurement audit
+
+This v2 additive archive leaves both original captures and the earlier additive v1 archive untouched. The v1 audit mistakenly selected the 55 Hz high-resolution probe output (SHA ad76507eb2a83ed4d248e7f210ad93962d37725273d7d3452d018ebf12254316) instead of the main event-changing tone output. This v2 uses the exact main tone-test output sidecar (SHA 7437411d4ed29cad3578abe611c0d05c40c0b7a8849a3152194d630128046a77), then analyzes the requested stable mode windows.
+
+The Signalsmith 55 Hz output is one six-second stream with mode events at frames 96,037 and 192,037. Its stable 0.5x comparison is [48,000, 96,000), and the stable 0.25x comparison is [144,000, 192,000). The 0.25x segment is present in the existing sidecar. Those event-indexed source-test windows avoid crossing mode changes. Rubber Band's independent fixed-pitch outputs use the same original-time windows after each run's reported getStartDelay trim. Both channels are analyzed independently against their exact target frequency using complex projection, a 0.25 Hz broad search within plus/minus 3 Hz, and interpolated positive-going zero-crossings.
+
+The Signalsmith model reports an 8,192-frame mixed-path delay. Adding those frames to the quarter-octave window would shift it to 3.1707..4.1707 seconds and cross the event at frame 192,037. This audit therefore uses the documented event-indexed source test/output-frame window for this mode-changing sidecar; future host-level latency alignment must keep that distinction explicit.
+
+Impulse coordinates distinguish the original input event, preferred-pad plus event frame in the supplied stream, raw output index, and post-trim index (raw minus getStartDelay). The negative peak offset in the old JSON was caused by subtracting both pad and delay from an already raw-coordinate peak. The corrected output shows the peak at the padded input event and at the original event after trimming; it is not negative physical latency.
+
+The Rubber Band duration data describes exactly one protocol: set timeRatio to 1.0, prepend getPreferredStartPad zero frames, send final=true on the last positive input block, and retrieve while available()>0. The harness sends no extra zero-frame process call and no additional silence. The API documents -1 as fully processed with all output retrieved, but the old harness did not persist the terminal return value. The post-trim frame differences are measured facts for that schedule, not a final-duration qualification.
+
+The prior wall-clock timing arrays, maxima, and overruns remain unchanged. Contemporaneous process load was not captured; the parent reports Native/WASM builds overlapped the earlier run. This archive starts no timing benchmark. Future timing qualification needs an agreed quiet window and process/background metadata captured during the run.
+
+Rubber Band 4.0.0 is GPL-2.0-or-later with a separate commercial license offered upstream. Its sources are copied only into this independent research archive, not product sources. Pinned Signalsmith components are MIT licensed. No hardware was accessed.
+
+Files: data contains exact referenced PCM; references contains exact evaluator/test and API/core source files plus the original manifests/licenses; results contains the corrected metrics; SHA256SUMS.txt covers all other files. Run analysis.py with a fresh archive-root and the two source-root arguments to reproduce. The script refuses to overwrite a directory already containing SHA256SUMS.txt.

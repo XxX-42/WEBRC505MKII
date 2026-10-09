@@ -1,0 +1,95 @@
+The Meson build system
+Version: 1.12.1
+Source dir: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\upstream-source
+Build dir: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream
+Build type: native build
+Project name: Rubber Band Library
+Project version: 4.0.0
+C compiler for the host machine: cl (msvc 19.29.30159 "鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�")
+C linker for the host machine: link link 14.29.30159.0
+C++ compiler for the host machine: cl (msvc 19.29.30159 "鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�")
+C++ linker for the host machine: link link 14.29.30159.0
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Found CMake: C:\Program Files\CMake\bin\cmake.exe (4.4.2)
+WARNING: Unknown generator expression '$<CONFIG:Debug>'.
+WARNING: Unknown generator expression '$<:Debug>'.
+WARNING: Unknown generator expression '$<CONFIG:Debug,RelWithDebInfo>'.
+WARNING: Unknown generator expression '$<:ProgramDatabase>'.
+WARNING: Unknown generator expression '$<:StackFrameErrorCheck;UninitializedVariable>'.
+Run-time dependency fftw3 found: NO  (tried pkg-config and cmake)
+Run-time dependency sleef found: NO  (tried pkg-config and cmake)
+Run-time dependency sleefdft found: NO  (tried pkg-config and cmake)
+Run-time dependency samplerate found: NO  (tried pkg-config and cmake)
+Run-time dependency speexdsp found: NO  (tried pkg-config and cmake)
+Dependency sndfile for host machine skipped: feature cmdline disabled
+Dependency vamp-sdk for host machine skipped: feature vamp disabled
+Dependency boost(modules: unit_test_framework) for host machine skipped: feature tests disabled
+Run-time dependency threads found: YES
+Has header "ladspa.h" skipped: feature ladspa disabled
+Has header "lv2.h" skipped: feature lv2 disabled
+WARNING: msvc does not support C++11; attempting best effort; setting the standard to C++14
+Checking for function "sincos" : NO 
+Checking if "test program using std::atomic" compiles: YES 
+Checking if "test program using std::atomic requires -latomic" links: YES 
+Compiler for language java skipped: feature jni disabled
+Message: For FFT: using built-in implementation
+Message: For resampler: using built-in implementation
+Library VampPluginSDK skipped: feature vamp disabled
+Library vamp-sdk skipped: feature vamp disabled
+Library sndfile skipped: feature cmdline disabled
+Library sndfile-1 skipped: feature cmdline disabled
+Message: Will build Rubber Band Library static library
+Message: Not building Rubber Band Library dynamic library: default_library option is set to static
+Message: Not building Java Native Interface: Java compiler or archiver missing
+Message: Not building LADSPA plugin: ladspa.h header not found
+Message: Not building LV2 plugin: lv2.h header not found
+Message: Not building Vamp plugin: Vamp dependency not found
+Message: Not building command-line utilities: libsndfile dependency not found
+Message: Not building unit tests: boost_unit_test_framework dependency not found
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Build targets in project: 3
+
+Rubber Band Library 4.0.0
+
+  Directories
+    prefix                   : c:/
+    bindir                   : bin
+    libdir                   : lib
+    datadir                  : share
+
+  Configuration
+    FFT                      : Built-in
+    Resampler                : Built-in
+    Debug                    : Disabled
+    Architecture             : x86_64
+
+  Build targets
+    Static library           : YES
+                               Name: rubberband-static
+    Dynamic library          : NO
+    JNI library              : NO
+    LADSPA plugin            : NO
+    LV2 plugin               : NO
+    Vamp plugin              : NO
+    Command-line utility (R2): NO
+    Command-line utility (R3): NO
+    Unit tests               : NO
+
+  User defined options
+    b_vscrt                  : md
+    buildtype                : release
+    cmdline                  : disabled
+    default_library          : static
+    fft                      : builtin
+    jni                      : disabled
+    ladspa                   : disabled
+    lv2                      : disabled
+    resampler                : builtin
+    tests                    : disabled
+    vamp                     : disabled
+
+Found ninja-1.13.2.git.kitware.jobserver-pipe-1 at C:\Users\user1000\AppData\Local\Temp\webrc-rubberband-tools-a8df618f854b42dcb24f590ed3661a84\bin\ninja.exe

@@ -1,0 +1,15 @@
+[options]
+buildtype = release
+tests = disabled
+cmdline = disabled
+jni = disabled
+ladspa = disabled
+lv2 = disabled
+vamp = disabled
+default_library = static
+fft = builtin
+resampler = builtin
+b_vscrt = md
+
+[properties]
+

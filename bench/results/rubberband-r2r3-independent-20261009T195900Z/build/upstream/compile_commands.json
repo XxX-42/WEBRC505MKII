@@ -1,0 +1,140 @@
+[
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_rubberband-c.cpp.pdb\" /Folibrubberband_objlib.a.p/src_rubberband-c.cpp.obj \"/c\" ../../upstream-source/src/rubberband-c.cpp",
+    "file": "../../upstream-source/src/rubberband-c.cpp",
+    "output": "librubberband_objlib.a.p/src_rubberband-c.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_RubberBandStretcher.cpp.pdb\" /Folibrubberband_objlib.a.p/src_RubberBandStretcher.cpp.obj \"/c\" ../../upstream-source/src/RubberBandStretcher.cpp",
+    "file": "../../upstream-source/src/RubberBandStretcher.cpp",
+    "output": "librubberband_objlib.a.p/src_RubberBandStretcher.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_RubberBandLiveShifter.cpp.pdb\" /Folibrubberband_objlib.a.p/src_RubberBandLiveShifter.cpp.obj \"/c\" ../../upstream-source/src/RubberBandLiveShifter.cpp",
+    "file": "../../upstream-source/src/RubberBandLiveShifter.cpp",
+    "output": "librubberband_objlib.a.p/src_RubberBandLiveShifter.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_AudioCurveCalculator.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_AudioCurveCalculator.cpp.obj \"/c\" ../../upstream-source/src/faster/AudioCurveCalculator.cpp",
+    "file": "../../upstream-source/src/faster/AudioCurveCalculator.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_AudioCurveCalculator.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_CompoundAudioCurve.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_CompoundAudioCurve.cpp.obj \"/c\" ../../upstream-source/src/faster/CompoundAudioCurve.cpp",
+    "file": "../../upstream-source/src/faster/CompoundAudioCurve.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_CompoundAudioCurve.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_HighFrequencyAudioCurve.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_HighFrequencyAudioCurve.cpp.obj \"/c\" ../../upstream-source/src/faster/HighFrequencyAudioCurve.cpp",
+    "file": "../../upstream-source/src/faster/HighFrequencyAudioCurve.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_HighFrequencyAudioCurve.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_SilentAudioCurve.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_SilentAudioCurve.cpp.obj \"/c\" ../../upstream-source/src/faster/SilentAudioCurve.cpp",
+    "file": "../../upstream-source/src/faster/SilentAudioCurve.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_SilentAudioCurve.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_PercussiveAudioCurve.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_PercussiveAudioCurve.cpp.obj \"/c\" ../../upstream-source/src/faster/PercussiveAudioCurve.cpp",
+    "file": "../../upstream-source/src/faster/PercussiveAudioCurve.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_PercussiveAudioCurve.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_R2Stretcher.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_R2Stretcher.cpp.obj \"/c\" ../../upstream-source/src/faster/R2Stretcher.cpp",
+    "file": "../../upstream-source/src/faster/R2Stretcher.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_R2Stretcher.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_StretcherChannelData.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_StretcherChannelData.cpp.obj \"/c\" ../../upstream-source/src/faster/StretcherChannelData.cpp",
+    "file": "../../upstream-source/src/faster/StretcherChannelData.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_StretcherChannelData.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_faster_StretcherProcess.cpp.pdb\" /Folibrubberband_objlib.a.p/src_faster_StretcherProcess.cpp.obj \"/c\" ../../upstream-source/src/faster/StretcherProcess.cpp",
+    "file": "../../upstream-source/src/faster/StretcherProcess.cpp",
+    "output": "librubberband_objlib.a.p/src_faster_StretcherProcess.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_Allocators.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_Allocators.cpp.obj \"/c\" ../../upstream-source/src/common/Allocators.cpp",
+    "file": "../../upstream-source/src/common/Allocators.cpp",
+    "output": "librubberband_objlib.a.p/src_common_Allocators.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_FFT.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_FFT.cpp.obj \"/c\" ../../upstream-source/src/common/FFT.cpp",
+    "file": "../../upstream-source/src/common/FFT.cpp",
+    "output": "librubberband_objlib.a.p/src_common_FFT.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_Log.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_Log.cpp.obj \"/c\" ../../upstream-source/src/common/Log.cpp",
+    "file": "../../upstream-source/src/common/Log.cpp",
+    "output": "librubberband_objlib.a.p/src_common_Log.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_Profiler.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_Profiler.cpp.obj \"/c\" ../../upstream-source/src/common/Profiler.cpp",
+    "file": "../../upstream-source/src/common/Profiler.cpp",
+    "output": "librubberband_objlib.a.p/src_common_Profiler.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_Resampler.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_Resampler.cpp.obj \"/c\" ../../upstream-source/src/common/Resampler.cpp",
+    "file": "../../upstream-source/src/common/Resampler.cpp",
+    "output": "librubberband_objlib.a.p/src_common_Resampler.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_StretchCalculator.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_StretchCalculator.cpp.obj \"/c\" ../../upstream-source/src/common/StretchCalculator.cpp",
+    "file": "../../upstream-source/src/common/StretchCalculator.cpp",
+    "output": "librubberband_objlib.a.p/src_common_StretchCalculator.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_sysutils.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_sysutils.cpp.obj \"/c\" ../../upstream-source/src/common/sysutils.cpp",
+    "file": "../../upstream-source/src/common/sysutils.cpp",
+    "output": "librubberband_objlib.a.p/src_common_sysutils.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_mathmisc.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_mathmisc.cpp.obj \"/c\" ../../upstream-source/src/common/mathmisc.cpp",
+    "file": "../../upstream-source/src/common/mathmisc.cpp",
+    "output": "librubberband_objlib.a.p/src_common_mathmisc.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_Thread.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_Thread.cpp.obj \"/c\" ../../upstream-source/src/common/Thread.cpp",
+    "file": "../../upstream-source/src/common/Thread.cpp",
+    "output": "librubberband_objlib.a.p/src_common_Thread.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_finer_R3Stretcher.cpp.pdb\" /Folibrubberband_objlib.a.p/src_finer_R3Stretcher.cpp.obj \"/c\" ../../upstream-source/src/finer/R3Stretcher.cpp",
+    "file": "../../upstream-source/src/finer/R3Stretcher.cpp",
+    "output": "librubberband_objlib.a.p/src_finer_R3Stretcher.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_finer_R3LiveShifter.cpp.pdb\" /Folibrubberband_objlib.a.p/src_finer_R3LiveShifter.cpp.obj \"/c\" ../../upstream-source/src/finer/R3LiveShifter.cpp",
+    "file": "../../upstream-source/src/finer/R3LiveShifter.cpp",
+    "output": "librubberband_objlib.a.p/src_finer_R3LiveShifter.cpp.obj"
+  },
+  {
+    "directory": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream",
+    "command": "\"cl\" \"-Ilibrubberband_objlib.a.p\" \"-I.\" \"-I..\\..\\upstream-source\" \"-I..\\..\\upstream-source\\rubberband\" \"-I..\\..\\upstream-source\\src\" \"/MD\" \"/nologo\" \"/utf-8\" \"/Zc:__cplusplus\" \"/W4\" \"/EHsc\" \"/std:c++14\" \"/permissive-\" \"/O2\" \"/Gw\" \"/showIncludes\" \"-DUSE_BUILTIN_FFT\" \"-DUSE_BQRESAMPLER\" \"-DLACK_SINCOS\" \"-DNO_THREAD_CHECKS\" \"-DNO_TIMING\" \"-DNDEBUG\" \"-D_WIN32\" \"-DNOMINMAX\" \"-D_USE_MATH_DEFINES\" \"-DGETOPT_API=\" \"/Fdlibrubberband_objlib.a.p\\src_common_BQResampler.cpp.pdb\" /Folibrubberband_objlib.a.p/src_common_BQResampler.cpp.obj \"/c\" ../../upstream-source/src/common/BQResampler.cpp",
+    "file": "../../upstream-source/src/common/BQResampler.cpp",
+    "output": "librubberband_objlib.a.p/src_common_BQResampler.cpp.obj"
+  }
+]

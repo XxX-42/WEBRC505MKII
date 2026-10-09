@@ -1,0 +1,539 @@
+{
+  "schemaVersion": 1,
+  "method": "paired 48 kHz stereo PCM; same archived input file; same Hann-windowed least-squares sinusoid projection fitter; 1.0\u20132.5 s from delay-aligned output; only stored Signalsmith 0.5x PCM is comparable",
+  "limitations": [
+    "No archived Signalsmith 0.25x PCM is present.",
+    "Signalsmith archive did not capture callback timing distributions.",
+    "No listening panel or hardware callback test was run."
+  ],
+  "pairs": [
+    {
+      "scene": "tone55",
+      "engine": "R2",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 25.24,
+        "rightMeasuredHz": 38.9825,
+        "leftTargetAmplitude": 0.036598528883,
+        "rightTargetAmplitude": 0.0194512572402
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 28.95,
+        "rightMeasuredHz": 39.7125,
+        "leftTargetAmplitude": 0.175148619197,
+        "rightTargetAmplitude": 0.0731723974913,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 3.710000000000001,
+        "rightRubberBandMinusSignalSmith": 0.7299999999999969
+      }
+    },
+    {
+      "scene": "tone55",
+      "engine": "R2",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 25.24,
+        "rightMeasuredHz": 38.9825,
+        "leftTargetAmplitude": 0.036598528883,
+        "rightTargetAmplitude": 0.0194512572402
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 28.95,
+        "rightMeasuredHz": 39.7125,
+        "leftTargetAmplitude": 0.175148619197,
+        "rightTargetAmplitude": 0.0731723974913,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 3.710000000000001,
+        "rightRubberBandMinusSignalSmith": 0.7299999999999969
+      }
+    },
+    {
+      "scene": "tone55",
+      "engine": "R2",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 25.24,
+        "rightMeasuredHz": 38.9825,
+        "leftTargetAmplitude": 0.036598528883,
+        "rightTargetAmplitude": 0.0194512572402
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 28.95,
+        "rightMeasuredHz": 39.7125,
+        "leftTargetAmplitude": 0.175148619197,
+        "rightTargetAmplitude": 0.0731723974913,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 3.710000000000001,
+        "rightRubberBandMinusSignalSmith": 0.7299999999999969
+      }
+    },
+    {
+      "scene": "tone55",
+      "engine": "R3",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 25.24,
+        "rightMeasuredHz": 38.9825,
+        "leftTargetAmplitude": 0.036598528883,
+        "rightTargetAmplitude": 0.0194512572402
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 27.51,
+        "rightMeasuredHz": 39.2525,
+        "leftTargetAmplitude": 0.554806516629,
+        "rightTargetAmplitude": 0.0372562171985,
+        "alignedDurationErrorFrames": 3330
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 2.270000000000003,
+        "rightRubberBandMinusSignalSmith": 0.269999999999996
+      }
+    },
+    {
+      "scene": "tone55",
+      "engine": "R3",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 25.24,
+        "rightMeasuredHz": 38.9825,
+        "leftTargetAmplitude": 0.036598528883,
+        "rightTargetAmplitude": 0.0194512572402
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 27.51,
+        "rightMeasuredHz": 39.2525,
+        "leftTargetAmplitude": 0.554806530695,
+        "rightTargetAmplitude": 0.0373499983113,
+        "alignedDurationErrorFrames": 3329
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 2.270000000000003,
+        "rightRubberBandMinusSignalSmith": 0.269999999999996
+      }
+    },
+    {
+      "scene": "tone55",
+      "engine": "R3",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 25.24,
+        "rightMeasuredHz": 38.9825,
+        "leftTargetAmplitude": 0.036598528883,
+        "rightTargetAmplitude": 0.0194512572402
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 27.49,
+        "rightMeasuredHz": 39.2525,
+        "leftTargetAmplitude": 0.554805862243,
+        "rightTargetAmplitude": 0.0367854408563,
+        "alignedDurationErrorFrames": 3296
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 2.25,
+        "rightRubberBandMinusSignalSmith": 0.269999999999996
+      }
+    },
+    {
+      "scene": "tone110",
+      "engine": "R2",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 55.13,
+        "rightMeasuredHz": 69.125,
+        "leftTargetAmplitude": 0.413703937943,
+        "rightTargetAmplitude": 0.278793231767
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 48.46,
+        "rightMeasuredHz": 75.955,
+        "leftTargetAmplitude": 0.0135600745281,
+        "rightTargetAmplitude": 0.0127417957621,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -6.670000000000002,
+        "rightRubberBandMinusSignalSmith": 6.829999999999998
+      }
+    },
+    {
+      "scene": "tone110",
+      "engine": "R2",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 55.13,
+        "rightMeasuredHz": 69.125,
+        "leftTargetAmplitude": 0.413703937943,
+        "rightTargetAmplitude": 0.278793231767
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 48.46,
+        "rightMeasuredHz": 75.955,
+        "leftTargetAmplitude": 0.0135600745281,
+        "rightTargetAmplitude": 0.0127417957621,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -6.670000000000002,
+        "rightRubberBandMinusSignalSmith": 6.829999999999998
+      }
+    },
+    {
+      "scene": "tone110",
+      "engine": "R2",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 55.13,
+        "rightMeasuredHz": 69.125,
+        "leftTargetAmplitude": 0.413703937943,
+        "rightTargetAmplitude": 0.278793231767
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 48.46,
+        "rightMeasuredHz": 75.955,
+        "leftTargetAmplitude": 0.0135600745281,
+        "rightTargetAmplitude": 0.0127417957621,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -6.670000000000002,
+        "rightRubberBandMinusSignalSmith": 6.829999999999998
+      }
+    },
+    {
+      "scene": "tone110",
+      "engine": "R3",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 55.13,
+        "rightMeasuredHz": 69.125,
+        "leftTargetAmplitude": 0.413703937943,
+        "rightTargetAmplitude": 0.278793231767
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 55,
+        "rightMeasuredHz": 68.755,
+        "leftTargetAmplitude": 0.553543168345,
+        "rightTargetAmplitude": 0.432775008395,
+        "alignedDurationErrorFrames": 3330
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.13000000000000256,
+        "rightRubberBandMinusSignalSmith": -0.37000000000000455
+      }
+    },
+    {
+      "scene": "tone110",
+      "engine": "R3",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 55.13,
+        "rightMeasuredHz": 69.125,
+        "leftTargetAmplitude": 0.413703937943,
+        "rightTargetAmplitude": 0.278793231767
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 55,
+        "rightMeasuredHz": 68.755,
+        "leftTargetAmplitude": 0.553543238045,
+        "rightTargetAmplitude": 0.432775119548,
+        "alignedDurationErrorFrames": 3329
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.13000000000000256,
+        "rightRubberBandMinusSignalSmith": -0.37000000000000455
+      }
+    },
+    {
+      "scene": "tone110",
+      "engine": "R3",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 55.13,
+        "rightMeasuredHz": 69.125,
+        "leftTargetAmplitude": 0.413703937943,
+        "rightTargetAmplitude": 0.278793231767
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 55,
+        "rightMeasuredHz": 68.755,
+        "leftTargetAmplitude": 0.553543119994,
+        "rightTargetAmplitude": 0.432774952793,
+        "alignedDurationErrorFrames": 3296
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.13000000000000256,
+        "rightRubberBandMinusSignalSmith": -0.37000000000000455
+      }
+    },
+    {
+      "scene": "tone220",
+      "engine": "R2",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 109.05,
+        "rightMeasuredHz": 138.35,
+        "leftTargetAmplitude": 0.182457770926,
+        "rightTargetAmplitude": 0.164275490426
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 96.95,
+        "rightMeasuredHz": 145.73,
+        "leftTargetAmplitude": 0.0385121852826,
+        "rightTargetAmplitude": 0.0620881649936,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -12.099999999999994,
+        "rightRubberBandMinusSignalSmith": 7.3799999999999955
+      }
+    },
+    {
+      "scene": "tone220",
+      "engine": "R2",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 109.05,
+        "rightMeasuredHz": 138.35,
+        "leftTargetAmplitude": 0.182457770926,
+        "rightTargetAmplitude": 0.164275490426
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 96.95,
+        "rightMeasuredHz": 145.73,
+        "leftTargetAmplitude": 0.0385121852826,
+        "rightTargetAmplitude": 0.0620881649936,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -12.099999999999994,
+        "rightRubberBandMinusSignalSmith": 7.3799999999999955
+      }
+    },
+    {
+      "scene": "tone220",
+      "engine": "R2",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 109.05,
+        "rightMeasuredHz": 138.35,
+        "leftTargetAmplitude": 0.182457770926,
+        "rightTargetAmplitude": 0.164275490426
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 96.95,
+        "rightMeasuredHz": 145.73,
+        "leftTargetAmplitude": 0.0385121852826,
+        "rightTargetAmplitude": 0.0620881649936,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -12.099999999999994,
+        "rightRubberBandMinusSignalSmith": 7.3799999999999955
+      }
+    },
+    {
+      "scene": "tone220",
+      "engine": "R3",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 109.05,
+        "rightMeasuredHz": 138.35,
+        "leftTargetAmplitude": 0.182457770926,
+        "rightTargetAmplitude": 0.164275490426
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 110.01,
+        "rightMeasuredHz": 137.5,
+        "leftTargetAmplitude": 0.553548195785,
+        "rightTargetAmplitude": 0.432773426018,
+        "alignedDurationErrorFrames": 3330
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 0.960000000000008,
+        "rightRubberBandMinusSignalSmith": -0.8499999999999943
+      }
+    },
+    {
+      "scene": "tone220",
+      "engine": "R3",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 109.05,
+        "rightMeasuredHz": 138.35,
+        "leftTargetAmplitude": 0.182457770926,
+        "rightTargetAmplitude": 0.164275490426
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 110.01,
+        "rightMeasuredHz": 137.5,
+        "leftTargetAmplitude": 0.553548259204,
+        "rightTargetAmplitude": 0.432773478655,
+        "alignedDurationErrorFrames": 3329
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 0.960000000000008,
+        "rightRubberBandMinusSignalSmith": -0.8499999999999943
+      }
+    },
+    {
+      "scene": "tone220",
+      "engine": "R3",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 109.05,
+        "rightMeasuredHz": 138.35,
+        "leftTargetAmplitude": 0.182457770926,
+        "rightTargetAmplitude": 0.164275490426
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 110.01,
+        "rightMeasuredHz": 137.5,
+        "leftTargetAmplitude": 0.553548101995,
+        "rightTargetAmplitude": 0.432773358112,
+        "alignedDurationErrorFrames": 3296
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": 0.960000000000008,
+        "rightRubberBandMinusSignalSmith": -0.8499999999999943
+      }
+    },
+    {
+      "scene": "tone880",
+      "engine": "R2",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 440.14,
+        "rightMeasuredHz": 550.1,
+        "leftTargetAmplitude": 0.446463363975,
+        "rightTargetAmplitude": 0.348943478445
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 439.99,
+        "rightMeasuredHz": 550,
+        "leftTargetAmplitude": 0.544793436362,
+        "rightTargetAmplitude": 0.42583510498,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.14999999999997726,
+        "rightRubberBandMinusSignalSmith": -0.10000000000002274
+      }
+    },
+    {
+      "scene": "tone880",
+      "engine": "R2",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 440.14,
+        "rightMeasuredHz": 550.1,
+        "leftTargetAmplitude": 0.446463363975,
+        "rightTargetAmplitude": 0.348943478445
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 439.99,
+        "rightMeasuredHz": 550,
+        "leftTargetAmplitude": 0.544793436362,
+        "rightTargetAmplitude": 0.42583510498,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.14999999999997726,
+        "rightRubberBandMinusSignalSmith": -0.10000000000002274
+      }
+    },
+    {
+      "scene": "tone880",
+      "engine": "R2",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 440.14,
+        "rightMeasuredHz": 550.1,
+        "leftTargetAmplitude": 0.446463363975,
+        "rightTargetAmplitude": 0.348943478445
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 439.99,
+        "rightMeasuredHz": 550,
+        "leftTargetAmplitude": 0.544793436362,
+        "rightTargetAmplitude": 0.42583510498,
+        "alignedDurationErrorFrames": -512
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.14999999999997726,
+        "rightRubberBandMinusSignalSmith": -0.10000000000002274
+      }
+    },
+    {
+      "scene": "tone880",
+      "engine": "R3",
+      "blockFrames": 64,
+      "signalSmithReference": {
+        "leftMeasuredHz": 440.14,
+        "rightMeasuredHz": 550.1,
+        "leftTargetAmplitude": 0.446463363975,
+        "rightTargetAmplitude": 0.348943478445
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 439.99,
+        "rightMeasuredHz": 550,
+        "leftTargetAmplitude": 0.553544444756,
+        "rightTargetAmplitude": 0.432773695216,
+        "alignedDurationErrorFrames": 3330
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.14999999999997726,
+        "rightRubberBandMinusSignalSmith": -0.10000000000002274
+      }
+    },
+    {
+      "scene": "tone880",
+      "engine": "R3",
+      "blockFrames": 128,
+      "signalSmithReference": {
+        "leftMeasuredHz": 440.14,
+        "rightMeasuredHz": 550.1,
+        "leftTargetAmplitude": 0.446463363975,
+        "rightTargetAmplitude": 0.348943478445
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 439.99,
+        "rightMeasuredHz": 550,
+        "leftTargetAmplitude": 0.553544518191,
+        "rightTargetAmplitude": 0.432773756869,
+        "alignedDurationErrorFrames": 3329
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.14999999999997726,
+        "rightRubberBandMinusSignalSmith": -0.10000000000002274
+      }
+    },
+    {
+      "scene": "tone880",
+      "engine": "R3",
+      "blockFrames": 256,
+      "signalSmithReference": {
+        "leftMeasuredHz": 440.14,
+        "rightMeasuredHz": 550.1,
+        "leftTargetAmplitude": 0.446463363975,
+        "rightTargetAmplitude": 0.348943478445
+      },
+      "rubberBand": {
+        "leftMeasuredHz": 439.99,
+        "rightMeasuredHz": 550,
+        "leftTargetAmplitude": 0.55354435682,
+        "rightTargetAmplitude": 0.432773506945,
+        "alignedDurationErrorFrames": 3296
+      },
+      "measuredFrequencyDifferenceHz": {
+        "leftRubberBandMinusSignalSmith": -0.14999999999997726,
+        "rightRubberBandMinusSignalSmith": -0.10000000000002274
+      }
+    }
+  ]
+}

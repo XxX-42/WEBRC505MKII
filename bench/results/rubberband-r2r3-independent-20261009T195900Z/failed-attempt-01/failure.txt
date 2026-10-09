@@ -1,0 +1,1 @@
+Attempt 01 stopped at the cl /Bv identification command (exit 11) because MSVC prints D8003 when no source file is given. No Rubber Band translation unit was built and no audio test ran. Captured logs are retained. The repaired build script no longer treats this informational command exit status as a compilation failure.

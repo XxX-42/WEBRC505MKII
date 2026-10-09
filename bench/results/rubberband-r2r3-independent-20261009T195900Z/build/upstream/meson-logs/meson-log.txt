@@ -1,0 +1,1171 @@
+Build started at 2026-10-10T03:57:20.608030
+Main binary: C:\Users\user1000\AppData\Local\Programs\Python\Python313\python.exe
+Build Options: -Dbuildtype=release -Dtests=disabled -Dcmdline=disabled -Djni=disabled -Dladspa=disabled -Dlv2=disabled -Dvamp=disabled -Ddefault_library=static -Dfft=builtin -Dresampler=builtin -Db_vscrt=md
+Python system: Windows
+The Meson build system
+Version: 1.12.1
+Source dir: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\upstream-source
+Build dir: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream
+Build type: native build
+Project name: Rubber Band Library
+Project version: 4.0.0
+-----------
+Detecting compiler via: `icl ""` -> [WinError 2] 系统找不到指定的文件。
+-----------
+Detecting compiler via: `cl /?` -> 0
+stdout:
+C/C++ 缂栬瘧鍣ㄩ�夐」
+
+
+               -浼樺寲-
+
+/O1 鏈�澶т紭鍖�(浼橀�夌┖闂�)                  /O2 鏈�澶т紭鍖�(浼橀�夐�熷害)
+/Ob<n> 鍐呰仈鎵╁睍(榛樿�� n=0)               /Od 绂佺敤浼樺寲(榛樿��)
+/Og 鍚�鐢ㄥ叏灞�浼樺寲                        /Oi[-] 鍚�鐢ㄥ唴閮ㄥ嚱鏁�
+/Os 浼橀�変唬鐮佺┖闂�                        /Ot 浼橀�変唬鐮侀�熷害
+/Ox 浼樺寲(浼橀�夐�熷害)                      
+/favor:<blend|AMD64|INTEL64|ATOM> 閫夋嫨浼樺寲鎵�閽堝�圭殑澶勭悊鍣�锛屼负浠ヤ笅鍊间箣涓�:
+  blend - 閽堝�瑰嚑绉嶄笉鍚� x64 澶勭悊鍣ㄧ殑浼樺寲缁勫悎
+  AMD64 - 64 浣� AMD 澶勭悊鍣�                 
+  INTEL64 - Intel(R)64 鏋舵瀯澶勭悊鍣�       
+ATOM - Intel(R) Atom(TM) 澶勭悊鍣�              
+
+               -浠ｇ爜鐢熸垚-
+
+/Gu[-] 纭�淇� distinct 鍑芥暟鍏锋湁闈為噸澶嶅湴鍧� /Gw[-] 鍒嗛殧閾炬帴鍣ㄧ殑鍏ㄥ眬鍙橀噺
+/GF 鍚�鐢ㄥ彧璇诲瓧绗︿覆姹�                    /Gm[-] 鍚�鐢ㄦ渶灏忛噸鏂扮敓鎴�
+/Gy[-] 鍒嗛殧閾炬帴鍣ㄥ嚱鏁�                   /GS[-] 鍚�鐢ㄥ畨鍏ㄦ��鏌�
+/GR[-] 鍚�鐢� C++ RTTI                    /GX[-] 鍚�鐢� C++ EH (涓� /EHsc 鐩稿悓)
+/guard:cf[-] 鍚�鐢� CFG (鎺у埗娴佷繚鎶�)      /guard:ehcont[-] 鍚�鐢� EH 缁х画鍏冩暟鎹�(CET)
+/EHs 鍚�鐢� C++ EH (娌℃湁 SEH 寮傚父)        /EHa 鍚�鐢� C++ EH (w/ SEH 寮傚父)
+/EHc 澶栭儴 "C" 榛樿�や负 nothrow            /EHr 濮嬬粓鐢熸垚 noexcept 杩愯�屾椂缁堟�㈡��鏌�
+/fp:<except[-]|fast|precise|strict> 閫夋嫨娴�鐐规ā鍨�:
+  except[-] - 鍦ㄧ敓鎴愪唬鐮佹椂鑰冭檻娴�鐐瑰紓甯�  
+  fast - "fast" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴鎬ф瘮杈冧綆
+  precise - "precise" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴
+  strict - "strict" 娴�鐐规ā鍨�(鎰忓懗鐫� /fp:except)
+鍗充娇浣跨敤 /fp:except锛�/Qfast_transcendentals 涔熺敓鎴愬唴鑱斿唴閮� FP
+/Qspectre[-] 瀵� CVE 2017-5753 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qpar[-] 鍚�鐢ㄥ苟琛屼唬鐮佺敓鎴�               
+/Qpar-report:1 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀哄凡骞惰�屽寲寰�鐜�
+/Qpar-report:2 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀烘湭骞惰�屽寲寰�鐜�
+/Qvec-report:1 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀哄凡鍚戦噺鍖栧惊鐜�
+/Qvec-report:2 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀烘湭鍚戦噺鍖栧惊鐜�
+/GL[-] 鍚�鐢ㄩ摼鎺ユ椂浠ｇ爜鐢熸垚               /volatile:<iso|ms> 閫夋嫨鍙�鍙樻ā鍨�:
+    iso - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓嶄竴瀹氭湁鏁�
+    ms - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓�瀹氭湁鏁�
+/GA 涓� Windows 搴旂敤绋嬪簭杩涜�屼紭鍖�         /Ge 瀵规墍鏈夊嚱鏁板己鍒跺爢鏍堟��鏌�
+/Gs[num] 鎺у埗鍫嗘爤妫�鏌ヨ皟鐢�               /Gh 鍚�鐢� _penter 鍑芥暟璋冪敤
+/GH 鍚�鐢� _pexit 鍑芥暟璋冪敤                /GT 鐢熸垚绾ょ▼瀹夊叏 TLS 璁块棶
+/RTC1 鍚�鐢ㄥ揩閫熸��鏌�(/RTCsu)              /RTCc 杞�鎹�涓鸿緝灏忕殑绫诲瀷妫�鏌�
+/RTCs 鍫嗘爤甯ц繍琛屾椂妫�鏌�                  /RTCu 鏈�鍒濆�嬪寲鐨勫眬閮ㄧ敤娉曟��鏌�
+/clr[:option] 涓哄叕鍏辫��瑷�杩愯�屾椂缂栬瘧锛屽叾涓� option 鏄�:
+    pure : 鐢熸垚浠呭寘鍚� IL 鐨勮緭鍑烘枃浠�(娌℃湁鏈�鏈哄彲鎵ц�屼唬鐮�)
+    safe : 鐢熸垚鍙�鍖呭惈 IL 鐨勫彲楠岃瘉杈撳嚭鏂囦欢
+    netcore : 鐢熸垚浠� .NET Core 杩愯�屾椂涓虹洰鏍囩殑绋嬪簭闆�
+    noAssembly : 涓嶇敓鎴愮▼搴忛泦           
+    nostdlib : 鎼滅储绋嬪簭闆嗘椂蹇界暐绯荤粺 .NET Framework 鐩�褰�
+    nostdimport : 涓嶉殣寮忓�煎叆浠讳綍蹇呴渶鐨勭▼搴忛泦
+    initialAppDomain : 鍚�鐢� Visual C++ 2002 鐨勫垵濮� AppDomain 琛屼负
+    implicitKeepAlive- : 鍏抽棴 System::GC::KeepAlive(this)鐨勯殣寮忓��
+/fsanitize=瑙ｅ喅鍚�鐢ㄥ湴鍧�娑堟瘨浠ｇ爜鐢熸垚     
+/homeparams 寮哄埗灏嗕紶鍏ュ瘎瀛樺櫒鐨勫弬鏁板啓鍏ュ埌鍫嗘爤涓�
+/GZ 鍚�鐢ㄥ爢鏍堟��鏌�(/RTCs)                 /Gv __vectorcall 璋冪敤绾﹀畾
+/arch:<AVX|AVX2|AVX512> 鏈�灏� CPU 鏋舵瀯瑕佹眰锛屼互涓嬩箣涓�:
+  AVX - 鍏佽�镐娇鐢ㄦ敮鎸� AVX 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX2 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX2 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX512 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX-512 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+/QIntel-jcc-erratum 涓� Intel JCC Erratum 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qspectre-load 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋寚浠ゅ惎鐢� spectre 缂撹В鎺�鏂�
+/Qspectre-load-cf 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋帶鍒舵祦鎸囦护鍚�鐢� spectre 缂撹В鎺�鏂�
+/fpcvt:<IA|BC> 鏃犵�﹀彿鏁存暟杞�鎹㈠吋瀹规�т负 FP   IA - 涓� VCVTTSD2USI 鎸囦护鍏煎�圭殑缁撴灉
+   BC - 涓� VS2017 鍙婃洿浣庣増鏈�鐨勭紪璇戝櫒鍏煎�圭殑缁撴灉
+
+               -杈撳嚭鏂囦欢-
+
+/Fa[file] 鍛藉悕绋嬪簭闆嗗垪琛ㄦ枃浠�            /FA[scu] 閰嶇疆绋嬪簭闆嗗垪琛�
+/Fd[file] 鍛藉悕 .PDB 鏂囦欢                /Fe<file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm[file] 鍛藉悕鏄犲皠鏂囦欢                  /Fo<file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp<file> 鍛藉悕棰勭紪璇戝ご鏂囦欢              /Fr[file] 鍛藉悕婧愭祻瑙堝櫒鏂囦欢
+/FR[file] 鍛藉悕鎵╁睍 .SBR 鏂囦欢            /Fi[file] 鍛藉悕棰勫�勭悊鐨勬枃浠�
+/Fd: <file> 鍛藉悕 .PDB 鏂囦欢              /Fe: <file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm: <file> 鍛藉悕鏄犲皠鏂囦欢                /Fo: <file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp: <file> 鍛藉悕 .PCH 鏂囦欢              /FR: <file> 鍛藉悕鎵╁睍 .SBR 鏂囦欢
+/Fi: <file> 鍛藉悕棰勫�勭悊鐨勬枃浠�            /Ft<dir> 涓� #import 鐢熸垚鐨勫ご鏂囦欢鐨勫湴鍧�
+/doc[file] 澶勭悊 XML 鏂囨。娉ㄩ噴锛屽苟鍙�閫夋嫨鍛藉悕 .xdc 鏂囦欢
+
+               -棰勫�勭悊鍣�-
+
+/AI<dir> 娣诲姞鍒扮▼搴忛泦鎼滅储璺�寰�           /FU<file> 寮哄埗浣跨敤绋嬪簭闆�/妯″潡 
+/C 涓嶆娊鍑烘敞閲�                           /D<name>{=|#}<text> 瀹氫箟瀹�
+/E 棰勫�勭悊鍒� stdout                      /EP 棰勫�勭悊鍒� stdout锛屾棤琛屽彿
+/P 棰勫�勭悊鍒版枃浠�                         /Fx 灏嗘彃鍏ョ殑浠ｇ爜鍚堝苟鍒版枃浠朵腑
+/FI<file> 鍛藉悕寮哄埗鍖呭惈鏂囦欢              /U<name> 绉婚櫎棰勫畾涔夌殑瀹�
+/u 绉婚櫎鎵�鏈夐�勫畾涔夌殑瀹�                   /I<dir> 娣诲姞鍒板寘鍚�鎼滅储璺�寰�
+/X 蹇界暐鈥滄爣鍑嗕綅缃�鈥�                     /PH 鍦ㄩ�勫�勭悊鏃剁敓鎴� #pragma file_hash
+/PD 鎵撳嵃鎵�鏈夊畯瀹氫箟                      
+
+                -璇�瑷�-
+
+/std:<c++14|c++17|c++latest> C++ 鏍囧噯鐗�
+    c++14 - ISO/IEC 14882:2014 (榛樿�ゅ��)
+    c++17 - ISO/IEC 14882:2017
+    c++latest - 鏈�鏂拌崏妗堟爣鍑�(鍔熻兘闆嗗彲鑳戒細鏇存敼)
+/permissive[-] 浣挎煇浜涢潪绗﹀悎浠ｇ爜鍙�缂栬瘧(鍔熻兘闆嗗彲鏇存敼)(榛樿�ゅ紑鍚�)
+/Ze 鍚�鐢ㄦ墿灞�(榛樿��)                      /Za 绂佺敤鎵╁睍
+/ZW 鍚�鐢� WinRT 璇�瑷�鎵╁睍                 /Zs 鍙�杩涜�岃��娉曟��鏌�
+/Zc:arg1[,arg2] C++ 璇�瑷�鍚堣�勬�э紝杩欓噷鐨勫弬鏁板彲浠ユ槸:
+ forScope[-]      瀵硅寖鍥磋�勫垯寮哄埗浣跨敤鏍囧噯 C++
+ wchar_t[-]      wchar_t 鏄�鏈�鏈虹被鍨嬶紝涓嶆槸 typedef
+  auto[-]               瀵� auto 寮哄埗浣跨敤鏂扮殑鏍囧噯 C++ 鍚�涔�
+  trigraphs[-]          鍚�鐢ㄤ笁鍏冪��(榛樿�ゅ叧闂�)
+ rvalueCast[-]     寮哄埗瀹炴柦鏍囧噯 C++ 鏄惧紡绫诲瀷杞�鎹㈣�勫垯
+ strictStrings[-]   绂佺敤浠庡瓧绗︿覆鏂囨湰鍒� [char|wchar_t]*
+                        鐨勮浆鎹�(榛樿�ゅ叧闂�)
+ implicitNoexcept[-]  鍦ㄥ繀闇�鐨勫嚱鏁颁笂鍚�鐢ㄩ殣寮� noexcept
+threadSafeInit[-]   鍚�鐢ㄧ嚎绋嬪畨鍏ㄧ殑鏈�鍦伴潤鎬佸垵濮嬪寲
+  inline[-]             濡傛灉鏄� COMDAT锛屽垯鍒犻櫎鏈�寮曠敤鐨勫嚱鏁版垨鏁版嵁
+                        鎴栦粎浣跨敤鍐呴儴閾炬帴(榛樿�ゅ叧闂�)
+  sizedDealloc[-]       鍚�鐢� C++14 鍏ㄥ眬澶у皬瑙ｉ櫎鍒嗛厤
+                        鍑芥暟(榛樿�ゅ紑鍚�)
+  throwingNew[-]        鍋囪�捐繍绠楃�� new 鍦ㄦ晠闅滄椂寮曞彂(榛樿�ゅ叧闂�)
+  referenceBinding[-]   涓存椂寮曠敤涓嶄細缁戝畾鍒伴潪甯告暟
+                        lvalue 寮曠敤(榛樿�ゅ叧闂�)
+  twoPhase-             绂佺敤涓ら樁娈靛悕绉版煡鎵�
+  ternary[-]            瀵规潯浠惰繍绠楃�﹀己鍒朵娇鐢� C++11 瑙勫垯(榛樿�ゅ叧闂�)
+  noexceptTypes[-]      寮哄埗鎵ц�� C++17 noexcept 瑙勫垯(鍦� C++17 鎴栨洿楂樼増鏈�涓�榛樿�ゅ紑鍚�)
+  alignedNew[-]         瀵瑰姩鎬佸垎閰嶇殑瀵硅薄鍚�鐢� C++17 瀵归綈鏂瑰紡(榛樿�ゅ紑鍚�)
+  hiddenFriend[-]       寮哄埗瀹炴柦鏍囧噯 C++ 闅愯棌濂藉弸瑙勫垯(/permissive- 鎵�闅愬惈)
+  externC[-]            寮哄埗瀹炴柦澶栭儴 "C" 鍑芥暟鐨勬爣鍑� C++ 瑙勫垯(/permissive- 鎵�闅愬惈)
+  lambda[-]             浣跨敤鏇存柊鐨� lambda 澶勭悊鍣ㄦ彁渚涙洿濂界殑 lambda 鏀�鎸�(榛樿�や负鍏抽棴)
+  tlsGuards[-]          鐢熸垚 TLS 鍙橀噺鍒濆�嬪寲鐨勮繍琛屾椂妫�鏌�(榛樿�ゆ儏鍐典笅鍚�鐢�)
+  zeroSizeArrayNew[-]   閽堝�瑰ぇ灏忎负闆剁殑瀵硅薄鏁扮粍鐨勮皟鐢ㄥ�硅薄 new/delete (榛樿�ゅ惎鐢�)
+/await 鍚�鐢ㄥ彲鎭㈠�嶅嚱鏁版墿灞�
+/await:strict 鍚�鐢ㄤ娇鐢ㄦ棭鏈熻��瑷�鐗堟湰鐨勬爣鍑� C++20 鍗忓悓渚嬬▼鏀�鎸�
+/constexpr:depth<N>     constexpr 璇勪及鐨勯�掑綊娣卞害闄愬埗(榛樿�ゅ��: 512)
+/constexpr:backtrace<N> 鍦ㄨ瘖鏂�涓�鏄剧ず N constexpr 璇勪及(榛樿�ゅ��: 10)
+/constexpr:steps<N>     鍦� N 涓�姝ラ�ゅ悗缁堟�� constexpr 璇勪及(榛樿�ゅ��: 100000)
+/Zi 鍚�鐢ㄨ皟璇曚俊鎭�                        /Z7 鍚�鐢ㄦ棫寮忚皟璇曚俊鎭�
+/Zo[-] 涓轰紭鍖栫殑浠ｇ爜鐢熸垚鏇翠赴瀵岀殑璋冭瘯淇℃伅(榛樿�ゅ紑鍚�)
+/ZH:[MD5|SHA1|SHA_256] 鐢ㄤ簬璁＄畻璋冭瘯淇℃伅涓�鐨勬枃浠舵牎楠屽拰鐨勫搱甯岀畻娉�(榛樿�ゅ��: MD5)
+/Zp[n] 鍦� n 瀛楄妭杈圭晫涓婂寘瑁呯粨鏋�          /Zl 鐪佺暐 .OBJ 涓�鐨勯粯璁ゅ簱鍚�
+/vd{0|1|2} 绂佺敤/鍚�鐢� vtordisp           /vm<x> 鎸囧悜鎴愬憳鐨勬寚閽堢被鍨�
+/std:<c11|c17> C 鏍囧噯鐗堟湰
+    c11 - ISO/IEC 9899:2011
+    c17 - ISO/IEC 9899:2018
+/ZI 鍚�鐢ㄢ�滅紪杈戝苟缁х画鈥濊皟璇曚俊鎭�          /openmp 鍚�鐢� OpenMP 2.0 璇�瑷�鎵╁睍
+/openmp:experimental 浼氬惎鐢� OpenMP 2.0 璇�瑷�鎵╁睍骞堕�夋嫨 OpenMP 3.0+ 璇�瑷�鎵╁睍
+浣跨敤 LLVM 杩愯�屾椂 /openmp:llvm OpenMP 璇�瑷�鎵╁睍
+
+               - 鏉傞」 -
+
+@<file> 閫夐」鍝嶅簲鏂囦欢                    /?, /help 鎵撳嵃姝ゅ府鍔╂秷鎭�
+/bigobj 鐢熸垚鎵╁睍鐨勫�硅薄鏍煎紡              /c 鍙�缂栬瘧锛屼笉閾炬帴
+/errorReport:option 宸插純鐢ㄣ�傝�峰皢鍐呴儴缂栬瘧鍣ㄩ敊璇�鎶ュ憡缁� Microsoft
+    none - 涓嶅彂閫佹姤鍛�                       prompt - 鎻愮ず绔嬪嵆鍙戦�佹姤鍛�
+    queue - 鍦ㄤ笅涓�娆＄�＄悊鍛樼櫥褰曟椂锛屾彁绀哄彂閫佹姤鍛�(榛樿��)
+    send - 鑷�鍔ㄥ彂閫佹姤鍛�                 /FC 璇婃柇涓�浣跨敤瀹屾暣璺�寰勫悕
+/H<num> 鏈�澶у�栭儴鍚嶇О闀垮害                /J 榛樿�� char 绫诲瀷鏄� unsigned
+/MP[n] 鏈�澶氫娇鐢ㄢ�渘鈥濅釜杩涚▼杩涜�岀紪璇�      /nologo 鍙栨秷鏄剧ず鐗堟潈淇℃伅
+/showIncludes 鏄剧ず鍖呭惈鏂囦欢鍚�            /Tc<source file> 灏嗘枃浠剁紪璇戜负 .c
+/Tp<source file> 灏嗘枃浠剁紪璇戜负 .cpp      /TC 灏嗘墍鏈夋枃浠剁紪璇戜负 .c
+/TP 灏嗘墍鏈夋枃浠剁紪璇戜负 .cpp               /V<string> 璁剧疆鐗堟湰瀛楃�︿覆
+/Yc[file] 鍒涘缓 .PCH 鏂囦欢                /Yd 灏嗚皟璇曚俊鎭�鏀惧湪姣忎釜 .OBJ 涓�
+/Yl[sym] 涓鸿皟璇曞簱鎻掑叆 .PCH 寮曠敤         /Yu[file] 浣跨敤 .PCH 鏂囦欢
+/Y- 绂佺敤鎵�鏈� PCH 閫夐」                   /Zm<n> 鏈�澶у唴瀛樺垎閰�(榛樿�ゅ�肩殑鐧惧垎姣�)
+/FS 寮哄埗浣跨敤 MSPDBSRV.EXE               
+/source-charset:<iana-name>|.nnnn 闆嗘簮瀛楃�﹂泦
+/execution-charset:<iana-name>|.nnnn 闆嗘墽琛屽瓧绗﹂泦
+/utf-8 闆嗘簮鍜屽埌 UTF-8 鐨勬墽琛屽瓧绗﹂泦      
+/validate-charset[-] 楠岃瘉 UTF-8 鏂囦欢鏄�鍚﹀彧鏈夊悎娉曞瓧绗�
+/fastfail[-] 鍚�鐢� fast-fail 妯″紡        /JMC[-] 鍚�鐢ㄦ湰鏈衡�滀粎鎴戠殑浠ｇ爜鈥�
+/presetPadding[-] 灏嗗熀浜庡爢鏍堢殑绫荤被鍨嬬殑濉�鍏呭垵濮嬪寲涓洪浂
+/volatileMetadata[-] 瀵规槗澶卞瓨鍌ㄥ櫒璁块棶鐢熸垚鍏冩暟鎹�
+
+                -閾炬帴-
+
+/LD 鍒涘缓 .DLL                           /LDd 鍒涘缓 .DLL 璋冭瘯搴�
+/LN 鍒涘缓 .netmodule                     /F<num> 璁剧疆鍫嗘爤澶у皬
+/link [閾炬帴鍣ㄩ�夐」鍜屽簱]                  /MD 涓� MSVCRT.LIB 閾炬帴
+/MT 涓� LIBCMT.LIB 閾炬帴                  /MDd 涓� MSVCRTD.LIB 璋冭瘯搴撻摼鎺�
+/MTd 涓� LIBCMTD.LIB 璋冭瘯搴撻摼鎺�          
+
+               -浠ｇ爜鍒嗘瀽-
+
+/analyze[-] 鍚�鐢ㄦ湰鏈哄垎鏋�                /analyze:quiet[-] 娌℃湁瀵规帶鍒跺彴鐨勮�﹀憡
+/analyze:log<name> 瀵规枃浠剁殑璀﹀憡         /analyze:autolog Log to *.pftlog
+/analyze:autolog:ext<ext> Log to *.<ext>/analyze:autolog- 鏃犳棩蹇楁枃浠�
+/analyze:WX- 璀﹀憡涓嶄弗閲�                 /analyze:stacksize<num> 鏈�澶у爢鏍堝抚
+/analyze:max_paths<num> 鏈�澶ц矾寰�        /analyze:only Analyze, no code gen
+
+                              -璇婃柇-
+
+/diagnostics:<args,...> 鎺у埗璇婃柇娑堟伅鐨勬牸寮�:
+             浼犵粺鍨� - 淇濈暀涔嬪墠鐨勬牸寮�
+             鍒梉-] - 鎵撳嵃鍒椾俊鎭�
+             鑴卞瓧鍙穂-] - 鎵撳嵃鍒楀拰婧愮殑鎸囩ず琛�
+/Wall 鍚�鐢ㄦ墍鏈夎�﹀憡                      /w   绂佺敤鎵�鏈夎�﹀憡
+/W<n> 璁剧疆璀﹀憡绛夌骇(榛樿�� n=1)            
+/Wv:xx[.yy[.zzzzz]] 绂佺敤鍦� xx.yy.zzzzz 鐗堟湰鍚庡紩鍏ョ殑璀﹀憡鍔熻兘
+/WX 灏嗚�﹀憡瑙嗕负閿欒��                      /WL 鍚�鐢ㄥ崟琛岃瘖鏂�
+/wd<n> 绂佺敤璀﹀憡 n                       /we<n> 灏嗚�﹀憡 n 瑙嗕负閿欒��
+/wo<n> 鍙戝嚭涓�娆¤�﹀憡 n                   /w<l><n> 涓� n 璁剧疆璀﹀憡绛夌骇 1-4
+/external:I <path>      - 澶栭儴鏍囧ご鐨勪綅缃�
+/external:env:<var>    - 澶栭儴鏍囧ご浣嶇疆鐨勭幆澧冨彉閲�
+/external:anglebrackets - 灏嗘墍鏈夐�氳繃 <> 鍖呭惈鐨勬爣澶磋�嗕负澶栭儴
+/external:W<n>          - 澶栭儴鏍囧ご鐨勮�﹀憡绛夌骇
+/external:templates[-]  - 璺ㄦā鏉垮疄渚嬪寲閾捐瘎浼拌�﹀憡绾у埆
+/sdl 鏀�鎸佸叾浠栧畨鍏ㄥ姛鑳藉拰璀﹀憡
+-----------
+stderr:
+鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�
+鐗堟潈鎵�鏈�(C) Microsoft Corporation銆備繚鐣欐墍鏈夋潈鍒┿��
+-----------
+Sanity check compiler command line: cl /Fesanity_check_for_c.exe sanity_check_for_c.c /MD /nologo /utf-8 /link /release /nologo
+Sanity check compile stdout:
+sanity_check_for_c.c
+
+-----
+Sanity check compile stderr:
+
+-----
+Sanity check built target output for host machine c compiler
+ -- Running test binary command:  D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_c.exe
+-----------
+Sanity check: `D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_c.exe` -> 0
+ -- stdout:
+ 
+ -- stderr:
+ 
+ -- returncode: 0
+C compiler for the host machine: cl (msvc 19.29.30159 "鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�")
+C linker for the host machine: link link 14.29.30159.0
+-----------
+Detecting archiver via: `lib /?` -> 1100
+stdout:
+Microsoft (R) Library Manager Version 14.29.30159.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+鐢ㄦ硶: LIB [閫夐」] [鏂囦欢]
+
+  閫夐」:
+
+   /DEF[:鏂囦欢鍚峕
+   /ERRORREPORT:{NONE|PROMPT|QUEUE|SEND}
+   /EXPORT:绗﹀彿
+   /EXTRACT:鎴愬憳鍚�
+   /INCLUDE:绗﹀彿
+   /LIBPATH:鐩�褰�
+      /LINKREPRO:dir
+      /LINKREPROTARGET:filename
+   /LIST[:鏂囦欢鍚峕
+   /LTCG
+      /MACHINE:{ARM|ARM64|ARM64EC|EBC|X64|X86}
+   /NAME:鏂囦欢鍚�
+   /NODEFAULTLIB[:搴揮
+   /NOLOGO
+   /OUT:鏂囦欢鍚�
+   /REMOVE:鎴愬憳鍚�
+   /SUBSYSTEM:{BOOT_APPLICATION|CONSOLE|EFI_APPLICATION|
+         EFI_BOOT_SERVICE_DRIVER|EFI_ROM|EFI_RUNTIME_DRIVER|
+         NATIVE|POSIX|WINDOWS|WINDOWSCE}[,#[.##]]
+   /VERBOSE
+   /WX[:NO]
+-----------
+-----------
+Detecting compiler via: `icl ""` -> [WinError 2] 系统找不到指定的文件。
+-----------
+Detecting compiler via: `cl /?` -> 0
+stdout:
+C/C++ 缂栬瘧鍣ㄩ�夐」
+
+
+               -浼樺寲-
+
+/O1 鏈�澶т紭鍖�(浼橀�夌┖闂�)                  /O2 鏈�澶т紭鍖�(浼橀�夐�熷害)
+/Ob<n> 鍐呰仈鎵╁睍(榛樿�� n=0)               /Od 绂佺敤浼樺寲(榛樿��)
+/Og 鍚�鐢ㄥ叏灞�浼樺寲                        /Oi[-] 鍚�鐢ㄥ唴閮ㄥ嚱鏁�
+/Os 浼橀�変唬鐮佺┖闂�                        /Ot 浼橀�変唬鐮侀�熷害
+/Ox 浼樺寲(浼橀�夐�熷害)                      
+/favor:<blend|AMD64|INTEL64|ATOM> 閫夋嫨浼樺寲鎵�閽堝�圭殑澶勭悊鍣�锛屼负浠ヤ笅鍊间箣涓�:
+  blend - 閽堝�瑰嚑绉嶄笉鍚� x64 澶勭悊鍣ㄧ殑浼樺寲缁勫悎
+  AMD64 - 64 浣� AMD 澶勭悊鍣�                 
+  INTEL64 - Intel(R)64 鏋舵瀯澶勭悊鍣�       
+ATOM - Intel(R) Atom(TM) 澶勭悊鍣�              
+
+               -浠ｇ爜鐢熸垚-
+
+/Gu[-] 纭�淇� distinct 鍑芥暟鍏锋湁闈為噸澶嶅湴鍧� /Gw[-] 鍒嗛殧閾炬帴鍣ㄧ殑鍏ㄥ眬鍙橀噺
+/GF 鍚�鐢ㄥ彧璇诲瓧绗︿覆姹�                    /Gm[-] 鍚�鐢ㄦ渶灏忛噸鏂扮敓鎴�
+/Gy[-] 鍒嗛殧閾炬帴鍣ㄥ嚱鏁�                   /GS[-] 鍚�鐢ㄥ畨鍏ㄦ��鏌�
+/GR[-] 鍚�鐢� C++ RTTI                    /GX[-] 鍚�鐢� C++ EH (涓� /EHsc 鐩稿悓)
+/guard:cf[-] 鍚�鐢� CFG (鎺у埗娴佷繚鎶�)      /guard:ehcont[-] 鍚�鐢� EH 缁х画鍏冩暟鎹�(CET)
+/EHs 鍚�鐢� C++ EH (娌℃湁 SEH 寮傚父)        /EHa 鍚�鐢� C++ EH (w/ SEH 寮傚父)
+/EHc 澶栭儴 "C" 榛樿�や负 nothrow            /EHr 濮嬬粓鐢熸垚 noexcept 杩愯�屾椂缁堟�㈡��鏌�
+/fp:<except[-]|fast|precise|strict> 閫夋嫨娴�鐐规ā鍨�:
+  except[-] - 鍦ㄧ敓鎴愪唬鐮佹椂鑰冭檻娴�鐐瑰紓甯�  
+  fast - "fast" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴鎬ф瘮杈冧綆
+  precise - "precise" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴
+  strict - "strict" 娴�鐐规ā鍨�(鎰忓懗鐫� /fp:except)
+鍗充娇浣跨敤 /fp:except锛�/Qfast_transcendentals 涔熺敓鎴愬唴鑱斿唴閮� FP
+/Qspectre[-] 瀵� CVE 2017-5753 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qpar[-] 鍚�鐢ㄥ苟琛屼唬鐮佺敓鎴�               
+/Qpar-report:1 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀哄凡骞惰�屽寲寰�鐜�
+/Qpar-report:2 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀烘湭骞惰�屽寲寰�鐜�
+/Qvec-report:1 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀哄凡鍚戦噺鍖栧惊鐜�
+/Qvec-report:2 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀烘湭鍚戦噺鍖栧惊鐜�
+/GL[-] 鍚�鐢ㄩ摼鎺ユ椂浠ｇ爜鐢熸垚               /volatile:<iso|ms> 閫夋嫨鍙�鍙樻ā鍨�:
+    iso - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓嶄竴瀹氭湁鏁�
+    ms - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓�瀹氭湁鏁�
+/GA 涓� Windows 搴旂敤绋嬪簭杩涜�屼紭鍖�         /Ge 瀵规墍鏈夊嚱鏁板己鍒跺爢鏍堟��鏌�
+/Gs[num] 鎺у埗鍫嗘爤妫�鏌ヨ皟鐢�               /Gh 鍚�鐢� _penter 鍑芥暟璋冪敤
+/GH 鍚�鐢� _pexit 鍑芥暟璋冪敤                /GT 鐢熸垚绾ょ▼瀹夊叏 TLS 璁块棶
+/RTC1 鍚�鐢ㄥ揩閫熸��鏌�(/RTCsu)              /RTCc 杞�鎹�涓鸿緝灏忕殑绫诲瀷妫�鏌�
+/RTCs 鍫嗘爤甯ц繍琛屾椂妫�鏌�                  /RTCu 鏈�鍒濆�嬪寲鐨勫眬閮ㄧ敤娉曟��鏌�
+/clr[:option] 涓哄叕鍏辫��瑷�杩愯�屾椂缂栬瘧锛屽叾涓� option 鏄�:
+    pure : 鐢熸垚浠呭寘鍚� IL 鐨勮緭鍑烘枃浠�(娌℃湁鏈�鏈哄彲鎵ц�屼唬鐮�)
+    safe : 鐢熸垚鍙�鍖呭惈 IL 鐨勫彲楠岃瘉杈撳嚭鏂囦欢
+    netcore : 鐢熸垚浠� .NET Core 杩愯�屾椂涓虹洰鏍囩殑绋嬪簭闆�
+    noAssembly : 涓嶇敓鎴愮▼搴忛泦           
+    nostdlib : 鎼滅储绋嬪簭闆嗘椂蹇界暐绯荤粺 .NET Framework 鐩�褰�
+    nostdimport : 涓嶉殣寮忓�煎叆浠讳綍蹇呴渶鐨勭▼搴忛泦
+    initialAppDomain : 鍚�鐢� Visual C++ 2002 鐨勫垵濮� AppDomain 琛屼负
+    implicitKeepAlive- : 鍏抽棴 System::GC::KeepAlive(this)鐨勯殣寮忓��
+/fsanitize=瑙ｅ喅鍚�鐢ㄥ湴鍧�娑堟瘨浠ｇ爜鐢熸垚     
+/homeparams 寮哄埗灏嗕紶鍏ュ瘎瀛樺櫒鐨勫弬鏁板啓鍏ュ埌鍫嗘爤涓�
+/GZ 鍚�鐢ㄥ爢鏍堟��鏌�(/RTCs)                 /Gv __vectorcall 璋冪敤绾﹀畾
+/arch:<AVX|AVX2|AVX512> 鏈�灏� CPU 鏋舵瀯瑕佹眰锛屼互涓嬩箣涓�:
+  AVX - 鍏佽�镐娇鐢ㄦ敮鎸� AVX 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX2 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX2 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX512 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX-512 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+/QIntel-jcc-erratum 涓� Intel JCC Erratum 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qspectre-load 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋寚浠ゅ惎鐢� spectre 缂撹В鎺�鏂�
+/Qspectre-load-cf 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋帶鍒舵祦鎸囦护鍚�鐢� spectre 缂撹В鎺�鏂�
+/fpcvt:<IA|BC> 鏃犵�﹀彿鏁存暟杞�鎹㈠吋瀹规�т负 FP   IA - 涓� VCVTTSD2USI 鎸囦护鍏煎�圭殑缁撴灉
+   BC - 涓� VS2017 鍙婃洿浣庣増鏈�鐨勭紪璇戝櫒鍏煎�圭殑缁撴灉
+
+               -杈撳嚭鏂囦欢-
+
+/Fa[file] 鍛藉悕绋嬪簭闆嗗垪琛ㄦ枃浠�            /FA[scu] 閰嶇疆绋嬪簭闆嗗垪琛�
+/Fd[file] 鍛藉悕 .PDB 鏂囦欢                /Fe<file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm[file] 鍛藉悕鏄犲皠鏂囦欢                  /Fo<file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp<file> 鍛藉悕棰勭紪璇戝ご鏂囦欢              /Fr[file] 鍛藉悕婧愭祻瑙堝櫒鏂囦欢
+/FR[file] 鍛藉悕鎵╁睍 .SBR 鏂囦欢            /Fi[file] 鍛藉悕棰勫�勭悊鐨勬枃浠�
+/Fd: <file> 鍛藉悕 .PDB 鏂囦欢              /Fe: <file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm: <file> 鍛藉悕鏄犲皠鏂囦欢                /Fo: <file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp: <file> 鍛藉悕 .PCH 鏂囦欢              /FR: <file> 鍛藉悕鎵╁睍 .SBR 鏂囦欢
+/Fi: <file> 鍛藉悕棰勫�勭悊鐨勬枃浠�            /Ft<dir> 涓� #import 鐢熸垚鐨勫ご鏂囦欢鐨勫湴鍧�
+/doc[file] 澶勭悊 XML 鏂囨。娉ㄩ噴锛屽苟鍙�閫夋嫨鍛藉悕 .xdc 鏂囦欢
+
+               -棰勫�勭悊鍣�-
+
+/AI<dir> 娣诲姞鍒扮▼搴忛泦鎼滅储璺�寰�           /FU<file> 寮哄埗浣跨敤绋嬪簭闆�/妯″潡 
+/C 涓嶆娊鍑烘敞閲�                           /D<name>{=|#}<text> 瀹氫箟瀹�
+/E 棰勫�勭悊鍒� stdout                      /EP 棰勫�勭悊鍒� stdout锛屾棤琛屽彿
+/P 棰勫�勭悊鍒版枃浠�                         /Fx 灏嗘彃鍏ョ殑浠ｇ爜鍚堝苟鍒版枃浠朵腑
+/FI<file> 鍛藉悕寮哄埗鍖呭惈鏂囦欢              /U<name> 绉婚櫎棰勫畾涔夌殑瀹�
+/u 绉婚櫎鎵�鏈夐�勫畾涔夌殑瀹�                   /I<dir> 娣诲姞鍒板寘鍚�鎼滅储璺�寰�
+/X 蹇界暐鈥滄爣鍑嗕綅缃�鈥�                     /PH 鍦ㄩ�勫�勭悊鏃剁敓鎴� #pragma file_hash
+/PD 鎵撳嵃鎵�鏈夊畯瀹氫箟                      
+
+                -璇�瑷�-
+
+/std:<c++14|c++17|c++latest> C++ 鏍囧噯鐗�
+    c++14 - ISO/IEC 14882:2014 (榛樿�ゅ��)
+    c++17 - ISO/IEC 14882:2017
+    c++latest - 鏈�鏂拌崏妗堟爣鍑�(鍔熻兘闆嗗彲鑳戒細鏇存敼)
+/permissive[-] 浣挎煇浜涢潪绗﹀悎浠ｇ爜鍙�缂栬瘧(鍔熻兘闆嗗彲鏇存敼)(榛樿�ゅ紑鍚�)
+/Ze 鍚�鐢ㄦ墿灞�(榛樿��)                      /Za 绂佺敤鎵╁睍
+/ZW 鍚�鐢� WinRT 璇�瑷�鎵╁睍                 /Zs 鍙�杩涜�岃��娉曟��鏌�
+/Zc:arg1[,arg2] C++ 璇�瑷�鍚堣�勬�э紝杩欓噷鐨勫弬鏁板彲浠ユ槸:
+ forScope[-]      瀵硅寖鍥磋�勫垯寮哄埗浣跨敤鏍囧噯 C++
+ wchar_t[-]      wchar_t 鏄�鏈�鏈虹被鍨嬶紝涓嶆槸 typedef
+  auto[-]               瀵� auto 寮哄埗浣跨敤鏂扮殑鏍囧噯 C++ 鍚�涔�
+  trigraphs[-]          鍚�鐢ㄤ笁鍏冪��(榛樿�ゅ叧闂�)
+ rvalueCast[-]     寮哄埗瀹炴柦鏍囧噯 C++ 鏄惧紡绫诲瀷杞�鎹㈣�勫垯
+ strictStrings[-]   绂佺敤浠庡瓧绗︿覆鏂囨湰鍒� [char|wchar_t]*
+                        鐨勮浆鎹�(榛樿�ゅ叧闂�)
+ implicitNoexcept[-]  鍦ㄥ繀闇�鐨勫嚱鏁颁笂鍚�鐢ㄩ殣寮� noexcept
+threadSafeInit[-]   鍚�鐢ㄧ嚎绋嬪畨鍏ㄧ殑鏈�鍦伴潤鎬佸垵濮嬪寲
+  inline[-]             濡傛灉鏄� COMDAT锛屽垯鍒犻櫎鏈�寮曠敤鐨勫嚱鏁版垨鏁版嵁
+                        鎴栦粎浣跨敤鍐呴儴閾炬帴(榛樿�ゅ叧闂�)
+  sizedDealloc[-]       鍚�鐢� C++14 鍏ㄥ眬澶у皬瑙ｉ櫎鍒嗛厤
+                        鍑芥暟(榛樿�ゅ紑鍚�)
+  throwingNew[-]        鍋囪�捐繍绠楃�� new 鍦ㄦ晠闅滄椂寮曞彂(榛樿�ゅ叧闂�)
+  referenceBinding[-]   涓存椂寮曠敤涓嶄細缁戝畾鍒伴潪甯告暟
+                        lvalue 寮曠敤(榛樿�ゅ叧闂�)
+  twoPhase-             绂佺敤涓ら樁娈靛悕绉版煡鎵�
+  ternary[-]            瀵规潯浠惰繍绠楃�﹀己鍒朵娇鐢� C++11 瑙勫垯(榛樿�ゅ叧闂�)
+  noexceptTypes[-]      寮哄埗鎵ц�� C++17 noexcept 瑙勫垯(鍦� C++17 鎴栨洿楂樼増鏈�涓�榛樿�ゅ紑鍚�)
+  alignedNew[-]         瀵瑰姩鎬佸垎閰嶇殑瀵硅薄鍚�鐢� C++17 瀵归綈鏂瑰紡(榛樿�ゅ紑鍚�)
+  hiddenFriend[-]       寮哄埗瀹炴柦鏍囧噯 C++ 闅愯棌濂藉弸瑙勫垯(/permissive- 鎵�闅愬惈)
+  externC[-]            寮哄埗瀹炴柦澶栭儴 "C" 鍑芥暟鐨勬爣鍑� C++ 瑙勫垯(/permissive- 鎵�闅愬惈)
+  lambda[-]             浣跨敤鏇存柊鐨� lambda 澶勭悊鍣ㄦ彁渚涙洿濂界殑 lambda 鏀�鎸�(榛樿�や负鍏抽棴)
+  tlsGuards[-]          鐢熸垚 TLS 鍙橀噺鍒濆�嬪寲鐨勮繍琛屾椂妫�鏌�(榛樿�ゆ儏鍐典笅鍚�鐢�)
+  zeroSizeArrayNew[-]   閽堝�瑰ぇ灏忎负闆剁殑瀵硅薄鏁扮粍鐨勮皟鐢ㄥ�硅薄 new/delete (榛樿�ゅ惎鐢�)
+/await 鍚�鐢ㄥ彲鎭㈠�嶅嚱鏁版墿灞�
+/await:strict 鍚�鐢ㄤ娇鐢ㄦ棭鏈熻��瑷�鐗堟湰鐨勬爣鍑� C++20 鍗忓悓渚嬬▼鏀�鎸�
+/constexpr:depth<N>     constexpr 璇勪及鐨勯�掑綊娣卞害闄愬埗(榛樿�ゅ��: 512)
+/constexpr:backtrace<N> 鍦ㄨ瘖鏂�涓�鏄剧ず N constexpr 璇勪及(榛樿�ゅ��: 10)
+/constexpr:steps<N>     鍦� N 涓�姝ラ�ゅ悗缁堟�� constexpr 璇勪及(榛樿�ゅ��: 100000)
+/Zi 鍚�鐢ㄨ皟璇曚俊鎭�                        /Z7 鍚�鐢ㄦ棫寮忚皟璇曚俊鎭�
+/Zo[-] 涓轰紭鍖栫殑浠ｇ爜鐢熸垚鏇翠赴瀵岀殑璋冭瘯淇℃伅(榛樿�ゅ紑鍚�)
+/ZH:[MD5|SHA1|SHA_256] 鐢ㄤ簬璁＄畻璋冭瘯淇℃伅涓�鐨勬枃浠舵牎楠屽拰鐨勫搱甯岀畻娉�(榛樿�ゅ��: MD5)
+/Zp[n] 鍦� n 瀛楄妭杈圭晫涓婂寘瑁呯粨鏋�          /Zl 鐪佺暐 .OBJ 涓�鐨勯粯璁ゅ簱鍚�
+/vd{0|1|2} 绂佺敤/鍚�鐢� vtordisp           /vm<x> 鎸囧悜鎴愬憳鐨勬寚閽堢被鍨�
+/std:<c11|c17> C 鏍囧噯鐗堟湰
+    c11 - ISO/IEC 9899:2011
+    c17 - ISO/IEC 9899:2018
+/ZI 鍚�鐢ㄢ�滅紪杈戝苟缁х画鈥濊皟璇曚俊鎭�          /openmp 鍚�鐢� OpenMP 2.0 璇�瑷�鎵╁睍
+/openmp:experimental 浼氬惎鐢� OpenMP 2.0 璇�瑷�鎵╁睍骞堕�夋嫨 OpenMP 3.0+ 璇�瑷�鎵╁睍
+浣跨敤 LLVM 杩愯�屾椂 /openmp:llvm OpenMP 璇�瑷�鎵╁睍
+
+               - 鏉傞」 -
+
+@<file> 閫夐」鍝嶅簲鏂囦欢                    /?, /help 鎵撳嵃姝ゅ府鍔╂秷鎭�
+/bigobj 鐢熸垚鎵╁睍鐨勫�硅薄鏍煎紡              /c 鍙�缂栬瘧锛屼笉閾炬帴
+/errorReport:option 宸插純鐢ㄣ�傝�峰皢鍐呴儴缂栬瘧鍣ㄩ敊璇�鎶ュ憡缁� Microsoft
+    none - 涓嶅彂閫佹姤鍛�                       prompt - 鎻愮ず绔嬪嵆鍙戦�佹姤鍛�
+    queue - 鍦ㄤ笅涓�娆＄�＄悊鍛樼櫥褰曟椂锛屾彁绀哄彂閫佹姤鍛�(榛樿��)
+    send - 鑷�鍔ㄥ彂閫佹姤鍛�                 /FC 璇婃柇涓�浣跨敤瀹屾暣璺�寰勫悕
+/H<num> 鏈�澶у�栭儴鍚嶇О闀垮害                /J 榛樿�� char 绫诲瀷鏄� unsigned
+/MP[n] 鏈�澶氫娇鐢ㄢ�渘鈥濅釜杩涚▼杩涜�岀紪璇�      /nologo 鍙栨秷鏄剧ず鐗堟潈淇℃伅
+/showIncludes 鏄剧ず鍖呭惈鏂囦欢鍚�            /Tc<source file> 灏嗘枃浠剁紪璇戜负 .c
+/Tp<source file> 灏嗘枃浠剁紪璇戜负 .cpp      /TC 灏嗘墍鏈夋枃浠剁紪璇戜负 .c
+/TP 灏嗘墍鏈夋枃浠剁紪璇戜负 .cpp               /V<string> 璁剧疆鐗堟湰瀛楃�︿覆
+/Yc[file] 鍒涘缓 .PCH 鏂囦欢                /Yd 灏嗚皟璇曚俊鎭�鏀惧湪姣忎釜 .OBJ 涓�
+/Yl[sym] 涓鸿皟璇曞簱鎻掑叆 .PCH 寮曠敤         /Yu[file] 浣跨敤 .PCH 鏂囦欢
+/Y- 绂佺敤鎵�鏈� PCH 閫夐」                   /Zm<n> 鏈�澶у唴瀛樺垎閰�(榛樿�ゅ�肩殑鐧惧垎姣�)
+/FS 寮哄埗浣跨敤 MSPDBSRV.EXE               
+/source-charset:<iana-name>|.nnnn 闆嗘簮瀛楃�﹂泦
+/execution-charset:<iana-name>|.nnnn 闆嗘墽琛屽瓧绗﹂泦
+/utf-8 闆嗘簮鍜屽埌 UTF-8 鐨勬墽琛屽瓧绗﹂泦      
+/validate-charset[-] 楠岃瘉 UTF-8 鏂囦欢鏄�鍚﹀彧鏈夊悎娉曞瓧绗�
+/fastfail[-] 鍚�鐢� fast-fail 妯″紡        /JMC[-] 鍚�鐢ㄦ湰鏈衡�滀粎鎴戠殑浠ｇ爜鈥�
+/presetPadding[-] 灏嗗熀浜庡爢鏍堢殑绫荤被鍨嬬殑濉�鍏呭垵濮嬪寲涓洪浂
+/volatileMetadata[-] 瀵规槗澶卞瓨鍌ㄥ櫒璁块棶鐢熸垚鍏冩暟鎹�
+
+                -閾炬帴-
+
+/LD 鍒涘缓 .DLL                           /LDd 鍒涘缓 .DLL 璋冭瘯搴�
+/LN 鍒涘缓 .netmodule                     /F<num> 璁剧疆鍫嗘爤澶у皬
+/link [閾炬帴鍣ㄩ�夐」鍜屽簱]                  /MD 涓� MSVCRT.LIB 閾炬帴
+/MT 涓� LIBCMT.LIB 閾炬帴                  /MDd 涓� MSVCRTD.LIB 璋冭瘯搴撻摼鎺�
+/MTd 涓� LIBCMTD.LIB 璋冭瘯搴撻摼鎺�          
+
+               -浠ｇ爜鍒嗘瀽-
+
+/analyze[-] 鍚�鐢ㄦ湰鏈哄垎鏋�                /analyze:quiet[-] 娌℃湁瀵规帶鍒跺彴鐨勮�﹀憡
+/analyze:log<name> 瀵规枃浠剁殑璀﹀憡         /analyze:autolog Log to *.pftlog
+/analyze:autolog:ext<ext> Log to *.<ext>/analyze:autolog- 鏃犳棩蹇楁枃浠�
+/analyze:WX- 璀﹀憡涓嶄弗閲�                 /analyze:stacksize<num> 鏈�澶у爢鏍堝抚
+/analyze:max_paths<num> 鏈�澶ц矾寰�        /analyze:only Analyze, no code gen
+
+                              -璇婃柇-
+
+/diagnostics:<args,...> 鎺у埗璇婃柇娑堟伅鐨勬牸寮�:
+             浼犵粺鍨� - 淇濈暀涔嬪墠鐨勬牸寮�
+             鍒梉-] - 鎵撳嵃鍒椾俊鎭�
+             鑴卞瓧鍙穂-] - 鎵撳嵃鍒楀拰婧愮殑鎸囩ず琛�
+/Wall 鍚�鐢ㄦ墍鏈夎�﹀憡                      /w   绂佺敤鎵�鏈夎�﹀憡
+/W<n> 璁剧疆璀﹀憡绛夌骇(榛樿�� n=1)            
+/Wv:xx[.yy[.zzzzz]] 绂佺敤鍦� xx.yy.zzzzz 鐗堟湰鍚庡紩鍏ョ殑璀﹀憡鍔熻兘
+/WX 灏嗚�﹀憡瑙嗕负閿欒��                      /WL 鍚�鐢ㄥ崟琛岃瘖鏂�
+/wd<n> 绂佺敤璀﹀憡 n                       /we<n> 灏嗚�﹀憡 n 瑙嗕负閿欒��
+/wo<n> 鍙戝嚭涓�娆¤�﹀憡 n                   /w<l><n> 涓� n 璁剧疆璀﹀憡绛夌骇 1-4
+/external:I <path>      - 澶栭儴鏍囧ご鐨勪綅缃�
+/external:env:<var>    - 澶栭儴鏍囧ご浣嶇疆鐨勭幆澧冨彉閲�
+/external:anglebrackets - 灏嗘墍鏈夐�氳繃 <> 鍖呭惈鐨勬爣澶磋�嗕负澶栭儴
+/external:W<n>          - 澶栭儴鏍囧ご鐨勮�﹀憡绛夌骇
+/external:templates[-]  - 璺ㄦā鏉垮疄渚嬪寲閾捐瘎浼拌�﹀憡绾у埆
+/sdl 鏀�鎸佸叾浠栧畨鍏ㄥ姛鑳藉拰璀﹀憡
+-----------
+stderr:
+鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�
+鐗堟潈鎵�鏈�(C) Microsoft Corporation銆備繚鐣欐墍鏈夋潈鍒┿��
+-----------
+Sanity check compiler command line: cl /Fesanity_check_for_cpp.exe sanity_check_for_cpp.cpp /MD /nologo /utf-8 /Zc:__cplusplus /link /release /nologo
+Sanity check compile stdout:
+sanity_check_for_cpp.cpp
+
+-----
+Sanity check compile stderr:
+
+-----
+Sanity check built target output for host machine cpp compiler
+ -- Running test binary command:  D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_cpp.exe
+-----------
+Sanity check: `D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_cpp.exe` -> 0
+ -- stdout:
+ 
+ -- stderr:
+ 
+ -- returncode: 0
+C++ compiler for the host machine: cl (msvc 19.29.30159 "鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�")
+C++ linker for the host machine: link link 14.29.30159.0
+-----------
+Detecting compiler via: `icl ""` -> [WinError 2] 系统找不到指定的文件。
+-----------
+Detecting compiler via: `cl /?` -> 0
+stdout:
+C/C++ 缂栬瘧鍣ㄩ�夐」
+
+
+               -浼樺寲-
+
+/O1 鏈�澶т紭鍖�(浼橀�夌┖闂�)                  /O2 鏈�澶т紭鍖�(浼橀�夐�熷害)
+/Ob<n> 鍐呰仈鎵╁睍(榛樿�� n=0)               /Od 绂佺敤浼樺寲(榛樿��)
+/Og 鍚�鐢ㄥ叏灞�浼樺寲                        /Oi[-] 鍚�鐢ㄥ唴閮ㄥ嚱鏁�
+/Os 浼橀�変唬鐮佺┖闂�                        /Ot 浼橀�変唬鐮侀�熷害
+/Ox 浼樺寲(浼橀�夐�熷害)                      
+/favor:<blend|AMD64|INTEL64|ATOM> 閫夋嫨浼樺寲鎵�閽堝�圭殑澶勭悊鍣�锛屼负浠ヤ笅鍊间箣涓�:
+  blend - 閽堝�瑰嚑绉嶄笉鍚� x64 澶勭悊鍣ㄧ殑浼樺寲缁勫悎
+  AMD64 - 64 浣� AMD 澶勭悊鍣�                 
+  INTEL64 - Intel(R)64 鏋舵瀯澶勭悊鍣�       
+ATOM - Intel(R) Atom(TM) 澶勭悊鍣�              
+
+               -浠ｇ爜鐢熸垚-
+
+/Gu[-] 纭�淇� distinct 鍑芥暟鍏锋湁闈為噸澶嶅湴鍧� /Gw[-] 鍒嗛殧閾炬帴鍣ㄧ殑鍏ㄥ眬鍙橀噺
+/GF 鍚�鐢ㄥ彧璇诲瓧绗︿覆姹�                    /Gm[-] 鍚�鐢ㄦ渶灏忛噸鏂扮敓鎴�
+/Gy[-] 鍒嗛殧閾炬帴鍣ㄥ嚱鏁�                   /GS[-] 鍚�鐢ㄥ畨鍏ㄦ��鏌�
+/GR[-] 鍚�鐢� C++ RTTI                    /GX[-] 鍚�鐢� C++ EH (涓� /EHsc 鐩稿悓)
+/guard:cf[-] 鍚�鐢� CFG (鎺у埗娴佷繚鎶�)      /guard:ehcont[-] 鍚�鐢� EH 缁х画鍏冩暟鎹�(CET)
+/EHs 鍚�鐢� C++ EH (娌℃湁 SEH 寮傚父)        /EHa 鍚�鐢� C++ EH (w/ SEH 寮傚父)
+/EHc 澶栭儴 "C" 榛樿�や负 nothrow            /EHr 濮嬬粓鐢熸垚 noexcept 杩愯�屾椂缁堟�㈡��鏌�
+/fp:<except[-]|fast|precise|strict> 閫夋嫨娴�鐐规ā鍨�:
+  except[-] - 鍦ㄧ敓鎴愪唬鐮佹椂鑰冭檻娴�鐐瑰紓甯�  
+  fast - "fast" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴鎬ф瘮杈冧綆
+  precise - "precise" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴
+  strict - "strict" 娴�鐐规ā鍨�(鎰忓懗鐫� /fp:except)
+鍗充娇浣跨敤 /fp:except锛�/Qfast_transcendentals 涔熺敓鎴愬唴鑱斿唴閮� FP
+/Qspectre[-] 瀵� CVE 2017-5753 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qpar[-] 鍚�鐢ㄥ苟琛屼唬鐮佺敓鎴�               
+/Qpar-report:1 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀哄凡骞惰�屽寲寰�鐜�
+/Qpar-report:2 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀烘湭骞惰�屽寲寰�鐜�
+/Qvec-report:1 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀哄凡鍚戦噺鍖栧惊鐜�
+/Qvec-report:2 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀烘湭鍚戦噺鍖栧惊鐜�
+/GL[-] 鍚�鐢ㄩ摼鎺ユ椂浠ｇ爜鐢熸垚               /volatile:<iso|ms> 閫夋嫨鍙�鍙樻ā鍨�:
+    iso - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓嶄竴瀹氭湁鏁�
+    ms - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓�瀹氭湁鏁�
+/GA 涓� Windows 搴旂敤绋嬪簭杩涜�屼紭鍖�         /Ge 瀵规墍鏈夊嚱鏁板己鍒跺爢鏍堟��鏌�
+/Gs[num] 鎺у埗鍫嗘爤妫�鏌ヨ皟鐢�               /Gh 鍚�鐢� _penter 鍑芥暟璋冪敤
+/GH 鍚�鐢� _pexit 鍑芥暟璋冪敤                /GT 鐢熸垚绾ょ▼瀹夊叏 TLS 璁块棶
+/RTC1 鍚�鐢ㄥ揩閫熸��鏌�(/RTCsu)              /RTCc 杞�鎹�涓鸿緝灏忕殑绫诲瀷妫�鏌�
+/RTCs 鍫嗘爤甯ц繍琛屾椂妫�鏌�                  /RTCu 鏈�鍒濆�嬪寲鐨勫眬閮ㄧ敤娉曟��鏌�
+/clr[:option] 涓哄叕鍏辫��瑷�杩愯�屾椂缂栬瘧锛屽叾涓� option 鏄�:
+    pure : 鐢熸垚浠呭寘鍚� IL 鐨勮緭鍑烘枃浠�(娌℃湁鏈�鏈哄彲鎵ц�屼唬鐮�)
+    safe : 鐢熸垚鍙�鍖呭惈 IL 鐨勫彲楠岃瘉杈撳嚭鏂囦欢
+    netcore : 鐢熸垚浠� .NET Core 杩愯�屾椂涓虹洰鏍囩殑绋嬪簭闆�
+    noAssembly : 涓嶇敓鎴愮▼搴忛泦           
+    nostdlib : 鎼滅储绋嬪簭闆嗘椂蹇界暐绯荤粺 .NET Framework 鐩�褰�
+    nostdimport : 涓嶉殣寮忓�煎叆浠讳綍蹇呴渶鐨勭▼搴忛泦
+    initialAppDomain : 鍚�鐢� Visual C++ 2002 鐨勫垵濮� AppDomain 琛屼负
+    implicitKeepAlive- : 鍏抽棴 System::GC::KeepAlive(this)鐨勯殣寮忓��
+/fsanitize=瑙ｅ喅鍚�鐢ㄥ湴鍧�娑堟瘨浠ｇ爜鐢熸垚     
+/homeparams 寮哄埗灏嗕紶鍏ュ瘎瀛樺櫒鐨勫弬鏁板啓鍏ュ埌鍫嗘爤涓�
+/GZ 鍚�鐢ㄥ爢鏍堟��鏌�(/RTCs)                 /Gv __vectorcall 璋冪敤绾﹀畾
+/arch:<AVX|AVX2|AVX512> 鏈�灏� CPU 鏋舵瀯瑕佹眰锛屼互涓嬩箣涓�:
+  AVX - 鍏佽�镐娇鐢ㄦ敮鎸� AVX 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX2 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX2 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX512 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX-512 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+/QIntel-jcc-erratum 涓� Intel JCC Erratum 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qspectre-load 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋寚浠ゅ惎鐢� spectre 缂撹В鎺�鏂�
+/Qspectre-load-cf 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋帶鍒舵祦鎸囦护鍚�鐢� spectre 缂撹В鎺�鏂�
+/fpcvt:<IA|BC> 鏃犵�﹀彿鏁存暟杞�鎹㈠吋瀹规�т负 FP   IA - 涓� VCVTTSD2USI 鎸囦护鍏煎�圭殑缁撴灉
+   BC - 涓� VS2017 鍙婃洿浣庣増鏈�鐨勭紪璇戝櫒鍏煎�圭殑缁撴灉
+
+               -杈撳嚭鏂囦欢-
+
+/Fa[file] 鍛藉悕绋嬪簭闆嗗垪琛ㄦ枃浠�            /FA[scu] 閰嶇疆绋嬪簭闆嗗垪琛�
+/Fd[file] 鍛藉悕 .PDB 鏂囦欢                /Fe<file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm[file] 鍛藉悕鏄犲皠鏂囦欢                  /Fo<file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp<file> 鍛藉悕棰勭紪璇戝ご鏂囦欢              /Fr[file] 鍛藉悕婧愭祻瑙堝櫒鏂囦欢
+/FR[file] 鍛藉悕鎵╁睍 .SBR 鏂囦欢            /Fi[file] 鍛藉悕棰勫�勭悊鐨勬枃浠�
+/Fd: <file> 鍛藉悕 .PDB 鏂囦欢              /Fe: <file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm: <file> 鍛藉悕鏄犲皠鏂囦欢                /Fo: <file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp: <file> 鍛藉悕 .PCH 鏂囦欢              /FR: <file> 鍛藉悕鎵╁睍 .SBR 鏂囦欢
+/Fi: <file> 鍛藉悕棰勫�勭悊鐨勬枃浠�            /Ft<dir> 涓� #import 鐢熸垚鐨勫ご鏂囦欢鐨勫湴鍧�
+/doc[file] 澶勭悊 XML 鏂囨。娉ㄩ噴锛屽苟鍙�閫夋嫨鍛藉悕 .xdc 鏂囦欢
+
+               -棰勫�勭悊鍣�-
+
+/AI<dir> 娣诲姞鍒扮▼搴忛泦鎼滅储璺�寰�           /FU<file> 寮哄埗浣跨敤绋嬪簭闆�/妯″潡 
+/C 涓嶆娊鍑烘敞閲�                           /D<name>{=|#}<text> 瀹氫箟瀹�
+/E 棰勫�勭悊鍒� stdout                      /EP 棰勫�勭悊鍒� stdout锛屾棤琛屽彿
+/P 棰勫�勭悊鍒版枃浠�                         /Fx 灏嗘彃鍏ョ殑浠ｇ爜鍚堝苟鍒版枃浠朵腑
+/FI<file> 鍛藉悕寮哄埗鍖呭惈鏂囦欢              /U<name> 绉婚櫎棰勫畾涔夌殑瀹�
+/u 绉婚櫎鎵�鏈夐�勫畾涔夌殑瀹�                   /I<dir> 娣诲姞鍒板寘鍚�鎼滅储璺�寰�
+/X 蹇界暐鈥滄爣鍑嗕綅缃�鈥�                     /PH 鍦ㄩ�勫�勭悊鏃剁敓鎴� #pragma file_hash
+/PD 鎵撳嵃鎵�鏈夊畯瀹氫箟                      
+
+                -璇�瑷�-
+
+/std:<c++14|c++17|c++latest> C++ 鏍囧噯鐗�
+    c++14 - ISO/IEC 14882:2014 (榛樿�ゅ��)
+    c++17 - ISO/IEC 14882:2017
+    c++latest - 鏈�鏂拌崏妗堟爣鍑�(鍔熻兘闆嗗彲鑳戒細鏇存敼)
+/permissive[-] 浣挎煇浜涢潪绗﹀悎浠ｇ爜鍙�缂栬瘧(鍔熻兘闆嗗彲鏇存敼)(榛樿�ゅ紑鍚�)
+/Ze 鍚�鐢ㄦ墿灞�(榛樿��)                      /Za 绂佺敤鎵╁睍
+/ZW 鍚�鐢� WinRT 璇�瑷�鎵╁睍                 /Zs 鍙�杩涜�岃��娉曟��鏌�
+/Zc:arg1[,arg2] C++ 璇�瑷�鍚堣�勬�э紝杩欓噷鐨勫弬鏁板彲浠ユ槸:
+ forScope[-]      瀵硅寖鍥磋�勫垯寮哄埗浣跨敤鏍囧噯 C++
+ wchar_t[-]      wchar_t 鏄�鏈�鏈虹被鍨嬶紝涓嶆槸 typedef
+  auto[-]               瀵� auto 寮哄埗浣跨敤鏂扮殑鏍囧噯 C++ 鍚�涔�
+  trigraphs[-]          鍚�鐢ㄤ笁鍏冪��(榛樿�ゅ叧闂�)
+ rvalueCast[-]     寮哄埗瀹炴柦鏍囧噯 C++ 鏄惧紡绫诲瀷杞�鎹㈣�勫垯
+ strictStrings[-]   绂佺敤浠庡瓧绗︿覆鏂囨湰鍒� [char|wchar_t]*
+                        鐨勮浆鎹�(榛樿�ゅ叧闂�)
+ implicitNoexcept[-]  鍦ㄥ繀闇�鐨勫嚱鏁颁笂鍚�鐢ㄩ殣寮� noexcept
+threadSafeInit[-]   鍚�鐢ㄧ嚎绋嬪畨鍏ㄧ殑鏈�鍦伴潤鎬佸垵濮嬪寲
+  inline[-]             濡傛灉鏄� COMDAT锛屽垯鍒犻櫎鏈�寮曠敤鐨勫嚱鏁版垨鏁版嵁
+                        鎴栦粎浣跨敤鍐呴儴閾炬帴(榛樿�ゅ叧闂�)
+  sizedDealloc[-]       鍚�鐢� C++14 鍏ㄥ眬澶у皬瑙ｉ櫎鍒嗛厤
+                        鍑芥暟(榛樿�ゅ紑鍚�)
+  throwingNew[-]        鍋囪�捐繍绠楃�� new 鍦ㄦ晠闅滄椂寮曞彂(榛樿�ゅ叧闂�)
+  referenceBinding[-]   涓存椂寮曠敤涓嶄細缁戝畾鍒伴潪甯告暟
+                        lvalue 寮曠敤(榛樿�ゅ叧闂�)
+  twoPhase-             绂佺敤涓ら樁娈靛悕绉版煡鎵�
+  ternary[-]            瀵规潯浠惰繍绠楃�﹀己鍒朵娇鐢� C++11 瑙勫垯(榛樿�ゅ叧闂�)
+  noexceptTypes[-]      寮哄埗鎵ц�� C++17 noexcept 瑙勫垯(鍦� C++17 鎴栨洿楂樼増鏈�涓�榛樿�ゅ紑鍚�)
+  alignedNew[-]         瀵瑰姩鎬佸垎閰嶇殑瀵硅薄鍚�鐢� C++17 瀵归綈鏂瑰紡(榛樿�ゅ紑鍚�)
+  hiddenFriend[-]       寮哄埗瀹炴柦鏍囧噯 C++ 闅愯棌濂藉弸瑙勫垯(/permissive- 鎵�闅愬惈)
+  externC[-]            寮哄埗瀹炴柦澶栭儴 "C" 鍑芥暟鐨勬爣鍑� C++ 瑙勫垯(/permissive- 鎵�闅愬惈)
+  lambda[-]             浣跨敤鏇存柊鐨� lambda 澶勭悊鍣ㄦ彁渚涙洿濂界殑 lambda 鏀�鎸�(榛樿�や负鍏抽棴)
+  tlsGuards[-]          鐢熸垚 TLS 鍙橀噺鍒濆�嬪寲鐨勮繍琛屾椂妫�鏌�(榛樿�ゆ儏鍐典笅鍚�鐢�)
+  zeroSizeArrayNew[-]   閽堝�瑰ぇ灏忎负闆剁殑瀵硅薄鏁扮粍鐨勮皟鐢ㄥ�硅薄 new/delete (榛樿�ゅ惎鐢�)
+/await 鍚�鐢ㄥ彲鎭㈠�嶅嚱鏁版墿灞�
+/await:strict 鍚�鐢ㄤ娇鐢ㄦ棭鏈熻��瑷�鐗堟湰鐨勬爣鍑� C++20 鍗忓悓渚嬬▼鏀�鎸�
+/constexpr:depth<N>     constexpr 璇勪及鐨勯�掑綊娣卞害闄愬埗(榛樿�ゅ��: 512)
+/constexpr:backtrace<N> 鍦ㄨ瘖鏂�涓�鏄剧ず N constexpr 璇勪及(榛樿�ゅ��: 10)
+/constexpr:steps<N>     鍦� N 涓�姝ラ�ゅ悗缁堟�� constexpr 璇勪及(榛樿�ゅ��: 100000)
+/Zi 鍚�鐢ㄨ皟璇曚俊鎭�                        /Z7 鍚�鐢ㄦ棫寮忚皟璇曚俊鎭�
+/Zo[-] 涓轰紭鍖栫殑浠ｇ爜鐢熸垚鏇翠赴瀵岀殑璋冭瘯淇℃伅(榛樿�ゅ紑鍚�)
+/ZH:[MD5|SHA1|SHA_256] 鐢ㄤ簬璁＄畻璋冭瘯淇℃伅涓�鐨勬枃浠舵牎楠屽拰鐨勫搱甯岀畻娉�(榛樿�ゅ��: MD5)
+/Zp[n] 鍦� n 瀛楄妭杈圭晫涓婂寘瑁呯粨鏋�          /Zl 鐪佺暐 .OBJ 涓�鐨勯粯璁ゅ簱鍚�
+/vd{0|1|2} 绂佺敤/鍚�鐢� vtordisp           /vm<x> 鎸囧悜鎴愬憳鐨勬寚閽堢被鍨�
+/std:<c11|c17> C 鏍囧噯鐗堟湰
+    c11 - ISO/IEC 9899:2011
+    c17 - ISO/IEC 9899:2018
+/ZI 鍚�鐢ㄢ�滅紪杈戝苟缁х画鈥濊皟璇曚俊鎭�          /openmp 鍚�鐢� OpenMP 2.0 璇�瑷�鎵╁睍
+/openmp:experimental 浼氬惎鐢� OpenMP 2.0 璇�瑷�鎵╁睍骞堕�夋嫨 OpenMP 3.0+ 璇�瑷�鎵╁睍
+浣跨敤 LLVM 杩愯�屾椂 /openmp:llvm OpenMP 璇�瑷�鎵╁睍
+
+               - 鏉傞」 -
+
+@<file> 閫夐」鍝嶅簲鏂囦欢                    /?, /help 鎵撳嵃姝ゅ府鍔╂秷鎭�
+/bigobj 鐢熸垚鎵╁睍鐨勫�硅薄鏍煎紡              /c 鍙�缂栬瘧锛屼笉閾炬帴
+/errorReport:option 宸插純鐢ㄣ�傝�峰皢鍐呴儴缂栬瘧鍣ㄩ敊璇�鎶ュ憡缁� Microsoft
+    none - 涓嶅彂閫佹姤鍛�                       prompt - 鎻愮ず绔嬪嵆鍙戦�佹姤鍛�
+    queue - 鍦ㄤ笅涓�娆＄�＄悊鍛樼櫥褰曟椂锛屾彁绀哄彂閫佹姤鍛�(榛樿��)
+    send - 鑷�鍔ㄥ彂閫佹姤鍛�                 /FC 璇婃柇涓�浣跨敤瀹屾暣璺�寰勫悕
+/H<num> 鏈�澶у�栭儴鍚嶇О闀垮害                /J 榛樿�� char 绫诲瀷鏄� unsigned
+/MP[n] 鏈�澶氫娇鐢ㄢ�渘鈥濅釜杩涚▼杩涜�岀紪璇�      /nologo 鍙栨秷鏄剧ず鐗堟潈淇℃伅
+/showIncludes 鏄剧ず鍖呭惈鏂囦欢鍚�            /Tc<source file> 灏嗘枃浠剁紪璇戜负 .c
+/Tp<source file> 灏嗘枃浠剁紪璇戜负 .cpp      /TC 灏嗘墍鏈夋枃浠剁紪璇戜负 .c
+/TP 灏嗘墍鏈夋枃浠剁紪璇戜负 .cpp               /V<string> 璁剧疆鐗堟湰瀛楃�︿覆
+/Yc[file] 鍒涘缓 .PCH 鏂囦欢                /Yd 灏嗚皟璇曚俊鎭�鏀惧湪姣忎釜 .OBJ 涓�
+/Yl[sym] 涓鸿皟璇曞簱鎻掑叆 .PCH 寮曠敤         /Yu[file] 浣跨敤 .PCH 鏂囦欢
+/Y- 绂佺敤鎵�鏈� PCH 閫夐」                   /Zm<n> 鏈�澶у唴瀛樺垎閰�(榛樿�ゅ�肩殑鐧惧垎姣�)
+/FS 寮哄埗浣跨敤 MSPDBSRV.EXE               
+/source-charset:<iana-name>|.nnnn 闆嗘簮瀛楃�﹂泦
+/execution-charset:<iana-name>|.nnnn 闆嗘墽琛屽瓧绗﹂泦
+/utf-8 闆嗘簮鍜屽埌 UTF-8 鐨勬墽琛屽瓧绗﹂泦      
+/validate-charset[-] 楠岃瘉 UTF-8 鏂囦欢鏄�鍚﹀彧鏈夊悎娉曞瓧绗�
+/fastfail[-] 鍚�鐢� fast-fail 妯″紡        /JMC[-] 鍚�鐢ㄦ湰鏈衡�滀粎鎴戠殑浠ｇ爜鈥�
+/presetPadding[-] 灏嗗熀浜庡爢鏍堢殑绫荤被鍨嬬殑濉�鍏呭垵濮嬪寲涓洪浂
+/volatileMetadata[-] 瀵规槗澶卞瓨鍌ㄥ櫒璁块棶鐢熸垚鍏冩暟鎹�
+
+                -閾炬帴-
+
+/LD 鍒涘缓 .DLL                           /LDd 鍒涘缓 .DLL 璋冭瘯搴�
+/LN 鍒涘缓 .netmodule                     /F<num> 璁剧疆鍫嗘爤澶у皬
+/link [閾炬帴鍣ㄩ�夐」鍜屽簱]                  /MD 涓� MSVCRT.LIB 閾炬帴
+/MT 涓� LIBCMT.LIB 閾炬帴                  /MDd 涓� MSVCRTD.LIB 璋冭瘯搴撻摼鎺�
+/MTd 涓� LIBCMTD.LIB 璋冭瘯搴撻摼鎺�          
+
+               -浠ｇ爜鍒嗘瀽-
+
+/analyze[-] 鍚�鐢ㄦ湰鏈哄垎鏋�                /analyze:quiet[-] 娌℃湁瀵规帶鍒跺彴鐨勮�﹀憡
+/analyze:log<name> 瀵规枃浠剁殑璀﹀憡         /analyze:autolog Log to *.pftlog
+/analyze:autolog:ext<ext> Log to *.<ext>/analyze:autolog- 鏃犳棩蹇楁枃浠�
+/analyze:WX- 璀﹀憡涓嶄弗閲�                 /analyze:stacksize<num> 鏈�澶у爢鏍堝抚
+/analyze:max_paths<num> 鏈�澶ц矾寰�        /analyze:only Analyze, no code gen
+
+                              -璇婃柇-
+
+/diagnostics:<args,...> 鎺у埗璇婃柇娑堟伅鐨勬牸寮�:
+             浼犵粺鍨� - 淇濈暀涔嬪墠鐨勬牸寮�
+             鍒梉-] - 鎵撳嵃鍒椾俊鎭�
+             鑴卞瓧鍙穂-] - 鎵撳嵃鍒楀拰婧愮殑鎸囩ず琛�
+/Wall 鍚�鐢ㄦ墍鏈夎�﹀憡                      /w   绂佺敤鎵�鏈夎�﹀憡
+/W<n> 璁剧疆璀﹀憡绛夌骇(榛樿�� n=1)            
+/Wv:xx[.yy[.zzzzz]] 绂佺敤鍦� xx.yy.zzzzz 鐗堟湰鍚庡紩鍏ョ殑璀﹀憡鍔熻兘
+/WX 灏嗚�﹀憡瑙嗕负閿欒��                      /WL 鍚�鐢ㄥ崟琛岃瘖鏂�
+/wd<n> 绂佺敤璀﹀憡 n                       /we<n> 灏嗚�﹀憡 n 瑙嗕负閿欒��
+/wo<n> 鍙戝嚭涓�娆¤�﹀憡 n                   /w<l><n> 涓� n 璁剧疆璀﹀憡绛夌骇 1-4
+/external:I <path>      - 澶栭儴鏍囧ご鐨勪綅缃�
+/external:env:<var>    - 澶栭儴鏍囧ご浣嶇疆鐨勭幆澧冨彉閲�
+/external:anglebrackets - 灏嗘墍鏈夐�氳繃 <> 鍖呭惈鐨勬爣澶磋�嗕负澶栭儴
+/external:W<n>          - 澶栭儴鏍囧ご鐨勮�﹀憡绛夌骇
+/external:templates[-]  - 璺ㄦā鏉垮疄渚嬪寲閾捐瘎浼拌�﹀憡绾у埆
+/sdl 鏀�鎸佸叾浠栧畨鍏ㄥ姛鑳藉拰璀﹀憡
+-----------
+stderr:
+鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�
+鐗堟潈鎵�鏈�(C) Microsoft Corporation銆備繚鐣欐墍鏈夋潈鍒┿��
+-----------
+Sanity check compiler command line: cl /Fesanity_check_for_c.exe sanity_check_for_c.c /MD /nologo /utf-8 /link /release /nologo
+Sanity check compile stdout:
+sanity_check_for_c.c
+
+-----
+Sanity check compile stderr:
+
+-----
+Sanity check built target output for build machine c compiler
+ -- Running test binary command:  D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_c.exe
+-----------
+Sanity check: `D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_c.exe` -> 0
+ -- stdout:
+ 
+ -- stderr:
+ 
+ -- returncode: 0
+C compiler for the build machine: cl (msvc 19.29.30159 "鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�")
+C linker for the build machine: link link 14.29.30159.0
+-----------
+Detecting compiler via: `icl ""` -> [WinError 2] 系统找不到指定的文件。
+-----------
+Detecting compiler via: `cl /?` -> 0
+stdout:
+C/C++ 缂栬瘧鍣ㄩ�夐」
+
+
+               -浼樺寲-
+
+/O1 鏈�澶т紭鍖�(浼橀�夌┖闂�)                  /O2 鏈�澶т紭鍖�(浼橀�夐�熷害)
+/Ob<n> 鍐呰仈鎵╁睍(榛樿�� n=0)               /Od 绂佺敤浼樺寲(榛樿��)
+/Og 鍚�鐢ㄥ叏灞�浼樺寲                        /Oi[-] 鍚�鐢ㄥ唴閮ㄥ嚱鏁�
+/Os 浼橀�変唬鐮佺┖闂�                        /Ot 浼橀�変唬鐮侀�熷害
+/Ox 浼樺寲(浼橀�夐�熷害)                      
+/favor:<blend|AMD64|INTEL64|ATOM> 閫夋嫨浼樺寲鎵�閽堝�圭殑澶勭悊鍣�锛屼负浠ヤ笅鍊间箣涓�:
+  blend - 閽堝�瑰嚑绉嶄笉鍚� x64 澶勭悊鍣ㄧ殑浼樺寲缁勫悎
+  AMD64 - 64 浣� AMD 澶勭悊鍣�                 
+  INTEL64 - Intel(R)64 鏋舵瀯澶勭悊鍣�       
+ATOM - Intel(R) Atom(TM) 澶勭悊鍣�              
+
+               -浠ｇ爜鐢熸垚-
+
+/Gu[-] 纭�淇� distinct 鍑芥暟鍏锋湁闈為噸澶嶅湴鍧� /Gw[-] 鍒嗛殧閾炬帴鍣ㄧ殑鍏ㄥ眬鍙橀噺
+/GF 鍚�鐢ㄥ彧璇诲瓧绗︿覆姹�                    /Gm[-] 鍚�鐢ㄦ渶灏忛噸鏂扮敓鎴�
+/Gy[-] 鍒嗛殧閾炬帴鍣ㄥ嚱鏁�                   /GS[-] 鍚�鐢ㄥ畨鍏ㄦ��鏌�
+/GR[-] 鍚�鐢� C++ RTTI                    /GX[-] 鍚�鐢� C++ EH (涓� /EHsc 鐩稿悓)
+/guard:cf[-] 鍚�鐢� CFG (鎺у埗娴佷繚鎶�)      /guard:ehcont[-] 鍚�鐢� EH 缁х画鍏冩暟鎹�(CET)
+/EHs 鍚�鐢� C++ EH (娌℃湁 SEH 寮傚父)        /EHa 鍚�鐢� C++ EH (w/ SEH 寮傚父)
+/EHc 澶栭儴 "C" 榛樿�や负 nothrow            /EHr 濮嬬粓鐢熸垚 noexcept 杩愯�屾椂缁堟�㈡��鏌�
+/fp:<except[-]|fast|precise|strict> 閫夋嫨娴�鐐规ā鍨�:
+  except[-] - 鍦ㄧ敓鎴愪唬鐮佹椂鑰冭檻娴�鐐瑰紓甯�  
+  fast - "fast" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴鎬ф瘮杈冧綆
+  precise - "precise" 娴�鐐规ā鍨嬶紱缁撴灉鍙�棰勬祴
+  strict - "strict" 娴�鐐规ā鍨�(鎰忓懗鐫� /fp:except)
+鍗充娇浣跨敤 /fp:except锛�/Qfast_transcendentals 涔熺敓鎴愬唴鑱斿唴閮� FP
+/Qspectre[-] 瀵� CVE 2017-5753 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qpar[-] 鍚�鐢ㄥ苟琛屼唬鐮佺敓鎴�               
+/Qpar-report:1 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀哄凡骞惰�屽寲寰�鐜�
+/Qpar-report:2 鑷�鍔ㄥ苟琛屽寲璇婃柇锛涙寚绀烘湭骞惰�屽寲寰�鐜�
+/Qvec-report:1 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀哄凡鍚戦噺鍖栧惊鐜�
+/Qvec-report:2 鑷�鍔ㄥ悜閲忓寲璇婃柇锛涙寚绀烘湭鍚戦噺鍖栧惊鐜�
+/GL[-] 鍚�鐢ㄩ摼鎺ユ椂浠ｇ爜鐢熸垚               /volatile:<iso|ms> 閫夋嫨鍙�鍙樻ā鍨�:
+    iso - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓嶄竴瀹氭湁鏁�
+    ms - Acquire/release 璇�涔夊�瑰彲鍙樿�块棶涓�瀹氭湁鏁�
+/GA 涓� Windows 搴旂敤绋嬪簭杩涜�屼紭鍖�         /Ge 瀵规墍鏈夊嚱鏁板己鍒跺爢鏍堟��鏌�
+/Gs[num] 鎺у埗鍫嗘爤妫�鏌ヨ皟鐢�               /Gh 鍚�鐢� _penter 鍑芥暟璋冪敤
+/GH 鍚�鐢� _pexit 鍑芥暟璋冪敤                /GT 鐢熸垚绾ょ▼瀹夊叏 TLS 璁块棶
+/RTC1 鍚�鐢ㄥ揩閫熸��鏌�(/RTCsu)              /RTCc 杞�鎹�涓鸿緝灏忕殑绫诲瀷妫�鏌�
+/RTCs 鍫嗘爤甯ц繍琛屾椂妫�鏌�                  /RTCu 鏈�鍒濆�嬪寲鐨勫眬閮ㄧ敤娉曟��鏌�
+/clr[:option] 涓哄叕鍏辫��瑷�杩愯�屾椂缂栬瘧锛屽叾涓� option 鏄�:
+    pure : 鐢熸垚浠呭寘鍚� IL 鐨勮緭鍑烘枃浠�(娌℃湁鏈�鏈哄彲鎵ц�屼唬鐮�)
+    safe : 鐢熸垚鍙�鍖呭惈 IL 鐨勫彲楠岃瘉杈撳嚭鏂囦欢
+    netcore : 鐢熸垚浠� .NET Core 杩愯�屾椂涓虹洰鏍囩殑绋嬪簭闆�
+    noAssembly : 涓嶇敓鎴愮▼搴忛泦           
+    nostdlib : 鎼滅储绋嬪簭闆嗘椂蹇界暐绯荤粺 .NET Framework 鐩�褰�
+    nostdimport : 涓嶉殣寮忓�煎叆浠讳綍蹇呴渶鐨勭▼搴忛泦
+    initialAppDomain : 鍚�鐢� Visual C++ 2002 鐨勫垵濮� AppDomain 琛屼负
+    implicitKeepAlive- : 鍏抽棴 System::GC::KeepAlive(this)鐨勯殣寮忓��
+/fsanitize=瑙ｅ喅鍚�鐢ㄥ湴鍧�娑堟瘨浠ｇ爜鐢熸垚     
+/homeparams 寮哄埗灏嗕紶鍏ュ瘎瀛樺櫒鐨勫弬鏁板啓鍏ュ埌鍫嗘爤涓�
+/GZ 鍚�鐢ㄥ爢鏍堟��鏌�(/RTCs)                 /Gv __vectorcall 璋冪敤绾﹀畾
+/arch:<AVX|AVX2|AVX512> 鏈�灏� CPU 鏋舵瀯瑕佹眰锛屼互涓嬩箣涓�:
+  AVX - 鍏佽�镐娇鐢ㄦ敮鎸� AVX 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX2 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX2 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+  AVX512 - 鍏佽�镐娇鐢ㄦ敮鎸� AVX-512 鐨� CPU 鍙�鐢ㄧ殑鎸囦护
+/QIntel-jcc-erratum 涓� Intel JCC Erratum 鍚�鐢ㄧ紦瑙ｆ帾鏂�
+/Qspectre-load 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋寚浠ゅ惎鐢� spectre 缂撹В鎺�鏂�
+/Qspectre-load-cf 瀵瑰姞杞藉唴瀛樼殑鎵�鏈夋帶鍒舵祦鎸囦护鍚�鐢� spectre 缂撹В鎺�鏂�
+/fpcvt:<IA|BC> 鏃犵�﹀彿鏁存暟杞�鎹㈠吋瀹规�т负 FP   IA - 涓� VCVTTSD2USI 鎸囦护鍏煎�圭殑缁撴灉
+   BC - 涓� VS2017 鍙婃洿浣庣増鏈�鐨勭紪璇戝櫒鍏煎�圭殑缁撴灉
+
+               -杈撳嚭鏂囦欢-
+
+/Fa[file] 鍛藉悕绋嬪簭闆嗗垪琛ㄦ枃浠�            /FA[scu] 閰嶇疆绋嬪簭闆嗗垪琛�
+/Fd[file] 鍛藉悕 .PDB 鏂囦欢                /Fe<file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm[file] 鍛藉悕鏄犲皠鏂囦欢                  /Fo<file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp<file> 鍛藉悕棰勭紪璇戝ご鏂囦欢              /Fr[file] 鍛藉悕婧愭祻瑙堝櫒鏂囦欢
+/FR[file] 鍛藉悕鎵╁睍 .SBR 鏂囦欢            /Fi[file] 鍛藉悕棰勫�勭悊鐨勬枃浠�
+/Fd: <file> 鍛藉悕 .PDB 鏂囦欢              /Fe: <file> 鍛藉悕鍙�鎵ц�屾枃浠�
+/Fm: <file> 鍛藉悕鏄犲皠鏂囦欢                /Fo: <file> 鍛藉悕瀵硅薄鏂囦欢
+/Fp: <file> 鍛藉悕 .PCH 鏂囦欢              /FR: <file> 鍛藉悕鎵╁睍 .SBR 鏂囦欢
+/Fi: <file> 鍛藉悕棰勫�勭悊鐨勬枃浠�            /Ft<dir> 涓� #import 鐢熸垚鐨勫ご鏂囦欢鐨勫湴鍧�
+/doc[file] 澶勭悊 XML 鏂囨。娉ㄩ噴锛屽苟鍙�閫夋嫨鍛藉悕 .xdc 鏂囦欢
+
+               -棰勫�勭悊鍣�-
+
+/AI<dir> 娣诲姞鍒扮▼搴忛泦鎼滅储璺�寰�           /FU<file> 寮哄埗浣跨敤绋嬪簭闆�/妯″潡 
+/C 涓嶆娊鍑烘敞閲�                           /D<name>{=|#}<text> 瀹氫箟瀹�
+/E 棰勫�勭悊鍒� stdout                      /EP 棰勫�勭悊鍒� stdout锛屾棤琛屽彿
+/P 棰勫�勭悊鍒版枃浠�                         /Fx 灏嗘彃鍏ョ殑浠ｇ爜鍚堝苟鍒版枃浠朵腑
+/FI<file> 鍛藉悕寮哄埗鍖呭惈鏂囦欢              /U<name> 绉婚櫎棰勫畾涔夌殑瀹�
+/u 绉婚櫎鎵�鏈夐�勫畾涔夌殑瀹�                   /I<dir> 娣诲姞鍒板寘鍚�鎼滅储璺�寰�
+/X 蹇界暐鈥滄爣鍑嗕綅缃�鈥�                     /PH 鍦ㄩ�勫�勭悊鏃剁敓鎴� #pragma file_hash
+/PD 鎵撳嵃鎵�鏈夊畯瀹氫箟                      
+
+                -璇�瑷�-
+
+/std:<c++14|c++17|c++latest> C++ 鏍囧噯鐗�
+    c++14 - ISO/IEC 14882:2014 (榛樿�ゅ��)
+    c++17 - ISO/IEC 14882:2017
+    c++latest - 鏈�鏂拌崏妗堟爣鍑�(鍔熻兘闆嗗彲鑳戒細鏇存敼)
+/permissive[-] 浣挎煇浜涢潪绗﹀悎浠ｇ爜鍙�缂栬瘧(鍔熻兘闆嗗彲鏇存敼)(榛樿�ゅ紑鍚�)
+/Ze 鍚�鐢ㄦ墿灞�(榛樿��)                      /Za 绂佺敤鎵╁睍
+/ZW 鍚�鐢� WinRT 璇�瑷�鎵╁睍                 /Zs 鍙�杩涜�岃��娉曟��鏌�
+/Zc:arg1[,arg2] C++ 璇�瑷�鍚堣�勬�э紝杩欓噷鐨勫弬鏁板彲浠ユ槸:
+ forScope[-]      瀵硅寖鍥磋�勫垯寮哄埗浣跨敤鏍囧噯 C++
+ wchar_t[-]      wchar_t 鏄�鏈�鏈虹被鍨嬶紝涓嶆槸 typedef
+  auto[-]               瀵� auto 寮哄埗浣跨敤鏂扮殑鏍囧噯 C++ 鍚�涔�
+  trigraphs[-]          鍚�鐢ㄤ笁鍏冪��(榛樿�ゅ叧闂�)
+ rvalueCast[-]     寮哄埗瀹炴柦鏍囧噯 C++ 鏄惧紡绫诲瀷杞�鎹㈣�勫垯
+ strictStrings[-]   绂佺敤浠庡瓧绗︿覆鏂囨湰鍒� [char|wchar_t]*
+                        鐨勮浆鎹�(榛樿�ゅ叧闂�)
+ implicitNoexcept[-]  鍦ㄥ繀闇�鐨勫嚱鏁颁笂鍚�鐢ㄩ殣寮� noexcept
+threadSafeInit[-]   鍚�鐢ㄧ嚎绋嬪畨鍏ㄧ殑鏈�鍦伴潤鎬佸垵濮嬪寲
+  inline[-]             濡傛灉鏄� COMDAT锛屽垯鍒犻櫎鏈�寮曠敤鐨勫嚱鏁版垨鏁版嵁
+                        鎴栦粎浣跨敤鍐呴儴閾炬帴(榛樿�ゅ叧闂�)
+  sizedDealloc[-]       鍚�鐢� C++14 鍏ㄥ眬澶у皬瑙ｉ櫎鍒嗛厤
+                        鍑芥暟(榛樿�ゅ紑鍚�)
+  throwingNew[-]        鍋囪�捐繍绠楃�� new 鍦ㄦ晠闅滄椂寮曞彂(榛樿�ゅ叧闂�)
+  referenceBinding[-]   涓存椂寮曠敤涓嶄細缁戝畾鍒伴潪甯告暟
+                        lvalue 寮曠敤(榛樿�ゅ叧闂�)
+  twoPhase-             绂佺敤涓ら樁娈靛悕绉版煡鎵�
+  ternary[-]            瀵规潯浠惰繍绠楃�﹀己鍒朵娇鐢� C++11 瑙勫垯(榛樿�ゅ叧闂�)
+  noexceptTypes[-]      寮哄埗鎵ц�� C++17 noexcept 瑙勫垯(鍦� C++17 鎴栨洿楂樼増鏈�涓�榛樿�ゅ紑鍚�)
+  alignedNew[-]         瀵瑰姩鎬佸垎閰嶇殑瀵硅薄鍚�鐢� C++17 瀵归綈鏂瑰紡(榛樿�ゅ紑鍚�)
+  hiddenFriend[-]       寮哄埗瀹炴柦鏍囧噯 C++ 闅愯棌濂藉弸瑙勫垯(/permissive- 鎵�闅愬惈)
+  externC[-]            寮哄埗瀹炴柦澶栭儴 "C" 鍑芥暟鐨勬爣鍑� C++ 瑙勫垯(/permissive- 鎵�闅愬惈)
+  lambda[-]             浣跨敤鏇存柊鐨� lambda 澶勭悊鍣ㄦ彁渚涙洿濂界殑 lambda 鏀�鎸�(榛樿�や负鍏抽棴)
+  tlsGuards[-]          鐢熸垚 TLS 鍙橀噺鍒濆�嬪寲鐨勮繍琛屾椂妫�鏌�(榛樿�ゆ儏鍐典笅鍚�鐢�)
+  zeroSizeArrayNew[-]   閽堝�瑰ぇ灏忎负闆剁殑瀵硅薄鏁扮粍鐨勮皟鐢ㄥ�硅薄 new/delete (榛樿�ゅ惎鐢�)
+/await 鍚�鐢ㄥ彲鎭㈠�嶅嚱鏁版墿灞�
+/await:strict 鍚�鐢ㄤ娇鐢ㄦ棭鏈熻��瑷�鐗堟湰鐨勬爣鍑� C++20 鍗忓悓渚嬬▼鏀�鎸�
+/constexpr:depth<N>     constexpr 璇勪及鐨勯�掑綊娣卞害闄愬埗(榛樿�ゅ��: 512)
+/constexpr:backtrace<N> 鍦ㄨ瘖鏂�涓�鏄剧ず N constexpr 璇勪及(榛樿�ゅ��: 10)
+/constexpr:steps<N>     鍦� N 涓�姝ラ�ゅ悗缁堟�� constexpr 璇勪及(榛樿�ゅ��: 100000)
+/Zi 鍚�鐢ㄨ皟璇曚俊鎭�                        /Z7 鍚�鐢ㄦ棫寮忚皟璇曚俊鎭�
+/Zo[-] 涓轰紭鍖栫殑浠ｇ爜鐢熸垚鏇翠赴瀵岀殑璋冭瘯淇℃伅(榛樿�ゅ紑鍚�)
+/ZH:[MD5|SHA1|SHA_256] 鐢ㄤ簬璁＄畻璋冭瘯淇℃伅涓�鐨勬枃浠舵牎楠屽拰鐨勫搱甯岀畻娉�(榛樿�ゅ��: MD5)
+/Zp[n] 鍦� n 瀛楄妭杈圭晫涓婂寘瑁呯粨鏋�          /Zl 鐪佺暐 .OBJ 涓�鐨勯粯璁ゅ簱鍚�
+/vd{0|1|2} 绂佺敤/鍚�鐢� vtordisp           /vm<x> 鎸囧悜鎴愬憳鐨勬寚閽堢被鍨�
+/std:<c11|c17> C 鏍囧噯鐗堟湰
+    c11 - ISO/IEC 9899:2011
+    c17 - ISO/IEC 9899:2018
+/ZI 鍚�鐢ㄢ�滅紪杈戝苟缁х画鈥濊皟璇曚俊鎭�          /openmp 鍚�鐢� OpenMP 2.0 璇�瑷�鎵╁睍
+/openmp:experimental 浼氬惎鐢� OpenMP 2.0 璇�瑷�鎵╁睍骞堕�夋嫨 OpenMP 3.0+ 璇�瑷�鎵╁睍
+浣跨敤 LLVM 杩愯�屾椂 /openmp:llvm OpenMP 璇�瑷�鎵╁睍
+
+               - 鏉傞」 -
+
+@<file> 閫夐」鍝嶅簲鏂囦欢                    /?, /help 鎵撳嵃姝ゅ府鍔╂秷鎭�
+/bigobj 鐢熸垚鎵╁睍鐨勫�硅薄鏍煎紡              /c 鍙�缂栬瘧锛屼笉閾炬帴
+/errorReport:option 宸插純鐢ㄣ�傝�峰皢鍐呴儴缂栬瘧鍣ㄩ敊璇�鎶ュ憡缁� Microsoft
+    none - 涓嶅彂閫佹姤鍛�                       prompt - 鎻愮ず绔嬪嵆鍙戦�佹姤鍛�
+    queue - 鍦ㄤ笅涓�娆＄�＄悊鍛樼櫥褰曟椂锛屾彁绀哄彂閫佹姤鍛�(榛樿��)
+    send - 鑷�鍔ㄥ彂閫佹姤鍛�                 /FC 璇婃柇涓�浣跨敤瀹屾暣璺�寰勫悕
+/H<num> 鏈�澶у�栭儴鍚嶇О闀垮害                /J 榛樿�� char 绫诲瀷鏄� unsigned
+/MP[n] 鏈�澶氫娇鐢ㄢ�渘鈥濅釜杩涚▼杩涜�岀紪璇�      /nologo 鍙栨秷鏄剧ず鐗堟潈淇℃伅
+/showIncludes 鏄剧ず鍖呭惈鏂囦欢鍚�            /Tc<source file> 灏嗘枃浠剁紪璇戜负 .c
+/Tp<source file> 灏嗘枃浠剁紪璇戜负 .cpp      /TC 灏嗘墍鏈夋枃浠剁紪璇戜负 .c
+/TP 灏嗘墍鏈夋枃浠剁紪璇戜负 .cpp               /V<string> 璁剧疆鐗堟湰瀛楃�︿覆
+/Yc[file] 鍒涘缓 .PCH 鏂囦欢                /Yd 灏嗚皟璇曚俊鎭�鏀惧湪姣忎釜 .OBJ 涓�
+/Yl[sym] 涓鸿皟璇曞簱鎻掑叆 .PCH 寮曠敤         /Yu[file] 浣跨敤 .PCH 鏂囦欢
+/Y- 绂佺敤鎵�鏈� PCH 閫夐」                   /Zm<n> 鏈�澶у唴瀛樺垎閰�(榛樿�ゅ�肩殑鐧惧垎姣�)
+/FS 寮哄埗浣跨敤 MSPDBSRV.EXE               
+/source-charset:<iana-name>|.nnnn 闆嗘簮瀛楃�﹂泦
+/execution-charset:<iana-name>|.nnnn 闆嗘墽琛屽瓧绗﹂泦
+/utf-8 闆嗘簮鍜屽埌 UTF-8 鐨勬墽琛屽瓧绗﹂泦      
+/validate-charset[-] 楠岃瘉 UTF-8 鏂囦欢鏄�鍚﹀彧鏈夊悎娉曞瓧绗�
+/fastfail[-] 鍚�鐢� fast-fail 妯″紡        /JMC[-] 鍚�鐢ㄦ湰鏈衡�滀粎鎴戠殑浠ｇ爜鈥�
+/presetPadding[-] 灏嗗熀浜庡爢鏍堢殑绫荤被鍨嬬殑濉�鍏呭垵濮嬪寲涓洪浂
+/volatileMetadata[-] 瀵规槗澶卞瓨鍌ㄥ櫒璁块棶鐢熸垚鍏冩暟鎹�
+
+                -閾炬帴-
+
+/LD 鍒涘缓 .DLL                           /LDd 鍒涘缓 .DLL 璋冭瘯搴�
+/LN 鍒涘缓 .netmodule                     /F<num> 璁剧疆鍫嗘爤澶у皬
+/link [閾炬帴鍣ㄩ�夐」鍜屽簱]                  /MD 涓� MSVCRT.LIB 閾炬帴
+/MT 涓� LIBCMT.LIB 閾炬帴                  /MDd 涓� MSVCRTD.LIB 璋冭瘯搴撻摼鎺�
+/MTd 涓� LIBCMTD.LIB 璋冭瘯搴撻摼鎺�          
+
+               -浠ｇ爜鍒嗘瀽-
+
+/analyze[-] 鍚�鐢ㄦ湰鏈哄垎鏋�                /analyze:quiet[-] 娌℃湁瀵规帶鍒跺彴鐨勮�﹀憡
+/analyze:log<name> 瀵规枃浠剁殑璀﹀憡         /analyze:autolog Log to *.pftlog
+/analyze:autolog:ext<ext> Log to *.<ext>/analyze:autolog- 鏃犳棩蹇楁枃浠�
+/analyze:WX- 璀﹀憡涓嶄弗閲�                 /analyze:stacksize<num> 鏈�澶у爢鏍堝抚
+/analyze:max_paths<num> 鏈�澶ц矾寰�        /analyze:only Analyze, no code gen
+
+                              -璇婃柇-
+
+/diagnostics:<args,...> 鎺у埗璇婃柇娑堟伅鐨勬牸寮�:
+             浼犵粺鍨� - 淇濈暀涔嬪墠鐨勬牸寮�
+             鍒梉-] - 鎵撳嵃鍒椾俊鎭�
+             鑴卞瓧鍙穂-] - 鎵撳嵃鍒楀拰婧愮殑鎸囩ず琛�
+/Wall 鍚�鐢ㄦ墍鏈夎�﹀憡                      /w   绂佺敤鎵�鏈夎�﹀憡
+/W<n> 璁剧疆璀﹀憡绛夌骇(榛樿�� n=1)            
+/Wv:xx[.yy[.zzzzz]] 绂佺敤鍦� xx.yy.zzzzz 鐗堟湰鍚庡紩鍏ョ殑璀﹀憡鍔熻兘
+/WX 灏嗚�﹀憡瑙嗕负閿欒��                      /WL 鍚�鐢ㄥ崟琛岃瘖鏂�
+/wd<n> 绂佺敤璀﹀憡 n                       /we<n> 灏嗚�﹀憡 n 瑙嗕负閿欒��
+/wo<n> 鍙戝嚭涓�娆¤�﹀憡 n                   /w<l><n> 涓� n 璁剧疆璀﹀憡绛夌骇 1-4
+/external:I <path>      - 澶栭儴鏍囧ご鐨勪綅缃�
+/external:env:<var>    - 澶栭儴鏍囧ご浣嶇疆鐨勭幆澧冨彉閲�
+/external:anglebrackets - 灏嗘墍鏈夐�氳繃 <> 鍖呭惈鐨勬爣澶磋�嗕负澶栭儴
+/external:W<n>          - 澶栭儴鏍囧ご鐨勮�﹀憡绛夌骇
+/external:templates[-]  - 璺ㄦā鏉垮疄渚嬪寲閾捐瘎浼拌�﹀憡绾у埆
+/sdl 鏀�鎸佸叾浠栧畨鍏ㄥ姛鑳藉拰璀﹀憡
+-----------
+stderr:
+鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�
+鐗堟潈鎵�鏈�(C) Microsoft Corporation銆備繚鐣欐墍鏈夋潈鍒┿��
+-----------
+Sanity check compiler command line: cl /Fesanity_check_for_cpp.exe sanity_check_for_cpp.cpp /MD /nologo /utf-8 /Zc:__cplusplus /link /release /nologo
+Sanity check compile stdout:
+sanity_check_for_cpp.cpp
+
+-----
+Sanity check compile stderr:
+
+-----
+Sanity check built target output for build machine cpp compiler
+ -- Running test binary command:  D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_cpp.exe
+-----------
+Sanity check: `D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\sanity_check_for_cpp.exe` -> 0
+ -- stdout:
+ 
+ -- stderr:
+ 
+ -- returncode: 0
+C++ compiler for the build machine: cl (msvc 19.29.30159 "鐢ㄤ簬 x64 鐨� Microsoft (R) C/C++ 浼樺寲缂栬瘧鍣� 19.29.30159 鐗�")
+C++ linker for the build machine: link link 14.29.30159.0
+Build machine cpu family: x86_64
+Build machine cpu: x86_64
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Target machine cpu family: x86_64
+Target machine cpu: x86_64
+Pkg-config binary missing from cross or native file, or env var undefined.
+Trying a default Pkg-config fallback at pkg-config
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Pkg-config for machine host machine not found. Giving up.
+CMake binary for host machine is not cached
+CMake binary missing from cross or native file, or env var undefined.
+Trying a default CMake fallback at cmake
+Found CMake: C:\Program Files\CMake\bin\cmake.exe (4.4.2)
+Extracting basic cmake information
+CMake Toolchain: Calling CMake once to generate the compiler state
+Calling CMake (['C:\\Program Files\\CMake\\bin\\cmake.exe']) in D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\__CMake_compiler_info__ with:
+  - "--trace-expand"
+  - "--trace-format=json-v1"
+  - "--no-warn-unused-cli"
+  - "--trace-redirect=cmake_trace.txt"
+  - "-G"
+  - "Ninja"
+  - "-DCMAKE_MAKE_PROGRAM=C:\Users\user1000\AppData\Local\Temp\webrc-rubberband-tools-a8df618f854b42dcb24f590ed3661a84\bin\ninja.exe"
+  - "-DCMAKE_TOOLCHAIN_FILE=D:/Documents/Codes/2024_1_WebRC505MKII/research-input/rubberband-r2r3-independent-20261009T195900Z/build/upstream/meson-private/__CMake_compiler_info__/CMakeMesonTempToolchainFile.cmake"
+  - "."
+CMake trace warning: add_executable() non imported executables are not supported
+CMake TRACE: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\__CMake_compiler_info__\CMakeFiles\CMakeScratch\TryCompile-8bcorm\CMakeLists.txt:27 add_executable(['cmTC_a9cf6'])
+CMake trace warning: target_link_libraries() TARGET cmTC_a9cf6 not found
+CMake TRACE: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\__CMake_compiler_info__\CMakeFiles\CMakeScratch\TryCompile-8bcorm\CMakeLists.txt:33 target_link_libraries(['cmTC_a9cf6', ''])
+CMake trace warning: add_executable() non imported executables are not supported
+CMake TRACE: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\__CMake_compiler_info__\CMakeFiles\CMakeScratch\TryCompile-wop258\CMakeLists.txt:27 add_executable(['cmTC_1a5a8'])
+CMake trace warning: target_link_libraries() TARGET cmTC_1a5a8 not found
+CMake TRACE: D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\__CMake_compiler_info__\CMakeFiles\CMakeScratch\TryCompile-wop258\CMakeLists.txt:33 target_link_libraries(['cmTC_1a5a8', ''])
+Try CMake generator: auto
+Calling CMake (['C:\\Program Files\\CMake\\bin\\cmake.exe']) in D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\cmake_fftw3 with:
+  - "--trace-expand"
+  - "--trace-format=json-v1"
+  - "--no-warn-unused-cli"
+  - "--trace-redirect=cmake_trace.txt"
+  - "-DCMAKE_TOOLCHAIN_FILE=D:/Documents/Codes/2024_1_WebRC505MKII/research-input/rubberband-r2r3-independent-20261009T195900Z/build/upstream/meson-private/cmake_fftw3/CMakeMesonToolchainFile.cmake"
+  - "."
+WARNING: Unknown generator expression '$<CONFIG:Debug>'.
+WARNING: Unknown generator expression '$<:Debug>'.
+WARNING: Unknown generator expression '$<CONFIG:Debug,RelWithDebInfo>'.
+WARNING: Unknown generator expression '$<:ProgramDatabase>'.
+WARNING: Unknown generator expression '$<:StackFrameErrorCheck;UninitializedVariable>'.
+  -- Module search paths:    ['C:/Program Files', 'C:/Program Files (x86)', 'C:/Program Files/CMake']
+  -- CMake root:             C:/Program Files/CMake/share/cmake-4.4
+  -- CMake architectures:    []
+  -- CMake lib search paths: ['lib', 'lib32', 'lib64', 'libx32', 'share', '']
+Preliminary CMake check failed. Aborting.
+Run-time dependency fftw3 found: NO  (tried pkg-config and cmake)
+Pkg-config for machine host machine not found. Giving up.
+CMake binary for host machine is cached.
+Preliminary CMake check failed. Aborting.
+Run-time dependency sleef found: NO  (tried pkg-config and cmake)
+Pkg-config for machine host machine not found. Giving up.
+CMake binary for host machine is cached.
+Preliminary CMake check failed. Aborting.
+Run-time dependency sleefdft found: NO  (tried pkg-config and cmake)
+Pkg-config for machine host machine not found. Giving up.
+CMake binary for host machine is cached.
+Preliminary CMake check failed. Aborting.
+Run-time dependency samplerate found: NO  (tried pkg-config and cmake)
+Pkg-config for machine host machine not found. Giving up.
+CMake binary for host machine is cached.
+Preliminary CMake check failed. Aborting.
+Run-time dependency speexdsp found: NO  (tried pkg-config and cmake)
+Dependency sndfile for host machine skipped: feature cmdline disabled
+Dependency vamp-sdk for host machine skipped: feature vamp disabled
+Dependency boost(modules: unit_test_framework) for host machine skipped: feature tests disabled
+Run-time dependency threads found: YES
+Has header "ladspa.h" skipped: feature ladspa disabled
+Has header "lv2.h" skipped: feature lv2 disabled
+WARNING: msvc does not support C++11; attempting best effort; setting the standard to C++14
+Running compile:
+Working directory:  D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmpmnxmr6az
+Code:
+#define _GNU_SOURCE
+#include <math.h>
+#include <limits.h>
+
+        #if defined __stub_sincos || defined __stub___sincos
+        fail fail fail this function is not going to work
+        #endif
+        
+int main(void) {
+            void *a = (void*) &sincos;
+            long long b = (long long) a;
+            return (int) b;
+        }
+-----------
+Command line: `cl D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmpmnxmr6az\testfile.cpp /FeD:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmpmnxmr6az\output.exe /nologo /utf-8 /Zc:__cplusplus /MD /nologo /utf-8 /Zc:__cplusplus /Od /Oi- /permissive /EHsc /std:c++14 /permissive- kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /link /release /nologo` -> 2
+stdout:
+testfile.cpp
+D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmpmnxmr6az\testfile.cpp(10): error C2065: 鈥渟incos鈥�: 鏈�澹版槑鐨勬爣璇嗙��
+-----------
+stderr:
+cl: 鍛戒护琛� warning D9025 :姝ｅ湪閲嶅啓鈥�/permissive鈥�(鐢ㄢ��/permissive-鈥�)
+-----------
+Checking for function "sincos" : NO 
+Running compile:
+Working directory:  D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmpuf0nl78n
+Code:
+
+#include <atomic>
+int main() {
+    std::atomic<int> i;
+    std::atomic<double> d;
+    return int(i.is_lock_free() && d.is_lock_free());
+}
+
+-----------
+Command line: `cl D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmpuf0nl78n\testfile.cpp /FoD:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmpuf0nl78n\output.obj /nologo /utf-8 /Zc:__cplusplus /c /nologo /utf-8 /Zc:__cplusplus /c /Od /Oi- /permissive /EHsc /std:c++14 /permissive-` -> 0
+stdout:
+testfile.cpp
+-----------
+stderr:
+cl: 鍛戒护琛� warning D9025 :姝ｅ湪閲嶅啓鈥�/permissive鈥�(鐢ㄢ��/permissive-鈥�)
+-----------
+Checking if "test program using std::atomic" compiles: YES 
+Running compile:
+Working directory:  D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmp1x_f1pkx
+Code:
+
+#include <atomic>
+int main() {
+    std::atomic<int> i;
+    std::atomic<double> d;
+    return int(i.is_lock_free() && d.is_lock_free());
+}
+
+-----------
+Command line: `cl D:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmp1x_f1pkx\testfile.cpp /FeD:\Documents\Codes\2024_1_WebRC505MKII\research-input\rubberband-r2r3-independent-20261009T195900Z\build\upstream\meson-private\tmp1x_f1pkx\output.exe /nologo /utf-8 /Zc:__cplusplus /MD /nologo /utf-8 /Zc:__cplusplus /Od /Oi- /permissive /EHsc /std:c++14 /permissive- kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /link /release /nologo` -> 0
+stdout:
+testfile.cpp
+-----------
+stderr:
+cl: 鍛戒护琛� warning D9025 :姝ｅ湪閲嶅啓鈥�/permissive鈥�(鐢ㄢ��/permissive-鈥�)
+-----------
+Checking if "test program using std::atomic requires -latomic" links: YES 
+Compiler for language java skipped: feature jni disabled
+Message: For FFT: using built-in implementation
+Message: For resampler: using built-in implementation
+Library VampPluginSDK skipped: feature vamp disabled
+Library vamp-sdk skipped: feature vamp disabled
+Library sndfile skipped: feature cmdline disabled
+Library sndfile-1 skipped: feature cmdline disabled
+Message: Will build Rubber Band Library static library
+Message: Not building Rubber Band Library dynamic library: default_library option is set to static
+Message: Not building Java Native Interface: Java compiler or archiver missing
+Message: Not building LADSPA plugin: ladspa.h header not found
+Message: Not building LV2 plugin: lv2.h header not found
+Message: Not building Vamp plugin: Vamp dependency not found
+Message: Not building command-line utilities: libsndfile dependency not found
+Message: Not building unit tests: boost_unit_test_framework dependency not found
+Pkg-config binary missing from cross or native file, or env var undefined.
+Trying a default Pkg-config fallback at pkg-config
+Did not find pkg-config by name 'pkg-config'
+Found pkg-config: NO
+Build targets in project: 3
+
+Rubber Band Library 4.0.0
+
+  Directories
+    prefix                   : c:/
+    bindir                   : bin
+    libdir                   : lib
+    datadir                  : share
+
+  Configuration
+    FFT                      : Built-in
+    Resampler                : Built-in
+    Debug                    : Disabled
+    Architecture             : x86_64
+
+  Build targets
+    Static library           : YES
+                               Name: rubberband-static
+    Dynamic library          : NO
+    JNI library              : NO
+    LADSPA plugin            : NO
+    LV2 plugin               : NO
+    Vamp plugin              : NO
+    Command-line utility (R2): NO
+    Command-line utility (R3): NO
+    Unit tests               : NO
+
+  User defined options
+    b_vscrt                  : md
+    buildtype                : release
+    cmdline                  : disabled
+    default_library          : static
+    fft                      : builtin
+    jni                      : disabled
+    ladspa                   : disabled
+    lv2                      : disabled
+    resampler                : builtin
+    tests                    : disabled
+    vamp                     : disabled
+
+Found ninja-1.13.2.git.kitware.jobserver-pipe-1 at C:\Users\user1000\AppData\Local\Temp\webrc-rubberband-tools-a8df618f854b42dcb24f590ed3661a84\bin\ninja.exe

@@ -1,0 +1,42 @@
+{
+  "targets": {
+    "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\librubberband.a": {
+      "destination": "{libdir_static}\\librubberband.a",
+      "tag": "devel",
+      "subproject": null,
+      "install_rpath": null,
+      "build_rpaths": []
+    },
+    "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\rubberband-static.lib": {
+      "destination": "{libdir_static}\\rubberband-static.lib",
+      "tag": "devel",
+      "subproject": null,
+      "install_rpath": null,
+      "build_rpaths": []
+    }
+  },
+  "data": {
+    "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\build\\upstream\\meson-private\\rubberband.pc": {
+      "destination": "{libdir}\\pkgconfig\\rubberband.pc",
+      "tag": "devel",
+      "subproject": null
+    }
+  },
+  "headers": {
+    "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\rubberband\\rubberband-c.h": {
+      "destination": "{includedir}\\rubberband\\rubberband-c.h",
+      "tag": "devel",
+      "subproject": null
+    },
+    "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\rubberband\\RubberBandStretcher.h": {
+      "destination": "{includedir}\\rubberband\\RubberBandStretcher.h",
+      "tag": "devel",
+      "subproject": null
+    },
+    "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\research-input\\rubberband-r2r3-independent-20261009T195900Z\\upstream-source\\rubberband\\RubberBandLiveShifter.h": {
+      "destination": "{includedir}\\rubberband\\RubberBandLiveShifter.h",
+      "tag": "devel",
+      "subproject": null
+    }
+  }
+}
