@@ -12,6 +12,8 @@ This is an intermediate review, not an acceptance report. Gate 0 has passed; no 
 
 `df038ca` has independent combined shared-core Native CTest 5/5, a later final pitch assertion 1/1, fresh pinned-Emscripten pitch tests, and an immutable Native parent snapshot build with CTest 6/6. `f647ac9` adds fresh spatial timing arrays with independently recomputed quantiles/source hashes and the corrected standalone Rubber Band comparison. See `SPATIAL_PITCH_ROOT_REVIEW.md` and `RUBBERBAND_ROOT_REVIEW.md` for their actual scope. The immutable LLVM 23.1.3 AddressSanitizer archive has now passed coordinator log/manifest review and an independent instrumented CTest rerun 5/5. See `ASAN_ROOT_REVIEW.md`; the earlier concurrent-source run remains stale.
 
+`8f7405a` has an independently rebuilt and tested extended WASM ABI covering kinds 100–120. `7ca9f18` preserves a separately reviewed 100-case Signalsmith Native/WASM PCM comparison, independently rerun and numerically recomputed from full sidecars. This covers the adapter with metadata-only mode labels, not all pitch primitives or the three production routes. See `WASM_EXTENDED_ROOT_REVIEW.md` and `SIGNALSMITH_PCM_PARITY_ROOT_REVIEW.md`. Official parameter extraction has a reviewed 267-row reference candidate with repaired glyph/default/marker geometry, while the formal runtime parameter file remains fail-closed.
+
 ## Source review still requiring full qualification
 
 FFT/spatial and pitch modules have accepted partial functional and shared-core sanitizer evidence. Longer cross-runtime PCM fixtures, ABI-wrapper validation, complete callback allocation coverage and all-module timing distributions remain required. Native 64 frames and Browser actual output-array quantum remain separate measurement configurations.

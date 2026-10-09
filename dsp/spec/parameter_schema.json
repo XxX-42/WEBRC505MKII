@@ -24,7 +24,22 @@
     "default": {"type": ["number", "string", "boolean", "null"]},
     "choices": {"type": ["array", "null"], "items": {"type": "string"}},
     "manufacturerSettingText": {"type": ["string", "null"]},
-    "defaultEvidence": {"enum": ["bold_in_source", "explicitly_stated", "unknown", "not_applicable"]},
+    "defaultEvidence": {"enum": ["bold_in_source", "visual_style_in_source", "explicitly_stated", "unknown", "not_applicable"]},
+    "defaultEvidenceDetails": {
+      "type": ["object", "null"],
+      "properties": {
+        "method": {"enum": ["bold_font_span", "visual_style_in_source", "explicit_statement", "unknown"]},
+        "reviewStatus": {"enum": ["source_span_observed", "root_visual_confirmed", "not_reviewed"]},
+        "reviewerRole": {"type": ["string", "null"]},
+        "reviewedAt": {"type": ["string", "null"], "format": "date"},
+        "page": {"type": ["integer", "null"], "minimum": 1},
+        "glyph": {"type": ["string", "null"]},
+        "font": {"type": ["string", "null"]},
+        "colorRgbInteger": {"type": ["integer", "null"], "minimum": 0},
+        "bboxPoints": {"type": ["array", "null"], "items": {"type": "number"}, "minItems": 4, "maxItems": 4}
+      },
+      "additionalProperties": false
+    },
     "parseStatus": {"enum": ["verified", "partial", "unparsed_glyphs", "unverified", "unknown"]},
     "unmappedSourceGlyphs": {"type": "array", "items": {"type": "string"}},
     "controlMapping": {
