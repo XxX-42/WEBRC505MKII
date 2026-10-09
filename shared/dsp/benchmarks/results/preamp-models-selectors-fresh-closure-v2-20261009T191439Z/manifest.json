@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "artifact": "PREAMP selector adapter standalone copied-source Release closure",
+  "capturedAtUtc": "2026-10-09T19:14:55.9779466Z",
+  "disposition": "candidate; standalone tests pass; root review and factory/runtime gates pending",
+  "repoPath": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2",
+  "build": {
+    "compilerFamily": "MSVC x64",
+    "compilerVersionOutput": "用于 x64 的 Microsoft (R) C/C++ 优化编译器 19.29.30159 版\r\n版权所有(C) Microsoft Corporation。保留所有权利。\r\n\r\n编译器扫描遍数:\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe:        版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1.dll:        版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1xx.dll:      版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c2.dll:        版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\c1xx.dll:      版本 19.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\link.exe:      版本 14.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\mspdb140.dll:  版本 14.29.30159.0\r\n C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\2052\\clui.dll: 版本 19.29.30159.0\r\n\r\ncl: 命令行 error D8003 :缺少源文件名\r\n",
+    "flags": [
+      "/std:c++17",
+      "/O2",
+      "/EHsc",
+      "/W4",
+      "/permissive-"
+    ],
+    "command": "build_release.cmd",
+    "executable": "build/preamp_models_tests.exe",
+    "executableSha256": "a592d32034b22ad8d296febbdd884d3d252f59df6b6a691c7a7e526cc96ac0cd",
+    "os": {
+      "Caption": "Microsoft Windows 11 专业版",
+      "Version": "10.0.26200",
+      "BuildNumber": "26200"
+    },
+    "cpu": "AMD Ryzen 9 5900HX with Radeon Graphics        "
+  },
+  "test": {
+    "test": "preamp-models",
+    "failures": 0,
+    "ampHarmonicSpread": 0.00269989926093,
+    "speakerFrequencyResponseSpread": 0.323452189708,
+    "micFrequencyResponseSpread": 0.25135107099,
+    "micPositionMaxDiff": 0.00722425431013,
+    "micDistanceMaxDiff": 0.0117782056332,
+    "onMicDirectDelaySamples": 6,
+    "offMicDirectDelaySamples": 72,
+    "onMicReflectionDelaySamples": 18,
+    "offMicReflectionDelaySamples": 168,
+    "coldWetOnsetFrame": 80,
+    "fixedMixedPathSamples": 86,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "leftToRightLeakageSamples": 0,
+    "ampHarmonicRatios": [
+      0.313716956912,
+      0.313156651605,
+      0.312232602475,
+      0.314320695568,
+      0.313832961432,
+      0.313490849945,
+      0.313411068208,
+      0.312770990872,
+      0.311620796307
+    ],
+    "ampLowHighGainRatios": [
+      0.849418629014,
+      0.843339999167,
+      0.821345991128,
+      0.890275248531,
+      1.10262394384,
+      1.45901888377,
+      0.721384573276,
+      1.6402181616,
+      2.16437435
+    ],
+    "speakerHighLowGainRatios": [
+      0.999717173056,
+      0.836327734289,
+      0.99365411292,
+      0.975803767068,
+      0.854183726447,
+      0.815485235085,
+      1.06926626055,
+      0.776259195091,
+      0.745814070843
+    ],
+    "speakerIrFrames": [
+      1,
+      816,
+      480,
+      576,
+      672,
+      768,
+      576,
+      864,
+      912
+    ],
+    "micHighLowGainRatios": [
+      1.07588596731,
+      0.870139055979,
+      1.03347863642,
+      0.920775632761,
+      0.824534896316
+    ],
+    "micPositionGainRatios": [
+      0.0880463661797,
+      0.0862241403291,
+      0.0842427213193,
+      0.0821041178551,
+      0.0798135949983,
+      0.0773798089793,
+      0.0748148225277,
+      0.0721338075103,
+      0.0693547523339,
+      0.0664978561614,
+      0.0635848529973
+    ]
+  },
+  "publishedUiContractSnapshot": {
+    "path": "reference/dsp/spec/official_fx_ui_contracts.json",
+    "sha256": "3615e2d18adc18237c0429cc29b8bfe04cdacd73efb1ce033fd52576a29ee7c6",
+    "effectId": "rc505mkii.fx.preamp",
+    "printedPage": 38
+  },
+  "sourceClosureSha256": {
+    "shared/dsp/include/webrc/dsp/preamp_models.hpp": "e50b2b499eca7def8020e50b541ae19e4bd90c5667eaef498377b6367738c14b",
+    "shared/dsp/include/webrc/dsp/preamp_fx.hpp": "0ac1777795635cf0637d1dd853ff71a7ea6a4b379a9183cdaa95f6b6890c2f2d",
+    "shared/dsp/include/webrc/dsp/nonlinear.hpp": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988",
+    "shared/dsp/include/webrc/dsp/primitives.hpp": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+    "shared/dsp/include/webrc/dsp/spatial_temporal.hpp": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f",
+    "shared/dsp/include/webrc/dsp/fft.hpp": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40",
+    "shared/dsp/src/preamp_models.cpp": "4df8bad1a5ac319fd71f961d0be2fcd49b02702c657a73a66dd5f8b83923e9a4",
+    "shared/dsp/src/preamp_fx.cpp": "84fd4eed5c2c630e7e896c90d9b0f8af745b9617758f7cd452d6952a9e299047",
+    "shared/dsp/src/nonlinear.cpp": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85",
+    "shared/dsp/src/spatial_temporal.cpp": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d",
+    "shared/dsp/src/fft.cpp": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57",
+    "shared/dsp/src/primitives.cpp": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+    "shared/dsp/tests/preamp_models_tests.cpp": "6b150e9125e99d63c23b1ea7fb477ba1bdf8e814ce50924b0f2d6e15a1feb214"
+  }
+}

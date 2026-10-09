@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "reviewedAtUtc": "2026-10-09T19:26:16.049182+00:00",
+  "authoritativeArchive": "shared/dsp/benchmarks/results/preamp-models-selectors-fresh-closure-v4-lineage-20261010",
+  "authoritativeManifestSha256": "b55963a2698980b1169db98591d3aa4145a54360cb57780dd871c04101d66097",
+  "authoritativeIndexSha256": "fd9d940b589b1f669a4e8c95ced31bb27c03d8e8d028d287c566e9e70441aa8e",
+  "inventoriesVerified": [
+    {
+      "archive": "preamp-models-selectors-fresh-closure-20261009T191253Z",
+      "entries": 30,
+      "manifestSha256": "da4528b033fcc1a4057ecab96395b72e2e127dd8611761cd46fa0d5e769f4e4b",
+      "indexSha256": "da19700e7314c2f06eb4fed366a451e6d7c127dabf01783545edcab88c45d947"
+    },
+    {
+      "archive": "preamp-models-selectors-fresh-closure-v2-20261009T191439Z",
+      "entries": 30,
+      "manifestSha256": "72fac9717a0982b57f3e5162d7a39827f860c91e9d99b254d91999aa14c4b3f4",
+      "indexSha256": "de6e1840091f45295f0b492181875edc75add67fad380ac67af22c16eeedc095"
+    },
+    {
+      "archive": "preamp-models-selectors-fresh-closure-v3-readme-20261009T191548Z",
+      "entries": 30,
+      "manifestSha256": "21bcf463831bf2f008f5a3e2971deaa5df3411c9b52f785bb66044ea164b37a5",
+      "indexSha256": "958754445b9779af6f7174e3585d1a7acb3d6a81181150b1242063d9fdbdd876"
+    },
+    {
+      "archive": "preamp-models-selectors-fresh-closure-v4-lineage-20261010",
+      "entries": 30,
+      "manifestSha256": "b55963a2698980b1169db98591d3aa4145a54360cb57780dd871c04101d66097",
+      "indexSha256": "fd9d940b589b1f669a4e8c95ced31bb27c03d8e8d028d287c566e9e70441aa8e"
+    }
+  ],
+  "v1ToV2CompilerInputChanges": [
+    "shared/dsp/tests/preamp_models_tests.cpp"
+  ],
+  "v2ToV4BuildPayloadByteIdentical": true,
+  "liveSourceInputsByteIdentical": 13,
+  "authoritativeExecutableRerunPassed": true,
+  "freshArchive": "shared/dsp/benchmarks/results/preamp-models-root-fresh-20261009T192600Z",
+  "freshArchiveManifestSha256": "2dbd2dbd1b6256cd29feb9f6e346ab59aec51f4ad9a322e348f4cf3eb4c380d7",
+  "freshArchiveIndexSha256": "47e39aa4f7a3caf119c9eb54bf08c98348be79d75662884f9d74755eebabc39a",
+  "freshSourceRebuildAndTestsPassed": true,
+  "recordedMetrics": {
+    "test": "preamp-models",
+    "failures": 0,
+    "ampHarmonicSpread": 0.00269989926093,
+    "speakerFrequencyResponseSpread": 0.323452189708,
+    "micFrequencyResponseSpread": 0.25135107099,
+    "micPositionMaxDiff": 0.00722425431013,
+    "micDistanceMaxDiff": 0.0117782056332,
+    "onMicDirectDelaySamples": 6,
+    "offMicDirectDelaySamples": 72,
+    "onMicReflectionDelaySamples": 18,
+    "offMicReflectionDelaySamples": 168,
+    "coldWetOnsetFrame": 80,
+    "fixedMixedPathSamples": 86,
+    "callbackAllocations": 0,
+    "callbackFrees": 0,
+    "leftToRightLeakageSamples": 0,
+    "ampHarmonicRatios": [
+      0.313716956912,
+      0.313156651605,
+      0.312232602475,
+      0.314320695568,
+      0.313832961432,
+      0.313490849945,
+      0.313411068208,
+      0.312770990872,
+      0.311620796307
+    ],
+    "ampLowHighGainRatios": [
+      0.849418629014,
+      0.843339999167,
+      0.821345991128,
+      0.890275248531,
+      1.10262394384,
+      1.45901888377,
+      0.721384573276,
+      1.6402181616,
+      2.16437435
+    ],
+    "speakerHighLowGainRatios": [
+      0.999717173056,
+      0.836327734289,
+      0.99365411292,
+      0.975803767068,
+      0.854183726447,
+      0.815485235085,
+      1.06926626055,
+      0.776259195091,
+      0.745814070843
+    ],
+    "speakerIrFrames": [
+      1,
+      816,
+      480,
+      576,
+      672,
+      768,
+      576,
+      864,
+      912
+    ],
+    "micHighLowGainRatios": [
+      1.07588596731,
+      0.870139055979,
+      1.03347863642,
+      0.920775632761,
+      0.824534896316
+    ],
+    "micPositionGainRatios": [
+      0.0880463661797,
+      0.0862241403291,
+      0.0842427213193,
+      0.0821041178551,
+      0.0798135949983,
+      0.0773798089793,
+      0.0748148225277,
+      0.0721338075103,
+      0.0693547523339,
+      0.0664978561614,
+      0.0635848529973
+    ]
+  },
+  "originalArchivesUnchangedDuringRootReview": true,
+  "v3HistoryLimitation": "Producer overwrote initially announced v3 README/index before root review. Current superseded v3 is archived; original announced README bytes are unavailable. v4 preserves v2 compiler inputs and build outputs.",
+  "micDistanceSemantics": "OFF MIC far / ON MIC near is an inference from related Roland manuals; both retain the chosen mic model.",
+  "relatedPrimaryManuals": [
+    "https://static.roland.com/assets/media/pdf/GT-8_OM.pdf",
+    "https://static.roland.com/assets/media/pdf/GP-10_e02_W.pdf"
+  ],
+  "limitations": [
+    "Standalone candidate only",
+    "No Native factory/UI or WASM parity qualification",
+    "No callback duration distribution",
+    "No final sound-quality equivalence",
+    "Not hardware E2E latency"
+  ]
+}
