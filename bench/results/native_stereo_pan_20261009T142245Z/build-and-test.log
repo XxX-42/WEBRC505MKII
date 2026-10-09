@@ -1,0 +1,18 @@
+**********************************************************************
+** Visual Studio 2019 Developer Command Prompt v16.11.58
+** Copyright (c) 2021 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+multitrack_looper_core.cpp
+multitrack_looper_core_tests.cpp
+primitives.cpp
+control_dynamics.cpp
+正在生成代码...
+multitrack_looper_core.cpp
+native_track_host.cpp
+native_track_host_tests.cpp
+primitives.cpp
+control_dynamics.cpp
+正在生成代码...
+PASS multitrack_looper_core_tests
+PASS native_track_host_tests

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "20261009T141828Z",
+  "purpose": "isolated true-stereo pan and five-track host tests",
+  "compiler": "MSVC 19.29.30154, Visual Studio 2019 Build Tools 16.11.58, x64, /EHsc /std:c++17 /O2 /W4",
+  "sourceSetHashAlgorithm": "SHA256(UTF8(path + NUL + fileSha256 + LF) for each sourceFiles row sorted by path)",
+  "sourceSetSha256": "4d5057fbf7033a944a14d5eb0d8ea296f03a4c3c331902335bcaa88e64cc7c14",
+  "sourceFiles": [
+    {
+      "path": "native-mvp/engine-cpp/include/multitrack_looper_core.hpp",
+      "sha256": "f0121a8e092aff0bc9d75faa34ac8dc450bee7b35a7755367cd8a5cc21174783",
+      "bytes": 6070
+    },
+    {
+      "path": "native-mvp/engine-cpp/include/native_track_host.hpp",
+      "sha256": "4aad07d5a1eb9d6ad6559b7ff6f4ec311f217b0d91b84fdb349c075ab1f19255",
+      "bytes": 4052
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/multitrack_looper_core.cpp",
+      "sha256": "5a83c21d0dc57447a7ebc3048215ca40c0806af455df21bea229a614dd38237d",
+      "bytes": 20186
+    },
+    {
+      "path": "native-mvp/engine-cpp/src/native_track_host.cpp",
+      "sha256": "20a28484a9f0c9e5f700b2add78117c759860a09c24865323adc233a5dc25dc3",
+      "bytes": 12068
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp",
+      "sha256": "b074a25776ca05f4f3ccf7547d02e2591ef001fd9c7065a55da2d25035b9b600",
+      "bytes": 16855
+    },
+    {
+      "path": "native-mvp/engine-cpp/tests/native_track_host_tests.cpp",
+      "sha256": "a4289f63a67f7951357c898ad74973a4875c66228d527520919163423694b48b",
+      "bytes": 10208
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb",
+      "bytes": 6746
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c",
+      "bytes": 10933
+    },
+    {
+      "path": "shared/dsp/src/control_dynamics.cpp",
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a",
+      "bytes": 18208
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc",
+      "bytes": 38017
+    }
+  ]
+}

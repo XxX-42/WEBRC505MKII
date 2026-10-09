@@ -42,3 +42,11 @@
 /bench/results/browser_graph_rhythm_smoke_20261009T134923Z/** -text -whitespace
 /bench/results/browser_graph_rhythm_smoke_20261009T135026Z/** -text -whitespace
 /bench/results/browser_graph_rhythm_*/**/*.wasm -diff
+# Exact standalone five-track stereo compiler inputs and evidence.
+/native-mvp/engine-cpp/include/multitrack_looper_core.hpp -text
+/native-mvp/engine-cpp/include/native_track_host.hpp -text
+/native-mvp/engine-cpp/src/multitrack_looper_core.cpp -text
+/native-mvp/engine-cpp/src/native_track_host.cpp -text
+/native-mvp/engine-cpp/tests/multitrack_looper_core_tests.cpp -text
+/native-mvp/engine-cpp/tests/native_track_host_tests.cpp -text
+/bench/results/native_stereo_pan_20261009T142245Z/** -text -whitespace

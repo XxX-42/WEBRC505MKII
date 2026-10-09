@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "scope": "Software-only native stereo pan and five-track stereo host tests; no device stream opened",
+  "sourceSetSha256": "4d5057fbf7033a944a14d5eb0d8ea296f03a4c3c331902335bcaa88e64cc7c14",
+  "compiler": "MSVC 19.29.30154, Visual Studio 2019 Build Tools 16.11.58, x64, /EHsc /std:c++17 /O2 /W4",
+  "tests": [
+    {
+      "name": "multitrack_looper_core_tests",
+      "exitCode": 0,
+      "coverage": "true-stereo pan center/hard-left/hard-right plus duplicated-mono contract"
+    },
+    {
+      "name": "native_track_host_tests",
+      "exitCode": 0,
+      "coverage": "five independent stereo signatures recorded and played through host without channel/track crosstalk"
+    }
+  ],
+  "archiveBuildScriptSha256": "e22ad336dc47a5e004543d9c4e3922a6f68e6a523569921174c0e3b6284afcaf",
+  "archiveBuildLogSha256": "43b0d0d28666606ae72363c184526d60351e0dde955348affd01aa73ccebbf33",
+  "executableSha256": {
+    "native_track_host_tests.exe": "672476a5981bbbd1e3fc6d978771e244bb07ebb1d7734ef23d97fe3967d7adde",
+    "multitrack_looper_core_tests.exe": "34052fd41bc37f99931c5bb6d19f8f3b74b899615f3660e767c086ee6e3deb7d"
+  }
+}
