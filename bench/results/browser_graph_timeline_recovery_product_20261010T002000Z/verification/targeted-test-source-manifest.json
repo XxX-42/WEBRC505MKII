@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": "browser_graph_timeline_recovery_product_20261010T002000Z",
+  "unitCommand": "npm run test:unit -- --run tests/unit/stereoWorklet.spec.ts tests/unit/browserRealtimeProtocol.spec.ts",
+  "testResult": "PASS: 2 files, 31 tests",
+  "buildCommand": "npm run build",
+  "buildResult": "PASS: prebuild shared-DSP guard, vue-tsc, Vite",
+  "testFiles": [
+    {
+      "sourcePath": "tests/unit/stereoWorklet.spec.ts",
+      "archivedCopy": "targeted-test-sources/stereoWorklet.spec.ts",
+      "byteLength": 47878,
+      "sha256": "b42abc456c968f1ca8f07ab008e499a6f277ad40f95905f8dd2fd40dccb59755"
+    },
+    {
+      "sourcePath": "tests/unit/browserRealtimeProtocol.spec.ts",
+      "archivedCopy": "targeted-test-sources/browserRealtimeProtocol.spec.ts",
+      "byteLength": 19805,
+      "sha256": "43673bd0c53e4da25e591b00e5f869551d7523f82acb772efbe15eef7ebd1d7e"
+    }
+  ],
+  "logs": [
+    {
+      "path": "verification/targeted-unit.log",
+      "byteLength": 829,
+      "sha256": "62348638151fdd05f3ea4b8bfef0c3faa1ad94e42b772844d89a9172980e6213"
+    },
+    {
+      "path": "verification/production-build.log",
+      "byteLength": 1668,
+      "sha256": "f05f835cd7e67c5d0e7c9bb405d8580a7a2f9d7a6f76b0024a1359960612e671"
+    },
+    {
+      "path": "verification/worklet-syntax.log",
+      "byteLength": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "verification/smoke-syntax.log",
+      "byteLength": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "note": "Original app/WASM snapshot manifest contains 158 files (106 app/build assets + 52 WASM build inputs) and intentionally excludes tests; these test source copies supplement it.",
+  "headObservedAtManifestCapture": "f8f51711879123fa21a62b18aa47f126cff12de8"
+}

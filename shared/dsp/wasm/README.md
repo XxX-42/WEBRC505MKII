@@ -1,27 +1,28 @@
 # Shared DSP WASM bridge
 
-This directory builds a WebAssembly C ABI over the same C++ implementation used
-by the Native engine: `shared/dsp/src/primitives.cpp`. It does not contain a
+This directory builds a WebAssembly C ABI over the shared C++ DSP library in
+`shared/dsp/src`, which is also used by the Native engine. It does not contain a
 second set of audio algorithms. The ABI uses opaque handles because C++ state
 layout is private to the shared core.
 
-The base API kind IDs 1–11 and control IDs 1–15 are versioned independently
-from the extended kind IDs. ABI version 2 keeps existing control IDs 1–13
-unchanged; biquad low/high shelf controls were appended as IDs 14/15. Shelf
-control values are `[frequencyHz, gainDb, slope, smoothingMs]`; the final
-`smoothingMs` element may be omitted and defaults to 5 ms. The shared core
-rejects invalid frequency, gain, slope, or smoothing values before changing
-the active coefficients.
+The base API kind IDs 1–11 and control IDs are a distinct namespace from the
+extended kind IDs. ABI version 2 keeps existing control IDs 1–13 unchanged;
+the following additive controls extend that API without renumbering existing
+values. Shelf control values are `[frequencyHz, gainDb, slope, smoothingMs]`;
+the final `smoothingMs` element may be omitted and defaults to 5 ms. Reset
+controls 16–18 are setup/control operations and should be applied before the
+processor becomes active. The shared core rejects invalid shelf values before
+changing active coefficients.
 
 | Base kind | C ABI ID | Controls |
 | --- | ---: | --- |
-| Parameter smoother | 1 | 1: target `[value, timeMs]` |
+| Parameter smoother | 1 | 1: target `[value, timeMs]`; 16: reset value `[value]` |
 | Biquad DF2T | 2 | 2: low-pass; 3: high-pass; 4: band-pass; 5: peaking; 14: low shelf; 15: high shelf |
 | TPT state-variable filter | 3 | 6: frequency/Q |
 | First-order all-pass | 4 | 7: frequency |
 | Lagrange delay | 5 | delay time per frame through the process parameter span |
-| LFO | 6 | 8: frequency |
-| PolyBLEP oscillator | 7 | 9: frequency; 10: waveform |
+| LFO | 6 | 8: frequency; 17: reset phase cycles `[phaseCycles]` |
+| PolyBLEP oscillator | 7 | 9: frequency; 10: waveform; 18: reset phase cycles `[phaseCycles]` |
 | ADAA cubic shaper | 8 | 11: drive |
 | Dual-detector compressor | 9 | 12: parameters |
 | 2×2 delay matrix | 10 | 13: same/cross feedback |
@@ -80,8 +81,14 @@ only adapts calls to the shared C++ primitives.
 ## Versioned extended kinds
 
 `webrc_dsp_abi_version()` returns `2`, `webrc_dsp_extended_api_version()`
-returns `1`, and capability bits `0x1`/`0x2` advertise the base and extended
-APIs respectively. `webrc_dsp_extended.h` assigns stable C ABI kind IDs that
+returns `1`, and `webrc_dsp_capabilities()` returns `0x7`: bits `0x1`, `0x2`,
+and `0x4` advertise the base primitives, extended kinds, and shared product FX
+registry respectively. The additive FX API reports version 1 through
+`webrc_dsp_fx_api_version()`; ABI version 2 and its existing entry points remain
+unchanged. Browser setup must require all three bits and the FX API version
+before exposing these capabilities.
+
+`webrc_dsp_extended.h` assigns stable C ABI kind IDs that
 are separate from the formula references in `dsp/spec/formula_index.json`.
 Creating and exercising a kind through this bridge does not mean that a named
 product FX, all 53 FX, or a full application graph has passed acceptance.
@@ -109,6 +116,44 @@ product FX, all 53 FX, or a full application graph has passed acceptance.
 | Reverse segment | 118 | F25 |
 | Platter inertia | 119 | F26 |
 | Drum voice pool | 120 | F24 |
+| Clean-room rhythm renderer | 121 | 240 CR-RHY patterns × 16 procedural kits |
+
+Kind 121 reads immutable, generated clean-room pattern and kit tables. It does
+not embed or claim third-party MIDI, samples, or audio. The table digests are
+queried through the C ABI so a caller can pin the data actually compiled into
+the module. Setup operations select a table pattern/kit and start at an absolute
+frame while stopped. Queue variation/fill/ending/stop/tempo methods are the
+only cross-thread-safe controls; rendering takes an explicit absolute block
+start and the actual output frame count. A noncontiguous frame range returns an
+error after the renderer zeroes that range and resets its transport. Rhythm
+metrics are a quiescent snapshot API and must not race `process_block`.
+
+## Shared product FX registry
+
+The shared catalog has 53 stable ordinal/ID pairs sourced from
+`dsp/spec/fx_catalog.json`; formula IDs F01–F29 are not these registry ordinals.
+The current WASM bridge exposes real processors for ordinals 1–4, 7, 9, 25,
+26, 29, 30, 32, 36, 47, and 50–53. Other catalog entries remain metadata-only
+and reject creation with a non-success status. These 17 processors use the same
+native/Web C++ core and generation-checked `Fx` handle domain: LPF, BPF, HPF,
+Phaser, Lo-Fi, Ring Modulator, Dynamics, EQ, Auto Pan, Manual Pan, Tremolo,
+Delay, Reverb, Beat Scatter, Beat Repeat, Beat Shift, and Vinyl Flick. Their
+parameter descriptors are reconstruction-safe ranges;
+`officialParametersValidated` remains false. This available subset does not
+claim that the remaining 36 catalog entries or a complete 49-input/53-track
+graph are implemented.
+
+`webrc_dsp_fx_create()` is setup-only and reserves its reported peak requirement
+in the common 48 MiB managed-memory ledger before factory construction or
+prepare. Prepare and destroy require a suspended/inactive candidate and must
+not run on the active Worklet render thread. Stereo process calls use separate
+planar input and output pointers; mono handles only require left pointers.
+`process_stereo_events()` applies at most 256 sorted frame-offset parameter
+events using a fixed stack array. Process pointers must come from checked
+transfer allocations or other validated spans inside this module's memory.
+Parameter-set calls belong to the processor's single audio owner. The FX
+registry does not claim the other 45 processors, a published official UI
+mapping, a complete 49-input/53-track graph, or realtime deadline qualification.
 
 ## Setup, processing, and pointer boundaries
 

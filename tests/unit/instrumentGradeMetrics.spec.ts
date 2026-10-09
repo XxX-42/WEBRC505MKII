@@ -151,7 +151,7 @@ describe('instrument-grade measurement schema and gate', () => {
     report.run.systemUnderTest = 'web-audio-bypass-baseline';
     const result = evaluateInstrumentGrade(report);
     expect(result.status).toBe('NOT_VERIFIED');
-    expect(result.missing).toContain('project DSP physical loopback chain, 48 kHz processing graph, 128-frame quantum, and path evidence');
+    expect(result.missing).toContain('project DSP physical loopback chain, 48 kHz processing graph, observed render quantum, and path evidence');
   });
 
   it('uses the stricter P50 < 10 ms gate and the requested jitter/trigger/alignment statistics', () => {
@@ -206,7 +206,7 @@ describe('instrument-grade measurement schema and gate', () => {
     expect(result.callback96kChecks[0]?.status).toBe('unknown');
   });
 
-  it('rejects 96 kHz profiles with a mismatched sample rate or quantum size', () => {
+  it('accepts an observed non-default render quantum and rejects invalid sizes or mismatched sample rate', () => {
     const report = passingReport();
     const callback: DistributionMeasurement = {
       ...measuredDistribution('callback96k', { p50: 0.25, p95: 0.4, p99: 0.5, max: 0.6, maxAbs: 0.6 }, 'software-diagnostic'),
@@ -228,8 +228,13 @@ describe('instrument-grade measurement schema and gate', () => {
     expect(validateInstrumentGradeReport(wrongRate).issues.join(' ')).toContain('sampleRateHz must be 96000');
 
     const wrongQuantum = JSON.parse(JSON.stringify(report)) as Record<string, unknown>;
-    ((wrongQuantum.software as Record<string, unknown>).callback96kProfile as Record<string, unknown>).renderQuantumFrames = 96;
-    expect(validateInstrumentGradeReport(wrongQuantum).issues.join(' ')).toContain('renderQuantumFrames must be 128');
+    ((wrongQuantum.software as Record<string, unknown>).callback96kProfile as Record<string, unknown>).renderQuantumFrames = 0;
+    expect(validateInstrumentGradeReport(wrongQuantum).issues.join(' ')).toContain('renderQuantumFrames must be a positive integer');
+
+    const observedDifferentQuantum = JSON.parse(JSON.stringify(report)) as Record<string, unknown>;
+    ((observedDifferentQuantum.software as Record<string, unknown>).callback96kProfile as Record<string, unknown>).renderQuantumFrames = 96;
+    expect(validateInstrumentGradeReport(observedDifferentQuantum).valid).toBe(true);
+    expect(evaluateInstrumentGrade(observedDifferentQuantum as unknown as InstrumentGradeReport).callback96kChecks[0]?.status).toBe('pass');
   });
 
   it('rejects incomplete REC/PLAY/STOP/FX trigger coverage', () => {

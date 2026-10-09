@@ -44,14 +44,14 @@ const initialMemoryBytes = memory.buffer.byteLength;
 assert.equal(initialMemoryBytes, 64 * 1024 * 1024);
 assert.equal(wasm.webrc_dsp_abi_version(), 2);
 assert.equal(wasm.webrc_dsp_extended_api_version(), 1);
-assert.equal(wasm.webrc_dsp_capabilities(), 3);
+assert.equal(wasm.webrc_dsp_capabilities(), 7);
 
 const Kind = {
   wdf: 100, oversampled: 101, pattern: 102, scheduler: 103, midSide: 104,
   onset: 105, bitrate: 106, ringMod: 107, yin: 108, psolaBuffer: 109,
   streamingPsola: 110, phaseVocoder: 111, vocoder: 112, signalsmith: 113,
   granular: 114, fdn: 115, convolver: 116, freeze: 117, reverse: 118,
-  platter: 119, drums: 120,
+  platter: 119, drums: 120, rhythm: 121,
 };
 const Control = {
   nonlinearDrive: 2, patternGains: 3, schedulerTempo: 4, midSideWidth: 5,
@@ -121,6 +121,15 @@ function fillSine(buffer, frames, frequency, amplitude = 0.5, phase = 0) {
   for (let index = 0; index < frames; index += 1) {
     buffer.f32[index] = amplitude * Math.sin(2 * Math.PI * frequency * index / sampleRate + phase);
   }
+}
+
+function readCString(address, maximumBytes = 96) {
+  assert.ok(Number.isInteger(address) && address > 0, 'C string pointer is non-null');
+  const bytes = new Uint8Array(memory.buffer, address, maximumBytes);
+  let length = 0;
+  while (length < bytes.length && bytes[length] !== 0) length += 1;
+  assert.ok(length < bytes.length, 'C string is null terminated within bound');
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, length));
 }
 
 const inputLeft = allocate(maxBlock);
@@ -339,6 +348,91 @@ assert.equal(wasm.webrc_dsp_extended_process_stereo(drums, 0, 0,
   outputLeft.address, outputRight.address, maxBlock), Status.ok);
 assertFiniteNonZero(outputLeft.f32, 'kick voice left', 1e-10);
 assertFiniteNonZero(outputRight.f32, 'kick voice right', 1e-10);
+
+// Clean-room rhythm kind 121: immutable 240-pattern/16-kit data, explicit
+// absolute frame rendering, real stereo PCM, and partition-invariant output.
+assert.equal(wasm.webrc_dsp_extended_rhythm_pattern_count(), 240);
+assert.equal(wasm.webrc_dsp_extended_rhythm_kit_count(), 16);
+assert.equal(readCString(wasm.webrc_dsp_extended_rhythm_patterns_sha256()),
+  'd0c9efa799f2a48193c426e2f5cb54182c6f564da6a8f90c7070785654b89115');
+assert.equal(readCString(wasm.webrc_dsp_extended_rhythm_kits_sha256()),
+  'af2315cd8bba5d60a8b7125ef7afef4f8bb359ebdd9475bda617e6129468c3f0');
+const rhythmMetrics = allocate(14);
+const rhythmMetricsView = new DataView(memory.buffer, rhythmMetrics.address, 56);
+const rhythmProfiles = [
+  ['uniform-64', 64], ['uniform-128', 128], ['uniform-256', 256],
+  ['uniform-512', 512], ['mixed-64-512', 0],
+];
+let referenceRhythmLeft;
+let referenceRhythmRight;
+for (const [profile, fixedFrames] of rhythmProfiles) {
+  const rhythm = create(Kind.rhythm, [0, 0, 120], 2);
+  assert.equal(wasm.webrc_dsp_extended_output_latency_samples(rhythm), 0);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_algorithmic_latency_samples(rhythm), 0);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_set_pattern(rhythm, 240), Status.badArgument,
+    'out-of-range pattern selection is rejected');
+  assert.equal(wasm.webrc_dsp_extended_rhythm_set_kit(rhythm, 16), Status.badArgument,
+    'out-of-range kit selection is rejected');
+  assert.equal(wasm.webrc_dsp_extended_rhythm_queue_pattern_kit(rhythm, 240, 0), Status.badArgument,
+    'queued out-of-range clean-room pattern is rejected');
+  assert.equal(wasm.webrc_dsp_extended_rhythm_queue_pattern_kit(rhythm, 1, 7), Status.ok,
+    'a valid pattern/kit pair is queued for the next downbeat');
+  assert.equal(wasm.webrc_dsp_extended_rhythm_queue_variation(rhythm, 0), Status.ok);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_queue_tempo(rhythm, 120), Status.ok);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_start_words(rhythm, 0, 0, 0), Status.ok);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_start_words(rhythm, 0, 0, 0), Status.badArgument,
+    'a duplicate start request is rejected');
+  const renderedLeft = new Float32Array(15360);
+  const renderedRight = new Float32Array(15360);
+  let frame = 0;
+  let mixedCursor = 0;
+  const mixed = [64, 128, 256, 512];
+  while (frame < renderedLeft.length) {
+    const requested = fixedFrames || mixed[mixedCursor++ % mixed.length];
+    const blockFrames = Math.min(requested, renderedLeft.length - frame);
+    const result = wasm.webrc_dsp_extended_rhythm_process_block_words(
+      rhythm, frame >>> 0, Math.floor(frame / 0x1_0000_0000) >>> 0,
+      outputLeft.address, outputRight.address, blockFrames);
+    assert.equal(result, Status.ok, `${profile} processes frame ${frame} (${blockFrames})`);
+    assert.ok(outputLeft.f32.subarray(0, blockFrames).every(Number.isFinite));
+    assert.ok(outputRight.f32.subarray(0, blockFrames).every(Number.isFinite));
+    renderedLeft.set(outputLeft.f32.subarray(0, blockFrames), frame);
+    renderedRight.set(outputRight.f32.subarray(0, blockFrames), frame);
+    frame += blockFrames;
+  }
+  assertFiniteNonZero(renderedLeft, `${profile} clean-room rhythm left`, 1e-7);
+  assertFiniteNonZero(renderedRight, `${profile} clean-room rhythm right`, 1e-7);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_get_metrics(rhythm, rhythmMetrics.address), Status.ok);
+  assert.equal(rhythmMetricsView.getUint32(0, true), 1, 'renderer remains in playback');
+  assert.equal(wasm.webrc_dsp_extended_rhythm_selected_pattern(rhythm), 1);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_selected_kit(rhythm), 7);
+  assert.equal(wasm.webrc_dsp_extended_rhythm_is_playing(rhythm), 1);
+  assert.ok(rhythmMetricsView.getUint32(12, true) > 0, 'drum voices were triggered');
+  assert.ok(rhythmMetricsView.getBigUint64(32, true) > 0n, 'rhythm events were triggered');
+  const thisLeftBytes = Buffer.from(renderedLeft.buffer);
+  const thisRightBytes = Buffer.from(renderedRight.buffer);
+  if (!referenceRhythmLeft) {
+    referenceRhythmLeft = thisLeftBytes;
+    referenceRhythmRight = thisRightBytes;
+  } else {
+    assert.deepEqual(thisLeftBytes, referenceRhythmLeft, `${profile} left PCM matches other partitions`);
+    assert.deepEqual(thisRightBytes, referenceRhythmRight, `${profile} right PCM matches other partitions`);
+  }
+}
+assert.equal(wasm.webrc_dsp_extended_rhythm_queue_fill(handles.at(-1)), Status.ok);
+assert.equal(wasm.webrc_dsp_extended_rhythm_queue_ending(handles.at(-1)), Status.ok);
+assert.equal(wasm.webrc_dsp_extended_rhythm_queue_stop(handles.at(-1)), Status.ok);
+
+const rhythmGap = create(Kind.rhythm, [0, 0, 120], 2);
+assert.equal(wasm.webrc_dsp_extended_rhythm_process_block(rhythmGap, 0n,
+  outputLeft.address, outputRight.address, 64), Status.ok);
+outputLeft.f32.fill(1, 0, 64);
+outputRight.f32.fill(1, 0, 64);
+assert.equal(wasm.webrc_dsp_extended_rhythm_process_block(rhythmGap, 128n,
+  outputLeft.address, outputRight.address, 64), Status.badArgument,
+  'noncontiguous rhythm frame ranges fail closed');
+assert.ok(outputLeft.f32.subarray(0, 64).every(value => value === 0));
+assert.ok(outputRight.f32.subarray(0, 64).every(value => value === 0));
 
 // Utilities shared by the portable STFT and reverb code.
 const fftBuffer = allocate(16);

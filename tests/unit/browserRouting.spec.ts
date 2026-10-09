@@ -114,6 +114,29 @@ describe('channel-aware browser routing state', () => {
     expect(decoded).toEqual(state);
   });
 
+  it('updates an observed source quantum without rebuilding or reconnecting its route', async () => {
+    vi.stubGlobal('Audio', FakeAudioElement);
+    const sourceNode = new FakeAudioNode();
+    try {
+      const graph = new BrowserRoutingGraph(
+        new FakeAudioContext() as unknown as AudioContext,
+        new FakeAudioNode() as unknown as AudioWorkletNode,
+        new FakeAudioNode() as unknown as AudioNode,
+      );
+      await graph.setSource({
+        id: 'rhythm', node: sourceNode as unknown as AudioNode, label: 'Rhythm engine', kind: 'rhythm', channelCount: 2,
+      }, 'rhythm');
+      const before = graph.getNodeDiagnostics();
+      graph.setSourceRoutingDelayFrames('rhythm', 96);
+      expect(graph.getState().sources.find((source) => source.id === 'rhythm')?.routingDelayFrames).toBe(96);
+      expect(graph.getNodeDiagnostics()).toEqual(before);
+      expect(sourceNode.connections.length).toBeGreaterThan(0);
+      expect(() => graph.setSourceRoutingDelayFrames('rhythm', 0.5)).toThrow(/integer between/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('rolls back an earlier sink change when a later output sink rejects', async () => {
     FakeAudioElement.instances.length = 0;
     vi.stubGlobal('Audio', FakeAudioElement);

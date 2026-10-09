@@ -76,7 +76,7 @@ const memory = wasm.memory;
 assert.equal(memory.buffer.byteLength, 64 * 1024 * 1024);
 assert.equal(wasm.webrc_dsp_abi_version(), 2);
 assert.equal(wasm.webrc_dsp_extended_api_version(), 1);
-assert.equal(wasm.webrc_dsp_capabilities(), 3);
+assert.equal(wasm.webrc_dsp_capabilities(), 7);
 
 const Status = { ok: 0 };
 const KindSignalsmithStretch = 113;

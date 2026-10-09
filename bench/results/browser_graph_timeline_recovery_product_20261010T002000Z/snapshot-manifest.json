@@ -1,0 +1,808 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T16:01:38.950Z",
+  "appRootSource": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2",
+  "wasmSourceRoot": "D:\\Documents\\Codes\\2024_1_WebRC505MKII\\2025_WebRC505MKII_v2\\bench\\results\\browser_graph_same_context_probe_20261009T154634Z",
+  "nodeVersion": "v24.19.0",
+  "wasmBuildManifestSha256": "2a496c7ae556cb3964ff26c1ce02e1edc1c6a831fd87fb4cb76752af5888f8aa",
+  "wasmSourceSetSha256": "ceea5f17a853de28076fbb5701cde4101a55ef6ad0355feb993ac3313cd58055",
+  "wasmArtifactSha256": "c17244e85d8f2c0c7eabbeafa216e95d2a34e2800969f2343451e0241701d8db",
+  "wasmArtifactBytes": 590730,
+  "fileCount": 158,
+  "appFileCount": 106,
+  "wasmBuildSourceCount": 52,
+  "sourceAssetSetSha256": "56a2650b921f255c77ab5e13a9e170b7e216e061062b088b89f5847b4a681d8d",
+  "sourceAssetSetCanonicalization": "files sorted by UTF-8 path using JS code-point order; each line path=lowercase SHA-256; LF joined with no trailing LF",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 433,
+      "sha256": "c370c5e7a319cc42ef43f63320511c508a5c483ea290f2f4ea2bc26bdb61e22e"
+    },
+    {
+      "path": "index.html",
+      "bytes": 741,
+      "sha256": "2eb3c3dc3977ccb9905e98f2f0b5386a6e201f6b05ba9ab0de120ca27d5fe4fd"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 183418,
+      "sha256": "b669c243ca5f421af3d9ba77c629b1ef82ed2188b442d1d5fefcaa106b8ef7db"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2310,
+      "sha256": "fe12d5c7afbe4b07817966e52ee495e8bd25c80b540313d2f6968dd4788db28a"
+    },
+    {
+      "path": "postcss.config.js",
+      "bytes": 109,
+      "sha256": "7f474167815b2ba18d59b0a197d6b6d1ebcbce2c7e4e7756feb941049c1df963"
+    },
+    {
+      "path": "public/dsp/webrc-dsp.build.json",
+      "bytes": 13023,
+      "sha256": "2a496c7ae556cb3964ff26c1ce02e1edc1c6a831fd87fb4cb76752af5888f8aa"
+    },
+    {
+      "path": "public/dsp/webrc-dsp.wasm",
+      "bytes": 590730,
+      "sha256": "c17244e85d8f2c0c7eabbeafa216e95d2a34e2800969f2343451e0241701d8db"
+    },
+    {
+      "path": "public/vite.svg",
+      "bytes": 1497,
+      "sha256": "4a748afd443918bb16591c834c401dae33e87861ab5dbad0811c3a3b4a9214fb"
+    },
+    {
+      "path": "public/worklets/bounce-capture-processor.js",
+      "bytes": 4749,
+      "sha256": "2f368ceccc1d4185f89b7e623bf795cf96de504c98b19038ee7e9a00b922465c"
+    },
+    {
+      "path": "public/worklets/compressor-processor.js",
+      "bytes": 4176,
+      "sha256": "de1c71bb06cc9eb631df8e23ef35ecff9427f48182cfcda12262f28411e21e7b"
+    },
+    {
+      "path": "public/worklets/looper-processor.js",
+      "bytes": 159165,
+      "sha256": "fe4b68b6257a975e55c6edd91c56d6f36a8644251faad7dad0de39acfe9db951"
+    },
+    {
+      "path": "public/worklets/time-stretch-core.js",
+      "bytes": 20132,
+      "sha256": "749d3f63b2856071e32067531a22d8f3dc086c914206352abcf9f837e80c9f91"
+    },
+    {
+      "path": "scripts/browser-realtime-smoke.mjs",
+      "bytes": 107150,
+      "sha256": "f16770f5161751e08a59a6ed8648851f7a3684af2b8bb09e61319f89890a390e"
+    },
+    {
+      "path": "scripts/capture-browser-graph-snapshot.mjs",
+      "bytes": 5600,
+      "sha256": "81de470e79bdafb7a0228ed539081219c5c3d1d877426e69cebbb9349cdb233e"
+    },
+    {
+      "path": "scripts/install-shared-dsp-assets.mjs",
+      "bytes": 4178,
+      "sha256": "b2005d568a67addd6288a3ca07bd2e0e1d96c82c1d9a4346d8e0e085266c5ef6"
+    },
+    {
+      "path": "scripts/verify-shared-dsp-assets.mjs",
+      "bytes": 3764,
+      "sha256": "7e0e1668e24ba4de301e4be266d58ce6ed47037ef5febed87f1bff66db47267a"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/cleanroom_rhythm_data.hpp",
+      "bytes": 392,
+      "sha256": "d9d3010f5f89fc62362332ac649e3215af4280ca32df0f9fdfb71a23b80b7ffa"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/control_dynamics.hpp",
+      "bytes": 6746,
+      "sha256": "53bbb6345b69b77b01384fb4309d69e21e9a0c6d4b29164d72bd78b2e86300eb"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fft.hpp",
+      "bytes": 548,
+      "sha256": "03f76865b9cfeda60cd18cce44d94dc43f9b099957d3477d11d01396ff8f9b40"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/fx_registry.hpp",
+      "bytes": 7405,
+      "sha256": "d638b9ad0f337d754f31942839a24bb18eab110cd4fa18bf1ed12e253ac866da"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/live_mono_pitch.hpp",
+      "bytes": 3109,
+      "sha256": "55dddf6a8b0263d3ba1bfb68752b78b08476f33287f34290c4c5949ebf2bcf34"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/modulation_fx.hpp",
+      "bytes": 5101,
+      "sha256": "ea5667f70bfc56a8ec001656c200e33fb83683c2fa18ec6a991f666806dc50b6"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/nonlinear.hpp",
+      "bytes": 4181,
+      "sha256": "b265f1c4d014feec5222d8c576c6308b31f5b2b019e96fe63d41b843d2294988"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/performance_fx.hpp",
+      "bytes": 8438,
+      "sha256": "151ae8a8a0b0a2372ca4a84fff9e935d1c3b038d1ff6a3470eda5992b1087803"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/pitch.hpp",
+      "bytes": 9082,
+      "sha256": "c96dd91b0b3bcf11345a73c7a65fc120846406cf4c6b2a733b2da81841059163"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/primitives.hpp",
+      "bytes": 10933,
+      "sha256": "e5362575061f18031cefaa611d9b5794f8426634a3bc0b34699a396ce8b4a43c"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/rhythm.hpp",
+      "bytes": 9386,
+      "sha256": "c9fb06b84f55befcc137fc8e3f2416e14d611cc15b5510c0a38be371063da30e"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+      "bytes": 3415,
+      "sha256": "c939ff04a8d2397a14631b6522306ef2025b8dc31567e6048a7aa31791aaa2f7"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/spatial_temporal.hpp",
+      "bytes": 23156,
+      "sha256": "721e1a857a66882d0fe0c1c71efde667b981dd7128122d3727db6f4b22e87f2f"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/streaming_yin.hpp",
+      "bytes": 5066,
+      "sha256": "bd780750e77bdda94bf6cb28a181e4a60ea5a40775555d7845fc8cdd21cba697"
+    },
+    {
+      "path": "shared/dsp/src/cleanroom_rhythm_data.cpp",
+      "bytes": 1035520,
+      "sha256": "93b9a3e505d78b5ecb1ec5c2f1c3c76c4e5d56e69c5ecbcddb17547e1a61a885"
+    },
+    {
+      "path": "shared/dsp/src/control_dynamics.cpp",
+      "bytes": 18208,
+      "sha256": "5315ffb62fd04f5e3a4f09803b5422b6be4ab6f36dadd689cc2ed4cb48e12a8a"
+    },
+    {
+      "path": "shared/dsp/src/fft.cpp",
+      "bytes": 3129,
+      "sha256": "5f32fe928d85e1c94b8cd23c8a3337114bdedad8c06ed82164093e20a98e0f57"
+    },
+    {
+      "path": "shared/dsp/src/fx_registry.cpp",
+      "bytes": 74338,
+      "sha256": "bbf07af0f7f003e019289986063cae083bb09613ccea3486caabf8687cd912cb"
+    },
+    {
+      "path": "shared/dsp/src/live_mono_pitch.cpp",
+      "bytes": 4473,
+      "sha256": "c1589c4df2b5d14f79a680e78b8681d3d4a89ee3fdccb9c9336d16da1b5f5b64"
+    },
+    {
+      "path": "shared/dsp/src/modulation_fx.cpp",
+      "bytes": 11816,
+      "sha256": "8b9368db27cd7934d9eb6a7005a4088b7585ffafd1d641a2e7e8cc02e3a3b685"
+    },
+    {
+      "path": "shared/dsp/src/nonlinear.cpp",
+      "bytes": 10185,
+      "sha256": "684cc3df92e5d6fb033864b701d7e6312cdd559741615524fc70b41eea603c85"
+    },
+    {
+      "path": "shared/dsp/src/performance_fx.cpp",
+      "bytes": 34156,
+      "sha256": "484b6f3fd9064bd6224c160c6ec9d607db0d6c64f944d4e5562d256228b75d23"
+    },
+    {
+      "path": "shared/dsp/src/pitch.cpp",
+      "bytes": 36950,
+      "sha256": "3ad813e563d0db8c09bc92c24eae6bbee19b31a2a42ede84f4bf63c480d35957"
+    },
+    {
+      "path": "shared/dsp/src/primitives.cpp",
+      "bytes": 38017,
+      "sha256": "7dd29804dec3ff4ee668c8bb05c6ae21016a8d62d080d795694a186de2af31bc"
+    },
+    {
+      "path": "shared/dsp/src/rhythm.cpp",
+      "bytes": 27973,
+      "sha256": "e32764a49e7a13a10f09428ecb58a76cd0f4a14488f649284188cb985810d0c1"
+    },
+    {
+      "path": "shared/dsp/src/signalsmith_adapter.cpp",
+      "bytes": 8333,
+      "sha256": "4d2b2c59883bb601ae3f447399d6e799efc84061953e92ef8d25361c53a9045a"
+    },
+    {
+      "path": "shared/dsp/src/spatial_temporal.cpp",
+      "bytes": 88577,
+      "sha256": "33480bd0243a4642df9ba532c695a6cd4efc1a3bb9fc6e8ead494aa100e78d8d"
+    },
+    {
+      "path": "shared/dsp/src/streaming_yin.cpp",
+      "bytes": 16989,
+      "sha256": "09d75ea4c26f9df826c97c839a091984959587470a9f4fd56adcaa6757de7a8f"
+    },
+    {
+      "path": "shared/dsp/wasm/browser-build-pin.json",
+      "bytes": 504,
+      "sha256": "d8b608601e579115156431463812fa1337d9760f4a700c5f23f9235d4e509609"
+    },
+    {
+      "path": "shared/dsp/wasm/build-wasm.ps1",
+      "bytes": 13211,
+      "sha256": "b337bcf9520ec07678a8a575a02d0db378d7dd05c55fed3d68338e344b42c838"
+    },
+    {
+      "path": "shared/dsp/wasm/handle_registry.cpp",
+      "bytes": 6825,
+      "sha256": "b83670ab4d0b8c24a2d2809d44753466fe44431b51aa300e807a7c612ca1f12b"
+    },
+    {
+      "path": "shared/dsp/wasm/handle_registry.hpp",
+      "bytes": 3560,
+      "sha256": "fbe5802fa94b4c42701b7c2a78745efffc1b9159cb937c2da400ab46d02e2c9d"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.cpp",
+      "bytes": 64093,
+      "sha256": "ef6e117022d478ab8b825155bfb90bfe6758b669da16a351fc9a4fa162e2fdc4"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_extended.h",
+      "bytes": 15143,
+      "sha256": "8a8f8dd0789439a212c8d447ce6fbf4182abd2a48b7aa1d4073f9057c7076cc6"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.cpp",
+      "bytes": 11727,
+      "sha256": "af70e599c4d860cd32a8d54049d61befc778849a77d5ee32e83d55cb47b1313c"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_fx.h",
+      "bytes": 3618,
+      "sha256": "62f8d44607d2732a3b54d924afbb11a17f11751bedda0fa30503dcd6f0053e1a"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_wasm.cpp",
+      "bytes": 18962,
+      "sha256": "78b4f21d881ed07f23fd70cf17465ba990dbbda0f3a26a07b3c836c63ce99504"
+    },
+    {
+      "path": "shared/dsp/wasm/webrc_dsp_wasm.h",
+      "bytes": 4570,
+      "sha256": "527eebf461114e09447d158f8edea627dd40abad384ddd6ad18cfeaa94e18cbc"
+    },
+    {
+      "path": "src/App.vue",
+      "bytes": 4044,
+      "sha256": "f147ae09afa777351dd19b77c76dfdba3a19c24f59bcb9c76a60e951d80dd645"
+    },
+    {
+      "path": "src/assets/vue.svg",
+      "bytes": 496,
+      "sha256": "5532db34f1c52841881bab8aeca6c3e8d092bd21a689a65f4d8f8cf8041eef9d"
+    },
+    {
+      "path": "src/audio/AudioEngine.ts",
+      "bytes": 22998,
+      "sha256": "9184c5e50d4357d2e27824cb945b41097600f4584b270a03c2d07f0967ca29fa"
+    },
+    {
+      "path": "src/audio/AudioEngineInterface.ts",
+      "bytes": 554,
+      "sha256": "391e2af5a8d8be18fd925c538d7310b3d7b12edf25018d4e08e9e24ec0fe5d83"
+    },
+    {
+      "path": "src/audio/BrowserAudioEngine.ts",
+      "bytes": 86654,
+      "sha256": "5e57d974ead66a08f4149ee148fe5a7276be08db8c10fd23f5a88b9841ae2c63"
+    },
+    {
+      "path": "src/audio/BrowserRealtimeRuntime.ts",
+      "bytes": 102083,
+      "sha256": "a925975cd07f84ec5e5efcd94a11935efb2a7149688d125047fde13a0d2a9655"
+    },
+    {
+      "path": "src/audio/FXChain.ts",
+      "bytes": 4353,
+      "sha256": "c3c099c0389ab8ab132425f403871bf7ad050b76e5f8097a60dd92a187f4fca6"
+    },
+    {
+      "path": "src/audio/NativeAudioEngine.ts",
+      "bytes": 20877,
+      "sha256": "30ac383744b79237986d48f1a32cf124248f33f5b0df2711af44fa39f55e1685"
+    },
+    {
+      "path": "src/audio/NativeBridgeClient.ts",
+      "bytes": 8351,
+      "sha256": "22abb45d509a38cd2ae2ed5a38d365f66c457841f67929d2527ba0331478dccd"
+    },
+    {
+      "path": "src/audio/NativeTrackProxy.ts",
+      "bytes": 4958,
+      "sha256": "444fd3c2c12c70eb7ec9b87ff94dce25b4ac26e201e98d7e95630f06e6ccc5b5"
+    },
+    {
+      "path": "src/audio/RhythmEngine.ts",
+      "bytes": 2295,
+      "sha256": "f578ad1c3f29f9c171251cc4ab61fba81f615d3da9d0fb0570282d56a81715eb"
+    },
+    {
+      "path": "src/audio/TrackAudio.ts",
+      "bytes": 38461,
+      "sha256": "4c3d75da6e17e05b922b23fef41579cf29f53b25bc1ea21c29fa6fd681bbff96"
+    },
+    {
+      "path": "src/audio/browserLatencyCalibration.ts",
+      "bytes": 2888,
+      "sha256": "d001b6ad35524c3a10b01112a72c280a099903a4724027f306d97063972b1983"
+    },
+    {
+      "path": "src/audio/browserRealtimeProtocol.ts",
+      "bytes": 11840,
+      "sha256": "b57c4f5ca828ba1e6040a923fd75a5a6712c5bb8e50a73a85f3941a7eab2322c"
+    },
+    {
+      "path": "src/audio/browserRecordingOffset.ts",
+      "bytes": 4724,
+      "sha256": "9efba0a94b4fb3a524403fe7c3666479223a0c951cf4f5912945b8d21690fba6"
+    },
+    {
+      "path": "src/audio/browserRouting.ts",
+      "bytes": 37168,
+      "sha256": "5d97e5303fa155502b9a0f348532d0f9c651c22f2febdada6598b9395fd03b4d"
+    },
+    {
+      "path": "src/audio/cleanroomRhythmCatalog.ts",
+      "bytes": 28908,
+      "sha256": "bb1775c80e77750aa3fb7f1165393e0a70f75d0e4b9b3584012993750b98f188"
+    },
+    {
+      "path": "src/audio/fx/CompressorFX.ts",
+      "bytes": 13702,
+      "sha256": "5ec7508b2d22b9a4872b455b3390d6c9f80c3b83099cf61fc6e733738f3066dd"
+    },
+    {
+      "path": "src/audio/fx/DelayFX.ts",
+      "bytes": 4655,
+      "sha256": "b11303ae3d616ae332bfb9d4249242571e2c697590b286185865bffe38e860f9"
+    },
+    {
+      "path": "src/audio/fx/FXBase.ts",
+      "bytes": 595,
+      "sha256": "1af39a5475868867b453ec97d66f57939dbe7abfa570374ba41f9d7aed59320a"
+    },
+    {
+      "path": "src/audio/fx/FXRegistry.ts",
+      "bytes": 4162,
+      "sha256": "887f36293affbe04b59cf5a9bb9b01a75df46fb79f3c613e8043cd785880b4f8"
+    },
+    {
+      "path": "src/audio/fx/FilterFX.ts",
+      "bytes": 3856,
+      "sha256": "c65bf693ef6beb018dc788eb738e2f0a0e27f9851f1d7cf53e42a6b52039f269"
+    },
+    {
+      "path": "src/audio/fx/PhaserFX.ts",
+      "bytes": 5294,
+      "sha256": "3563b87f6dc913102275339f37ed0ad7b3f14868cc20562441f2a26c9909ca30"
+    },
+    {
+      "path": "src/audio/fx/ReverbFX.ts",
+      "bytes": 4043,
+      "sha256": "cd5dfa59e1cabca60edfa5b99481aa0f826c208e71bf473db60cea18902798dc"
+    },
+    {
+      "path": "src/audio/fx/SlicerFX.ts",
+      "bytes": 4293,
+      "sha256": "e89f2c01949849ab6b343151324e798bcd1dcf0af08646bc0e922a449118e0b0"
+    },
+    {
+      "path": "src/audio/instrumentGradeMetrics.ts",
+      "bytes": 41187,
+      "sha256": "2011a83d02b7bc562ae78e18b61513a05da00450beadcefdece972edd9711926"
+    },
+    {
+      "path": "src/audio/loopSettings.ts",
+      "bytes": 1201,
+      "sha256": "eceaee6ba765e2c593f0fae66affe8262e854fa934c80d67d7e3b265be2cf766"
+    },
+    {
+      "path": "src/audio/rhythmTypes.ts",
+      "bytes": 1069,
+      "sha256": "f5882984079f2d2b9f807d02aa8e5216d971cfad4305683c03b10b1d8441285b"
+    },
+    {
+      "path": "src/audio/sharedDspGraph.ts",
+      "bytes": 11873,
+      "sha256": "ca4d0bd5ef8fd594c541b89584dd91da444415a6a4a28703ea28c64ba772a9bb"
+    },
+    {
+      "path": "src/components/AudioPerformanceDashboard.vue",
+      "bytes": 18668,
+      "sha256": "1cfeb40d8d6e20b6a1af4fdee93d3bc399f61e5e447b0abaf20d87b1cc24140b"
+    },
+    {
+      "path": "src/components/AudioSettings.vue",
+      "bytes": 11760,
+      "sha256": "d96971dce882c15f40f74bc24061064e91bc7e80fa03b47133a797911f6e65e3"
+    },
+    {
+      "path": "src/components/BrowserAudioSettings.vue",
+      "bytes": 11706,
+      "sha256": "3a666265d21c82cb99e05be53cee5987e273ca057ed46c9440fac8bd020971f0"
+    },
+    {
+      "path": "src/components/BrowserRecordingOffsetSettings.vue",
+      "bytes": 3984,
+      "sha256": "6b04b8ed31f9ff80fa195f3bd891f0536df8dee85e0eba878cefe6ab425adc16"
+    },
+    {
+      "path": "src/components/ComponentShowcase.vue",
+      "bytes": 10728,
+      "sha256": "c17feac9a0fefc78342c1bbf5309baf8c775f7c2421569087f2116455813f532"
+    },
+    {
+      "path": "src/components/ControlAssignPanel.vue",
+      "bytes": 13158,
+      "sha256": "33e6137bd75295d38aee8e77c97d0280b8bfc094353d4f57f6d085d0dedfefb8"
+    },
+    {
+      "path": "src/components/ControlSurfaceHost.vue",
+      "bytes": 1393,
+      "sha256": "89d9102056f686cec880f190cbb3fcb8b58cf0992315963baf29183e5c6b7f95"
+    },
+    {
+      "path": "src/components/HelloWorld.vue",
+      "bytes": 856,
+      "sha256": "caf048cc9b9af417e2914391d48ec6632b659c16e007ac72a68b31b2502844b5"
+    },
+    {
+      "path": "src/components/LatencyTuner.vue",
+      "bytes": 4808,
+      "sha256": "5ff3b2c6f0549e1279d776cf919df3db80622dabe7954e2dd9535387faa53a58"
+    },
+    {
+      "path": "src/components/LoopHalo.vue",
+      "bytes": 7732,
+      "sha256": "c456ffcda52f46b0c26a75c251547c43a0f4a149c5357e2af6d5cad47e156532"
+    },
+    {
+      "path": "src/components/LoopSettingsPanel.vue",
+      "bytes": 7084,
+      "sha256": "2c39ab92f41f4ce33363da224c4fda11c966a9f60f05f3eefbdfd74874c49dfc"
+    },
+    {
+      "path": "src/components/MemoryControls.vue",
+      "bytes": 13679,
+      "sha256": "59c1a922a34c6220f54692fa2d4cf58ff6ef036cc40749b2d3073f92fa6c9ede"
+    },
+    {
+      "path": "src/components/RhythmControls.vue",
+      "bytes": 4330,
+      "sha256": "785efecef49d73afc7665b9981e10931f9f35e5dc2754be99b5c22b84408ca49"
+    },
+    {
+      "path": "src/components/RhythmEditorPanel.vue",
+      "bytes": 20082,
+      "sha256": "3e074ce76b9a5634dfab32f055f80b503acf6a8ac5e0cf9be2ddc9cc259daf04"
+    },
+    {
+      "path": "src/components/RoutingMatrixPanel.vue",
+      "bytes": 14410,
+      "sha256": "ba3948c9a9ef9625eb604efb0a9875190633373f4f1c009b7e7ff0cbefef8e60"
+    },
+    {
+      "path": "src/components/TopPanel.vue",
+      "bytes": 8723,
+      "sha256": "d77e9eb46bed391ee992168d0123a1885fd95c75e2519aed3be1787b53fc4ce9"
+    },
+    {
+      "path": "src/components/TopStatusStrip.vue",
+      "bytes": 3340,
+      "sha256": "67a27009aa42759a11aaeda81d9e8f3528580f3907aa39024d5b6f70853ad899"
+    },
+    {
+      "path": "src/components/TrackSettingsPanel.vue",
+      "bytes": 13413,
+      "sha256": "1118f252563a6b3660af8155e25342c20cba4888624e8070707da78ff30ebc16"
+    },
+    {
+      "path": "src/components/TrackUnit.vue",
+      "bytes": 11996,
+      "sha256": "5a46f009c7f342ac7a9fc8a6c304115e90927f6c8133e5e39fdeec8dd88bd614"
+    },
+    {
+      "path": "src/components/TransportControls.vue",
+      "bytes": 12674,
+      "sha256": "42956a734960fd9049a53c19c74177f1c65a20979293e6de4bb5c71b4403333b"
+    },
+    {
+      "path": "src/components/WebToolLayer.vue",
+      "bytes": 2608,
+      "sha256": "656f988d860afe4e46ce8e2dab35aa05063b9348e6ebc4af3cdbd0878f3b3ba2"
+    },
+    {
+      "path": "src/components/fx/FxUnit.vue",
+      "bytes": 2776,
+      "sha256": "bf10d3e0f780bde9d82b4310293eacfa73b7338183251839d4def67aea7487d3"
+    },
+    {
+      "path": "src/components/panel/CenterMainPanel.vue",
+      "bytes": 16534,
+      "sha256": "ef62571fe1436ef8f8522d65f40a3a987c867f1a40ede03504d6c6f51ded6cc9"
+    },
+    {
+      "path": "src/components/panel/InputFxPanel.vue",
+      "bytes": 6010,
+      "sha256": "262c02965473b5b5bd1dae0e399cfade97791c93c3bef5f7ff79559ce6e2c85f"
+    },
+    {
+      "path": "src/components/panel/TrackBay.vue",
+      "bytes": 487,
+      "sha256": "2f2e5942cc22fec16538ddec0c7fc7ecc06610209d29c9a1390f189beb30517a"
+    },
+    {
+      "path": "src/components/panel/TrackFxPanel.vue",
+      "bytes": 7670,
+      "sha256": "3228a72e5536baf77a6b008ce5942678875ed021a8a83f33daeebb18ac0ab1c1"
+    },
+    {
+      "path": "src/components/panel/TrackStrip.vue",
+      "bytes": 10920,
+      "sha256": "c4f5398045c331f96b941c0db02cb62be65b05501edd3903fc44922bd8f184ab"
+    },
+    {
+      "path": "src/components/shells/ClassicShell.vue",
+      "bytes": 4238,
+      "sha256": "d8b67a7346e7736d7ea43710f8adbfde65da82f5f00a4b50f3bfe75314e4c884"
+    },
+    {
+      "path": "src/components/shells/TechShell.vue",
+      "bytes": 950,
+      "sha256": "14aaae55bb8e1e45a402e6253c468168dd9e0c6a130294796c753799f208545a"
+    },
+    {
+      "path": "src/components/ui/HardwareButton.vue",
+      "bytes": 6924,
+      "sha256": "f6446909c612a9fd3beb0a0501bb3ed244524831f1a843e2a433859149ca5b28"
+    },
+    {
+      "path": "src/components/ui/HardwareFader.vue",
+      "bytes": 5150,
+      "sha256": "30d491e45d3caec71a905bcbba2796b5c7161fdb799d4543763b6bc0927bc0f4"
+    },
+    {
+      "path": "src/components/ui/HardwareKnob.vue",
+      "bytes": 6453,
+      "sha256": "c81a5fe0cd3c862222e8dbad54ee7cc616d1610533bbe4ac1bd8c705b12398c0"
+    },
+    {
+      "path": "src/composables/useControlDispatcher.ts",
+      "bytes": 7145,
+      "sha256": "4d79dddc46fb523e8bc32271cf3a8e0e5468f4c2c96cb21c96cb7118cfdbfdfb"
+    },
+    {
+      "path": "src/composables/useFxPanelState.ts",
+      "bytes": 10515,
+      "sha256": "5c272c0cf593f7500a8677f29b7df24dd83fd6a19f39b01cf6f92b5297c790e3"
+    },
+    {
+      "path": "src/composables/useMemorySlot.ts",
+      "bytes": 407,
+      "sha256": "7033c3efb913afc32464bceb2a9f4a370ad3ba60a558e5518bb10602d644b5dc"
+    },
+    {
+      "path": "src/composables/usePanelFocus.ts",
+      "bytes": 2278,
+      "sha256": "66bddbc7750b6f16efc992fdeed8ebe8897800112cccae8e647f4cbe9601edfe"
+    },
+    {
+      "path": "src/composables/useTrackStripState.ts",
+      "bytes": 5351,
+      "sha256": "faba80bb974732197792250bca1c4c6961b36b8005a462488b7974e641430175"
+    },
+    {
+      "path": "src/composables/useUiStyle.ts",
+      "bytes": 1399,
+      "sha256": "12802e555ee123ead3d38cdfdf102480ea04def6e8f812cf6ea5e0dfd21ddeef"
+    },
+    {
+      "path": "src/controls/commandDispatcher.ts",
+      "bytes": 14930,
+      "sha256": "67eba3e563ff84cff8bdd2e3c69363cb8590b313599651298547d786ae87b5ff"
+    },
+    {
+      "path": "src/controls/rhythmDocuments.ts",
+      "bytes": 4781,
+      "sha256": "8b22cf5bc4389650a65d3bd2c93a011424d8e26fca888424861468d1eb8198a6"
+    },
+    {
+      "path": "src/core/Transport.ts",
+      "bytes": 12123,
+      "sha256": "a1035b6433bc96ad50bcd380a07ec3bb26722df2d3a25ed07391e394a1be0333"
+    },
+    {
+      "path": "src/core/types.ts",
+      "bytes": 12342,
+      "sha256": "3df6704b2512e494f1e2505ea8a49f787e163c5617854b94a7a70dcb693dd766"
+    },
+    {
+      "path": "src/main.ts",
+      "bytes": 111,
+      "sha256": "ae6eb9de53e72b97ee4c88fe88d2e982bf060266b2b82a0aa29ec859fa342019"
+    },
+    {
+      "path": "src/project/BrowserProjectAdapter.ts",
+      "bytes": 18220,
+      "sha256": "3d6ed8813f536902defcc2f121008cd37f133f097f91fb9da30f9a988d120c19"
+    },
+    {
+      "path": "src/project/IndexedDbProjectMemoryStore.ts",
+      "bytes": 6549,
+      "sha256": "bcdad6d66e86af13d9b3e82c64f877c11fa4f0e26a7c2b5c2efbae1ce49c1a1e"
+    },
+    {
+      "path": "src/project/ProjectService.ts",
+      "bytes": 17429,
+      "sha256": "04e2a5f3921d1cbaa007d0e16fe38fd11338f168d06a1e3acde305b606ac5581"
+    },
+    {
+      "path": "src/project/blobUtils.ts",
+      "bytes": 1082,
+      "sha256": "7a277b60b03f2b8b4217daeabbd4d6df2afb4b2991560a91223a726e67108ff9"
+    },
+    {
+      "path": "src/project/bounceCaptureProtocol.ts",
+      "bytes": 4386,
+      "sha256": "90857af11cda8f7227faa599d9a650c8751cd7fac38389547361f6d50cb978d2"
+    },
+    {
+      "path": "src/project/projectArchive.ts",
+      "bytes": 6959,
+      "sha256": "05c0c4dd696a9804644b2f3ba9a7e8fb356802e14c8e1ae26d3b5107353e40dc"
+    },
+    {
+      "path": "src/project/projectMixRenderer.ts",
+      "bytes": 29270,
+      "sha256": "1da471663553a20be418f226497218c99b49c0d8be8aa4e58d50c927ba150335"
+    },
+    {
+      "path": "src/project/projectTypes.ts",
+      "bytes": 7155,
+      "sha256": "f29a97e3004b08861cd9e947144b5e1a581660d233fb59176b5d49d3e5aef661"
+    },
+    {
+      "path": "src/project/projectValidation.ts",
+      "bytes": 17320,
+      "sha256": "c885869728269178ce11de37662a11365275b732110fd5f045356c2de5e715de"
+    },
+    {
+      "path": "src/project/wavCodec.ts",
+      "bytes": 28671,
+      "sha256": "b9fc995b58f089cc836b651cd4111f9818ef92ffea11690fabcf7e32495e6258"
+    },
+    {
+      "path": "src/style.css",
+      "bytes": 4332,
+      "sha256": "4bc0fad855333141ba2e5b413cf2d6c26a8f598650f3376640dab055c627db54"
+    },
+    {
+      "path": "src/types/time-stretch-core.d.ts",
+      "bytes": 2303,
+      "sha256": "4835a34cb6adcd7e0f596c2b484f1a4734e3a0a3575e870f0551f26051b91ec1"
+    },
+    {
+      "path": "tailwind.config.js",
+      "bytes": 197,
+      "sha256": "b3dc6dc3e520906fb98ef271bb4d0f2cdb51e09dd7a9c1075e2d15b86f5b6646"
+    },
+    {
+      "path": "third_party/SIGNALSMITH_PINS.md",
+      "bytes": 1112,
+      "sha256": "ae068d32b2c525ec15afe825b015608d18ff0951cdfe1d7816a496456818dd41"
+    },
+    {
+      "path": "third_party/signalsmith-linear/LICENSE.txt",
+      "bytes": 1095,
+      "sha256": "a91f5703b0f5fa22e8c14a8bd854559a7c512bbe58656ea8bdcd4964e923ab2f"
+    },
+    {
+      "path": "third_party/signalsmith-linear/README.md",
+      "bytes": 5254,
+      "sha256": "961d35d216e5972551711996aaf01f3eb022fefb3a92808031f5d06dca0e57c7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/approx.h",
+      "bytes": 5147,
+      "sha256": "bc3e6dfb911ac50fb5841784b5633751fc14ae9b0f881a88b427c60c7a628cf1"
+    },
+    {
+      "path": "third_party/signalsmith-linear/fft.h",
+      "bytes": 46628,
+      "sha256": "af0df3ff84c6f69ec00f09e0e53634b7ccacd3198a4acb2b482cb7d93854d207"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/approx.h",
+      "bytes": 27,
+      "sha256": "eac208cc0e94556dde10e1d9bb0d53d8df9453aa8d2157421073f0497649ec3b"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/fft.h",
+      "bytes": 24,
+      "sha256": "30e4054a9df4f1f31318ffefb43b52d69378788a344fb09c8995a36d5bc28148"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/linear.h",
+      "bytes": 27,
+      "sha256": "38560f893be3ecbd18e6ce45b17dc7c3f3d3e4e6ed2890572b4aba385e36c03d"
+    },
+    {
+      "path": "third_party/signalsmith-linear/include/signalsmith-linear/stft.h",
+      "bytes": 25,
+      "sha256": "db40c535f6554daf2f0a12540730dc22bce71c5007210e515f463a0cbd1a16b7"
+    },
+    {
+      "path": "third_party/signalsmith-linear/linear.h",
+      "bytes": 37714,
+      "sha256": "fe7fb1c944950487f0744dcdd2fb067a098ad3597a86385c6a3f4bae1d31eb55"
+    },
+    {
+      "path": "third_party/signalsmith-linear/stft.h",
+      "bytes": 25013,
+      "sha256": "0fc36186c3f892d068fff4108536b0f2132552f5a450b1e1ea5657e2899c6df3"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/LICENSE.txt",
+      "bytes": 1113,
+      "sha256": "16bf62d475af149d96a24853e77c9e0d939259a9d55b23b41da7f9939db85085"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/README.md",
+      "bytes": 8382,
+      "sha256": "268df6b2053832a3ae43df2c1e7b4e6a957e3e4cc30766870dcd9846ecbaec39"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h",
+      "bytes": 38,
+      "sha256": "869facc1853189bec91fb54960da2f59333284963d6b52a242d55a399d305e4d"
+    },
+    {
+      "path": "third_party/signalsmith-stretch/signalsmith-stretch.h",
+      "bytes": 36506,
+      "sha256": "45a0b93b1e00257014d48e7ae494ec4e604f56b4ee15189a355cd9794653a37d"
+    },
+    {
+      "path": "tsconfig.app.json",
+      "bytes": 454,
+      "sha256": "f3bf5adb2d545eb1f26194fc628539b6667fc40fab0bd6cca0c680038cef5031"
+    },
+    {
+      "path": "tsconfig.json",
+      "bytes": 119,
+      "sha256": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808"
+    },
+    {
+      "path": "tsconfig.node.json",
+      "bytes": 653,
+      "sha256": "c3dd0fb522feba3596713f51b95bd53d781d845d24aedbfa2ac093d8b39c5120"
+    },
+    {
+      "path": "vite.config.ts",
+      "bytes": 641,
+      "sha256": "900936524212993acb99abea8c5cf483f984046326efc3344808c2f69896ed20"
+    }
+  ]
+}

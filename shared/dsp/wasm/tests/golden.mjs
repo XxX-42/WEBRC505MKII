@@ -101,7 +101,7 @@ assert.equal(bytesBefore, 64 * 1024 * 1024, 'WASM memory is fixed at the build-t
 assert.equal(wasm._webrc_dsp_api_version(), 1);
 assert.equal(wasm._webrc_dsp_abi_version(), 2);
 assert.equal(wasm._webrc_dsp_extended_api_version(), 1);
-assert.equal(wasm._webrc_dsp_capabilities(), 0x00000003);
+assert.equal(wasm._webrc_dsp_capabilities(), 0x00000007);
 assert.equal(wasm.malloc, undefined, 'raw malloc is not exported to callback clients');
 let transferAllocationBytes = 0;
 

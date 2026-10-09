@@ -1,0 +1,35 @@
+
+> webrc505mkii-v2@0.0.0 prebuild
+> node scripts/verify-shared-dsp-assets.mjs
+
+{
+  "result": "VERIFIED",
+  "byteLength": 590730,
+  "wasmSha256": "c17244e85d8f2c0c7eabbeafa216e95d2a34e2800969f2343451e0241701d8db",
+  "sourceSetSha256": "ceea5f17a853de28076fbb5701cde4101a55ef6ad0355feb993ac3313cd58055",
+  "sourceCount": 52,
+  "emsdkCommit": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
+  "compilerIdentity": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)"
+}
+
+> webrc505mkii-v2@0.0.0 build
+> vue-tsc -b && vite build
+
+vite v7.2.4 building client environment for production...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+transforming...
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 145 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.84 kB │ gzip:   0.46 kB
+dist/assets/index-J1DAmp7-.css   73.03 kB │ gzip:  13.92 kB
+dist/assets/index-DckDEcM-.js   516.46 kB │ gzip: 147.65 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 5.02s

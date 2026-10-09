@@ -1,0 +1,10 @@
+{
+  "capturedAtUtc": "2026-10-09T16:06:52.3380299Z",
+  "unitCommand": "npm run test:unit -- --run tests/unit/stereoWorklet.spec.ts tests/unit/browserRealtimeProtocol.spec.ts",
+  "unitExit": 0,
+  "buildCommand": "npm run build",
+  "buildExit": 0,
+  "workletSyntaxExit": 0,
+  "smokeSyntaxExit": 0,
+  "sourceAssetSetSha256": "56a2650b921f255c77ab5e13a9e170b7e216e061062b088b89f5847b4a681d8d"
+}
