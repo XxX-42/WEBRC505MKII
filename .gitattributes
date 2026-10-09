@@ -212,3 +212,12 @@
 /shared/dsp/tests/spatial_fx_adapters_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 /shared/dsp/benchmarks/results/composite4-immutable-snapshot-20261009T155918Z/** -text -whitespace
 /shared/dsp/benchmarks/results/rhythmic-spatial-combined-review-20261009T155945Z/** -text -whitespace
+/shared/dsp/include/webrc/dsp/temporal_fx_adapters.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/temporal_fx_adapters.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Keep the exact captured compiler input, including its final blank line.
+/shared/dsp/tests/temporal_fx_adapters_tests.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/include/webrc/dsp/distortion_fx.hpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/src/distortion_fx.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/tests/distortion_fx_tests.cpp -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+/shared/dsp/benchmarks/results/temporal-fx-adapters-latency-contract-fix-20261009T163910062Z/** -text -whitespace
+/shared/dsp/benchmarks/results/distortion-fx-maxdrive-fix-20261009T163506248Z/** -text -whitespace

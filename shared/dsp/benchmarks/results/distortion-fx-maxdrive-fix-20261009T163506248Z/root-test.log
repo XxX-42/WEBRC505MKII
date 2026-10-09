@@ -1,0 +1,2 @@
+{"schemaVersion":1,"suite":"distortion-fx","sampleRate":48000,"partitionMaximumDifference":0,"modelMaximumDifference":0.715455174446,"stereoLeakAmplitude":[7.51467283404e-08,6.11512222692e-08],"tone12000To440Ratio":0.0988226290788,"fourXReferenceMaxError":2.47698008651e-05,"aliasEnergyRatio4xVs1x":0.0064014815571,"eventBurstAllocationsAndFrees":0}
+DIST adapter: two oversampled nonlinear models, stereo/tone, partition and callback guards passed
