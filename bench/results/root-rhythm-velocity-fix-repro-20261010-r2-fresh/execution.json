@@ -1,0 +1,34 @@
+{
+  "scope": "Fresh independent MSVC compilation of all five DSP source units and unchanged original gain-only defect probe from immutable copied source; software offline only",
+  "compileExitCode": 0,
+  "probeExitCode": 1,
+  "probeExitMeaning": "1 indicates changed timbre in original gain-only defect fixture",
+  "cases": 64,
+  "gainOnlyCases": 0,
+  "minimumResidual": 0.845322,
+  "maximumResidual": 0.999994,
+  "rawPcmReanalysis": [
+    {
+      "instrumentPair": "kit0-instrument0-v32.f32stereo",
+      "gainRemovedRmsResidual": 0.9954105034434408,
+      "fittedGain": -0.3924243328222203
+    },
+    {
+      "instrumentPair": "kit0-instrument1-v32.f32stereo",
+      "gainRemovedRmsResidual": 0.9655454912602764,
+      "fittedGain": 1.1229009480096825
+    },
+    {
+      "instrumentPair": "kit0-instrument2-v32.f32stereo",
+      "gainRemovedRmsResidual": 0.9998396329406875,
+      "fittedGain": 0.08735296867236102
+    },
+    {
+      "instrumentPair": "kit0-instrument5-v32.f32stereo",
+      "gainRemovedRmsResidual": 0.9774176848913173,
+      "fittedGain": 1.0175854918470748
+    }
+  ],
+  "noPerceptualQualityOrRealtimeClaim": true,
+  "exeSha256": "33f084442e5ceaa4fe8e673b980497646eb45258310e643ebb4fc660e10fb170"
+}
