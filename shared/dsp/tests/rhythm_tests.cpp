@@ -91,6 +91,57 @@ Rendered render(std::uint32_t blockSize, const RhythmPatternView& pattern,
     return result;
 }
 
+Rendered renderSingleHitAtTick(std::uint32_t blockSize, RhythmInstrument instrument,
+                               std::uint8_t velocity, std::uint32_t tick,
+                               std::uint32_t kitIndex, std::uint32_t frames) {
+    Rendered result{};
+    result.left.resize(frames);
+    result.right.resize(frames);
+    const RhythmEvent event{tick, instrument, velocity, false, 0};
+    const auto pattern = makePattern(&event, 1);
+    RhythmRenderer renderer;
+    if (!renderer.prepare(testSpec(512), 120.0) || !renderer.setPattern(&pattern) ||
+        !renderer.setKit(kitIndex) || !renderer.startAtFrame(0, false)) return result;
+    for (std::uint32_t offset = 0; offset < frames;) {
+        const auto count = std::min(blockSize, frames - offset);
+        if (!renderer.processBlock(offset, result.left.data() + offset,
+                                   result.right.data() + offset, count)) return result;
+        offset += count;
+    }
+    result.eventCount = renderer.triggeredEvents();
+    return result;
+}
+
+double gainRemovedResidual(const Rendered& reference, const Rendered& candidate,
+                          std::size_t referenceOffset = 0U) {
+    if (reference.left.empty() || candidate.left.size() != candidate.right.size() ||
+        reference.right.size() != reference.left.size() ||
+        referenceOffset + candidate.left.size() > reference.left.size())
+        return std::numeric_limits<double>::infinity();
+    double referenceEnergy = 0.0;
+    double candidateEnergy = 0.0;
+    double cross = 0.0;
+    for (std::size_t index = 0; index < candidate.left.size(); ++index) {
+        const double refL = reference.left[index + referenceOffset];
+        const double refR = reference.right[index + referenceOffset];
+        const double candL = candidate.left[index];
+        const double candR = candidate.right[index];
+        referenceEnergy += refL * refL + refR * refR;
+        candidateEnergy += candL * candL + candR * candR;
+        cross += refL * candL + refR * candR;
+    }
+    if (referenceEnergy <= 0.0 || candidateEnergy <= 0.0)
+        return std::numeric_limits<double>::infinity();
+    const double gain = cross / referenceEnergy;
+    double error = 0.0;
+    for (std::size_t index = 0; index < candidate.left.size(); ++index) {
+        const double errL = candidate.left[index] - gain * reference.left[index + referenceOffset];
+        const double errR = candidate.right[index] - gain * reference.right[index + referenceOffset];
+        error += errL * errL + errR * errR;
+    }
+    return std::sqrt(error / candidateEnergy);
+}
+
 std::uint64_t pcmHash(const std::vector<float>& samples) {
     std::uint64_t hash = 1469598103934665603ULL;
     for (float sample : samples) {
@@ -570,6 +621,58 @@ bool testNoAllocAndTimelineDiscontinuity() {
     return true;
 }
 
+bool testVelocityAndRoundRobinChangeTimbre() {
+    const std::array<RhythmInstrument, 5> instruments{{
+        RhythmInstrument::Kick, RhythmInstrument::Snare,
+        RhythmInstrument::ClosedHat, RhythmInstrument::TomLow,
+        RhythmInstrument::BrushSweep,
+    }};
+    double minimumVelocityResidual = std::numeric_limits<double>::infinity();
+    double maximumVelocityResidual = 0.0;
+    for (std::uint32_t kit = 0; kit < cleanRoomKitCount(); ++kit) {
+        for (const auto instrument : instruments) {
+            const RhythmEvent lowEvent{0, instrument, 32, false,
+                instrument == RhythmInstrument::BrushSweep ? 480U : 0U};
+            const RhythmEvent highEvent{0, instrument, 112, false,
+                instrument == RhythmInstrument::BrushSweep ? 480U : 0U};
+            const auto lowPattern = makePattern(&lowEvent, 1);
+            const auto highPattern = makePattern(&highEvent, 1);
+            const std::uint32_t frames = instrument == RhythmInstrument::BrushSweep ? 18000U : 8192U;
+            const auto low = render(64, lowPattern, kit, frames);
+            const auto high = render(64, highPattern, kit, frames);
+            if (!check(low.eventCount == 1U && high.eventCount == 1U,
+                       "low and high velocity hit both trigger exactly once")) return false;
+            const double residual = gainRemovedResidual(low, high);
+            minimumVelocityResidual = std::min(minimumVelocityResidual, residual);
+            maximumVelocityResidual = std::max(maximumVelocityResidual, residual);
+            if (!check(std::isfinite(residual) && residual > 1.0e-3,
+                       "velocity changes sound shape after fitted gain removal")) {
+                std::fprintf(stderr, "velocity_timbre kit=%u instrument=%u residual=%.9g\n",
+                             kit, static_cast<unsigned>(instrument), residual);
+                return false;
+            }
+        }
+    }
+
+    constexpr std::uint32_t kFrames = 8192U;
+    constexpr std::uint32_t kTickOffset = 1U; // 25 frames at 48 kHz / 120 BPM.
+    const auto first = renderSingleHitAtTick(64, RhythmInstrument::Kick, 96, 0, 3, kFrames);
+    const auto second = renderSingleHitAtTick(64, RhythmInstrument::Kick, 96, kTickOffset, 3,
+                                               kFrames + 25U);
+    if (!check(first.eventCount == 1U && second.eventCount == 1U,
+               "same-velocity deterministic seeded hits trigger")) return false;
+    const double roundRobinResidual = gainRemovedResidual(second, first, 25U);
+    if (!check(std::isfinite(roundRobinResidual) && roundRobinResidual > 1.0e-4,
+               "per-hit seeded kick round robin changes waveform beyond gain")) {
+        std::fprintf(stderr, "round_robin_kick residual=%.9g\n", roundRobinResidual);
+        return false;
+    }
+    std::printf("RHYTHM_VELOCITY_RR max_control_scope=kits:%u,instruments:%u; velocity_gain_removed_residual_min=%.9g,max=%.9g; kick_rr_gain_removed_residual=%.9g; numeric proxy only, no listening qualification\n",
+                cleanRoomKitCount(), static_cast<unsigned>(instruments.size()),
+                minimumVelocityResidual, maximumVelocityResidual, roundRobinResidual);
+    return true;
+}
+
 bool testKitAudioFeaturesAndBrushSweep() {
     const auto compareVoiceAcrossKits = [](RhythmInstrument instrument,
                                            const char* label,
@@ -736,6 +839,7 @@ int main() {
     ok = testLivePatternKitSelectionAtDownbeat() && ok;
     ok = testFractionalTempoAndVariableBlocks() && ok;
     ok = testNoAllocAndTimelineDiscontinuity() && ok;
+    ok = testVelocityAndRoundRobinChangeTimbre() && ok;
     ok = testKitAudioFeaturesAndBrushSweep() && ok;
     if (!ok) return 1;
     std::puts("PASS: rhythm renderer sample timing, fractional tempo, transitions, noalloc, and kit audio tests");

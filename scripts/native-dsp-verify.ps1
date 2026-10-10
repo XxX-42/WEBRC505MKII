@@ -88,7 +88,7 @@ $configureArgs = @('-S', $sourceDir, '-B', $BuildRoot, '-G', 'NMake Makefiles',
     "-DCMAKE_MAKE_PROGRAM=$($toolchain.NMakePath)", '-DCMAKE_BUILD_TYPE=Release')
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $configureArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
-$buildArgs = @('--build', $BuildRoot, '--target', 'dsp_primitives_tests', 'control_dynamics_tests', 'nonlinear_tests', 'spatial_temporal_tests', 'pitch_tests', 'pitch_profiles_tests', 'fx_registry_tests', 'rhythm_tests', 'native_dsp_primitives_bench', 'native_rhythm_bench', 'dsp_primitives_golden')
+$buildArgs = @('--build', $BuildRoot, '--target', 'dsp_primitives_tests', 'control_dynamics_tests', 'nonlinear_tests', 'spatial_temporal_tests', 'pitch_tests', 'pitch_profiles_tests', 'fx_registry_tests', 'rhythm_tests', 'musical_fx_adapter_tests', 'musical_fx_registry_bridge_tests', 'voice_fx_tests', 'vocoder_fx_tests', 'synthesis_pitch_fx_tests', 'native_dsp_primitives_bench', 'native_rhythm_bench', 'dsp_primitives_golden')
 $lines += '"{0}" {1}' -f $cmake, (ConvertTo-NativeCmdArguments $buildArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
 $lines += 'set "WEBRC_DSP_BENCH_JSON={0}"' -f $pendingBenchOutput
@@ -99,7 +99,7 @@ $lines += 'set "WEBRC_DSP_SOURCE_HASH={0}"' -f $sourceHash
 $lines += 'set "WEBRC_DSP_BUILD_FLAGS={0}"' -f $buildFlags
 $lines += 'set "WEBRC_DSP_CPU={0}"' -f $cpuModel
 $lines += 'set "WEBRC_DSP_OS={0}"' -f $osDescription
-$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', '^(dsp_primitives_tests|control_dynamics_tests|nonlinear_tests|spatial_temporal_tests|pitch_tests|pitch_profiles_tests|fx_registry_tests|rhythm_tests)$')
+$testArgs = @('--test-dir', $BuildRoot, '--output-on-failure', '-R', '^(dsp_primitives_tests|control_dynamics_tests|nonlinear_tests|spatial_temporal_tests|pitch_tests|pitch_profiles_tests|fx_registry_tests|rhythm_tests|musical_fx_adapter_tests|musical_fx_registry_bridge_tests|voice_fx_tests|vocoder_fx_tests|synthesis_pitch_fx_tests)$')
 $lines += '"{0}" {1}' -f $ctestPath, (ConvertTo-NativeCmdArguments $testArgs)
 $lines += 'if errorlevel 1 exit /b %errorlevel%'
 $benchExecutable = Join-Path $BuildRoot 'native_dsp_primitives_bench.exe'

@@ -29,6 +29,13 @@ import {
 import type { ProjectFxBank, ProjectFxUnit, ProjectMixer } from '../project/projectTypes';
 import { validateLoopEngineSettings, type LoopEngineSettings, type LoopEngineSettingsPatch } from './loopSettings';
 import type { RhythmKitDocument, RhythmPatternDocument, RhythmRuntimeSnapshot } from './rhythmTypes';
+import type { FxMidiInputEvent } from './nativeFxProtocol';
+import { createEnabledFxParameters, selectContinuousFxParameter } from './fxParameterControls';
+import {
+    BrowserFxMidiQueueWriter,
+    createBrowserFxMidiBuffer,
+    isValidFxMidiInputEvent,
+} from './browserFxMidiProtocol';
 import {
     BrowserRoutingGraph,
     type BrowserRoutingState,
@@ -151,6 +158,11 @@ export class BrowserAudioEngine implements IAudioEngine {
     private sharedDspModuleSha256: string | null = null;
     private sharedDspLooperProcessorInstanceId: number | null = null;
     private sharedDspMasterProcessorInstanceId: number | null = null;
+    private sharedDspLooperMidiQueue: BrowserFxMidiQueueWriter | null = null;
+    private sharedDspMasterMidiQueue: BrowserFxMidiQueueWriter | null = null;
+    private sharedDspFxCarrierControlBuffer: SharedArrayBuffer | null = null;
+    private sharedDspFxCarrierControl: Int32Array | null = null;
+    private sharedDspFxCarrierSource: AudioNode | null = null;
     private observedQuantumFrames: number | null = null;
     private readonly routingListeners = new Set<(state: BrowserRoutingState) => void>();
 
@@ -329,6 +341,12 @@ export class BrowserAudioEngine implements IAudioEngine {
                 this.trackStates = new Int32Array(this.sharedBuffer, CONTROL_TRACK_STATES_BYTE_OFFSET, BROWSER_REALTIME_TRACK_COUNT);
                 this.trackPositions = new Float32Array(this.sharedBuffer, CONTROL_TRACK_POSITIONS_BYTE_OFFSET, BROWSER_REALTIME_TRACK_COUNT);
             }
+            if (!this.sharedDspLooperMidiQueue) {
+                this.sharedDspLooperMidiQueue = new BrowserFxMidiQueueWriter(createBrowserFxMidiBuffer());
+                this.sharedDspMasterMidiQueue = new BrowserFxMidiQueueWriter(createBrowserFxMidiBuffer());
+                this.sharedDspFxCarrierControlBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+                this.sharedDspFxCarrierControl = new Int32Array(this.sharedDspFxCarrierControlBuffer);
+            }
 
             // A newly-created or previously used context can already be
             // running under a user gesture. Stop its render thread before the
@@ -347,17 +365,26 @@ export class BrowserAudioEngine implements IAudioEngine {
                 const workletNode = new AudioWorkletNode(this.context, BROWSER_REALTIME_WORKLET_NAME, {
                     // Input 0 is the global monitor/reference feed; ports 1..5
                     // carry each track's independently routed record source.
-                    numberOfInputs: BROWSER_REALTIME_TRACK_COUNT + 1,
+                    // Input 0 is the global monitor/reference feed, ports 1..5
+                    // carry per-track recording, and port 6 is an optional
+                    // independent stereo carrier for VOCODER FX.
+                    numberOfInputs: BROWSER_REALTIME_TRACK_COUNT + 2,
                     numberOfOutputs: 7,
                     outputChannelCount: [2, 2, 2, 2, 2, 2, 2],
                     channelCount: 2,
-                    channelCountMode: 'explicit',
+                    // Preserve the connected source's actual channel count.
+                    // VOCODER routing validates the observed Worklet input
+                    // channels and must reject mono instead of silently
+                    // upmixing it to a two-channel carrier.
+                    channelCountMode: 'clamped-max',
                     processorOptions: {
                         controlBuffer,
                         fxTransitionBuffer: this.sharedFxTransitionBuffer,
                         perTrackInputs: true,
                         sharedDspModule: sharedDspArtifact.module,
                         sharedDspMaxBlockFrames: 4096,
+                        fxMidiBuffer: this.sharedDspLooperMidiQueue.buffer,
+                        fxCarrierControl: this.sharedDspFxCarrierControlBuffer,
                         trackFxSendMask: this.tracks.map((track) => track.track.fxSw === 'ON'),
                     },
                 });
@@ -387,15 +414,20 @@ export class BrowserAudioEngine implements IAudioEngine {
                 this.rhythmRouteDelay.delayTime.value = BROWSER_REALTIME_QUANTUM_FRAMES / this.context.sampleRate;
                 workletNode.connect(this.rhythmRouteDelay, 6, 0);
                 const masterFxNode = new AudioWorkletNode(this.context, BROWSER_SHARED_DSP_MASTER_PROCESSOR_NAME, {
-                    numberOfInputs: 1,
+                    numberOfInputs: 2,
                     numberOfOutputs: 1,
                     outputChannelCount: [2],
                     channelCount: 2,
-                    channelCountMode: 'explicit',
+                    // Keep mono external carriers observable as mono so the
+                    // Worklet can fail closed instead of accepting WebAudio's
+                    // explicit-mode zero-filled right-channel upmix.
+                    channelCountMode: 'clamped-max',
                     processorOptions: {
                         sharedDspModule: sharedDspArtifact.module,
                         maxBlockFrames: 4096,
                         fxTransitionBuffer: this.sharedFxTransitionBuffer,
+                        fxMidiBuffer: this.sharedDspMasterMidiQueue!.buffer,
+                        fxCarrierControl: this.sharedDspFxCarrierControlBuffer,
                     },
                 });
                 const masterDspReady = await this.waitForMasterDspReady(masterFxNode);
@@ -406,6 +438,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 this.masterDspBus.markReady();
                 masterFxNode.port.onmessage = (event) => this.masterDspBus?.receive(event.data as SharedDspReply);
                 this.masterGainNode.connect(masterFxNode);
+                if (this.sharedDspFxCarrierSource) this.connectFxCarrierSourceToWorklets(this.sharedDspFxCarrierSource);
                 this.routingGraph = new BrowserRoutingGraph(this.context, workletNode, masterFxNode);
                 await this.routingGraph.setInputFxSnapshots(this.getInputFxSnapshots());
                 await this.routingGraph.setSource({
@@ -1078,6 +1111,15 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (!unit) return;
         const next = structuredClone(unit);
         const normalized = Math.max(0, Math.min(1, value / 100));
+        const sharedOrdinal = sharedDspFxOrdinal(next.type);
+        if (sharedOrdinal !== null) {
+            const descriptor = this.sharedDspFxCatalog.find((entry) => entry.ordinal === sharedOrdinal);
+            const parameter = descriptor && selectContinuousFxParameter(descriptor.parameters);
+            if (!parameter) return;
+            next.params[String(parameter.id)] = parameter.minimum + normalized * (parameter.maximum - parameter.minimum);
+            void this.updateFxBankSlot(location, slotIndex, next).catch((error) => this.recordRuntimeError(error));
+            return;
+        }
         switch (next.type.toUpperCase()) {
             case 'FILTER': next.params.frequency = normalized; break;
             case 'COMPRESSOR': next.params.amount = normalized; break;
@@ -1095,7 +1137,9 @@ export class BrowserAudioEngine implements IAudioEngine {
         const bank = this.fxBanks.find((candidate) => candidate.id === this.activeFxBankId);
         const unit = bank?.[location][slotIndex];
         if (!unit) return;
-        void this.updateFxBankSlot(location, slotIndex, { ...unit, enabled: active })
+        const params = { ...unit.params };
+        if (Object.prototype.hasOwnProperty.call(params, '48')) params['48'] = active ? 1 : 0;
+        void this.updateFxBankSlot(location, slotIndex, { ...unit, enabled: active, params })
             .catch((error) => this.recordRuntimeError(error));
     }
 
@@ -1122,9 +1166,10 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (ordinal !== null) {
             const descriptor = this.sharedDspFxCatalog.find((entry) => entry.ordinal === ordinal);
             if (!descriptor) throw new TypeError(`Shared DSP FX type ${type} is not available in the loaded module.`);
+            const parameters = createEnabledFxParameters(descriptor.parameters);
             return {
                 type: sharedDspFxType(ordinal), enabled: true,
-                params: Object.fromEntries(descriptor.parameters.map((parameter) => [String(parameter.id), parameter.defaultValue])),
+                params: parameters,
             };
         }
         if (!defaultFXRegistry.supports(normalizedType)) throw new TypeError(`FX type ${type} is not registered.`);
@@ -1676,6 +1721,105 @@ export class BrowserAudioEngine implements IAudioEngine {
 
     public getMasterFxOutputNode(): AudioWorkletNode | null {
         return this.masterFxWorkletNode;
+    }
+
+    /**
+     * Attach an independent AudioNode as the external vocoder carrier.
+     * Actual channel count is checked on the Worklet render thread: WebAudio's
+     * AudioNode.channelCount is a configuration value and does not reliably
+     * describe the connected source's emitted channels. The Worklets reject
+     * anything other than an observed stereo carrier without upmixing it.
+     */
+    public setFxCarrierSource(source: AudioNode | null): boolean {
+        if (source === this.sharedDspFxCarrierSource) return true;
+        if (source && source.context !== this.context) return false;
+        const activeBank = this.fxBanks.find((bank) => bank.id === this.activeFxBankId);
+        const vocoderActive = Boolean(activeBank &&
+            [...activeBank.input, ...activeBank.track, ...activeBank.output]
+                .some((unit) => unit?.enabled && sharedDspFxOrdinal(unit.type) === 20));
+        if (!source && vocoderActive) return false;
+
+        const previous = this.sharedDspFxCarrierSource;
+        if (source) {
+            try {
+                this.connectFxCarrierSourceToWorklets(source);
+            } catch {
+                this.disconnectFxCarrierSourceFromWorklets(source);
+                return false;
+            }
+        }
+        if (previous) this.disconnectFxCarrierSourceFromWorklets(previous);
+        this.sharedDspFxCarrierSource = source;
+        if (this.sharedDspFxCarrierControl) Atomics.store(this.sharedDspFxCarrierControl, 0, source ? 1 : 0);
+        return true;
+    }
+
+    /** Queue normalized MIDI for each active compatible shared-DSP route. */
+    public postFxMidiInput(event: FxMidiInputEvent): boolean {
+        if (!isValidFxMidiInputEvent(event) || event.channel !== 0 || !this.realtimeRuntime ||
+            !this.workletNode || !this.masterFxWorkletNode) return false;
+        const bank = this.fxBanks.find((candidate) => candidate.id === this.activeFxBankId);
+        if (!bank) return false;
+        const acceptsMidi = (units: Array<ProjectFxUnit | null>) => units.some((unit) => {
+            if (!unit?.enabled) return false;
+            const ordinal = sharedDspFxOrdinal(unit.type);
+            if (ordinal === 21) return true;
+            if (ordinal !== 19) return false;
+            const mode = unit.params['107'] ?? 2;
+            return Number.isFinite(mode) && mode < 1.5;
+        });
+        const looperRoute = acceptsMidi(bank.input) || acceptsMidi(bank.track);
+        const masterRoute = acceptsMidi(bank.output);
+        if (!looperRoute && !masterRoute) return false;
+        let targetFrame = this.fxMidiTargetFrame(event.timestampMs);
+        if (targetFrame === null) return false;
+        const looperQueue = looperRoute ? this.sharedDspLooperMidiQueue : null;
+        const masterQueue = masterRoute ? this.sharedDspMasterMidiQueue : null;
+        if (looperQueue) targetFrame = Math.max(targetFrame, looperQueue.minimumNextTargetFrame);
+        if (masterQueue) targetFrame = Math.max(targetFrame, masterQueue.minimumNextTargetFrame);
+        if ((looperQueue && !looperQueue.canEnqueue(event, targetFrame)) ||
+            (masterQueue && !masterQueue.canEnqueue(event, targetFrame))) return false;
+        if ((looperQueue && !looperQueue.enqueue(event, targetFrame)) ||
+            (masterQueue && !masterQueue.enqueue(event, targetFrame))) return false;
+        return true;
+    }
+
+    public getFxMidiQueueDiagnostics(): { looperDropped: number; masterDropped: number } {
+        return {
+            looperDropped: this.sharedDspLooperMidiQueue?.droppedEvents ?? 0,
+            masterDropped: this.sharedDspMasterMidiQueue?.droppedEvents ?? 0,
+        };
+    }
+
+    private fxMidiTargetFrame(timestampMs: number): number | null {
+        const context = this.context;
+        const currentFrame = this.realtimeRuntime?.getCurrentFrame();
+        if (!Number.isSafeInteger(currentFrame) || currentFrame! < 0 || !Number.isFinite(context.sampleRate) || context.sampleRate <= 0) return null;
+        if (typeof context.getOutputTimestamp !== 'function') return null;
+        const outputTimestamp = context.getOutputTimestamp();
+        if (!outputTimestamp || typeof outputTimestamp.contextTime !== 'number' ||
+            typeof outputTimestamp.performanceTime !== 'number' ||
+            !Number.isFinite(outputTimestamp.contextTime) ||
+            !Number.isFinite(outputTimestamp.performanceTime) || !Number.isFinite(timestampMs)) return null;
+        const mapped = Math.round((outputTimestamp.contextTime +
+            (timestampMs - outputTimestamp.performanceTime) / 1000) * context.sampleRate);
+        if (!Number.isSafeInteger(mapped) || mapped < 0) return null;
+        const quantum = this.observedQuantumFrames ?? BROWSER_REALTIME_QUANTUM_FRAMES;
+        return Math.max(mapped, currentFrame! + Math.max(1, quantum));
+    }
+
+    private connectFxCarrierSourceToWorklets(source: AudioNode): void {
+        if (this.workletNode) source.connect(this.workletNode, 0, 6);
+        if (this.masterFxWorkletNode) source.connect(this.masterFxWorkletNode, 0, 1);
+    }
+
+    private disconnectFxCarrierSourceFromWorklets(source: AudioNode): void {
+        if (this.workletNode) {
+            try { source.disconnect(this.workletNode, 0, 6); } catch { /* the carrier edge may already be disconnected */ }
+        }
+        if (this.masterFxWorkletNode) {
+            try { source.disconnect(this.masterFxWorkletNode, 0, 1); } catch { /* the carrier edge may already be disconnected */ }
+        }
     }
 
     public configureRealtimeDspFilter(request: SharedDspFilterRequest): Promise<SharedDspReply> {

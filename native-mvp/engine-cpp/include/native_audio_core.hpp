@@ -1,6 +1,7 @@
 #pragma once
 
 #include "looper_core.hpp"
+#include "native_fx_control.hpp"
 #include "native_track_host.hpp"
 
 #include <algorithm>
@@ -50,8 +51,9 @@ struct EngineConfig {
 };
 
 struct EngineStatus {
-    bool bridgeHealthy = true;
-    bool engineRunning = false;
+  bool bridgeHealthy = true;
+  bool engineRunning = false;
+  bool softwareOnly = false;
     Backend backend = Backend::Wasapi;
     std::string inputDeviceId;
     std::string outputDeviceId;
@@ -90,6 +92,39 @@ struct EngineStatus {
     double streamTimeSeconds = 0.0;
     unsigned long long callbackTicks = 0;
     NativeTrackHostStatus trackHost{};
+};
+
+enum class NativeRhythmCommandType : std::uint8_t {
+    PatternKit,
+    Start,
+    Variation,
+    Fill,
+    Ending,
+    Stop,
+    Tempo,
+    Volume,
+};
+
+// Typed Native control request. An omitted absoluteFrame is resolved to the
+// next safe host command frame and returned by postRhythmCommand().
+struct NativeRhythmCommand {
+    NativeRhythmCommandType type = NativeRhythmCommandType::Start;
+    std::optional<std::uint64_t> absoluteFrame;
+    std::uint32_t patternIndex = 0U;
+    std::uint32_t kitIndex = 0U;
+    std::uint8_t variation = 0U;
+    bool playIntro = true;
+    double bpm = 120.0;
+    float volume = 1.0f;
+};
+
+struct NativeFxBankSnapshot {
+    bool configured = false;
+    bool stageAccepted = false;
+    bool adopted = false;
+    std::uint64_t producerGeneration = 0U;
+    std::uint64_t activeGeneration = 0U;
+    std::optional<NativeFxBankConfig> configuration;
 };
 
 template <typename T, std::size_t Capacity>
@@ -189,12 +224,38 @@ private:
 
 class NativeAudioCore {
 public:
-    NativeAudioCore();
+    explicit NativeAudioCore(bool softwareOnly = false);
     ~NativeAudioCore();
 
     DeviceCatalog getDeviceCatalog() const;
     std::optional<EngineConfig> getCurrentConfig() const;
     EngineStatus getStatus() const;
+    NativeFxBankSnapshot getFxBankSnapshot() const;
+    NativeFxBankResult configureFxBank(const NativeFxBankConfig& configuration);
+    NativeFxBankResult postFxBankEvents(const NativeFxBankEvent* events,
+                                        std::uint32_t eventCount);
+    // Available only when constructed with softwareOnly=true. This mode skips
+    // RtAudio device enumeration and refuses all physical-device operations.
+    bool prepareSoftwareFxHost(std::uint32_t sampleRateHz,
+                               std::uint32_t trackBufferSeconds,
+                               std::uint64_t memoryBudgetBytes,
+                               std::string& error);
+    // Deterministic software-only render entry used by the explicit HTTP test
+    // host. It runs the same NativeTrackHost callback path in bounded chunks,
+    // including the optional independent stereo carrier; it never opens a
+    // physical device or marks one as running.
+    bool processSoftwareFxBlock(const float* inputInterleavedStereo,
+                                const float* carrierInterleavedStereo,
+                                float* outputInterleavedStereo,
+                                std::uint32_t frames,
+                                MultiTrackProcessStats* stats,
+                                std::string& error);
+    // Rhythm and shared-tempo commands enter the same NativeTrackHost bounded
+    // timestamp queues in physical and software-only modes. They are applied
+    // by the audio owner; no renderer state is touched by this control API.
+    bool postRhythmCommand(const NativeRhythmCommand& command,
+                           std::uint64_t& acceptedFrame,
+                           std::string& error);
 
     bool applyConfig(const EngineConfig& config, std::string& error);
     bool start(std::string& error);
@@ -247,6 +308,7 @@ private:
     void closeStreamLocked() noexcept;
     void resetRuntimeStateLocked() noexcept;
     void updateLastErrorLocked(const std::string& error) const;
+    bool rhythmControlReadyLocked(std::string& error) const;
     const DeviceDescriptor* findDeviceLocked(const std::vector<DeviceDescriptor>& devices, const std::string& id) const;
 
     static int audioCallback(
@@ -298,14 +360,17 @@ private:
     mutable std::mutex controlMutex_;
     std::mutex commandProducerMutex_;
     mutable std::string lastError_;
+    const bool softwareOnly_;
     std::unique_ptr<RtAudio> audio_;
     std::unique_ptr<RtAudio> captureAudio_;
     std::optional<EngineConfig> currentConfig_;
+    bool softwareMonitoringEnabled_ = false;
     DeviceCatalog deviceCatalog_;
     LooperCore looper_;
     // Reclaimed only by control-side telemetry/configuration calls after the
     // audio callback has published retirement; logically mutable maintenance.
     mutable NativeTrackHost trackHost_;
+    NativeFxBank fxBank_;
     unsigned int inputChannels_ = 1;
     unsigned int outputChannels_ = 2;
 

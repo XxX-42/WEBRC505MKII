@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { evaluateRealtimeWorklet } from '../helpers/evaluateRealtimeWorklet';
 import { BrowserRealtimeRuntime } from '../../src/audio/BrowserRealtimeRuntime';
+import { BrowserFxMidiQueueWriter, createBrowserFxMidiBuffer } from '../../src/audio/browserFxMidiProtocol';
 import {
   BROWSER_REALTIME_LAYOUT_MONO,
   BROWSER_REALTIME_LAYOUT_PLANAR_LR,
@@ -71,6 +72,8 @@ type WorkletTestProcessor = HarnessProcessorBase & {
     outputStageRight: Float32Array;
     fxInputRoutes?: SharedDspFxTestRoute[];
     fxTrackRoutes?: SharedDspFxTestRoute[];
+    fxMidiBuffer?: SharedArrayBuffer;
+    fxCurrentMidiEventCount?: number;
     fxStaged?: {
       stageId: number; handles: number[];
       inputRoutes: SharedDspFxTestRoute[];
@@ -91,6 +94,8 @@ type WorkletTestProcessor = HarnessProcessorBase & {
     route: SharedDspTestRoute, sourceLeft: Float32Array, sourceRight: Float32Array,
     outputLeft: Float32Array, outputRight: Float32Array, frames: number,
   ): boolean;
+  collectSharedDspFxMidiEvents(blockStartFrame: number, frames: number): void;
+  processSharedDspRenderedOutputs(outputs: Float32Array[][], frames: number, blockStartFrame: number): void;
   takeIndex(track: number, slot: number): number;
   takeModes: Int8Array;
   takeFrames: Int32Array;
@@ -155,14 +160,23 @@ function createHarness(
   evaluateRealtimeWorklet(scope);
   if (!RegisteredProcessor) throw new Error('The real Worklet source did not register a processor.');
   const processorOptions: Record<string, unknown> = { controlBuffer, perTrackInputs };
+  const fxMidiBuffer = sharedDspModule ? createBrowserFxMidiBuffer() : undefined;
+  const fxCarrierControl = sharedDspModule ? new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT) : undefined;
   if (sharedDspModule) {
     processorOptions.sharedDspModule = sharedDspModule;
     processorOptions.sharedDspMaxBlockFrames = 64;
     processorOptions.trackFxSendMask = new Uint8Array(BROWSER_REALTIME_TRACK_COUNT).fill(1);
     processorOptions.fxTransitionBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 2);
+    processorOptions.fxMidiBuffer = fxMidiBuffer;
+    processorOptions.fxCarrierControl = fxCarrierControl;
   }
   const processor = new RegisteredProcessor({ processorOptions }) as WorkletTestProcessor;
-  return { processor, scope, controlBuffer };
+  return { processor, scope, controlBuffer, fxMidiBuffer, fxCarrierControl };
+}
+
+function readSharedDspWasmBytes() {
+  const configuredPath = process.env.WEBRC_DSP_WASM_PATH;
+  return readFileSync(configuredPath || resolve(process.cwd(), 'public/dsp/webrc-dsp.wasm'));
 }
 
 function createIntegratedRuntimeHarness() {
@@ -937,7 +951,7 @@ describe('stereo runtime attachment and export contract', () => {
 
 describe('shared Worklet filter wet/dry transitions', () => {
   it('stages complete PREAMP selectors and Vinyl across all five stereo routes before the warmup fade', async () => {
-    const moduleBytes = readFileSync(resolve(process.cwd(), 'public/dsp/webrc-dsp.wasm'));
+    const moduleBytes = readSharedDspWasmBytes();
     const wasmModule = await WebAssembly.compile(moduleBytes);
     const controlBuffer = createControlSharedBuffer();
     const { processor, scope } = createHarness(controlBuffer, true, wasmModule);
@@ -1076,6 +1090,77 @@ describe('shared Worklet filter wet/dry transitions', () => {
       message.type === 'SHARED_DSP_FX_BANK_STAGED')).toMatchObject({ ok: false });
     expect(dsp.fxActiveHandles).toEqual(stableHandles);
     expect(dsp.wasm.webrc_dsp_managed_memory_bytes!()).toBe(stableBytes);
+  }, 120_000);
+
+  it('fans one sample-offset MIDI span to five independent stereo track processors', async () => {
+    const module = await WebAssembly.compile(readSharedDspWasmBytes());
+    const makeMidiTrackHarness = () => createHarness(createControlSharedBuffer(), true, module);
+    const tested = makeMidiTrackHarness();
+    const control = makeMidiTrackHarness();
+    const midiInstrument = { ordinal: 21, parameters: [{ id: 48, value: 1 }, { id: 3, value: 1 }] };
+
+    const prime = (harness: ReturnType<typeof createHarness>) => {
+      const { processor, scope } = harness;
+      // Seed five distinct real stereo loop sources, then let the actual
+      // Worklet callback render them so stopped-bank warmup has valid history.
+      for (let track = 0; track < BROWSER_REALTIME_TRACK_COUNT; track += 1) {
+        const { meta, left, right } = attach(processor, track, 4_800);
+        for (let frame = 0; frame < 4_800; frame += 1) {
+          left[frame] = 0.08 * (track + 1) + 0.03 * Math.sin(2 * Math.PI * (171 + track * 17) * frame / 48_000);
+          right[frame] = -0.06 * (track + 1) + 0.02 * Math.sin(2 * Math.PI * (619 + track * 23) * frame / 48_000);
+        }
+        seedBaseHistory(processor, track, meta, left, right, 4_800);
+      }
+      const silence = new Float32Array(64);
+      for (let block = 0; block < 75; block += 1) {
+        const blockStart = block * 64;
+        processBlock(processor, scope, blockStart, silence, silence);
+      }
+      processor.handlePortMessage({ type: 'SHARED_DSP_FX_BANK_STAGE', requestId: 701, plan: {
+        input: [], track: [midiInstrument], output: [],
+      } });
+      const stage = [...processor.port.messages].reverse().find((message) =>
+        message.type === 'SHARED_DSP_FX_BANK_STAGED');
+      expect(stage).toMatchObject({ ok: true, handleCount: BROWSER_REALTIME_TRACK_COUNT });
+      processor.handlePortMessage({ type: 'SHARED_DSP_FX_BANK_COMMIT', requestId: 702,
+        stageId: stage!.stageId, allowHistoryWarmup: true });
+      expect([...processor.port.messages].reverse().find((message) =>
+        message.type === 'SHARED_DSP_FX_BANK_COMMITTED')).toMatchObject({ ok: true });
+      expect(processor.sharedDsp!.fxTrackRoutes!.map((route) => route.handles.length))
+        .toEqual(Array(BROWSER_REALTIME_TRACK_COUNT).fill(1));
+    };
+    prime(tested);
+    prime(control);
+
+    const writer = new BrowserFxMidiQueueWriter(tested.fxMidiBuffer!);
+    const eventStartFrame = 4_800;
+    expect(writer.enqueue({ type: 'NoteOn', channel: 0, note: 67, velocity: 118, timestampMs: 0 }, eventStartFrame + 17)).toBe(true);
+    expect(writer.enqueue({ type: 'NoteOff', channel: 0, note: 67, velocity: 0, timestampMs: 1 }, eventStartFrame + 200)).toBe(true);
+    const testedCapture = outputs(256);
+    const controlCapture = outputs(256);
+    const silence = new Float32Array(64);
+    for (let block = 0; block < 4; block += 1) {
+      const blockStart = eventStartFrame + block * 64;
+      const testedBlock = processBlock(tested.processor, tested.scope, blockStart, silence, silence);
+      const controlBlock = processBlock(control.processor, control.scope, blockStart, silence, silence);
+      expect(tested.processor.sharedDsp!.fxCurrentMidiEventCount).toBe(block === 0 ? 1 : block === 3 ? 1 : 0);
+      for (let track = 0; track < BROWSER_REALTIME_TRACK_COUNT; track += 1) {
+        testedCapture[track]![0]!.set(testedBlock[track]![0]!, block * 64);
+        testedCapture[track]![1]!.set(testedBlock[track]![1]!, block * 64);
+        controlCapture[track]![0]!.set(controlBlock[track]![0]!, block * 64);
+        controlCapture[track]![1]!.set(controlBlock[track]![1]!, block * 64);
+      }
+    }
+    for (let track = 0; track < BROWSER_REALTIME_TRACK_COUNT; track += 1) {
+      for (let frame = 0; frame < 17; frame += 1) {
+        expect(testedCapture[track]![0]![frame]).toBe(controlCapture[track]![0]![frame]);
+        expect(testedCapture[track]![1]![frame]).toBe(controlCapture[track]![1]![frame]);
+      }
+      expect(testedCapture[track]![0]!.slice(17).some((sample, index) =>
+        Math.abs(sample - controlCapture[track]![0]![index + 17]!) > 1e-7)).toBe(true);
+      expect(testedCapture[track]![1]!.slice(17).some((sample, index) =>
+        Math.abs(sample - controlCapture[track]![1]![index + 17]!) > 1e-7)).toBe(true);
+    }
   }, 120_000);
 
   it('ramps enable and clear across actual blocks while preserving independent stereo', () => {

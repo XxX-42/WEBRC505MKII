@@ -2,6 +2,7 @@
 
 #include "handle_registry.hpp"
 #include "webrc/dsp/fx_registry.hpp"
+#include "webrc/dsp/musical_fx_context.hpp"
 
 #include <algorithm>
 #include <array>
@@ -23,6 +24,13 @@ using webrc::dsp::wasm::registry;
 
 constexpr std::uint32_t kFxAllocatorAllowance = 2048U;
 constexpr std::uint32_t kConfiguredCreateV2ApiVersion = 2U;
+constexpr std::uint32_t kFxTypedContextApiVersion = 1U;
+constexpr std::uint32_t kFxMidiContextEventCapacity = 64U;
+
+static_assert(sizeof(WebrcDspFxMidiEventV1) == 8U,
+              "WebrcDspFxMidiEventV1 is a fixed 8-byte C ABI record");
+static_assert(alignof(WebrcDspFxMidiEventV1) == alignof(std::uint32_t),
+              "WebrcDspFxMidiEventV1 alignment is part of the C ABI");
 
 struct InitialParameter {
     FxParameterId id = FxParameterId::FrequencyHz;
@@ -123,6 +131,33 @@ bool copyAndValidateInitialParameters(std::uint16_t ordinal,
     return ordinal != 23U || selectorMask == 0x1fU;
 }
 
+std::uint32_t makeProfileSizingEvents(
+    const InitialParameter* parameters, std::uint32_t parameterCount,
+    std::array<FxParameterEvent, 1U>& output) noexcept {
+    if (parameterCount != 0U && parameters == nullptr) return UINT32_MAX;
+    std::uint32_t count = 0U;
+    for (std::uint32_t index = 0U; index < parameterCount; ++index) {
+        if (parameters[index].id != FxParameterId::PitchProfile) continue;
+        if (count != 0U) return UINT32_MAX;
+        output[count++] = {0U, parameters[index].id, parameters[index].value};
+    }
+    return count;
+}
+
+bool selectedProfileRequirements(
+    std::uint16_t ordinal, const ProcessSpec& spec,
+    const InitialParameter* parameters, std::uint32_t parameterCount,
+    FxMemoryRequirement& memory, FxStartupWarmupRequirement& warmup) noexcept {
+    std::array<FxParameterEvent, 1U> profileEvents{};
+    const auto profileCount = makeProfileSizingEvents(parameters, parameterCount, profileEvents);
+    if (profileCount == UINT32_MAX) return false;
+    memory = fxMemoryRequirementForParameters(ordinal, spec,
+        profileCount == 0U ? nullptr : profileEvents.data(), profileCount);
+    warmup = fxStartupWarmupUpperBoundSamplesForParameters(ordinal, spec,
+        profileCount == 0U ? nullptr : profileEvents.data(), profileCount);
+    return memory.supported && warmup.supported;
+}
+
 WebrcDspHandle createFxHandleV2(std::uint32_t ordinal, const ProcessSpec& spec,
                                 const std::uint32_t* parameterIds,
                                 const float* parameterValues,
@@ -132,17 +167,18 @@ WebrcDspHandle createFxHandleV2(std::uint32_t ordinal, const ProcessSpec& spec,
         return 0U;
     }
     const auto narrowOrdinal = static_cast<std::uint16_t>(ordinal);
-    const auto requirement = fxMemoryRequirement(narrowOrdinal, spec);
-    const auto warmupLimit = fxStartupWarmupUpperBoundSamples(narrowOrdinal, spec);
-    if (!requirement.supported || !warmupLimit.supported) {
-        gLastCreateStatus = WEBRC_DSP_BAD_KIND;
-        return 0U;
-    }
-
     std::array<InitialParameter, kFxEventCapacity> initialParameters{};
     if (!copyAndValidateInitialParameters(narrowOrdinal, parameterIds, parameterValues,
                                           parameterCount, initialParameters)) {
         gLastCreateStatus = WEBRC_DSP_BAD_ARGUMENT;
+        return 0U;
+    }
+
+    FxMemoryRequirement requirement{};
+    FxStartupWarmupRequirement warmupLimit{};
+    if (!selectedProfileRequirements(narrowOrdinal, spec, initialParameters.data(),
+                                     parameterCount, requirement, warmupLimit)) {
+        gLastCreateStatus = WEBRC_DSP_BAD_KIND;
         return 0U;
     }
 
@@ -237,6 +273,12 @@ std::uint32_t webrc_dsp_fx_create_v2_api_version(void) {
     return kConfiguredCreateV2ApiVersion;
 }
 
+std::uint32_t webrc_dsp_fx_context_api_version(void) {
+    return kFxTypedContextApiVersion;
+}
+
+std::uint32_t webrc_dsp_fx_profile_setup_api_version(void) { return 1U; }
+
 std::uint32_t webrc_dsp_fx_catalog_size(void) {
     return static_cast<std::uint32_t>(fxCatalogSize());
 }
@@ -309,6 +351,58 @@ std::int32_t webrc_dsp_fx_memory_info(std::uint32_t ordinal, float sampleRate,
     output->peakBytes = requirement.peakBytes();
     output->supported = requirement.supported ? 1U : 0U;
     return requirement.supported ? WEBRC_DSP_OK : WEBRC_DSP_BAD_KIND;
+}
+
+std::int32_t webrc_dsp_fx_memory_info_for_parameters(
+    std::uint32_t ordinal, float sampleRate, std::uint32_t maxBlockFrames,
+    std::uint32_t channels, const std::uint32_t* parameterIds,
+    const float* parameterValues, std::uint32_t parameterCount,
+    WebrcDspFxMemoryInfo* output) {
+    if (!validLinearMemorySpan(output, 1U) || ordinal > std::numeric_limits<std::uint16_t>::max())
+        return WEBRC_DSP_BAD_ARGUMENT;
+    const auto narrowOrdinal = static_cast<std::uint16_t>(ordinal);
+    std::array<InitialParameter, kFxEventCapacity> initialParameters{};
+    if (!copyAndValidateInitialParameters(narrowOrdinal, parameterIds, parameterValues,
+                                          parameterCount, initialParameters)) return WEBRC_DSP_BAD_ARGUMENT;
+    const ProcessSpec spec{sampleRate, maxBlockFrames, channels};
+    FxMemoryRequirement requirement{};
+    FxStartupWarmupRequirement ignoredWarmup{};
+    if (!selectedProfileRequirements(narrowOrdinal, spec, initialParameters.data(),
+                                     parameterCount, requirement, ignoredWarmup)) {
+        const auto staticRequirement = fxMemoryRequirement(narrowOrdinal, spec);
+        return staticRequirement.supported ? WEBRC_DSP_BAD_ARGUMENT : WEBRC_DSP_BAD_KIND;
+    }
+    WebrcDspFxMemoryInfo result{};
+    result.objectBytes = requirement.objectBytes;
+    result.persistentPreparedBytes = requirement.persistentPreparedBytes;
+    result.prepareScratchBytes = requirement.prepareScratchBytes;
+    result.peakBytes = requirement.peakBytes();
+    result.supported = 1U;
+    *output = result;
+    return WEBRC_DSP_OK;
+}
+
+std::int32_t webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters(
+    std::uint32_t ordinal, float sampleRate, std::uint32_t maxBlockFrames,
+    std::uint32_t channels, const std::uint32_t* parameterIds,
+    const float* parameterValues, std::uint32_t parameterCount,
+    std::uint32_t* outputFrames) {
+    if (!validLinearMemorySpan(outputFrames, 1U) || ordinal > std::numeric_limits<std::uint16_t>::max())
+        return WEBRC_DSP_BAD_ARGUMENT;
+    const auto narrowOrdinal = static_cast<std::uint16_t>(ordinal);
+    std::array<InitialParameter, kFxEventCapacity> initialParameters{};
+    if (!copyAndValidateInitialParameters(narrowOrdinal, parameterIds, parameterValues,
+                                          parameterCount, initialParameters)) return WEBRC_DSP_BAD_ARGUMENT;
+    const ProcessSpec spec{sampleRate, maxBlockFrames, channels};
+    FxMemoryRequirement ignoredMemory{};
+    FxStartupWarmupRequirement warmup{};
+    if (!selectedProfileRequirements(narrowOrdinal, spec, initialParameters.data(),
+                                     parameterCount, ignoredMemory, warmup)) {
+        const auto staticRequirement = fxMemoryRequirement(narrowOrdinal, spec);
+        return staticRequirement.supported ? WEBRC_DSP_BAD_ARGUMENT : WEBRC_DSP_BAD_KIND;
+    }
+    *outputFrames = warmup.frames;
+    return WEBRC_DSP_OK;
 }
 
 WebrcDspHandle webrc_dsp_fx_create(std::uint32_t ordinal, float sampleRate,
@@ -408,6 +502,86 @@ std::int32_t webrc_dsp_fx_process_stereo_events(WebrcDspHandle handle,
     return state->processor->processBlockWithEvents(input, output, view.spec.channels,
         frames, eventCount ? events.data() : nullptr, eventCount)
         ? WEBRC_DSP_OK : WEBRC_DSP_BAD_ARGUMENT;
+}
+
+std::int32_t webrc_dsp_fx_process_stereo_context_v1(
+    WebrcDspHandle handle,
+    const float* inputLeft, const float* inputRight,
+    float* outputLeft, float* outputRight, std::uint32_t frames,
+    const std::uint32_t* parameterEventOffsets,
+    const std::uint32_t* parameterIds,
+    const float* parameterValues, std::uint32_t parameterEventCount,
+    const float* carrierLeft, const float* carrierRight,
+    std::uint32_t carrierFrames, std::uint32_t carrierChannels,
+    const WebrcDspFxMidiEventV1* midiEvents, std::uint32_t midiEventCount) {
+    FxState* state = nullptr;
+    HandleView view{};
+    const auto status = fxStateFor(handle, state, &view);
+    if (status != WEBRC_DSP_OK) return status;
+    if (frames > view.spec.maxBlockFrames) return WEBRC_DSP_BLOCK_TOO_LARGE;
+    if (frames == 0U || !validLinearMemorySpan(inputLeft, frames) ||
+        !validLinearMemorySpan(outputLeft, frames) ||
+        (view.spec.channels == 2U &&
+         (!validLinearMemorySpan(inputRight, frames) ||
+          !validLinearMemorySpan(outputRight, frames)))) return WEBRC_DSP_BAD_ARGUMENT;
+    if (parameterEventCount > kFxEventCapacity || midiEventCount > kFxMidiContextEventCapacity ||
+        (parameterEventCount != 0U &&
+         (!validLinearMemorySpan(parameterEventOffsets, parameterEventCount) ||
+          !validLinearMemorySpan(parameterIds, parameterEventCount) ||
+          !validLinearMemorySpan(parameterValues, parameterEventCount))) ||
+        !validLinearMemorySpan(midiEvents, midiEventCount)) return WEBRC_DSP_BAD_ARGUMENT;
+
+    const bool carrierSupplied = carrierLeft != nullptr || carrierRight != nullptr ||
+                                 carrierFrames != 0U || carrierChannels != 0U;
+    if (carrierSupplied) {
+        if (!carrierLeft || !carrierRight || carrierChannels != 2U ||
+            carrierFrames != frames ||
+            !validLinearMemorySpan(carrierLeft, carrierFrames) ||
+            !validLinearMemorySpan(carrierRight, carrierFrames)) return WEBRC_DSP_BAD_ARGUMENT;
+    }
+
+    std::array<FxParameterEvent, kFxEventCapacity> nativeParameters{};
+    std::uint32_t previousParameterOffset = 0U;
+    for (std::uint32_t index = 0U; index < parameterEventCount; ++index) {
+        if (parameterIds[index] > std::numeric_limits<std::uint16_t>::max() ||
+            parameterEventOffsets[index] >= frames ||
+            (index != 0U && parameterEventOffsets[index] < previousParameterOffset) ||
+            !std::isfinite(parameterValues[index])) return WEBRC_DSP_BAD_ARGUMENT;
+        previousParameterOffset = parameterEventOffsets[index];
+        nativeParameters[index] = {parameterEventOffsets[index],
+            static_cast<FxParameterId>(parameterIds[index]), parameterValues[index]};
+    }
+
+    std::array<FxMidiEvent, kFxMidiContextEventCapacity> nativeMidi{};
+    std::uint32_t previousMidiOffset = 0U;
+    for (std::uint32_t index = 0U; index < midiEventCount; ++index) {
+        const auto& source = midiEvents[index];
+        if (source.type > 2U || source.frameOffset >= frames ||
+            (index != 0U && source.frameOffset < previousMidiOffset)) return WEBRC_DSP_BAD_ARGUMENT;
+        previousMidiOffset = source.frameOffset;
+        FxMidiEventType type{};
+        switch (source.type) {
+        case 0U: type = FxMidiEventType::NoteOn; break;
+        case 1U: type = FxMidiEventType::NoteOff; break;
+        case 2U: type = FxMidiEventType::AllNotesOff; break;
+        default: return WEBRC_DSP_BAD_ARGUMENT;
+        }
+        nativeMidi[index] = {source.frameOffset, type, source.channel, source.note, source.velocity};
+    }
+
+    const float* inputPlanar[2]{inputLeft, inputRight};
+    float* outputPlanar[2]{outputLeft, outputRight};
+    FxProcessContext context{};
+    context.carrierLeft = carrierLeft;
+    context.carrierRight = carrierRight;
+    context.carrierFrames = carrierFrames;
+    context.carrierChannels = carrierChannels;
+    context.midiEvents = midiEventCount == 0U ? nullptr : nativeMidi.data();
+    context.midiEventCount = midiEventCount;
+    return state->processor->processBlockWithContext(
+        inputPlanar, outputPlanar, view.spec.channels, frames,
+        parameterEventCount == 0U ? nullptr : nativeParameters.data(),
+        parameterEventCount, context) ? WEBRC_DSP_OK : WEBRC_DSP_BAD_ARGUMENT;
 }
 
 std::int32_t webrc_dsp_fx_fixed_latency_samples(WebrcDspHandle handle) {

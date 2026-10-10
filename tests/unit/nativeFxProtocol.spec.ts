@@ -3,8 +3,11 @@ import {
   NATIVE_FX_BUS_COUNT,
   NATIVE_FX_SLOTS_PER_BUS,
   serializeNativeFxBankConfiguration,
+  serializeNativeFxControlEvent,
   serializeNativeFxParameterEvent,
   validateNativeFxBankConfiguration,
+  validateNativeFxControlEvent,
+  validateFxMidiInputEvent,
   validateNativeFxParameterEvent,
   type NativeFxBankConfiguration,
 } from '../../src/audio/nativeFxProtocol';
@@ -115,5 +118,37 @@ describe('NativeFxProtocol', () => {
         { path: '$.absoluteFrame', code: 'safe-frame-required' },
         { path: '$.value', code: 'finite-value-required' },
       ]));
+  });
+
+  it('validates typed MIDI records and keeps DSP channels zero-based', () => {
+    const noteOn = {
+      kind: 'midi', absoluteFrame: 512, busIndex: 0, slotIndex: 1,
+      midiType: 'NoteOn', channel: 0, note: 60, velocity: 100,
+    } as const;
+    expect(validateNativeFxControlEvent(noteOn)).toEqual([]);
+    expect(serializeNativeFxControlEvent(noteOn)).toBe(JSON.stringify(noteOn));
+    expect(validateNativeFxControlEvent({ ...noteOn, channel: 16 })).toContainEqual({
+      path: '$.channel', code: 'midi-channel-out-of-range',
+    });
+    expect(validateNativeFxControlEvent({ ...noteOn, midiType: 'NoteOn', velocity: 0 })).toContainEqual({
+      path: '$.velocity', code: 'note-on-velocity-must-be-positive',
+    });
+    const allOff = { ...noteOn, midiType: 'AllNotesOff', note: 0, velocity: 0 } as const;
+    expect(validateNativeFxControlEvent(allOff)).toEqual([]);
+  });
+
+  it('validates normalized WebMIDI timestamps and NoteOn/AllNotesOff payloads', () => {
+    expect(validateFxMidiInputEvent({
+      type: 'NoteOn', channel: 15, note: 127, velocity: 1, timestampMs: 12.5,
+    })).toEqual([]);
+    expect(validateFxMidiInputEvent({
+      type: 'AllNotesOff', channel: 2, note: 0, velocity: 0, timestampMs: 0,
+    })).toEqual([]);
+    expect(validateFxMidiInputEvent({
+      type: 'NoteOn', channel: 16, note: 128, velocity: 0, timestampMs: -1,
+    }).map(({ code }) => code)).toEqual(expect.arrayContaining([
+      'midi-channel-out-of-range', 'midi-note-out-of-range', 'monotonic-timestamp-required',
+      'note-on-velocity-must-be-positive',
+    ]));
   });
 });

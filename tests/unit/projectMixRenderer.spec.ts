@@ -55,6 +55,7 @@ class FakeAudioNode {
 }
 
 class FakeOfflineAudioContext {
+  static createdSources: AudioBufferSourceNode[] = [];
   readonly destination = new FakeAudioNode() as unknown as AudioNode;
   readonly currentTime = 0;
   readonly sampleRate: number;
@@ -76,13 +77,19 @@ class FakeOfflineAudioContext {
   }
 
   createBufferSource() {
-    return Object.assign(new FakeAudioNode(), {
+    const source = Object.assign(new FakeAudioNode(), {
       loop: false,
       buffer: null as AudioBuffer | null,
       playbackRate: new FakeAudioParam(),
       start() {},
       stop() {},
     }) as unknown as AudioBufferSourceNode;
+    FakeOfflineAudioContext.createdSources.push(source);
+    return source;
+  }
+
+  createBuffer(numberOfChannels: number, length: number, sampleRate: number) {
+    return makeAudioBuffer(length, sampleRate, numberOfChannels);
   }
 
   async startRendering(): Promise<AudioBuffer> {
@@ -166,7 +173,8 @@ describe('ProjectMixRenderer plan and resource preflight', () => {
 
     const estimate = estimateProjectMixRenderBytes({ ...options, durationFrames: 4_000 }, true);
     expect(estimate.sourceBytes).toBe(1_000 * 2 * Float32Array.BYTES_PER_ELEMENT);
-    expect(estimate.workingBytes).toBe(2_000 * 2 * Float32Array.BYTES_PER_ELEMENT + 384 * 1024);
+    expect(estimate.workingBytes).toBeGreaterThan(64 * 1024 * 1024);
+    expect(estimate.workingBytes).toBeGreaterThan(2_000 * 2 * Float32Array.BYTES_PER_ELEMENT);
     expect(estimate.outputBytes).toBe(4_000 * 2 * Float32Array.BYTES_PER_ELEMENT);
     expect(estimate.captureBytes).toBeGreaterThan(0);
     expect(estimate.totalBytes).toBe(estimate.sourceBytes + estimate.workingBytes + estimate.outputBytes + estimate.captureBytes);
@@ -204,6 +212,63 @@ describe('ProjectMixRenderer plan and resource preflight', () => {
     await withFakeOfflineContext(async () => {
       await expect(new ProjectMixRenderer().renderOffline(masterOptions)).rejects.toThrow(/enabled master FX.*dry signal/i);
     });
+  });
+
+  it('renders keep-pitch bounce through the verified shared Worker and preserves reversed stereo PCM', async () => {
+    const input = makeAudioBuffer(8);
+    input.getChannelData(0).set([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
+    input.getChannelData(1).set([-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1]);
+    const options = makeOptions({
+      audioByTrackId: new Map([[1, input]]), durationFrames: 4,
+      sharedPitchArtifact: {
+        module: new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])),
+        sha256: 'a'.repeat(64), sourceSetSha256: 'b'.repeat(64), byteLength: 8,
+        compilerIdentity: 'emcc 6.0.10',
+      },
+    });
+    const runtime = options.document.tracks[0]!.settings.runtime;
+    runtime.keepPitch = true;
+    runtime.speed = 2;
+    runtime.reverse = true;
+    let renderRequest: Parameters<NonNullable<ProjectMixRenderOptions['renderSharedPitch']>>[0] | null = null;
+    options.renderSharedPitch = async (request) => {
+      renderRequest = request;
+      return {
+        profile: 'HQ_RENDER', sampleRate: 48_000, inputFrames: 8, outputFrames: 4,
+        playbackRate: 2, left: new Float32Array([0.8, 0.7, 0.6, 0.5]),
+        right: new Float32Array([-0.1, -0.2, -0.3, -0.4]),
+        wasmSha256: 'a'.repeat(64), sourceSetSha256: 'b'.repeat(64),
+        alignment: 'signalsmith-exact-output-seek-flush', latency: { inputSamples: 32, outputSamples: 48 },
+      };
+    };
+
+    FakeOfflineAudioContext.createdSources = [];
+    await withFakeOfflineContext(async () => { await new ProjectMixRenderer().renderOffline(options); });
+
+    expect(renderRequest).toMatchObject({ profile: 'HQ_RENDER', sampleRate: 48_000,
+      playbackRate: 2, reverse: true, left: input.getChannelData(0), right: input.getChannelData(1) });
+    const renderedSource = FakeOfflineAudioContext.createdSources[0];
+    expect(renderedSource?.buffer?.length).toBe(4);
+    expect(renderedSource!.buffer!.getChannelData(0)).toEqual(new Float32Array([0.8, 0.7, 0.6, 0.5]));
+    expect(renderedSource!.buffer!.getChannelData(1)).toEqual(new Float32Array([-0.1, -0.2, -0.3, -0.4]));
+  });
+
+  it('fails the bounce when the pinned shared pitch Worker fails, with no legacy stretch fallback', async () => {
+    const options = makeOptions({
+      sharedPitchArtifact: {
+        module: new WebAssembly.Module(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0])),
+        sha256: 'a'.repeat(64), sourceSetSha256: 'b'.repeat(64), byteLength: 8,
+        compilerIdentity: 'emcc 6.0.10',
+      },
+    });
+    options.document.tracks[0]!.settings.runtime.keepPitch = true;
+    options.document.tracks[0]!.settings.runtime.speed = 2;
+    options.renderSharedPitch = async () => { throw new Error('exact seek/flush exports unavailable'); };
+    FakeOfflineAudioContext.createdSources = [];
+    await withFakeOfflineContext(async () => {
+      await expect(new ProjectMixRenderer().renderOffline(options)).rejects.toThrow(/exact seek\/flush exports unavailable/);
+    });
+    expect(FakeOfflineAudioContext.createdSources).toHaveLength(0);
   });
 
   it('chooses the realtime capture epoch after slow FX setup, preserving a fresh setup lead', async () => {

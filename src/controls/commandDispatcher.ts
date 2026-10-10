@@ -1,3 +1,5 @@
+import type { FxMidiInputEvent } from '../audio/nativeFxProtocol';
+
 export type AudioControlCommand =
   | { type: 'record-track'; trackId: number }
   | { type: 'stop-track'; trackId: number }
@@ -43,6 +45,10 @@ export interface ControlDispatcherState {
 
 export const CONTROL_ASSIGNMENT_COUNT = 16;
 export const CONTROL_ASSIGNMENTS_STORAGE_KEY = 'webrc505_control_assignments_v1';
+
+function monotonicNowMs(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
 
 const TRACK_ACTIONS = new Set<AudioControlCommand['type']>([
   'record-track',
@@ -108,6 +114,7 @@ export function loadControlAssignments(storage: Pick<Storage, 'getItem'> | null 
 export interface ControlDispatcherOptions {
   run: (command: AudioControlCommand) => void | Promise<void>;
   syncExternalClock?: (bpm: number, beatOrdinal: number) => void | Promise<void>;
+  forwardFxMidiInput?: (event: FxMidiInputEvent) => boolean | void | Promise<boolean | void>;
   onError?: (error: unknown) => void;
   storage?: Pick<Storage, 'getItem' | 'setItem'> | null;
 }
@@ -119,6 +126,7 @@ export interface ControlDispatcherOptions {
 export class ControlCommandDispatcher {
   private readonly runCommand: ControlDispatcherOptions['run'];
   private readonly syncExternalClock: ControlDispatcherOptions['syncExternalClock'];
+  private readonly forwardFxMidiInput: ControlDispatcherOptions['forwardFxMidiInput'];
   private readonly onError: ControlDispatcherOptions['onError'];
   private readonly storage: ControlDispatcherOptions['storage'];
   private readonly lastMidiValues = new Map<string, number>();
@@ -128,6 +136,7 @@ export class ControlCommandDispatcher {
   constructor(options: ControlDispatcherOptions) {
     this.runCommand = options.run;
     this.syncExternalClock = options.syncExternalClock;
+    this.forwardFxMidiInput = options.forwardFxMidiInput;
     this.onError = options.onError;
     this.storage = options.storage === undefined
       ? (typeof localStorage === 'undefined' ? null : localStorage)
@@ -256,7 +265,7 @@ export class ControlCommandDispatcher {
     return matched;
   }
 
-  handleMidiMessage(data: ArrayLike<number>, timestamp = Date.now(), deviceId = 'default'): void {
+  handleMidiMessage(data: ArrayLike<number>, timestamp = monotonicNowMs(), deviceId = 'default'): void {
     if (data.length < 1) return;
     const status = data[0]!;
 
@@ -288,11 +297,33 @@ export class ControlCommandDispatcher {
 
     if (kind === 0xb0) {
       this.handleControlInput({ source: 'cc', id: String(number), channel, number, value, deviceId });
+      if (number === 120 || number === 123) {
+        this.forwardMidiToFx({
+          type: 'AllNotesOff', channel: channel - 1, note: 0, velocity: 0, timestampMs: timestamp,
+        });
+      }
       return;
     }
     if (kind === 0x90 || kind === 0x80) {
       const noteValue = kind === 0x80 ? 0 : value;
       this.handleControlInput({ source: 'note', id: String(number), channel, number, value: noteValue, deviceId });
+      const midiType = kind === 0x80 || noteValue === 0 ? 'NoteOff' : 'NoteOn';
+      this.forwardMidiToFx({
+        type: midiType,
+        channel: channel - 1,
+        note: number,
+        velocity: midiType === 'NoteOn' ? noteValue : value,
+        timestampMs: timestamp,
+      });
+    }
+  }
+
+  private forwardMidiToFx(event: FxMidiInputEvent): void {
+    if (!this.forwardFxMidiInput) return;
+    try {
+      void Promise.resolve(this.forwardFxMidiInput(event)).catch((error: unknown) => this.onError?.(error));
+    } catch (error) {
+      this.onError?.(error);
     }
   }
 

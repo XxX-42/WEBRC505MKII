@@ -51,6 +51,20 @@ public:
     bool setFormantFactor(float factor, bool compensatePitch = false) noexcept;
     bool process(const float* const* inputChannels, std::uint32_t inputFrames,
                  float* const* outputChannels, std::uint32_t outputFrames) noexcept;
+    // Offline/fixed-length render priming. The required prefix length follows
+    // the pinned engine's outputSeekLength() formula; outputSeek() accepts only
+    // that exact prefix so its inferred playback rate cannot silently differ.
+    // These calls are bounded by prepare-time scratch and are allocation-free,
+    // but outputSeek performs an engine reset and is not an audio-callback call.
+    [[nodiscard]] bool outputSeekLength(float playbackRate,
+                                        std::uint32_t& inputFrames) const noexcept;
+    bool outputSeek(const float* const* inputChannels, std::uint32_t inputFrames,
+                    float playbackRate) noexcept;
+    // Drain the prepared engine tail into caller-owned planar output buffers.
+    // A flush ends the current fixed-length render session and resets engine
+    // state according to the upstream implementation.
+    bool flush(float* const* outputChannels, std::uint32_t outputFrames,
+               float playbackRate) noexcept;
     [[nodiscard]] int inputLatencySamples() const noexcept;
     [[nodiscard]] int outputLatencySamples() const noexcept;
     [[nodiscard]] const SignalsmithStretchSettings& settings() const noexcept { return settings_; }
@@ -73,6 +87,7 @@ private:
     std::unique_ptr<Engine> engine_;
     std::array<std::vector<float>, 2> finiteInputScratch_;
     std::array<std::vector<float>, 2> finiteOutputScratch_;
+    std::uint32_t seekInputCapacityFrames_ = 0U;
     std::size_t preparedBytes_ = 0;
     const std::uint32_t constructorSeed_;
     bool prepared_ = false;

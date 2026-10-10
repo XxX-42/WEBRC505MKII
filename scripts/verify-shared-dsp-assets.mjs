@@ -58,6 +58,29 @@ const imports = WebAssembly.Module.imports(module).map(({ module: name, name: sy
 if (JSON.stringify(imports) !== JSON.stringify(expectedImports)) {
   throw new Error('Shared-DSP WebAssembly import surface is not the expected WASI preview1 subset.');
 }
+// Hashes prove provenance, but a correctly hashed older kernel can still omit
+// the typed creation/context entry points required by both production Worklets.
+const requiredExports = [
+  ['memory', 'memory'],
+  ['webrc_dsp_abi_version', 'function'],
+  ['webrc_dsp_extended_api_version', 'function'],
+  ['webrc_dsp_capabilities', 'function'],
+  ['webrc_dsp_fx_api_version', 'function'],
+  ['webrc_dsp_fx_catalog_size', 'function'],
+  ['webrc_dsp_fx_create_v2_api_version', 'function'],
+  ['webrc_dsp_fx_create_v2', 'function'],
+  ['webrc_dsp_fx_context_api_version', 'function'],
+  ['webrc_dsp_fx_process_stereo_context_v1', 'function'],
+  ['webrc_dsp_fx_profile_setup_api_version', 'function'],
+  ['webrc_dsp_fx_memory_info_for_parameters', 'function'],
+  ['webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters', 'function'],
+];
+const exportedKinds = new Map(WebAssembly.Module.exports(module).map(({ name, kind }) => [name, kind]));
+for (const [name, kind] of requiredExports) {
+  if (exportedKinds.get(name) !== kind) {
+    throw new Error(`Shared-DSP WebAssembly is missing the required ${kind} export: ${name}.`);
+  }
+}
 console.log(JSON.stringify({
   result: 'VERIFIED',
   byteLength: wasm.byteLength,

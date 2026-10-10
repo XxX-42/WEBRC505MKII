@@ -1,5 +1,14 @@
 import type { ProjectDocument, ProjectFxUnit, ProjectOfflineFxGraph } from './projectTypes';
 import type { TrackRuntimeSettings } from '../core/types';
+import { loadBrowserSharedDspArtifact, type BrowserSharedDspArtifact } from '../audio/sharedDspGraph';
+import {
+  estimateSharedPitchRenderMemory,
+  getMaxAlignmentFrames,
+  makeSharedPitchProfilePlan,
+  renderSharedPitchInWorker,
+  type SharedPitchRenderRequest,
+  type SharedPitchRenderResult,
+} from './sharedPitchRender';
 import {
   BOUNCE_CAPTURE_CHUNK_FRAMES,
   BOUNCE_CAPTURE_HEADER_BYTES,
@@ -60,7 +69,6 @@ type AudioContextWithWorklet = AudioContext & {
   audioWorklet: AudioWorklet;
 };
 
-let timeStretchCorePromise: Promise<TimeStretchCoreApi> | null = null;
 const captureWorkletContexts = new WeakSet<AudioContext>();
 
 /** Inputs required by the shared OfflineAudioContext and live capture renderers. */
@@ -88,28 +96,9 @@ export interface ProjectMixRenderOptions {
     document: ProjectDocument,
   ): Promise<ProjectOfflineFxGraph | null>;
   maxMemoryBytes?: number;
-  timeStretchCore?: TimeStretchCoreApi;
-}
-
-/** Public subset of the worklet module shared with real-time and offline speed paths. */
-export interface TimeStretchCoreApi {
-  TIME_STRETCH_WINDOW_FRAMES: number;
-  TIME_STRETCH_HOP_FRAMES: number;
-  createTimeStretchState(windowFrames: number, hopFrames: number): ProjectTimeStretchState;
-  resetTimeStretchState(state: ProjectTimeStretchState, sourceFrame?: number, playbackFrame?: number): void;
-  processTimeStretchFrame(
-    state: ProjectTimeStretchState,
-    loopFrames: number,
-    speed: number,
-    reverse: boolean,
-    readLeft: (frame: number) => number,
-    readRight: (frame: number) => number,
-  ): void;
-}
-
-export interface ProjectTimeStretchState {
-  outLeft: number;
-  outRight: number;
+  /** Optional verified artifact and renderer injection for tests/controlled hosts. */
+  sharedPitchArtifact?: BrowserSharedDspArtifact;
+  renderSharedPitch?: (request: SharedPitchRenderRequest) => Promise<SharedPitchRenderResult>;
 }
 
 export interface ProjectMixRenderEstimate {
@@ -320,8 +309,12 @@ export class ProjectMixRenderer {
     }
 
     const durationSeconds = plan.durationFrames / plan.sampleRate;
+    const needsSharedPitch = plan.tracks.some((item) => item.keepPitch && item.effectiveSpeed !== 1);
+    const sharedPitchArtifact = needsSharedPitch
+      ? plan.options.sharedPitchArtifact ?? await loadBrowserSharedDspArtifact()
+      : undefined;
     for (const track of plan.tracks) {
-      const sourceBuffer = await prepareTrackBuffer(context, track, plan.options.timeStretchCore);
+      const sourceBuffer = await prepareTrackBuffer(context, track, plan, sharedPitchArtifact);
       const source = context.createBufferSource();
       resources.sources.push(source);
       source.buffer = sourceBuffer;
@@ -455,15 +448,30 @@ function createRenderPlan(options: ProjectMixRenderOptions, realtime: boolean): 
 
   let sourceBytes = 0;
   let workingBytes = 0;
+  let largestPitchWorkerBytes = 0;
   for (const track of tracks) {
     sourceBytes += track.audio.length * track.audio.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
     if (track.keepPitch && track.effectiveSpeed !== 1) {
-      workingBytes += Math.ceil(track.audio.length / track.effectiveSpeed) * 2 * Float32Array.BYTES_PER_ELEMENT;
-      workingBytes += TIME_STRETCH_STATE_BUDGET_BYTES;
+      const outputFrames = Math.max(1, Math.ceil(track.audio.length / track.effectiveSpeed));
+      const outputBytes = outputFrames * 2 * Float32Array.BYTES_PER_ELEMENT;
+      workingBytes += outputBytes;
+      const pitchPlan = makeSharedPitchProfilePlan('HQ_RENDER', options.context.sampleRate, getPitchRenderSeed(track.trackId));
+      const maximumSeekFrames = getMaxAlignmentFrames(pitchPlan);
+      const shortInputPadding = track.audio.length < maximumSeekFrames
+        ? maximumSeekFrames + track.audio.length : 0;
+      const shortOutputPadding = shortInputPadding > 0 ? Math.ceil(shortInputPadding / 0.25) : 0;
+      const workerPeak = estimateSharedPitchRenderMemory(track.audio.length, outputFrames,
+        maximumSeekFrames, maximumSeekFrames, pitchPlan.maxBlockFrames,
+        shortInputPadding, shortOutputPadding);
+      // sourceBytes already accounts for caller-owned AudioBuffer PCM. The
+      // per-track AudioBuffer copy and Worker peak coexist while copying back.
+      largestPitchWorkerBytes = Math.max(largestPitchWorkerBytes,
+        workerPeak.peakBytes - workerPeak.callerSourcePcmBytes + outputBytes);
     } else if (track.runtime.reverse) {
       workingBytes += track.audio.length * track.audio.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
     }
   }
+  workingBytes += largestPitchWorkerBytes;
   const outputBytes = options.durationFrames * 2 * Float32Array.BYTES_PER_ELEMENT;
   const captureBytes = realtime
     ? BOUNCE_CAPTURE_HEADER_BYTES + BOUNCE_CAPTURE_RING_SLOTS * BOUNCE_CAPTURE_CHUNK_FRAMES * 2 * Float32Array.BYTES_PER_ELEMENT
@@ -491,8 +499,6 @@ function createRenderPlan(options: ProjectMixRenderOptions, realtime: boolean): 
   return plan;
 }
 
-const TIME_STRETCH_STATE_BUDGET_BYTES = 384 * 1024;
-
 function hasEnabledProjectFx(value: Record<string, ProjectFxUnit> | Array<ProjectFxUnit | null>): boolean {
   const units = Array.isArray(value) ? value : Object.values(value);
   return units.some((unit) => unit?.enabled === true);
@@ -501,54 +507,42 @@ function hasEnabledProjectFx(value: Record<string, ProjectFxUnit> | Array<Projec
 async function prepareTrackBuffer(
   context: BaseAudioContext,
   track: PlannedTrack,
-  suppliedCore?: TimeStretchCoreApi,
+  plan: RenderPlan,
+  artifact?: BrowserSharedDspArtifact,
 ): Promise<AudioBuffer> {
   if (track.keepPitch && track.effectiveSpeed !== 1) {
-    const core = suppliedCore ?? await loadTimeStretchCore();
     const outputFrames = Math.max(1, Math.ceil(track.audio.length / track.effectiveSpeed));
-    return renderTimeStretchedBuffer(context, track.audio, outputFrames, track.effectiveSpeed, track.runtime.reverse, !track.runtime.oneShot, core);
+    if (!artifact) throw new Error('The verified shared DSP artifact is unavailable for pitch-preserving bounce.');
+    const left = track.audio.getChannelData(0);
+    const right = track.audio.numberOfChannels > 1 ? track.audio.getChannelData(1) : left;
+    const render = plan.options.renderSharedPitch ?? renderSharedPitchInWorker;
+    const result = await render({
+      artifact,
+      profile: 'HQ_RENDER',
+      sampleRate: context.sampleRate,
+      seed: getPitchRenderSeed(track.trackId),
+      playbackRate: track.effectiveSpeed,
+      left,
+      right,
+      reverse: track.runtime.reverse,
+      maxMemoryBytes: plan.options.maxMemoryBytes ?? DEFAULT_MAX_RENDER_MEMORY_BYTES,
+    });
+    if (result.profile !== 'HQ_RENDER' || result.sampleRate !== context.sampleRate ||
+        result.inputFrames !== track.audio.length || result.outputFrames !== outputFrames ||
+        result.left.length !== outputFrames || result.right.length !== outputFrames) {
+      throw new Error(`Track ${track.trackId} shared pitch Worker returned PCM outside the requested frame contract.`);
+    }
+    const output = context.createBuffer(2, outputFrames, context.sampleRate);
+    output.getChannelData(0).set(result.left);
+    output.getChannelData(1).set(result.right);
+    return output;
   }
   if (!track.runtime.reverse) return track.audio;
   return reverseBuffer(context, track.audio);
 }
 
-async function renderTimeStretchedBuffer(
-  context: BaseAudioContext,
-  input: AudioBuffer,
-  outputFrames: number,
-  speed: number,
-  reverse: boolean,
-  loop: boolean,
-  core: TimeStretchCoreApi,
-): Promise<AudioBuffer> {
-  const state = core.createTimeStretchState(core.TIME_STRETCH_WINDOW_FRAMES, core.TIME_STRETCH_HOP_FRAMES);
-  core.resetTimeStretchState(state, reverse ? input.length - 1 : 0, 0);
-  const left = input.getChannelData(0);
-  const right = input.numberOfChannels > 1 ? input.getChannelData(1) : left;
-  const output = context.createBuffer(2, outputFrames, context.sampleRate);
-  const outputLeft = output.getChannelData(0);
-  const outputRight = output.getChannelData(1);
-  const createReader = (samples: Float32Array) => (frame: number): number => {
-    if (!Number.isFinite(frame)) return 0;
-    let sourceFrame = frame;
-    if (loop) {
-      sourceFrame %= input.length;
-      if (sourceFrame < 0) sourceFrame += input.length;
-    } else if (sourceFrame < 0 || sourceFrame >= input.length) return 0;
-    const first = Math.floor(sourceFrame);
-    const next = first + 1 < input.length ? first + 1 : loop ? 0 : first;
-    const fraction = sourceFrame - first;
-    return samples[first]! + (samples[next]! - samples[first]!) * fraction;
-  };
-  const readLeft = createReader(left);
-  const readRight = createReader(right);
-  for (let frame = 0; frame < outputFrames; frame += 1) {
-    core.processTimeStretchFrame(state, loop ? input.length : 0, speed, reverse, readLeft, readRight);
-    outputLeft[frame] = state.outLeft;
-    outputRight[frame] = state.outRight;
-    if (frame > 0 && frame % 32_768 === 0) await delay(0);
-  }
-  return output;
+function getPitchRenderSeed(trackId: number): number {
+  return (0x575243 ^ Math.imul(trackId, 0x9e3779b9)) >>> 0;
 }
 
 function reverseBuffer(context: BaseAudioContext, input: AudioBuffer): AudioBuffer {
@@ -628,16 +622,6 @@ function getCaptureWorkletUrl(): string {
   return typeof window === 'undefined'
     ? new URL('../../public/worklets/bounce-capture-processor.js', import.meta.url).href
     : new URL(WORKLET_MODULE, window.location.href).href;
-}
-
-async function loadTimeStretchCore(): Promise<TimeStretchCoreApi> {
-  if (!timeStretchCorePromise) {
-    const url = typeof window === 'undefined'
-      ? new URL('../../public/worklets/time-stretch-core.js', import.meta.url).href
-      : new URL('/worklets/time-stretch-core.js', window.location.href).href;
-    timeStretchCorePromise = import(/* @vite-ignore */ url) as Promise<TimeStretchCoreApi>;
-  }
-  return await timeStretchCorePromise;
 }
 
 function delay(milliseconds: number): Promise<void> {

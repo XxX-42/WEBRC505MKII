@@ -1,4 +1,5 @@
 #include "native_track_host.hpp"
+#include "webrc/dsp/cleanroom_rhythm_data.hpp"
 
 #include <array>
 #include <atomic>
@@ -7,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <new>
+#include <vector>
 
 namespace {
 std::atomic<bool> countAllocations{false};
@@ -40,28 +42,38 @@ bool require(bool condition, const char* message) {
 
 bool testVariableDeviceCallbacksAndFiveStereoTracks() {
     NativeTrackHost host;
+    if (!require(!host.prepared() && host.sampleRateHz() == 0U,
+                 "unprepared host does not claim a callback sample rate")) return false;
     constexpr std::uint64_t oneSecondBytes = 48000U * 2U * sizeof(float);
     const auto exactAggregateBytes = oneSecondBytes * kNativeTrackCount +
         NativeTrackHost::requiredFixedMemoryBytes();
     if (!require(host.prepare(48000U, 1U, exactAggregateBytes),
                  "prepare the software host and all five stereo histories")) return false;
+    if (!require(host.sampleRateHz() == 48000U,
+                 "control-plane queries the actual prepared host sample rate")) return false;
     for (std::uint8_t track = 0; track < kNativeTrackCount; ++track) {
         if (!require(host.record(track), "queue simultaneous track record at next fixed quantum")) return false;
     }
 
-    std::array<float, 256> mono{};
+    std::array<float, 512> simultaneousStereo{};
     std::array<float, 256> stereoOutput{};
-    for (std::size_t i = 0; i < mono.size(); ++i) mono[i] = 0.2f + 0.05f * std::sin(static_cast<float>(i) * 0.1f);
+    for (std::size_t frame = 0; frame < 256U; ++frame) {
+        // Simultaneous five-track recording must preserve two distinct input
+        // lanes; averaging/duplicating mono here would make the regression
+        // pass despite a stereo-folding bug.
+        simultaneousStereo[frame * 2U] = 0.2f + 0.05f * std::sin(static_cast<float>(frame) * 0.1f);
+        simultaneousStereo[frame * 2U + 1U] = -0.1f + 0.025f * std::cos(static_cast<float>(frame) * 0.07f);
+    }
     std::array<std::uint32_t, 4> callbackFrames{{32U, 96U, 64U, 64U}};
-    std::uint32_t monoOffset = 0U;
+    std::uint32_t stereoFrameOffset = 0U;
     MultiTrackProcessStats stats{};
     for (const auto callbackFramesNow : callbackFrames) {
-        if (!require(host.processInputBlock(mono.data() + monoOffset, 1U,
+        if (!require(host.processInputBlock(simultaneousStereo.data() + stereoFrameOffset * 2U, 2U,
                                              stereoOutput.data(), callbackFramesNow, &stats),
-                     "adapt a variable-size mono device callback through 64-frame chunks")) return false;
-        monoOffset += callbackFramesNow;
+                     "adapt a variable-size stereo device callback through 64-frame chunks")) return false;
+        stereoFrameOffset += callbackFramesNow;
     }
-    if (!require(monoOffset == mono.size(), "callback chunks consume the full mono fixture")) return false;
+    if (!require(stereoFrameOffset == 256U, "callback chunks consume the full stereo fixture")) return false;
 
     for (std::uint8_t track = 0; track < kNativeTrackCount; ++track) {
         if (!require(host.stop(track), "queue stop for every track after common recording window")) return false;
@@ -81,16 +93,16 @@ bool testVariableDeviceCallbacksAndFiveStereoTracks() {
     }
 
     if (!require(host.play(0U), "queue playback through the Native host adapter")) return false;
-    std::array<float, 128> stereoInput{};
+    std::array<float, 128> playbackInput{};
     for (std::size_t frame = 0; frame < 64U; ++frame) {
-        stereoInput[2U * frame] = 0.25f;
-        stereoInput[2U * frame + 1U] = -0.125f;
+        playbackInput[2U * frame] = 0.25f;
+        playbackInput[2U * frame + 1U] = -0.125f;
     }
-    if (!require(host.processInputBlock(stereoInput.data(), 2U, stereoOutput.data(), 64U, &stats) &&
-                 host.processInputBlock(stereoInput.data(), 2U, stereoOutput.data(), 32U, &stats),
+    if (!require(host.processInputBlock(playbackInput.data(), 2U, stereoOutput.data(), 64U, &stats) &&
+                 host.processInputBlock(playbackInput.data(), 2U, stereoOutput.data(), 32U, &stats),
                  "accept two-channel capture, a 64-frame callback and a sub-quantum tail")) return false;
     for (std::uint32_t block = 0U; block < 5U; ++block) {
-        if (!require(host.processInputBlock(stereoInput.data(), 2U, stereoOutput.data(), 64U, &stats),
+        if (!require(host.processInputBlock(playbackInput.data(), 2U, stereoOutput.data(), 64U, &stats),
                      "advance the prepared playback gate through its bounded 10ms fade")) return false;
     }
     status = host.status();
@@ -166,7 +178,46 @@ bool testFiveTrackStereoCaptureIsolationThroughHost() {
                      std::abs(output[sample + 1U] - expectedRight[selected]) < 1.0e-4f,
                      "track playback preserves its own left/right signature without channel or track crosstalk")) return false;
     }
-    return true;
+
+    // Overdub one stereo track with a deliberately different L/R pair, then
+    // verify both that pair remains stereo and that another track's stored
+    // signature did not receive the overdub input.
+    const auto overdubFrame = host.status().nextFrame;
+    if (!require(host.postTrackCommand({overdubFrame, TrackCommandType::Stop, 4U, false, 0.0f}) &&
+                 host.postTrackCommand({overdubFrame, TrackCommandType::SetTrackSolo, 0U, true, 0.0f}) &&
+                 host.postTrackCommand({overdubFrame, TrackCommandType::SetTrackSolo, 1U, false, 0.0f}) &&
+                 host.postTrackCommand({overdubFrame, TrackCommandType::Play, 0U, false, 0.0f}) &&
+                 host.postTrackCommand({overdubFrame, TrackCommandType::ToggleOverdub, 0U, false, 0.0f}),
+                 "start stereo overdub on track zero while keeping the other four tracks isolated")) return false;
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        input[frame * 2U] = 0.03f;
+        input[frame * 2U + 1U] = -0.07f;
+    }
+    if (!require(host.processInputBlock(input.data(), 2U, output.data(), 64U, &stats),
+                 "write distinct left/right overdub samples into only track zero")) return false;
+    input.fill(0.0f);
+    for (std::uint32_t block = 0U; block < 12U; ++block) {
+        if (!require(host.processInputBlock(input.data(), 2U, output.data(), 64U, &stats),
+                     "settle stereo overdub playback ramp without a device stream")) return false;
+    }
+    if (!require(host.status().tracks[0].state == TrackPlaybackState::Overdubbing &&
+                 std::abs(output[126U] - (expectedLeft[0] + 0.03f)) < 1.0e-4f &&
+                 std::abs(output[127U] - (expectedRight[0] - 0.07f)) < 1.0e-4f,
+                 "overdub preserves independent stereo sums on its selected track")) return false;
+
+    const auto isolateOtherFrame = host.status().nextFrame;
+    if (!require(host.postTrackCommand({isolateOtherFrame, TrackCommandType::Stop, 0U, false, 0.0f}) &&
+                 host.postTrackCommand({isolateOtherFrame, TrackCommandType::SetTrackSolo, 0U, false, 0.0f}) &&
+                 host.postTrackCommand({isolateOtherFrame, TrackCommandType::SetTrackSolo, 1U, true, 0.0f}) &&
+                 host.postTrackCommand({isolateOtherFrame, TrackCommandType::Play, 1U, false, 0.0f}),
+                 "stop overdub and restore track-one-only playback")) return false;
+    for (std::uint32_t block = 0U; block < 12U; ++block) {
+        if (!require(host.processInputBlock(input.data(), 2U, output.data(), 64U, &stats),
+                     "play the untouched second track after overdubbing track zero")) return false;
+    }
+    return require(std::abs(output[126U] - expectedLeft[1]) < 1.0e-4f &&
+                   std::abs(output[127U] - expectedRight[1]) < 1.0e-4f,
+                   "overdub changes no other track and preserves its left/right identity");
 }
 
 bool testTrackAndMasterFxReachRecordedFiveTrackOutput() {
@@ -335,6 +386,163 @@ bool testProcessPathDoesNotAllocate() {
                    "device callback adaptation and five-track processing allocate nothing");
 }
 
+bool testNativeRhythmRendererIsMixedOnHostTimeline() {
+    using namespace webrc::dsp;
+    NativeTrackHost host;
+    if (!require(host.prepare(48000U, 5U), "prepare real rhythm renderer and recording history in the Native host"))
+        return false;
+    auto status = host.status();
+    if (!require(status.rhythmPrepared && !status.rhythmPlaying &&
+                 status.rhythmPatternIndex == RhythmRenderer::kExternalPatternSelection &&
+                 status.rhythmKitIndex == 0U,
+                 "publish the prepared external default pattern and kit selection")) return false;
+    if (!require(!host.prepare(96000U, 1U) && host.sampleRateHz() == 48000U &&
+                 host.status().rhythmPrepared,
+                 "failed reprepare preserves the active core and rhythm renderer")) return false;
+
+    // The pattern is rendered across two complete bars. Start, tempo and stop
+    // are deliberately off the host's 64-frame boundary; the renderer applies
+    // tempo/stop at its next musical boundary while track zero records the
+    // same stereo input timeline.
+    constexpr std::uint32_t totalFrames = 224100U;
+    constexpr std::uint64_t tempoFrame = 1237U;
+    constexpr std::uint64_t stopFrame = 224000U;
+    std::vector<float> input(static_cast<std::size_t>(totalFrames) * 2U);
+    std::vector<float> actual(static_cast<std::size_t>(totalFrames) * 2U);
+    std::vector<float> expected(static_cast<std::size_t>(totalFrames) * 2U);
+    for (std::uint32_t frame = 0U; frame < totalFrames; ++frame) {
+        input[static_cast<std::size_t>(frame) * 2U] =
+            0.15f + 0.03f * std::sin(static_cast<float>(frame) * 0.011f);
+        input[static_cast<std::size_t>(frame) * 2U + 1U] =
+            -0.09f + 0.02f * std::cos(static_cast<float>(frame) * 0.007f);
+    }
+    std::array<float, kNativeTrackHostQuantumFrames> referenceLeft{};
+    std::array<float, kNativeTrackHostQuantumFrames> referenceRight{};
+    if (!require(host.queueRhythmPatternKit(0U, 0U, 7U) &&
+                 host.startRhythm(37U, false) &&
+                 host.setRhythmTempoAtFrame(tempoFrame, 90.0) &&
+                 host.stopRhythm(stopFrame) && host.record(0U),
+                 "queue off-quantum start, tempo, stop and simultaneous stereo recording")) return false;
+    if (!require(!host.queueRhythmPatternKit(0U, 9999U, 0U) &&
+                 !host.queueRhythmVariation(0U, 4U) &&
+                 !host.setRhythmTempoAtFrame(0U, 401.0),
+                 "reject invalid pattern, variation and tempo before enqueue")) return false;
+
+    RhythmRenderer reference;
+    const ProcessSpec spec{48000.0f, kNativeTrackHostQuantumFrames, 2U};
+    if (!require(reference.prepare(spec, 120.0) &&
+                 reference.setPattern(cleanRoomRhythmPattern(0U)) && reference.setKit(0U) &&
+                 reference.queuePatternKit(0U, 7U) && reference.startAtFrame(37U, false),
+                 "prepare an independent renderer with the same deterministic schedule")) return false;
+
+    std::uint64_t referenceFrame = 0U;
+    while (referenceFrame < totalFrames) {
+        if (referenceFrame == tempoFrame && !reference.queueTempo(90.0))
+            return require(false, "queue reference tempo at its exact sample frame");
+        if (referenceFrame == stopFrame && !reference.queueStop())
+            return require(false, "queue reference stop at its exact sample frame");
+        auto nextEvent = static_cast<std::uint64_t>(totalFrames);
+        if (referenceFrame < tempoFrame) nextEvent = std::min(nextEvent, tempoFrame);
+        if (referenceFrame < stopFrame) nextEvent = std::min(nextEvent, stopFrame);
+        const auto chunk = static_cast<std::uint32_t>(std::min<std::uint64_t>(
+            kNativeTrackHostQuantumFrames, nextEvent - referenceFrame));
+        if (!require(chunk > 0U && reference.processBlock(referenceFrame,
+                         referenceLeft.data(), referenceRight.data(), chunk),
+                     "render the independent reference across exact command boundaries")) return false;
+        for (std::uint32_t frame = 0U; frame < chunk; ++frame) {
+            const auto destination = static_cast<std::size_t>(referenceFrame + frame) * 2U;
+            expected[destination] = referenceLeft[frame];
+            expected[destination + 1U] = referenceRight[frame];
+        }
+        referenceFrame += chunk;
+    }
+
+    constexpr std::array<std::uint32_t, 6U> callbackPattern{{32U, 96U, 64U, 128U, 64U, 32U}};
+    std::uint32_t produced = 0U;
+    std::uint32_t callbackIndex = 0U;
+    MultiTrackProcessStats stats{};
+    while (produced < totalFrames) {
+        const auto callback = std::min<std::uint32_t>(callbackPattern[callbackIndex % callbackPattern.size()],
+                                                       totalFrames - produced);
+        if (!require(host.processInputBlock(input.data() + static_cast<std::size_t>(produced) * 2U,
+                                             2U,
+                                             actual.data() + static_cast<std::size_t>(produced) * 2U,
+                                             callback, &stats),
+                     "render rhythm through the software Native callback adapter")) return false;
+        produced += callback;
+        ++callbackIndex;
+    }
+    status = host.status();
+    if (!require(!status.rhythmPlaying && std::abs(status.rhythmTempoBpm - 90.0) < 1.0e-6 &&
+                 status.rhythmPatternIndex == 0U &&
+                 status.rhythmKitIndex == 7U && status.rhythmFaultCount == 0U &&
+                 status.rhythmTriggeredEvents > 0U && status.tracks[0].state == TrackPlaybackState::Recording &&
+                 status.tracks[0].recordedFrames == totalFrames - 64U,
+                 "publish stopped/tempo-updated rhythm and uninterrupted simultaneous track recording")) return false;
+    if (!require(status.rejectedRhythmCommands == 3U && status.lateRhythmCommands == 0U,
+                 "publish rejected controls and preserve exact in-time command scheduling")) return false;
+
+    double actualEnergy = 0.0;
+    double leftEnergy = 0.0;
+    double rightEnergy = 0.0;
+    double referenceDifference = 0.0;
+    for (std::size_t frame = 0U; frame < totalFrames; ++frame) {
+        const auto index = frame * 2U;
+        const auto leftSample = static_cast<double>(actual[index]);
+        const auto rightSample = static_cast<double>(actual[index + 1U]);
+        leftEnergy += leftSample * leftSample;
+        rightEnergy += rightSample * rightSample;
+        actualEnergy += leftSample * leftSample + rightSample * rightSample;
+        referenceDifference = std::max(referenceDifference,
+            std::max(std::abs(static_cast<double>(actual[index] - expected[index])),
+                     std::abs(static_cast<double>(actual[index + 1U] - expected[index + 1U]))));
+    }
+    if (actualEnergy <= 1.0e-5 || leftEnergy <= 1.0e-5 || rightEnergy <= 1.0e-5 ||
+        referenceDifference >= 1.0e-7)
+        std::cerr << "rhythm-energy=" << actualEnergy << " left=" << leftEnergy
+                  << " right=" << rightEnergy << " ref-max=" << referenceDifference << '\n';
+    return require(actualEnergy > 1.0e-5 && leftEnergy > 1.0e-5 && rightEnergy > 1.0e-5 &&
+                   referenceDifference < 1.0e-7,
+                   "Host output contains the independent stereo rhythm PCM at exact sample frames");
+}
+
+bool testNativeRhythmQueueBoundsAndCallbackNoAlloc() {
+    NativeTrackHost host;
+    if (!require(host.prepare(48000U, 1U), "prepare bounded Native rhythm command queue")) return false;
+    if (!require(host.startRhythm(0U, false), "queue rhythm start before later variation events")) return false;
+    // The start command occupies one queue cell, so use the remaining slots
+    // before asserting a transactional overflow rejection.
+    for (std::uint32_t index = 0U; index + 1U < kNativeTrackHostRhythmCommandCapacity; ++index) {
+        if (!require(host.queueRhythmVariation(64U, static_cast<std::uint8_t>(index % 4U)),
+                     "admit an in-range sample-timestamped rhythm command")) return false;
+    }
+    if (!require(!host.queueRhythmFill(64U) &&
+                 host.status().rejectedRhythmCommands == 1U,
+                 "reject command queue overflow transactionally")) return false;
+    std::array<float, 128U> input{};
+    std::array<float, 128U> output{};
+    if (!require(host.processInputBlock(input.data(), 2U, output.data(), 64U),
+                 "start the renderer on the host audio owner")) return false;
+    if (!require(host.processInputBlock(input.data(), 2U, output.data(), 64U),
+                 "consume the later bounded variations on the host audio owner")) return false;
+
+    // Start a second independent instance for the allocation probe so the
+    // first queue's deliberately coalesced variation commands cannot affect it.
+    NativeTrackHost guarded;
+    if (!require(guarded.prepare(48000U, 1U) && guarded.startRhythm(0U, false) &&
+                 guarded.processInputBlock(input.data(), 2U, output.data(), 64U),
+                 "prime the active rhythm callback before the allocator guard")) return false;
+    allocationCount.store(0U, std::memory_order_relaxed);
+    countAllocations.store(true, std::memory_order_release);
+    bool ok = true;
+    for (std::uint32_t block = 0U; block < 128U; ++block)
+        ok = ok && guarded.processInputBlock(input.data(), 2U, output.data(), 64U);
+    countAllocations.store(false, std::memory_order_release);
+    return require(ok && allocationCount.load(std::memory_order_relaxed) == 0U &&
+                   guarded.status().rhythmFaultCount == 0U,
+                   "active Native rhythm processing has bounded no-allocation 64-frame callbacks");
+}
+
 } // namespace
 
 int main() {
@@ -342,5 +550,7 @@ int main() {
            testFiveTrackStereoCaptureIsolationThroughHost() &&
            testTrackAndMasterFxReachRecordedFiveTrackOutput() &&
            testHostRejectsUnroutedSendBusFx() &&
-           testProcessPathDoesNotAllocate() ? 0 : 1;
+           testProcessPathDoesNotAllocate() &&
+           testNativeRhythmRendererIsMixedOnHostTimeline() &&
+           testNativeRhythmQueueBoundsAndCallbackNoAlloc() ? 0 : 1;
 }

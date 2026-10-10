@@ -17,7 +17,21 @@ bool finite(float value) noexcept { return std::isfinite(value); }
 
 bool validEventKind(NativeFxGraphEventKind kind) noexcept {
     return kind == NativeFxGraphEventKind::ProcessorParameter ||
-           kind == NativeFxGraphEventKind::SlotMix;
+           kind == NativeFxGraphEventKind::SlotMix ||
+           kind == NativeFxGraphEventKind::Midi;
+}
+
+bool validMidiEvent(const NativeFxGraphEvent& event) noexcept {
+    if (event.midiChannel != 0U || event.midiNote > 127U || event.midiVelocity > 127U)
+        return false;
+    switch (event.midiType) {
+    case webrc::dsp::FxMidiEventType::NoteOn:
+        return event.midiVelocity != 0U;
+    case webrc::dsp::FxMidiEventType::NoteOff:
+    case webrc::dsp::FxMidiEventType::AllNotesOff:
+        return true;
+    }
+    return false;
 }
 
 } // namespace
@@ -111,7 +125,19 @@ NativeFxGraphResult NativeFxGraph::configureSlot(
     if (descriptor == nullptr || descriptor->readiness != webrc::dsp::FxReadiness::ProcessorAvailable)
         return NativeFxGraphResult::UnsupportedOrdinal;
     if (!busAccepts(*descriptor, bus)) return NativeFxGraphResult::InvalidRoute;
-    const auto requirement = webrc::dsp::fxMemoryRequirement(ordinal, spec_);
+
+    // Initial controls are also the prepare-time selector payload. Resolve
+    // profile-dependent storage before constructing the unpublished candidate;
+    // an omitted PitchProfile uses the same descriptor default as the factory.
+    std::array<webrc::dsp::FxParameterEvent, kMaximumInitialParameters> preflightEvents{};
+    for (std::uint32_t index = 0U; index < initialParameterCount; ++index) {
+        preflightEvents[index] = {0U, initialParameters[index].parameter,
+                                  initialParameters[index].value};
+    }
+    const auto* preflightEventData = initialParameterCount == 0U
+        ? nullptr : preflightEvents.data();
+    const auto requirement = webrc::dsp::fxMemoryRequirementForParameters(
+        ordinal, spec_, preflightEventData, initialParameterCount);
     std::uint64_t candidatePermanentBytes = 0U;
     std::uint64_t candidatePeakBytes = 0U;
     if (!requirement.supported ||
@@ -123,7 +149,8 @@ NativeFxGraphResult NativeFxGraph::configureSlot(
     if (targetSlot == nullptr) return NativeFxGraphResult::InvalidSlot;
     const auto oldPermanentBytes = targetSlot->configured ? targetSlot->estimatedPermanentBytes : 0U;
     const auto withoutOld = permanentProcessorBytes_ - oldPermanentBytes;
-    const auto startupUpper = webrc::dsp::fxStartupWarmupUpperBoundSamples(ordinal, spec_);
+    const auto startupUpper = webrc::dsp::fxStartupWarmupUpperBoundSamplesForParameters(
+        ordinal, spec_, preflightEventData, initialParameterCount);
     if (!startupUpper.supported) return NativeFxGraphResult::UnsupportedOrdinal;
     const auto alignmentUpper = webrc::dsp::fxAlignmentUpperBoundSamples(ordinal, spec_);
     if (!alignmentUpper.supported) return NativeFxGraphResult::UnsupportedOrdinal;
@@ -322,6 +349,30 @@ std::uint16_t NativeFxGraph::slotOrdinal(NativeFxBusAddress bus,
     return slot != nullptr && slot->configured ? slot->ordinal : 0U;
 }
 
+bool NativeFxGraph::slotFixedLatencySamples(NativeFxBusAddress bus,
+                                             std::uint8_t slotIndex,
+                                             std::int32_t& samples) const noexcept {
+    const auto* slot = findSlot(bus, slotIndex);
+    if (slot == nullptr || !slot->configured) return false;
+    samples = slot->latencySamples;
+    return true;
+}
+
+bool NativeFxGraph::slotSupportsOuterMix(NativeFxBusAddress bus,
+                                         std::uint8_t slotIndex) const noexcept {
+    const auto* slot = findSlot(bus, slotIndex);
+    return slot != nullptr && slot->configured && slot->outerMixSupported;
+}
+
+bool NativeFxGraph::slotMaximumParameterEventsPerBlock(
+    NativeFxBusAddress bus, std::uint8_t slotIndex,
+    std::uint32_t& maximum) const noexcept {
+    const auto* slot = findSlot(bus, slotIndex);
+    if (slot == nullptr || !slot->configured || !slot->processor) return false;
+    maximum = slot->processor->maximumParameterEventsPerBlock();
+    return true;
+}
+
 NativeFxGraphResult NativeFxGraph::validateBlock(const NativeFxGraphBlock& block,
                                                  std::uint32_t frames) const noexcept {
     if (!prepared_) return NativeFxGraphResult::NotPrepared;
@@ -329,6 +380,16 @@ NativeFxGraphResult NativeFxGraph::validateBlock(const NativeFxGraphBlock& block
     if (frames > spec_.maxBlockFrames || frames > kNativeFxGraphMaximumFrames)
         return NativeFxGraphResult::BlockTooLarge;
     if (frames == 0U) return NativeFxGraphResult::Ok;
+
+    bool requiresCarrier = false;
+    for (const auto& slot : slots_)
+        requiresCarrier = requiresCarrier || (slot.configured && slot.ordinal == 20U);
+    const bool carrierProvided = block.carrierLeft != nullptr || block.carrierRight != nullptr ||
+        block.carrierFrames != 0U || block.carrierChannels != 0U;
+    if (requiresCarrier && (!carrierProvided || block.carrierLeft == nullptr ||
+            block.carrierRight == nullptr || block.carrierChannels != 2U ||
+            block.carrierFrames != frames))
+        return NativeFxGraphResult::MissingCarrier;
 
     for (std::uint32_t bus = 0U; bus < kNativeFxGraphBusCount; ++bus) {
         bool configured = false;
@@ -364,7 +425,8 @@ NativeFxGraphResult NativeFxGraph::validateEvents(
     for (std::uint32_t index = 0U; index < eventCount; ++index) {
         const auto& event = events[index];
         if (!validBusAddress(event.bus) || event.slotIndex >= kNativeFxGraphSlotsPerBus ||
-            !validEventKind(event.kind) || !finite(event.value) ||
+            !validEventKind(event.kind) ||
+            (event.kind != NativeFxGraphEventKind::Midi && !finite(event.value)) ||
             event.graphGeneration != generation_ ||
             event.absoluteFrame >= blockEnd ||
             (index > 0U && event.absoluteFrame < events[index - 1U].absoluteFrame))
@@ -378,7 +440,10 @@ NativeFxGraphResult NativeFxGraph::validateEvents(
         else if (bus == 6U) buffer = block.sendReturn;
         else buffer = block.masterMix;
         if (buffer == nullptr) return NativeFxGraphResult::MissingBusBuffer;
-        if (event.kind == NativeFxGraphEventKind::SlotMix) {
+        if (event.kind == NativeFxGraphEventKind::Midi) {
+            if ((slot->ordinal != 19U && slot->ordinal != 21U) || !validMidiEvent(event))
+                return NativeFxGraphResult::InvalidEvent;
+        } else if (event.kind == NativeFxGraphEventKind::SlotMix) {
             if (event.value < 0.0f || event.value > 1.0f || !finite(event.smoothingMs) ||
                 event.smoothingMs < 0.0f || event.smoothingMs > 1000.0f ||
                 (!slot->outerMixSupported && event.value != 1.0f))
@@ -396,27 +461,53 @@ NativeFxGraphResult NativeFxGraph::validateEvents(
             const auto& slot = slots_[bus * kNativeFxGraphSlotsPerBus + slotIndex];
             if (!slot.configured) continue;
             std::uint64_t groupFrame = std::numeric_limits<std::uint64_t>::max();
-            std::uint32_t groupParameters = 0U;
+            std::uint32_t groupProcessorEvents = 0U;
+            std::uint32_t groupParameterEvents = 0U;
             for (std::uint32_t index = 0U; index <= eventCount; ++index) {
                 const auto currentFrame = index < eventCount ? events[index].absoluteFrame
                     : std::numeric_limits<std::uint64_t>::max();
-                if (groupFrame != currentFrame && groupParameters != 0U) {
+                if (groupFrame != currentFrame && groupProcessorEvents != 0U) {
                     const auto frameOffset = groupFrame <= absoluteStartFrame ? 0U :
                         static_cast<std::uint32_t>(groupFrame - absoluteStartFrame);
-                    if (groupParameters > slot.processor->maximumParameterEventsPerBlock() ||
-                        (frameOffset == 0U &&
-                         !slot.processor->canAcceptParameterEvents(groupParameters)))
+                    if (groupProcessorEvents > slot.processor->maximumParameterEventsPerBlock() ||
+                         (frameOffset == 0U &&
+                         !slot.processor->canAcceptParameterEvents(groupParameterEvents)))
                         return NativeFxGraphResult::InvalidParameter;
                 }
                 if (groupFrame != currentFrame) {
                     groupFrame = currentFrame;
-                    groupParameters = 0U;
+                    groupProcessorEvents = 0U;
+                    groupParameterEvents = 0U;
                 }
                 if (index < eventCount && busIndex(events[index].bus) == bus &&
                     events[index].slotIndex == slotIndex &&
-                    events[index].kind == NativeFxGraphEventKind::ProcessorParameter)
-                    ++groupParameters;
+                    (events[index].kind == NativeFxGraphEventKind::ProcessorParameter ||
+                     events[index].kind == NativeFxGraphEventKind::Midi)) {
+                    ++groupProcessorEvents;
+                    if (events[index].kind == NativeFxGraphEventKind::ProcessorParameter)
+                        ++groupParameterEvents;
+                }
             }
+        }
+    }
+
+    // The processor's per-call budget applies to its complete block batch,
+    // not just each timestamp group. Musical bridges count parameters and
+    // MIDI together; queued initial setters are included by canAccept.
+    for (std::uint32_t bus = 0U; bus < kNativeFxGraphBusCount; ++bus) {
+        for (std::uint32_t slotIndex = 0U; slotIndex < kNativeFxGraphSlotsPerBus; ++slotIndex) {
+            const auto& slot = slots_[bus * kNativeFxGraphSlotsPerBus + slotIndex];
+            if (!slot.configured) continue;
+            std::uint32_t processorEvents = 0U;
+            for (std::uint32_t index = 0U; index < eventCount; ++index) {
+                if (busIndex(events[index].bus) == bus && events[index].slotIndex == slotIndex &&
+                    (events[index].kind == NativeFxGraphEventKind::ProcessorParameter ||
+                     events[index].kind == NativeFxGraphEventKind::Midi))
+                    ++processorEvents;
+            }
+            if (processorEvents > slot.processor->maximumParameterEventsPerBlock() ||
+                !slot.processor->canAcceptParameterEvents(processorEvents))
+                return NativeFxGraphResult::TooManyEvents;
         }
     }
 
@@ -509,76 +600,91 @@ NativeFxGraphResult NativeFxGraph::processSlot(
     const NativeFxGraphEvent* events, std::uint32_t eventCount) noexcept {
     std::array<const float*, 2U> input{};
     std::array<float*, 2U> output{};
+    input[0] = work_[0].data();
+    input[1] = work_[1].data();
+    output[0] = result_[0].data();
+    output[1] = result_[1].data();
 
-    const auto renderSegment = [this, &slot, &input, &output](std::uint32_t start,
-                                                              std::uint32_t length) noexcept {
-        if (length == 0U) return true;
-        input[0] = work_[0].data() + start;
-        input[1] = work_[1].data() + start;
-        output[0] = result_[0].data() + start;
-        output[1] = result_[1].data() + start;
-        if (!slot.processor->processBlock(input.data(), output.data(), 2U, length)) return false;
-        for (std::uint32_t sample = 0U; sample < length; ++sample) {
-            const auto index = start + sample;
-            float dryLeft = work_[0][index];
-            float dryRight = work_[1][index];
-            if (slot.latencySamples > 0) {
-                const auto delayedLeft = slot.dryAlignLeft[slot.dryAlignWrite];
-                const auto delayedRight = slot.dryAlignRight[slot.dryAlignWrite];
-                slot.dryAlignLeft[slot.dryAlignWrite] = dryLeft;
-                slot.dryAlignRight[slot.dryAlignWrite] = dryRight;
-                ++slot.dryAlignWrite;
-                if (slot.dryAlignWrite >= static_cast<std::uint32_t>(slot.latencySamples))
-                    slot.dryAlignWrite = 0U;
-                dryLeft = delayedLeft;
-                dryRight = delayedRight;
-            }
-            const float mix = slot.mixSmoother.next();
-            work_[0][index] = webrc::dsp::sanitize(
-                dryLeft + mix * (result_[0][index] - dryLeft));
-            work_[1][index] = webrc::dsp::sanitize(
-                dryRight + mix * (result_[1][index] - dryRight));
-        }
-        return true;
-    };
-
-    std::uint32_t cursor = 0U;
+    std::array<webrc::dsp::FxParameterEvent, kNativeFxGraphEventCapacity> parameterEvents{};
+    std::array<webrc::dsp::FxMidiEvent, kNativeFxGraphEventCapacity> midiEvents{};
+    std::uint32_t parameterCount = 0U;
+    std::uint32_t midiCount = 0U;
     for (std::uint32_t index = 0U; index < eventCount; ++index) {
         const auto& event = events[index];
         if (event.bus.kind != bus.kind || event.bus.trackIndex != bus.trackIndex ||
             event.slotIndex != slotIndex) continue;
         const auto offset = event.absoluteFrame <= absoluteStartFrame ? 0U :
             static_cast<std::uint32_t>(event.absoluteFrame - absoluteStartFrame);
-        if (offset > frames) return NativeFxGraphResult::InvalidEvent;
-        if (offset > cursor && !renderSegment(cursor, offset - cursor))
-            return NativeFxGraphResult::InvalidBlock;
-        cursor = offset;
+        if (offset >= frames && frames != 0U) return NativeFxGraphResult::InvalidEvent;
+        if (event.kind == NativeFxGraphEventKind::ProcessorParameter) {
+            if (parameterCount >= parameterEvents.size()) return NativeFxGraphResult::TooManyEvents;
+            parameterEvents[parameterCount++] = {offset, event.parameter, event.value};
+        } else if (event.kind == NativeFxGraphEventKind::Midi) {
+            if (midiCount >= midiEvents.size()) return NativeFxGraphResult::TooManyEvents;
+            midiEvents[midiCount++] = {offset, event.midiType, event.midiChannel,
+                                       event.midiNote, event.midiVelocity};
+        }
+    }
 
-        std::uint32_t groupEnd = index + 1U;
-        while (groupEnd < eventCount && events[groupEnd].absoluteFrame == event.absoluteFrame &&
-               events[groupEnd].bus.kind == bus.kind &&
-               events[groupEnd].bus.trackIndex == bus.trackIndex &&
-               events[groupEnd].slotIndex == slotIndex) ++groupEnd;
-        for (std::uint32_t group = index; group < groupEnd; ++group) {
-            const auto& current = events[group];
-            if (current.kind == NativeFxGraphEventKind::SlotMix) {
-                if (!slot.mixSmoother.setTarget(current.value, current.smoothingMs))
-                    return NativeFxGraphResult::InvalidParameter;
-            } else {
-                if (!slot.processor->setParameter(current.parameter, current.value))
-                    return NativeFxGraphResult::InvalidParameter;
-                for (std::uint8_t parameter = 0U; parameter < slot.cachedParameterCount; ++parameter) {
-                    if (slot.cachedParameters[parameter].id == current.parameter) {
-                        slot.cachedParameters[parameter].target = current.value;
-                        break;
-                    }
-                }
+    webrc::dsp::FxProcessContext context{};
+    if (slot.ordinal == 20U) {
+        context.carrierLeft = currentBlock_.carrierLeft;
+        context.carrierRight = currentBlock_.carrierRight;
+        context.carrierFrames = currentBlock_.carrierFrames;
+        context.carrierChannels = currentBlock_.carrierChannels;
+    }
+    context.midiEvents = midiCount == 0U ? nullptr : midiEvents.data();
+    context.midiEventCount = midiCount;
+    if (!slot.processor->processBlockWithContext(input.data(), output.data(), 2U, frames,
+            parameterCount == 0U ? nullptr : parameterEvents.data(), parameterCount, context))
+        return NativeFxGraphResult::InvalidBlock;
+
+    // Apply the outer dry/wet envelope at exact sample offsets after the
+    // processor has atomically consumed its full parameter+MIDI batch.
+    std::uint32_t eventCursor = 0U;
+    for (std::uint32_t sample = 0U; sample < frames; ++sample) {
+        const auto frame = absoluteStartFrame + sample;
+        while (eventCursor < eventCount && events[eventCursor].absoluteFrame <= frame) {
+            const auto& event = events[eventCursor++];
+            if (event.bus.kind == bus.kind && event.bus.trackIndex == bus.trackIndex &&
+                event.slotIndex == slotIndex && event.kind == NativeFxGraphEventKind::SlotMix &&
+                !slot.mixSmoother.setTarget(event.value, event.smoothingMs))
+                return NativeFxGraphResult::InvalidParameter;
+        }
+        float dryLeft = work_[0][sample];
+        float dryRight = work_[1][sample];
+        if (slot.latencySamples > 0) {
+            const auto delayedLeft = slot.dryAlignLeft[slot.dryAlignWrite];
+            const auto delayedRight = slot.dryAlignRight[slot.dryAlignWrite];
+            slot.dryAlignLeft[slot.dryAlignWrite] = dryLeft;
+            slot.dryAlignRight[slot.dryAlignWrite] = dryRight;
+            ++slot.dryAlignWrite;
+            if (slot.dryAlignWrite >= static_cast<std::uint32_t>(slot.latencySamples))
+                slot.dryAlignWrite = 0U;
+            dryLeft = delayedLeft;
+            dryRight = delayedRight;
+        }
+        const float mix = slot.mixSmoother.next();
+        work_[0][sample] = webrc::dsp::sanitize(
+            dryLeft + mix * (result_[0][sample] - dryLeft));
+        work_[1][sample] = webrc::dsp::sanitize(
+            dryRight + mix * (result_[1][sample] - dryRight));
+    }
+
+    // The block was prevalidated as one transaction, so update the producer
+    // shadow only after the processor accepted the matching full event stream.
+    for (std::uint32_t index = 0U; index < eventCount; ++index) {
+        const auto& event = events[index];
+        if (event.bus.kind != bus.kind || event.bus.trackIndex != bus.trackIndex ||
+            event.slotIndex != slotIndex ||
+            event.kind != NativeFxGraphEventKind::ProcessorParameter) continue;
+        for (std::uint8_t parameter = 0U; parameter < slot.cachedParameterCount; ++parameter) {
+            if (slot.cachedParameters[parameter].id == event.parameter) {
+                slot.cachedParameters[parameter].target = event.value;
+                break;
             }
         }
-        index = groupEnd - 1U;
     }
-    if (cursor < frames && !renderSegment(cursor, frames - cursor))
-        return NativeFxGraphResult::InvalidBlock;
     // The work bank contains the processor result blended with the input. The
     // caller copies it back to the bus buffer after the complete chain.
     return NativeFxGraphResult::Ok;
@@ -751,6 +857,7 @@ NativeFxGraphExchange::~NativeFxGraphExchange() {
 
 NativeFxGraphResult NativeFxGraphExchange::stage(
     std::unique_ptr<NativeFxGraph>& candidate) noexcept {
+    std::lock_guard<std::mutex> producerLock(producerMutex_);
     if (!candidate || !candidate->sealed() || !candidate->prepared())
         return NativeFxGraphResult::GraphNotSealed;
     if (expectedSpecSet_) {
@@ -779,6 +886,32 @@ NativeFxGraphResult NativeFxGraphExchange::stage(
         return NativeFxGraphResult::InvalidBlock;
     }
     raw->setGeneration(currentGeneration + 1U);
+    std::array<std::uint32_t,
+        kNativeFxGraphBusCount * kNativeFxGraphSlotsPerBus> candidateEventLimits{};
+    std::array<bool,
+        kNativeFxGraphBusCount * kNativeFxGraphSlotsPerBus> candidateConfigured{};
+    std::array<std::uint16_t,
+        kNativeFxGraphBusCount * kNativeFxGraphSlotsPerBus> candidateOrdinals{};
+    for (std::uint32_t busIndex = 0U; busIndex < kNativeFxGraphBusCount; ++busIndex) {
+        NativeFxBusAddress bus{};
+        if (busIndex == 0U) bus = {NativeFxBusKind::Input, 0U};
+        else if (busIndex <= 5U)
+            bus = {NativeFxBusKind::Track, static_cast<std::uint8_t>(busIndex - 1U)};
+        else if (busIndex == 6U) bus = {NativeFxBusKind::Send, 0U};
+        else bus = {NativeFxBusKind::Master, 0U};
+        for (std::uint32_t slotIndex = 0U;
+             slotIndex < kNativeFxGraphSlotsPerBus; ++slotIndex) {
+            const auto tableIndex = static_cast<std::size_t>(
+                busIndex * kNativeFxGraphSlotsPerBus + slotIndex);
+            std::uint32_t maximum = 0U;
+            candidateConfigured[tableIndex] = raw->slotMaximumParameterEventsPerBlock(
+                bus, static_cast<std::uint8_t>(slotIndex), maximum);
+            candidateEventLimits[tableIndex] = maximum;
+            if (candidateConfigured[tableIndex])
+                candidateOrdinals[tableIndex] = raw->slotOrdinal(
+                    bus, static_cast<std::uint8_t>(slotIndex));
+        }
+    }
     // Reserve the candidate's resident footprint before making it visible to
     // the audio owner. The old graph remains charged through crossfade and
     // retirement until reclaimRetired() has destroyed it.
@@ -789,6 +922,9 @@ NativeFxGraphResult NativeFxGraphExchange::stage(
         swapInFlight_.store(false, std::memory_order_release);
         return NativeFxGraphResult::SwapBusy;
     }
+    slotEventLimits_ = candidateEventLimits;
+    slotConfigured_ = candidateConfigured;
+    slotOrdinals_ = candidateOrdinals;
     producerGeneration_.store(currentGeneration + 1U, std::memory_order_release);
     // Timestamp order belongs to one graph generation. A newly staged graph
     // may accept an early event even while old-generation future events remain
@@ -802,32 +938,107 @@ NativeFxGraphResult NativeFxGraphExchange::stage(
 }
 
 NativeFxGraphResult NativeFxGraphExchange::postEvent(const NativeFxGraphEvent& event) noexcept {
-    if (!NativeFxGraph::validBusAddress(event.bus) ||
-        event.slotIndex >= kNativeFxGraphSlotsPerBus || !validEventKind(event.kind) ||
-        !finite(event.value) || event.absoluteFrame > kMaximumExactFrame ||
-        (event.kind == NativeFxGraphEventKind::SlotMix &&
-         (!finite(event.smoothingMs) || event.smoothingMs < 0.0f ||
-          event.smoothingMs > 1000.0f)))
-        return NativeFxGraphResult::InvalidEvent;
-    auto queued = event;
+    return postEvents(&event, 1U);
+}
+
+NativeFxGraphResult NativeFxGraphExchange::postEvents(
+    const NativeFxGraphEvent* events, std::uint32_t eventCount) noexcept {
+    if (eventCount == 0U) return NativeFxGraphResult::Ok;
+    if (events == nullptr) return NativeFxGraphResult::InvalidEvent;
+    if (eventCount > kNativeFxGraphEventCapacity)
+        return NativeFxGraphResult::TooManyEvents;
+    std::lock_guard<std::mutex> producerLock(producerMutex_);
     const auto currentGeneration = producerGeneration_.load(std::memory_order_acquire);
     if (currentGeneration == 0U) return NativeFxGraphResult::NoActiveGraph;
-    if (queued.graphGeneration == 0U) queued.graphGeneration = currentGeneration;
-    // Only generation-zero events are implicitly bound to the current graph.
-    // Reject explicit stale/future generations before consulting or mutating
-    // producer timestamp order; an old far-future event must not poison a new
-    // graph's near-term control stream.
-    if (queued.graphGeneration != currentGeneration) return NativeFxGraphResult::InvalidEvent;
-    if (producerHasFrame_ && event.absoluteFrame < producerLastFrame_)
-        return NativeFxGraphResult::TimestampOutOfOrder;
+
+    auto previousFrame = producerLastFrame_;
+    auto hasPreviousFrame = producerHasFrame_;
+    for (std::uint32_t index = 0U; index < eventCount; ++index) {
+        const auto& event = events[index];
+        if (!NativeFxGraph::validBusAddress(event.bus) ||
+            event.slotIndex >= kNativeFxGraphSlotsPerBus || !validEventKind(event.kind) ||
+            (event.kind != NativeFxGraphEventKind::Midi && !finite(event.value)) ||
+            event.absoluteFrame > kMaximumExactFrame ||
+            (event.kind == NativeFxGraphEventKind::SlotMix &&
+             (!finite(event.smoothingMs) || event.smoothingMs < 0.0f ||
+              event.smoothingMs > 1000.0f)))
+            return NativeFxGraphResult::InvalidEvent;
+        // Only generation-zero events are implicitly bound to the current
+        // generation. Reject stale/future IDs before mutating queue/order.
+        if (event.graphGeneration != 0U && event.graphGeneration != currentGeneration)
+            return NativeFxGraphResult::InvalidEvent;
+        const auto slotTableIndex = static_cast<std::size_t>(
+            NativeFxGraph::busIndex(event.bus) * kNativeFxGraphSlotsPerBus +
+            event.slotIndex);
+        if (slotTableIndex >= slotConfigured_.size() || !slotConfigured_[slotTableIndex])
+            return NativeFxGraphResult::InvalidEvent;
+        if (event.kind == NativeFxGraphEventKind::Midi &&
+            ((slotOrdinals_[slotTableIndex] != 19U && slotOrdinals_[slotTableIndex] != 21U) ||
+             !validMidiEvent(event)))
+            return NativeFxGraphResult::InvalidEvent;
+        if (hasPreviousFrame && event.absoluteFrame < previousFrame)
+            return NativeFxGraphResult::TimestampOutOfOrder;
+        previousFrame = event.absoluteFrame;
+        hasPreviousFrame = true;
+    }
+
     const auto write = eventWrite_.load(std::memory_order_relaxed);
     const auto read = eventRead_.load(std::memory_order_acquire);
-    if (write - read >= kNativeFxGraphEventQueueCapacity)
+    if (write - read > kNativeFxGraphEventQueueCapacity - eventCount)
         return NativeFxGraphResult::EventQueueFull;
-    eventQueue_[static_cast<std::size_t>(write % kNativeFxGraphEventQueueCapacity)].event = queued;
-    eventWrite_.store(write + 1U, std::memory_order_release);
-    producerLastFrame_ = event.absoluteFrame;
-    producerHasFrame_ = true;
+
+    // The audio owner collects every event older than blockEnd, including
+    // arbitrarily late events, into one fixed due-event array. Without a
+    // published consumer-frame cursor we cannot safely prove that events in
+    // separate timestamp windows will be consumed before they become due.
+    // Conservatively cap all queued events for this generation to that array's
+    // capacity. Stale generations do not consume this budget because the audio
+    // owner discards them before checking timestamps.
+    std::uint32_t currentGenerationCount = 0U;
+    std::array<std::uint32_t,
+        kNativeFxGraphBusCount * kNativeFxGraphSlotsPerBus> parameterCountsBySlot{};
+    for (auto cursor = read; cursor < write; ++cursor) {
+        const auto& queued = eventQueue_[static_cast<std::size_t>(
+            cursor % kNativeFxGraphEventQueueCapacity)].event;
+        if (queued.graphGeneration == currentGeneration) {
+            ++currentGenerationCount;
+            if (queued.kind == NativeFxGraphEventKind::ProcessorParameter ||
+                queued.kind == NativeFxGraphEventKind::Midi) {
+                const auto tableIndex = static_cast<std::size_t>(
+                    NativeFxGraph::busIndex(queued.bus) * kNativeFxGraphSlotsPerBus +
+                    queued.slotIndex);
+                if (tableIndex < parameterCountsBySlot.size())
+                    ++parameterCountsBySlot[tableIndex];
+            }
+        }
+    }
+    if (currentGenerationCount > kNativeFxGraphEventCapacity - eventCount)
+        return NativeFxGraphResult::TooManyEvents;
+
+    for (std::uint32_t index = 0U; index < eventCount; ++index) {
+        const auto& event = events[index];
+        if (event.kind != NativeFxGraphEventKind::ProcessorParameter &&
+            event.kind != NativeFxGraphEventKind::Midi) continue;
+        const auto tableIndex = static_cast<std::size_t>(
+            NativeFxGraph::busIndex(event.bus) * kNativeFxGraphSlotsPerBus +
+            event.slotIndex);
+        auto& count = parameterCountsBySlot[tableIndex];
+        ++count;
+        if (count > slotEventLimits_[tableIndex])
+            return NativeFxGraphResult::TooManyEvents;
+    }
+
+    for (std::uint32_t index = 0U; index < eventCount; ++index) {
+        auto queued = events[index];
+        if (queued.graphGeneration == 0U) queued.graphGeneration = currentGeneration;
+        eventQueue_[static_cast<std::size_t>((write + index) %
+            kNativeFxGraphEventQueueCapacity)].event = queued;
+    }
+    // Publish once, so the audio owner observes either the old queue or the
+    // complete transaction, never a partially written control batch.
+    eventWrite_.store(write + eventCount, std::memory_order_release);
+    producerLastFrame_ = previousFrame;
+    producerHasFrame_ = hasPreviousFrame;
     return NativeFxGraphResult::Ok;
 }
 
@@ -938,6 +1149,10 @@ NativeFxGraphResult NativeFxGraphExchange::beginBlock(
                     ? crossfadeTracks_[track].data() : nullptr;
             crossfadeBlock_.sendReturn = block.sendReturn ? crossfadeSend_.data() : nullptr;
             crossfadeBlock_.masterMix = block.masterMix ? crossfadeMaster_.data() : nullptr;
+            crossfadeBlock_.carrierLeft = block.carrierLeft;
+            crossfadeBlock_.carrierRight = block.carrierRight;
+            crossfadeBlock_.carrierFrames = block.carrierFrames;
+            crossfadeBlock_.carrierChannels = block.carrierChannels;
             const auto previousResult = crossfadeGraph_->beginBlock(
                 crossfadeBlock_, frames, absoluteStartFrame, nullptr, 0U, nullptr);
             if (previousResult != NativeFxGraphResult::Ok) {
@@ -1166,6 +1381,7 @@ NativeFxGraph* NativeFxGraphExchange::activatePendingAtBoundary() noexcept {
         crossfadeWarmupRemaining_ = candidate->transitionWarmupFrames();
         activeGraphBytes_.store(candidate->estimatedPermanentBytes(),
                                 std::memory_order_release);
+        activeGraphGeneration_.store(candidate->generation(), std::memory_order_release);
     } else {
         if (crossfadeGraph_ != nullptr || retired_.load(std::memory_order_acquire) != nullptr) {
             // The control API keeps a swap blocked until the prior graph has
@@ -1180,6 +1396,7 @@ NativeFxGraph* NativeFxGraphExchange::activatePendingAtBoundary() noexcept {
             crossfadeWarmupRemaining_ = candidate->transitionWarmupFrames();
             activeGraphBytes_.store(candidate->estimatedPermanentBytes(),
                                     std::memory_order_release);
+            activeGraphGeneration_.store(candidate->generation(), std::memory_order_release);
         }
     }
     return active_.load(std::memory_order_acquire);

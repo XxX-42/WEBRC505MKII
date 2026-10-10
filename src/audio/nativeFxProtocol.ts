@@ -11,7 +11,7 @@ export const NATIVE_FX_SLOTS_PER_BUS = 4 as const;
 export const NATIVE_FX_MAXIMUM_BLOCK_FRAMES = 64 as const;
 export const NATIVE_FX_MAXIMUM_PARAMETERS_PER_SLOT = 64 as const;
 export const NATIVE_FX_MAXIMUM_ORDINAL = 53 as const;
-export const NATIVE_FX_MAXIMUM_PARAMETER_ID = 124 as const;
+export const NATIVE_FX_MAXIMUM_PARAMETER_ID = 135 as const;
 export const NATIVE_FX_SEND_BUS_ROUTED = false as const;
 
 export type NativeFxBusKind = 'input' | 'track' | 'send' | 'master';
@@ -48,6 +48,34 @@ export interface NativeFxParameterEvent {
   slotIndex: number;
   parameterId: number;
   value: number;
+}
+
+export type NativeFxMidiType = 'NoteOn' | 'NoteOff' | 'AllNotesOff';
+
+/** Typed, sample-offset MIDI event addressed to one prepared Native FX slot. */
+export interface NativeFxMidiEvent {
+  kind: 'midi';
+  absoluteFrame: number;
+  busIndex: number;
+  slotIndex: number;
+  midiType: NativeFxMidiType;
+  /** MIDI channel is zero-based at the DSP and wire boundary. */
+  channel: number;
+  note: number;
+  velocity: number;
+}
+
+export type NativeFxControlEvent = NativeFxParameterEvent | NativeFxMidiEvent;
+
+/** Normalized WebMIDI input used by both audio backends and the dispatcher. */
+export interface FxMidiInputEvent {
+  type: NativeFxMidiType;
+  /** Zero-based MIDI channel. Assignment channels remain one-based. */
+  channel: number;
+  note: number;
+  velocity: number;
+  /** DOM MIDIEvent.timeStamp in the performance.now() monotonic millisecond domain. */
+  timestampMs: number;
 }
 
 export interface NativeFxProtocolIssue {
@@ -201,6 +229,59 @@ export function validateNativeFxParameterEvent(input: unknown): NativeFxProtocol
   return issues;
 }
 
+export function validateNativeFxMidiEvent(input: unknown): NativeFxProtocolIssue[] {
+  if (!isRecord(input)) return [{ path: '$', code: 'object-required' }];
+  const issues: NativeFxProtocolIssue[] = [];
+  if (input.kind !== 'midi') issues.push({ path: '$.kind', code: 'midi-kind-required' });
+  if (!integerInRange(input.absoluteFrame, 0, Number.MAX_SAFE_INTEGER))
+    issues.push({ path: '$.absoluteFrame', code: 'safe-frame-required' });
+  if (!integerInRange(input.busIndex, 0, NATIVE_FX_BUS_COUNT - 1))
+    issues.push({ path: '$.busIndex', code: 'bus-index-out-of-range' });
+  if (!integerInRange(input.slotIndex, 0, NATIVE_FX_SLOTS_PER_BUS - 1))
+    issues.push({ path: '$.slotIndex', code: 'slot-index-out-of-range' });
+  if (input.midiType !== 'NoteOn' && input.midiType !== 'NoteOff' && input.midiType !== 'AllNotesOff')
+    issues.push({ path: '$.midiType', code: 'midi-type-unsupported' });
+  if (!integerInRange(input.channel, 0, 15))
+    issues.push({ path: '$.channel', code: 'midi-channel-out-of-range' });
+  if (!integerInRange(input.note, 0, 127))
+    issues.push({ path: '$.note', code: 'midi-note-out-of-range' });
+  if (!integerInRange(input.velocity, 0, 127))
+    issues.push({ path: '$.velocity', code: 'midi-velocity-out-of-range' });
+  if (input.midiType === 'NoteOn' && integerInRange(input.velocity, 0, 127) && input.velocity === 0)
+    issues.push({ path: '$.velocity', code: 'note-on-velocity-must-be-positive' });
+  if (input.midiType === 'AllNotesOff' && (input.note !== 0 || input.velocity !== 0))
+    issues.push({ path: '$', code: 'all-notes-off-payload-must-be-zero' });
+  return issues;
+}
+
+export function validateNativeFxControlEvent(input: unknown): NativeFxProtocolIssue[] {
+  if (!isRecord(input)) return [{ path: '$', code: 'object-required' }];
+  if (input.kind === 'midi') return validateNativeFxMidiEvent(input);
+  if (input.kind !== undefined && input.kind !== 'parameter')
+    return [{ path: '$.kind', code: 'event-kind-unsupported' }];
+  return validateNativeFxParameterEvent(input);
+}
+
+export function validateFxMidiInputEvent(input: unknown): NativeFxProtocolIssue[] {
+  if (!isRecord(input)) return [{ path: '$', code: 'object-required' }];
+  const issues: NativeFxProtocolIssue[] = [];
+  if (input.type !== 'NoteOn' && input.type !== 'NoteOff' && input.type !== 'AllNotesOff')
+    issues.push({ path: '$.type', code: 'midi-type-unsupported' });
+  if (!integerInRange(input.channel, 0, 15))
+    issues.push({ path: '$.channel', code: 'midi-channel-out-of-range' });
+  if (!integerInRange(input.note, 0, 127))
+    issues.push({ path: '$.note', code: 'midi-note-out-of-range' });
+  if (!integerInRange(input.velocity, 0, 127))
+    issues.push({ path: '$.velocity', code: 'midi-velocity-out-of-range' });
+  if (!finiteNumber(input.timestampMs) || input.timestampMs < 0)
+    issues.push({ path: '$.timestampMs', code: 'monotonic-timestamp-required' });
+  if (input.type === 'NoteOn' && input.velocity === 0)
+    issues.push({ path: '$.velocity', code: 'note-on-velocity-must-be-positive' });
+  if (input.type === 'AllNotesOff' && (input.note !== 0 || input.velocity !== 0))
+    issues.push({ path: '$', code: 'all-notes-off-payload-must-be-zero' });
+  return issues;
+}
+
 export function serializeNativeFxParameterEvent(input: unknown): string {
   const issues = validateNativeFxParameterEvent(input);
   if (issues.length !== 0) {
@@ -215,4 +296,13 @@ export function serializeNativeFxParameterEvent(input: unknown): string {
     parameterId: event.parameterId,
     value: event.value,
   });
+}
+
+export function serializeNativeFxControlEvent(input: unknown): string {
+  const issues = validateNativeFxControlEvent(input);
+  if (issues.length !== 0) {
+    const first = issues[0]!;
+    throw new TypeError(`Invalid Native FX event at ${first.path}: ${first.code}`);
+  }
+  return JSON.stringify(input);
 }

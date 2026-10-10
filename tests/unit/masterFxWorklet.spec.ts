@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
+import { BrowserFxMidiQueueWriter, createBrowserFxMidiBuffer } from '../../src/audio/browserFxMidiProtocol';
 
 type TestProcessor = {
   process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean;
@@ -12,7 +13,7 @@ type TestProcessor = {
   wetTarget: number;
   wetStep: number;
   wetRampRemaining: number;
-  primeFxHandles(handles: number[], warmupFrames: number): boolean;
+  primeFxHandles(handles: number[], warmupFrames: number, ordinals?: number[], midiCapable?: boolean[]): boolean;
   fxTransitionControl: Int32Array | null;
   fxTransitionIndex: number;
   dsp: Record<string, any>;
@@ -87,7 +88,7 @@ function makeMasterProcessor() {
   return { processor, scope, messages };
 }
 
-async function makeRealMasterProcessor(maxBlockFrames = 64) {
+async function makeRealMasterProcessor(maxBlockFrames = 64, carrierAttached = false) {
   const messages: Array<Record<string, unknown>> = [];
   let Registered: (new (options: unknown) => TestProcessor) | null = null;
   const scope: Record<string, any> = {
@@ -108,11 +109,14 @@ async function makeRealMasterProcessor(maxBlockFrames = 64) {
   const source = readFileSync(resolve(process.cwd(), 'public/worklets/master-fx-processor.js'), 'utf8');
   runInNewContext(source, scope);
   if (!Registered) throw new Error('The master FX Worklet did not register.');
-  const module = await WebAssembly.compile(readFileSync(resolve(process.cwd(), 'public/dsp/webrc-dsp.wasm')));
+  const modulePath = process.env.WEBRC_DSP_WASM_PATH || resolve(process.cwd(), 'public/dsp/webrc-dsp.wasm');
+  const module = await WebAssembly.compile(readFileSync(modulePath));
   const fxTransitionBuffer = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 2);
+  const fxCarrierControl = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT);
+  Atomics.store(new Int32Array(fxCarrierControl), 0, carrierAttached ? 1 : 0);
   const processor = new Registered({ processorOptions: { sharedDspModule: module, maxBlockFrames,
-    fxTransitionBuffer } });
-  return { processor, scope, messages, fxTransitionControl: new Int32Array(fxTransitionBuffer) };
+    fxTransitionBuffer, fxMidiBuffer: createBrowserFxMidiBuffer(), fxCarrierControl } });
+  return { processor, scope, messages, fxTransitionControl: new Int32Array(fxTransitionBuffer), fxCarrierControl };
 }
 
 function vinylPlan(count: number) {
@@ -136,14 +140,26 @@ function makeStereoTone(startFrame: number, frames: number) {
   return { left, right };
 }
 
+function makeStereoCarrierTone(startFrame: number, frames: number) {
+  const left = new Float32Array(frames);
+  const right = new Float32Array(frames);
+  for (let frame = 0; frame < frames; frame += 1) {
+    const absolute = startFrame + frame;
+    left[frame] = 0.42 * Math.sin(2 * Math.PI * 733 * absolute / 48_000);
+    right[frame] = 0.31 * Math.sin(2 * Math.PI * 997 * absolute / 48_000 + 0.37);
+  }
+  return { left, right };
+}
+
 function processRealMasterBlock(
   processor: TestProcessor, scope: Record<string, any>, startFrame: number, frames = 64,
+  carrier?: { left: Float32Array; right: Float32Array },
 ) {
   scope.currentFrame = startFrame;
   const input = makeStereoTone(startFrame, frames);
   const left = new Float32Array(frames);
   const right = new Float32Array(frames);
-  processor.process([[input.left, input.right]], [[left, right]]);
+  processor.process([[input.left, input.right], carrier ? [carrier.left, carrier.right] : []], [[left, right]]);
   return { left, right };
 }
 
@@ -155,6 +171,84 @@ function lastMessage(messages: Array<Record<string, unknown>>, type: string) {
 }
 
 describe('master shared-DSP Worklet', () => {
+  it('primes VOCODER with paired real modulator/carrier history and processes independent stereo', async () => {
+    const withoutCarrier = await makeRealMasterProcessor(128, false);
+    withoutCarrier.processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_STAGE', requestId: 801,
+      plan: [{ ordinal: 20, parameters: [{ id: 48, value: 1 }, { id: 3, value: 1 }] }] });
+    expect(lastMessage(withoutCarrier.messages, 'MASTER_DSP_FX_BANK_STAGED')).toMatchObject({ ok: false });
+    expect(withoutCarrier.processor.dsp.activeHandles).toHaveLength(0);
+
+    const tested = await makeRealMasterProcessor(128, true);
+    for (let block = 0; block < 12; block += 1) {
+      const startFrame = block * 128;
+      processRealMasterBlock(tested.processor, tested.scope, startFrame, 128,
+        makeStereoCarrierTone(startFrame, 128));
+    }
+    expect(tested.processor.dsp.fxHistoryCount).toBe(1_536);
+    expect(tested.processor.dsp.fxCarrierHistoryCount).toBe(1_536);
+    expect(tested.processor.dsp.fxCarrierHistoryLeft.some((sample: number) => Math.abs(sample) > 0.01)).toBe(true);
+    expect(tested.processor.dsp.fxCarrierHistoryRight.some((sample: number) => Math.abs(sample) > 0.01)).toBe(true);
+
+    tested.processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_STAGE', requestId: 802,
+      plan: [{ ordinal: 20, parameters: [{ id: 48, value: 1 }, { id: 3, value: 1 }] }] });
+    const staged = lastMessage(tested.messages, 'MASTER_DSP_FX_BANK_STAGED');
+    expect(staged).toMatchObject({ ok: true, handleCount: 1 });
+    const stageId = Number(staged.stageId);
+    tested.processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_COMMIT', requestId: 803, stageId, allowHistoryWarmup: true });
+    expect(lastMessage(tested.messages, 'MASTER_DSP_FX_BANK_COMMITTED')).toMatchObject({ ok: true });
+    expect(tested.processor.dsp.activeOrdinals).toEqual([20]);
+
+    const startFrame = 1_536;
+    const carrier = makeStereoCarrierTone(startFrame, 128);
+    const rendered = processRealMasterBlock(tested.processor, tested.scope, startFrame, 128, carrier);
+    expect(tested.processor.processFailures).toBe(0);
+    expect(rendered.left.some((sample) => Math.abs(sample) > 1e-5)).toBe(true);
+    expect(rendered.right.some((sample) => Math.abs(sample) > 1e-5)).toBe(true);
+    expect(rendered.left.some((sample, index) => Math.abs(sample - rendered.right[index]!) > 1e-6)).toBe(true);
+  }, 120_000);
+
+  it('broadcasts one MIDI span only to compatible Harmony mode and Voc(M), without chain failure', async () => {
+    const tested = await makeRealMasterProcessor(64, false);
+    const control = await makeRealMasterProcessor(64, false);
+    const plan = [
+      { ordinal: 19, parameters: [{ id: 48, value: 1 }, { id: 107, value: 2 }] },
+      { ordinal: 21, parameters: [{ id: 48, value: 1 }, { id: 3, value: 1 }] },
+    ];
+    for (const item of [tested, control]) {
+      item.processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_STAGE', requestId: 811, plan });
+      const staged = lastMessage(item.messages, 'MASTER_DSP_FX_BANK_STAGED');
+      expect(staged.ok).toBe(true);
+      item.processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_COMMIT', requestId: 812, stageId: staged.stageId });
+      expect(lastMessage(item.messages, 'MASTER_DSP_FX_BANK_COMMITTED').ok).toBe(true);
+    }
+    // Harmony's non-MIDI mode still has a bounded analysis warmup. Deliver
+    // genuine render callbacks until that serial candidate and its transition
+    // have finished before testing an audible Voc(M) note.
+    const warmBlocks = Math.ceil((4_777 + Math.round(48_000 * 0.01)) / 64);
+    for (let block = 0; block < warmBlocks; block += 1) {
+      const startFrame = block * 64;
+      processRealMasterBlock(tested.processor, tested.scope, startFrame, 64);
+      processRealMasterBlock(control.processor, control.scope, startFrame, 64);
+    }
+    expect(tested.processor.dsp.activeMidiCapable).toEqual([false, true]);
+
+    const writer = new BrowserFxMidiQueueWriter(tested.processor.dsp.fxMidiBuffer);
+    const eventStartFrame = warmBlocks * 64;
+    expect(writer.enqueue({ type: 'NoteOn', channel: 0, note: 69, velocity: 112, timestampMs: 0 }, eventStartFrame + 17)).toBe(true);
+    expect(writer.enqueue({ type: 'NoteOff', channel: 0, note: 69, velocity: 0, timestampMs: 1 }, eventStartFrame + 48)).toBe(true);
+    const testedOutput = processRealMasterBlock(tested.processor, tested.scope, eventStartFrame, 64);
+    const controlOutput = processRealMasterBlock(control.processor, control.scope, eventStartFrame, 64);
+    expect(tested.processor.processFailures).toBe(0);
+    for (let frame = 0; frame < 17; frame += 1) {
+      expect(testedOutput.left[frame]).toBe(controlOutput.left[frame]);
+      expect(testedOutput.right[frame]).toBe(controlOutput.right[frame]);
+    }
+    expect(testedOutput.left.slice(17).some((sample, index) =>
+      Math.abs(sample - controlOutput.left[index + 17]!) > 1e-6)).toBe(true);
+    expect(testedOutput.right.slice(17).some((sample, index) =>
+      Math.abs(sample - controlOutput.right[index + 17]!) > 1e-6)).toBe(true);
+  }, 120_000);
+
   it('preallocates replacement lifecycle fields before callback promotion', () => {
     const { processor, messages } = makeMasterProcessor();
     const dsp = processor.dsp;
@@ -177,7 +271,7 @@ describe('master shared-DSP Worklet', () => {
     dsp.wasm.webrc_dsp_fx_last_create_status = () => 0;
     dsp.wasm.webrc_dsp_fx_latency_model = () => 0;
     dsp.wasm.webrc_dsp_fx_fixed_latency_samples = () => 0;
-    dsp.wasm.webrc_dsp_fx_startup_warmup_upper_bound_samples = (...args: unknown[]) => {
+    dsp.wasm.webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters = (...args: unknown[]) => {
       dsp.startupWarmupOut[0] = 1;
       return 0;
     };
@@ -549,5 +643,26 @@ describe('master shared-DSP Worklet', () => {
     processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_ABORT', requestId: 303, stageId });
     expect(lastMessage(messages, 'MASTER_DSP_FX_BANK_ABORTED')).toMatchObject({ ok: true });
     expect(processor.dsp.wasm.webrc_dsp_managed_memory_bytes()).toBe(managedBytesBefore);
+  });
+
+  it('uses the configured pitch profile startup bound before accepting a master bank', async () => {
+    const { processor, messages } = await makeRealMasterProcessor(64);
+    processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_STAGE', requestId: 900, plan: [
+      { ordinal: 18, parameters: [{ id: 48, value: 1 }, { id: 3, value: 1 }] },
+    ] });
+    const livePoly = lastMessage(messages, 'MASTER_DSP_FX_BANK_STAGED');
+    expect(livePoly).toMatchObject({ ok: true, warmupFrames: 9_216, handleCount: 1 });
+    if (livePoly.ok && typeof livePoly.stageId === 'number') {
+      processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_ABORT', requestId: 901, stageId: livePoly.stageId });
+    }
+
+    processor.handleMessage({ type: 'MASTER_DSP_FX_BANK_STAGE', requestId: 902, plan: [
+      { ordinal: 18, parameters: [
+        { id: 48, value: 1 }, { id: 3, value: 1 }, { id: 125, value: 2 },
+      ] },
+    ] });
+    expect(lastMessage(messages, 'MASTER_DSP_FX_BANK_STAGED')).toMatchObject({ ok: false });
+    expect(processor.dsp.wasm.webrc_dsp_managed_memory_bytes()).toBeLessThanOrEqual(48 * 1024 * 1024);
+    processor.handleMessage({ type: 'MASTER_DSP_DISPOSE' });
   });
 });

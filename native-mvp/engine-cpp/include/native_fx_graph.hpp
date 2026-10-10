@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace webrc::native {
@@ -34,6 +35,7 @@ struct NativeFxBusAddress {
 enum class NativeFxGraphEventKind : std::uint8_t {
     ProcessorParameter = 0,
     SlotMix = 1,
+    Midi = 2,
 };
 
 struct NativeFxGraphEvent {
@@ -47,7 +49,15 @@ struct NativeFxGraphEvent {
     float smoothingMs = 5.0f;
     // Zero asks the control-side exchange to stamp its current generation.
     // A nonzero value binds the event to the graph configuration that created it.
+    // Keep this immediately after the original fields so existing aggregate
+    // initializers retain their generation argument position.
     std::uint64_t graphGeneration = 0U;
+    // Used only by Midi. MIDI shares the same timestamped, per-slot event
+    // transaction and processor event budget as float parameter controls.
+    webrc::dsp::FxMidiEventType midiType = webrc::dsp::FxMidiEventType::NoteOn;
+    std::uint8_t midiChannel = 0U;
+    std::uint8_t midiNote = 60U;
+    std::uint8_t midiVelocity = 100U;
 };
 
 struct NativeFxInitialParameter {
@@ -70,6 +80,7 @@ enum class NativeFxGraphResult : std::uint8_t {
     BlockTooLarge,
     InvalidBlock,
     MissingBusBuffer,
+    MissingCarrier,
     InvalidEvent,
     TooManyEvents,
     EventQueueFull,
@@ -88,6 +99,12 @@ struct NativeFxGraphBlock {
     // The caller supplies the already-built send return and master mix buses.
     webrc::dsp::StereoFrame* sendReturn = nullptr;
     webrc::dsp::StereoFrame* masterMix = nullptr;
+    // Independent external stereo carrier for VOCODER20. It is never inferred
+    // from the modulator/input bus or a same-block post-FX track signal.
+    const float* carrierLeft = nullptr;
+    const float* carrierRight = nullptr;
+    std::uint32_t carrierFrames = 0U;
+    std::uint32_t carrierChannels = 0U;
 };
 
 struct NativeFxGraphStats {
@@ -159,6 +176,16 @@ public:
     [[nodiscard]] bool hasSlot(NativeFxBusAddress bus, std::uint8_t slotIndex) const noexcept;
     [[nodiscard]] std::uint16_t slotOrdinal(NativeFxBusAddress bus,
                                             std::uint8_t slotIndex) const noexcept;
+    // Control-thread queries for parameter-bank admission. A false return
+    // means the addressed slot is not configured in this sealed candidate.
+    [[nodiscard]] bool slotFixedLatencySamples(NativeFxBusAddress bus,
+                                                std::uint8_t slotIndex,
+                                                std::int32_t& samples) const noexcept;
+    [[nodiscard]] bool slotSupportsOuterMix(NativeFxBusAddress bus,
+                                            std::uint8_t slotIndex) const noexcept;
+    [[nodiscard]] bool slotMaximumParameterEventsPerBlock(
+        NativeFxBusAddress bus, std::uint8_t slotIndex,
+        std::uint32_t& maximum) const noexcept;
     [[nodiscard]] std::uint64_t generation() const noexcept { return generation_; }
 
 private:
@@ -294,6 +321,13 @@ public:
     [[nodiscard]] std::uint64_t producerGeneration() const noexcept {
         return producerGeneration_.load(std::memory_order_acquire);
     }
+    // Audio-owner publication: differs from producerGeneration() while a
+    // staged candidate is waiting for its first block-boundary adoption.
+    [[nodiscard]] std::uint64_t activeGraphGeneration() const noexcept {
+        return activeGraphGeneration_.load(std::memory_order_acquire);
+    }
+    [[nodiscard]] NativeFxGraphResult postEvents(const NativeFxGraphEvent* events,
+                                                 std::uint32_t eventCount) noexcept;
 
 private:
     struct QueuedEvent {
@@ -311,6 +345,18 @@ private:
 
     std::array<QueuedEvent, kNativeFxGraphEventQueueCapacity> eventQueue_{};
     std::array<NativeFxGraphEvent, kNativeFxGraphEventCapacity> dueEvents_{};
+    // Control-thread producer metadata copied from each sealed candidate at
+    // stage time. The audio owner never reads this table and postEvents never
+    // dereferences active_/retired_ graphs.
+    std::array<std::uint32_t,
+        kNativeFxGraphBusCount * kNativeFxGraphSlotsPerBus> slotEventLimits_{};
+    std::array<bool,
+        kNativeFxGraphBusCount * kNativeFxGraphSlotsPerBus> slotConfigured_{};
+    std::array<std::uint16_t,
+        kNativeFxGraphBusCount * kNativeFxGraphSlotsPerBus> slotOrdinals_{};
+    // Serializes control producers and stage metadata publication only; the
+    // audio callback does not acquire this mutex.
+    std::mutex producerMutex_{};
     std::atomic<std::uint64_t> eventWrite_{0U};
     std::atomic<std::uint64_t> eventRead_{0U};
     std::atomic<NativeFxGraph*> pending_{nullptr};
@@ -324,6 +370,7 @@ private:
     std::atomic<std::uint64_t> residentGraphBytes_{0U};
     std::atomic<bool> swapInFlight_{false};
     std::atomic<std::uint64_t> staleGenerationEventCount_{0U};
+    std::atomic<std::uint64_t> activeGraphGeneration_{0U};
     NativeFxGraph* processingGraph_ = nullptr;
     NativeFxGraph* crossfadeGraph_ = nullptr;
     NativeFxGraphBlock crossfadeBlock_{};

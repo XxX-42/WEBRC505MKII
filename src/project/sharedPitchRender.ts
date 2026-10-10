@@ -4,7 +4,6 @@ export type SharedPitchProfile = 'LIVE_MONO' | 'LIVE_POLY' | 'HQ_RENDER';
 
 export const SHARED_PITCH_RENDER_MAX_BLOCK_FRAMES = 8_192;
 export const SHARED_PITCH_WASM_MEMORY_BYTES = 64 * 1024 * 1024;
-export const SHARED_PITCH_MAX_ALIGNMENT_FRAMES_PER_MAX_BLOCK = 6;
 const MIN_PLAYBACK_RATE = 0.25;
 const MAX_PLAYBACK_RATE = 4;
 const LIVE_MONO_WINDOW_FRAMES = 4_096;
@@ -16,6 +15,9 @@ export interface SharedPitchProfilePlan {
   channelsPerHandle: 1 | 2;
   stereoHandleCount: 1 | 2;
   maxBlockFrames: number;
+  /** Internal Signalsmith analysis block used to bound exact seek/flush scratch. */
+  alignmentEngineBlockFrames: number;
+  alignmentIntervalFrames: number;
   prepareParameters: readonly number[];
   seed: number;
   latencyModel: 'yin-window-plus-psola-lookahead' | 'signalsmith-input-output-getters';
@@ -62,6 +64,8 @@ export interface SharedPitchRenderRequest {
   right: Float32Array;
   /** Whole render budget, including retained caller PCM; reserve other project buffers first. */
   maxMemoryBytes: number;
+  /** Reverse the transferred worker-owned copies before seek/process. */
+  reverse?: boolean;
   liveMonoWorkBudget?: number;
   signal?: AbortSignal;
 }
@@ -102,6 +106,7 @@ export interface SharedPitchWorkerJob {
   /** Exact N/M rate after the requested duration is rounded to whole frames. */
   playbackRate: number;
   maxMemoryBytes: number;
+  reverse: boolean;
   left: ArrayBuffer;
   right: ArrayBuffer;
 }
@@ -166,6 +171,8 @@ export function makeSharedPitchProfilePlan(
       channelsPerHandle: 1,
       stereoHandleCount: 2,
       maxBlockFrames: SHARED_PITCH_RENDER_MAX_BLOCK_FRAMES,
+      alignmentEngineBlockFrames: 4_096,
+      alignmentIntervalFrames: 1_024,
       prepareParameters: [LIVE_MONO_WINDOW_FRAMES, 512, liveMonoWorkBudget, LIVE_MONO_MINIMUM_HZ, 1_000, 0.15],
       seed: stableSeed,
       latencyModel: 'yin-window-plus-psola-lookahead',
@@ -179,6 +186,8 @@ export function makeSharedPitchProfilePlan(
       channelsPerHandle: 2,
       stereoHandleCount: 1,
       maxBlockFrames: SHARED_PITCH_RENDER_MAX_BLOCK_FRAMES,
+      alignmentEngineBlockFrames: 4_096,
+      alignmentIntervalFrames: 1_024,
       prepareParameters: [1, 2, 4_096, 1_024, 1],
       seed: stableSeed,
       latencyModel: 'signalsmith-input-output-getters',
@@ -192,7 +201,9 @@ export function makeSharedPitchProfilePlan(
       channelsPerHandle: 2,
       stereoHandleCount: 1,
       maxBlockFrames: SHARED_PITCH_RENDER_MAX_BLOCK_FRAMES,
-      prepareParameters: [2, 2, 8_192, 1_024, 0],
+      prepareParameters: [2, 2, 16_384, 1_024, 0],
+      alignmentEngineBlockFrames: 16_384,
+      alignmentIntervalFrames: 1_024,
       seed: stableSeed,
       latencyModel: 'signalsmith-input-output-getters',
       supportsOfflineDurationChange: true,
@@ -329,7 +340,7 @@ export function renderSharedPitchInWorker(
   const inputFrames = request.left.length;
   const outputFrames = Math.max(1, Math.ceil(inputFrames / request.playbackRate));
   const playbackRate = inputFrames / outputFrames;
-  const maxAlignmentFrames = plan.maxBlockFrames * SHARED_PITCH_MAX_ALIGNMENT_FRAMES_PER_MAX_BLOCK;
+  const maxAlignmentFrames = getMaxAlignmentFrames(plan);
   const needsShortClipPadding = inputFrames < maxAlignmentFrames;
   const maximumInputPadding = needsShortClipPadding ? maxAlignmentFrames + inputFrames : 0;
   const maximumOutputPadding = needsShortClipPadding
@@ -420,6 +431,7 @@ export function renderSharedPitchInWorker(
       outputFrames,
       playbackRate,
       maxMemoryBytes: request.maxMemoryBytes,
+      reverse: request.reverse === true,
       left: leftCopy.buffer,
       right: rightCopy.buffer,
     };
@@ -431,10 +443,21 @@ export function renderSharedPitchInWorker(
   });
 }
 
+export function getMaxAlignmentFrames(plan: SharedPitchProfilePlan): number {
+  const maximum = plan.alignmentEngineBlockFrames * 5 + plan.alignmentIntervalFrames * 4 + 8;
+  if (!Number.isSafeInteger(maximum) || maximum < plan.maxBlockFrames || maximum > 1_000_000) {
+    throw new RangeError('Shared pitch alignment bound is invalid.');
+  }
+  return maximum;
+}
+
 function validateRenderRequest(request: SharedPitchRenderRequest): void {
   if (!request || !(request.artifact?.module instanceof WebAssembly.Module) ||
       !/^[a-f0-9]{64}$/.test(request.artifact.sha256) || !/^[a-f0-9]{64}$/.test(request.artifact.sourceSetSha256)) {
     throw new TypeError('Shared pitch render requires a verified compiled WASM artifact identity.');
+  }
+  if (request.reverse !== undefined && typeof request.reverse !== 'boolean') {
+    throw new TypeError('Shared pitch reverse flag must be a boolean when supplied.');
   }
   if (!Number.isFinite(request.playbackRate) || request.playbackRate < MIN_PLAYBACK_RATE || request.playbackRate > MAX_PLAYBACK_RATE) {
     throw new RangeError('Shared pitch playback rate must be between 0.25 and 4.');

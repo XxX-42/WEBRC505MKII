@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <limits>
 #include <new>
+#include <utility>
 
 namespace {
 std::atomic<bool> countAllocations{false};
@@ -62,7 +63,7 @@ int main() {
     check(ordinalsStable, "catalog ordinal and ID lookup are stable");
     check(inputCount == kInputFxCount && trackCount == kTrackFxCount,
           "catalog preserves 49 Input and 53 Track routing counts");
-    check(implementedCount == 41U, "only processor-backed entries in the tested 41-kind factory are advertised ready");
+    check(implementedCount == 53U, "only processor-backed entries in the tested 53-kind factory are advertised ready");
     check(findFxByOrdinal(0U) == nullptr && findFxByOrdinal(54U) == nullptr &&
           findFxById("rc505mkii.fx.not-real") == nullptr,
           "unknown identifiers do not resolve to a fallback processor");
@@ -72,10 +73,87 @@ int main() {
     check(parameters != nullptr && parameterCount == 4U &&
           parameters[0].origin == FxParameterOrigin::ReconstructionSafeBounds,
           "filter parameters expose units, bounds, defaults, and provenance");
+    check(static_cast<std::uint16_t>(FxParameterId::SynthFrequencyMacro) == 103U &&
+          static_cast<std::uint16_t>(FxParameterId::PatternIndex) == 124U,
+          "musical runtime parameter IDs occupy the agreed stable 103-124 range");
+
+    const ProcessSpec pitchMemorySpec{48000.0f, 128U, 2U};
+    const FxParameterEvent livePolySelector{0U, FxParameterId::PitchProfile, 1.0f};
+    const FxParameterEvent hqSelector{0U, FxParameterId::PitchProfile, 2.0f};
+    const FxParameterEvent invalidHrmMonoSelector{0U, FxParameterId::PitchProfile, 0.0f};
+    const FxParameterEvent lateSelector{1U, FxParameterId::PitchProfile, 1.0f};
+    const FxParameterEvent duplicateSelectors[] = {livePolySelector, livePolySelector};
+    const auto manualDefaultMemory = fxMemoryRequirementForParameters(
+        18U, pitchMemorySpec, nullptr, 0U);
+    const auto manualPolyMemory = fxMemoryRequirementForParameters(
+        18U, pitchMemorySpec, &livePolySelector, 1U);
+    const auto manualHqMemory = fxMemoryRequirementForParameters(
+        18U, pitchMemorySpec, &hqSelector, 1U);
+    const auto manualWorstMemory = fxMemoryRequirement(18U, pitchMemorySpec);
+    constexpr std::uint64_t wasmFxLedgerBytes = 48U * 1024U * 1024U;
+    check(manualDefaultMemory.supported && manualPolyMemory.supported &&
+          manualDefaultMemory.peakBytes() == manualPolyMemory.peakBytes() &&
+          manualDefaultMemory.peakBytes() <= wasmFxLedgerBytes,
+          "HRM MANUAL descriptor default resolves to the admitted LIVE_POLY prepared profile");
+    check(manualHqMemory.supported && manualWorstMemory.supported &&
+          manualHqMemory.peakBytes() == manualWorstMemory.peakBytes() &&
+          manualHqMemory.peakBytes() > wasmFxLedgerBytes,
+          "explicit HQ_RENDER and ordinal-wide worst-case memory retain the larger over-budget profile");
+    check(!fxMemoryRequirementForParameters(18U, pitchMemorySpec,
+              &invalidHrmMonoSelector, 1U).supported &&
+          !fxMemoryRequirementForParameters(18U, pitchMemorySpec,
+              &lateSelector, 1U).supported &&
+          !fxMemoryRequirementForParameters(18U, pitchMemorySpec,
+              duplicateSelectors, 2U).supported &&
+          !fxMemoryRequirementForParameters(18U, pitchMemorySpec, nullptr, 1U).supported,
+          "invalid, late, duplicate, and malformed profile preflight fail closed");
+    const auto manualDefaultWarmup = fxStartupWarmupUpperBoundSamplesForParameters(
+        18U, pitchMemorySpec, nullptr, 0U);
+    const auto manualPolyWarmup = fxStartupWarmupUpperBoundSamplesForParameters(
+        18U, pitchMemorySpec, &livePolySelector, 1U);
+    const auto manualHqWarmup = fxStartupWarmupUpperBoundSamplesForParameters(
+        18U, pitchMemorySpec, &hqSelector, 1U);
+    const auto manualWorstWarmup = fxStartupWarmupUpperBoundSamples(18U, pitchMemorySpec);
+    check(manualDefaultWarmup.supported && manualPolyWarmup.supported &&
+          manualDefaultWarmup.frames == manualPolyWarmup.frames &&
+          manualHqWarmup.supported && manualWorstWarmup.supported &&
+          manualHqWarmup.frames == manualWorstWarmup.frames &&
+          manualHqWarmup.frames > manualDefaultWarmup.frames,
+          "selected-profile startup history follows the same default and explicit selectors as memory");
+    for (const auto ordinal : {14U, 15U}) {
+        const auto defaultMemory = fxMemoryRequirementForParameters(
+            static_cast<std::uint16_t>(ordinal), pitchMemorySpec, nullptr, 0U);
+        const auto defaultWarmup = fxStartupWarmupUpperBoundSamplesForParameters(
+            static_cast<std::uint16_t>(ordinal), pitchMemorySpec, nullptr, 0U);
+        check(defaultMemory.supported && defaultWarmup.supported,
+              "transpose and pitch bend resolve their descriptor-selected preflight profiles");
+    }
+    const std::array<std::pair<std::uint16_t, std::size_t>, 9> musicalDescriptorCounts{{
+        {6U,5U},{10U,3U},{12U,8U},{16U,5U},{17U,7U},
+        {19U,8U},{20U,5U},{21U,6U},{22U,9U},
+    }};
+    bool musicalDescriptorsValid = true;
+    for (const auto& expected : musicalDescriptorCounts) {
+        std::size_t actualCount = 0U;
+        const auto* actual = fxParameterDescriptors(expected.first, actualCount);
+        musicalDescriptorsValid = musicalDescriptorsValid && actual != nullptr &&
+                                  actualCount == expected.second;
+        for (std::size_t i = 0U; actual && i < actualCount; ++i)
+            musicalDescriptorsValid = musicalDescriptorsValid &&
+                actual[i].origin == FxParameterOrigin::ReconstructionSafeBounds;
+    }
+    check(musicalDescriptorsValid,
+          "musical adapter descriptors expose only explicitly local reconstruction controls");
     parameterCount = 99U;
     check(fxParameterDescriptors(24U, parameterCount) != nullptr && parameterCount == 5U,
           "ordinal 24 publishes a concrete reconstruction control schema");
-    check(createFxProcessor(22U) == nullptr, "metadata-only oscillator does not silently fall back");
+    check(static_cast<std::uint16_t>(FxParameterId::PitchProfile) == 125U &&
+          static_cast<std::uint16_t>(FxParameterId::HarmonyVoice2Pan) == 135U,
+          "pitch runtime controls use the stable global parameter ID range");
+    check(fxParameterDescriptors(14U, parameterCount) != nullptr && parameterCount == 6U &&
+          fxParameterDescriptors(15U, parameterCount) != nullptr && parameterCount == 5U &&
+          fxParameterDescriptors(18U, parameterCount) != nullptr && parameterCount == 10U,
+          "TRANSPOSE, PITCH BEND and HRM MANUAL expose distinct parameter schemas");
     const ProcessSpec spec{48000.0f, 64U, 2U};
     const auto filterMemory = fxMemoryRequirement(1U, spec);
     const auto delayMemory = fxMemoryRequirement(36U, spec);
@@ -94,6 +172,15 @@ int main() {
     const auto repeatMemory = fxMemoryRequirement(51U, spec);
     const auto shiftMemory = fxMemoryRequirement(52U, spec);
     const auto vinylMemory = fxMemoryRequirement(53U, spec);
+    const std::array<std::uint16_t, 9U> musicalOrdinals{{6U,10U,12U,16U,17U,19U,20U,21U,22U}};
+    bool musicalMemorySupported = true;
+    for (const auto ordinal : musicalOrdinals) {
+        const auto memory = fxMemoryRequirement(ordinal, spec);
+        musicalMemorySupported = musicalMemorySupported && memory.supported &&
+            memory.objectBytes >= sizeof(void*) && memory.persistentPreparedBytes > 0U;
+    }
+    check(musicalMemorySupported,
+          "nine musical factory entries expose positive prepared-memory reservations");
     for (const auto ordinal : {7U,9U,29U,30U,32U}) {
         const auto memory = fxMemoryRequirement(static_cast<std::uint16_t>(ordinal), spec);
         check(memory.supported && memory.objectBytes > 0U &&
@@ -101,7 +188,7 @@ int main() {
               memory.prepareScratchBytes == memory.persistentPreparedBytes,
               "modulation registry reserves object and both stereo scratch buffers before prepare");
     }
-    check(!fxMemoryRequirement(22U, spec).supported &&
+    check(!fxMemoryRequirement(54U, spec).supported &&
           !fxMemoryRequirement(47U, ProcessSpec{48000.0f,64U,1U}).supported &&
           !fxMemoryRequirement(36U, ProcessSpec{std::numeric_limits<float>::quiet_NaN(),64U,2U}).supported,
           "unsupported processor/spec combinations have no reserveable memory claim");
@@ -111,6 +198,97 @@ int main() {
     std::array<float, 64> outRight{};
     left[0] = 1.0f;
     right[0] = -0.75f;
+
+    bool musicalFactoryPass = true;
+    for (const auto ordinal : musicalOrdinals) {
+        auto processor = createFxProcessor(ordinal);
+        std::size_t descriptorCount = 0U;
+        const auto* descriptors = fxParameterDescriptors(ordinal, descriptorCount);
+        const auto startup = fxStartupWarmupUpperBoundSamples(ordinal, spec);
+        const auto alignment = fxAlignmentUpperBoundSamples(ordinal, spec);
+        bool casePass = processor && processor->ordinal() == ordinal &&
+            descriptors != nullptr && descriptorCount > 0U && startup.supported &&
+            alignment.supported && processor->prepare(spec);
+        for (std::size_t index = 0U; casePass && index < descriptorCount; ++index)
+            casePass = descriptors[index].origin == FxParameterOrigin::ReconstructionSafeBounds &&
+                       processor->validParameter(descriptors[index].id,
+                                                 descriptors[index].defaultValue);
+        if (casePass) {
+            std::array<float, 64U> carrierLeft{};
+            std::array<float, 64U> carrierRight{};
+            const float* processInput[]{left.data(), right.data()};
+            float* processOutput[]{outLeft.data(), outRight.data()};
+            FxProcessContext context{};
+            if (ordinal == 20U) {
+                context.carrierLeft = carrierLeft.data();
+                context.carrierRight = carrierRight.data();
+                context.carrierFrames = 64U;
+                context.carrierChannels = 2U;
+            }
+            casePass = processor->processBlockWithContext(processInput, processOutput,
+                2U, 64U, nullptr, 0U, context);
+            for (std::size_t frame = 0U; casePass && frame < 64U; ++frame)
+                casePass = std::isfinite(outLeft[frame]) && std::isfinite(outRight[frame]);
+            const auto fixedLatency = processor->fixedLatencySamples();
+            casePass = casePass && processor->startupWarmupFrames() <= startup.frames &&
+                (fixedLatency <= 0 || static_cast<std::uint32_t>(fixedLatency) <= alignment.frames);
+        }
+        musicalFactoryPass = musicalFactoryPass && casePass;
+    }
+    check(musicalFactoryPass,
+          "all nine musical ordinals create, reserve, prepare, describe, report startup and process their real route");
+
+    auto contextActual = createFxProcessor(1U);
+    auto contextReference = createFxProcessor(1U);
+    check(contextActual && contextReference && contextActual->prepare(spec) &&
+          contextReference->prepare(spec), "context fallback test prepares paired ordinary processors");
+    if (contextActual && contextReference) {
+        std::array<float, 64> contextLeft{};
+        std::array<float, 64> contextRight{};
+        std::array<float, 64> carrierLeft{};
+        std::array<float, 64> carrierRight{};
+        std::array<float, 64> actualOutLeft{};
+        std::array<float, 64> actualOutRight{};
+        std::array<float, 64> referenceOutLeft{};
+        std::array<float, 64> referenceOutRight{};
+        for (std::size_t i = 0U; i < contextLeft.size(); ++i) {
+            contextLeft[i] = 0.2f * std::sin(static_cast<float>(i) * 0.11f);
+            contextRight[i] = -0.15f * std::cos(static_cast<float>(i) * 0.07f);
+            carrierLeft[i] = 0.4f;
+            carrierRight[i] = -0.3f;
+            actualOutLeft[i] = actualOutRight[i] = 123.0f;
+        }
+        const float* contextInput[]{contextLeft.data(), contextRight.data()};
+        float* actualOutput[]{actualOutLeft.data(), actualOutRight.data()};
+        float* referenceOutput[]{referenceOutLeft.data(), referenceOutRight.data()};
+        FxMidiEvent midi{};
+        FxProcessContext midiContext{};
+        midiContext.midiEvents = &midi;
+        midiContext.midiEventCount = 1U;
+        check(!contextActual->processBlockWithContext(contextInput, actualOutput, 2U, 64U,
+                                                      nullptr, 0U, midiContext) &&
+              actualOutLeft[0] == 123.0f && actualOutRight[0] == 123.0f,
+              "ordinary processor rejects MIDI sidecar before touching output");
+        FxProcessContext carrierContext{};
+        carrierContext.carrierLeft = carrierLeft.data();
+        carrierContext.carrierRight = carrierRight.data();
+        carrierContext.carrierFrames = 64U;
+        carrierContext.carrierChannels = 2U;
+        check(!contextActual->processBlockWithContext(contextInput, actualOutput, 2U, 64U,
+                                                      nullptr, 0U, carrierContext) &&
+              actualOutLeft[0] == 123.0f && actualOutRight[0] == 123.0f,
+              "ordinary processor rejects carrier sidecar before touching output");
+        const FxProcessContext emptyContext{};
+        check(contextActual->processBlockWithContext(contextInput, actualOutput, 2U, 64U,
+                                                     nullptr, 0U, emptyContext) &&
+              contextReference->processBlock(contextInput, referenceOutput, 2U, 64U),
+              "empty context delegates to the ordinary processor path");
+        bool outputsMatch = true;
+        for (std::size_t i = 0U; i < contextLeft.size(); ++i)
+            outputsMatch = outputsMatch && actualOutLeft[i] == referenceOutLeft[i] &&
+                           actualOutRight[i] == referenceOutRight[i];
+        check(outputsMatch, "rejected sidecars leave ordinary DSP state unchanged");
+    }
 
     for (std::uint16_t ordinal = 1U; ordinal <= 3U; ++ordinal) {
         auto processor = createFxProcessor(ordinal);
@@ -141,12 +319,14 @@ int main() {
               "filter rejects non-finite and out-of-safe-range parameters");
     }
 
-    for (const auto ordinal : {4U,5U,7U,8U,9U,11U,13U,23U,24U,25U,26U,27U,28U,
+    for (const auto ordinal : {4U,5U,7U,8U,9U,11U,13U,14U,15U,18U,23U,24U,25U,26U,27U,28U,
                                29U,30U,31U,32U,33U,34U,35U,36U,37U,38U,39U,
                                40U,41U,42U,43U,44U,45U,46U,47U,48U,49U,
                                50U,51U,52U,53U}) {
         auto processor = createFxProcessor(static_cast<std::uint16_t>(ordinal));
-        check(processor != nullptr && processor->prepare(spec),
+        const bool prepared = processor != nullptr && processor->prepare(spec);
+        if (!prepared) std::fprintf(stderr, "priority prepare diagnostic ordinal=%u\n", ordinal);
+        check(prepared,
               "priority FX processor prepares in its native planar route");
         if (!processor) continue;
         check(processor->latencyIsFrequencyDependent() ==
@@ -620,13 +800,20 @@ int main() {
               "unprepared processor rejects event block without mutating caller output");
     }
 
-    for (const auto ordinal : {1U,4U,5U,7U,8U,9U,11U,13U,23U,24U,25U,26U,27U,28U,
+    for (const auto ordinal : {1U,4U,5U,6U,7U,8U,9U,10U,11U,12U,13U,14U,15U,16U,17U,18U,19U,
+                               21U,22U,23U,24U,25U,26U,27U,28U,
                                29U,30U,31U,32U,33U,34U,35U,36U,37U,38U,39U,
                                40U,41U,42U,43U,44U,45U,46U,47U,48U,49U}) {
         auto noAlloc = createFxProcessor(static_cast<std::uint16_t>(ordinal));
-        check(noAlloc && noAlloc->prepare(spec), "allocation probe adapter prepares outside the callback");
+        const bool noAllocPrepared = noAlloc && noAlloc->prepare(spec);
+        if (!noAllocPrepared) std::fprintf(stderr, "noalloc prepare diagnostic ordinal=%u\n", ordinal);
+        check(noAllocPrepared, "allocation probe adapter prepares outside the callback");
         if (!noAlloc) continue;
         FxParameterEvent event{32U, FxParameterId::Mix, 0.6f};
+        if (ordinal == 6U || ordinal == 10U || ordinal == 12U || ordinal == 14U ||
+            ordinal == 15U || ordinal == 16U || ordinal == 17U || ordinal == 18U ||
+            ordinal == 19U || ordinal == 21U || ordinal == 22U)
+            event = {32U, FxParameterId::Active, 1.0f};
         if (ordinal == 1U) event = {32U,FxParameterId::FrequencyHz,3200.0f};
         else if (ordinal == 4U) event = {32U,FxParameterId::RateHz,0.8f};
         else if (ordinal == 25U) event = {32U,FxParameterId::ThresholdDb,-30.0f};

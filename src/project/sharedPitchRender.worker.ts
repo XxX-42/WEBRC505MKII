@@ -2,7 +2,7 @@ import {
   handleSharedPitchWorkerMessage,
   type ExactPitchStretchSession,
 } from './sharedPitchRenderWorkerRuntime';
-import { makeSharedPitchProfilePlan, SharedPitchRenderError,
+import { getMaxAlignmentFrames, makeSharedPitchProfilePlan, SharedPitchRenderError,
   type SharedPitchWorkerJob } from './sharedPitchRender';
 
 interface WorkerScope {
@@ -99,6 +99,7 @@ class WasmExactPitchStretchSession implements ExactPitchStretchSession {
   private readonly exports: SharedPitchWasmExports;
   private readonly handle: number;
   private readonly maxBlockFrames: number;
+  private readonly maxAlignmentFrames: number;
   private seekLengthOutput: TransferBuffer | null = null;
   private flushCountOutput: TransferBuffer | null = null;
   private seekLeft: TransferBuffer | null = null;
@@ -112,7 +113,7 @@ class WasmExactPitchStretchSession implements ExactPitchStretchSession {
   private expectedSeekFrames = 0;
   private disposed = false;
 
-  private constructor(maxBlockFrames: number, exports: SharedPitchWasmExports,
+  private constructor(maxBlockFrames: number, maxAlignmentFrames: number, exports: SharedPitchWasmExports,
                       wasiIo: WasiIoCounters, initialMemoryBytes: number, handle: number) {
     this.exports = exports;
     this.memory = exports.memory;
@@ -120,6 +121,7 @@ class WasmExactPitchStretchSession implements ExactPitchStretchSession {
     this.initialMemoryBytes = initialMemoryBytes;
     this.handle = handle;
     this.maxBlockFrames = maxBlockFrames;
+    this.maxAlignmentFrames = maxAlignmentFrames;
   }
 
   static create(job: SharedPitchWorkerJob, exports: SharedPitchWasmExports,
@@ -139,7 +141,8 @@ class WasmExactPitchStretchSession implements ExactPitchStretchSession {
       if (handle === 0 || createStatus !== 0) {
         throw new Error(`Signalsmith handle prepare failed with status ${createStatus}.`);
       }
-      session = new WasmExactPitchStretchSession(plan.maxBlockFrames, exports, wasiIo, initialMemoryBytes, handle);
+      session = new WasmExactPitchStretchSession(plan.maxBlockFrames, getMaxAlignmentFrames(plan),
+        exports, wasiIo, initialMemoryBytes, handle);
       handle = 0;
       const transpose = session.allocate(2);
       transpose.f32[0] = 1;
@@ -175,7 +178,7 @@ class WasmExactPitchStretchSession implements ExactPitchStretchSession {
       this.handle, playbackRate, this.seekLengthOutput.address) as number;
     this.checkStatus(status, 'Signalsmith outputSeekLength');
     const frames = this.seekLengthOutput.u32[0];
-    if (!Number.isSafeInteger(frames) || frames < 1 || frames > this.maxBlockFrames * 6) {
+    if (!Number.isSafeInteger(frames) || frames < 1 || frames > this.maxAlignmentFrames) {
       throw new Error(`Signalsmith alignment seek length ${frames} exceeds the admitted range.`);
     }
     this.expectedSeekFrames = frames;
@@ -214,7 +217,7 @@ class WasmExactPitchStretchSession implements ExactPitchStretchSession {
 
   flush(outputLeft: Float32Array, outputRight: Float32Array, outputOffset: number,
         outputFrames: number, playbackRate: number): number {
-    if (outputFrames < 0 || outputOffset < 0 || outputOffset + outputFrames > outputLeft.length ||
+    if (outputFrames < 0 || outputFrames > this.maxAlignmentFrames || outputOffset < 0 || outputOffset + outputFrames > outputLeft.length ||
         outputOffset + outputFrames > outputRight.length) throw new Error('Signalsmith flush span is invalid.');
     if (outputFrames === 0) return 0;
     this.flushLeft = this.allocate(outputFrames);

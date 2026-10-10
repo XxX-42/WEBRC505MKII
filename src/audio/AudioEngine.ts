@@ -19,6 +19,7 @@ import type { LoopEngineSettings, LoopEngineSettingsPatch } from './loopSettings
 import type { RhythmKitDocument, RhythmPatternDocument, RhythmRuntimeSnapshot } from './rhythmTypes';
 import type { BrowserRoutingPatch, BrowserRoutingState } from './browserRouting';
 import type { SharedDspFxCatalogEntry } from './sharedDspGraph';
+import type { FxMidiInputEvent } from './nativeFxProtocol';
 
 export type AudioMode = 'native' | 'browser';
 export type AudioBackend = NativeBackend | 'BROWSER';
@@ -179,7 +180,11 @@ export class AudioEngine {
   }
 
   public get rhythmEngine() {
-    return this.activeEngine.rhythmEngine;
+    return this.browser.rhythmEngine;
+  }
+
+  public get nativeRhythm() {
+    return this.nativeEngine.nativeRhythm;
   }
 
   public get trackStates(): Int32Array | null {
@@ -255,6 +260,10 @@ export class AudioEngine {
   }
 
   public async setTrackFxSend(trackId: number, enabled: boolean): Promise<void> {
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.setTrackFxSend(trackId, enabled);
+      return;
+    }
     await this.requireBrowserReady().setTrackFxSend(trackId, enabled);
   }
 
@@ -266,24 +275,56 @@ export class AudioEngine {
     return this.requireBrowserReady().subscribeRoutingState(listener);
   }
 
-  public getFxState(): FxStateSnapshot { return this.requireBrowserReady().getFxState(); }
-  public getFxBanks(): ProjectFxBank[] { return this.requireBrowserReady().getFxBanks(); }
-  public getActiveFxBankId(): string { return this.requireBrowserReady().getActiveFxBankId(); }
-  public getAvailableFxTypes(): string[] { return this.requireBrowserReady().getAvailableFxTypes(); }
+  public getFxState(): FxStateSnapshot {
+    return this.currentMode === 'native' ? this.nativeEngine.getFxState() : this.requireBrowserReady().getFxState();
+  }
+  public getFxBanks(): ProjectFxBank[] {
+    return this.currentMode === 'native' ? this.nativeEngine.getFxBanks() : this.requireBrowserReady().getFxBanks();
+  }
+  public getActiveFxBankId(): string {
+    return this.currentMode === 'native' ? this.nativeEngine.getActiveFxBankId() : this.requireBrowserReady().getActiveFxBankId();
+  }
+  public getAvailableFxTypes(location?: FxBankLocation): string[] {
+    return this.currentMode === 'native'
+      ? this.nativeEngine.getAvailableFxTypes(location)
+      : this.requireBrowserReady().getAvailableFxTypes();
+  }
   public getSharedDspFxCatalog(): SharedDspFxCatalogEntry[] {
-    return this.currentMode === 'browser' ? this.requireBrowserReady().getSharedDspFxCatalog() : [];
+    return this.currentMode === 'native'
+      ? this.nativeEngine.getSharedDspFxCatalog()
+      : this.requireBrowserReady().getSharedDspFxCatalog();
   }
 
   public async selectFxBank(id: string): Promise<void> {
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.selectFxBank(id);
+      return;
+    }
     await this.requireBrowserReady().selectFxBank(id);
   }
 
   public async updateFxBankSlot(location: FxBankLocation, index: number, slot: ProjectFxUnit | null): Promise<void> {
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.updateFxBankSlot(location, index, slot);
+      return;
+    }
     await this.requireBrowserReady().updateFxBankSlot(location, index, slot);
   }
 
   public subscribeFxState(listener: (state: FxStateSnapshot) => void): () => void {
-    return this.requireBrowserReady().subscribeFxState(listener);
+    return this.currentMode === 'native'
+      ? this.nativeEngine.subscribeFxState(listener)
+      : this.requireBrowserReady().subscribeFxState(listener);
+  }
+
+  /** Routes timestamped external MIDI notes to the active backend's supported FX processors. */
+  public async postFxMidiInput(event: FxMidiInputEvent): Promise<boolean> {
+    if (this.currentMode === 'native') return this.nativeEngine.postFxMidiInput(event);
+    const browser = this.requireBrowserReady() as BrowserAudioEngine & {
+      postFxMidiInput?: (input: FxMidiInputEvent) => boolean;
+    };
+    if (typeof browser.postFxMidiInput !== 'function') return false;
+    return browser.postFxMidiInput(event);
   }
 
   public getBrowserIoSnapshot(): BrowserAudioIoSnapshot | null {
@@ -475,6 +516,9 @@ export class AudioEngine {
 
     const trackCount = this.nativeEngine.getSupportedTrackCount();
     const nativeV2 = this.nativeEngine.getTrackEngineVersion() >= 2;
+    const supportsInputFx = this.nativeEngine.supportsInputFx();
+    const supportsTrackFx = this.nativeEngine.supportsTrackFx();
+    const supportsAnyFx = supportsInputFx || supportsTrackFx;
 
     return {
       mode: 'native',
@@ -482,17 +526,26 @@ export class AudioEngine {
         ? 'NATIVE V2: FIVE STEREO TRACKS'
         : 'NATIVE V1: TRACK 1 ONLY',
       supportedTrackCount: trackCount,
-      supportsInputFx: false,
-      supportsTrackFx: false,
+      supportsInputFx,
+      supportsTrackFx,
       supportsReverse: false,
-      supportsRhythm: false,
+      supportsRhythm: this.nativeEngine.supportsRhythm(),
       supportsBeatFeedback: false,
-      fxReason: 'NO FX IN NATIVE V1',
-      reverseReason: 'NO REVERSE IN NATIVE V1',
-      rhythmReason: 'NO RHYTHM IN NATIVE V1',
+      fxReason: supportsAnyFx
+        ? 'Native FX availability depends on the selected bus and processor route.'
+        : this.nativeEngine.getFxUnavailableReason(),
+      reverseReason: 'REVERSE PLAYBACK IS NOT AVAILABLE FROM THIS NATIVE HOST BUILD',
+      rhythmReason: this.nativeEngine.supportsRhythm()
+        ? '' : this.nativeEngine.getRhythmUnavailableReason(),
       beatReason: 'NO BEAT IN NATIVE V1',
       trackLevelReason: nativeV2 ? '' : 'TRACK MIX IN BROWSER ONLY',
     };
+  }
+
+  public getFxUnavailableReason(location?: FxBankLocation): string {
+    return this.currentMode === 'native'
+      ? this.nativeEngine.getFxUnavailableReason(location)
+      : '';
   }
 
   public getTrackCapabilities(trackId: number): TrackCapabilities {
@@ -575,15 +628,15 @@ export class AudioEngine {
   }
 
   public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
-    this.activeEngine.setFxType(location, slotIndex, type);
+    return this.activeEngine.setFxType(location, slotIndex, type);
   }
 
   public setFxParam(location: 'input' | 'track', slotIndex: number, value: number) {
-    this.activeEngine.setFxParam(location, slotIndex, value);
+    return this.activeEngine.setFxParam(location, slotIndex, value);
   }
 
   public setFxActive(location: 'input' | 'track', slotIndex: number, active: boolean) {
-    this.activeEngine.setFxActive(location, slotIndex, active);
+    return this.activeEngine.setFxActive(location, slotIndex, active);
   }
 
   public playTestTone() {

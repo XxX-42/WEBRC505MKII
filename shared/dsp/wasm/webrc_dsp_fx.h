@@ -24,12 +24,25 @@ typedef struct WebrcDspFxParameterInfo {
     uint32_t origin;
 } WebrcDspFxParameterInfo;
 
+// Stable C layout for the v1 typed musical context API. Event type values are
+// NoteOn=0, NoteOff=1, AllNotesOff=2. The field widths are part of this ABI;
+// callers should not mirror the C++ enum or compiler object layout.
+typedef struct WebrcDspFxMidiEventV1 {
+    uint32_t frameOffset;
+    uint8_t type;
+    uint8_t channel;
+    uint8_t note;
+    uint8_t velocity;
+} WebrcDspFxMidiEventV1;
+
 // Registry and parameter metadata are reconstruction-safe DSP metadata only.
 // A false official-parameters flag means this does not encode Roland's UI contract.
 uint32_t webrc_dsp_fx_api_version(void);
 // Versioned configured-create/startup metadata extension. The v1 catalog and
 // legacy create symbols remain available for existing clients.
 uint32_t webrc_dsp_fx_create_v2_api_version(void);
+uint32_t webrc_dsp_fx_context_api_version(void);
+uint32_t webrc_dsp_fx_profile_setup_api_version(void);
 uint32_t webrc_dsp_fx_catalog_size(void);
 uint32_t webrc_dsp_fx_id_pointer(uint32_t ordinal);
 uint32_t webrc_dsp_fx_name_pointer(uint32_t ordinal);
@@ -42,6 +55,19 @@ int32_t webrc_dsp_fx_parameter_info(uint32_t ordinal, uint32_t parameterIndex,
 int32_t webrc_dsp_fx_memory_info(uint32_t ordinal, float sampleRate,
                                  uint32_t maxBlockFrames, uint32_t channels,
                                  WebrcDspFxMemoryInfo* output);
+// Version 1 profile-aware setup queries. The complete initial parameter batch
+// is validated transactionally; only prepare-time pitch profile selectors
+// affect the shared conservative estimate. Outputs remain untouched on error.
+int32_t webrc_dsp_fx_memory_info_for_parameters(
+    uint32_t ordinal, float sampleRate, uint32_t maxBlockFrames,
+    uint32_t channels, const uint32_t* parameterIds,
+    const float* parameterValues, uint32_t parameterCount,
+    WebrcDspFxMemoryInfo* output);
+int32_t webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters(
+    uint32_t ordinal, float sampleRate, uint32_t maxBlockFrames,
+    uint32_t channels, const uint32_t* parameterIds,
+    const float* parameterValues, uint32_t parameterCount,
+    uint32_t* outputFrames);
 
 // SETUP ONLY. Preflights and reserves the shared 48 MiB ledger before creating
 // or preparing the processor. Do this on an inactive candidate while rendering
@@ -87,6 +113,24 @@ int32_t webrc_dsp_fx_process_stereo_events(WebrcDspHandle handle,
                                            const uint32_t* parameterIds,
                                            const float* eventValues,
                                            uint32_t eventCount);
+// Version 1 typed context entry. All spans must be aligned and in linear
+// memory. Parameter and MIDI arrays are independently sorted by frameOffset;
+// their merged count is checked by the processor before any audio state is
+// advanced. VOCODER ordinal 20 requires carrierChannels=2, carrierFrames=frames,
+// and both carrier planes; all other ordinals reject any carrier. MIDI is
+// accepted only by the musical ordinals which declare MIDI support. Pass null
+// pointers and zero counts for unused sidecars. This call is a realtime process
+// entry after preparation and does not allocate or lock.
+int32_t webrc_dsp_fx_process_stereo_context_v1(
+    WebrcDspHandle handle,
+    const float* inputLeft, const float* inputRight,
+    float* outputLeft, float* outputRight, uint32_t frames,
+    const uint32_t* parameterEventOffsets,
+    const uint32_t* parameterIds,
+    const float* parameterValues, uint32_t parameterEventCount,
+    const float* carrierLeft, const float* carrierRight,
+    uint32_t carrierFrames, uint32_t carrierChannels,
+    const WebrcDspFxMidiEventV1* midiEvents, uint32_t midiEventCount);
 int32_t webrc_dsp_fx_fixed_latency_samples(WebrcDspHandle handle);
 uint32_t webrc_dsp_fx_latency_model(WebrcDspHandle handle);
 // Startup warmup is an input-history bound, distinct from fixed latency.

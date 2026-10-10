@@ -30,6 +30,7 @@ add_library(webrc_dsp STATIC
   src/pitch.cpp
   src/pitch_profiles.cpp
   src/signalsmith_adapter.cpp
+  src/pitch_fx_adapter.cpp
   src/streaming_yin.cpp
   src/live_mono_pitch.cpp
   src/fx_registry.cpp
@@ -41,6 +42,11 @@ add_library(webrc_dsp STATIC
   src/modulated_delay_fx.cpp
   src/rhythmic_fx.cpp
   src/spatial_fx_adapters.cpp
+  src/musical_fx_adapter.cpp
+  src/musical_fx_registry_bridge.cpp
+  src/synthesis_pitch_fx.cpp
+  src/voice_fx.cpp
+  src/vocoder_fx.cpp
 )
 
 target_include_directories(webrc_dsp PUBLIC
@@ -150,6 +156,31 @@ if(BUILD_TESTING)
   add_executable(reconstruction_fx_adapter_tests tests/reconstruction_fx_adapter_tests.cpp)
   target_link_libraries(reconstruction_fx_adapter_tests PRIVATE webrc_dsp)
   add_test(NAME reconstruction_fx_adapter_tests COMMAND reconstruction_fx_adapter_tests)
+
+  add_executable(musical_fx_adapter_tests tests/musical_fx_adapter_tests.cpp)
+  target_link_libraries(musical_fx_adapter_tests PRIVATE webrc_dsp)
+  add_test(NAME musical_fx_adapter_tests COMMAND musical_fx_adapter_tests)
+
+  add_executable(musical_fx_registry_bridge_tests tests/musical_fx_registry_bridge_tests.cpp)
+  target_link_libraries(musical_fx_registry_bridge_tests PRIVATE webrc_dsp)
+  add_test(NAME musical_fx_registry_bridge_tests COMMAND musical_fx_registry_bridge_tests)
+
+  add_executable(voice_fx_tests tests/voice_fx_tests.cpp)
+  target_link_libraries(voice_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME voice_fx_tests COMMAND voice_fx_tests)
+
+  add_executable(vocoder_fx_tests tests/vocoder_fx_tests.cpp)
+  target_link_libraries(vocoder_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME vocoder_fx_tests COMMAND vocoder_fx_tests)
+
+  add_executable(synthesis_pitch_fx_tests tests/synthesis_pitch_fx_tests.cpp)
+  target_link_libraries(synthesis_pitch_fx_tests PRIVATE webrc_dsp)
+  add_test(NAME synthesis_pitch_fx_tests COMMAND synthesis_pitch_fx_tests)
+
+  add_executable(pitch_fx_adapter_tests tests/pitch_fx_adapter_tests.cpp)
+  target_link_libraries(pitch_fx_adapter_tests PRIVATE webrc_dsp)
+  add_test(NAME pitch_fx_adapter_tests COMMAND pitch_fx_adapter_tests)
+
 endif()
 
 add_executable(native_dsp_primitives_bench benchmarks/native_dsp_primitives_bench.cpp)

@@ -128,9 +128,6 @@ async function prepare() {
   inputGain.connect(node);
   node.connect(mutedOutput);
   mutedOutput.connect(context.destination);
-  // Some headless Chromium builds start a software context while setting up
-  // the AudioWorklet. Pin the measurement boundary before starting CDP trace.
-  await context.suspend();
   const audioContextStateAtSetup = context.state;
 
   window.workletHarness = {

@@ -158,6 +158,20 @@ or unsupported bounds fail without reserving ledger bytes. The legacy
 express those prepare-time choices. Selectors cannot be changed after
 preparation.
 
+Typed carrier and MIDI processing is an additive C ABI reported by
+`webrc_dsp_fx_context_api_version()` (currently 1). Call
+`webrc_dsp_fx_process_stereo_context_v1()` with zero counts and null pointers
+for unused sidecars. MIDI records use the fixed eight-byte
+`WebrcDspFxMidiEventV1` layout: `frameOffset`, `type` (0 NoteOn, 1 NoteOff,
+2 AllNotesOff), channel, note, velocity. Parameter and MIDI event spans must
+each be sorted by nondecreasing frame offset, and their combined count must fit
+the selected processor's per-block limit (64 for the current musical bridge).
+All spans are validated before processing starts. Ordinal 20 requires a real
+stereo carrier with the same frame count as the main block; it rejects calls
+without that carrier. Ordinals 19 and 21 accept typed MIDI; unrelated
+processors reject nonempty sidecars. The old process entry points remain
+available and cannot satisfy VOCODER's carrier requirement.
+
 `webrc_dsp_fx_startup_warmup_upper_bound_samples()` and
 `webrc_dsp_fx_startup_warmup_frames()` report the finite input-history/window
 bound for staging a prepared replacement. These values are distinct from the

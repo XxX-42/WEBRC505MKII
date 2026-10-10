@@ -434,3 +434,9 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /bench/native-rhythm-velocity-root-repro.cpp -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 /bench/results/pitch-worker-upstream-root-reanalysis-20261010-r1/** -text -whitespace
 /scripts/review-pitch-worker-pcm.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+
+/shared/dsp/include/webrc/dsp/musical_fx_context.hpp -text
+/shared/dsp/include/webrc/dsp/musical_fx_registry_bridge.hpp -text
+/shared/dsp/include/webrc/dsp/pitch_fx_adapter.hpp -text
+/shared/dsp/src/musical_fx_registry_bridge.cpp -text
+/shared/dsp/src/pitch_fx_adapter.cpp -text

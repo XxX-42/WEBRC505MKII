@@ -3,6 +3,7 @@ import { AudioEngine } from '../audio/AudioEngine';
 import type { FxStateSnapshot } from '../audio/BrowserAudioEngine';
 import type { ProjectFxBank, ProjectFxUnit } from '../project/projectTypes';
 import { sharedDspFxOrdinal, sharedDspFxType } from '../audio/sharedDspGraph';
+import { createEnabledFxParameters, selectContinuousFxParameter } from '../audio/fxParameterControls';
 import { type FxLocation, type FxSlotId, usePanelFocus } from './usePanelFocus';
 
 export interface FxSlotState {
@@ -32,8 +33,13 @@ function activeBankFrom(snapshot: FxStateSnapshot | null): ProjectFxBank | null 
   return snapshot?.banks.find((bank) => bank.id === snapshot.activeBankId) ?? null;
 }
 
-function canAccessFx(): boolean {
-  return engine.getMode() === 'browser' && engineReady.value;
+function canAccessFx(location?: FxLocation): boolean {
+  if (!engineReady.value) return false;
+  if (engine.getMode() === 'browser') return true;
+  const capabilities = engine.getCapabilities();
+  if (location === 'input') return capabilities.supportsInputFx;
+  if (location === 'track') return capabilities.supportsTrackFx;
+  return capabilities.supportsInputFx || capabilities.supportsTrackFx;
 }
 
 function refreshState(): void {
@@ -86,7 +92,8 @@ function primaryParameter(unit: ProjectFxUnit | null): { key: string; label: str
   if (!unit) return { key: '', label: 'PARAM', value: 0 };
   const sharedOrdinal = sharedDspFxOrdinal(unit.type);
   if (sharedOrdinal !== null) {
-    const parameter = engine.getSharedDspFxCatalog().find((entry) => entry.ordinal === sharedOrdinal)?.parameters[0];
+    const descriptors = engine.getSharedDspFxCatalog().find((entry) => entry.ordinal === sharedOrdinal)?.parameters ?? [];
+    const parameter = selectContinuousFxParameter(descriptors);
     if (!parameter) return { key: '', label: 'SAFE PARAM', value: 0 };
     const span = parameter.maximum - parameter.minimum;
     const raw = unit.params[String(parameter.id)] ?? parameter.defaultValue;
@@ -119,7 +126,7 @@ function createFxUnit(type: string): ProjectFxUnit {
     return {
       type: sharedDspFxType(sharedOrdinal),
       enabled: true,
-      params: Object.fromEntries(descriptor.parameters.map((parameter) => [String(parameter.id), parameter.defaultValue])),
+      params: createEnabledFxParameters(descriptor.parameters),
     };
   }
   switch (key) {
@@ -138,8 +145,9 @@ function copyAndChangeValue(unit: ProjectFxUnit, value: number): ProjectFxUnit {
   const normalized = clamp(value / 100);
   const sharedOrdinal = sharedDspFxOrdinal(next.type);
   if (sharedOrdinal !== null) {
-    const parameter = engine.getSharedDspFxCatalog().find((entry) => entry.ordinal === sharedOrdinal)?.parameters[0];
-    if (!parameter) throw new TypeError(`Shared DSP FX type ${unit.type} is not available.`);
+    const descriptors = engine.getSharedDspFxCatalog().find((entry) => entry.ordinal === sharedOrdinal)?.parameters ?? [];
+    const parameter = selectContinuousFxParameter(descriptors);
+    if (!parameter) throw new TypeError(`Shared DSP FX type ${unit.type} has no continuous primary control.`);
     next.params[String(parameter.id)] = parameter.minimum + (parameter.maximum - parameter.minimum) * normalized;
     return next;
   }
@@ -224,17 +232,18 @@ ensureInitialized();
 
 export function useFxPanelState(location: FxLocation) {
   const capabilities = computed(() => engine.getCapabilities());
-  const fxDisabled = computed(() => !canAccessFx() || (location === 'input'
+  const fxDisabled = computed(() => !canAccessFx(location) || (location === 'input'
     ? !capabilities.value.supportsInputFx
     : !capabilities.value.supportsTrackFx));
   const fxUnavailableReason = computed(() => fxDisabled.value
-    ? capabilities.value.fxReason || 'FX bank controls require initialized browser audio.'
+    ? engine.getFxUnavailableReason(location) || capabilities.value.fxReason ||
+      'FX bank controls require initialized audio.'
     : '');
   const banks = computed(() => fxState.value?.banks ?? []);
   const activeBankId = computed(() => fxState.value?.activeBankId ?? '');
   const fxOptions = computed(() => {
-    if (!canAccessFx()) return [];
-    try { return engine.getAvailableFxTypes(); } catch { return []; }
+    if (!canAccessFx(location)) return [];
+    try { return engine.getAvailableFxTypes(location); } catch { return []; }
   });
   const slots = computed<FxSlotState[]>(() => {
     const snapshot = fxState.value;

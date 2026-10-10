@@ -23,6 +23,25 @@ constexpr std::uint64_t kMaxExactFrameExclusive = 1ULL << 53U;
     return std::clamp(value * scale, 0.0f, 1.0f);
 }
 
+[[nodiscard]] std::uint64_t mixSeed(std::uint64_t value) noexcept {
+    value += 0x9e3779b97f4a7c15ULL;
+    value = (value ^ (value >> 30U)) * 0xbf58476d1ce4e5b9ULL;
+    value = (value ^ (value >> 27U)) * 0x94d049bb133111ebULL;
+    return value ^ (value >> 31U);
+}
+
+[[nodiscard]] float seededUnit(std::uint64_t seed) noexcept {
+    return static_cast<float>((mixSeed(seed) >> 40U) & 0xffffffU) / 16777216.0f;
+}
+
+[[nodiscard]] float velocityGain(float velocity) noexcept {
+    return velocity * (0.72f + 0.28f * velocity);
+}
+
+[[nodiscard]] float roundRobinScale(std::uint64_t seed, float depth) noexcept {
+    return 1.0f + (seededUnit(seed) - 0.5f) * depth;
+}
+
 [[nodiscard]] bool isVariation(RhythmSection section) noexcept {
     return section >= RhythmSection::VariationA && section <= RhythmSection::VariationD;
 }
@@ -385,21 +404,39 @@ bool RhythmRenderer::loadSectionEvents(std::uint64_t barStartFrame) noexcept {
 
 void RhythmRenderer::trigger(const StagedEvent& event, std::uint64_t absoluteFrame) noexcept {
     const float velocity = static_cast<float>(event.velocity) / 127.0f;
+    const float velocityContour = velocity - 0.5f;
     const auto seed = eventSeed(absoluteFrame, event.instrument, triggeredEvents_);
     bool triggered = false;
     switch (event.instrument) {
     case RhythmInstrument::Kick: {
         auto parameters = kit_.kick;
-        parameters.amplitude = scaled(parameters.amplitude, velocity);
+        const float rr = roundRobinScale(seed, 0.08f);
+        parameters.startFrequencyHz = std::clamp(parameters.startFrequencyHz *
+            rr * (1.0f + 0.34f * velocityContour), 20.0f, 1800.0f);
+        parameters.endFrequencyHz = std::clamp(parameters.endFrequencyHz *
+            rr * (1.0f + 0.12f * velocityContour), 20.0f, 1800.0f);
+        parameters.sweepSeconds = std::clamp(parameters.sweepSeconds *
+            (1.0f - 0.20f * velocityContour), 0.005f, 2.0f);
+        parameters.decaySeconds = std::clamp(parameters.decaySeconds *
+            (1.0f + 0.16f * (0.5f - velocityContour)), 0.02f, 12.0f);
+        parameters.amplitude = scaled(parameters.amplitude, velocityGain(velocity));
         triggered = voices_.triggerKick(parameters);
         break;
     }
     case RhythmInstrument::Snare:
     case RhythmInstrument::Clap: {
         auto parameters = kit_.snare;
-        parameters.amplitude = scaled(parameters.amplitude, velocity *
-            (event.instrument == RhythmInstrument::Clap ? 0.84f : 1.0f));
+        const float clapScale = event.instrument == RhythmInstrument::Clap ? 0.84f : 1.0f;
+        const float rr = roundRobinScale(seed, 0.05f);
+        parameters.bodyFrequencyHz = std::clamp(parameters.bodyFrequencyHz * rr *
+            (1.0f + 0.24f * velocityContour), 20.0f, 6000.0f);
+        parameters.bodyDecaySeconds = std::clamp(parameters.bodyDecaySeconds *
+            (1.0f - 0.20f * velocityContour), 0.02f, 12.0f);
+        parameters.noiseDecaySeconds = std::clamp(parameters.noiseDecaySeconds * rr *
+            (1.0f - 0.26f * velocityContour), 0.01f, 6.0f);
+        parameters.amplitude = scaled(parameters.amplitude, velocityGain(velocity) * clapScale);
         parameters.noiseLevel = std::clamp(parameters.noiseLevel *
+            (0.72f + 0.56f * velocity) *
             (event.instrument == RhythmInstrument::Clap ? 1.12f : 1.0f), 0.0f, 1.0f);
         parameters.seed = seed;
         triggered = voices_.triggerSnare(parameters);
@@ -420,7 +457,14 @@ void RhythmRenderer::trigger(const StagedEvent& event, std::uint64_t absoluteFra
             parameters.noiseLevel = std::min(0.95f, parameters.noiseLevel * 1.25f);
             parameters.amplitude *= 0.70f;
         }
-        parameters.amplitude = scaled(parameters.amplitude, velocity);
+        const float rr = roundRobinScale(seed, 0.07f);
+        parameters.baseFrequencyHz = std::clamp(parameters.baseFrequencyHz * rr *
+            (1.0f + 0.18f * velocityContour), 20.0f, 18000.0f);
+        parameters.decaySeconds = std::clamp(parameters.decaySeconds *
+            (0.78f + 0.44f * velocity), 0.005f, 6.0f);
+        parameters.noiseLevel = std::clamp(parameters.noiseLevel *
+            (0.74f + 0.52f * velocity), 0.0f, 1.0f);
+        parameters.amplitude = scaled(parameters.amplitude, velocityGain(velocity));
         parameters.seed = seed;
         triggered = voices_.triggerHiHat(parameters);
         break;
@@ -437,8 +481,14 @@ void RhythmRenderer::trigger(const StagedEvent& event, std::uint64_t absoluteFra
         if (event.instrument == RhythmInstrument::Rim) ratio = 3.2f;
         if (event.instrument == RhythmInstrument::CongaLow) ratio = 0.92f;
         if (event.instrument == RhythmInstrument::CongaHigh) ratio = 1.28f;
-        parameters.fundamentalHz *= ratio;
-        parameters.amplitude = scaled(parameters.amplitude, velocity);
+        const float rr = roundRobinScale(seed, 0.035f);
+        parameters.fundamentalHz = std::clamp(parameters.fundamentalHz * ratio * rr *
+            (1.0f + 0.17f * velocityContour), 20.0f, 18000.0f);
+        parameters.decaySeconds = std::clamp(parameters.decaySeconds *
+            (0.82f + 0.36f * velocity), 0.02f, 12.0f);
+        parameters.tone = std::clamp(parameters.tone + 0.28f * velocityContour, 0.0f, 1.0f);
+        parameters.noise = std::clamp(parameters.noise * (0.72f + 0.56f * velocity), 0.0f, 1.0f);
+        parameters.amplitude = scaled(parameters.amplitude, velocityGain(velocity));
         parameters.seed = seed;
         triggered = voices_.triggerModal(parameters);
         break;
@@ -484,13 +534,17 @@ bool RhythmRenderer::triggerBrushSweep(const StagedEvent& event,
     voice.randomRight = seed ^ 0xa0761d6478bd642fULL;
     if (voice.randomRight == 0) voice.randomRight = 2U;
     voice.remaining = event.durationFrames;
-    voice.amplitude = kit_.brushSweepAmplitude *
-                      (static_cast<float>(event.velocity) / 127.0f) * 0.35f;
+    const float velocity = static_cast<float>(event.velocity) / 127.0f;
+    const float velocityContour = velocity - 0.5f;
+    const float rr = roundRobinScale(seed, 0.04f);
+    voice.amplitude = kit_.brushSweepAmplitude * velocityGain(velocity) * 0.35f;
     voice.envelope = 1.0f;
-    voice.envelopeStep = static_cast<float>(std::exp(-7.0 / event.durationFrames));
+    const double decayShape = std::clamp(1.0 - 0.18 * velocityContour, 0.82, 1.18);
+    voice.envelopeStep = static_cast<float>(std::exp(-7.0 * decayShape / event.durationFrames));
     voice.attackRemaining = kBrushSweepStealFadeFrames;
     voice.stealFadeRemaining = 0;
-    const double cutoff = std::clamp(static_cast<double>(kit_.brushSweepHighpassHz),
+    const double cutoff = std::clamp(static_cast<double>(kit_.brushSweepHighpassHz) * rr *
+                                     (0.76 + 0.48 * velocity),
                                      300.0, static_cast<double>(spec_.sampleRate) * 0.45);
     voice.lowCoefficient = static_cast<float>(std::exp(-2.0 * 3.14159265358979323846 *
                                                        cutoff / spec_.sampleRate));

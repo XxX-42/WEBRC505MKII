@@ -16,6 +16,7 @@
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstdint>
 #include <limits>
 #include <new>
 #include <variant>
@@ -511,6 +512,20 @@ std::int32_t checkFrames(const ExtendedState& state, std::uint32_t frames) noexc
 }
 
 template <typename T>
+bool validLinearMemorySpan(const T* pointer, std::uint32_t count) noexcept {
+    if (count == 0U) return true;
+    if (!pointer) return false;
+    const auto address = reinterpret_cast<std::uintptr_t>(pointer);
+    if ((address % alignof(T)) != 0U) return false;
+    const auto byteCount = static_cast<std::uint64_t>(count) * sizeof(T);
+#if defined(__wasm__) || defined(__wasm32__)
+    const auto memoryBytes = static_cast<std::uint64_t>(__builtin_wasm_memory_size(0)) * 65536ULL;
+    if (address > memoryBytes || byteCount > memoryBytes - address) return false;
+#endif
+    return byteCount <= std::numeric_limits<std::uintptr_t>::max() - address;
+}
+
+template <typename T>
 T* payload(ExtendedState& state) noexcept {
     return std::get_if<T>(&state.payload);
 }
@@ -921,6 +936,61 @@ std::int32_t webrc_dsp_extended_process_pitch_stretch(WebrcDspHandle handle,
     std::array<float*, 2> outputChannels{outputLeft, outputRight};
     return stretcher.process(inputChannels.data(), inputFrames, outputChannels.data(), outputFrames)
                ? WEBRC_DSP_OK : WEBRC_DSP_BAD_ARGUMENT;
+}
+
+std::int32_t webrc_dsp_extended_pitch_output_seek_length(WebrcDspHandle handle,
+                                                         float playbackRate,
+                                                         std::uint32_t* inputFrames) {
+    ExtendedState* state = nullptr;
+    const auto status = extendedStateFor(handle, state);
+    if (status != WEBRC_DSP_OK) return status;
+    if (state->kind != WEBRC_DSP_EXT_SIGNALSMITH_STRETCH) return WEBRC_DSP_BAD_KIND;
+    if (!inputFrames || !validLinearMemorySpan(inputFrames, 1U)) return WEBRC_DSP_BAD_ARGUMENT;
+    auto& stretcher = *payload<SignalsmithStretchAdapter>(*state);
+    if (stretcher.settings().channels != 2U) return WEBRC_DSP_BAD_KIND;
+    std::uint32_t requiredFrames = 0U;
+    if (!stretcher.outputSeekLength(playbackRate, requiredFrames)) return WEBRC_DSP_BAD_ARGUMENT;
+    *inputFrames = requiredFrames;
+    return WEBRC_DSP_OK;
+}
+
+std::int32_t webrc_dsp_extended_pitch_output_seek(WebrcDspHandle handle,
+                                                  const float* inputLeft,
+                                                  const float* inputRight,
+                                                  std::uint32_t inputFrames,
+                                                  float playbackRate) {
+    ExtendedState* state = nullptr;
+    const auto status = extendedStateFor(handle, state);
+    if (status != WEBRC_DSP_OK) return status;
+    if (state->kind != WEBRC_DSP_EXT_SIGNALSMITH_STRETCH) return WEBRC_DSP_BAD_KIND;
+    auto& stretcher = *payload<SignalsmithStretchAdapter>(*state);
+    if (stretcher.settings().channels != 2U) return WEBRC_DSP_BAD_KIND;
+    if (inputFrames == 0U || !validLinearMemorySpan(inputLeft, inputFrames) ||
+        !validLinearMemorySpan(inputRight, inputFrames)) return WEBRC_DSP_BAD_ARGUMENT;
+    const std::array<const float*, 2> inputChannels{inputLeft, inputRight};
+    return stretcher.outputSeek(inputChannels.data(), inputFrames, playbackRate)
+               ? WEBRC_DSP_OK : WEBRC_DSP_BAD_ARGUMENT;
+}
+
+std::int32_t webrc_dsp_extended_pitch_flush(WebrcDspHandle handle,
+                                            float* outputLeft,
+                                            float* outputRight,
+                                            std::uint32_t outputFrames,
+                                            float playbackRate,
+                                            std::uint32_t* producedFrames) {
+    ExtendedState* state = nullptr;
+    const auto status = extendedStateFor(handle, state);
+    if (status != WEBRC_DSP_OK) return status;
+    if (state->kind != WEBRC_DSP_EXT_SIGNALSMITH_STRETCH) return WEBRC_DSP_BAD_KIND;
+    if (!producedFrames || !validLinearMemorySpan(producedFrames, 1U) || outputFrames == 0U ||
+        !validLinearMemorySpan(outputLeft, outputFrames) ||
+        !validLinearMemorySpan(outputRight, outputFrames)) return WEBRC_DSP_BAD_ARGUMENT;
+    auto& stretcher = *payload<SignalsmithStretchAdapter>(*state);
+    if (stretcher.settings().channels != 2U) return WEBRC_DSP_BAD_KIND;
+    std::array<float*, 2> outputChannels{outputLeft, outputRight};
+    if (!stretcher.flush(outputChannels.data(), outputFrames, playbackRate)) return WEBRC_DSP_BAD_ARGUMENT;
+    *producedFrames = outputFrames;
+    return WEBRC_DSP_OK;
 }
 
 std::int32_t webrc_dsp_extended_process_spectrum(WebrcDspHandle handle,

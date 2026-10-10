@@ -46,12 +46,14 @@ assert.equal(wasm.webrc_dsp_abi_version(), 2);
 assert.equal(wasm.webrc_dsp_extended_api_version(), 1);
 assert.equal(wasm.webrc_dsp_fx_api_version(), 1);
 assert.equal(wasm.webrc_dsp_fx_create_v2_api_version(), 2);
+assert.equal(wasm.webrc_dsp_fx_profile_setup_api_version(), 1);
 assert.equal(wasm.webrc_dsp_capabilities(), 7);
 assert.equal(wasm.webrc_dsp_fx_catalog_size(), 53);
 assert.equal(wasm.webrc_dsp_managed_memory_capacity_bytes(), 48 * 1024 * 1024);
 
 const expectedAvailable = new Set([
-  1, 2, 3, 4, 5, 7, 8, 9, 11, 13, 23, 24, 25, 26, 27, 28,
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+  23, 24, 25, 26, 27, 28,
   29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
   46, 47, 48, 49, 50, 51, 52, 53,
 ]);
@@ -123,7 +125,64 @@ function withRawParameterSpans(parameters, callback) {
   try { return callback(ids, values); }
   finally { release(values); release(ids); }
 }
-function runProcess(handle, inLeft, inRight, outLeft, outRight, frames, events = null) {
+function withProfileParameterSpans(parameters, callback) {
+  if (parameters.length === 0) return callback(0, 0, 0);
+  return withRawParameterSpans(parameters,
+    (ids, values) => callback(ids.address, values.address, parameters.length));
+}
+function profileMemoryInfo(ordinal, parameters) {
+  const output = allocate(10);
+  try {
+    const status = withProfileParameterSpans(parameters, (idsAddress, valuesAddress, count) =>
+      wasm.webrc_dsp_fx_memory_info_for_parameters(ordinal, 48000, frames, 2,
+        idsAddress, valuesAddress, count, output.address));
+    const view = new DataView(memory.buffer, output.address, 40);
+    return {
+      status,
+      objectBytes: Number(view.getBigUint64(0, true)),
+      persistentBytes: Number(view.getBigUint64(8, true)),
+      scratchBytes: Number(view.getBigUint64(16, true)),
+      peakBytes: Number(view.getBigUint64(24, true)),
+      supported: view.getUint32(32, true),
+    };
+  } finally { release(output); }
+}
+function profileWarmupFrames(ordinal, parameters) {
+  const output = allocate(1);
+  try {
+    const status = withProfileParameterSpans(parameters, (idsAddress, valuesAddress, count) =>
+      wasm.webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters(ordinal, 48000, frames, 2,
+        idsAddress, valuesAddress, count, output.address));
+    return { status, frames: new Uint32Array(memory.buffer, output.address, 1)[0] };
+  } finally { release(output); }
+}
+function runProcess(handle, inLeft, inRight, outLeft, outRight, frames, events = null, ordinal = 0) {
+  if (ordinal === 20) {
+    let offsets = null;
+    let parameterIds = null;
+    let values = null;
+    if (events) {
+      offsets = allocate(events.length);
+      parameterIds = allocate(events.length);
+      values = allocate(events.length);
+      const offsetsU32 = new Uint32Array(memory.buffer, offsets.address, events.length);
+      const parameterIdsU32 = new Uint32Array(memory.buffer, parameterIds.address, events.length);
+      for (let index = 0; index < events.length; index += 1) {
+        offsetsU32[index] = events[index].frameOffset;
+        parameterIdsU32[index] = events[index].parameterId;
+        values.samples[index] = events[index].value;
+      }
+    }
+    const status = wasm.webrc_dsp_fx_process_stereo_context_v1(
+      handle, inLeft, inRight, outLeft, outRight, frames,
+      offsets?.address ?? 0, parameterIds?.address ?? 0, values?.address ?? 0, events?.length ?? 0,
+      inLeft, inRight, frames, 2, 0, 0,
+    );
+    if (values) release(values);
+    if (parameterIds) release(parameterIds);
+    if (offsets) release(offsets);
+    return status;
+  }
   if (!events) {
     return wasm.webrc_dsp_fx_process_stereo(handle, inLeft, inRight, outLeft, outRight, frames);
   }
@@ -213,10 +272,10 @@ for (const ordinal of expectedAvailable) {
 
   assert.equal(wasm.webrc_dsp_fx_set_parameter(handle, parameter.id, Number.NaN), -2);
   assert.equal(wasm.webrc_dsp_fx_set_parameter(handle, parameter.id, parameter.maximum + 1), -2);
-  assert.equal(runProcess(handle, inLeft.address, inRight.address, outLeft.address, outRight.address, frames), 0);
+  assert.equal(runProcess(handle, inLeft.address, inRight.address, outLeft.address, outRight.address, frames, null, ordinal), 0);
   assert.equal(runProcess(handle, inLeft.address, inRight.address, outLeft.address, outRight.address, frames, [
     { frameOffset: 128, parameterId: parameter.id, value: parameter.defaultValue },
-  ]), 0);
+  ], ordinal), 0);
   assert.ok(outLeft.samples.every(Number.isFinite) && outRight.samples.every(Number.isFinite));
   assert.equal(wasm.webrc_dsp_fx_reset(handle), 0);
   let outputEnergy = 0;
@@ -230,7 +289,7 @@ for (const ordinal of expectedAvailable) {
       inLeft.samples[frame] = 0.2 * Math.sin(2 * Math.PI * 440 * absoluteFrame / 48000);
       inRight.samples[frame] = 0.17 * Math.sin(2 * Math.PI * 997 * absoluteFrame / 48000 + 0.31);
     }
-    assert.equal(runProcess(handle, inLeft.address, inRight.address, outLeft.address, outRight.address, frames), 0);
+    assert.equal(runProcess(handle, inLeft.address, inRight.address, outLeft.address, outRight.address, frames, null, ordinal), 0);
     for (let frame = 0; frame < frames; frame += 1) {
       outputEnergy += outLeft.samples[frame] ** 2 + outRight.samples[frame] ** 2;
       channelDifference += Math.abs(outLeft.samples[frame] - outRight.samples[frame]);
@@ -308,9 +367,20 @@ release(ordinaryFrequency);
 assert.equal(wasm.webrc_dsp_managed_memory_bytes(), preampLedgerBaseline,
   'rejected low-rate frequency must not reserve managed memory');
 
-assert.equal(createFxV2Raw(23, 4000, frames, 2, 0, 0, 0), 0,
-  'unsupported sample-rate preflight must reject before prepare');
+const lowRatePreampIds = allocate(5);
+const lowRatePreampValues = allocate(5);
+const lowRatePreampIdView = new Uint32Array(memory.buffer, lowRatePreampIds.address, 5);
+const lowRatePreampSelectors = [[82, 3], [83, 1], [84, 0], [85, 0], [86, 0]];
+for (let index = 0; index < lowRatePreampSelectors.length; index += 1) {
+  lowRatePreampIdView[index] = lowRatePreampSelectors[index][0];
+  lowRatePreampValues.samples[index] = lowRatePreampSelectors[index][1];
+}
+assert.equal(createFxV2Raw(23, 4000, frames, 2, lowRatePreampIds.address,
+  lowRatePreampValues.address, lowRatePreampSelectors.length), 0,
+  'unsupported sample-rate preflight must reject a valid selector batch before prepare');
 assert.equal(wasm.webrc_dsp_fx_last_create_status(), -3);
+release(lowRatePreampValues);
+release(lowRatePreampIds);
 assert.equal(wasm.webrc_dsp_managed_memory_bytes(), preampLedgerBaseline);
 assert.equal(createFxV2(23, [[82, 3], [83, 1], [84, 0], [85, 0]]), 0,
   'PREAMP v2 create must require all five selectors');
@@ -412,11 +482,50 @@ assert.equal(wasm.webrc_dsp_fx_process_stereo(baseHandle, inLeft.address, 0,
 assert.equal(wasm.webrc_dsp_fx_destroy(baseHandle), -3, 'FX destroy must reject a base-domain handle');
 assert.equal(wasm.webrc_dsp_destroy(baseHandle), 0);
 
-const beforeUnsupported = wasm.webrc_dsp_managed_memory_bytes();
-assert.equal(wasm.webrc_dsp_fx_create(6, 48000, frames, 2), 0);
-assert.equal(wasm.webrc_dsp_fx_last_create_status(), -3);
-assert.equal(wasm.webrc_dsp_managed_memory_bytes(), beforeUnsupported,
-  'unavailable processor creation must not consume ledger bytes');
+const defaultLivePolyMemory = profileMemoryInfo(18, []);
+assert.equal(defaultLivePolyMemory.status, 0);
+assert.equal(defaultLivePolyMemory.supported, 1);
+assert.ok(defaultLivePolyMemory.peakBytes < 48 * 1024 * 1024,
+  'default LivePoly selection must reserve its selected profile, not the rejected HQ maximum');
+const defaultLivePolyWarmup = profileWarmupFrames(18, []);
+assert.equal(defaultLivePolyWarmup.status, 0);
+assert.equal(defaultLivePolyWarmup.frames, 9216,
+  'default LivePoly startup bound must use its selected profile instead of the HQ maximum');
+const hqMemory = profileMemoryInfo(18, [[125, 2]]);
+assert.equal(hqMemory.status, 0);
+assert.equal(hqMemory.supported, 1);
+assert.ok(hqMemory.peakBytes > 48 * 1024 * 1024,
+  'explicit two-voice HQ profile must retain its real peak estimate');
+const hqWarmup = profileWarmupFrames(18, [[125, 2]]);
+assert.equal(hqWarmup.status, 0);
+assert.equal(hqWarmup.frames, 33792);
+const profileLedgerBaseline = wasm.webrc_dsp_managed_memory_bytes();
+const defaultLivePoly = wasm.webrc_dsp_fx_create(18, 48000, frames, 2);
+assert.notEqual(defaultLivePoly, 0,
+  `legacy default creation should resolve descriptor-default LivePoly (${wasm.webrc_dsp_fx_last_create_status()})`);
+assert.equal(wasm.webrc_dsp_fx_startup_warmup_frames(defaultLivePoly), defaultLivePolyWarmup.frames);
+assert.equal(wasm.webrc_dsp_fx_destroy(defaultLivePoly), 0);
+assert.equal(wasm.webrc_dsp_managed_memory_bytes(), profileLedgerBaseline);
+assert.equal(createFxV2(18, [[125, 2]]), 0,
+  'explicit HQ profile must be rejected when the actual conservative candidate peak exceeds the ledger');
+assert.equal(wasm.webrc_dsp_fx_last_create_status(), -7);
+assert.equal(wasm.webrc_dsp_managed_memory_bytes(), profileLedgerBaseline,
+  'rejected HQ profile must leave the shared ledger unchanged');
+
+const invalidProfileOutput = allocate(10);
+const invalidProfileBytes = new Uint8Array(memory.buffer, invalidProfileOutput.address, 40);
+invalidProfileBytes.fill(0x5a);
+const invalidProfileBefore = invalidProfileBytes.slice();
+withRawParameterSpans([[125, 0]], (ids, values) => {
+  assert.equal(wasm.webrc_dsp_fx_memory_info_for_parameters(18, 48000, frames, 2,
+    ids.address, values.address, 1, invalidProfileOutput.address), -2,
+  'unsupported LiveMono selection for HRM must fail closed');
+  assert.equal(wasm.webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters(18, 48000, frames, 2,
+    ids.address, values.address, 1, invalidProfileOutput.address), -2);
+});
+assert.deepEqual(new Uint8Array(memory.buffer, invalidProfileOutput.address, 40), invalidProfileBefore,
+  'invalid profile queries must not publish partial output');
+release(invalidProfileOutput);
 
 const invariantHandle = wasm.webrc_dsp_fx_create(1, 48000, frames, 2);
 const controlHandle = wasm.webrc_dsp_fx_create(1, 48000, frames, 2);
@@ -500,7 +609,7 @@ assert.deepEqual(wasiCalls, { fd_close: 0, fd_write: 0, fd_seek: 0 });
 
 console.log(JSON.stringify({
   result: 'PASS',
-  assertions: 'catalog/ABI, 41 available processors, prepare-before-publish PREAMP selector API, finite startup warmup bounds, stereo output, sample-accurate events, ledger rejection, handle-domain and no-I/O checks',
+  assertions: 'catalog/ABI, 53 available processors, prepare-before-publish PREAMP selector API, finite startup warmup bounds, stereo output, sample-accurate events, typed VOCODER carrier routing, ledger rejection, handle-domain and no-I/O checks',
   availableOrdinals: [...expectedAvailable],
   unsupportedOrdinalsRemainMetadataOnly: 53 - expectedAvailable.size,
   createdAndProcessed: expectedAvailable.size,

@@ -146,6 +146,7 @@ async function runAudioCommand(command: AudioControlCommand): Promise<void> {
 
 export const controlCommandDispatcher = new ControlCommandDispatcher({
   run: runAudioCommand,
+  forwardFxMidiInput: (event) => engine.postFxMidiInput(event),
   syncExternalClock: async (bpm, beatOrdinal) => {
     const sync = (engine as unknown as { syncExternalClock?: (tempo: number, ordinal: number) => Promise<unknown> }).syncExternalClock;
     if (!sync) throw new Error('External MIDI Clock sync is not available in the active audio engine.');

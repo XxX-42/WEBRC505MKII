@@ -1,6 +1,12 @@
 /* Post-mix shared DSP FX bus. Preparation/replacement messages are accepted
  * only while the owning AudioContext is suspended by BrowserAudioEngine. */
 let sharedDspMasterInstanceSequence = 0;
+const FX_MIDI_RING_VERSION = 1;
+const FX_MIDI_RING_CAPACITY = 64;
+const FX_MIDI_HEADER_WORDS = 8;
+const FX_MIDI_SLOT_WORDS = 6;
+const FX_MIDI_RING_MAGIC = 0x46584d31;
+
 class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
@@ -25,6 +31,10 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     this.wetRampRemaining = 0;
     this.fxTransitionControl = null;
     this.fxTransitionIndex = 1;
+    this.fxMidiHeader = null;
+    this.fxMidiView = null;
+    this.fxCurrentMidiEventCount = 0;
+    this.fxCurrentCarrierChannels = 0;
 
     const processorOptions = options.processorOptions || {};
     if (processorOptions.fxTransitionBuffer instanceof SharedArrayBuffer &&
@@ -32,14 +42,14 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
       this.fxTransitionControl = new Int32Array(processorOptions.fxTransitionBuffer);
     }
     try {
-      this.prepare(processorOptions.sharedDspModule, processorOptions.maxBlockFrames || 4096);
+      this.prepare(processorOptions.sharedDspModule, processorOptions.maxBlockFrames || 4096, processorOptions);
     } catch (error) {
       this.port.postMessage({ type: 'MASTER_DSP_BOOT_ERROR', message: String(error && error.message || error) });
     }
     this.port.onmessage = (event) => this.handleMessage(event.data);
   }
 
-  prepare(wasmModule, maxBlockFrames) {
+  prepare(wasmModule, maxBlockFrames, processorOptions = {}) {
     if (!(wasmModule instanceof WebAssembly.Module)) throw new Error('Master DSP requires the verified shared WebAssembly module.');
     if (!Number.isInteger(maxBlockFrames) || maxBlockFrames < 1 || maxBlockFrames > 4096) {
       throw new RangeError('Master DSP maximum block size is outside the prepared Worklet bound.');
@@ -56,18 +66,39 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
         wasm.webrc_dsp_abi_version() !== 2 || wasm.webrc_dsp_extended_api_version() !== 1 ||
         wasm.webrc_dsp_capabilities() !== 7 || wasm.webrc_dsp_fx_api_version() !== 1 ||
         typeof wasm.webrc_dsp_fx_create_v2_api_version !== 'function' || wasm.webrc_dsp_fx_create_v2_api_version() !== 2 ||
+        typeof wasm.webrc_dsp_fx_profile_setup_api_version !== 'function' || wasm.webrc_dsp_fx_profile_setup_api_version() !== 1 ||
+        typeof wasm.webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters !== 'function' ||
         wasm.webrc_dsp_fx_catalog_size() !== 53) {
       throw new Error('Master DSP module memory or ABI does not match the pinned Browser contract.');
+    }
+    const fxContextApiVersion = typeof wasm.webrc_dsp_fx_context_api_version === 'function'
+      ? wasm.webrc_dsp_fx_context_api_version() : 0;
+    if ((fxContextApiVersion !== 0 && fxContextApiVersion !== 1) ||
+        (fxContextApiVersion === 1 && typeof wasm.webrc_dsp_fx_process_stereo_context_v1 !== 'function')) {
+      throw new Error('Master DSP typed-context exports do not match their declared version.');
     }
     if (wasiCalls.fd_close || wasiCalls.fd_write || wasiCalls.fd_seek) {
       throw new Error('Master DSP module attempted WASI I/O during setup.');
     }
-    const scratchToken = wasm.webrc_dsp_alloc_f32_token(maxBlockFrames * 10 + 128);
+    const fxMidiBuffer = processorOptions.fxMidiBuffer;
+    const fxCarrierControlBuffer = processorOptions.fxCarrierControl;
+    if (!(fxMidiBuffer instanceof SharedArrayBuffer) ||
+        fxMidiBuffer.byteLength !== (FX_MIDI_HEADER_WORDS + FX_MIDI_RING_CAPACITY * FX_MIDI_SLOT_WORDS) * 4 ||
+        !(fxCarrierControlBuffer instanceof SharedArrayBuffer) || fxCarrierControlBuffer.byteLength !== 4) {
+      throw new Error('Master DSP requires prepared MIDI and carrier-control sidecar buffers.');
+    }
+    const fxMidiHeader = new Int32Array(fxMidiBuffer, 0, FX_MIDI_HEADER_WORDS);
+    if (Atomics.load(fxMidiHeader, 6) !== FX_MIDI_RING_VERSION ||
+        Atomics.load(fxMidiHeader, 7) !== FX_MIDI_RING_MAGIC) {
+      throw new Error('Master DSP MIDI transport header is invalid.');
+    }
+    const fxCarrierControl = new Int32Array(fxCarrierControlBuffer);
+    const scratchToken = wasm.webrc_dsp_alloc_f32_token(maxBlockFrames * 12 + 256);
     if (!scratchToken) throw new Error('Master DSP could not reserve bounded stereo scratch.');
     const scratchAddress = wasm.webrc_dsp_transfer_address(scratchToken);
     const bytes = maxBlockFrames * Float32Array.BYTES_PER_ELEMENT;
     if (!scratchAddress || scratchAddress % Float32Array.BYTES_PER_ELEMENT !== 0 ||
-        scratchAddress + bytes * 10 + 128 * Float32Array.BYTES_PER_ELEMENT > wasm.memory.buffer.byteLength) {
+        scratchAddress + bytes * 12 + 256 * Float32Array.BYTES_PER_ELEMENT > wasm.memory.buffer.byteLength) {
       wasm.webrc_dsp_free_transfer_token(scratchToken);
       throw new Error('Master DSP stereo scratch is outside linear memory.');
     }
@@ -82,11 +113,22 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     const oldRightAAddress = scratchAddress + bytes * 7;
     const oldLeftBAddress = scratchAddress + bytes * 8;
     const oldRightBAddress = scratchAddress + bytes * 9;
-    const initialValuesAddress = scratchAddress + bytes * 10;
+    const carrierLeftAddress = scratchAddress + bytes * 10;
+    const carrierRightAddress = scratchAddress + bytes * 11;
+    const initialValuesAddress = scratchAddress + bytes * 12;
     const initialIdsAddress = initialValuesAddress + 64 * Float32Array.BYTES_PER_ELEMENT;
+    const fxMidiEventsAddress = initialIdsAddress + 64 * Uint32Array.BYTES_PER_ELEMENT;
     const fxHistoryFrames = Math.max(maxBlockFrames, Math.ceil(sampleRate * 0.1));
     this.dsp = {
-      wasm, memory, maxBlockFrames, scratchToken,
+      wasm, memory, maxBlockFrames, scratchToken, fxContextApiVersion,
+      fxMidiBuffer, fxMidiHeader, fxMidiView: new DataView(fxMidiBuffer), fxCarrierControl,
+      fxMidiEventsAddress,
+      fxMidiEventsView: new DataView(memory, fxMidiEventsAddress, FX_MIDI_RING_CAPACITY * 8),
+      fxCurrentMidiEventCount: 0,
+      fxCurrentCarrierChannels: 0,
+      carrierLeftAddress, carrierRightAddress,
+      carrierLeft: new Float32Array(memory, carrierLeftAddress, maxBlockFrames),
+      carrierRight: new Float32Array(memory, carrierRightAddress, maxBlockFrames),
       leftAAddress, rightAAddress, leftBAddress, rightBAddress,
       dryLeftAddress, dryRightAddress, oldLeftAAddress, oldRightAAddress,
       oldLeftBAddress, oldRightBAddress,
@@ -112,7 +154,13 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
       fxHistoryRight: new Float32Array(fxHistoryFrames),
       fxHistoryWrite: 0,
       fxHistoryCount: 0,
+      fxCarrierHistoryLeft: new Float32Array(fxHistoryFrames),
+      fxCarrierHistoryRight: new Float32Array(fxHistoryFrames),
+      fxCarrierHistoryWrite: 0,
+      fxCarrierHistoryCount: 0,
       activeHandles: [],
+      activeOrdinals: [],
+      activeMidiCapable: [],
       staged: null,
       warming: null,
       retired: null,
@@ -148,6 +196,8 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     let error = '';
     let warmupFrames = 0;
     const candidate = [];
+    const candidateOrdinals = [];
+    const candidateMidiCapable = [];
     if (dsp.staged || dsp.warming || dsp.retired) error = 'A master FX candidate is already staged, warming, or awaiting finalization.';
     else if (!Array.isArray(plan) || plan.length > 4) error = 'Master FX plan must contain at most four slots.';
     for (let index = 0; !error && index < plan.length; index += 1) {
@@ -156,6 +206,14 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
           wasm.webrc_dsp_fx_is_processor_available(unit.ordinal) !== 1 ||
           !Array.isArray(unit.parameters) || unit.parameters.length > 64) {
         error = `Master FX slot ${index} is unavailable or malformed.`;
+        break;
+      }
+      if ((unit.ordinal === 19 || unit.ordinal === 20 || unit.ordinal === 21) && dsp.fxContextApiVersion !== 1) {
+        error = `Master FX ordinal ${unit.ordinal} requires typed musical-context support.`;
+        break;
+      }
+      if (unit.ordinal === 20 && Atomics.load(dsp.fxCarrierControl, 0) !== 1) {
+        error = 'Master VOCODER requires an attached independent stereo carrier source.';
         break;
       }
       for (let parameterIndex = 0; parameterIndex < unit.parameters.length; parameterIndex += 1) {
@@ -176,6 +234,15 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
         break;
       }
       candidate.push(handle);
+      candidateOrdinals.push(unit.ordinal);
+      const modeParameter = unit.ordinal === 19
+        ? unit.parameters.find((parameter) => parameter.id === 107)
+        : null;
+      const modeValue = modeParameter ? modeParameter.value : 2;
+      // The registry's missing-parameter default is Harmony Auto mode 2,
+      // which is not MIDI driven.
+      candidateMidiCapable.push(unit.ordinal === 21 || (unit.ordinal === 19 &&
+        Number.isFinite(modeValue) && modeValue < 1.5));
       const latencyModel = wasm.webrc_dsp_fx_latency_model(handle);
       const fixedLatencyFrames = wasm.webrc_dsp_fx_fixed_latency_samples(handle);
       if (!Number.isInteger(latencyModel) || latencyModel < 0 || latencyModel > 2 ||
@@ -183,8 +250,10 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
         error = `Master FX ordinal ${unit.ordinal} reported an invalid latency contract.`;
         break;
       }
-      const upperBoundStatus = wasm.webrc_dsp_fx_startup_warmup_upper_bound_samples(
-        unit.ordinal, sampleRate, dsp.maxBlockFrames, 2, dsp.initialValuesAddress);
+      const upperBoundStatus = wasm.webrc_dsp_fx_startup_warmup_upper_bound_samples_for_parameters(
+        unit.ordinal, sampleRate, dsp.maxBlockFrames, 2,
+        dsp.initialIdsAddress, dsp.initialValuesAddress, unit.parameters.length,
+        dsp.startupWarmupOut.byteOffset);
       if (upperBoundStatus !== 0) {
         error = `Master FX ordinal ${unit.ordinal} has no supported startup warmup bound (${upperBoundStatus}).`;
         break;
@@ -212,6 +281,8 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     dsp.staged = {
       stageId,
       handles: candidate,
+      ordinals: candidateOrdinals,
+      midiCapable: candidateMidiCapable,
       warmupFrames,
       warmedFrames: 0,
       failed: false,
@@ -235,7 +306,7 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     dsp.transitionFrames = Math.max(1, Math.round(sampleRate * 0.01));
     dsp.transitionElapsed = 0;
     if (message.allowHistoryWarmup === true) {
-      if (!this.primeFxHandles(staged.handles, staged.warmupFrames)) {
+      if (!this.primeFxHandles(staged.handles, staged.warmupFrames, staged.ordinals)) {
         this.port.postMessage({ type: 'MASTER_DSP_FX_BANK_COMMITTED', requestId: message.requestId, ok: false,
           message: 'Master FX candidate needs more real input history than is available; the old chain remains active.' });
         return;
@@ -266,12 +337,18 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
   activateStagedFxPlan(staged) {
     const dsp = this.dsp;
     const previous = dsp.activeHandles;
+    const previousOrdinals = dsp.activeOrdinals;
+    const previousMidiCapable = dsp.activeMidiCapable;
     staged.wetGain = this.wetGain;
     staged.wetTarget = this.wetTarget;
     staged.wetStep = this.wetStep;
     staged.wetRampRemaining = this.wetRampRemaining;
     dsp.activeHandles = staged.handles;
+    dsp.activeOrdinals = staged.ordinals;
+    dsp.activeMidiCapable = staged.midiCapable;
     staged.handles = previous;
+    staged.ordinals = previousOrdinals;
+    staged.midiCapable = previousMidiCapable;
     this.wetGain = dsp.activeHandles.length > 0 ? 1 : 0;
     this.wetTarget = this.wetGain;
     this.wetStep = 0;
@@ -299,6 +376,8 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     }
     for (let index = dsp.activeHandles.length - 1; index >= 0; index -= 1) dsp.wasm.webrc_dsp_fx_destroy(dsp.activeHandles[index]);
     dsp.activeHandles = retired.handles;
+    dsp.activeOrdinals = retired.ordinals;
+    dsp.activeMidiCapable = retired.midiCapable;
     this.wetGain = retired.wetGain;
     this.wetTarget = retired.wetTarget;
     this.wetStep = retired.wetStep;
@@ -412,25 +491,45 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     return this.wetGain;
   }
 
-  primeFxHandles(handles, warmupFrames) {
+  primeFxHandles(handles, warmupFrames, ordinals = null, midiCapable = null) {
     const dsp = this.dsp;
     if (!dsp || !Number.isInteger(warmupFrames) || warmupFrames < 0 || warmupFrames > dsp.fxHistoryFrames) return false;
-    if (warmupFrames === 0) return true;
-    if (dsp.fxHistoryCount < warmupFrames) return false;
-    const firstHistoryFrame = (dsp.fxHistoryWrite - warmupFrames + dsp.fxHistoryFrames) % dsp.fxHistoryFrames;
-    for (let offset = 0; offset < warmupFrames;) {
-      const frames = Math.min(dsp.maxBlockFrames, warmupFrames - offset);
+    const hasVocoder = Boolean(ordinals && ordinals.includes(20));
+    // A zero-startup-bound VOCODER still needs one paired real frame so a
+    // stopped-bank adoption cannot claim a carrier history it never received.
+    const primeFrames = hasVocoder ? Math.max(1, warmupFrames) : warmupFrames;
+    if (primeFrames === 0) return true;
+    if (dsp.fxHistoryCount < primeFrames ||
+        (hasVocoder && dsp.fxCarrierHistoryCount < primeFrames)) return false;
+    const firstHistoryFrame = (dsp.fxHistoryWrite - primeFrames + dsp.fxHistoryFrames) % dsp.fxHistoryFrames;
+    const firstCarrierFrame = hasVocoder
+      ? (dsp.fxCarrierHistoryWrite - primeFrames + dsp.fxHistoryFrames) % dsp.fxHistoryFrames
+      : 0;
+    const previousCarrierChannels = dsp.fxCurrentCarrierChannels;
+    for (let offset = 0; offset < primeFrames;) {
+      const frames = Math.min(dsp.maxBlockFrames, primeFrames - offset);
       for (let frame = 0; frame < frames; frame += 1) {
         const historyFrame = offset + frame;
         const index = (firstHistoryFrame + historyFrame) % dsp.fxHistoryFrames;
         dsp.dryLeft[frame] = dsp.fxHistoryLeft[index];
         dsp.dryRight[frame] = dsp.fxHistoryRight[index];
+        if (hasVocoder) {
+          const carrierIndex = (firstCarrierFrame + historyFrame) % dsp.fxHistoryFrames;
+          dsp.carrierLeft[frame] = dsp.fxCarrierHistoryLeft[carrierIndex];
+          dsp.carrierRight[frame] = dsp.fxCarrierHistoryRight[carrierIndex];
+        }
       }
+      if (hasVocoder) dsp.fxCurrentCarrierChannels = 2;
       if (!this.runFxChain(handles, dsp.dryLeft, dsp.dryRight,
         dsp.leftA, dsp.rightA, dsp.leftB, dsp.rightB,
-        dsp.leftAAddress, dsp.rightAAddress, dsp.leftBAddress, dsp.rightBAddress, frames)) return false;
+        dsp.leftAAddress, dsp.rightAAddress, dsp.leftBAddress, dsp.rightBAddress, frames,
+        ordinals, midiCapable, false)) {
+        dsp.fxCurrentCarrierChannels = previousCarrierChannels;
+        return false;
+      }
       offset += frames;
     }
+    dsp.fxCurrentCarrierChannels = previousCarrierChannels;
     return true;
   }
 
@@ -449,6 +548,87 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     }
     dsp.fxHistoryWrite = write;
     dsp.fxHistoryCount = count;
+  }
+
+  recordFxCarrierHistory(frames) {
+    const dsp = this.dsp;
+    if (!dsp || !dsp.fxCarrierHistoryLeft || !dsp.fxCarrierHistoryRight) return;
+    if (dsp.fxCurrentCarrierChannels !== 2) {
+      dsp.fxCarrierHistoryCount = 0;
+      return;
+    }
+    let write = dsp.fxCarrierHistoryWrite;
+    let count = dsp.fxCarrierHistoryCount;
+    const capacity = dsp.fxHistoryFrames;
+    for (let frame = 0; frame < frames; frame += 1) {
+      dsp.fxCarrierHistoryLeft[write] = dsp.carrierLeft[frame];
+      dsp.fxCarrierHistoryRight[write] = dsp.carrierRight[frame];
+      write += 1;
+      if (write === capacity) write = 0;
+      if (count < capacity) count += 1;
+    }
+    dsp.fxCarrierHistoryWrite = write;
+    dsp.fxCarrierHistoryCount = count;
+  }
+
+  collectFxMidiEvents(blockStartFrame, frames) {
+    const dsp = this.dsp;
+    const header = dsp && dsp.fxMidiHeader;
+    const view = dsp && dsp.fxMidiView;
+    const eventView = dsp && dsp.fxMidiEventsView;
+    if (!header || !view || !eventView || !Number.isSafeInteger(blockStartFrame) ||
+        blockStartFrame < 0 || !Number.isInteger(frames) || frames < 1) return;
+    let read = Atomics.load(header, 1) >>> 0;
+    const write = Atomics.load(header, 0) >>> 0;
+    const blockEndFrame = blockStartFrame + frames;
+    let count = 0;
+    while (read !== write && count < FX_MIDI_RING_CAPACITY) {
+      const slotOffset = (FX_MIDI_HEADER_WORDS + (read % FX_MIDI_RING_CAPACITY) * FX_MIDI_SLOT_WORDS) * 4;
+      const low = view.getUint32(slotOffset, true);
+      const high = view.getUint32(slotOffset + 4, true);
+      const targetFrame = high * 0x1_0000_0000 + low;
+      if (!Number.isSafeInteger(targetFrame)) {
+        Atomics.add(header, 2, 1);
+        read = (read + 1) >>> 0;
+        continue;
+      }
+      if (targetFrame >= blockEndFrame) break;
+      const type = view.getUint32(slotOffset + 8, true);
+      const channel = view.getUint32(slotOffset + 12, true);
+      const note = view.getUint32(slotOffset + 16, true);
+      const velocity = view.getUint32(slotOffset + 20, true);
+      if (type > 2 || channel !== 0 || note > 127 || velocity > 127) {
+        Atomics.add(header, 2, 1);
+        read = (read + 1) >>> 0;
+        continue;
+      }
+      const eventOffset = count * 8;
+      eventView.setUint32(eventOffset, Math.max(0, targetFrame - blockStartFrame), true);
+      eventView.setUint8(eventOffset + 4, type);
+      eventView.setUint8(eventOffset + 5, channel);
+      eventView.setUint8(eventOffset + 6, note);
+      eventView.setUint8(eventOffset + 7, velocity);
+      count += 1;
+      read = (read + 1) >>> 0;
+    }
+    dsp.fxCurrentMidiEventCount = count;
+    Atomics.store(header, 1, read | 0);
+  }
+
+  prepareFxCarrier(inputs, frames) {
+    const dsp = this.dsp;
+    if (!dsp || !dsp.carrierLeft || !dsp.carrierRight) return;
+    const input = inputs && inputs[1];
+    const left = input && input.length >= 2 ? input[0] : null;
+    const right = input && input.length >= 2 ? input[1] : null;
+    const stereoPresent = Boolean(left && right && left.length >= frames && right.length >= frames);
+    dsp.fxCurrentCarrierChannels = stereoPresent ? 2 : (input && input.length === 1 ? 1 : 0);
+    for (let frame = 0; frame < frames && frame < dsp.maxBlockFrames; frame += 1) {
+      const leftSample = stereoPresent ? left[frame] : 0;
+      const rightSample = stereoPresent ? right[frame] : 0;
+      dsp.carrierLeft[frame] = Number.isFinite(leftSample) ? leftSample : 0;
+      dsp.carrierRight[frame] = Number.isFinite(rightSample) ? rightSample : 0;
+    }
   }
 
   process(inputs, outputs) {
@@ -481,6 +661,9 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
 
     const dryLeft = dsp.dryLeft;
     const dryRight = dsp.dryRight;
+    this.collectFxMidiEvents(frameStart, frames);
+    this.prepareFxCarrier(inputs, frames);
+    this.recordFxCarrierHistory(frames);
     let inputNonFinite = 0;
     for (let frame = 0; frame < frames; frame += 1) {
       const sourceLeftSample = inputLeft[frame];
@@ -493,12 +676,14 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     this.nonFiniteSamples += inputNonFinite;
     this.recordFxInputHistory(dryLeft, dryRight, frames);
     const activeBank = this.runFxChain(dsp.activeHandles, dryLeft, dryRight, dsp.leftA, dsp.rightA,
-      dsp.leftB, dsp.rightB, dsp.leftAAddress, dsp.rightAAddress, dsp.leftBAddress, dsp.rightBAddress, frames);
+      dsp.leftB, dsp.rightB, dsp.leftAAddress, dsp.rightAAddress, dsp.leftBAddress, dsp.rightBAddress,
+      frames, dsp.activeOrdinals, dsp.activeMidiCapable);
     const warming = dsp.warming;
     if (warming && !warming.failed) {
       const candidateReady = this.runFxChain(warming.handles, dryLeft, dryRight,
         dsp.oldLeftA, dsp.oldRightA, dsp.oldLeftB, dsp.oldRightB,
-        dsp.oldLeftAAddress, dsp.oldRightAAddress, dsp.oldLeftBAddress, dsp.oldRightBAddress, frames);
+        dsp.oldLeftAAddress, dsp.oldRightAAddress, dsp.oldLeftBAddress, dsp.oldRightBAddress,
+        frames, warming.ordinals, warming.midiCapable);
       if (!candidateReady) {
         warming.failed = true;
         this.processFailures += 1;
@@ -511,7 +696,7 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     const previousBank = transitionActive
       ? this.runFxChain(dsp.retired.handles, dryLeft, dryRight, dsp.oldLeftA, dsp.oldRightA,
         dsp.oldLeftB, dsp.oldRightB, dsp.oldLeftAAddress, dsp.oldRightAAddress,
-        dsp.oldLeftBAddress, dsp.oldRightBAddress, frames)
+        dsp.oldLeftBAddress, dsp.oldRightBAddress, frames, dsp.retired.ordinals, dsp.retired.midiCapable)
       : 1;
     if (!activeBank || !previousBank) {
       left.fill(0);
@@ -578,7 +763,8 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
   }
 
   runFxChain(handles, inputLeft, inputRight, bufferLeftA, bufferRightA, bufferLeftB, bufferRightB,
-    addressLeftA, addressRightA, addressLeftB, addressRightB, frames) {
+    addressLeftA, addressRightA, addressLeftB, addressRightB, frames,
+    ordinals = null, midiCapable = null, withMidiEvents = true) {
     for (let frame = 0; frame < frames; frame += 1) {
       bufferLeftA[frame] = inputLeft[frame];
       bufferRightA[frame] = inputRight[frame];
@@ -593,8 +779,23 @@ class WebrcSharedDspMasterFxProcessor extends AudioWorkletProcessor {
     let destinationLeftAddress = addressLeftB;
     let destinationRightAddress = addressRightB;
     for (let index = 0; index < handles.length; index += 1) {
-      const status = this.dsp.wasm.webrc_dsp_fx_process_stereo(handles[index],
-        sourceLeftAddress, sourceRightAddress, destinationLeftAddress, destinationRightAddress, frames);
+      const ordinal = ordinals ? ordinals[index] : 0;
+      const isMidiProcessor = ordinal === 21 || (ordinal === 19 && Boolean(midiCapable && midiCapable[index]));
+      const isVocoder = ordinal === 20;
+      const midiCount = withMidiEvents && isMidiProcessor ? this.dsp.fxCurrentMidiEventCount : 0;
+      const carrierChannels = isVocoder && this.dsp.fxCurrentCarrierChannels === 2 ? 2 : 0;
+      const status = this.dsp.fxContextApiVersion === 1
+        ? this.dsp.wasm.webrc_dsp_fx_process_stereo_context_v1(handles[index],
+          sourceLeftAddress, sourceRightAddress, destinationLeftAddress, destinationRightAddress, frames,
+          0, 0, 0, 0,
+          carrierChannels ? this.dsp.carrierLeftAddress : 0,
+          carrierChannels ? this.dsp.carrierRightAddress : 0,
+          carrierChannels ? frames : 0,
+          carrierChannels,
+          midiCount ? this.dsp.fxMidiEventsAddress : 0,
+          midiCount)
+        : this.dsp.wasm.webrc_dsp_fx_process_stereo(handles[index],
+          sourceLeftAddress, sourceRightAddress, destinationLeftAddress, destinationRightAddress, frames);
       if (status !== 0) return 0;
       const swapLeft = sourceLeft; sourceLeft = destinationLeft; destinationLeft = swapLeft;
       const swapRight = sourceRight; sourceRight = destinationRight; destinationRight = swapRight;

@@ -218,12 +218,32 @@ int32_t webrc_dsp_extended_process_platter(WebrcDspHandle handle, float* speedRa
                                            double* phaseCycles, float* accelerations,
                                            uint32_t frames);
 int32_t webrc_dsp_extended_process_pitch_stretch(WebrcDspHandle handle,
-                                                const float* inputLeft,
-                                                const float* inputRight,
-                                                uint32_t inputFrames,
-                                                float* outputLeft,
-                                                float* outputRight,
-                                                uint32_t outputFrames);
+                                                   const float* inputLeft,
+                                                   const float* inputRight,
+                                                   uint32_t inputFrames,
+                                                   float* outputLeft,
+                                                   float* outputRight,
+                                                   uint32_t outputFrames);
+// OFFLINE SESSION CONTROL ONLY for a prepared stereo Signalsmith handle.
+// output_seek_length queries the exact upstream alignment prefix; output_seek
+// consumes exactly that many source frames before process_pitch_stretch calls.
+// pitch_flush drains the exact caller-selected tail into bounded caller-owned
+// spans and writes the produced frame count only on success. None belongs in
+// an AudioWorklet process callback.
+int32_t webrc_dsp_extended_pitch_output_seek_length(WebrcDspHandle handle,
+                                                    float playbackRate,
+                                                    uint32_t* inputFrames);
+int32_t webrc_dsp_extended_pitch_output_seek(WebrcDspHandle handle,
+                                              const float* inputLeft,
+                                              const float* inputRight,
+                                              uint32_t inputFrames,
+                                              float playbackRate);
+int32_t webrc_dsp_extended_pitch_flush(WebrcDspHandle handle,
+                                        float* outputLeft,
+                                        float* outputRight,
+                                        uint32_t outputFrames,
+                                        float playbackRate,
+                                        uint32_t* producedFrames);
 int32_t webrc_dsp_extended_process_spectrum(WebrcDspHandle handle,
                                             const float* inputInterleavedComplex,
                                             float* outputInterleavedComplex,

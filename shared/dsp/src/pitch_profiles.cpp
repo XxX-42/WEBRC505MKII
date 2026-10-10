@@ -64,7 +64,7 @@ bool makePitchProfileSettings(PitchProfileId profile, float sampleRate,
                                  true, maskedSeed};
         break;
     case PitchProfileId::HqRender:
-        candidate.signalsmith = {PitchQualityMode::HqRender, 2U, 8192U, 1024U,
+        candidate.signalsmith = {PitchQualityMode::HqRender, 2U, 16384U, 1024U,
                                  false, maskedSeed};
         break;
     default:

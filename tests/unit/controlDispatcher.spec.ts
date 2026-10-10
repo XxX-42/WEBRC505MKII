@@ -6,6 +6,7 @@ import {
   type AudioControlCommand,
   type ControlAssignment,
 } from '../../src/controls/commandDispatcher';
+import type { FxMidiInputEvent } from '../../src/audio/nativeFxProtocol';
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -28,8 +29,9 @@ function assignment(overrides: Partial<ControlAssignment> = {}): ControlAssignme
 function createDispatcher() {
   const run = vi.fn<(command: AudioControlCommand) => void>();
   const syncExternalClock = vi.fn<(bpm: number, beatOrdinal: number) => void>();
-  const dispatcher = new ControlCommandDispatcher({ run, syncExternalClock, storage: new MemoryStorage() });
-  return { dispatcher, run, syncExternalClock };
+  const forwardFxMidiInput = vi.fn<(event: FxMidiInputEvent) => boolean>(() => true);
+  const dispatcher = new ControlCommandDispatcher({ run, syncExternalClock, forwardFxMidiInput, storage: new MemoryStorage() });
+  return { dispatcher, run, syncExternalClock, forwardFxMidiInput };
 }
 
 describe('ControlCommandDispatcher', () => {
@@ -90,6 +92,23 @@ describe('ControlCommandDispatcher', () => {
     expect(run.mock.calls.map(([command]) => command)).toEqual([
       { type: 'stop-track', trackId: 2 },
       { type: 'record-track', trackId: 1 },
+    ]);
+  });
+
+  it('forwards typed MIDI notes after preserving assignment behavior and normalizes CC all-notes-off', () => {
+    const { dispatcher, run, forwardFxMidiInput } = createDispatcher();
+    dispatcher.setAssignment(0, assignment({ source: 'note', channel: 2, command: 'record-track', trackId: 3 }));
+    dispatcher.handleMidiMessage([0x92, 60, 0], 10.25, 'input-a');
+    dispatcher.handleMidiMessage([0x83, 60, 45], 11.5, 'input-a');
+    dispatcher.handleMidiMessage([0x91, 60, 100], 12.75, 'input-a');
+    dispatcher.handleMidiMessage([0xb4, 120, 0], 14, 'input-b');
+
+    expect(run).toHaveBeenCalledWith({ type: 'record-track', trackId: 3 });
+    expect(forwardFxMidiInput.mock.calls.map(([event]) => event)).toEqual([
+      { type: 'NoteOff', channel: 2, note: 60, velocity: 0, timestampMs: 10.25 },
+      { type: 'NoteOff', channel: 3, note: 60, velocity: 45, timestampMs: 11.5 },
+      { type: 'NoteOn', channel: 1, note: 60, velocity: 100, timestampMs: 12.75 },
+      { type: 'AllNotesOff', channel: 4, note: 0, velocity: 0, timestampMs: 14 },
     ]);
   });
 

@@ -45,6 +45,10 @@ export async function renderPitchWorkerJobWithSession(
   }
   const left = new Float32Array(job.left);
   const right = new Float32Array(job.right);
+  if (job.reverse) {
+    reverseInPlace(left);
+    reverseInPlace(right);
+  }
   const session = await createSession(job);
   try {
     const seekInputFrames = session.outputSeekLength(job.playbackRate);
@@ -169,6 +173,14 @@ function greatestCommonDivisor(left: number, right: number): number {
   return a;
 }
 
+function reverseInPlace(samples: Float32Array): void {
+  for (let left = 0, right = samples.length - 1; left < right; left += 1, right -= 1) {
+    const value = samples[left]!;
+    samples[left] = samples[right]!;
+    samples[right] = value;
+  }
+}
+
 /** Worker message adapter. A failed/unsupported WASM API is always reported explicitly. */
 export async function handleSharedPitchWorkerMessage(
   job: SharedPitchWorkerJob,
@@ -194,6 +206,7 @@ function validateJob(job: SharedPitchWorkerJob): void {
       !Number.isSafeInteger(job.inputFrames) || job.inputFrames < 1 ||
       !Number.isSafeInteger(job.outputFrames) || job.outputFrames < 1 ||
       !Number.isFinite(job.playbackRate) || job.playbackRate < 0.25 || job.playbackRate > 4 ||
+      typeof job.reverse !== 'boolean' ||
       !Number.isSafeInteger(job.maxMemoryBytes) || job.maxMemoryBytes < 1 ||
       !(job.left instanceof ArrayBuffer) || !(job.right instanceof ArrayBuffer) ||
       job.left.byteLength !== job.inputFrames * Float32Array.BYTES_PER_ELEMENT ||

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "webrc/dsp/musical_fx_context.hpp"
 #include "webrc/dsp/primitives.hpp"
 
 #include <cstddef>
@@ -67,10 +68,28 @@ struct FxAlignmentRequirement {
     bool supported = false;
 };
 
+struct FxParameterEvent;
+
 [[nodiscard]] FxMemoryRequirement fxMemoryRequirement(std::uint16_t ordinal,
                                                        const ProcessSpec& spec) noexcept;
+// Profile-aware preflight for candidate configuration. For pitch ordinals
+// 14/15/18, the optional offset-zero PitchProfile event selects the prepared
+// backend; if omitted, the descriptor's default is used. The returned peak
+// accounts the selected profile's retained state and replacement scratch.
+// Other ordinals preserve fxMemoryRequirement()'s existing worst-case policy.
+// Invalid event spans or duplicate/invalid profile selectors are unsupported.
+[[nodiscard]] FxMemoryRequirement fxMemoryRequirementForParameters(
+    std::uint16_t ordinal, const ProcessSpec& spec,
+    const FxParameterEvent* prepareEvents, std::uint32_t prepareEventCount) noexcept;
 [[nodiscard]] FxStartupWarmupRequirement fxStartupWarmupUpperBoundSamples(
     std::uint16_t ordinal, const ProcessSpec& spec) noexcept;
+// The selected-profile counterpart to the conservative ordinal-wide startup
+// bound. It shares the same descriptor-default and selector rules as the
+// memory preflight above; this remains a finite history/window bound, not
+// measured algorithmic latency or recursive-filter settling time.
+[[nodiscard]] FxStartupWarmupRequirement fxStartupWarmupUpperBoundSamplesForParameters(
+    std::uint16_t ordinal, const ProcessSpec& spec,
+    const FxParameterEvent* prepareEvents, std::uint32_t prepareEventCount) noexcept;
 // Static upper bound for dry-alignment storage. This is intentionally separate
 // from startup history/window warmup and from measured end-to-end latency.
 [[nodiscard]] FxAlignmentRequirement fxAlignmentUpperBoundSamples(
@@ -169,6 +188,39 @@ enum class FxParameterId : std::uint16_t {
     WowRateHz = 100,
     TwistMacro = 101,
     OctaveMode = 102,
+    SynthFrequencyMacro = 103,
+    SynthResonanceMacro = 104,
+    SynthDecayMacro = 105,
+    BalancePercent = 106,
+    ModeIndex = 107,
+    PhraseIndex = 108,
+    Hold = 109,
+    Loop = 110,
+    AttackMacro = 111,
+    KeyIndex = 112,
+    NoteClass = 113,
+    FormantMacro = 114,
+    SpeedMacro = 115,
+    StabilityMacro = 116,
+    ScaleRoot = 117,
+    VoiceSelector = 118,
+    DryLevelPercent = 119,
+    HarmonyLevelPercent = 120,
+    ToneMacro = 121,
+    ModulationSensitivityMacro = 122,
+    OscNoteMidi = 123,
+    PatternIndex = 124,
+    PitchProfile = 125,
+    FormantFactor = 126,
+    FormantCompensation = 127,
+    BendSmoothingMs = 128,
+    HarmonyVoiceCount = 129,
+    HarmonyVoice1Semitones = 130,
+    HarmonyVoice2Semitones = 131,
+    HarmonyVoice1Formant = 132,
+    HarmonyVoice2Formant = 133,
+    HarmonyVoice1Pan = 134,
+    HarmonyVoice2Pan = 135,
 };
 
 struct FxParameterDescriptor {
@@ -235,12 +287,21 @@ public:
         return true;
     }
 
-    [[nodiscard]] bool processBlockWithEvents(const float* const* inputPlanar,
-                                              float* const* outputPlanar,
-                                              std::uint32_t channels,
-                                              std::uint32_t frames,
-                                              const FxParameterEvent* events,
-                                              std::uint32_t eventCount) noexcept;
+    [[nodiscard]] virtual bool processBlockWithEvents(const float* const* inputPlanar,
+                                                      float* const* outputPlanar,
+                                                      std::uint32_t channels,
+                                                      std::uint32_t frames,
+                                                      const FxParameterEvent* events,
+                                                      std::uint32_t eventCount) noexcept;
+    // Typed musical sidecar dispatch is fail-closed for ordinary processors.
+    // A derived musical bridge must override this method to consume MIDI and/or
+    // a real stereo carrier. Non-musical processors accept only an empty
+    // context and preserve their existing parameter-event behavior.
+    [[nodiscard]] virtual bool processBlockWithContext(
+        const float* const* inputPlanar, float* const* outputPlanar,
+        std::uint32_t channels, std::uint32_t frames,
+        const FxParameterEvent* parameterEvents, std::uint32_t parameterEventCount,
+        const FxProcessContext& context) noexcept;
     [[nodiscard]] virtual std::int32_t fixedLatencySamples() const noexcept = 0;
     // Prepared-state finite input-history/window bound before a candidate may
     // be exposed in a transition. This is not algorithmic latency. Zero means

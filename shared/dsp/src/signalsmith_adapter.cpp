@@ -20,10 +20,28 @@ bool validStretchSettings(const ProcessSpec& spec,
     return validProcessSpec(spec) && validMode(settings.mode) &&
            settings.channels >= 1 && settings.channels <= 2 &&
            settings.channels == spec.channels &&
-           settings.blockSamples >= 64 && settings.blockSamples <= 8192 &&
+           settings.blockSamples >= 64 && settings.blockSamples <= 16384 &&
            settings.intervalSamples >= 16 &&
            settings.intervalSamples <= settings.blockSamples &&
            spec.maxBlockFrames <= 8192;
+}
+
+bool validPlaybackRate(float playbackRate) noexcept {
+    return std::isfinite(playbackRate) && playbackRate >= 0.25f && playbackRate <= 4.0f;
+}
+
+std::uint32_t seekScratchCapacity(const ProcessSpec& spec,
+                                  const SignalsmithStretchSettings& settings) noexcept {
+    // outputSeekLength() = inputLatency + rate * outputLatency(). The pinned
+    // STFT's input latency is at most its window and its output latency is at
+    // most window + interval (split computation). For the supported 0.25..4x
+    // playback-rate range, this conservative bound is 5*window + 4*interval.
+    const std::uint64_t window = settings.blockSamples;
+    const std::uint64_t interval = settings.intervalSamples;
+    const std::uint64_t maximumSeek = 5U * window + 4U * interval + 8U;
+    const auto capacity = std::max<std::uint64_t>(spec.maxBlockFrames, maximumSeek);
+    if (capacity > std::numeric_limits<std::uint32_t>::max()) return 0U;
+    return static_cast<std::uint32_t>(capacity);
 }
 
 bool addWouldOverflow(std::size_t left, std::size_t right) noexcept {
@@ -53,17 +71,21 @@ std::size_t SignalsmithStretchAdapter::requiredPrepareBytes(
     const auto engineFrames = static_cast<std::size_t>(settings.blockSamples) +
                               static_cast<std::size_t>(settings.intervalSamples) + 1U;
     const auto callbackFrames = static_cast<std::size_t>(spec.maxBlockFrames);
+    const auto seekFrames = static_cast<std::size_t>(seekScratchCapacity(spec, settings));
+    if (seekFrames == 0U) return 0U;
     if (engineFrames > (std::numeric_limits<std::size_t>::max() - fixedAllowanceBytes) /
                            (channels * bytesPerEngineChannelFrame)) {
         return 0;
     }
     std::size_t total = fixedAllowanceBytes +
                         engineFrames * channels * bytesPerEngineChannelFrame;
-    if (callbackFrames > (std::numeric_limits<std::size_t>::max() - total) /
-                              (channels * 2U * sizeof(float))) {
+    const auto seekScratchBytesPerFrame = channels * 2U * sizeof(float);
+    if (seekFrames > (std::numeric_limits<std::size_t>::max() - total) /
+                         seekScratchBytesPerFrame) {
         return 0;
     }
-    total += callbackFrames * channels * 2U * sizeof(float);
+    total += seekFrames * seekScratchBytesPerFrame;
+    (void)callbackFrames; // seek scratch is the larger of callback and render-tail bounds.
     return total;
 }
 
@@ -100,11 +122,13 @@ bool SignalsmithStretchAdapter::prepare(const ProcessSpec& spec,
         candidate->setTransposeFactor(1.0f);
         candidate->setFormantFactor(1.0f, false);
 
+        const auto candidateSeekCapacity = seekScratchCapacity(spec, settings);
+        if (candidateSeekCapacity == 0U) return false;
         std::array<std::vector<float>, 2> candidateInputScratch;
         std::array<std::vector<float>, 2> candidateOutputScratch;
         for (std::uint32_t channel = 0; channel < settings.channels; ++channel) {
-            candidateInputScratch[channel].resize(spec.maxBlockFrames);
-            candidateOutputScratch[channel].resize(spec.maxBlockFrames);
+            candidateInputScratch[channel].resize(candidateSeekCapacity);
+            candidateOutputScratch[channel].resize(candidateSeekCapacity);
         }
 
         engine_.swap(candidate);
@@ -113,6 +137,7 @@ bool SignalsmithStretchAdapter::prepare(const ProcessSpec& spec,
         spec_ = spec;
         settings_ = settings;
         settings_.seed = constructorSeed_;
+        seekInputCapacityFrames_ = candidateSeekCapacity;
         preparedBytes_ = candidateBytes;
         prepared_ = true;
         return true;
@@ -175,6 +200,68 @@ bool SignalsmithStretchAdapter::process(const float* const* inputChannels,
 
     engine_->process(InputView{finiteInputs.data()}, static_cast<int>(inputFrames),
                      OutputView{finiteOutputs.data()}, static_cast<int>(outputFrames));
+    for (std::uint32_t channel = 0; channel < settings_.channels; ++channel) {
+        for (std::uint32_t frame = 0; frame < outputFrames; ++frame) {
+            outputChannels[channel][frame] = sanitize(finiteOutputScratch_[channel][frame]);
+        }
+    }
+    return true;
+}
+
+bool SignalsmithStretchAdapter::outputSeekLength(float playbackRate,
+                                                 std::uint32_t& inputFrames) const noexcept {
+    if (!prepared_ || !engine_ || !validPlaybackRate(playbackRate)) return false;
+    const int required = engine_->outputSeekLength(playbackRate);
+    if (required <= 0 || static_cast<std::uint32_t>(required) > seekInputCapacityFrames_) {
+        return false;
+    }
+    inputFrames = static_cast<std::uint32_t>(required);
+    return true;
+}
+
+bool SignalsmithStretchAdapter::outputSeek(const float* const* inputChannels,
+                                           std::uint32_t inputFrames,
+                                           float playbackRate) noexcept {
+    std::uint32_t requiredFrames = 0U;
+    if (!prepared_ || !engine_ || inputChannels == nullptr ||
+        !validPlaybackRate(playbackRate) ||
+        !outputSeekLength(playbackRate, requiredFrames) || inputFrames != requiredFrames ||
+        inputFrames > seekInputCapacityFrames_) {
+        return false;
+    }
+
+    std::array<const float*, 2> finiteInputs{};
+    for (std::uint32_t channel = 0; channel < settings_.channels; ++channel) {
+        if (inputChannels[channel] == nullptr ||
+            finiteInputScratch_[channel].size() < inputFrames) return false;
+        auto& scratch = finiteInputScratch_[channel];
+        for (std::uint32_t frame = 0; frame < inputFrames; ++frame) {
+            scratch[frame] = sanitize(inputChannels[channel][frame]);
+        }
+        finiteInputs[channel] = scratch.data();
+    }
+
+    engine_->outputSeek(InputView{finiteInputs.data()}, static_cast<int>(inputFrames));
+    return true;
+}
+
+bool SignalsmithStretchAdapter::flush(float* const* outputChannels,
+                                      std::uint32_t outputFrames,
+                                      float playbackRate) noexcept {
+    if (!prepared_ || !engine_ || outputChannels == nullptr || outputFrames == 0U ||
+        outputFrames > seekInputCapacityFrames_ ||
+        !validPlaybackRate(playbackRate)) {
+        return false;
+    }
+
+    std::array<float*, 2> finiteOutputs{};
+    for (std::uint32_t channel = 0; channel < settings_.channels; ++channel) {
+        if (outputChannels[channel] == nullptr ||
+            finiteOutputScratch_[channel].size() < outputFrames) return false;
+        finiteOutputs[channel] = finiteOutputScratch_[channel].data();
+    }
+
+    engine_->flush(OutputView{finiteOutputs.data()}, static_cast<int>(outputFrames), playbackRate);
     for (std::uint32_t channel = 0; channel < settings_.channels; ++channel) {
         for (std::uint32_t frame = 0; frame < outputFrames; ++frame) {
             outputChannels[channel][frame] = sanitize(finiteOutputScratch_[channel][frame]);

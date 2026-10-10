@@ -62,7 +62,8 @@ describe('shared pitch render planning', () => {
     });
     expect(makeSharedPitchProfilePlan('HQ_RENDER', 48_000, 41)).toMatchObject({
       kind: 113, channelsPerHandle: 2, stereoHandleCount: 1,
-      prepareParameters: [2, 2, 8192, 1024, 0], supportsOfflineDurationChange: true,
+      prepareParameters: [2, 2, 16384, 1024, 0],
+      maxBlockFrames: 8192, alignmentEngineBlockFrames: 16384, supportsOfflineDurationChange: true,
     });
     expect(() => renderSharedPitchInWorker({
       artifact: artifact(), profile: 'LIVE_MONO', sampleRate: 48_000, seed: 41,
@@ -150,6 +151,7 @@ describe('shared pitch render worker client', () => {
     expect(sourceLeft.byteLength).toBe(12 * Float32Array.BYTES_PER_ELEMENT);
     expect(sourceRight.byteLength).toBe(12 * Float32Array.BYTES_PER_ELEMENT);
     expect(worker.transfers).toEqual([worker.job?.left, worker.job?.right]);
+    expect(worker.job?.reverse).toBe(false);
 
     const left = new Float32Array(16).fill(0.125);
     const right = new Float32Array(16).fill(-0.25);
@@ -223,6 +225,37 @@ describe('shared pitch exact Worker runtime', () => {
     expect(result.latency).toEqual({ inputSamples: 2048, outputSamples: 3072 });
   });
 
+  it('reverses only the transferred worker-owned stereo copies before exact seek', async () => {
+    const job = makeWorkerJob(
+      new Float32Array(64).map((_, index) => index),
+      new Float32Array(64).map((_, index) => -index),
+      128 * 1024 * 1024, 64, true,
+    );
+    const seekInput: number[][] = [];
+    const session: ExactPitchStretchSession = {
+      outputSeekLength: () => 4,
+      outputSeek(left, right, inputOffset, inputFrames) {
+        seekInput.push([...left.slice(inputOffset, inputOffset + inputFrames)]);
+        seekInput.push([...right.slice(inputOffset, inputOffset + inputFrames)]);
+      },
+      process(_left, _right, _inputOffset, _inputFrames, outputLeft, outputRight, outputOffset, outputFrames) {
+        outputLeft.fill(0.25, outputOffset, outputOffset + outputFrames);
+        outputRight.fill(-0.25, outputOffset, outputOffset + outputFrames);
+      },
+      flush(outputLeft, outputRight, outputOffset, outputFrames) {
+        outputLeft.fill(0, outputOffset, outputOffset + outputFrames);
+        outputRight.fill(0, outputOffset, outputOffset + outputFrames);
+        return outputFrames;
+      },
+      inputLatencySamples: () => 0,
+      outputLatencySamples: () => 0,
+      dispose() {},
+    };
+    await renderPitchWorkerJobWithSession(job, () => session);
+    expect(seekInput).toEqual([[63, 62, 61, 60], [-63, -62, -61, -60]]);
+    expect([...new Float32Array(job.left).slice(0, 4)]).toEqual([63, 62, 61, 60]);
+  });
+
   it('preserves exact rounded duration and L/R separation for short clips across the supported rate range', async () => {
     for (const playbackRate of [0.25, 0.5, 1, 2, 4]) {
       const left = new Float32Array(80).fill(0.2);
@@ -269,13 +302,13 @@ describe('shared pitch exact Worker runtime', () => {
 });
 
 function makeWorkerJob(left: Float32Array, right: Float32Array, maxMemoryBytes: number,
-                       outputFrames = left.length): SharedPitchWorkerJob {
+                       outputFrames = left.length, reverse = false): SharedPitchWorkerJob {
   const playbackRate = left.length / outputFrames;
   return {
     type: 'RENDER_SHARED_PITCH', requestId: 1, module: artifact().module,
     wasmSha256: 'a'.repeat(64), sourceSetSha256: 'b'.repeat(64), profile: 'HQ_RENDER',
     sampleRate: 48_000, seed: 41, inputFrames: left.length, outputFrames, playbackRate,
-    maxMemoryBytes, left: left.slice().buffer, right: right.slice().buffer,
+    maxMemoryBytes, reverse, left: left.slice().buffer, right: right.slice().buffer,
   };
 }
 

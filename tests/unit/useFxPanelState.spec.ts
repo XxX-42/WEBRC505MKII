@@ -114,4 +114,34 @@ describe('useFxPanelState', () => {
       type: 'SHARED_DSP_FX_1', enabled: true, params: { '1': 10010 },
     });
   });
+
+  it('creates an active pitch unit and routes the panel knob to Semitones', async () => {
+    fixture.engine.getAvailableFxTypes.mockReturnValue(['SHARED_DSP_FX_14']);
+    fixture.engine.getSharedDspFxCatalog.mockReturnValue([{
+      ordinal: 14, id: 'rc505mkii.fx.transpose', displayName: 'TRANSPOSE', family: 'pitch',
+      officialParametersValidated: false,
+      parameters: [
+        { id: 48, name: 'Active', unit: 'boolean', minimum: 0, maximum: 1, defaultValue: 0, origin: 0 },
+        { id: 3, name: 'Mix', unit: 'linear', minimum: 0, maximum: 1, defaultValue: 1, origin: 0 },
+        { id: 125, name: 'Pitch Profile', unit: 'choice', minimum: 0, maximum: 2, defaultValue: 1, origin: 0 },
+        { id: 93, name: 'Semitones', unit: 'semitones', minimum: -12, maximum: 12, defaultValue: 0, origin: 0 },
+      ],
+    }]);
+    vi.resetModules();
+    const { useFxPanelState } = await import('../../src/composables/useFxPanelState');
+    const panel = useFxPanelState('track');
+
+    await panel.updateType('A', 'SHARED_DSP_FX_14');
+    expect(fixture.engine.updateFxBankSlot).toHaveBeenLastCalledWith('track', 0, {
+      type: 'SHARED_DSP_FX_14', enabled: true,
+      params: { '48': 1, '3': 1, '93': 0, '125': 1 },
+    });
+    expect(panel.slots.value[0]?.parameterLabel).toBe('SEMITONES SAFE');
+
+    await panel.updateValue('A', 75);
+    expect(fixture.engine.updateFxBankSlot).toHaveBeenLastCalledWith('track', 0, {
+      type: 'SHARED_DSP_FX_14', enabled: true,
+      params: { '48': 1, '3': 1, '93': 6, '125': 1 },
+    });
+  });
 });

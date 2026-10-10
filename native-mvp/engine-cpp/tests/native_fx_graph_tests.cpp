@@ -93,8 +93,11 @@ bool testUnsupportedAndBusEligibilityFailClosed() {
                      NativeFxGraphResult::InvalidRoute,
                  "reject track-only Beat Scatter from the input capture bus")) return false;
     if (!require(graph.configureSlot({NativeFxBusKind::Track, 0U}, 0U, 6U) ==
+                     NativeFxGraphResult::Ok,
+                 "prepare the implemented Synth processor on a Track route")) return false;
+    if (!require(graph.configureSlot({NativeFxBusKind::Track, 0U}, 1U, 0U) ==
                      NativeFxGraphResult::UnsupportedOrdinal,
-                 "reject metadata-only Synth instead of substituting another DSP")) return false;
+                 "reject an unknown processor ordinal instead of substituting another DSP")) return false;
     if (!require(graph.configureSlot({NativeFxBusKind::Track, 0U}, 4U, 30U) ==
                      NativeFxGraphResult::InvalidSlot,
                  "reject a slot index outside the fixed four-slot chain")) return false;
@@ -107,6 +110,48 @@ bool testUnsupportedAndBusEligibilityFailClosed() {
                  "preflight processor plus prepared-state replacement peak against memory budget")) return false;
     return require(graph.seal() == NativeFxGraphResult::Ok,
                    "seal a valid graph after rejected off-thread candidates");
+}
+
+bool testPitchProfileAwareMemoryAdmission() {
+    using namespace webrc::dsp;
+    constexpr std::uint64_t wasmLedgerBytes = 48U * 1024U * 1024U;
+    const ProcessSpec spec{48000.0f, kNativeFxGraphMaximumFrames, 2U};
+    const std::array<NativeFxInitialParameter, 1U> hqSelector{{
+        {FxParameterId::PitchProfile, 2.0f},
+    }};
+    const std::array<NativeFxInitialParameter, 1U> explicitDefaultSelector{{
+        {FxParameterId::PitchProfile, 1.0f},
+    }};
+
+    NativeFxGraph defaultProfile;
+    if (!require(defaultProfile.prepare(spec, wasmLedgerBytes) == NativeFxGraphResult::Ok &&
+                 defaultProfile.configureSlot({NativeFxBusKind::Track, 0U}, 0U, 18U) ==
+                     NativeFxGraphResult::Ok &&
+                 defaultProfile.seal() == NativeFxGraphResult::Ok,
+                 "descriptor-default LIVE_POLY HRM MANUAL prepares inside the shared 48 MiB ledger"))
+        return false;
+
+    NativeFxGraph explicitDefault;
+    if (!require(explicitDefault.prepare(spec, wasmLedgerBytes) == NativeFxGraphResult::Ok &&
+                 explicitDefault.configureSlot({NativeFxBusKind::Track, 0U}, 0U, 18U,
+                     1.0f, 5.0f, explicitDefaultSelector.data(),
+                     static_cast<std::uint32_t>(explicitDefaultSelector.size())) ==
+                     NativeFxGraphResult::Ok,
+                 "explicit LIVE_POLY selector uses the same selected-profile preflight as the default"))
+        return false;
+
+    NativeFxGraph hqProfile;
+    if (!require(hqProfile.prepare(spec, wasmLedgerBytes) == NativeFxGraphResult::Ok,
+                 "prepare an empty graph with the fixed WASM memory ceiling")) return false;
+    const auto hqResult = hqProfile.configureSlot({NativeFxBusKind::Track, 0U}, 0U, 18U,
+        1.0f, 5.0f, hqSelector.data(), static_cast<std::uint32_t>(hqSelector.size()));
+    if (!require(hqResult == NativeFxGraphResult::MemoryBudgetExceeded &&
+                 hqProfile.configuredSlotCount() == 0U &&
+                 hqProfile.permanentProcessorBytes() == 0U,
+                 "over-budget HQ_RENDER is rejected before replacing or publishing any processor"))
+        return false;
+    return require(hqProfile.seal() == NativeFxGraphResult::Ok,
+                   "failed HQ candidate leaves the graph usable and sealable");
 }
 
 bool testPreampSelectorsAreAppliedBeforeCandidatePrepare() {
@@ -286,7 +331,12 @@ bool testFiniteHistoryWarmupBoundsAndPreparedInstances() {
 
 bool testEveryReadyProcessorHasPreparedAlignmentCoverageAtSupportedRates() {
     using namespace webrc::dsp;
-    constexpr std::array<float, 4U> sampleRates{{24000.0f, 48000.0f, 96000.0f, 192000.0f}};
+    // The current musical YIN paths use a fixed 2048-frame analysis window and
+    // a 65 Hz minimum. At 192 kHz that period is longer than the window, so
+    // those six detector-based processors correctly fail preflight. Exercise
+    // all ready processors at rates their complete prepare path supports, and
+    // test the explicit 192 kHz rejection separately below.
+    constexpr std::array<float, 3U> sampleRates{{24000.0f, 48000.0f, 96000.0f}};
     std::uint32_t availableAtReferenceRate = 0U;
     for (const auto sampleRate : sampleRates) {
         const ProcessSpec spec{sampleRate, 64U, 2U};
@@ -319,8 +369,22 @@ bool testEveryReadyProcessorHasPreparedAlignmentCoverageAtSupportedRates() {
             }
         }
     }
-    return require(availableAtReferenceRate == 41U,
-                   "coverage iterates all 41 factory-ready ordinals, not a hard-coded readiness interval");
+    if (!require(availableAtReferenceRate == 53U,
+                 "coverage iterates all 53 factory-ready ordinals, not a hard-coded readiness interval"))
+        return false;
+
+    constexpr std::array<std::uint16_t, 6U> fixedWindowYinOrdinals{{6U, 10U, 12U, 16U, 17U, 19U}};
+    const ProcessSpec highRateSpec{192000.0f, 64U, 2U};
+    for (const auto ordinal : fixedWindowYinOrdinals) {
+        auto processor = createFxProcessor(ordinal);
+        if (!require(!fxMemoryRequirement(ordinal, highRateSpec).supported &&
+                     !fxStartupWarmupUpperBoundSamples(ordinal, highRateSpec).supported &&
+                     !fxAlignmentUpperBoundSamples(ordinal, highRateSpec).supported &&
+                     processor && !processor->prepare(highRateSpec),
+                     "fixed 2048-frame 65 Hz YIN paths fail closed at 192 kHz"))
+            return false;
+    }
+    return true;
 }
 
 bool testWetDryMixAlignsFixedLatencyAndRejectsVariableLatencyMix() {
@@ -331,6 +395,12 @@ bool testWetDryMixAlignsFixedLatencyAndRejectsVariableLatencyMix() {
                      NativeFxGraphResult::Ok &&
                  graph.seal() == NativeFxGraphResult::Ok,
                  "prepare a zero-wet Vinyl Flick chain with an aligned dry path")) return false;
+    std::int32_t vinylLatency = -99;
+    if (!require(graph.slotFixedLatencySamples({NativeFxBusKind::Track, 0U}, 0U,
+                                                vinylLatency) && vinylLatency == 960 &&
+                 graph.slotSupportsOuterMix({NativeFxBusKind::Track, 0U}, 0U),
+                 "publish configured fixed latency and outer-mix capability to the control plane"))
+        return false;
 
     std::array<StereoFrame, 64U> track{};
     NativeFxGraphBlock block{};
@@ -358,6 +428,12 @@ bool testWetDryMixAlignsFixedLatencyAndRejectsVariableLatencyMix() {
                  variable.configureSlot({NativeFxBusKind::Track, 0U}, 0U, 51U, 1.0f) ==
                      NativeFxGraphResult::Ok,
                  "fail closed on an unalignable outer mix for variable-latency Beat Repeat")) return false;
+    std::int32_t repeatLatency = 0;
+    if (!require(variable.slotFixedLatencySamples({NativeFxBusKind::Track, 0U}, 0U,
+                                                   repeatLatency) && repeatLatency == -1 &&
+                 !variable.slotSupportsOuterMix({NativeFxBusKind::Track, 0U}, 0U),
+                 "report variable latency distinctly so a bank can reject outer dry mixing"))
+        return false;
     return true;
 }
 
@@ -505,6 +581,264 @@ bool testBoundedEventsAreTransactionalAndTimestamped() {
                    "report the input bus as the only processed FX route");
 }
 
+bool testMultiEventPostIsAtomicAtQueueAdmission() {
+    std::unique_ptr<NativeFxGraph> graph;
+    if (!require(prepareEmptyGraph(graph) &&
+                 configurePan(*graph, {NativeFxBusKind::Input, 0U}, 0.0f) &&
+                 graph->seal() == NativeFxGraphResult::Ok,
+                 "prepare an input graph for atomic event queue admission")) return false;
+    NativeFxGraphExchange exchange;
+    if (!require(exchange.stage(graph) == NativeFxGraphResult::Ok,
+                 "stage the candidate before posting controls")) return false;
+    std::array<StereoFrame, 64U> input{};
+    NativeFxGraphBlock block{};
+    block.inputCapture = input.data();
+    if (!require(exchange.activeGraphGeneration() == 0U &&
+                 exchange.producerGeneration() == 1U,
+                 "report staged generation separately before callback adoption")) return false;
+    if (!require(exchange.processBlock(block, 64U, 0U) == NativeFxGraphResult::Ok &&
+                 exchange.activeGraphGeneration() == 1U,
+                 "publish the active generation only when the audio owner adopts it")) return false;
+
+    const NativeFxGraphEvent invalidBatch[] = {
+        {64U, {NativeFxBusKind::Input, 0U}, 0U,
+         NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Pan, -0.25f},
+        {63U, {NativeFxBusKind::Input, 0U}, 0U,
+         NativeFxGraphEventKind::SlotMix, FxParameterId::Mix, 0.5f},
+    };
+    if (!require(exchange.postEvents(invalidBatch, 2U) ==
+                     NativeFxGraphResult::TimestampOutOfOrder &&
+                 exchange.queuedEventCount() == 0U,
+                 "reject an out-of-order multi-control transaction without enqueueing a prefix"))
+        return false;
+    const NativeFxGraphEvent validBatch[] = {
+        {64U, {NativeFxBusKind::Input, 0U}, 0U,
+         NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Pan, -0.25f},
+        {64U, {NativeFxBusKind::Input, 0U}, 0U,
+         NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Pan, 0.25f},
+    };
+    if (!require(exchange.postEvents(validBatch, 2U) == NativeFxGraphResult::Ok &&
+                 exchange.queuedEventCount() == 2U,
+                 "publish a complete parameter transaction with one queue commit")) return false;
+    NativeFxGraphStats stats{};
+    return require(exchange.processBlock(block, 64U, 64U, &stats) == NativeFxGraphResult::Ok &&
+                 stats.eventsApplied == 2U,
+                 "apply every admitted event in the transaction at its block boundary");
+}
+
+bool testEventBatchPreflightsCallbackDueCapacity() {
+    const ProcessSpec spec{48000.0f, kNativeFxGraphMaximumFrames, 2U};
+    auto graph = std::make_unique<NativeFxGraph>();
+    if (!require(graph->prepare(spec) == NativeFxGraphResult::Ok,
+                 "prepare four input slots for the maximum due-event transaction")) return false;
+    const std::array<NativeFxInitialParameter, 2U> panDefaults{{
+        {FxParameterId::Active, 1.0f}, {FxParameterId::Pan, 0.0f}}};
+    for (std::uint8_t slot = 0U; slot < 4U; ++slot) {
+        if (!require(graph->configureSlot({NativeFxBusKind::Input, 0U}, slot, 30U,
+                    1.0f, 5.0f, panDefaults.data(),
+                    static_cast<std::uint32_t>(panDefaults.size())) == NativeFxGraphResult::Ok,
+                    "configure an independent bounded input parameter slot")) return false;
+    }
+    if (!require(graph->seal() == NativeFxGraphResult::Ok,
+                 "seal the four-slot callback-capacity graph")) return false;
+    NativeFxGraphExchange exchange;
+    if (!require(exchange.stage(graph) == NativeFxGraphResult::Ok,
+                 "stage graph before admitting due-event batches")) return false;
+    std::array<StereoFrame, 64U> input{};
+    NativeFxGraphBlock block{};
+    block.inputCapture = input.data();
+    if (!require(exchange.processBlock(block, 64U, 0U) == NativeFxGraphResult::Ok &&
+                 exchange.processBlock(block, 64U, 64U) == NativeFxGraphResult::Ok,
+                 "activate the graph and finish its first-install transition")) return false;
+
+    std::array<NativeFxGraphEvent, kNativeFxGraphEventCapacity> maximumBatch{};
+    for (std::uint32_t index = 0U; index < maximumBatch.size(); ++index) {
+        const auto slot = static_cast<std::uint8_t>(index / 64U);
+        const auto ordinal = static_cast<float>(index % 64U);
+        maximumBatch[index] = {128U, {NativeFxBusKind::Input, 0U}, slot,
+            NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Pan,
+            (ordinal - 31.5f) / 64.0f};
+    }
+    if (!require(exchange.postEvents(maximumBatch.data(),
+                    static_cast<std::uint32_t>(maximumBatch.size())) == NativeFxGraphResult::Ok &&
+                 exchange.queuedEventCount() == kNativeFxGraphEventCapacity,
+                 "admit exactly the callback's bounded 256-event capacity")) return false;
+    const NativeFxGraphEvent overflow{128U, {NativeFxBusKind::Input, 0U}, 0U,
+        NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Pan, 0.125f};
+    if (!require(exchange.postEvents(&overflow, 1U) == NativeFxGraphResult::TooManyEvents &&
+                 exchange.queuedEventCount() == kNativeFxGraphEventCapacity,
+                 "reject the 257th same-window event before it can poison a future block")) return false;
+    NativeFxGraphStats stats{};
+    return require(exchange.processBlock(block, 64U, 128U, &stats) == NativeFxGraphResult::Ok &&
+                 stats.eventsApplied == kNativeFxGraphEventCapacity,
+                 "every admitted due event fits and applies without callback batch overflow");
+}
+
+bool testDueCapacityCountsLateEventsAcrossDisjointWindows() {
+    using namespace webrc::dsp;
+    const ProcessSpec spec{48000.0f, kNativeFxGraphMaximumFrames, 2U};
+    auto graph = std::make_unique<NativeFxGraph>();
+    if (!require(graph->prepare(spec) == NativeFxGraphResult::Ok,
+                 "prepare enough independent slots for late event batches")) return false;
+    const std::array<NativeFxInitialParameter, 2U> panDefaults{{
+        {FxParameterId::Active, 1.0f}, {FxParameterId::Pan, 0.0f}}};
+    for (std::uint8_t group = 0U; group < 3U; ++group) {
+        const NativeFxBusAddress bus = group == 0U
+            ? NativeFxBusAddress{NativeFxBusKind::Input, 0U}
+            : NativeFxBusAddress{NativeFxBusKind::Track,
+                                 static_cast<std::uint8_t>(group - 1U)};
+        for (std::uint8_t slot = 0U; slot < 4U; ++slot) {
+            if (!require(graph->configureSlot(bus, slot, 30U, 1.0f, 5.0f,
+                        panDefaults.data(),
+                        static_cast<std::uint32_t>(panDefaults.size())) == NativeFxGraphResult::Ok,
+                        "configure a valid stereo pan slot for late event admission")) return false;
+        }
+    }
+    if (!require(graph->seal() == NativeFxGraphResult::Ok,
+                 "seal the graph before advancing its consumer timeline")) return false;
+
+    NativeFxGraphExchange exchange;
+    if (!require(exchange.stage(graph) == NativeFxGraphResult::Ok,
+                 "stage the graph before delayed control publication")) return false;
+    std::array<StereoFrame, 64U> input{};
+    std::array<StereoFrame, 64U> track0{};
+    std::array<StereoFrame, 64U> track1{};
+    std::array<StereoFrame, 64U> send{};
+    std::array<StereoFrame, 64U> master{};
+    NativeFxGraphBlock block{};
+    block.inputCapture = input.data();
+    block.trackPlayback[0] = track0.data();
+    block.trackPlayback[1] = track1.data();
+    block.sendReturn = send.data();
+    block.masterMix = master.data();
+    input.fill({0.2f, -0.1f});
+    track0.fill({0.13f, -0.07f});
+    track1.fill({-0.11f, 0.05f});
+    for (std::uint64_t start = 0U; start < 1024U; start += 64U) {
+        if (!require(exchange.processBlock(block, 64U, start) == NativeFxGraphResult::Ok,
+                     "advance consumer well beyond the later-posted event frames")) return false;
+    }
+
+    constexpr std::uint32_t firstCount = 200U;
+    constexpr std::uint32_t secondCount = 57U;
+    auto makeBatch = [](std::array<NativeFxGraphEvent, 256U>& output,
+                        std::uint32_t count, std::uint64_t frame) noexcept {
+        for (std::uint32_t index = 0U; index < count; ++index) {
+            const auto busSlot = index % 12U;
+            const auto busGroup = busSlot / 4U;
+            const NativeFxBusAddress bus = busGroup == 0U
+                ? NativeFxBusAddress{NativeFxBusKind::Input, 0U}
+                : NativeFxBusAddress{NativeFxBusKind::Track,
+                                     static_cast<std::uint8_t>(busGroup - 1U)};
+            const float pan = static_cast<float>(static_cast<int>(index % 9U) - 4) * 0.1f;
+            output[index] = {frame, bus, static_cast<std::uint8_t>(busSlot % 4U),
+                NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Pan, pan};
+        }
+    };
+    std::array<NativeFxGraphEvent, 256U> firstBatch{};
+    std::array<NativeFxGraphEvent, 256U> secondBatch{};
+    makeBatch(firstBatch, firstCount, 0U);
+    makeBatch(secondBatch, secondCount, 128U);
+    if (!require(exchange.postEvents(firstBatch.data(), firstCount) == NativeFxGraphResult::Ok &&
+                 exchange.queuedEventCount() == firstCount,
+                 "admit the first late batch after the consumer has advanced")) return false;
+    if (!require(exchange.postEvents(secondBatch.data(), secondCount) ==
+                     NativeFxGraphResult::TooManyEvents &&
+                 exchange.queuedEventCount() == firstCount,
+                 "reject disjoint timestamp windows whose accumulated late events exceed one callback"))
+        return false;
+
+    // This frame is earlier than the rejected batch's final timestamp. If the
+    // failed transaction had advanced producer ordering state, this would be
+    // spuriously rejected as out of order.
+    const NativeFxGraphEvent afterRejectedBatch{64U,
+        {NativeFxBusKind::Input, 0U}, 0U,
+        NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Pan, 0.25f};
+    if (!require(exchange.postEvent(afterRejectedBatch) == NativeFxGraphResult::Ok &&
+                 exchange.queuedEventCount() == firstCount + 1U,
+                 "a rejected capacity transaction leaves timestamp and queue state untouched"))
+        return false;
+
+    NativeFxGraphStats stats{};
+    if (!require(exchange.processBlock(block, 64U, 1024U, &stats) == NativeFxGraphResult::Ok,
+                 "process the bounded late batch without callback overflow")) return false;
+    return require(stats.eventsApplied == firstCount + 1U &&
+                   stats.lateEventsAppliedAtBlockStart == firstCount + 1U &&
+                   exchange.queuedEventCount() == 0U,
+                   "all admitted late events are counted and applied at block start");
+}
+
+bool testExchangePreflightsQueuedEventsPerProcessorSlot() {
+    const ProcessSpec spec{48000.0f, kNativeFxGraphMaximumFrames, 2U};
+    const NativeFxBusAddress bus{NativeFxBusKind::Input, 0U};
+    const auto makeActiveExchange = [&]() {
+        auto graph = std::make_unique<NativeFxGraph>();
+        if (graph->prepare(spec) != NativeFxGraphResult::Ok ||
+            graph->configureSlot(bus, 0U, 11U) != NativeFxGraphResult::Ok ||
+            graph->seal() != NativeFxGraphResult::Ok)
+            return std::unique_ptr<NativeFxGraphExchange>{};
+        std::uint32_t maximum = 0U;
+        if (!graph->slotMaximumParameterEventsPerBlock(bus, 0U, maximum) || maximum != 64U)
+            return std::unique_ptr<NativeFxGraphExchange>{};
+        auto exchange = std::make_unique<NativeFxGraphExchange>();
+        if (exchange->stage(graph) != NativeFxGraphResult::Ok) return exchange;
+        static std::array<StereoFrame, 64U> input{};
+        NativeFxGraphBlock block{};
+        block.inputCapture = input.data();
+        if (exchange->processBlock(block, 64U, 0U) != NativeFxGraphResult::Ok)
+            return std::unique_ptr<NativeFxGraphExchange>{};
+        return exchange;
+    };
+    const auto fillWetEvents = [bus](std::array<NativeFxGraphEvent, 40U>& batch,
+                                     std::uint32_t count, std::uint64_t frame,
+                                     float value) {
+        for (std::uint32_t index = 0U; index < count; ++index)
+            batch[index] = {frame, bus, 0U,
+                NativeFxGraphEventKind::ProcessorParameter, FxParameterId::Wet, value};
+    };
+
+    auto rejectingExchange = makeActiveExchange();
+    if (!require(rejectingExchange != nullptr,
+                 "prepare ordinal 11 and copy its 64-event admission limit into the exchange"))
+        return false;
+    std::array<NativeFxGraphEvent, 40U> first{};
+    std::array<NativeFxGraphEvent, 40U> second{};
+    fillWetEvents(first, 40U, 64U, 0.25f);
+    fillWetEvents(second, 40U, 64U, 0.75f);
+    if (!require(rejectingExchange->postEvents(first.data(), 40U) == NativeFxGraphResult::Ok &&
+                 rejectingExchange->queuedEventCount() == 40U,
+                 "accept the first 40 controls for one processor slot")) return false;
+    if (!require(rejectingExchange->postEvents(second.data(), 40U) ==
+                     NativeFxGraphResult::TooManyEvents &&
+                 rejectingExchange->queuedEventCount() == 40U,
+                 "reject the second 40 before publication when the slot limit is 64")) return false;
+    std::array<StereoFrame, 64U> input{};
+    NativeFxGraphBlock block{};
+    block.inputCapture = input.data();
+    NativeFxGraphStats rejectStats{};
+    if (!require(rejectingExchange->processBlock(block, 64U, 64U, &rejectStats) ==
+                     NativeFxGraphResult::Ok && rejectStats.eventsApplied == 40U,
+                 "the rejected transaction leaves only the original 40 controls due")) return false;
+
+    auto acceptingExchange = makeActiveExchange();
+    if (!require(acceptingExchange != nullptr,
+                 "prepare an independent exchange for the exact-capacity case")) return false;
+    std::array<NativeFxGraphEvent, 24U> final{};
+    for (auto& event : final)
+        event = {64U, bus, 0U, NativeFxGraphEventKind::ProcessorParameter,
+                 FxParameterId::Wet, 0.5f};
+    if (!require(acceptingExchange->postEvents(first.data(), 40U) == NativeFxGraphResult::Ok &&
+                 acceptingExchange->postEvents(final.data(), 24U) == NativeFxGraphResult::Ok &&
+                 acceptingExchange->queuedEventCount() == 64U,
+                 "accept two transactions whose per-slot sum exactly matches the processor cap"))
+        return false;
+    NativeFxGraphStats acceptStats{};
+    return require(acceptingExchange->processBlock(block, 64U, 64U, &acceptStats) ==
+                       NativeFxGraphResult::Ok &&
+                   acceptStats.eventsApplied == 64U,
+                   "all 64 admitted controls reach the processor without callback rejection");
+}
+
 bool testGraphGenerationDiscardsOldFutureControls() {
     const ProcessSpec spec{48000.0f, kNativeFxGraphMaximumFrames, 2U};
     const NativeFxBusAddress inputBus{NativeFxBusKind::Input, 0U};
@@ -607,6 +941,9 @@ bool testFirstGraphInstallCrossfadesFromDry() {
     NativeFxGraphExchange exchange;
     if (!require(exchange.stage(graph) == NativeFxGraphResult::Ok,
                  "stage the first graph from the dry host path")) return false;
+    if (!require(exchange.activeGraphGeneration() == 0U &&
+                 exchange.producerGeneration() == 1U,
+                 "keep producer and callback-adopted graph generations separate")) return false;
     std::array<StereoFrame, 64U> input{};
     input.fill({0.3f, -0.2f});
     NativeFxGraphBlock block{};
@@ -618,6 +955,8 @@ bool testFirstGraphInstallCrossfadesFromDry() {
         input.fill({0.3f, -0.2f});
         if (!require(exchange.processBlock(block, 64U, callback * 64U) == NativeFxGraphResult::Ok,
                      "render the first two callbacks while the graph fades in")) return false;
+        if (callback == 0U && !require(exchange.activeGraphGeneration() == 1U,
+                     "publish adoption on the first callback boundary")) return false;
         for (const auto& sample : input) {
             maximumStep = std::max(maximumStep, std::abs(sample.left - previousLeft));
             maximumStep = std::max(maximumStep, std::abs(sample.right - previousRight));
@@ -1126,8 +1465,10 @@ bool testNativeHostRunsInputAndTrackFxOnTheCorrectSideOfRecordingAndMix() {
         if (!require(host.processInputBlock(input.data(), 2U, output.data(), 64U),
                      "settle input FX and track-mix controls on the software callback")) return false;
     }
-    if (!require(host.status().fxGraphActive && host.status().fxGraphGeneration == 1U,
-                 "publish that the prepared graph is active in Native host status")) return false;
+    const auto adoptedStatus = host.status();
+    if (!require(adoptedStatus.fxGraphActive && adoptedStatus.fxGraphGeneration == 1U &&
+                 adoptedStatus.fxGraphActiveGeneration == 1U,
+                 "report producer and adopted graph generations in Native host status")) return false;
 
     if (!require(host.record(0U), "queue recording on the first track")) return false;
     for (std::uint32_t callback = 0U; callback < 1U; ++callback) {
@@ -1163,6 +1504,183 @@ bool testNativeHostRunsInputAndTrackFxOnTheCorrectSideOfRecordingAndMix() {
         return false;
     return require(!host.reclaimRetiredFxGraph(),
                    "the active Native graph remains host-owned until replaced");
+}
+
+bool testHostVocoderRequiresIndependentCarrierAndPublishesDspFault() {
+    NativeTrackHost host;
+    if (!require(host.prepare(48000U, 1U),
+                 "prepare the software host for an explicit auxiliary-carrier route"))
+        return false;
+
+    auto graph = std::make_unique<NativeFxGraph>();
+    const ProcessSpec spec{48000.0f, kNativeFxGraphMaximumFrames, 2U};
+    const std::array<NativeFxInitialParameter, 2U> parameters{{
+        {FxParameterId::Active, 1.0f}, {FxParameterId::Mix, 1.0f}}};
+    if (!require(graph->prepare(spec, host.candidateFxGraphBudgetBytes()) ==
+                     NativeFxGraphResult::Ok &&
+                 graph->configureSlot({NativeFxBusKind::Input, 0U}, 0U, 20U, 1.0f, 5.0f,
+                     parameters.data(), static_cast<std::uint32_t>(parameters.size())) ==
+                     NativeFxGraphResult::Ok &&
+                 graph->seal() == NativeFxGraphResult::Ok &&
+                 host.stageFxGraph(graph) == NativeFxGraphResult::Ok,
+                 "stage VOCODER20 on Input with a real stereo auxiliary-carrier route"))
+        return false;
+
+    std::array<float, 128U> modulator{};
+    std::array<float, 128U> carrier{};
+    std::array<float, 128U> output{};
+    for (std::uint32_t frame = 0U; frame < 64U; ++frame) {
+        modulator[frame * 2U] = 0.25f * std::sin(2.0f * 3.14159265358979323846f *
+            220.0f * static_cast<float>(frame) / 48000.0f);
+        modulator[frame * 2U + 1U] = 0.18f * std::sin(2.0f * 3.14159265358979323846f *
+            330.0f * static_cast<float>(frame) / 48000.0f);
+        carrier[frame * 2U] = 0.4f * std::sin(2.0f * 3.14159265358979323846f *
+            440.0f * static_cast<float>(frame) / 48000.0f);
+        carrier[frame * 2U + 1U] = 0.35f * std::sin(2.0f * 3.14159265358979323846f *
+            660.0f * static_cast<float>(frame) / 48000.0f);
+    }
+
+    heapAllocations.store(0U, std::memory_order_relaxed);
+    heapFrees.store(0U, std::memory_order_relaxed);
+    countHeapOperations.store(true, std::memory_order_release);
+    const bool rejectedMissing = host.processInputBlock(
+        modulator.data(), 2U, output.data(), 64U);
+    const auto missingStatus = host.status();
+    const bool acceptedAux = host.processInputBlockWithCarrier(
+        modulator.data(), 2U, carrier.data(), 2U, output.data(), 64U);
+    countHeapOperations.store(false, std::memory_order_release);
+    const auto finalStatus = host.status();
+    if (!require(rejectedMissing && missingStatus.fxGraphActive &&
+                 missingStatus.fxDspFaultCount == 1U &&
+                 missingStatus.lastFxDspFault == NativeFxGraphResult::MissingCarrier &&
+                 missingStatus.lastFxDspFaultFrame == 0U,
+                 "missing VOCODER carrier bypasses FX and publishes a timestamped DSP fault"))
+        return false;
+    if (!require(acceptedAux && finalStatus.fxGraphActiveGeneration == 1U &&
+                 finalStatus.fxDspFaultCount == 1U &&
+                 finalStatus.lastFxDspFault == NativeFxGraphResult::MissingCarrier,
+                 "the independent stereo carrier reaches the adopted graph without another fault"))
+        return false;
+    return require(heapAllocations.load(std::memory_order_relaxed) == 0U &&
+                   heapFrees.load(std::memory_order_relaxed) == 0U,
+                   "carrier processing and explicit fault fallback allocate no memory on callback");
+}
+
+bool testMusicalGraphMergesMidiAndParametersTransactionally() {
+    const ProcessSpec spec{48000.0f, kNativeFxGraphMaximumFrames, 2U};
+    const NativeFxBusAddress trackBus{NativeFxBusKind::Track, 0U};
+    auto graph = std::make_unique<NativeFxGraph>();
+    if (!require(graph->prepare(spec) == NativeFxGraphResult::Ok &&
+                 graph->configureSlot(trackBus, 0U, 21U) == NativeFxGraphResult::Ok &&
+                 graph->seal() == NativeFxGraphResult::Ok,
+                 "prepare the actual OSC VOC(M) processor in a sealed graph")) return false;
+
+    NativeFxGraphExchange exchange;
+    if (!require(exchange.stage(graph) == NativeFxGraphResult::Ok,
+                 "stage the musical graph for the host-owned event queue")) return false;
+    std::array<NativeFxGraphEvent, 65U> oversized{};
+    oversized[0].absoluteFrame = 0U;
+    oversized[0].bus = trackBus;
+    oversized[0].slotIndex = 0U;
+    oversized[0].kind = NativeFxGraphEventKind::ProcessorParameter;
+    oversized[0].parameter = FxParameterId::Active;
+    oversized[0].value = 1.0f;
+    for (std::uint32_t index = 0U; index < 64U; ++index) {
+        auto& event = oversized[index + 1U];
+        event.absoluteFrame = index;
+        event.bus = trackBus;
+        event.slotIndex = 0U;
+        event.kind = NativeFxGraphEventKind::Midi;
+        event.midiType = FxMidiEventType::NoteOff;
+        event.midiChannel = 0U;
+        event.midiNote = 60U;
+        event.midiVelocity = 0U;
+    }
+    if (!require(exchange.postEvents(oversized.data(),
+                    static_cast<std::uint32_t>(oversized.size())) ==
+                    NativeFxGraphResult::TooManyEvents && exchange.queuedEventCount() == 0U,
+                 "reject a 65-event parameter-plus-MIDI batch atomically at slot admission"))
+        return false;
+
+    if (!require(exchange.postEvents(oversized.data(), 64U) == NativeFxGraphResult::Ok &&
+                 exchange.queuedEventCount() == 64U,
+                 "admit the exact 64-event mixed batch after rejected-batch rollback"))
+        return false;
+
+    std::array<StereoFrame, 64U> audio{};
+    for (std::uint32_t frame = 0U; frame < audio.size(); ++frame) {
+        const auto value = 0.25f * std::sin(2.0f * 3.14159265358979323846f *
+            220.0f * static_cast<float>(frame) / 48000.0f);
+        audio[frame] = {value, -0.6f * value};
+    }
+    NativeFxGraphBlock block{};
+    block.trackPlayback[0] = audio.data();
+    NativeFxGraphStats stats{};
+    heapAllocations.store(0U, std::memory_order_relaxed);
+    heapFrees.store(0U, std::memory_order_relaxed);
+    countHeapOperations.store(true, std::memory_order_release);
+    const auto accepted = exchange.processBlock(block, 64U, 0U, &stats);
+    countHeapOperations.store(false, std::memory_order_release);
+    if (!require(accepted == NativeFxGraphResult::Ok && stats.eventsApplied == 64U &&
+                 exchange.queuedEventCount() == 0U,
+                 "the accepted mixed parameter/MIDI transaction reaches the processor once"))
+        return false;
+    if (!require(heapAllocations.load(std::memory_order_relaxed) == 0U &&
+                 heapFrees.load(std::memory_order_relaxed) == 0U,
+                 "mixed musical context dispatch performs no callback allocation or destruction"))
+        return false;
+
+    // Exercise events on opposite sides of a fixed 64-frame callback edge.
+    auto boundaryGraph = std::make_unique<NativeFxGraph>();
+    if (!require(boundaryGraph->prepare(spec) == NativeFxGraphResult::Ok &&
+                 boundaryGraph->configureSlot(trackBus, 0U, 21U) == NativeFxGraphResult::Ok &&
+                 boundaryGraph->seal() == NativeFxGraphResult::Ok,
+                 "prepare a fresh graph for MIDI callback-boundary delivery")) return false;
+    NativeFxGraphExchange boundaryExchange;
+    if (!require(boundaryExchange.stage(boundaryGraph) == NativeFxGraphResult::Ok,
+                 "stage the boundary-event graph")) return false;
+    std::array<NativeFxGraphEvent, 2U> boundaryEvents{};
+    boundaryEvents[0].absoluteFrame = 63U;
+    boundaryEvents[0].bus = trackBus;
+    boundaryEvents[0].kind = NativeFxGraphEventKind::Midi;
+    boundaryEvents[0].midiType = FxMidiEventType::NoteOn;
+    boundaryEvents[0].midiNote = 69U;
+    boundaryEvents[0].midiVelocity = 100U;
+    boundaryEvents[1] = boundaryEvents[0];
+    boundaryEvents[1].absoluteFrame = 64U;
+    boundaryEvents[1].midiType = FxMidiEventType::NoteOff;
+    boundaryEvents[1].midiVelocity = 0U;
+    if (!require(boundaryExchange.postEvents(boundaryEvents.data(), 2U) ==
+                     NativeFxGraphResult::Ok,
+                 "queue a NoteOn/NoteOff pair straddling a 64-frame callback boundary"))
+        return false;
+    NativeFxGraphBlock boundaryBlock{};
+    boundaryBlock.trackPlayback[0] = audio.data();
+    NativeFxGraphStats firstStats{};
+    NativeFxGraphStats secondStats{};
+    NativeFxGraphStats thirdStats{};
+    if (!require(boundaryExchange.processBlock(boundaryBlock, 64U, 0U, &firstStats) ==
+                     NativeFxGraphResult::Ok && firstStats.eventsApplied == 1U &&
+                 boundaryExchange.processBlock(boundaryBlock, 64U, 64U, &secondStats) ==
+                     NativeFxGraphResult::Ok && secondStats.eventsApplied == 1U &&
+                 boundaryExchange.processBlock(boundaryBlock, 64U, 128U, &thirdStats) ==
+                     NativeFxGraphResult::Ok && thirdStats.eventsApplied == 0U,
+                 "sample-offset MIDI is delivered exactly once across adjacent callback blocks"))
+        return false;
+
+    auto wrongKind = std::make_unique<NativeFxGraph>();
+    if (!require(wrongKind->prepare(spec) == NativeFxGraphResult::Ok &&
+                 wrongKind->configureSlot(trackBus, 0U, 1U) == NativeFxGraphResult::Ok &&
+                 wrongKind->seal() == NativeFxGraphResult::Ok,
+                 "prepare a nonmusical graph for fail-closed MIDI validation")) return false;
+    NativeFxGraphExchange wrongKindExchange;
+    if (!require(wrongKindExchange.stage(wrongKind) == NativeFxGraphResult::Ok,
+                 "stage the nonmusical graph")) return false;
+    auto rejectedMidi = boundaryEvents[0];
+    rejectedMidi.absoluteFrame = 0U;
+    return require(wrongKindExchange.postEvent(rejectedMidi) == NativeFxGraphResult::InvalidEvent &&
+                   wrongKindExchange.queuedEventCount() == 0U,
+                   "ordinary processors reject typed MIDI rather than silently dropping it");
 }
 
 bool testHostAggregateBudgetPreflightsCandidateAgainstHistoryAndActiveGraph() {
@@ -1385,6 +1903,7 @@ bool testGraphSwapRetiresOffCallbackAndCallbackAllocatesNothing() {
 
 int main() {
     const bool passed = testUnsupportedAndBusEligibilityFailClosed() &&
+        testPitchProfileAwareMemoryAdmission() &&
         testPreampSelectorsAreAppliedBeforeCandidatePrepare() &&
         testStartupWarmupQueriesAndPreampSampleRateBounds() &&
         testFiniteHistoryWarmupBoundsAndPreparedInstances() &&
@@ -1392,6 +1911,10 @@ int main() {
         testWetDryMixAlignsFixedLatencyAndRejectsVariableLatencyMix() &&
         testIndependentTrackStereoProcessors() && testInputFxIsPlacedBeforeRecordedHistory() &&
         testBoundedEventsAreTransactionalAndTimestamped() &&
+        testMultiEventPostIsAtomicAtQueueAdmission() &&
+        testEventBatchPreflightsCallbackDueCapacity() &&
+        testDueCapacityCountsLateEventsAcrossDisjointWindows() &&
+        testExchangePreflightsQueuedEventsPerProcessorSlot() &&
         testFirstGraphInstallCrossfadesFromDry() &&
         testLatencyEffectTransitionsWarmBeforeFadingAndBoundedToneSteps() &&
         testSerialLatencyWarmupSumsSlotsAndTrackMasterPath() &&
@@ -1399,6 +1922,8 @@ int main() {
         testSlotReplacementPreflightIncludesOldProcessorState() &&
         testCoupledFxInitialAndAutomatedParametersAreTransactional() &&
         testNativeHostRunsInputAndTrackFxOnTheCorrectSideOfRecordingAndMix() &&
+        testHostVocoderRequiresIndependentCarrierAndPublishesDspFault() &&
+        testMusicalGraphMergesMidiAndParametersTransactionally() &&
         testHostAggregateBudgetPreflightsCandidateAgainstHistoryAndActiveGraph() &&
         testRetiredGraphBytesStayReservedUntilControlThreadDestroysTheGraph() &&
         testGraphSwapRetiresOffCallbackAndCallbackAllocatesNothing();

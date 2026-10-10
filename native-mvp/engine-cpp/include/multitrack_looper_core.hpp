@@ -122,6 +122,11 @@ public:
 
     [[nodiscard]] TrackStatus trackStatus(std::uint8_t trackIndex) const noexcept;
     [[nodiscard]] double tempoBpm() const noexcept { return tempoBpm_; }
+    // Audio-owner-only update paired with a host rhythm tempo event. This is
+    // metadata/transport tempo: recorded loop PCM remains sample-locked.
+    void applyTempoBpmFromAudioThread(double bpm) noexcept {
+        tempoBpm_ = bpm;
+    }
     [[nodiscard]] std::uint64_t expectedFrame() const noexcept { return expectedFrame_; }
     [[nodiscard]] bool prepared() const noexcept { return prepared_; }
 

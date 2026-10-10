@@ -63,8 +63,10 @@ std::optional<Backend> backendFromString(const std::string& raw) {
     return std::nullopt;
 }
 
-NativeAudioCore::NativeAudioCore()
-    : deviceCatalog_(buildCatalog()) {}
+NativeAudioCore::NativeAudioCore(bool softwareOnly)
+    : softwareOnly_(softwareOnly),
+      deviceCatalog_(softwareOnly_ ? DeviceCatalog{} : buildCatalog()),
+      fxBank_(trackHost_) {}
 
 NativeAudioCore::~NativeAudioCore() {
     std::string ignored;
@@ -89,6 +91,8 @@ EngineStatus NativeAudioCore::getStatus() const {
 
     EngineStatus status;
     status.engineRunning = engineRunning_.load(std::memory_order_acquire);
+    status.softwareOnly = softwareOnly_;
+    status.monitoringEnabled = softwareMonitoringEnabled_;
     if (currentConfig_) {
         status.backend = currentConfig_->backend;
         status.inputDeviceId = currentConfig_->inputDeviceId;
@@ -178,8 +182,203 @@ EngineStatus NativeAudioCore::getStatus() const {
     return status;
 }
 
+NativeFxBankSnapshot NativeAudioCore::getFxBankSnapshot() const {
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    NativeFxBankSnapshot snapshot;
+    const auto hostStatus = trackHost_.status();
+    snapshot.producerGeneration = hostStatus.fxGraphGeneration;
+    snapshot.activeGeneration = hostStatus.fxGraphActiveGeneration;
+    snapshot.stageAccepted = fxBank_.configured() && hostStatus.fxGraphGeneration != 0U;
+    snapshot.adopted = snapshot.stageAccepted && hostStatus.fxGraphActive &&
+                       hostStatus.fxGraphActiveGeneration == hostStatus.fxGraphGeneration;
+    snapshot.configured = snapshot.stageAccepted;
+    if (snapshot.configured) snapshot.configuration = *fxBank_.configuration();
+    return snapshot;
+}
+
+NativeFxBankResult NativeAudioCore::configureFxBank(
+    const NativeFxBankConfig& configuration) {
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    (void)trackHost_.reclaimRetiredFxGraph();
+    return fxBank_.configure(configuration);
+}
+
+NativeFxBankResult NativeAudioCore::postFxBankEvents(
+    const NativeFxBankEvent* events, std::uint32_t eventCount) {
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    return fxBank_.postEvents(events, eventCount);
+}
+
+bool NativeAudioCore::prepareSoftwareFxHost(std::uint32_t sampleRateHz,
+                                            std::uint32_t trackBufferSeconds,
+                                            std::uint64_t memoryBudgetBytes,
+                                            std::string& error) {
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    if (!softwareOnly_) {
+        error = "Software FX host preparation requires software-only mode.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    if (engineRunning_.load(std::memory_order_acquire)) {
+        error = "The software-only FX host cannot replace a running Native device host.";
+        return false;
+    }
+    if (!trackHost_.prepare(sampleRateHz, trackBufferSeconds, memoryBudgetBytes)) {
+        error = "Failed to prepare the software-only five-track FX host.";
+        return false;
+    }
+    error.clear();
+    return true;
+}
+
+bool NativeAudioCore::processSoftwareFxBlock(const float* inputInterleavedStereo,
+                                            const float* carrierInterleavedStereo,
+                                            float* outputInterleavedStereo,
+                                            std::uint32_t frames,
+                                            MultiTrackProcessStats* stats,
+                                            std::string& error) {
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    if (!softwareOnly_) {
+        error = "Software FX rendering requires software-only mode.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    if (engineRunning_.load(std::memory_order_acquire)) {
+        error = "Software FX rendering is unavailable while a physical stream is running.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    if (!trackHost_.prepared()) {
+        error = "The software-only NativeTrackHost has not been prepared.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    if (inputInterleavedStereo == nullptr || outputInterleavedStereo == nullptr ||
+        frames == 0U || frames > kNativeTrackHostMaximumCallbackFrames) {
+        error = "Software FX rendering requires stereo buffers and 1 through 4096 frames.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+
+    const auto carrierChannels = carrierInterleavedStereo == nullptr ? 0U : 2U;
+    if (!trackHost_.processInputBlockWithCarrier(
+            inputInterleavedStereo, 2U, carrierInterleavedStereo, carrierChannels,
+            outputInterleavedStereo, frames, stats)) {
+        error = "NativeTrackHost rejected the software FX block.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    error.clear();
+    lastError_.clear();
+    return true;
+}
+
+bool NativeAudioCore::rhythmControlReadyLocked(std::string& error) const {
+    if (!trackHost_.prepared()) {
+        error = "NativeTrackHost must be prepared before rhythm controls are available.";
+        return false;
+    }
+    if (!engineRunning_.load(std::memory_order_acquire) && !softwareOnly_) {
+        error = "Start the Native audio engine before scheduling rhythm controls.";
+        return false;
+    }
+    return true;
+}
+
+bool NativeAudioCore::postRhythmCommand(const NativeRhythmCommand& command,
+                                        std::uint64_t& acceptedFrame,
+                                        std::string& error) {
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    if (!rhythmControlReadyLocked(error)) {
+        updateLastErrorLocked(error);
+        return false;
+    }
+
+    constexpr std::uint64_t kMaximumExactFrame = (std::uint64_t{1} << 53U) - 1U;
+    constexpr std::uint32_t kPhysicalSafeLeadFrames =
+        kNativeTrackHostMaximumCallbackFrames + kNativeTrackHostQuantumFrames;
+    const auto softwareRender = softwareOnly_;
+    const auto safeLead = softwareRender
+        ? kNativeTrackHostQuantumFrames : kPhysicalSafeLeadFrames;
+    const auto hostStatus = trackHost_.status();
+    std::uint64_t frame = 0U;
+    if (command.absoluteFrame.has_value()) {
+        frame = *command.absoluteFrame;
+        if (frame > kMaximumExactFrame) {
+            error = "absoluteFrame must be an exact nonnegative integer no greater than 2^53-1.";
+            updateLastErrorLocked(error);
+            return false;
+        }
+        if (!softwareRender) {
+            const auto earliest = hostStatus.nextFrame >
+                kMaximumExactFrame - kPhysicalSafeLeadFrames
+                ? kMaximumExactFrame + 1U
+                : hostStatus.nextFrame + kPhysicalSafeLeadFrames;
+            if (frame < earliest) {
+                error = "Physical rhythm events must be at least one maximum callback plus one quantum ahead.";
+                updateLastErrorLocked(error);
+                return false;
+            }
+        }
+    } else {
+        frame = trackHost_.nextRhythmCommandFrame(safeLead);
+    }
+    if (frame > kMaximumExactFrame) {
+        error = "No safe rhythm command frame remains in the exact sample timeline.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+
+    bool accepted = false;
+    switch (command.type) {
+    case NativeRhythmCommandType::PatternKit:
+        accepted = trackHost_.queueRhythmPatternKit(frame, command.patternIndex,
+                                                    command.kitIndex);
+        break;
+    case NativeRhythmCommandType::Start:
+        accepted = trackHost_.startRhythm(frame, command.playIntro);
+        break;
+    case NativeRhythmCommandType::Variation:
+        accepted = trackHost_.queueRhythmVariation(frame, command.variation);
+        break;
+    case NativeRhythmCommandType::Fill:
+        accepted = trackHost_.queueRhythmFill(frame);
+        break;
+    case NativeRhythmCommandType::Ending:
+        accepted = trackHost_.queueRhythmEnding(frame);
+        break;
+    case NativeRhythmCommandType::Stop:
+        accepted = trackHost_.stopRhythm(frame);
+        break;
+    case NativeRhythmCommandType::Tempo:
+        accepted = trackHost_.setTempoAtFrame(frame, command.bpm);
+        break;
+    case NativeRhythmCommandType::Volume:
+        accepted = trackHost_.setRhythmVolumeAtFrame(frame, command.volume);
+        break;
+    default:
+        error = "Unknown Native rhythm command.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    if (!accepted) {
+        error = "Native rhythm command was rejected by its bounded sample-clock queue.";
+        updateLastErrorLocked(error);
+        return false;
+    }
+    acceptedFrame = frame;
+    error.clear();
+    lastError_.clear();
+    return true;
+}
+
 bool NativeAudioCore::applyConfig(const EngineConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (softwareOnly_) {
+        error = "Physical audio configuration is disabled in software-only mode.";
+        updateLastErrorLocked(error);
+        return false;
+    }
     EngineConfig validated = config;
     if (!validateConfigLocked(validated, error)) {
         updateLastErrorLocked(error);
@@ -207,6 +406,11 @@ bool NativeAudioCore::applyConfig(const EngineConfig& config, std::string& error
 
 bool NativeAudioCore::start(std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (softwareOnly_) {
+        error = "Starting a physical audio stream is disabled in software-only mode.";
+        updateLastErrorLocked(error);
+        return false;
+    }
     if (!currentConfig_) {
         if (deviceCatalog_.backends.empty()) {
             error = "No supported native audio backend was detected.";
@@ -293,6 +497,21 @@ bool NativeAudioCore::clear(std::string& error) {
 
 bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (softwareOnly_) {
+        if (!trackHost_.prepared()) {
+            error = "The software-only NativeTrackHost has not been prepared.";
+            updateLastErrorLocked(error);
+            return false;
+        }
+        if (!trackHost_.setMonitor(enabled)) {
+            error = "Native input-monitor command was rejected.";
+            updateLastErrorLocked(error);
+            return false;
+        }
+        softwareMonitoringEnabled_ = enabled;
+        error.clear();
+        return true;
+    }
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -313,11 +532,17 @@ bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
 bool NativeAudioCore::enqueueTrackCommand(std::uint8_t trackIndex, TrackCommandType type,
                                           float value, bool boolValue,
                                           std::string& error) {
-    std::lock_guard<std::mutex> lock(commandProducerMutex_);
-    if (!engineRunning_.load(std::memory_order_acquire)) {
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (softwareOnly_) {
+        if (!trackHost_.prepared()) {
+            error = "The software-only NativeTrackHost has not been prepared.";
+            return false;
+        }
+    } else if (!engineRunning_.load(std::memory_order_acquire)) {
         error = "Engine is not running.";
         return false;
     }
+    std::lock_guard<std::mutex> lock(commandProducerMutex_);
     bool queued = false;
     switch (type) {
     case TrackCommandType::Record: queued = trackHost_.record(trackIndex); break;
@@ -367,16 +592,11 @@ bool NativeAudioCore::setTrackSolo(std::uint8_t trackIndex, bool solo, std::stri
     return enqueueTrackCommand(trackIndex, TrackCommandType::SetTrackSolo, 0.0f, solo, error);
 }
 bool NativeAudioCore::setTempoBpm(double bpm, std::string& error) {
-    std::lock_guard<std::mutex> lock(commandProducerMutex_);
-    if (!engineRunning_.load(std::memory_order_acquire)) {
-        error = "Engine is not running.";
-        return false;
-    }
-    if (!trackHost_.setTempo(bpm)) {
-        error = "Tempo is invalid or the bounded command queue rejected it.";
-        return false;
-    }
-    return true;
+    NativeRhythmCommand command{};
+    command.type = NativeRhythmCommandType::Tempo;
+    command.bpm = bpm;
+    std::uint64_t acceptedFrame = 0U;
+    return postRhythmCommand(command, acceptedFrame, error);
 }
 
 DeviceCatalog NativeAudioCore::buildCatalog() const {

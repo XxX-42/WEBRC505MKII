@@ -68,6 +68,7 @@ target_link_libraries(native_multitrack_core PUBLIC webrc_dsp)
 add_library(native_track_host STATIC
   src/native_track_host.cpp
   src/native_fx_graph.cpp
+  src/native_fx_control.cpp
 )
 target_include_directories(native_track_host PUBLIC include)
 target_link_libraries(native_track_host PUBLIC native_multitrack_core webrc_dsp)
@@ -98,6 +99,10 @@ add_executable(native_fx_graph_tests tests/native_fx_graph_tests.cpp)
 target_include_directories(native_fx_graph_tests PRIVATE include)
 target_link_libraries(native_fx_graph_tests PRIVATE native_track_host)
 
+add_executable(native_fx_control_tests tests/native_fx_control_tests.cpp)
+target_include_directories(native_fx_control_tests PRIVATE include)
+target_link_libraries(native_fx_control_tests PRIVATE native_track_host)
+
 add_executable(native_looper_bench benchmarks/native_looper_bench.cpp "${NATIVE_BENCH_LOOPER_SOURCE}")
 target_include_directories(native_looper_bench PRIVATE include)
 
@@ -106,3 +111,14 @@ add_test(NAME looper_core_tests COMMAND looper_core_tests)
 add_test(NAME native_multitrack_core_tests COMMAND native_multitrack_core_tests)
 add_test(NAME native_track_host_tests COMMAND native_track_host_tests)
 add_test(NAME native_fx_graph_tests COMMAND native_fx_graph_tests)
+add_test(NAME native_fx_control_tests COMMAND native_fx_control_tests)
+if(WIN32)
+  find_program(NATIVE_POWERSHELL_EXECUTABLE NAMES powershell.exe powershell)
+  if(NATIVE_POWERSHELL_EXECUTABLE)
+    add_test(NAME native_rhythm_http_software_smoke
+      COMMAND "${NATIVE_POWERSHELL_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
+              -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_rhythm_http_software_smoke.ps1"
+              -ServerPath $<TARGET_FILE:native_bridge_host>)
+    set_tests_properties(native_rhythm_http_software_smoke PROPERTIES TIMEOUT 120)
+  endif()
+endif()

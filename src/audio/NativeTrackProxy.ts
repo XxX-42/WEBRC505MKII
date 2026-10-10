@@ -78,7 +78,7 @@ export class NativeTrackProxy {
   }
 
   public toggleReverse() {
-    return;
+    throw new Error('Reverse playback is not available from this Native host build.');
   }
 
   public updateSettings(): Promise<void> {

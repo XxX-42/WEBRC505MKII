@@ -1,4 +1,5 @@
 #include "webrc/dsp/fx_registry.hpp"
+#include "webrc/dsp/musical_fx_registry_bridge.hpp"
 
 #include "webrc/dsp/performance_fx.hpp"
 #include "webrc/dsp/modulation_fx.hpp"
@@ -12,6 +13,7 @@
 #include "webrc/dsp/octave_fx.hpp"
 #include "webrc/dsp/octave_models.hpp"
 #include "webrc/dsp/temporal_fx_adapters.hpp"
+#include "webrc/dsp/pitch_fx_adapter.hpp"
 
 #include <algorithm>
 #include <array>
@@ -44,23 +46,23 @@ constexpr std::array<FxDescriptor, kFxCatalogSize> kCatalog{{
     {3,"rc505mkii.fx.hpf","HPF","Filter",true,true,kFilterReady,false},
     {4,"rc505mkii.fx.phaser","PHASER","Modulation",true,true,kProcessorReady,false},
     {5,"rc505mkii.fx.flanger","FLANGER","Modulated delay",true,true,kProcessorReady,false},
-    {6,"rc505mkii.fx.synth","SYNTH","Pitch/synthesis",true,true,kMetadata,false},
+    {6,"rc505mkii.fx.synth","SYNTH","Pitch/synthesis",true,true,kProcessorReady,false},
     {7,"rc505mkii.fx.lo-fi","LO-FI","Lo-fi",true,true,kProcessorReady,false},
     {8,"rc505mkii.fx.radio","RADIO","Lo-fi",true,true,kProcessorReady,false},
     {9,"rc505mkii.fx.ring-mod","RING.MOD","Modulation",true,true,kProcessorReady,false},
-    {10,"rc505mkii.fx.g2b","G2B","Pitch",true,true,kMetadata,false},
+    {10,"rc505mkii.fx.g2b","G2B","Pitch",true,true,kProcessorReady,false},
     {11,"rc505mkii.fx.sustainer","SUSTAINER","Dynamics",true,true,kProcessorReady,false},
-    {12,"rc505mkii.fx.auto-riff","AUTO RIFF","Pitch/sequencer",true,true,kMetadata,false},
+    {12,"rc505mkii.fx.auto-riff","AUTO RIFF","Pitch/sequencer",true,true,kProcessorReady,false},
     {13,"rc505mkii.fx.slow-gear","SLOW GEAR","Envelope",true,true,kProcessorReady,false},
-    {14,"rc505mkii.fx.transpose","TRANSPOSE","Pitch",true,true,kMetadata,false},
-    {15,"rc505mkii.fx.pitch-bend","PITCH BEND","Pitch",true,true,kMetadata,false},
-    {16,"rc505mkii.fx.robot","ROBOT","Voice",true,true,kMetadata,false},
-    {17,"rc505mkii.fx.electric","ELECTRIC","Voice character",true,true,kMetadata,false},
-    {18,"rc505mkii.fx.hrm-manual","HRM MANUAL","Harmony",true,true,kMetadata,false},
-    {19,"rc505mkii.fx.hrm-auto-m","HRM AUTO (M)","Harmony/MIDI",true,true,kMetadata,false},
-    {20,"rc505mkii.fx.vocoder","VOCODER","Vocoder",true,true,kMetadata,false},
-    {21,"rc505mkii.fx.osc-voc-m","OSC VOC (M)","Vocoder/MIDI",true,true,kMetadata,false},
-    {22,"rc505mkii.fx.osc-bot","OSC BOT","Voice/synthesis",true,true,kMetadata,false},
+    {14,"rc505mkii.fx.transpose","TRANSPOSE","Pitch",true,true,kProcessorReady,false},
+    {15,"rc505mkii.fx.pitch-bend","PITCH BEND","Pitch",true,true,kProcessorReady,false},
+    {16,"rc505mkii.fx.robot","ROBOT","Voice",true,true,kProcessorReady,false},
+    {17,"rc505mkii.fx.electric","ELECTRIC","Voice character",true,true,kProcessorReady,false},
+    {18,"rc505mkii.fx.hrm-manual","HRM MANUAL","Harmony",true,true,kProcessorReady,false},
+    {19,"rc505mkii.fx.hrm-auto-m","HRM AUTO (M)","Harmony/MIDI",true,true,kProcessorReady,false},
+    {20,"rc505mkii.fx.vocoder","VOCODER","Vocoder",true,true,kProcessorReady,false},
+    {21,"rc505mkii.fx.osc-voc-m","OSC VOC (M)","Vocoder/MIDI",true,true,kProcessorReady,false},
+    {22,"rc505mkii.fx.osc-bot","OSC BOT","Voice/synthesis",true,true,kProcessorReady,false},
     {23,"rc505mkii.fx.preamp","PREAMP","Amp simulation",true,true,kProcessorReady,false},
     {24,"rc505mkii.fx.dist","DIST","Nonlinear",true,true,kProcessorReady,false},
     {25,"rc505mkii.fx.dynamics","DYNAMICS","Dynamics",true,true,kProcessorReady,false},
@@ -405,6 +407,122 @@ constexpr std::array<FxParameterDescriptor, 3> kOctaveParameters{{
     localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
     localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,0.5f),
     localParameter(FxParameterId::OctaveMode,"mode","choice",0.0f,2.0f,0.0f),
+}};
+
+// These are reconstruction-safe runtime controls for the musical adapters.
+// Their domains and curves are deliberately separate from published Roland
+// UI facts, which remain non-normative until independently extracted.
+constexpr std::array<FxParameterDescriptor, 5> kSynthParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::SynthFrequencyMacro,"frequencyMacro","macro",0.0f,100.0f,50.0f),
+    localParameter(FxParameterId::SynthResonanceMacro,"resonanceMacro","macro",0.0f,100.0f,50.0f),
+    localParameter(FxParameterId::SynthDecayMacro,"decayMacro","macro",0.0f,100.0f,50.0f),
+    localParameter(FxParameterId::BalancePercent,"balancePercent","percent",0.0f,100.0f,50.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 3> kGuitarToBassParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::BalancePercent,"balancePercent","percent",0.0f,100.0f,50.0f),
+    localParameter(FxParameterId::ModeIndex,"modeIndex","choice",1.0f,2.0f,2.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 8> kAutoRiffParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::PhraseIndex,"phraseIndex","index",1.0f,30.0f,1.0f),
+    localParameter(FxParameterId::TempoBpm,"tempoBpmLocal","BPM",30.0f,300.0f,120.0f),
+    localParameter(FxParameterId::Hold,"hold","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Loop,"loop","boolean",0.0f,1.0f,1.0f),
+    localParameter(FxParameterId::AttackMacro,"attackMacro","macro",0.0f,100.0f,20.0f),
+    localParameter(FxParameterId::KeyIndex,"keyIndex","index",0.0f,11.0f,0.0f),
+    localParameter(FxParameterId::BalancePercent,"balancePercent","percent",0.0f,100.0f,70.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 5> kRobotParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,0.75f),
+    localParameter(FxParameterId::NoteClass,"noteClass","index",0.0f,11.0f,0.0f),
+    localParameter(FxParameterId::ModeIndex,"modeIndex","choice",1.0f,2.0f,2.0f),
+    localParameter(FxParameterId::FormantMacro,"formantMacro","macro",-50.0f,50.0f,0.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 7> kElectricParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,0.7f),
+    localParameter(FxParameterId::Semitones,"shiftSemitones","semitones",-12.0f,12.0f,0.0f),
+    localParameter(FxParameterId::FormantMacro,"formantMacro","macro",-50.0f,50.0f,0.0f),
+    localParameter(FxParameterId::SpeedMacro,"speedMacro","macro",0.0f,10.0f,5.0f),
+    localParameter(FxParameterId::StabilityMacro,"stabilityMacro","macro",-10.0f,10.0f,0.0f),
+    localParameter(FxParameterId::ScaleRoot,"scaleRoot","index",-1.0f,11.0f,-1.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 8> kHarmonyAutoParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::VoiceSelector,"voiceSelector","choice",0.0f,6.0f,4.0f),
+    localParameter(FxParameterId::FormantMacro,"formantMacro","macro",-50.0f,50.0f,0.0f),
+    localParameter(FxParameterId::Pan,"pan","linear",-1.0f,1.0f,0.0f),
+    localParameter(FxParameterId::ModeIndex,"modeIndex","choice",1.0f,2.0f,2.0f),
+    localParameter(FxParameterId::KeyIndex,"keyIndex","index",0.0f,11.0f,0.0f),
+    localParameter(FxParameterId::DryLevelPercent,"dryLevelPercent","percent",0.0f,100.0f,100.0f),
+    localParameter(FxParameterId::HarmonyLevelPercent,"harmonyLevelPercent","percent",0.0f,100.0f,80.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 5> kVocoderRuntimeParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f),
+    localParameter(FxParameterId::OutputDb,"outputDb","dB",-60.0f,12.0f,0.0f),
+    localParameter(FxParameterId::AttackMs,"envelopeAttackMs","ms",0.1f,500.0f,8.0f),
+    localParameter(FxParameterId::ReleaseMs,"envelopeReleaseMs","ms",1.0f,3000.0f,90.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 6> kOscVocRuntimeParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f),
+    localParameter(FxParameterId::OutputDb,"outputDb","dB",-60.0f,12.0f,0.0f),
+    localParameter(FxParameterId::AttackMs,"envelopeAttackMs","ms",0.1f,500.0f,8.0f),
+    localParameter(FxParameterId::ReleaseMs,"envelopeReleaseMs","ms",1.0f,3000.0f,90.0f),
+    localParameter(FxParameterId::Waveform,"waveform","choice",0.0f,4.0f,0.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 9> kOscBotRuntimeParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,0.75f),
+    localParameter(FxParameterId::Waveform,"waveform","choice",0.0f,4.0f,0.0f),
+    localParameter(FxParameterId::ToneMacro,"toneMacro","macro",-50.0f,50.0f,0.0f),
+    localParameter(FxParameterId::AttackMacro,"attackMacro","macro",0.0f,100.0f,50.0f),
+    localParameter(FxParameterId::OscNoteMidi,"oscNoteMidi","MIDI note",24.0f,127.0f,36.0f),
+    localParameter(FxParameterId::ModulationSensitivityMacro,"modulationSensitivityMacro","macro",-50.0f,50.0f,0.0f),
+    localParameter(FxParameterId::BalancePercent,"balancePercent","percent",0.0f,100.0f,50.0f),
+    localParameter(FxParameterId::PatternIndex,"patternIndex","index",0.0f,3.0f,0.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 6> kTransposeParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f),
+    localParameter(FxParameterId::PitchProfile,"pitchProfile","choice",0.0f,2.0f,1.0f),
+    localParameter(FxParameterId::Semitones,"semitones","semitones",-12.0f,12.0f,0.0f),
+    localParameter(FxParameterId::FormantFactor,"formantFactor","ratio",0.5f,2.0f,1.0f),
+    localParameter(FxParameterId::FormantCompensation,"formantCompensation","boolean",0.0f,1.0f,0.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 5> kPitchBendParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f),
+    localParameter(FxParameterId::PitchProfile,"pitchProfile","choice",0.0f,2.0f,0.0f),
+    localParameter(FxParameterId::Semitones,"bendSemitones","semitones",-12.0f,12.0f,0.0f),
+    localParameter(FxParameterId::BendSmoothingMs,"bendSmoothingMs","ms",1.0f,500.0f,40.0f),
+}};
+
+constexpr std::array<FxParameterDescriptor, 10> kHrmManualParameters{{
+    localParameter(FxParameterId::Active,"active","boolean",0.0f,1.0f,0.0f),
+    localParameter(FxParameterId::Mix,"mix","linear",0.0f,1.0f,1.0f),
+    localParameter(FxParameterId::PitchProfile,"pitchProfile","choice",1.0f,2.0f,1.0f),
+    localParameter(FxParameterId::HarmonyVoiceCount,"voiceCount","voices",0.0f,2.0f,2.0f),
+    localParameter(FxParameterId::HarmonyVoice1Semitones,"voice1Interval","semitones",-24.0f,24.0f,4.0f),
+    localParameter(FxParameterId::HarmonyVoice2Semitones,"voice2Interval","semitones",-24.0f,24.0f,7.0f),
+    localParameter(FxParameterId::HarmonyVoice1Formant,"voice1FormantFactor","ratio",0.5f,2.0f,1.0f),
+    localParameter(FxParameterId::HarmonyVoice2Formant,"voice2FormantFactor","ratio",0.5f,2.0f,1.0f),
+    localParameter(FxParameterId::HarmonyVoice1Pan,"voice1Pan","linear",-1.0f,1.0f,-0.25f),
+    localParameter(FxParameterId::HarmonyVoice2Pan,"voice2Pan","linear",-1.0f,1.0f,0.25f),
 }};
 
 constexpr std::array<FxParameterDescriptor, 8> kTapeEchoParameters{{
@@ -2250,6 +2368,53 @@ private:
 
 } // namespace
 
+namespace {
+
+bool isPitchMemoryProfileOrdinal(std::uint16_t ordinal) noexcept {
+    return ordinal == 14U || ordinal == 15U || ordinal == 18U;
+}
+
+bool resolvePreparedPitchProfile(std::uint16_t ordinal, const ProcessSpec& spec,
+                                 const FxParameterEvent* events, std::uint32_t eventCount,
+                                 PitchFxProfile& profile) noexcept {
+    if (!isPitchMemoryProfileOrdinal(ordinal) || !validProcessSpec(spec) ||
+        spec.channels != 2U || eventCount > kFxEventCapacity ||
+        (eventCount != 0U && events == nullptr)) return false;
+
+    std::size_t descriptorCount = 0U;
+    const auto* descriptors = fxParameterDescriptors(ordinal, descriptorCount);
+    if (descriptors == nullptr) return false;
+    const FxParameterDescriptor* profileDescriptor = nullptr;
+    for (std::size_t index = 0U; index < descriptorCount; ++index) {
+        if (descriptors[index].id == FxParameterId::PitchProfile) {
+            profileDescriptor = &descriptors[index];
+            break;
+        }
+    }
+    if (profileDescriptor == nullptr) return false;
+
+    float selectedValue = profileDescriptor->defaultValue;
+    bool selectorSeen = false;
+    for (std::uint32_t index = 0U; index < eventCount; ++index) {
+        const auto& event = events[index];
+        if (event.frameOffset != 0U) return false;
+        if (event.parameter != FxParameterId::PitchProfile) continue;
+        if (selectorSeen || !std::isfinite(event.value) ||
+            std::floor(event.value) != event.value ||
+            event.value < profileDescriptor->minimum ||
+            event.value > profileDescriptor->maximum) return false;
+        selectedValue = event.value;
+        selectorSeen = true;
+    }
+
+    const auto profileIndex = static_cast<std::uint8_t>(selectedValue);
+    if (profileIndex > static_cast<std::uint8_t>(PitchFxProfile::HqRender)) return false;
+    profile = static_cast<PitchFxProfile>(profileIndex);
+    return PitchFxAdapter::requiredPreparedStateBytes(ordinal, spec, profile) != 0U;
+}
+
+} // namespace
+
 FxMemoryRequirement fxMemoryRequirement(std::uint16_t ordinal,
                                          const ProcessSpec& spec) noexcept {
     FxMemoryRequirement result{};
@@ -2257,6 +2422,34 @@ FxMemoryRequirement fxMemoryRequirement(std::uint16_t ordinal,
 
     std::uint64_t preparedBytes = 0;
     switch (ordinal) {
+    case 6U: case 10U: case 12U: case 16U: case 17U: case 19U:
+    case 20U: case 21U: case 22U: {
+        if (spec.channels != 2U) return {};
+        const auto totalBytes = MusicalFxRegistryBridge::requiredPrepareBytes(ordinal, spec);
+        if (totalBytes < sizeof(MusicalFxRegistryBridge)) return {};
+        result.objectBytes = sizeof(MusicalFxRegistryBridge);
+        // This reservation includes the bridge's retained planar scratch and
+        // the prepared musical adapter's complete setup peak. The adapter's
+        // byte estimator includes its in-object variant storage, so this is a
+        // conservative per-instance reservation rather than a compile-time
+        // ABI size claim about the wrapped processor.
+        result.persistentPreparedBytes = totalBytes - sizeof(MusicalFxRegistryBridge);
+        result.supported = true;
+        return result;
+    }
+    case 14U: case 15U: case 18U: {
+        if (spec.channels != 2U) return {};
+        const auto stateBytes = PitchFxAdapter::maximumPreparedStateBytes(ordinal, spec);
+        if (stateBytes == 0U) return {};
+        result.objectBytes = sizeof(PitchFxAdapter);
+        // The profile selector is applied before prepare. Reserve the largest
+        // supported backend state so any allowed profile can be selected
+        // transactionally without changing the graph's admission result.
+        result.persistentPreparedBytes = stateBytes;
+        result.prepareScratchBytes = stateBytes;
+        result.supported = true;
+        return result;
+    }
     case 1U: case 2U: case 3U:
         result.objectBytes = sizeof(TptFilterProcessor);
         break;
@@ -2426,6 +2619,32 @@ FxMemoryRequirement fxMemoryRequirement(std::uint16_t ordinal,
     return result;
 }
 
+FxMemoryRequirement fxMemoryRequirementForParameters(
+    std::uint16_t ordinal, const ProcessSpec& spec,
+    const FxParameterEvent* prepareEvents, std::uint32_t prepareEventCount) noexcept {
+    if (!validProcessSpec(spec) || prepareEventCount > kFxEventCapacity ||
+        (prepareEventCount != 0U && prepareEvents == nullptr)) return {};
+    if (!isPitchMemoryProfileOrdinal(ordinal))
+        return fxMemoryRequirement(ordinal, spec);
+
+    PitchFxProfile selectedProfile{};
+    if (!resolvePreparedPitchProfile(ordinal, spec, prepareEvents,
+                                     prepareEventCount, selectedProfile)) return {};
+    const auto stateBytes = PitchFxAdapter::requiredPreparedStateBytes(
+        ordinal, spec, selectedProfile);
+    if (stateBytes == 0U) return {};
+
+    FxMemoryRequirement result{};
+    result.objectBytes = sizeof(PitchFxAdapter);
+    // PitchFxAdapter::prepare stages a fresh state before publishing it. Keep
+    // retained-state and replacement scratch separate so both Native and WASM
+    // account the same selected profile and transactional peak.
+    result.persistentPreparedBytes = stateBytes;
+    result.prepareScratchBytes = stateBytes;
+    result.supported = true;
+    return result;
+}
+
 FxStartupWarmupRequirement fxStartupWarmupUpperBoundSamples(
     std::uint16_t ordinal, const ProcessSpec& spec) noexcept {
     FxStartupWarmupRequirement result{};
@@ -2459,6 +2678,53 @@ FxStartupWarmupRequirement fxStartupWarmupUpperBoundSamples(
 
     std::uint64_t frames = 0U;
     switch (ordinal) {
+    case 6U: {
+        // Synth pitch analysis uses a 2048-frame window plus a 512-frame hop.
+        frames = 2048U + 512U;
+        break;
+    }
+    case 10U: case 12U: case 19U: {
+        // These paths use dual-mono incremental YIN and PSOLA. Their bounded
+        // startup history is the observation window/hop plus three maximum
+        // periods at the documented 65 Hz lower trackable F0.
+        const auto maxPeriod = std::ceil(sampleRate / 65.0);
+        if (!std::isfinite(maxPeriod) || maxPeriod < 1.0 ||
+            maxPeriod > static_cast<double>(std::numeric_limits<std::uint32_t>::max() / 3U))
+            return result;
+        frames = 2048U + 512U + 3U * static_cast<std::uint64_t>(maxPeriod);
+        break;
+    }
+    case 16U: case 17U: {
+        // ROBOT/ELECTRIC incrementally distribute their bounded detector work
+        // across callbacks; preserve the full worst-case callback cadence in
+        // the preflight history bound, not only the 2048-frame window.
+        constexpr std::uint64_t fftFrames = 4096U;
+        constexpr std::uint64_t maximumLag = (192000U + 64U) / 65U;
+        constexpr std::uint64_t maximumFftWork = (fftFrames / 2U) * 12U;
+        constexpr std::uint64_t maximumWorkUnits = 2048U + 5U * fftFrames +
+            2U * maximumFftWork + 3U * maximumLag;
+        constexpr std::uint64_t workUnitsPerCallback = 4096U;
+        constexpr std::uint64_t analysisCallbacks =
+            (maximumWorkUnits + workUnitsPerCallback - 1U) / workUnitsPerCallback;
+        const auto maxPeriod = std::ceil(sampleRate / 65.0);
+        if (!std::isfinite(maxPeriod) || maxPeriod < 1.0 ||
+            maxPeriod > static_cast<double>(std::numeric_limits<std::uint32_t>::max() / 3U))
+            return result;
+        frames = 2048U + (analysisCallbacks + 1U) * spec.maxBlockFrames +
+                 3U * static_cast<std::uint64_t>(maxPeriod);
+        break;
+    }
+    case 14U: case 15U: case 18U: {
+        const auto pitchFrames = PitchFxAdapter::maximumStartupWarmupUpperBoundFrames(ordinal, spec);
+        if (pitchFrames == 0U) return result;
+        frames = pitchFrames;
+        break;
+    }
+    case 20U: case 21U: case 22U:
+        // Vocoder filterbank and internal oscillator routes have no finite
+        // input-history window; their group delay is reported separately.
+        frames = 0U;
+        break;
     case 5U: // Flanger: largest permitted base-plus-depth read and sinc guard.
         if (!ceilFrames(0.030, frames)) return result;
         frames += ModulatedDelayFx::kInterpolationTaps;
@@ -2576,6 +2842,27 @@ FxStartupWarmupRequirement fxStartupWarmupUpperBoundSamples(
     return result;
 }
 
+FxStartupWarmupRequirement fxStartupWarmupUpperBoundSamplesForParameters(
+    std::uint16_t ordinal, const ProcessSpec& spec,
+    const FxParameterEvent* prepareEvents, std::uint32_t prepareEventCount) noexcept {
+    if (!validProcessSpec(spec) || prepareEventCount > kFxEventCapacity ||
+        (prepareEventCount != 0U && prepareEvents == nullptr)) return {};
+    if (!isPitchMemoryProfileOrdinal(ordinal))
+        return fxStartupWarmupUpperBoundSamples(ordinal, spec);
+
+    PitchFxProfile selectedProfile{};
+    if (!resolvePreparedPitchProfile(ordinal, spec, prepareEvents,
+                                     prepareEventCount, selectedProfile)) return {};
+    // Keep profile selection and memory validation coupled: a zero byte result
+    // means that this backend cannot be prepared for the supplied spec.
+    if (!fxMemoryRequirementForParameters(ordinal, spec, prepareEvents,
+                                          prepareEventCount).supported) return {};
+    const auto frames = PitchFxAdapter::startupWarmupUpperBoundFrames(
+        ordinal, spec, selectedProfile);
+    if (frames == 0U) return {};
+    return {frames, true};
+}
+
 FxAlignmentRequirement fxAlignmentUpperBoundSamples(
     std::uint16_t ordinal, const ProcessSpec& spec) noexcept {
     FxAlignmentRequirement result{};
@@ -2584,6 +2871,14 @@ FxAlignmentRequirement fxAlignmentUpperBoundSamples(
         !fxMemoryRequirement(ordinal, spec).supported) return result;
 
     switch (ordinal) {
+    case 6U: case 10U: case 12U: case 14U: case 15U: case 16U: case 17U: case 18U: case 19U:
+    case 20U: case 21U: case 22U:
+        // Musical pitch routes either have a variable wet/dry time alignment
+        // or no whole-sample fixed buffering. The processor getter reports
+        // its prepared fixed/variable latency; all have a zero static buffer
+        // reservation for that alignment anchor.
+        result.frames = 0U;
+        break;
     case 24U:
         // The registered distortion insert uses the x4 half-band shaper's
         // integer dry-path alignment anchor; frequency-dependent phase is
@@ -2707,6 +3002,30 @@ const FxParameterDescriptor* fxParameterDescriptors(std::uint16_t ordinal,
         count = kDistortionParameters.size(); return kDistortionParameters.data();
     case 28U:
         count = kOctaveParameters.size(); return kOctaveParameters.data();
+    case 6U:
+        count = kSynthParameters.size(); return kSynthParameters.data();
+    case 10U:
+        count = kGuitarToBassParameters.size(); return kGuitarToBassParameters.data();
+    case 12U:
+        count = kAutoRiffParameters.size(); return kAutoRiffParameters.data();
+    case 16U:
+        count = kRobotParameters.size(); return kRobotParameters.data();
+    case 17U:
+        count = kElectricParameters.size(); return kElectricParameters.data();
+    case 19U:
+        count = kHarmonyAutoParameters.size(); return kHarmonyAutoParameters.data();
+    case 20U:
+        count = kVocoderRuntimeParameters.size(); return kVocoderRuntimeParameters.data();
+    case 21U:
+        count = kOscVocRuntimeParameters.size(); return kOscVocRuntimeParameters.data();
+    case 22U:
+        count = kOscBotRuntimeParameters.size(); return kOscBotRuntimeParameters.data();
+    case 14U:
+        count = kTransposeParameters.size(); return kTransposeParameters.data();
+    case 15U:
+        count = kPitchBendParameters.size(); return kPitchBendParameters.data();
+    case 18U:
+        count = kHrmManualParameters.size(); return kHrmManualParameters.data();
     case 40U:
         count = kTapeEchoParameters.size(); return kTapeEchoParameters.data();
     case 41U:
@@ -2772,6 +3091,19 @@ bool FxProcessor::processBlockWithEvents(const float* const* input,
     return true;
 }
 
+bool FxProcessor::processBlockWithContext(
+    const float* const* input, float* const* output,
+    std::uint32_t channels, std::uint32_t frames,
+    const FxParameterEvent* parameterEvents, std::uint32_t parameterEventCount,
+    const FxProcessContext& context) noexcept {
+    const bool hasCarrier = context.carrierLeft != nullptr || context.carrierRight != nullptr ||
+                            context.carrierFrames != 0U || context.carrierChannels != 0U;
+    const bool hasMidi = context.midiEvents != nullptr || context.midiEventCount != 0U;
+    if (hasCarrier || hasMidi) return false;
+    return processBlockWithEvents(input, output, channels, frames,
+                                  parameterEvents, parameterEventCount);
+}
+
 std::unique_ptr<FxProcessor> createFxProcessor(std::uint16_t ordinal) noexcept {
     const auto* descriptor = findFxByOrdinal(ordinal);
     if (!descriptor || descriptor->readiness != FxReadiness::ProcessorAvailable) return nullptr;
@@ -2781,6 +3113,11 @@ std::unique_ptr<FxProcessor> createFxProcessor(std::uint16_t ordinal) noexcept {
     if (ordinal == 26U) return std::unique_ptr<FxProcessor>(new (std::nothrow) EqProcessor());
     if (ordinal == 36U) return std::unique_ptr<FxProcessor>(new (std::nothrow) DelayProcessor());
     if (ordinal == 47U) return std::unique_ptr<FxProcessor>(new (std::nothrow) ReverbProcessor());
+    if (ordinal == 6U || ordinal == 10U || ordinal == 12U || ordinal == 16U ||
+        ordinal == 17U || ordinal == 19U || ordinal == 20U || ordinal == 21U || ordinal == 22U)
+        return std::unique_ptr<FxProcessor>(new (std::nothrow) MusicalFxRegistryBridge(ordinal));
+    if (ordinal == 14U || ordinal == 15U || ordinal == 18U)
+        return std::unique_ptr<FxProcessor>(new (std::nothrow) PitchFxAdapter(ordinal));
     if (ordinal >= 50U && ordinal <= 53U)
         return std::unique_ptr<FxProcessor>(new (std::nothrow) PerformanceFxAdapter(ordinal));
     if (ordinal == 7U || ordinal == 9U || ordinal == 29U || ordinal == 30U || ordinal == 32U)
