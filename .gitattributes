@@ -448,3 +448,23 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /docs/validation/20261010/root-r7-actual-worker-r3.log -text
 
 /docs/validation/20261010/root-native36-rerun.log -text
+
+/shared/dsp/tests/signalsmith_live_prepare_tests.cpp -text
+
+/native-mvp/engine-cpp/include/native_audio_asset_codec.hpp -text
+
+/native-mvp/engine-cpp/src/native_audio_asset_codec.cpp -text
+
+/native-mvp/engine-cpp/tests/native_audio_asset_codec_tests.cpp -text
+
+/docs/validation/20261010/root-r8-native38.log -text
+
+/docs/validation/20261010/root-r8-fullgraph79.json -text
+
+/docs/validation/20261010/root-r8-stress3-raw-summary.json -text
+
+/docs/validation/20261010/root-r8-stress3-progress.ndjson -text
+
+/docs/validation/20261010/root-r8-stress3-source-manifest.json -text
+
+/docs/validation/20261010/root-r8-stress3-provenance.json -text

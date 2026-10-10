@@ -97,8 +97,9 @@ int main() {
           "HRM MANUAL descriptor default resolves to the admitted LIVE_POLY prepared profile");
     check(manualHqMemory.supported && manualWorstMemory.supported &&
           manualHqMemory.peakBytes() == manualWorstMemory.peakBytes() &&
-          manualHqMemory.peakBytes() > wasmFxLedgerBytes,
-          "explicit HQ_RENDER and ordinal-wide worst-case memory retain the larger over-budget profile");
+          manualHqMemory.peakBytes() > manualDefaultMemory.peakBytes() &&
+          manualHqMemory.peakBytes() <= wasmFxLedgerBytes,
+          "explicit HQ_RENDER remains the larger profile and fits the unchanged 48 MiB ledger after live-only scratch reduction");
     check(!fxMemoryRequirementForParameters(18U, pitchMemorySpec,
               &invalidHrmMonoSelector, 1U).supported &&
           !fxMemoryRequirementForParameters(18U, pitchMemorySpec,

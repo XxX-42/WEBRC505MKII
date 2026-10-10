@@ -12,6 +12,12 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     }
   },
+  optimizeDeps: {
+    // Vite otherwise discovers every HTML file under the project root. This
+    // workspace also contains archived smoke/build snapshots, so keep the
+    // dependency scan rooted at the actual application entry point.
+    entries: ['index.html'],
+  },
   preview: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

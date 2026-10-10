@@ -1,0 +1,42 @@
+{
+  "scope": "Incremental Release rebuild after fresh full build, then unfiltered CTest; software only",
+  "result": "PASS",
+  "passed": 38,
+  "registered": 38,
+  "seconds": 26.78,
+  "toolchain": "VS2019 BuildTools MSVC 14.29.30133, CXX compiler 19.29.30159.0",
+  "originalVerification": "shared\\dsp\\benchmarks\\results\\hrm-live-r8-freeze-20261010\\evidence\\native-full-verify-r2-rerun\\verification.json",
+  "rawLogSha256": "9185db03230ecf166fc17993478a0944e9a666a505a899fc1b6c25c431073f1a",
+  "sourceFiles": [
+    {
+      "path": "native-mvp/engine-cpp/tests/native_fx_graph_tests.cpp",
+      "sha256": "caad1d06182109a388bf35e37940c3efd196c6e7152317235f277ad3473ec430"
+    },
+    {
+      "path": "shared/dsp/tests/fx_registry_tests.cpp",
+      "sha256": "02481cf528d1bf14c562bd9aaa34249524a93a9b68f78d789499c80f4cef7422"
+    },
+    {
+      "path": "shared/dsp/include/webrc/dsp/signalsmith_adapter.hpp",
+      "sha256": "6bc64d8c26e8a02b63d442a298e21565455582e3672283588d813132125fc061"
+    },
+    {
+      "path": "shared/dsp/src/signalsmith_adapter.cpp",
+      "sha256": "58b90ee666f673531c691c837921665df8ece9f84f028348e468d6a17ff1f90b"
+    },
+    {
+      "path": "shared/dsp/src/pitch_fx_adapter.cpp",
+      "sha256": "021367ab7b358b2b9413d40bd14ff91f21969cdce447dc5ea5e80387ca6f9225"
+    },
+    {
+      "path": "shared/dsp/tests/signalsmith_live_prepare_tests.cpp",
+      "sha256": "3555350b0132343c01c192efe557f5e41718a27a0fe37cd8b3ed176156525b92"
+    },
+    {
+      "path": "shared/dsp/CMakeLists.txt",
+      "sha256": "9228443760bb5686e4a4b54cd6137ec90367da7c8598dc0f5a1cdbb9b9f2ffee"
+    }
+  ],
+  "priorStaleAssertionFailuresRetained": true,
+  "nativeFeatureScope": "Offline WAV codec building block only; Undo/Redo, Reverse, full Memory, host WAV routes and Bounce are not accepted by this run."
+}

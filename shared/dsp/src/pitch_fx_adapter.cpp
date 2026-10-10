@@ -105,7 +105,10 @@ struct PitchFxAdapter::PreparedState {
     PitchFxProfile profile = PitchFxProfile::LivePoly;
     bool liveMono = false;
     bool harmony = false;
-    std::array<LiveMonoPitchRoute, 4> monoRoutes{};
+    // PSOLA sinc tables are embedded in each route. Keep them out of
+    // Signalsmith-only profiles and instantiate exactly the two mono routes
+    // used by TRANSPOSE/PITCH BEND.
+    std::array<std::unique_ptr<LiveMonoPitchRoute>, 2> monoRoutes{};
     std::array<SignalsmithStretchAdapter, 2> stretch;
     // Single-pitch uses slots 0..1 (L/R); HRM MANUAL uses [voice*2 + channel].
     std::array<std::unique_ptr<float[]>, 4> scratch{};
@@ -147,7 +150,7 @@ std::size_t PitchFxAdapter::requiredPreparedStateBytes(
     } else {
         PitchProfileSettings profileSettings{};
         if (!makeSettings(profile, spec, kSignalsmithSeed, profileSettings)) return 0U;
-        const auto adapterBytes = SignalsmithStretchAdapter::requiredPrepareBytes(
+        const auto adapterBytes = SignalsmithStretchAdapter::requiredLivePrepareBytes(
             spec, profileSettings.signalsmith);
         if (adapterBytes == 0U) return 0U;
         std::size_t adapterTotal = 0U;
@@ -247,8 +250,10 @@ bool PitchFxAdapter::prepareState(const ProcessSpec& spec,
             kLiveMonoMaximumHz, kYinThreshold};
         WEBRC_PITCH_TRY {
             for (std::uint32_t channel = 0U; channel < 2U; ++channel) {
-                if (!candidate->monoRoutes[channel].prepare(monoSettings) ||
-                    !candidate->monoRoutes[channel].setPitchRatio(
+                candidate->monoRoutes[channel].reset(new (std::nothrow) LiveMonoPitchRoute());
+                if (!candidate->monoRoutes[channel] ||
+                    !candidate->monoRoutes[channel]->prepare(monoSettings) ||
+                    !candidate->monoRoutes[channel]->setPitchRatio(
                         semitonesToRatio(ordinal_ == 15U ? bendCurrentSemitones_ : semitones_)))
                     return false;
             }
@@ -266,9 +271,9 @@ bool PitchFxAdapter::prepareState(const ProcessSpec& spec,
         auto voiceSettings = profileSettings.signalsmith;
         if (candidate->harmony && voice != 0U)
             voiceSettings.seed = (kSignalsmithSeed ^ 0x9e3779b9U) & 0x7fffffffU;
-        const auto required = SignalsmithStretchAdapter::requiredPrepareBytes(
+        const auto required = SignalsmithStretchAdapter::requiredLivePrepareBytes(
             spec, voiceSettings);
-        if (required == 0U || !stretch.prepare(spec, voiceSettings, required)) return false;
+        if (required == 0U || !stretch.prepareLive(spec, voiceSettings, required)) return false;
         const float ratio = candidate->harmony
             ? semitonesToRatio(harmonySemitones_[voice])
             : semitonesToRatio(ordinal_ == 15U ? bendCurrentSemitones_ : semitones_);
@@ -301,7 +306,7 @@ bool PitchFxAdapter::prepare(const ProcessSpec& spec) noexcept {
 
 void PitchFxAdapter::reset() noexcept {
     if (!prepared_ || !state_) return;
-    for (auto& route : state_->monoRoutes) route.reset();
+    for (auto& route : state_->monoRoutes) if (route) route->reset();
     for (auto& stretch : state_->stretch) stretch.reset();
     for (std::uint32_t i = 0U; i < state_->scratchChannels; ++i)
         std::fill_n(state_->scratch[i].get(), spec_.maxBlockFrames, 0.0f);
@@ -501,8 +506,9 @@ bool PitchFxAdapter::retargetPitch(float semitones) noexcept {
     if (profile_ == PitchFxProfile::LiveMono) {
         const float ratio = semitonesToRatio(semitones);
         if (ratio < 0.5f || ratio > 2.0f) return false;
-        return state_->monoRoutes[0].setPitchRatio(ratio) &&
-               state_->monoRoutes[1].setPitchRatio(ratio);
+        return state_->monoRoutes[0] && state_->monoRoutes[1] &&
+               state_->monoRoutes[0]->setPitchRatio(ratio) &&
+               state_->monoRoutes[1]->setPitchRatio(ratio);
     }
     return state_->stretch[0].setTransposeFactor(semitonesToRatio(semitones));
 }
@@ -519,8 +525,8 @@ void PitchFxAdapter::applyCurrentPitchRatio() noexcept {
     if ((ordinal_ != 14U && ordinal_ != 15U) || !prepared_ || !state_) return;
     const float ratio = semitonesToRatio(ordinal_ == 15U ? bendCurrentSemitones_ : semitones_);
     if (profile_ == PitchFxProfile::LiveMono) {
-        (void)state_->monoRoutes[0].setPitchRatio(ratio);
-        (void)state_->monoRoutes[1].setPitchRatio(ratio);
+        if (state_->monoRoutes[0]) (void)state_->monoRoutes[0]->setPitchRatio(ratio);
+        if (state_->monoRoutes[1]) (void)state_->monoRoutes[1]->setPitchRatio(ratio);
     } else {
         (void)state_->stretch[0].setTransposeFactor(ratio);
     }
@@ -545,7 +551,7 @@ bool PitchFxAdapter::processSinglePitch(const float* const* input,
 
         if (profile_ == PitchFxProfile::LiveMono) {
             for (std::uint32_t channel = 0U; channel < 2U; ++channel) {
-                if (!state_->monoRoutes[channel].processBlock(
+                if (!state_->monoRoutes[channel] || !state_->monoRoutes[channel]->processBlock(
                         input[channel] + cursor, state_->scratch[channel].get(), chunk)) return false;
             }
         } else {
@@ -655,7 +661,8 @@ PitchFxLatencyReport PitchFxAdapter::latencyReport() const noexcept {
     if (profile_ == PitchFxProfile::LiveMono) {
         report.detectorWindowFrames = kLiveMonoWindowFrames;
         report.detectorHopFrames = kLiveMonoHopFrames;
-        report.psolaLookaheadFrames = state_->monoRoutes[0].resynthesisLatencySamples();
+        report.psolaLookaheadFrames = state_->monoRoutes[0]
+            ? state_->monoRoutes[0]->resynthesisLatencySamples() : 0U;
     } else {
         report.signalsmithInputFrames = state_->stretch[0].inputLatencySamples();
         report.signalsmithOutputFrames = state_->stretch[0].outputLatencySamples();

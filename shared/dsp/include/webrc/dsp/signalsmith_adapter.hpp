@@ -46,6 +46,13 @@ public:
                  std::size_t peakBudgetBytes) noexcept;
     [[nodiscard]] static std::size_t requiredPrepareBytes(
         const ProcessSpec& spec, const SignalsmithStretchSettings& settings) noexcept;
+    // Live FX never call seek/flush. This preparation reserves only bounded
+    // callback scratch; offline prepare() retains the larger seek/flush API.
+    [[nodiscard]] static std::size_t requiredLivePrepareBytes(
+        const ProcessSpec& spec, const SignalsmithStretchSettings& settings) noexcept;
+    bool prepareLive(const ProcessSpec& spec,
+                     const SignalsmithStretchSettings& settings,
+                     std::size_t peakBudgetBytes) noexcept;
     void reset() noexcept;
     bool setTransposeFactor(float factor, float tonalityLimit = 0.0f) noexcept;
     bool setFormantFactor(float factor, bool compensatePitch = false) noexcept;
@@ -72,6 +79,10 @@ public:
     [[nodiscard]] std::uint32_t constructorSeed() const noexcept { return constructorSeed_; }
 
 private:
+    bool prepareWithScratch(const ProcessSpec& spec,
+                            const SignalsmithStretchSettings& settings,
+                            std::size_t peakBudgetBytes,
+                            bool offlineRenderScratch) noexcept;
     struct InputView {
         const float* const* channels;
         const float* operator[](int channel) const noexcept { return channels[channel]; }
@@ -89,6 +100,7 @@ private:
     std::array<std::vector<float>, 2> finiteOutputScratch_;
     std::uint32_t seekInputCapacityFrames_ = 0U;
     std::size_t preparedBytes_ = 0;
+    bool offlineRenderScratch_ = true;
     const std::uint32_t constructorSeed_;
     bool prepared_ = false;
 };

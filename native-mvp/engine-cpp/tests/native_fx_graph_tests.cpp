@@ -145,13 +145,14 @@ bool testPitchProfileAwareMemoryAdmission() {
                  "prepare an empty graph with the fixed WASM memory ceiling")) return false;
     const auto hqResult = hqProfile.configureSlot({NativeFxBusKind::Track, 0U}, 0U, 18U,
         1.0f, 5.0f, hqSelector.data(), static_cast<std::uint32_t>(hqSelector.size()));
-    if (!require(hqResult == NativeFxGraphResult::MemoryBudgetExceeded &&
-                 hqProfile.configuredSlotCount() == 0U &&
-                 hqProfile.permanentProcessorBytes() == 0U,
-                 "over-budget HQ_RENDER is rejected before replacing or publishing any processor"))
+    if (!require(hqResult == NativeFxGraphResult::Ok &&
+                 hqProfile.configuredSlotCount() == 1U &&
+                 hqProfile.permanentProcessorBytes() > 0U &&
+                 hqProfile.estimatedPermanentBytes() <= wasmLedgerBytes,
+                 "selected-profile HQ_RENDER is admitted within the unchanged 48 MiB ledger"))
         return false;
     return require(hqProfile.seal() == NativeFxGraphResult::Ok,
-                   "failed HQ candidate leaves the graph usable and sealable");
+                   "HQ profile candidate leaves the graph usable and sealable");
 }
 
 bool testPreampSelectorsAreAppliedBeforeCandidatePrepare() {

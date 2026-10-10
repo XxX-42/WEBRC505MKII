@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "derivedFromRun": "bench/results/browser-production-fullgraph-r8-20261010-stress3-r1",
+  "retainedFailedRuns": [
+    "r1: ordinal 14 used invalid parameter ID 21 (Wet); corrected to Mix ID 3.",
+    "r2: unadapted /src dynamic imports could not be served by the production preview.",
+    "r3: five per-track transpose instances exceeded the 48 MiB ledger.",
+    "r4: per-track Delay ordinal 36 exceeded the 48 MiB ledger."
+  ],
+  "correction": {
+    "path": "scripts/browser-stress-32fx.mjs",
+    "previousSha256": "8de8d3507d035b389dc7b5c4f9b80bed314e40ccd9ca359909e984055dafbcda",
+    "currentSha256": "dd22329cb9c02be664018451a4e0ad8249aa6d33d19b3045b1f74ac33306194b",
+    "pitch": "One enabled ordinal-14 LIVE_POLY instance at Master slot 1, Mix 0.35, Semitones +7; track instances 0.",
+    "fiveTrackLoad": "Each of five stereo tracks retains EQ+AutoPan; Track slots 2/3 are explicitly empty. Input Dynamics+HPF and Master Reverb remain active."
+  },
+  "productionAdaptedHelperSha256": "9c1ecf7964f796f629a9cd33acf3140154d0681fd7f1b467aeec2a3ef40f6678",
+  "runnerSha256": "6b1dacc9f52997f3039d8adc03f03bddbda976cfce933518f62c9744928e3e98",
+  "sourceSnapshotManifestSha256": "d52a68b1de851f7d87157cef2b49426f223bc6ba1a107237e408cf982766fc82",
+  "sourceAssetSetSha256": "1f721378a2d0e684d8018fd75505a1b5d0b238f025e133d4315ed03604602675",
+  "baseProductionDist": "bench/results/browser-production-fullgraph-r8-20261010-r1/dist",
+  "wasmSha256": "73c8e9ddc08ec743248b26ea9fff9a3bc9629c6e19ae184299ca5c9660df6b2f",
+  "execution": "Stress-only production runner skips the already passed 79-assertion baseline and reuses the exact R8 production bundle."
+}

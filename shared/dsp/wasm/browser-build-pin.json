@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "artifact": {
     "file": "dsp/webrc-dsp.wasm",
-    "byteLength": 910313,
-    "sha256": "3cbabce3f7ed0a0d4db512388152422ec97cd24b0682ec19902ef2189b3078e3"
+    "byteLength": 910758,
+    "sha256": "73c8e9ddc08ec743248b26ea9fff9a3bc9629c6e19ae184299ca5c9660df6b2f"
   },
   "build": {
     "emsdkCommit": "35ff8a6d150541276abbc6bae512ca90bcfbe220",
     "compilerIdentity": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10 (d6c521a7f05449857c76bd99e396895583cf2083)"
   },
-  "sourceSetSha256": "c9e7797a9d046dc9bba1b48429ceb80cd67e8198c0334f57ad746fbe30b92e0f"
+  "sourceSetSha256": "65adf664379e1b1c23aa134a83d97273a1d41ded70774eafdf9594e809eaf00c"
 }

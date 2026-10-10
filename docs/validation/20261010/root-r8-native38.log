@@ -1,0 +1,715 @@
+Start testing: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+----------------------------------------------------------
+1/38 Testing: looper_core_tests
+1/38 Test: looper_core_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/looper_core_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010
+"looper_core_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"looper_core_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"looper_core_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/38 Testing: native_multitrack_core_tests
+2/38 Test: native_multitrack_core_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/native_multitrack_core_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010
+"native_multitrack_core_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"native_multitrack_core_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"native_multitrack_core_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/38 Testing: native_audio_asset_codec_tests
+3/38 Test: native_audio_asset_codec_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/native_audio_asset_codec_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010
+"native_audio_asset_codec_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+PASS: native WAV asset codec tests
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"native_audio_asset_codec_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"native_audio_asset_codec_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/38 Testing: native_track_host_tests
+4/38 Test: native_track_host_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/native_track_host_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010
+"native_track_host_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.45 sec
+----------------------------------------------------------
+Test Passed.
+"native_track_host_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"native_track_host_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/38 Testing: native_fx_graph_tests
+5/38 Test: native_fx_graph_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/native_fx_graph_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010
+"native_fx_graph_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Native prepared FX graph tests passed.
+<end of output>
+Test time =   3.56 sec
+----------------------------------------------------------
+Test Passed.
+"native_fx_graph_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"native_fx_graph_tests" time elapsed: 00:00:03
+----------------------------------------------------------
+
+6/38 Testing: native_fx_control_tests
+6/38 Test: native_fx_control_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/native_fx_control_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010
+"native_fx_control_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+NativeFxBank control tests passed.
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"native_fx_control_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"native_fx_control_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/38 Testing: native_rhythm_http_software_smoke
+7/38 Test: native_rhythm_http_software_smoke
+Command: "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" "-NoProfile" "-ExecutionPolicy" "Bypass" "-File" "D:/Documents/Codes/2024_1_WebRC505MKII/2025_WebRC505MKII_v2/native-mvp/engine-cpp/tests/native_rhythm_http_software_smoke.ps1" "-ServerPath" "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/native_bridge_host.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010
+"native_rhythm_http_software_smoke" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Native software rhythm HTTP smoke passed: start@37, shared tempo@64éˆ«?00 BPM on bar, volume@128éˆ«?.25 over10ms, stop@448, real stereo PCM RMS=0.0266675954573041 peak=0.243724748492241, simultaneous track1 recording=143000 frames; no hardware opened.
+<end of output>
+Test time =   7.02 sec
+----------------------------------------------------------
+Test Passed.
+"native_rhythm_http_software_smoke" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"native_rhythm_http_software_smoke" time elapsed: 00:00:07
+----------------------------------------------------------
+
+8/38 Testing: dsp_primitives_tests
+8/38 Test: dsp_primitives_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/dsp_primitives_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"dsp_primitives_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+DSP primitive tests passed
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"dsp_primitives_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"dsp_primitives_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+9/38 Testing: control_dynamics_tests
+9/38 Test: control_dynamics_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/control_dynamics_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"control_dynamics_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Control/dynamics tests passed
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"control_dynamics_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"control_dynamics_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+10/38 Testing: nonlinear_tests
+10/38 Test: nonlinear_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/nonlinear_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"nonlinear_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+F23 checked accepted-parameter diode points: 648
+F07 linear-path impulse energy centroid: 2x=14.500000 4x=21.810654 base samples
+F07 ADAA extra 1 kHz phase delay: 2x=0.250000 4x=0.125000 base samples
+F07 measured 1 kHz delay: FIR 2x=14.500000 4x=21.750000; total ADAA 2x=14.750000 4x=21.875000
+F07 750 Hz aliased harmonic magnitude: naive=0.12587739 1xADAA=0.00147994037 2x=1.19335331e-06 4x=1.4063408e-05
+F07 folded harmonic tone 6999.02 Hz at bin 5117: memoryless=0.124321127 1xADAA=0.0298819776 2x=1.05075548e-05 4x=2.18119035e-05
+F07 folded harmonic tone 9999.02 Hz at bin 2051: memoryless=0.124321127 1xADAA=0.00587349309 2x=0.00513260106 4x=5.24116302e-06
+F07 folded harmonic tone 14000.98 Hz at bin 6141: memoryless=0.124321127 1xADAA=0.0204319551 2x=0.000495249359 4x=2.86368623e-06
+F07 dual-tone IMD products 2818.36/5789.06 Hz (1x,2x,4x): lower=0.2340144/0.2331982/0.2329581 upper=0.2214547/0.2300505/0.2321908
+Nonlinear/WDF tests passed
+<end of output>
+Test time =   0.15 sec
+----------------------------------------------------------
+Test Passed.
+"nonlinear_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"nonlinear_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/38 Testing: spatial_temporal_tests
+11/38 Test: spatial_temporal_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/spatial_temporal_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"spatial_temporal_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+FDN8 stereoCorr=0.26060 band T20/T30 seconds: 100Hz 1.030/1.049, 1kHz 0.812/0.847, 4kHz 0.470/0.555
+FDN16 stereoCorr=0.28411 band T20/T30 seconds: 100Hz 0.923/0.999, 1kHz 0.738/0.793, 4kHz 0.476/0.532
+Freeze held tones: L=440.0 Hz R=997.0 Hz; RMS 0.35376 -> 0.35358
+Freeze WOLA N=256 H=128 maxIdentityError=1.1920929e-07
+Freeze WOLA N=512 H=128 maxIdentityError=8.9406967e-08
+Freeze WOLA N=1024 H=256 maxIdentityError=8.9406967e-08
+Callback allocation guard across 64/128/256 frames: new=0 delete=0
+Spatial/temporal DSP tests passed.
+<end of output>
+Test time =   0.40 sec
+----------------------------------------------------------
+Test Passed.
+"spatial_temporal_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"spatial_temporal_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/38 Testing: pitch_tests
+12/38 Test: pitch_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/pitch_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"pitch_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+live-chain first-voiced=5759 (1663 samples after input onset) last-voiced=67455 count=464 YIN-window=2048 PSOLA-buffer=1800 conservative-window-plus-buffer=3848 samples (80.1667 ms); burst-first/last=5902/67341; measured-output=102.886/1246.58 Hz; measured-YIN=82.3003/997.504 Hz
+PASS: YIN; buffer/streaming TD-PSOLA; phase-vocoder spectral frames; 16-band linked-stereo vocoder; seeded Signalsmith adapter
+PSOLA 440->660.016 Hz; PV 440->550 Hz; streaming PSOLA latency=1536 samples; Signalsmith input/output latency=256/256 samples
+<end of output>
+Test time =   0.41 sec
+----------------------------------------------------------
+Test Passed.
+"pitch_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"pitch_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+13/38 Testing: pitch_profiles_tests
+13/38 Test: pitch_profiles_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/pitch_profiles_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"pitch_profiles_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+HQ16 low one-octave projections: L=0.032400 @27.5 / 0.004026 @55, R=0.018113 @34.375 / 0.002119 @68.75
+HQ16 low target projections by window: 24k L/R=0.033143/0.018671, 64k=0.032656/0.020579
+HQ16 low global 1-200Hz peaks: L=24.9023Hz/0.245194, R=38.0859Hz/0.186025
+HQ16 window[0,16000): L rms=0.003661 peak=0.022836 finite=16000; R rms=0.002566 peak=0.016047 finite=16000
+HQ16 window[16000,32000): L rms=0.174222 peak=0.258591 finite=16000; R rms=0.138191 peak=0.209223 finite=16000
+HQ16 window[32000,48000): L rms=0.173928 peak=0.248330 finite=16000; R rms=0.138178 peak=0.196722 finite=16000
+HQ16 window[48000,64000): L rms=0.175568 peak=0.246968 finite=16000; R rms=0.136163 peak=0.193704 finite=16000
+HQ16 window[64000,80000): L rms=0.172180 peak=0.245279 finite=16000; R rms=0.132962 peak=0.190407 finite=16000
+HQ16 window[80000,96000): L rms=0.172292 peak=0.245095 finite=16000; R rms=0.133282 peak=0.189429 finite=16000
+HQ16 window[96000,104192): L rms=0.176467 peak=0.246728 finite=8192; R rms=0.135017 peak=0.193068 finite=8192
+HQ16 low-frequency target-bin quality: NOT PASSED (expected 27.5/34.375 Hz; measured 24.9023/38.0859 Hz)
+Pitch profile tests passed; LIVE_MONO=82.51Hz, LIVE_POLY=332.12/494.60Hz latency=2048/3072, HQ_RENDER=330.28/495.07Hz latency=8192/8192 samples.
+<end of output>
+Test time =   0.77 sec
+----------------------------------------------------------
+Test Passed.
+"pitch_profiles_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"pitch_profiles_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+14/38 Testing: streaming_yin_tests
+14/38 Test: streaming_yin_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/streaming_yin_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"streaming_yin_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Streaming YIN tests passed; max-work=32768/32768, analyses=5, processing-lag=0 frames.
+<end of output>
+Test time =   0.10 sec
+----------------------------------------------------------
+Test Passed.
+"streaming_yin_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"streaming_yin_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+15/38 Testing: live_mono_pitch_tests
+15/38 Test: live_mono_pitch_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/live_mono_pitch_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"live_mono_pitch_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+LIVE_MONO route tests passed; analyses=123, maxAnalysisWork=32768/32768, estimateAge=832, outputPitch=82.497Hz.
+<end of output>
+Test time =   0.16 sec
+----------------------------------------------------------
+Test Passed.
+"live_mono_pitch_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"live_mono_pitch_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+16/38 Testing: fx_registry_tests
+16/38 Test: fx_registry_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/fx_registry_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"fx_registry_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+FX registry tests passed.
+<end of output>
+Test time =   0.35 sec
+----------------------------------------------------------
+Test Passed.
+"fx_registry_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"fx_registry_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+17/38 Testing: performance_fx_tests
+17/38 Test: performance_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/performance_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"performance_fx_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+BeatRepeat 20BPM/half-beat: copied=72000 frames, per64fCallback<=64, wetOnset=3 frames, boundaryMaxStep=1.1920929e-07
+BeatShift 20BPM/+2beats: expectedDelay=288240 frames (6.005 s), observedImpulse=292336, historyBudget=5442816 bytes
+PASS: track performance FX stereo history, sample events, bounded state, and noalloc tests
+<end of output>
+Test time =   0.21 sec
+----------------------------------------------------------
+Test Passed.
+"performance_fx_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"performance_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+18/38 Testing: modulation_fx_tests
+18/38 Test: modulation_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/modulation_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"modulation_fx_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+PASS: modulation/lo-fi stereo processors, sample events, block invariance, and noalloc tests
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"modulation_fx_tests" end time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+"modulation_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+19/38 Testing: rhythm_tests
+19/38 Test: rhythm_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/rhythm_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"rhythm_tests" start time: Oct 10 09:32 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+RHYTHM_VELOCITY_RR max_control_scope=kits:16,instruments:5; velocity_gain_removed_residual_min=0.095310927,max=0.999994189; kick_rr_gain_removed_residual=0.0623525574; numeric proxy only, no listening qualification
+KIT_NUMERIC_FEATURES instrument=0 min_normalized_distance=0.0317056824; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=1 min_normalized_distance=0.042004463; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=2 min_normalized_distance=0.0199150371; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=5 min_normalized_distance=0.0220166374; proxy metrics only, no perceptual/listening evaluation
+KIT_NUMERIC_FEATURES instrument=12 min_normalized_distance=0.00357990501; proxy metrics only, no perceptual/listening evaluation
+BRUSH_OVERLAP sample_rate=8000 bpm=400 events=40 max_active=4 max_retiring=22 rms=0.00640816334 peak=0.0403060131 max_step=0.0645514876 event_boundary_max_step=0.0645514876 normalized_step=10.0733212
+PASS: rhythm renderer sample timing, fractional tempo, transitions, noalloc, and kit audio tests
+<end of output>
+Test time =   0.87 sec
+----------------------------------------------------------
+Test Passed.
+"rhythm_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"rhythm_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+20/38 Testing: composite_fx_tests
+20/38 Test: composite_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/composite_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"composite_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Radio drive automation: max audio step 0.0342999 at frame 45330; mean change 0.4206353
+Sustainer hard automation: output 0.780529 to 0.000339; max step 0.0032944
+Slow Gear 12 kHz steady carrier: max same-phase gain range 0.0000000
+Slow Gear onset/fade: base gain 0.376847, onset gain 0.160837, max step 0.011322
+PASS: radio, sustainer, slow gear and stereo enhance; stereo response, sample events, block invariance and noalloc
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"composite_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"composite_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+21/38 Testing: modulated_delay_fx_tests
+21/38 Test: modulated_delay_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/modulated_delay_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"modulated_delay_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Mod Delay preflight: 1573216 bytes, ring 131072 frames, wet window 12864.00..14016.00 samples
+Delay ordinal 5: max partition delta 0, mean stereo delta 0.135808, effect delta 4589.5424
+Delay ordinal 46: max partition delta 0, mean stereo delta 0.142986, effect delta 3957.2131
+Delay ordinal 33: max partition delta 0, mean stereo delta 0.134916, effect delta 3818.3153
+Delay ordinal 39: max partition delta 0, mean stereo delta 0.107450, effect delta 4242.9117
+Delay ordinal 37: max partition delta 0, mean stereo delta 0.111526, effect delta 4132.6821
+Vibrato impulse: peak 0.6430377, centroid 492.5262366 samples, energy 0.8279677
+Panning Delay: first L echo 0.999113, second R echo 0.498707, DC-stress peak 0.999113
+PASS: five stereo modulated delays; fractional latency, cross-feedback, bounds, automation partitions and noalloc
+<end of output>
+Test time =   0.31 sec
+----------------------------------------------------------
+Test Passed.
+"modulated_delay_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"modulated_delay_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+22/38 Testing: rhythmic_fx_tests
+22/38 Test: rhythmic_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/rhythmic_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"rhythmic_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Isolator low 80 Hz unity -0.00 dB, mute -38.28 dB
+Isolator mid 1000 Hz unity -0.00 dB, mute -29.98 dB
+Isolator high 7000 Hz unity -0.00 dB, mute -39.55 dB
+Slicer clock: tick@tempo event 240.000; partition deltas 0.0 / 0.0; gate samples 0.2500 / 0.0000 / 0.2500; max adjacent steps 0.00818 / 0.00818 / 0.00104
+PASS: stereo isolator and sample-accurate pattern/step slicers; spectra, clock, bounds and noalloc
+<end of output>
+Test time =   0.12 sec
+----------------------------------------------------------
+Test Passed.
+"rhythmic_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"rhythmic_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+23/38 Testing: spatial_fx_adapters_tests
+23/38 Test: spatial_fx_adapters_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/spatial_fx_adapters_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"spatial_fx_adapters_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+{"schemaVersion":1,"suite":"spatial-fx-adapters","sampleRate":48000,"reverseDelay":{"segmentSeconds":0.100123,"crossfadeSeconds":0.00517,"segmentFrames":4806,"crossfadeFrames":248,"wetPathWarmupFrames":9364,"leftPeakFrame":14069,"leftPeak":0.386062264,"rightPeakFrame":13769,"rightPeak":0.390000015,"partitionMaximumDifference":0,"maximumAdjacentStep":0.0514597297},"gateReverb":{"shortEarlyEnergy":0.0013733575693971707,"shortLateEnergy":0,"longLateEnergy":5.9760636682675525e-05,"shortHoldMs":0,"shortReleaseMs":5,"longHoldMs":250,"longReleaseMs":1000,"closedWetOneMax":0,"closedHalfWetMaxError":0},"reverseReverb":{"earlyEnergy":0.20479992231506849,"lateEnergy":0.023581113994380377,"rightEnergy":0.0079708122939882841,"wetPathWarmupFrames":9364},"wetOneImpulseProbes":[{"ordinal":38,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":11169,"peakFrame":3000,"peak":0.699999988,"energy":1.0125240781578138,"leftEnergy":1.0125240781578138,"rightEnergy":0,"rightToLeftEnergyRatio":0},{"ordinal":48,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":3000,"peakFrame":3226,"peak":0.139441848,"energy":0.038273905479579554,"leftEnergy":0.031312207869169613,"rightEnergy":0.0069616976104099372,"rightToLeftEnergyRatio":0.22233173845478046},{"ordinal":49,"firstNonzeroFrame":3000,"firstNonzeroAtOrAfterWarmup":9364,"peakFrame":3000,"peak":0.196339786,"energy":0.16310805150662872,"leftEnergy":0.14868045502085514,"rightEnergy":0.01442759648577357,"rightToLeftEnergyRatio":0.09703761320712824}],"eventBurst":{"maxEvents":64,"gateAllocationsAndFrees":0,"fdnAllocationsAndFrees":0,"reverseDelayAllocationsAndFrees":0}}
+Spatial FX adapter tests passed
+<end of output>
+Test time =   0.09 sec
+----------------------------------------------------------
+Test Passed.
+"spatial_fx_adapters_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"spatial_fx_adapters_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+24/38 Testing: preamp_fx_tests
+24/38 Test: preamp_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/preamp_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"preamp_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+{"schemaVersion":1,"suite":"preamp-fx","sampleRate":48000,"defaultNonlinearModel":"WdfSymmetricDiode4x","callbackAllocationsAndFrees":[0,0],"partitionMaximumDifference":0,"toneLowFrequencyPlusMinusRatio":4.96892605,"cabinetChangedResponseRms":0.110846214122,"dryImpulseFrame":86,"wetImpulseFirstFrame":73,"wetImpulsePeakFrame":86,"maximumLegalOutputPeak":24.5499191,"maximumLegalOutputSamplesOver16":18600,"failures":0}
+<end of output>
+Test time =   1.10 sec
+----------------------------------------------------------
+Test Passed.
+"preamp_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"preamp_fx_tests" time elapsed: 00:00:01
+----------------------------------------------------------
+
+25/38 Testing: preamp_models_tests
+25/38 Test: preamp_models_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/preamp_models_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"preamp_models_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+{"test":"preamp-models","failures":0,"ampHarmonicSpread":0.00269989926093,"speakerFrequencyResponseSpread":0.323452189708,"micFrequencyResponseSpread":0.25135107099,"micPositionMaxDiff":0.00722425431013,"micDistanceMaxDiff":0.0117782056332,"onMicDirectDelaySamples":6,"offMicDirectDelaySamples":72,"onMicReflectionDelaySamples":18,"offMicReflectionDelaySamples":168,"coldWetOnsetFrame":80,"fixedMixedPathSamples":86,"callbackAllocations":0,"callbackFrees":0,"leftToRightLeakageSamples":0,"ampHarmonicRatios":[0.313716956912,0.313156651605,0.312232602475,0.314320695568,0.313832961432,0.313490849945,0.313411068208,0.312770990872,0.311620796307],"ampLowHighGainRatios":[0.849418629014,0.843339999167,0.821345991128,0.890275248531,1.10262394384,1.45901888377,0.721384573276,1.6402181616,2.16437435],"speakerHighLowGainRatios":[0.999717173056,0.836327734289,0.99365411292,0.975803767068,0.854183726447,0.815485235085,1.06926626055,0.776259195091,0.745814070843],"speakerIrFrames":[1,816,480,576,672,768,576,864,912],"micHighLowGainRatios":[1.07588596731,0.870139055979,1.03347863642,0.920775632761,0.824534896316],"micPositionGainRatios":[0.0880463661797,0.0862241403291,0.0842427213193,0.0821041178551,0.0798135949983,0.0773798089793,0.0748148225277,0.0721338075103,0.0693547523339,0.0664978561614,0.0635848529973]}
+<end of output>
+Test time =   4.08 sec
+----------------------------------------------------------
+Test Passed.
+"preamp_models_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"preamp_models_tests" time elapsed: 00:00:04
+----------------------------------------------------------
+
+26/38 Testing: distortion_fx_tests
+26/38 Test: distortion_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/distortion_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"distortion_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+{"schemaVersion":1,"suite":"distortion-fx","sampleRate":48000,"partitionMaximumDifference":0,"modelMaximumDifference":0.715455174446,"stereoLeakAmplitude":[7.51467283404e-08,6.11512222692e-08],"tone12000To440Ratio":0.0988226290788,"fourXReferenceMaxError":2.47698008651e-05,"aliasEnergyRatio4xVs1x":0.0064014815571,"eventBurstAllocationsAndFrees":0}
+DIST adapter: two oversampled nonlinear models, stereo/tone, partition and callback guards passed
+<end of output>
+Test time =   0.33 sec
+----------------------------------------------------------
+Test Passed.
+"distortion_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"distortion_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+27/38 Testing: octave_fx_tests
+27/38 Test: octave_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/octave_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"octave_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+{"schemaVersion":1,"suite":"octave-fx","sampleRate":48000,"latencySamples":2048,"partitionMaximumDifference":0,"upPeakHz":[439.999669,660.000019],"upWrongChannelRatio":[7.03556121062e-09,1.61544804383e-08],"downPeakHz":[439.999772,330.000077],"downWrongChannelRatio":[5.57607950438e-08,3.15179042788e-08],"unityMaximumError":5.96046447754e-08,"impulseFirstOutput":257,"gatedToneDurationMs":538.666667,"callbackAllocationsAndFrees":[0,0]}
+OCTAVE: true stereo phase-vocoder voice, latency, octave accuracy, duration, and callback checks passed
+<end of output>
+Test time =   0.73 sec
+----------------------------------------------------------
+Test Passed.
+"octave_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"octave_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+28/38 Testing: octave_models_tests
+28/38 Test: octave_models_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/octave_models_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"octave_models_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+{"schemaVersion":1,"suite":"octave-models-fx","sampleRate":48000,"modeToneMinima":[0.284120784,0.0794895155,0.0397448944],"oneOctaveChannelPeaks":[0.344731798,0.284120784],"twoOctaveChannelPeaks":[0.0794895155,0.189985174],"dualTonePeaks":[0.172366093,0.0397448944,0.142074404,0.0950122887],"rightChannelLeakageRms":0,"preEventDifference":0,"postEventDifference":0.0438693910837,"coldImpulseFirstSample":514,"warmImpulseDifferenceFirstSample":940,"fixedMixedPathSamples":4096,"gatedDurationMs":528,"partitionMaximumDifference":0,"preparedBytes":1630184,"callbackAllocations":0,"callbackFrees":0,"failures":0}
+OCTAVE modes: -1, -2, and dual downward voices passed functional standalone checks
+<end of output>
+Test time =   2.10 sec
+----------------------------------------------------------
+Test Passed.
+"octave_models_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"octave_models_tests" time elapsed: 00:00:02
+----------------------------------------------------------
+
+29/38 Testing: temporal_fx_adapters_tests
+29/38 Test: temporal_fx_adapters_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/temporal_fx_adapters_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"temporal_fx_adapters_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+{"schemaVersion":1,"suite":"temporal-fx-adapters","sampleRate":48000,"kinds":["TAPE ECHO","GRANULAR DELAY","WARP","TWIST","ROLL","FREEZE"],"partitionMaximumDifference":0,"energyLeft":[3032.81323102,22.3500645486,392.590706909,909.731270262,180.703599858,587.014870974],"energyRight":[3649.99065241,13.0173881769,213.054093696,358.941579968,105.064209664,345.90381036],"noallocAllocsPlusFreesByKind":[0,0,0,0,0,0],"tapeEchoFirstEchoFrame":2416,"tape4xAdaaReferenceMaxError":2.64644622803e-05,"tapeReferenceBestFitDelayFrames":2400.000,"tapeReferenceRmsAtBestFit":1.87802054688e-05,"tapeTailPeak":0.717427968979,"tapeLateToEarlyTailEnergy":3.8254069488e-10,"tapeFeedbackTailEnergyLowHigh":[0.175806474706,0.293232657102],"tapeOversampledAliasEnergyRatioVs1x":0.00580900058197,"freezePeakHz":[440.000,997.000],"freezeOppositeToneLeakAmplitude":[1.73015335071e-08,7.25650322746e-09],"stftWetImpulseOnset":[1024,1024],"rollCapturedFrames":3000}
+Temporal FX adapters: six real stereo processors, partition/bounds/noalloc and tonal checks passed
+<end of output>
+Test time =   0.62 sec
+----------------------------------------------------------
+Test Passed.
+"temporal_fx_adapters_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"temporal_fx_adapters_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+30/38 Testing: reconstruction_fx_adapter_tests
+30/38 Test: reconstruction_fx_adapter_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/reconstruction_fx_adapter_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"reconstruction_fx_adapter_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+Reconstruction FX adapter tests passed.
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"reconstruction_fx_adapter_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"reconstruction_fx_adapter_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+31/38 Testing: musical_fx_adapter_tests
+31/38 Test: musical_fx_adapter_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/musical_fx_adapter_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"musical_fx_adapter_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+VOCODER20_CARRIER_LR_ENERGY 1.88125543 1.06895568e-09
+musical_fx_adapter_tests: PASS
+<end of output>
+Test time =   0.13 sec
+----------------------------------------------------------
+Test Passed.
+"musical_fx_adapter_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"musical_fx_adapter_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+32/38 Testing: musical_fx_registry_bridge_tests
+32/38 Test: musical_fx_registry_bridge_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/musical_fx_registry_bridge_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"musical_fx_registry_bridge_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+BRIDGE_VOCODER20_CARRIER_LR_ENERGY 3.19206951 4.56292618e-10
+musical_fx_registry_bridge_tests: PASS
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"musical_fx_registry_bridge_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"musical_fx_registry_bridge_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+33/38 Testing: voice_fx_tests
+33/38 Test: voice_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/voice_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"voice_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+electric shift outputs 439.9993 / 659.2323, yin 220.0018 / 330.0031
+electric output rms 0.337678 / 0.259235
+electric scale targets C(G/G#)=0.3536/0.0092 A(G/G#)=0.0107/0.3474, YIN 408.0085/408.0085 Hz
+electric scale output rms 0.353623 / 0.347533
+OSC harmonic ratios: all 0.8021 1.3191 0.7775 0.4778 0.9258, even 0.6442 1.0597 0.6277 0.0002 0.7930
+incremental YIN max work=4096/4096 budget=4096, counts=10/10, active age=4992/4992 frames, promotions=10
+direct PSOLA ratio 0.50 rms 0.212128 autocorrCandidate 109.990 projection(target/subharmonic)=0.2121/0.0046
+direct PSOLA ratio 0.75 rms 0.212537 autocorrCandidate 165.010 projection(target/subharmonic)=0.2129/0.0026
+direct PSOLA ratio 0.94 rms 0.212269 autocorrCandidate 206.813 projection(target/subharmonic)=0.2124/0.0011
+direct PSOLA ratio 1.00 rms 0.212132 autocorrCandidate 220.000 projection(target/subharmonic)=0.2121/0.0033
+direct PSOLA ratio 1.50 rms 0.212130 autocorrCandidate 165.004 projection(target/subharmonic)=0.2121/0.0015
+direct PSOLA ratio 2.00 rms 0.212104 autocorrCandidate 440.001 projection(target/subharmonic)=0.2121/0.0000
+{"schemaVersion":1,"suite":"voice-fx","failures":0,"callbacksAllocations":0,"callbacksFrees":0}
+<end of output>
+Test time =   0.57 sec
+----------------------------------------------------------
+Test Passed.
+"voice_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"voice_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+34/38 Testing: vocoder_fx_tests
+34/38 Test: vocoder_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/vocoder_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"vocoder_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+OSC VOC harmonic ratios saw/vintage/detune/square/rect = 1.1157/0.8720 0.8011/0.6262 1.0177/0.8045 0.6956/0.0009 1.2491/1.0366
+{"schemaVersion":1,"suite":"vocoder-fx","sampleRate":48000,"bands":16,"fixedVocoderWetRms":0.172633684,"midiNote48Rms":0.0974441657,"midiNote72Rms":0.0857770607,"partitionMaxRmsDifference":0,"callbackAllocations":0,"callbackFrees":0,"failures":0}
+<end of output>
+Test time =   0.57 sec
+----------------------------------------------------------
+Test Passed.
+"vocoder_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"vocoder_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+35/38 Testing: synthesis_pitch_fx_tests
+35/38 Test: synthesis_pitch_fx_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/synthesis_pitch_fx_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"synthesis_pitch_fx_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+PASS synth prepare memory accounts pitch-analysis path
+PASS synth prepares clean-room oscillator and incremental pitch path
+PASS synth rejects out-of-block event transactionally
+PASS synth renders 220/330 Hz independent stereo inputs
+PASS synth follows independent left/right fundamentals
+PASS G2B prepares independent stereo PSOLA and divider paths
+PASS G2B renders independent stereo tracked input
+PASS G2B mode 2 resynthesizes true octave-down stereo fundamentals
+PASS G2B mode 1 prepares its divider-resynthesis path
+PASS G2B mode 1 renders its divider blend
+PASS G2B modes produce distinct resynthesized audio, not aliases
+PASS AUTO RIFF prepares fixed-point phrase transport
+PASS AUTO RIFF exposes 30 distinct authored eight-step phrase tables
+PASS AUTO RIFF renders continuous detected-pitch phrase
+PASS AUTO RIFF advances eight eighth-note slots over its 2-second phrase at 120 BPM
+PASS AUTO RIFF phrase control starts a new phrase at its exact sample offset
+PASS AUTO RIFF rejects invalid tempo before changing PCM
+PASS HRM AUTO prepares key-aware stereo harmony
+PASS HRM AUTO renders independent mono/stereo pitch paths
+PASS HRM AUTO selects a C-major diatonic third and keeps right-channel silence
+PASS HRM AUTO hybrid accepts a sample-accurate MIDI target override
+PASS all four processors perform callbacks without heap allocation or free
+METRICS {"synthLeft220Projection":0.0674059,"synthRight330Projection":0.0698954,"g2bLeft110Projection":0.350559,"g2bLeft220Projection":0.00474496,"harmonyLeft261Projection":0.391995,"harmonyMidi440Projection":0.484394,"harmonyRightRms":0,"autoRiffStepsAfterRender":8,"callbackAllocations":0,"callbackFrees":0}
+SUMMARY {"passed":22,"failed":0}
+<end of output>
+Test time =   0.39 sec
+----------------------------------------------------------
+Test Passed.
+"synthesis_pitch_fx_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"synthesis_pitch_fx_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+36/38 Testing: pitch_fx_adapter_tests
+36/38 Test: pitch_fx_adapter_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/pitch_fx_adapter_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"pitch_fx_adapter_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+TRANSPOSE probe: in=(0.220@220Hz,0.170@330Hz), target=(L440 0.0589562 [26.8%], R660 0.149618 [88.0%]), residual=(L220 0.000222854,R330 0.00046313), leakage=(L660 0.00105259,R440 5.1614e-05)
+PITCH BEND unity-crossing step: L output 0.010945/input 0.00633528, R output 0.00801351/input 0.00734289
+HRM MANUAL probe: target=(L 0.00820994@329.628Hz,R 0.0835587@247.221Hz), unshifted=(L 0.000641163@220Hz,R 0.00129164@330Hz)
+Pitch FX adapter tests passed.
+<end of output>
+Test time =   0.33 sec
+----------------------------------------------------------
+Test Passed.
+"pitch_fx_adapter_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"pitch_fx_adapter_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+37/38 Testing: signalsmith_live_prepare_tests
+37/38 Test: signalsmith_live_prepare_tests
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp/signalsmith_live_prepare_tests.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/shared_dsp
+"signalsmith_live_prepare_tests" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+offlineBytes=19268736 seekFrames=16384 liveStateCases=6 failures=0
+<end of output>
+Test time =   0.06 sec
+----------------------------------------------------------
+Test Passed.
+"signalsmith_live_prepare_tests" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"signalsmith_live_prepare_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+38/38 Testing: apinames
+38/38 Test: apinames
+Command: "C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/_deps/rtaudio_src-build/tests/apinames.exe"
+Directory: C:/Users/user1000/AppData/Local/Temp/webrc-native-wav-r2-20261010/_deps/rtaudio_src-build/tests
+"apinames" start time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+Output:
+----------------------------------------------------------
+API names by identifier (C++):
+* 7 'wasapi': 'WASAPI'
+API identifiers by name (C++):
+* 'wasapi': 7
+API names by identifier (C):
+* 7 'wasapi': 'WASAPI'
+API identifiers by name (C):
+* 'wasapi': 7
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"apinames" end time: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä
+"apinames" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 10 09:33 ÖÐ¹ú±ê×¼Ê±¼ä

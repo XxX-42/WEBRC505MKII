@@ -181,6 +181,10 @@ if(BUILD_TESTING)
   target_link_libraries(pitch_fx_adapter_tests PRIVATE webrc_dsp)
   add_test(NAME pitch_fx_adapter_tests COMMAND pitch_fx_adapter_tests)
 
+  add_executable(signalsmith_live_prepare_tests tests/signalsmith_live_prepare_tests.cpp)
+  target_link_libraries(signalsmith_live_prepare_tests PRIVATE webrc_dsp)
+  add_test(NAME signalsmith_live_prepare_tests COMMAND signalsmith_live_prepare_tests)
+
 endif()
 
 add_executable(native_dsp_primitives_bench benchmarks/native_dsp_primitives_bench.cpp)

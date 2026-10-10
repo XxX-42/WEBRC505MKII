@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "trace": "bench\\results\\browser-production-fullgraph-r8-20261010-stress3-r5\\stress-output\\traces\\window-01.trace.json.gz",
+  "sampleRateHz": 48000.0,
+  "eventCount": 192950,
+  "metadata": {
+    "schemaVersion": 1,
+    "windowIndex": 0,
+    "traceStartedAt": "2026-10-10T01:48:05.250Z",
+    "traceCompletedAt": "2026-10-10T01:48:18.023Z",
+    "traceConfig": {
+      "includedCategories": [
+        "audio",
+        "webaudio",
+        "disabled-by-default-audio",
+        "disabled-by-default-audio-worklet",
+        "disabled-by-default-v8.gc"
+      ],
+      "excludedCategories": [
+        "*"
+      ]
+    },
+    "traceCompletion": {
+      "dataLossOccurred": false,
+      "streamFormat": null
+    },
+    "uncompressedSha256": "553019365a6caef21929a0151ffb6f99000b70e3b9a47cf6abde251ffcaf1e0d"
+  },
+  "audioThreads": [
+    [
+      24800,
+      23812
+    ]
+  ],
+  "graphRender": {
+    "durationUnit": "microseconds",
+    "unusableFrameMetadata": 0,
+    "byActualFrames": {
+      "128": {
+        "count": 3727,
+        "p50": 1949,
+        "p95": 3047,
+        "p99": 3559,
+        "p999": 4174,
+        "max": 5723,
+        "deadlineUs": 2666.6666666666665,
+        "overDeadline": 514,
+        "over60Percent": 3022,
+        "over80Percent": 1412
+      }
+    }
+  },
+  "renderRequest": {
+    "durationUnit": "microseconds",
+    "unusableFrameMetadata": 0,
+    "byActualFrames": {
+      "384": {
+        "count": 248,
+        "p50": 6002,
+        "p95": 8587,
+        "p99": 10036,
+        "p999": 10731,
+        "max": 10731,
+        "deadlineUs": null,
+        "overDeadline": null,
+        "over60Percent": null,
+        "over80Percent": null
+      },
+      "416": {
+        "count": 249,
+        "p50": 7978,
+        "p95": 11206,
+        "p99": 12811,
+        "p999": 13532,
+        "max": 13532,
+        "deadlineUs": null,
+        "overDeadline": null,
+        "over60Percent": null,
+        "over80Percent": null
+      },
+      "448": {
+        "count": 248,
+        "p50": 7969,
+        "p95": 11476,
+        "p99": 12892,
+        "p999": 15215,
+        "max": 15215,
+        "deadlineUs": null,
+        "overDeadline": null,
+        "over60Percent": null,
+        "over80Percent": null
+      },
+      "480": {
+        "count": 248,
+        "p50": 7955,
+        "p95": 11269,
+        "p99": 12235,
+        "p999": 14115,
+        "max": 14115,
+        "deadlineUs": null,
+        "overDeadline": null,
+        "over60Percent": null,
+        "over80Percent": null
+      }
+    }
+  },
+  "deviceSampleRateHz": null,
+  "worklet": {
+    "count": 33550,
+    "p50": 15,
+    "p95": 503,
+    "p99": 796,
+    "p999": 963,
+    "max": 3431
+  },
+  "workletsNotContainedInCompleteGraphSlice": 7,
+  "workletChildrenPerGraph": {
+    "9": 3727
+  },
+  "audioThreadGcCompleteSlices": {
+    "count": 198,
+    "p50": 3,
+    "p95": 163,
+    "p99": 525,
+    "p999": 562,
+    "max": 562
+  },
+  "phaseCounts": [
+    {
+      "name": "AudioDestination::RequestRender",
+      "phase": "X",
+      "count": 993
+    },
+    {
+      "name": "AudioWorkletProcessor::Process",
+      "phase": "X",
+      "count": 33550
+    },
+    {
+      "name": "RealtimeAudioDestinationHandler::Render",
+      "phase": "X",
+      "count": 3727
+    }
+  ],
+  "traceDataLossOccurred": false,
+  "qualification": "not-passed",
+  "limitations": [
+    "Captured windows only; not a continuous 30-minute timing distribution.",
+    "Wall-clock slices include scheduling and tracing overhead; not CPU-only timing.",
+    "Graph render and request scopes are separate; never sum nested child durations.",
+    "Request deadlines require independently measured device sample rate; context rate is insufficient.",
+    "No hardware E2E latency or driver XRUN measurement.",
+    "Complete slices are measured; incomplete B/E boundary slices are not fabricated.",
+    "Trace loss must be explicitly false and continuity validated independently."
+  ]
+}

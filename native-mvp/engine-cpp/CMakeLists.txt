@@ -76,6 +76,7 @@ target_link_libraries(native_track_host PUBLIC native_multitrack_core webrc_dsp)
 add_library(native_audio_core STATIC
   src/looper_core.cpp
   src/native_audio_core.cpp
+  src/native_audio_asset_codec.cpp
 )
 target_include_directories(native_audio_core PUBLIC include)
 target_link_libraries(native_audio_core PUBLIC rtaudio nlohmann_json::nlohmann_json native_track_host)
@@ -90,6 +91,14 @@ target_link_libraries(looper_core_tests PRIVATE rtaudio native_track_host)
 add_executable(native_multitrack_core_tests tests/multitrack_looper_core_tests.cpp)
 target_include_directories(native_multitrack_core_tests PRIVATE include)
 target_link_libraries(native_multitrack_core_tests PRIVATE native_multitrack_core)
+
+# Offline stereo WAVE asset codec. This is a reusable building block for
+# project/track I/O; the test does not imply that those host routes exist.
+add_executable(native_audio_asset_codec_tests
+  tests/native_audio_asset_codec_tests.cpp
+  src/native_audio_asset_codec.cpp
+)
+target_include_directories(native_audio_asset_codec_tests PRIVATE include)
 
 add_executable(native_track_host_tests tests/native_track_host_tests.cpp)
 target_include_directories(native_track_host_tests PRIVATE include)
@@ -109,6 +118,7 @@ target_include_directories(native_looper_bench PRIVATE include)
 enable_testing()
 add_test(NAME looper_core_tests COMMAND looper_core_tests)
 add_test(NAME native_multitrack_core_tests COMMAND native_multitrack_core_tests)
+add_test(NAME native_audio_asset_codec_tests COMMAND native_audio_asset_codec_tests)
 add_test(NAME native_track_host_tests COMMAND native_track_host_tests)
 add_test(NAME native_fx_graph_tests COMMAND native_fx_graph_tests)
 add_test(NAME native_fx_control_tests COMMAND native_fx_control_tests)

@@ -494,23 +494,30 @@ assert.equal(defaultLivePolyWarmup.frames, 9216,
 const hqMemory = profileMemoryInfo(18, [[125, 2]]);
 assert.equal(hqMemory.status, 0);
 assert.equal(hqMemory.supported, 1);
-assert.ok(hqMemory.peakBytes > 48 * 1024 * 1024,
-  'explicit two-voice HQ profile must retain its real peak estimate');
+const profileLedgerBaseline = wasm.webrc_dsp_managed_memory_bytes();
+const profileLedgerCapacity = wasm.webrc_dsp_managed_memory_capacity_bytes();
+assert.ok(hqMemory.peakBytes + 2048 <= profileLedgerCapacity - profileLedgerBaseline,
+  'the selected HQ profile must fit the unchanged shared ledger using its reported peak');
 const hqWarmup = profileWarmupFrames(18, [[125, 2]]);
 assert.equal(hqWarmup.status, 0);
 assert.equal(hqWarmup.frames, 33792);
-const profileLedgerBaseline = wasm.webrc_dsp_managed_memory_bytes();
 const defaultLivePoly = wasm.webrc_dsp_fx_create(18, 48000, frames, 2);
 assert.notEqual(defaultLivePoly, 0,
   `legacy default creation should resolve descriptor-default LivePoly (${wasm.webrc_dsp_fx_last_create_status()})`);
 assert.equal(wasm.webrc_dsp_fx_startup_warmup_frames(defaultLivePoly), defaultLivePolyWarmup.frames);
 assert.equal(wasm.webrc_dsp_fx_destroy(defaultLivePoly), 0);
 assert.equal(wasm.webrc_dsp_managed_memory_bytes(), profileLedgerBaseline);
-assert.equal(createFxV2(18, [[125, 2]]), 0,
-  'explicit HQ profile must be rejected when the actual conservative candidate peak exceeds the ledger');
-assert.equal(wasm.webrc_dsp_fx_last_create_status(), -7);
+const selectedHq = createFxV2(18, [[125, 2]]);
+assert.notEqual(selectedHq, 0,
+  `explicit HQ profile should fit using its selected-profile memory query (${wasm.webrc_dsp_fx_last_create_status()})`);
+const selectedHqLedgerChargeBytes = wasm.webrc_dsp_managed_memory_bytes() - profileLedgerBaseline;
+assert.equal(selectedHqLedgerChargeBytes, hqMemory.peakBytes + 2048,
+  'published HQ memory charge must equal the reported peak plus the fixed registry reservation allowance');
+assert.equal(wasm.webrc_dsp_fx_destroy(selectedHq), 0);
 assert.equal(wasm.webrc_dsp_managed_memory_bytes(), profileLedgerBaseline,
-  'rejected HQ profile must leave the shared ledger unchanged');
+  'destroying HQ must return the shared ledger to its exact baseline');
+assert.equal(wasm.memory.buffer.byteLength, initialMemoryBytes,
+  'selected HQ admission must not grow linear memory');
 
 const invalidProfileOutput = allocate(10);
 const invalidProfileBytes = new Uint8Array(memory.buffer, invalidProfileOutput.address, 40);
@@ -614,6 +621,14 @@ console.log(JSON.stringify({
   unsupportedOrdinalsRemainMetadataOnly: 53 - expectedAvailable.size,
   createdAndProcessed: expectedAvailable.size,
   performanceAdapters: performanceCases.map(({ ordinal }) => ordinal),
+  ordinal18Memory: {
+    ledgerCapacityBytes: profileLedgerCapacity,
+    defaultLivePoly: defaultLivePolyMemory,
+    defaultLivePolyWarmupFrames: defaultLivePolyWarmup.frames,
+    selectedHq: hqMemory,
+    selectedHqWarmupFrames: hqWarmup.frames,
+    selectedHqLedgerChargeBytes,
+  },
   delayCandidatesBeforeBudgetRejection: delayHandles.length,
   exhaustionStatus,
   memoryGrowthBytes: memory.buffer.byteLength - initialMemoryBytes,

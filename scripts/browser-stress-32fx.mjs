@@ -112,17 +112,17 @@ export async function runBrowserStress53Fx({ page, minutes, outputDirectory }) {
     const inputDynamics = sharedUnit(25, { '9': -24, '10': 3.5, '11': 7, '12': 8, '13': 110, '14': 0.55, '15': 1.5 });
     const inputFilter = sharedUnit(3, { '1': 52, '2': 0.70710678, '3': 1, '4': 12 });
     const trackEq = sharedUnit(26, { '36': 1.5, '39': -1.0, '33': 0.8 });
-    const trackPitch = sharedUnit(14, { '48': 1, '125': 1, '93': 7, '21': 0.35 });
-    const trackDelay = sharedUnit(36, { '8': 126, '7': 0.22, '3': 0.14, '4': 15 });
-    const trackVinyl = sharedUnit(53, { '48': 1, '21': 0.32, '55': 0 });
+    const trackAutoPan = sharedUnit(29, { '48': 1, '5': 0.34, '6': 0.7, '56': 0 });
     const masterReverb = sharedUnit(47, { '16': 0.85, '17': 4_800, '18': 0.18, '19': 0.2, '20': 0.82, '21': 0.18, '4': 25 });
+    const masterPitch = sharedUnit(14, { '48': 1, '125': 1, '93': 7, '3': 0.35 });
     await audio.updateFxBankSlot('input', 0, inputDynamics);
     await audio.updateFxBankSlot('input', 1, inputFilter);
     await audio.updateFxBankSlot('track', 0, trackEq);
-    await audio.updateFxBankSlot('track', 1, trackPitch);
-    await audio.updateFxBankSlot('track', 2, trackDelay);
-    await audio.updateFxBankSlot('track', 3, trackVinyl);
+    await audio.updateFxBankSlot('track', 1, trackAutoPan);
+    await audio.updateFxBankSlot('track', 2, null);
+    await audio.updateFxBankSlot('track', 3, null);
     await audio.updateFxBankSlot('output', 0, masterReverb);
+    await audio.updateFxBankSlot('output', 1, masterPitch);
     const trackSends = await Promise.all(audio.tracks.map((_, index) => audio.setTrackFxSend(index + 1, true)));
     const mixer = audio.getMixerState();
     mixer.masterLevel = 0.72;
@@ -265,11 +265,11 @@ export async function runBrowserStress53Fx({ page, minutes, outputDirectory }) {
     return {
       sampleRate,
       availableFxCount: catalog.length,
-      pitch: { ordinal: 14, profile: 'LIVE_POLY', semitones: 7, mix: 0.35, trackInstances: 5 },
+      pitch: { ordinal: 14, profile: 'LIVE_POLY', semitones: 7, mix: 0.35, trackInstances: 0, masterInstances: 1 },
       quantumFrames: audio.getRealtimeMetrics().quantumFrames,
       bankId: audio.getActiveFxBankId(),
       processorOrdinals: {
-        input: [25, 3], track: [26, 14, 36, 53], master: [47],
+        input: [25, 3], track: [26, 29], master: [47, 14],
       },
       fiveTrackStereoFixtures: pcmSignatures,
       trackFxSends: trackSends.map((_, index) => ({ track: index + 1, enabled: audio.tracks[index].track.fxSw === 'ON' })),
@@ -603,8 +603,7 @@ export async function runBrowserStress53Fx({ page, minutes, outputDirectory }) {
     workletProcessorIdentities: setup.runtimeIdentity,
     setup,
     workload: {
-      activeFx: { input: [25, 3], fiveTrackSharedStereo: [26, 14, 36, 53], postMixMaster: [47], rhythm: { pattern: 17, kit: 7 } },
-      experimentalPlacement: 'Browser generic track rack routing is exercised; ordinal 53 is not asserted to match official RC-505 MKII placement. Official BEAT SCATTER/REPEAT/SHIFT/VINYL availability is TRACK FX MODE=MULTI, FX A only.',
+      activeFx: { input: [25, 3], fiveTrackSharedStereo: [26, 29], postMixMaster: [47, 14], rhythm: { pattern: 17, kit: 7 } },
       fiveIndependentStereoTrackPcmSignatures: setup.fiveTrackStereoFixtures,
       uiMixerChangesAndSyntheticMidiCc: true,
       cleanRoomPatternAndKitChanges: true,

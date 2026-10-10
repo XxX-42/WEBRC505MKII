@@ -44,6 +44,119 @@ std::uint32_t seekScratchCapacity(const ProcessSpec& spec,
     return static_cast<std::uint32_t>(capacity);
 }
 
+bool accumulateVector(std::size_t count, std::size_t elementBytes,
+                      std::size_t& total) noexcept {
+    if (count != 0U && elementBytes >
+        (std::numeric_limits<std::size_t>::max() - total) / count) return false;
+    total += count * elementBytes;
+    return true;
+}
+
+std::size_t splitFftFastSizeAbove(std::size_t size) noexcept {
+    if (size == 0U) return 0U;
+    std::size_t powerOfTwo = 1U;
+    while (powerOfTwo < 16U && powerOfTwo < size) powerOfTwo *= 2U;
+    while (powerOfTwo <= std::numeric_limits<std::size_t>::max() / 8U &&
+           powerOfTwo * 8U < size) powerOfTwo *= 2U;
+    const std::size_t multiple = (size + powerOfTwo - 1U) / powerOfTwo;
+    const std::size_t adjustedMultiple = multiple == 7U ? multiple + 1U : multiple;
+    if (adjustedMultiple > std::numeric_limits<std::size_t>::max() / powerOfTwo) return 0U;
+    return adjustedMultiple * powerOfTwo;
+}
+
+// Payload model for the pinned Signalsmith Stretch 1.3.2 and the repository-
+// pinned Signalsmith Linear source. This enumerates the vectors configured by SignalsmithStretch::configure
+// and DynamicSTFT/ModifiedRealFFT/SplitFFT. The returned payload is padded by
+// 50%, plus 64 bytes per vector, for the MSVC allocator's observed +39 byte
+// vector overhead and additional WASM allocator/alignment slack. It is a bound
+// for the pinned implementation/configuration, not a standard-library guarantee.
+bool pinnedEngineVectorPayload(const SignalsmithStretchSettings& settings,
+                               std::size_t& payloadBytes) noexcept {
+    const std::size_t block = settings.blockSamples;
+    const std::size_t interval = settings.intervalSamples;
+    const std::size_t channels = settings.channels;
+    if (block == 0U || interval == 0U || channels == 0U) return false;
+
+    // Mirrors DynamicSTFT::configure -> RealFFT::fastSizeAbove -> SplitFFT::fastSizeAbove.
+    const std::size_t stftMinimum = (block + 1U) / 2U;
+    const std::size_t fftMinimum = (stftMinimum + 1U) / 2U;
+    const std::size_t fftHalf = splitFftFastSizeAbove(fftMinimum);
+    if (fftHalf == 0U || fftHalf > std::numeric_limits<std::size_t>::max() / 4U) return false;
+    const std::size_t fftFrames = fftHalf * 4U;
+    const std::size_t half = fftFrames / 2U;
+    const std::size_t bands = half; // DynamicSTFT uses modified spectrum, not unpacked.
+
+    std::size_t inner = 1U;
+    std::size_t outer = half; // SplitFFT is configured at fftFrames / 2.
+    while ((outer & 1U) == 0U && (outer > 1U || inner < 32U)) {
+        inner *= 2U;
+        outer /= 2U;
+    }
+    const std::size_t outerTwiddleCount = inner * (outer - 1U);
+    const std::size_t planSteps = outer <= 1U ? 1U : outer + 3U;
+    const bool genericFinal = outer > 1U && outer != 2U && outer != 3U &&
+                              outer != 4U && outer != 5U;
+    constexpr std::size_t complexBytes = sizeof(std::complex<float>);
+    constexpr std::size_t floatBytes = sizeof(float);
+    constexpr std::size_t peakBytes = sizeof(float) * 2U;
+    constexpr std::size_t bandBytes = sizeof(std::complex<float>) * 3U + sizeof(float);
+    constexpr std::size_t predictionBytes = sizeof(std::complex<float>) + sizeof(float);
+    constexpr std::size_t stepAlignment = alignof(std::size_t);
+    constexpr std::size_t stepBytes =
+        ((sizeof(std::size_t) + sizeof(int) + stepAlignment - 1U) / stepAlignment) * stepAlignment;
+
+    std::size_t payload = 0U;
+    // STFT input/output and windows; input is also stashed, as is output state.
+    if (!accumulateVector((block + interval + 1U) * channels, floatBytes, payload) ||
+        !accumulateVector(block * channels, floatBytes, payload) ||
+        !accumulateVector(block, floatBytes, payload) ||
+        !accumulateVector(bands * channels, complexBytes, payload) ||
+        !accumulateVector(std::max(fftFrames, block), floatBytes, payload) ||
+        !accumulateVector(block * 2U, floatBytes, payload) ||
+        !accumulateVector((block + interval + 1U) * channels, floatBytes, payload) ||
+        !accumulateVector(block * channels, floatBytes, payload) ||
+        !accumulateVector(block, floatBytes, payload)) return false;
+
+    // RealFFT<..., split=false, halfBinShift=true> and its SplitFFT/Pow2FFT.
+    if (!accumulateVector(half, complexBytes, payload) ||
+        !accumulateVector((inner * 3U) / 4U, complexBytes, payload) ||
+        !accumulateVector(inner, complexBytes, payload) ||
+        !accumulateVector(outerTwiddleCount, complexBytes, payload) ||
+        !accumulateVector(outerTwiddleCount * 2U, floatBytes, payload) ||
+        !accumulateVector(genericFinal ? outer : 0U, complexBytes, payload) ||
+        !accumulateVector(genericFinal ? outer : 0U, complexBytes, payload) ||
+        !accumulateVector(planSteps, stepBytes, payload) ||
+        !accumulateVector(half * 2U, complexBytes, payload) ||
+        !accumulateVector(half / 2U + 1U, complexBytes, payload) ||
+        !accumulateVector(half, complexBytes, payload)) return false;
+
+    // Stretch state, copied STFT state, and processing/pre-roll workspaces.
+    const std::size_t outputLatencyUpper = block + interval;
+    if (!accumulateVector(block + interval, floatBytes, payload) ||
+        !accumulateVector(outputLatencyUpper * channels, floatBytes, payload) ||
+        !accumulateVector(bands * channels, bandBytes, payload) ||
+        !accumulateVector(bands / 2U, peakBytes, payload) ||
+        !accumulateVector(bands * 2U, floatBytes, payload) ||
+        !accumulateVector(bands * 2U, floatBytes, payload) ||
+        !accumulateVector(bands, floatBytes * 2U, payload) ||
+        !accumulateVector(bands * channels, predictionBytes, payload) ||
+        !accumulateVector(bands + 2U, floatBytes, payload)) return false;
+
+    // The pinned source has at most 32 vector payload buffers across the
+    // configured STFT, FFT, copied STFT state, and stretch workspaces. Some
+    // buffers are zero-sized for power-of-two configurations; charging all 32
+    // is conservative. The Linear source is pinned by the build manifest
+    // because it does not publish a version constant.
+    constexpr std::size_t vectorCount = 32U;
+    if (payload > (std::numeric_limits<std::size_t>::max() - vectorCount * 64U) / 3U * 2U)
+        return false;
+    payload = (payload * 3U + 1U) / 2U;
+    if (vectorCount * 64U > std::numeric_limits<std::size_t>::max() - payload) return false;
+    payload += vectorCount * 64U;
+    payloadBytes = payload;
+    return true;
+}
+
 bool addWouldOverflow(std::size_t left, std::size_t right) noexcept {
     return right > std::numeric_limits<std::size_t>::max() - left;
 }
@@ -60,10 +173,11 @@ std::size_t SignalsmithStretchAdapter::requiredPrepareBytes(
     if (!validStretchSettings(spec, settings)) return 0;
 
     // Signalsmith's STFT and stretch workspaces are O(blockSamples * channels).
-    // Reserve 512 bytes per configured channel-frame, plus planar callback
-    // input/output sanitation scratch and a fixed allowance for FFT vectors, vector capacity/metadata,
-    // and allocator bookkeeping. This intentionally exceeds observed payload
-    // use for the pinned v1.4.0 source tree; it remains an estimate, so graph
+    // Reserve 512 bytes per configured channel-frame, plus planar seek/render
+    // scratch and an allowance for FFT vectors, vector
+    // capacity/metadata, and allocator bookkeeping. The exact vendor source
+    // set is pinned by the build manifest; the live-only path uses the more
+    // explicit container model above. This remains an estimate, so graph
     // planners also leave headroom within the fixed module memory cap.
     constexpr std::size_t bytesPerEngineChannelFrame = 512;
     constexpr std::size_t fixedAllowanceBytes = 64U * 1024U;
@@ -89,15 +203,48 @@ std::size_t SignalsmithStretchAdapter::requiredPrepareBytes(
     return total;
 }
 
+std::size_t SignalsmithStretchAdapter::requiredLivePrepareBytes(
+    const ProcessSpec& spec, const SignalsmithStretchSettings& settings) noexcept {
+    if (Engine::version[0] != 1U || Engine::version[1] != 3U || Engine::version[2] != 2U ||
+        !validStretchSettings(spec, settings)) return 0U;
+    std::size_t vendorPayload = 0U;
+    if (!pinnedEngineVectorPayload(settings, vendorPayload)) return 0U;
+    std::size_t total = sizeof(Engine);
+    if (vendorPayload > std::numeric_limits<std::size_t>::max() - total) return 0U;
+    total += vendorPayload;
+    // Four planar sanitation/output vectors are sized to the maximum callback,
+    // never to the offline outputSeekLength bound.
+    const std::size_t callbackFrames = spec.maxBlockFrames;
+    const std::size_t scratchBytes = static_cast<std::size_t>(settings.channels) *
+                                     callbackFrames * sizeof(float) * 2U;
+    if (scratchBytes > std::numeric_limits<std::size_t>::max() - total - 4U * 64U) return 0U;
+    total += scratchBytes + 4U * 64U;
+    return total;
+}
+
 bool SignalsmithStretchAdapter::prepare(const ProcessSpec& spec,
                                         const SignalsmithStretchSettings& settings,
                                         std::size_t peakBudgetBytes) noexcept {
+    return prepareWithScratch(spec, settings, peakBudgetBytes, true);
+}
+
+bool SignalsmithStretchAdapter::prepareLive(const ProcessSpec& spec,
+                                            const SignalsmithStretchSettings& settings,
+                                            std::size_t peakBudgetBytes) noexcept {
+    return prepareWithScratch(spec, settings, peakBudgetBytes, false);
+}
+
+bool SignalsmithStretchAdapter::prepareWithScratch(
+    const ProcessSpec& spec, const SignalsmithStretchSettings& settings,
+    std::size_t peakBudgetBytes, bool offlineRenderScratch) noexcept {
     if (!validStretchSettings(spec, settings) ||
         (settings.seed & 0x7fffffffU) != constructorSeed_) {
         return false;
     }
 
-    const std::size_t candidateBytes = requiredPrepareBytes(spec, settings);
+    const std::size_t candidateBytes = offlineRenderScratch
+        ? requiredPrepareBytes(spec, settings)
+        : requiredLivePrepareBytes(spec, settings);
     if (candidateBytes == 0) return false;
     std::size_t stagingPeakBytes = candidateBytes;
     if (prepared_) {
@@ -122,7 +269,8 @@ bool SignalsmithStretchAdapter::prepare(const ProcessSpec& spec,
         candidate->setTransposeFactor(1.0f);
         candidate->setFormantFactor(1.0f, false);
 
-        const auto candidateSeekCapacity = seekScratchCapacity(spec, settings);
+        const auto candidateSeekCapacity = offlineRenderScratch
+            ? seekScratchCapacity(spec, settings) : spec.maxBlockFrames;
         if (candidateSeekCapacity == 0U) return false;
         std::array<std::vector<float>, 2> candidateInputScratch;
         std::array<std::vector<float>, 2> candidateOutputScratch;
@@ -139,6 +287,7 @@ bool SignalsmithStretchAdapter::prepare(const ProcessSpec& spec,
         settings_.seed = constructorSeed_;
         seekInputCapacityFrames_ = candidateSeekCapacity;
         preparedBytes_ = candidateBytes;
+        offlineRenderScratch_ = offlineRenderScratch;
         prepared_ = true;
         return true;
 #if defined(__cpp_exceptions) || defined(_CPPUNWIND)
@@ -210,7 +359,8 @@ bool SignalsmithStretchAdapter::process(const float* const* inputChannels,
 
 bool SignalsmithStretchAdapter::outputSeekLength(float playbackRate,
                                                  std::uint32_t& inputFrames) const noexcept {
-    if (!prepared_ || !engine_ || !validPlaybackRate(playbackRate)) return false;
+    if (!prepared_ || !engine_ || !offlineRenderScratch_ ||
+        !validPlaybackRate(playbackRate)) return false;
     const int required = engine_->outputSeekLength(playbackRate);
     if (required <= 0 || static_cast<std::uint32_t>(required) > seekInputCapacityFrames_) {
         return false;
@@ -223,7 +373,7 @@ bool SignalsmithStretchAdapter::outputSeek(const float* const* inputChannels,
                                            std::uint32_t inputFrames,
                                            float playbackRate) noexcept {
     std::uint32_t requiredFrames = 0U;
-    if (!prepared_ || !engine_ || inputChannels == nullptr ||
+    if (!prepared_ || !engine_ || !offlineRenderScratch_ || inputChannels == nullptr ||
         !validPlaybackRate(playbackRate) ||
         !outputSeekLength(playbackRate, requiredFrames) || inputFrames != requiredFrames ||
         inputFrames > seekInputCapacityFrames_) {
@@ -248,7 +398,8 @@ bool SignalsmithStretchAdapter::outputSeek(const float* const* inputChannels,
 bool SignalsmithStretchAdapter::flush(float* const* outputChannels,
                                       std::uint32_t outputFrames,
                                       float playbackRate) noexcept {
-    if (!prepared_ || !engine_ || outputChannels == nullptr || outputFrames == 0U ||
+    if (!prepared_ || !engine_ || !offlineRenderScratch_ ||
+        outputChannels == nullptr || outputFrames == 0U ||
         outputFrames > seekInputCapacityFrames_ ||
         !validPlaybackRate(playbackRate)) {
         return false;

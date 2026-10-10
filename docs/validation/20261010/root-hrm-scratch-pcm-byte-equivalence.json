@@ -1,0 +1,36 @@
+{
+  "scope": "Independent root byte comparison of existing Native R7 versus live-scratch PCM captures; not a fresh DSP compile or WASM test",
+  "files": [
+    {
+      "file": "input.f32le",
+      "byteCount": 384000,
+      "sha256": "ca239974b7e315ed42824360075807defbe45beeda6aca3dd917583ad676399e",
+      "byteIdentical": true
+    },
+    {
+      "file": "profile1_config0.f32le",
+      "byteCount": 384000,
+      "sha256": "730a66b60909eea0aee25be9714266b49da8c55ab59b478aef82684a218c2df3",
+      "byteIdentical": true
+    },
+    {
+      "file": "profile1_config1.f32le",
+      "byteCount": 384000,
+      "sha256": "280fb72c7da775bd9c6ce679167fa470b03d5073857966b573631d4d2fe214d3",
+      "byteIdentical": true
+    },
+    {
+      "file": "profile2_config0.f32le",
+      "byteCount": 384000,
+      "sha256": "37c2fb2d1e0de826899141312381bb003ece9ddfc462484fdf2048497a4c749a",
+      "byteIdentical": true
+    },
+    {
+      "file": "profile2_config1.f32le",
+      "byteCount": 384000,
+      "sha256": "803c5f926bf8463ffe73c34334e4b5fe8976f6471106a5d6b704c24af76c0989",
+      "byteIdentical": true
+    }
+  ],
+  "allByteIdentical": true
+}

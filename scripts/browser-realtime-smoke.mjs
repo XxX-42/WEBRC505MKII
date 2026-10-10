@@ -12,6 +12,35 @@ const server = await createServer({
   server: { host, port: 0, strictPort: false, hmr: false },
   logLevel: 'warn',
 });
+server.middlewares.use((request, response, next) => {
+  if (request.url?.split('?')[0] !== '/__webrc-channel-count-probe.js') return next();
+  response.statusCode = 200;
+  response.setHeader('content-type', 'text/javascript; charset=utf-8');
+  response.end(`
+    class WebRcChannelCountProbe extends AudioWorkletProcessor {
+      constructor(options) {
+        super();
+        this.captureId = options.processorOptions.captureId;
+      }
+      process(inputs, outputs) {
+        const output = outputs[0] || [];
+        for (let channel = 0; channel < output.length; channel += 1) output[channel].fill(0);
+        if (this.captureId !== 0) {
+          const input = inputs[0] || [];
+          this.port.postMessage({
+            captureId: this.captureId,
+            channelCount: input.length,
+            leftSample: input[0] ? input[0][0] : null,
+            rightSample: input[1] ? input[1][0] : null,
+          });
+          this.captureId = 0;
+        }
+        return true;
+      }
+    }
+    registerProcessor('webrc-channel-count-probe', WebRcChannelCountProbe);
+  `);
+});
 
 let browser;
 let page;
@@ -95,6 +124,23 @@ try {
   result.chromiumLaunchArgs = chromiumArgs;
 
   page = await browser.newPage();
+  result.externalResourceRequestsSkipped = [];
+  result.bootstrapNetwork = [];
+  await page.route('https://**/*', async (route) => {
+    const request = route.request();
+    result.externalResourceRequestsSkipped.push({ url: request.url(), resourceType: request.resourceType() });
+    await route.abort();
+  });
+  page.on('request', (request) => {
+    if (request.url().startsWith(baseUrl) && result.bootstrapNetwork.length < 200) {
+      result.bootstrapNetwork.push({ kind: 'request', url: request.url(), resourceType: request.resourceType() });
+    }
+  });
+  page.on('response', (response) => {
+    if (response.url().startsWith(baseUrl) && result.bootstrapNetwork.length < 200) {
+      result.bootstrapNetwork.push({ kind: 'response', url: response.url(), status: response.status() });
+    }
+  });
   let sharedDspResponsePromise = Promise.resolve();
   page.on('response', (response) => {
     let pathname;
@@ -115,7 +161,12 @@ try {
   });
   page.on('pageerror', (error) => result.browserConsoleErrors.push(`pageerror: ${error.message}`));
   page.on('console', (message) => {
-    if (message.type() === 'error') result.browserConsoleErrors.push(`console: ${message.text()}`);
+    if (message.type() === 'error') {
+      result.browserConsoleErrors.push(`console: ${message.text()} (${JSON.stringify(message.location())})`);
+    }
+  });
+  page.on('requestfailed', (request) => {
+    result.browserConsoleErrors.push(`requestfailed: ${request.url()} (${request.failure()?.errorText ?? 'unknown'})`);
   });
 
   await page.addInitScript((useProjectContextForSyntheticInput) => {
@@ -254,7 +305,10 @@ try {
     window.__webrcOriginalGetUserMedia = originalGetUserMedia;
   }, singleContextSyntheticInput);
 
-  await page.goto(`${baseUrl}/?audio=browser`, { waitUntil: 'networkidle' });
+  // The app keeps a live audio/control connection, so networkidle is not a
+  // meaningful readiness condition here. The explicit engine-ready poll below
+  // is the real startup gate and avoids timing out on long-lived requests.
+  await page.goto(`${baseUrl}/?audio=browser`, { waitUntil: 'commit' });
   result.crossOriginIsolated = await page.evaluate(() => window.crossOriginIsolated);
   result.sharedArrayBufferAvailable = await page.evaluate(() => typeof SharedArrayBuffer !== 'undefined');
 
@@ -981,6 +1035,110 @@ try {
         return { type: `SHARED_DSP_FX_${ordinal}`, enabled: true, params };
       };
       const lowPassFx = (frequencyHz) => makeSharedFx(1, { '1': frequencyHz, '3': 1 });
+
+      // Verify actual Chromium channel negotiation using the same project
+      // AudioContext and production Worklet nodes. A test-only processor sees
+      // the emitted input array count from real BufferSource audio; it does
+      // not infer output channels from AudioNode.channelCount.
+      assert('production audio Worklets use clamped-max channel negotiation',
+        audio.workletNode.channelCount === 2 && audio.workletNode.channelCountMode === 'clamped-max' &&
+          audio.masterFxWorkletNode.channelCount === 2 && audio.masterFxWorkletNode.channelCountMode === 'clamped-max',
+        { looper: { channelCount: audio.workletNode.channelCount, channelCountMode: audio.workletNode.channelCountMode },
+          master: { channelCount: audio.masterFxWorkletNode.channelCount, channelCountMode: audio.masterFxWorkletNode.channelCountMode } });
+      await audio.context.audioWorklet.addModule('/__webrc-channel-count-probe.js');
+      const makeProbeSource = (channels, values) => {
+        const buffer = audio.context.createBuffer(channels, audio.context.sampleRate, audio.context.sampleRate);
+        for (let channel = 0; channel < channels; channel += 1) buffer.getChannelData(channel).fill(values[channel]);
+        const source = audio.context.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        return source;
+      };
+      const captureActualInputChannels = async (source, captureId) => {
+        const probe = new AudioWorkletNode(audio.context, 'webrc-channel-count-probe', {
+          numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+          channelCount: 2, channelCountMode: 'clamped-max',
+          processorOptions: { captureId },
+        });
+        const silent = audio.context.createGain();
+        silent.gain.value = 0;
+        probe.connect(silent);
+        silent.connect(audio.context.destination);
+        const result = new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error(`Channel probe ${captureId} timed out.`)), 2_000);
+          probe.port.onmessage = (event) => {
+            if (event.data?.captureId !== captureId) return;
+            clearTimeout(timer);
+            resolve(event.data);
+          };
+        });
+        source.connect(probe);
+        source.start();
+        return { result: await result, probe, silent };
+      };
+      const monoCarrierProbeSource = makeProbeSource(1, [0.25]);
+      const monoCarrierAttached = audio.setFxCarrierSource(monoCarrierProbeSource);
+      monoCarrierProbeSource.connect(audio.masterFxWorkletNode, 0, 0);
+      const monoCarrierProbe = await captureActualInputChannels(monoCarrierProbeSource, 1);
+      assert('Chrome preserves one emitted channel for an actual mono carrier',
+        monoCarrierAttached && monoCarrierProbe.result.channelCount === 1 &&
+          Math.abs(monoCarrierProbe.result.leftSample - 0.25) < 1e-6 && monoCarrierProbe.result.rightSample === null,
+        { attached: monoCarrierAttached, reportedNodeChannelCount: monoCarrierProbeSource.channelCount,
+          observed: monoCarrierProbe.result });
+      const monoCarrierTap = createStereoNodeTap(audio.masterFxWorkletNode);
+      await sleep(150);
+      const monoInputBeforeCarrierDetach = monoCarrierTap.measure();
+      const monoCarrierDetached = audio.setFxCarrierSource(null);
+      await sleep(150);
+      const monoInputAfterCarrierDetach = monoCarrierTap.measure();
+      assert('detaching the carrier edge preserves a parallel ordinary mono input edge',
+        monoCarrierDetached && monoInputBeforeCarrierDetach[0].rms > 0.1 &&
+          monoInputAfterCarrierDetach[0].rms > 0.1 && monoInputAfterCarrierDetach[1].rms > 0.1,
+        { detached: monoCarrierDetached, before: monoInputBeforeCarrierDetach, after: monoInputAfterCarrierDetach });
+      monoCarrierProbeSource.disconnect(audio.masterFxWorkletNode, 0, 0);
+      monoCarrierProbeSource.stop();
+      monoCarrierProbeSource.disconnect(monoCarrierProbe.probe, 0, 0);
+      monoCarrierProbe.probe.port.close();
+      monoCarrierProbe.probe.disconnect();
+      monoCarrierProbe.silent.disconnect();
+      monoCarrierTap.dispose();
+
+      const stereoCarrierProbeSource = makeProbeSource(2, [0.2, -0.1]);
+      const stereoCarrierAttached = audio.setFxCarrierSource(stereoCarrierProbeSource);
+      stereoCarrierProbeSource.connect(audio.masterFxWorkletNode, 0, 0);
+      const stereoCarrierProbe = await captureActualInputChannels(stereoCarrierProbeSource, 2);
+      assert('Chrome preserves both independent channels for an actual stereo carrier',
+        stereoCarrierAttached && stereoCarrierProbe.result.channelCount === 2 &&
+          Math.abs(stereoCarrierProbe.result.leftSample - 0.2) < 1e-6 &&
+          Math.abs(stereoCarrierProbe.result.rightSample + 0.1) < 1e-6,
+        { attached: stereoCarrierAttached, observed: stereoCarrierProbe.result });
+      const stereoCarrierTap = createStereoNodeTap(audio.masterFxWorkletNode);
+      await sleep(150);
+      const stereoInputBeforeCarrierDetach = stereoCarrierTap.measure();
+      const stereoCarrierDetached = audio.setFxCarrierSource(null);
+      await sleep(150);
+      const stereoInputAfterCarrierDetach = stereoCarrierTap.measure();
+      assert('carrier detach preserves a parallel true-stereo master input',
+        stereoCarrierDetached && stereoInputBeforeCarrierDetach.every((channel) => channel.rms > 0.02) &&
+          stereoInputAfterCarrierDetach.every((channel) => channel.rms > 0.02) &&
+          stereoInputAfterCarrierDetach[0].rms > stereoInputAfterCarrierDetach[1].rms * 1.4,
+        { detached: stereoCarrierDetached, before: stereoInputBeforeCarrierDetach, after: stereoInputAfterCarrierDetach });
+      stereoCarrierProbeSource.disconnect(audio.masterFxWorkletNode, 0, 0);
+      stereoCarrierProbeSource.stop();
+      stereoCarrierProbeSource.disconnect(stereoCarrierProbe.probe, 0, 0);
+      stereoCarrierProbe.probe.port.close();
+      stereoCarrierProbe.probe.disconnect();
+      stereoCarrierProbe.silent.disconnect();
+      stereoCarrierTap.dispose();
+      result.channelNegotiation = {
+        productionNodes: {
+          looperMode: audio.workletNode.channelCountMode,
+          masterMode: audio.masterFxWorkletNode.channelCountMode,
+        },
+        mono: { observed: monoCarrierProbe.result, inputBeforeDetach: monoInputBeforeCarrierDetach, inputAfterDetach: monoInputAfterCarrierDetach },
+        stereo: { observed: stereoCarrierProbe.result, inputBeforeDetach: stereoInputBeforeCarrierDetach, inputAfterDetach: stereoInputAfterCarrierDetach },
+      };
+
       const savedMonitoringForDsp = audio.monitoringEnabled;
       const savedMixerForDsp = audio.getMixerState();
       await audio.selectFxBank(dspTestBank.id);

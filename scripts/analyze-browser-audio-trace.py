@@ -151,7 +151,7 @@ def analyze(path, sample_rate, device_sample_rate=None):
                     "over60Percent": sum(value > .6 * frames * 1e6 / rate for value in values) if rate else None,
                     "over80Percent": sum(value > .8 * frames * 1e6 / rate for value in values) if rate else None,
                 } for frames, values in sorted(groups.items())}}
-    completion = metadata.get("traceCompletion") or {}
+    completion = metadata.get("traceCompletion") or metadata.get("completion") or {}
     data_loss = completion.get("dataLossOccurred")
     return {"schemaVersion": 1, "trace": str(path), "sampleRateHz": sample_rate,
             "eventCount": count, "metadata": metadata,

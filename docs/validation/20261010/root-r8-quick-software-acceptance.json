@@ -1,0 +1,140 @@
+{
+  "scope": "Reduced quick software acceptance requested by user; not original 30-minute, hardware, full Native parity, or strict realtime release acceptance",
+  "quickSoftwareAcceptance": "PASS",
+  "checks": {
+    "wallAndUniqueOutputTargetsReached": true,
+    "noOutputCounterReset": true,
+    "noUnprovokedDspFailure": true,
+    "noUnrecoveredGap": true,
+    "noDroppedOutput": true,
+    "contextRunning": true,
+    "noActionErrors": true
+  },
+  "wasmSha256": "73c8e9ddc08ec743248b26ea9fff9a3bc9629c6e19ae184299ca5c9660df6b2f",
+  "sourceSetSha256": "65adf664379e1b1c23aa134a83d97273a1d41ded70774eafdf9594e809eaf00c",
+  "fullGraphAssertionsPassed": 79,
+  "nativeTestsPassed": 38,
+  "wallSeconds": 194.239,
+  "uniqueOutputSeconds": 192.18933333333334,
+  "workload": {
+    "input": [
+      25,
+      3
+    ],
+    "track": [
+      26,
+      29
+    ],
+    "master": [
+      47,
+      14
+    ]
+  },
+  "pitch": {
+    "ordinal": 14,
+    "profile": "LIVE_POLY",
+    "semitones": 7,
+    "mix": 0.35,
+    "trackInstances": 0,
+    "masterInstances": 1
+  },
+  "timedDeltas": {
+    "processCallbackCount": 72112,
+    "processFrameCount": 9230336,
+    "duplicateCallbacks": 0,
+    "forwardGapCount": 0,
+    "forwardGapFrames": 0,
+    "xrunCount": 0,
+    "droppedOutputCallbacks": 0,
+    "droppedOutputFrames": 0,
+    "droppedInputCallbacks": 0,
+    "droppedInputFrames": 0,
+    "timelineEventCount": 0,
+    "unprovokedSharedDspFailureDelta": 0,
+    "sharedDspFailures": {
+      "stereoProcess": 0,
+      "filterReset": 0,
+      "inputOversize": 0,
+      "rhythmFrame": 0,
+      "rhythmProcess": 0,
+      "rhythmCommand": 0
+    }
+  },
+  "startupAndFinalTotals": {
+    "timelineXrunProxy": 4,
+    "recoveredGapCount": 4,
+    "gapFrames": 512,
+    "unrecoveredGapFrames": 0
+  },
+  "jsHeapSampledUsedBytes": {
+    "min": 11176656,
+    "max": 30072097,
+    "final": 11723657,
+    "scope": "Chrome JS heap only; excludes WASM/native/audio driver allocations"
+  },
+  "looperStorageFinalBytes": 9953792,
+  "hrmConfiguredMemoryReport": "root-r8-hrm-configured-memory.json",
+  "traceWindowGraph128Frames": {
+    "count": 3727,
+    "p50": 1949,
+    "p95": 3047,
+    "p99": 3559,
+    "p999": 4174,
+    "max": 5723,
+    "deadlineUs": 2666.6666666666665,
+    "overDeadline": 514,
+    "over60Percent": 3022,
+    "over80Percent": 1412
+  },
+  "strictTimingAcceptance": "NOT PASSED",
+  "rawStressStatus": "DIAGNOSTIC-PARTIAL-REGISTRY",
+  "rawStatusUnmodified": true,
+  "actionsActuallyObserved": {
+    "steps": 97,
+    "midiEvents": 97,
+    "uiUpdates": 97,
+    "rhythmPresetChanges": 1,
+    "transportStopStarts": 0,
+    "fileLoads": 1,
+    "memoryABACycles": 0,
+    "fxReplacementTransitions": 0,
+    "errors": [],
+    "actionSegments": [
+      {
+        "name": "clean-room-pattern-kit-change",
+        "status": "complete",
+        "startedAtMs": 1791597005360,
+        "durationMs": 5
+      },
+      {
+        "name": "track-five-stereo-audio-import",
+        "status": "complete",
+        "startedAtMs": 1791597005365,
+        "durationMs": 24
+      }
+    ],
+    "startedAt": "2026-10-10T01:48:05.226Z"
+  },
+  "limitations": [
+    "Only one Master LIVE_POLY Pitch instance at +7; five independent Pitch instances and repeated per-track Delay were rejected by the unchanged 48 MiB ledger in earlier setup attempts. Per-track Delay and Vinyl are excluded from accepted workload.",
+    "Memory cycling, FX full-bank replacement and stop/start actions did not occur during this short timed interval; earlier 79-assertion functional smoke covers its stated cases.",
+    "Trace is one captured window, includes tracing/scheduling overhead; graph render elapsed time is not end-to-end audio latency. Strict over-deadline results remain not passed.",
+    "Native Undo/Redo, Reverse, full Memory, host WAV routes and Bounce are unfinished. The offline WAV codec is a building block only.",
+    "No 30-minute stability or physical audio latency certification.",
+    "The 48 MiB managed DSP ledger, fixed 64 MiB WASM linear memory and JS heap are separate scopes."
+  ],
+  "rawEvidenceSha256": {
+    "root-r8-fullgraph79.json": "1bd04aa8f61be145c9ba530a60bcd719121fca11cd61a34c3258983b9471e657",
+    "root-r8-stress3-raw-summary.json": "7a826cd70447143b608740c550cec24cac9f3da87bc040f8db2a5fd851115011",
+    "root-r8-stress3-progress.ndjson": "9cdc92e90f133e13b4e921e6f8651bd48e86281f7d3680e9ef74eb0e537d52cf",
+    "root-r8-stress3-window01.trace.json.gz": "20e583c7e9288f036ad625043874af3e4d9eb79f62d1aa9dccf0d7b5f7ca3a46",
+    "root-r8-stress3-source-manifest.json": "d52a68b1de851f7d87157cef2b49426f223bc6ba1a107237e408cf982766fc82",
+    "root-r8-stress3-provenance.json": "344a6fc8c3db039e8f419047ec000044ebb71901063c10fa2a1b6b01532b33f4"
+  },
+  "earlierFailedRunsPreserved": [
+    "bench\\results\\browser-production-fullgraph-r8-20261010-stress3-r1",
+    "bench\\results\\browser-production-fullgraph-r8-20261010-stress3-r2",
+    "bench\\results\\browser-production-fullgraph-r8-20261010-stress3-r3",
+    "bench\\results\\browser-production-fullgraph-r8-20261010-stress3-r4"
+  ]
+}
