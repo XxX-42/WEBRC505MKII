@@ -440,3 +440,11 @@ bench/results/rubberband-independent-root-review-20261009T202500Z/** -text -whit
 /shared/dsp/include/webrc/dsp/pitch_fx_adapter.hpp -text
 /shared/dsp/src/musical_fx_registry_bridge.cpp -text
 /shared/dsp/src/pitch_fx_adapter.cpp -text
+
+/docs/validation/20261010/root-r7-full-vitest.log -text
+
+/docs/validation/20261010/root-r7-full-vitest-r2-limited-workers.log -text
+
+/docs/validation/20261010/root-r7-actual-worker-r3.log -text
+
+/docs/validation/20261010/root-native36-rerun.log -text

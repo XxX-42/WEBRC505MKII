@@ -1,0 +1,230 @@
+
+ RUN  v3.2.4 D:/Documents/Codes/2024_1_WebRC505MKII/2025_WebRC505MKII_v2
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+stdout | tests/unit/transport.spec.ts > Transport events > emits beat and measure events only when the worklet clock reports samples
+BPM updated to: 120
+
+stdout | tests/unit/transport.spec.ts > Transport events > emits bpm-change when bpm updates
+BPM updated to: 132
+
+stdout | tests/unit/transport.spec.ts > Transport events > aligns measures to the master epoch and recomputes the measure grid after BPM changes
+BPM updated to: 93
+BPM updated to: 119
+
+stdout | tests/unit/transport.spec.ts > Transport events > maps immediate play targets to the shared master phase for normal and reverse playback
+BPM updated to: 120
+
+stdout | tests/unit/transport.spec.ts > Transport events > uses the live master speed and phase anchor for loop boundaries without a mid-loop jump
+BPM updated to: 120
+
+stdout | tests/unit/transport.spec.ts > Transport events > keeps fractional BPM measure boundaries on the unrounded master epoch grid
+BPM updated to: 120
+BPM updated to: 120.5
+
+stdout | tests/unit/transport.spec.ts > Transport events > keeps external MIDI beat/measure phase without a master and independent of master PCM phase
+Master track reset
+
+ ✓ tests/unit/transport.spec.ts (7 tests) 1197ms
+   ✓ Transport events > emits beat and measure events only when the worklet clock reports samples  563ms
+ ↓ tests/unit/sharedPitchRenderActualWasm.spec.ts (1 test | 1 skipped)
+ ✓ tests/unit/projectWavCodec.spec.ts (8 tests) 510ms
+   ✓ project WAVE codec > preserves frequency and frame duration through 48k→44.1k→48k conversion  311ms
+ ✓ tests/unit/sharedPitchRender.spec.ts (13 tests) 607ms
+   ✓ shared pitch render planning > partitions paired input/output without gaps, overlaps, empty blocks, or max-block violations  501ms
+ ✓ tests/unit/compressorWorklet.spec.ts (10 tests) 1117ms
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ tests/unit/useFxPanelState.spec.ts (4 tests) 2969ms
+   ✓ useFxPanelState > updates the active immutable project bank slot with exact effect parameters  2022ms
+   ✓ useFxPanelState > creates an active pitch unit and routes the panel knob to Semitones  464ms
+ ✓ tests/unit/trackAudio.spec.ts (2 tests) 3668ms
+   ✓ TrackAudio transport sync helpers > starts transport when an active track is present  3102ms
+   ✓ TrackAudio transport sync helpers > stops transport when all tracks are stopped or empty  562ms
+ ✓ tests/unit/timeStretch.spec.ts (34 tests) 5522ms
+   ✓ shared stereo keep-pitch time-stretch core > preserves both independent stereo tones and scales duration at %.2fx 0.5  516ms
+   ✓ shared stereo keep-pitch time-stretch core > preserves a musical multi-tone signal at %.2fx 0.5  804ms
+   ✓ shared stereo keep-pitch time-stretch core > preserves a musical multi-tone signal at %.2fx 1.3  717ms
+   ✓ shared stereo keep-pitch time-stretch core > preserves a musical multi-tone signal at %.2fx 2  729ms
+   ✓ shared stereo keep-pitch time-stretch core > preserves interchannel phase for a shared tone at %.2fx 0.5  375ms
+ ❯ tests/unit/trackUnit.spec.ts (3 tests | 1 failed) 6616ms
+   × TrackUnit > writes back level, filter, and reverse controls in browser mode 5134ms
+     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+   ✓ TrackUnit > shows capability reasons and keeps upper deck inert when native limits apply  1151ms
+   ✓ TrackUnit > does not expose runtime controls before the browser engine is ready  327ms
+ ✓ tests/unit/sharedDspGraph.spec.ts (3 tests) 349ms
+ ✓ tests/unit/masterClockEpoch.spec.ts (2 tests) 415ms
+ ✓ tests/unit/projectService.spec.ts (6 tests) 312ms
+ ✓ tests/unit/takeStoragePreflight.spec.ts (1 test) 807ms
+   ✓ take storage budget preflight > rejects an oversized import before PREPARE_TAKE drops redo PCM  799ms
+ ✓ tests/unit/pitchCompositeCache.spec.ts (2 tests) 900ms
+   ✓ keep-pitch composite PCM cache > invalidates exact active OD/Replace frames and drops stale branch PCM on same-depth redo replacement  648ms
+stdout | tests/unit/loadTrackState.spec.ts > imported track state publication > publishes STOPPED before load ACK, refreshes TrackAudio, and plays the imported stereo PCM after clear/reload
+Master track reset
+
+ ✓ tests/unit/browserRouting.spec.ts (7 tests) 143ms
+stdout | tests/unit/loadTrackState.spec.ts > imported track state publication > publishes STOPPED before load ACK, refreshes TrackAudio, and plays the imported stereo PCM after clear/reload
+Master track reset
+
+ ✓ tests/unit/loadTrackState.spec.ts (1 test) 479ms
+   ✓ imported track state publication > publishes STOPPED before load ACK, refreshes TrackAudio, and plays the imported stereo PCM after clear/reload  463ms
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > keeps master PCM and the phase-aligned slave in sync across a quarter-phase 1x→2x speed change
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > keeps master PCM and the phase-aligned slave in sync across a quarter-phase 1x→2x speed change
+BPM updated to: 120
+
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > uses the reverse 1.3x master anchor for real PCM wrap and slave phase targeting
+Master track reset
+BPM updated to: 120
+
+ ✓ tests/unit/masterClockAtomicStart.spec.ts (1 test) 154ms
+stdout | tests/unit/coreAudioBehaviors.spec.ts > integrated browser worklet audio behavior > uses the reverse 1.3x master anchor for real PCM wrap and slave phase targeting
+BPM updated to: 120
+
+stdout | tests/unit/audioEngine.spec.ts > AudioEngine capabilities > keeps an unverified browser route calibration separate from physical round-trip latency
+Unverified active-route loopback calibration: 8.00 ms
+
+ ✓ tests/unit/audioEngine.spec.ts (5 tests) 15702ms
+   ✓ AudioEngine capabilities > reports full browser capabilities  2078ms
+   ✓ AudioEngine capabilities > reports native v1 capability limits and unavailable tracks  1315ms
+   ✓ AudioEngine capabilities > reports the versioned Native five-track host without claiming FX it has not wired  953ms
+   ✓ AudioEngine capabilities > sends Native v2 track mix settings to the bridge and syncs the acknowledged status  1098ms
+   ✓ AudioEngine capabilities > keeps an unverified browser route calibration separate from physical round-trip latency  872ms
+ ✓ tests/unit/projectArchive.spec.ts (3 tests) 65ms
+ ❯ tests/unit/browserRealtimeProtocol.spec.ts (13 tests | 1 failed) 17576ms
+   ✓ browser real-time shared protocol > keeps header, command ring, track states, and Float32 positions disjoint 6ms
+   ✓ browser real-time shared protocol > round-trips and queues absolute target frames above 32-bit range 1ms
+   ✓ browser real-time shared protocol > does not add trigger lookahead to the most recently completed render frame 16ms
+   ✓ browser real-time shared protocol > keeps a future quantized command pending beyond the old two-second timeout 13ms
+   ✓ browser real-time shared protocol > waits for the Worklet to acknowledge project timeline recovery 5ms
+   ✓ browser real-time shared protocol > resolves a scheduled-action promise immediately when the worklet acknowledges cancellation 11ms
+   ✓ persistent AudioWorklet sample processing > switches monitor passthrough at the requested sample inside a render quantum 62ms
+   ✓ persistent AudioWorklet sample processing > acknowledges missing storage and invalid track indices without throwing in the processor 120ms
+   ✓ persistent AudioWorklet sample processing > writes a delayed overdub impulse to the aligned +0 playback location 37ms
+   ✓ persistent AudioWorklet sample processing > writes a delayed overdub impulse to the aligned 1 playback location 72ms
+   ✓ persistent AudioWorklet sample processing > cancels a future quantized start before it can enter RECORDING 147ms
+   ✓ persistent AudioWorklet sample processing > records, stops, and plays five tracks against the same exact sample clock 192ms
+   × persistent AudioWorklet sample processing > does not accumulate loop or beat drift over a long sample-clock run 16881ms
+     → Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ✓ tests/unit/projectMixRenderer.spec.ts (8 tests) 121ms
+ ✓ tests/unit/browserCompressorFailure.spec.ts (1 test) 84ms
+ ✓ tests/unit/rhythmDocuments.spec.ts (3 tests) 18ms
+ ✓ tests/unit/nativeFxBankPersistence.spec.ts (6 tests) 94ms
+ ✓ tests/unit/stereoWorklet.spec.ts (21 tests) 20174ms
+   ✓ shared Worklet filter wet/dry transitions > stages complete PREAMP selectors and Vinyl across all five stereo routes before the warmup fade  17467ms
+   ✓ shared Worklet filter wet/dry transitions > fans one sample-offset MIDI span to five independent stereo track processors  1070ms
+ ✓ tests/unit/browserFxTransactions.spec.ts (9 tests) 49ms
+ ✓ tests/unit/browserFxMidiConsumer.spec.ts (8 tests) 76ms
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > rejects an enabled legacy track FX slot before stopping transport or clearing existing PCM
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+Master track reset
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+BPM updated to: 120
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+Master track reset
+BPM updated to: 120
+BPM updated to: 93
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+Master track reset
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+BPM updated to: 120
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+Master track reset
+BPM updated to: 120
+BPM updated to: 127
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+Master track reset
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+BPM updated to: 120
+
+stdout | tests/unit/browserProjectAdapter.spec.ts > BrowserProjectAdapter master clock restoration > restores A(93 BPM) → B(127 BPM) → A without keeping the prior master or tempo
+Master track reset
+BPM updated to: 120
+BPM updated to: 93
+
+ ✓ tests/unit/browserProjectAdapter.spec.ts (2 tests) 73ms
+ ✓ tests/unit/instrumentGradeMetrics.spec.ts (9 tests) 46ms
+ ✓ tests/unit/browserBulkTransport.spec.ts (3 tests) 61ms
+ ✓ tests/unit/nativeBridgeClient.spec.ts (5 tests) 95ms
+ ✓ tests/unit/nativeFxProtocol.spec.ts (6 tests) 37ms
+ ✓ tests/unit/bounceCaptureProcessor.spec.ts (3 tests) 68ms
+ ✓ tests/unit/controlDispatcher.spec.ts (12 tests) 55ms
+ ✓ tests/unit/nativeRhythmFacade.spec.ts (4 tests) 36ms
+ ✓ tests/unit/nativeFxMidiFacade.spec.ts (6 tests) 39ms
+ ✓ tests/unit/fxParameterControls.spec.ts (3 tests) 37ms
+ ✓ tests/unit/fxDefaultActivation.spec.ts (4 tests) 14ms
+ ✓ tests/unit/nativeTrackProxy.spec.ts (1 test) 10ms
+ ✓ tests/unit/browserFxDefaultActivationActualWasm.spec.ts (1 test) 271ms
+ ✓ tests/unit/historyCompaction.spec.ts (4 tests) 31504ms
+   ✓ long realtime history compaction > compacts over 32 planar takes without changing PCM, recent undo, Rec Back, or Mark  25714ms
+   ✓ long realtime history compaction > aborts a malformed staged batch and preserves the pre-compaction history  1539ms
+   ✓ long realtime history compaction > rejects a near-budget long import before compaction and preserves PCM, mark, undo, and redo  4193ms
+ ✓ tests/unit/coreAudioBehaviors.spec.ts (14 tests) 124396ms
+   ✓ integrated browser worklet audio behavior > AutoRec rejects low noise and a short spike, then records a sustained 250 Hz input after 20 ms  735ms
+   ✓ integrated browser worklet audio behavior > keeps the committed BASE when AutoRec is armed and cancelled before threshold  306ms
+   ✓ integrated browser worklet audio behavior > records two different BASE takes through the real processor and round-trips exact PCM across Empty, Undo, and Redo  485ms
+   ✓ integrated browser worklet audio behavior > plays a one-shot to completion, retriggers from the start, and rejects overdub while one-shot is enabled  597ms
+   ✓ integrated browser worklet audio behavior > preserves untouched PCM around REPLACE1/REPLACE2 takes and interpolates replace masks at 0.5x  1084ms
+   ✓ integrated browser worklet audio behavior > uses variable speed, tempo factors with effective clamp, and executes scheduled commands on their sample frame  865ms
+   ✓ integrated browser worklet audio behavior > keeps fractional-BPM external-clock phase continuous across multiple measures  6950ms
+   ✓ integrated browser worklet audio behavior > starts global clock ticks on the configured master sample epoch  1916ms
+   ✓ integrated browser worklet audio behavior > uses the reverse 1.3x master anchor for real PCM wrap and slave phase targeting  331ms
+   ✓ integrated browser worklet audio behavior > records 185 accelerated seconds through real chunk growth and exports the final stereo PCM without overruns  34225ms
+   ✓ integrated browser worklet audio behavior > records 185 accelerated seconds at 48 kHz through real chunk growth and exports the final stereo PCM  76295ms
+ ✓ tests/unit/masterFxWorklet.spec.ts (12 tests) 126715ms
+   ✓ master shared-DSP Worklet > warms a running serial candidate from live 55 Hz stereo frames and begins the fade next block  44249ms
+   ✓ master shared-DSP Worklet > keeps the old 1→2→4-stage wet chain live through serial warmup and rolls back a failed candidate  81810ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/browserRealtimeProtocol.spec.ts > persistent AudioWorklet sample processing > does not accumulate loop or beat drift over a long sample-clock run
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/unit/browserRealtimeProtocol.spec.ts:452:3
+    450|   });
+    451| 
+    452|   it('does not accumulate loop or beat drift over a long sample-clock …
+       |   ^
+    453|     const { processor, scope } = createProcessor();
+    454|     const { meta, samples } = attachTrack(processor, 0, 256);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/unit/trackUnit.spec.ts > TrackUnit > writes back level, filter, and reverse controls in browser mode
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/unit/trackUnit.spec.ts:97:3
+     95|   }
+     96| 
+     97|   it('writes back level, filter, and reverse controls in browser mode'…
+       |   ^
+     98|     const trackAudio = {
+     99|       state: 'EMPTY',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 40 passed | 1 skipped (43)
+      Tests  2 failed | 268 passed | 1 skipped (271)
+   Start at  08:50:33
+   Duration  135.35s (transform 19.18s, setup 8.81s, collect 21.29s, tests 363.18s, environment 245.88s, prepare 25.10s)
+

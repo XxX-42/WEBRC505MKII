@@ -6,12 +6,13 @@ import { join } from 'node:path';
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
+// Historical filename retained so existing archived runners remain reproducible.
+export async function runBrowserStress53Fx({ page, minutes, outputDirectory }) {
   if (!Number.isFinite(minutes) || minutes < 1 || minutes > 120) {
     throw new RangeError('WEBRC_STRESS_MINUTES must be between 1 and 120.');
   }
   const targetWallMs = minutes * 60_000;
-  const root = outputDirectory || join(process.cwd(), 'bench', 'results', `browser_graph_stress32_${new Date().toISOString().replace(/[-:.]/g, '').replace('T', 'T').replace('Z', 'Z')}`);
+  const root = outputDirectory || join(process.cwd(), 'bench', 'results', `browser_graph_stress53_${new Date().toISOString().replace(/[-:.]/g, '').replace('T', 'T').replace('Z', 'Z')}`);
   if (existsSync(root)) throw new Error(`Refusing to overwrite immutable stress evidence directory: ${root}`);
   mkdirSync(root, { recursive: false });
   const traceDirectory = join(root, 'traces');
@@ -53,7 +54,7 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
       throw new Error(`Realtime commands did not drain before ${label}: ${JSON.stringify(lastObservation)}`);
     };
     if (!audio?.isReady || audio.context.sampleRate !== 48_000 || audio.tracks.length !== 5) {
-      throw new Error('32-FX graph pilot requires a ready five-track 48 kHz Browser engine.');
+      throw new Error('53-FX graph pilot requires a ready five-track 48 kHz Browser engine.');
     }
     if (!audio.sharedDspGraph || !audio.getMasterFxOutputNode()) {
       throw new Error('The Browser input/track/master shared-DSP Worklets are unavailable.');
@@ -98,9 +99,12 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
       }
     }
     const catalog = audio.getSharedDspFxCatalog();
+    if (catalog.length !== 53 || new Set(catalog.map((entry) => entry.ordinal)).size !== 53) {
+      throw new Error(`Whole-product acceptance requires 53 distinct FX, got ${catalog.length}.`);
+    }
     const sharedUnit = (ordinal, overrides = {}) => {
       const descriptor = catalog.find((entry) => entry.ordinal === ordinal);
-      if (!descriptor) throw new Error(`The loaded 32-processor FX registry does not expose ordinal ${ordinal}.`);
+      if (!descriptor) throw new Error(`The loaded FX registry does not expose ordinal ${ordinal}.`);
       const params = Object.fromEntries(descriptor.parameters.map((parameter) => [String(parameter.id), parameter.defaultValue]));
       Object.assign(params, overrides);
       return { type: `SHARED_DSP_FX_${ordinal}`, enabled: true, params };
@@ -108,14 +112,14 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
     const inputDynamics = sharedUnit(25, { '9': -24, '10': 3.5, '11': 7, '12': 8, '13': 110, '14': 0.55, '15': 1.5 });
     const inputFilter = sharedUnit(3, { '1': 52, '2': 0.70710678, '3': 1, '4': 12 });
     const trackEq = sharedUnit(26, { '36': 1.5, '39': -1.0, '33': 0.8 });
-    const trackPan = sharedUnit(29, { '48': 1, '5': 0.21, '6': 0.28, '56': 0, '21': 1 });
+    const trackPitch = sharedUnit(14, { '48': 1, '125': 1, '93': 7, '21': 0.35 });
     const trackDelay = sharedUnit(36, { '8': 126, '7': 0.22, '3': 0.14, '4': 15 });
     const trackVinyl = sharedUnit(53, { '48': 1, '21': 0.32, '55': 0 });
     const masterReverb = sharedUnit(47, { '16': 0.85, '17': 4_800, '18': 0.18, '19': 0.2, '20': 0.82, '21': 0.18, '4': 25 });
     await audio.updateFxBankSlot('input', 0, inputDynamics);
     await audio.updateFxBankSlot('input', 1, inputFilter);
     await audio.updateFxBankSlot('track', 0, trackEq);
-    await audio.updateFxBankSlot('track', 1, trackPan);
+    await audio.updateFxBankSlot('track', 1, trackPitch);
     await audio.updateFxBankSlot('track', 2, trackDelay);
     await audio.updateFxBankSlot('track', 3, trackVinyl);
     await audio.updateFxBankSlot('output', 0, masterReverb);
@@ -260,10 +264,12 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
     window.__webrcStress32Fx = taskState;
     return {
       sampleRate,
+      availableFxCount: catalog.length,
+      pitch: { ordinal: 14, profile: 'LIVE_POLY', semitones: 7, mix: 0.35, trackInstances: 5 },
       quantumFrames: audio.getRealtimeMetrics().quantumFrames,
       bankId: audio.getActiveFxBankId(),
       processorOrdinals: {
-        input: [25, 3], track: [26, 29, 36, 53], master: [47],
+        input: [25, 3], track: [26, 14, 36, 53], master: [47],
       },
       fiveTrackStereoFixtures: pcmSignatures,
       trackFxSends: trackSends.map((_, index) => ({ track: index + 1, enabled: audio.tracks[index].track.fxSw === 'ON' })),
@@ -312,6 +318,7 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
       diagnostics,
       runtimeIdentity: audio.getSharedDspRuntimeIdentity(),
       hostObservation: {
+        jsHeap: performance.memory ? { usedBytes: performance.memory.usedJSHeapSize, totalBytes: performance.memory.totalJSHeapSize, limitBytes: performance.memory.jsHeapSizeLimit, scope: 'Chrome performance.memory JS heap; excludes unreported WASM/native/audio/driver allocations' } : null,
         contextCurrentTimeSeconds: audio.context.currentTime,
         contextState: audio.context.state,
         sampleRate: audio.context.sampleRate,
@@ -508,7 +515,7 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
       };
       progressRows.push(row);
       appendJsonLine(progressFile, { type: 'progress', ...row });
-      console.log(JSON.stringify({ pilot: '32fx', wallSeconds: Math.round(elapsed / 1000),
+      console.log(JSON.stringify({ pilot: '53fx', wallSeconds: Math.round(elapsed / 1000),
         uniqueOutputSeconds: Math.round(cumulativeUniqueOutputFrames / setup.sampleRate),
         targetSeconds: minutes * 60, callbacks: diagnostics.processCallbackCount,
         duplicates: diagnostics.timelineDuplicateCallbacks, gaps: diagnostics.timelineForwardGapCount,
@@ -596,7 +603,7 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
     workletProcessorIdentities: setup.runtimeIdentity,
     setup,
     workload: {
-      activeFx: { input: [25, 3], fiveTrackSharedStereo: [26, 29, 36, 53], postMixMaster: [47], rhythm: { pattern: 17, kit: 7 } },
+      activeFx: { input: [25, 3], fiveTrackSharedStereo: [26, 14, 36, 53], postMixMaster: [47], rhythm: { pattern: 17, kit: 7 } },
       experimentalPlacement: 'Browser generic track rack routing is exercised; ordinal 53 is not asserted to match official RC-505 MKII placement. Official BEAT SCATTER/REPEAT/SHIFT/VINYL availability is TRACK FX MODE=MULTI, FX A only.',
       fiveIndependentStereoTrackPcmSignatures: setup.fiveTrackStereoFixtures,
       uiMixerChangesAndSyntheticMidiCc: true,
@@ -608,8 +615,8 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
       singleAudioContext: true,
     },
     unsupportedOrAbsent: [
-      'Registry has 32 available processors, not all 53 catalog entries.',
-      'Three separately qualified LIVE_MONO, LIVE_POLY and HQ_RENDER routes are absent from this workload.',
+      'The workload exercises selected processors from the verified 53-FX registry, not 53 simultaneous FX.',
+      'Only LIVE_POLY transpose (+7 semitones) is active in this workload; LIVE_MONO and HQ_RENDER are not qualified by it.',
       'No whole AudioRenderTask duration is identified by the available Chrome trace events.',
       'No physical input/output or hardware latency certification.',
     ],
@@ -660,3 +667,6 @@ export async function runBrowserStress32Fx({ page, minutes, outputDirectory }) {
   }, null, 2)}\n`, 'utf8');
   return { ...stressReport, outputDirectory: root };
 }
+
+// Compatibility name used by the existing product smoke entry point.
+export const runBrowserStress32Fx = runBrowserStress53Fx;

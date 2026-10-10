@@ -1,0 +1,77 @@
+Test project C:/Users/user1000/AppData/Local/Temp/webrc-native-rhythm-integration-20261010-r1
+      Start  1: looper_core_tests
+ 1/36 Test  #1: looper_core_tests ...................   Passed    0.04 sec
+      Start  2: native_multitrack_core_tests
+ 2/36 Test  #2: native_multitrack_core_tests ........   Passed    0.05 sec
+      Start  3: native_track_host_tests
+ 3/36 Test  #3: native_track_host_tests .............   Passed    0.50 sec
+      Start  4: native_fx_graph_tests
+ 4/36 Test  #4: native_fx_graph_tests ...............   Passed    4.10 sec
+      Start  5: native_fx_control_tests
+ 5/36 Test  #5: native_fx_control_tests .............   Passed    0.07 sec
+      Start  6: native_rhythm_http_software_smoke
+ 6/36 Test  #6: native_rhythm_http_software_smoke ...   Passed    8.40 sec
+      Start  7: dsp_primitives_tests
+ 7/36 Test  #7: dsp_primitives_tests ................   Passed    0.05 sec
+      Start  8: control_dynamics_tests
+ 8/36 Test  #8: control_dynamics_tests ..............   Passed    0.03 sec
+      Start  9: nonlinear_tests
+ 9/36 Test  #9: nonlinear_tests .....................   Passed    0.21 sec
+      Start 10: spatial_temporal_tests
+10/36 Test #10: spatial_temporal_tests ..............   Passed    0.76 sec
+      Start 11: pitch_tests
+11/36 Test #11: pitch_tests .........................   Passed    0.68 sec
+      Start 12: pitch_profiles_tests
+12/36 Test #12: pitch_profiles_tests ................   Passed    1.18 sec
+      Start 13: streaming_yin_tests
+13/36 Test #13: streaming_yin_tests .................   Passed    0.19 sec
+      Start 14: live_mono_pitch_tests
+14/36 Test #14: live_mono_pitch_tests ...............   Passed    0.41 sec
+      Start 15: fx_registry_tests
+15/36 Test #15: fx_registry_tests ...................   Passed    0.68 sec
+      Start 16: performance_fx_tests
+16/36 Test #16: performance_fx_tests ................   Passed    0.40 sec
+      Start 17: modulation_fx_tests
+17/36 Test #17: modulation_fx_tests .................   Passed    0.19 sec
+      Start 18: rhythm_tests
+18/36 Test #18: rhythm_tests ........................   Passed    1.78 sec
+      Start 19: composite_fx_tests
+19/36 Test #19: composite_fx_tests ..................   Passed    0.45 sec
+      Start 20: modulated_delay_fx_tests
+20/36 Test #20: modulated_delay_fx_tests ............   Passed    0.61 sec
+      Start 21: rhythmic_fx_tests
+21/36 Test #21: rhythmic_fx_tests ...................   Passed    0.27 sec
+      Start 22: spatial_fx_adapters_tests
+22/36 Test #22: spatial_fx_adapters_tests ...........   Passed    0.19 sec
+      Start 23: preamp_fx_tests
+23/36 Test #23: preamp_fx_tests .....................   Passed    1.58 sec
+      Start 24: preamp_models_tests
+24/36 Test #24: preamp_models_tests .................   Passed    5.85 sec
+      Start 25: distortion_fx_tests
+25/36 Test #25: distortion_fx_tests .................   Passed    0.59 sec
+      Start 26: octave_fx_tests
+26/36 Test #26: octave_fx_tests .....................   Passed    1.20 sec
+      Start 27: octave_models_tests
+27/36 Test #27: octave_models_tests .................   Passed    4.64 sec
+      Start 28: temporal_fx_adapters_tests
+28/36 Test #28: temporal_fx_adapters_tests ..........   Passed    1.38 sec
+      Start 29: reconstruction_fx_adapter_tests
+29/36 Test #29: reconstruction_fx_adapter_tests .....   Passed    0.11 sec
+      Start 30: musical_fx_adapter_tests
+30/36 Test #30: musical_fx_adapter_tests ............   Passed    0.19 sec
+      Start 31: musical_fx_registry_bridge_tests
+31/36 Test #31: musical_fx_registry_bridge_tests ....   Passed    0.09 sec
+      Start 32: voice_fx_tests
+32/36 Test #32: voice_fx_tests ......................   Passed    0.91 sec
+      Start 33: vocoder_fx_tests
+33/36 Test #33: vocoder_fx_tests ....................   Passed    1.08 sec
+      Start 34: synthesis_pitch_fx_tests
+34/36 Test #34: synthesis_pitch_fx_tests ............   Passed    0.81 sec
+      Start 35: pitch_fx_adapter_tests
+35/36 Test #35: pitch_fx_adapter_tests ..............   Passed    0.70 sec
+      Start 36: apinames
+36/36 Test #36: apinames ............................   Passed    0.06 sec
+
+100% tests passed out of 36
+
+Total Test time (real) =  40.51 sec
