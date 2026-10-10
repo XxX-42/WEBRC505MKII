@@ -1,0 +1,56 @@
+{
+  "scope": "Actual Chromium OfflineAudioContext/AudioWorklet channel negotiation; not production graph or realtime performance proof",
+  "browserVersion": "149.0.7827.55",
+  "executable": "C:\\Users\\user1000\\AppData\\Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe",
+  "executableSha256": "b798f9e53a98d29eb7f36f8c409f905d3184780a04d2bcb56989067194784bd1",
+  "cases": [
+    {
+      "mode": "explicit",
+      "sourceChannels": 1,
+      "sourceChannelCountProperty": 2,
+      "observed": {
+        "channels": 2,
+        "firstSamples": [
+          0.25,
+          0
+        ]
+      }
+    },
+    {
+      "mode": "explicit",
+      "sourceChannels": 2,
+      "sourceChannelCountProperty": 2,
+      "observed": {
+        "channels": 2,
+        "firstSamples": [
+          0.25,
+          -0.5
+        ]
+      }
+    },
+    {
+      "mode": "clamped-max",
+      "sourceChannels": 1,
+      "sourceChannelCountProperty": 2,
+      "observed": {
+        "channels": 1,
+        "firstSamples": [
+          0.25
+        ]
+      }
+    },
+    {
+      "mode": "clamped-max",
+      "sourceChannels": 2,
+      "sourceChannelCountProperty": 2,
+      "observed": {
+        "channels": 2,
+        "firstSamples": [
+          0.25,
+          -0.5
+        ]
+      }
+    }
+  ],
+  "pass": true
+}
