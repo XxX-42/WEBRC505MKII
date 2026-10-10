@@ -1,0 +1,35 @@
+{
+  "scope": "Actual configured WASM factory admission and conservative accounting; ledger values are not measured allocator payload or end-to-end latency",
+  "moduleSha256": "3cbabce3f7ed0a0d4db512388152422ec97cd24b0682ec19902ef2189b3078e3",
+  "sampleRateHz": 48000,
+  "blockFrames": 128,
+  "channels": 2,
+  "managedCapacityBytes": 50331648,
+  "fixedWasmMemoryBytes": 67108864,
+  "cases": [
+    {
+      "profile": 1,
+      "objectBytes": 104,
+      "persistentPreparedBytes": 11690744,
+      "prepareScratchBytes": 11690744,
+      "peakBytes": 23381592,
+      "created": true,
+      "createStatus": 0,
+      "reservedLedgerDelta": 23383640
+    },
+    {
+      "profile": 2,
+      "objectBytes": 104,
+      "persistentPreparedBytes": 38822648,
+      "prepareScratchBytes": 38822648,
+      "peakBytes": 77645400,
+      "created": false,
+      "createStatus": -7,
+      "reservedLedgerDelta": 0
+    }
+  ],
+  "bothProfilesAdmitted": false,
+  "ledgerReturnedToBaseline": true,
+  "memoryGrowth": false,
+  "wasiCalls": 0
+}
