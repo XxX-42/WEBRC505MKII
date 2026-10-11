@@ -11,7 +11,7 @@
 
     <div class="control-cluster">
       <button class="status-action" type="button" @click="$emit('retry-audio')">
-        {{ isInitialized ? 'READY' : 'RETRY' }}
+        {{ isInitialized ? 'READY' : audioModeLabel === 'BROWSER' ? 'START AUDIO' : 'RETRY' }}
       </button>
       <button class="status-action" type="button" @click="$emit('toggle-audio-mode')">
         AUDIO {{ audioModeLabel }}

@@ -35,6 +35,7 @@ const initAudio = async (silent = false) => {
 
   initInFlight.value = true;
   try {
+    if (audioMode.value === 'browser') await engine.activateAudioFromUserGesture();
     await engine.init();
     isInitialized.value = true;
     uiStatus.value = engine.getUiStatus();
@@ -43,7 +44,8 @@ const initAudio = async (silent = false) => {
     console.error('Failed to initialize audio engine:', error);
     uiStatus.value = engine.getUiStatus();
     if (!silent) {
-      initError.value = uiStatus.value.lastError || `${audioModeLabel.value} audio is unavailable.`;
+      initError.value = error instanceof Error ? error.message
+        : uiStatus.value.lastError || `${audioModeLabel.value} audio is unavailable.`;
     }
   } finally {
     initInFlight.value = false;
@@ -65,7 +67,9 @@ onMounted(() => {
     isInitialized.value = status.ready;
     initError.value = status.lastError;
   });
-  initAudio();
+  // Browser playback/capture needs an explicit user gesture. Auto-starting
+  // can leave AudioContext.resume() pending and make RETRY ineffective.
+  if (audioMode.value === 'native') initAudio();
 });
 
 onUnmounted(() => {

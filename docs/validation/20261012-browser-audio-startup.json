@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-12",
+  "scope": "Actual Codex in-app browser on localhost:5173, production build, real microphone permission granted by user; not physical latency/long-run acceptance",
+  "causes": [
+    "Browser mode auto-started before a user gesture; AudioContext.resume could stay pending.",
+    "App retry returned while initInFlight was true.",
+    "getUserMedia could remain pending indefinitely waiting for microphone permission."
+  ],
+  "fixes": [
+    "Browser now starts via START AUDIO, calling resume synchronously before asynchronous preparation. Native auto-start remains unchanged.",
+    "Resume is bounded to 15 seconds; capture permission is bounded to 20 seconds. UI reports the thrown error and exits the connecting state.",
+    "Capture streams granted after timeout are stopped rather than leaked."
+  ],
+  "validation": {
+    "targetedUnitTests": {
+      "passed": 17,
+      "files": 3
+    },
+    "typecheckAndProductionBuild": "PASS",
+    "actualUiStatus": "BROWSER AUDIO READY",
+    "captureInput": "Default Realtek microphone array",
+    "selectedPlaybackOutput": "Realtek speakers; changed from default VoiceMeeter Aux output in the test UI",
+    "recordedTrack": 1,
+    "recordedFrames": 426240,
+    "sampleRate": 48000,
+    "loopSeconds": 8.88,
+    "observedUiTransitions": [
+      "EMPTY",
+      "RECORD",
+      "PLAY",
+      "STOP",
+      "PLAY",
+      "STOP"
+    ],
+    "observedLiveDiagnostics": {
+      "backend": "sab-worklet",
+      "quantumFrames": 128,
+      "underruns": 0,
+      "commandOverruns": 0,
+      "inputDropoutBlocks": 0,
+      "trackCapacityOverruns": 0
+    },
+    "outputTestTone": "Triggered on selected Realtek output without a new reported error",
+    "physicalAudibility": "Not independently measured; user can listen during testing"
+  },
+  "finalUi": {
+    "audioReady": true,
+    "track1": "Stopped with test loop retained for replay",
+    "otherTracks": "Empty",
+    "monitoring": "THRU OFF"
+  },
+  "privacy": "No captured microphone PCM or WAV is stored in the repository; only UI screenshots and text diagnostics are committed."
+}

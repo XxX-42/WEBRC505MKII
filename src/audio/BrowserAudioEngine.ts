@@ -1,4 +1,5 @@
 import { TrackAudio } from './TrackAudio';
+import { waitForAudioStartup } from './browserAudioStartup';
 import { MemorySettings, Track, TrackState, TransportState } from '../core/types';
 import { Transport } from '../core/Transport';
 import { FXChain } from './FXChain';
@@ -324,6 +325,12 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.loadDevicePreferences();
     }
 
+    public activateAudioFromUserGesture(): Promise<void> {
+        // resume() must be called synchronously within the click handler.
+        return waitForAudioStartup(this.context.resume(),
+            'Audio playback is blocked. Click START AUDIO and allow audio playback in this browser.');
+    }
+
     public async init() {
         if (this.initialized) return;
         try {
@@ -446,7 +453,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                     routingDelayFrames: BROWSER_REALTIME_QUANTUM_FRAMES,
                 }, 'rhythm');
                 this.routingGraph.subscribe((state) => this.routingListeners.forEach((listener) => listener(state)));
-                if (this.context.state === 'suspended') await this.context.resume();
+                if (this.context.state === 'suspended') await this.activateAudioFromUserGesture();
                 await this.realtimeRuntime.prepareAllTracks();
                 this.rhythmEngine.setRealtimeControl((running, pattern, preserveCustomPattern) => {
                     void this.realtimeRuntime?.setRhythm(running, pattern, undefined, preserveCustomPattern)
@@ -454,7 +461,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 });
             }
 
-            if (this.context.state === 'suspended') await this.context.resume();
+            if (this.context.state === 'suspended') await this.activateAudioFromUserGesture();
 
             if (this.selectedOutputDeviceId) {
                 await this.setOutputDevice(this.selectedOutputDeviceId);
@@ -2266,7 +2273,12 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     private async requestInputStream(deviceId: string): Promise<MediaStream> {
-        return navigator.mediaDevices.getUserMedia(this.createInputConstraints(deviceId));
+        return waitForAudioStartup(
+            navigator.mediaDevices.getUserMedia(this.createInputConstraints(deviceId)),
+            'Microphone permission is still pending. Allow microphone access, then click START AUDIO again.',
+            20_000,
+            stream => stream.getTracks().forEach(track => track.stop()),
+        );
     }
 
     private async replaceInputStream(stream: MediaStream, requestedDeviceId: string | null): Promise<void> {

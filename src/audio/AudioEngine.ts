@@ -368,6 +368,13 @@ export class AudioEngine {
     await this.activeEngine.init();
   }
 
+  /** Invoke directly from a click, before any asynchronous preparation. */
+  public activateAudioFromUserGesture(): Promise<void> {
+    return this.currentMode === 'browser'
+      ? this.browser.activateAudioFromUserGesture()
+      : Promise.resolve();
+  }
+
   public async getDevices(): Promise<AudioDeviceSelection> {
     if (this.currentMode === 'native') {
       const selection: NativeDeviceSelection = await this.nativeEngine.getDevices();

@@ -1,0 +1,510 @@
+- banner:
+  - generic: BROWSER AUDIO READY
+  - generic: "BROWSER: FULL TRACK CONTROLS"
+  - button "READY"
+  - button "AUDIO BROWSER"
+  - button "UI CLASSIC"
+- main:
+  - generic: BOSS
+  - generic: RC-505mkII LOOP STATION
+  - generic: LIVE LOOPING
+  - heading "INPUT FX" [level=2]
+  - paragraph: EDIT / FX BANK
+  - button "Toggle input FX edit mode":
+    - generic: EDIT
+  - generic: INPUT FX
+  - generic: BANK A
+  - combobox "Active FX bank":
+    - option "Bank 1" [selected]
+    - option "Bank 2"
+    - option "Bank 3"
+    - option "Bank 4"
+  - combobox "Input FX type":
+    - option "EMPTY" [disabled] [selected]
+    - option "COMPRESSOR"
+    - option "FILTER"
+    - option "DELAY"
+    - option "REVERB"
+    - option "SLICER"
+    - option "PHASER"
+    - option "SHARED_DSP_FX_1"
+    - option "SHARED_DSP_FX_2"
+    - option "SHARED_DSP_FX_3"
+    - option "SHARED_DSP_FX_4"
+    - option "SHARED_DSP_FX_5"
+    - option "SHARED_DSP_FX_6"
+    - option "SHARED_DSP_FX_7"
+    - option "SHARED_DSP_FX_8"
+    - option "SHARED_DSP_FX_9"
+    - option "SHARED_DSP_FX_10"
+    - option "SHARED_DSP_FX_11"
+    - option "SHARED_DSP_FX_12"
+    - option "SHARED_DSP_FX_13"
+    - option "SHARED_DSP_FX_14"
+    - option "SHARED_DSP_FX_15"
+    - option "SHARED_DSP_FX_16"
+    - option "SHARED_DSP_FX_17"
+    - option "SHARED_DSP_FX_18"
+    - option "SHARED_DSP_FX_19"
+    - option "SHARED_DSP_FX_20"
+    - option "SHARED_DSP_FX_21"
+    - option "SHARED_DSP_FX_22"
+    - option "SHARED_DSP_FX_23"
+    - option "SHARED_DSP_FX_24"
+    - option "SHARED_DSP_FX_25"
+    - option "SHARED_DSP_FX_26"
+    - option "SHARED_DSP_FX_27"
+    - option "SHARED_DSP_FX_28"
+    - option "SHARED_DSP_FX_29"
+    - option "SHARED_DSP_FX_30"
+    - option "SHARED_DSP_FX_31"
+    - option "SHARED_DSP_FX_32"
+    - option "SHARED_DSP_FX_33"
+    - option "SHARED_DSP_FX_34"
+    - option "SHARED_DSP_FX_35"
+    - option "SHARED_DSP_FX_36"
+    - option "SHARED_DSP_FX_37"
+    - option "SHARED_DSP_FX_38"
+    - option "SHARED_DSP_FX_39"
+    - option "SHARED_DSP_FX_40"
+    - option "SHARED_DSP_FX_41"
+    - option "SHARED_DSP_FX_42"
+    - option "SHARED_DSP_FX_43"
+    - option "SHARED_DSP_FX_44"
+    - option "SHARED_DSP_FX_45"
+    - option "SHARED_DSP_FX_46"
+    - option "SHARED_DSP_FX_47"
+    - option "SHARED_DSP_FX_48"
+    - option "SHARED_DSP_FX_49"
+    - option "SHARED_DSP_FX_50"
+    - option "SHARED_DSP_FX_51"
+    - option "SHARED_DSP_FX_52"
+    - option "SHARED_DSP_FX_53"
+  - generic: ACTIVE OFF
+  - generic: PARAM 0%
+  - button "Select input FX slot A":
+    - generic: A
+  - button "Select input FX slot B":
+    - generic: B
+  - button "Select input FX slot C":
+    - generic: C
+  - button "Select input FX slot D":
+    - generic: D
+  - button "Toggle input FX slot A" [disabled]:
+    - generic: ACTIVATE
+  - button "Open memory controls":
+    - generic: MEMORY
+  - button "Open selected track settings":
+    - generic: TRACK SET
+  - button "Open audio input and output settings":
+    - generic: AUDIO I/O
+  - button "Open loop and tempo settings":
+    - generic: LOOP SET
+  - button "Stop all tracks":
+    - generic: ALL STOP
+  - button "Undo selected track":
+    - generic: UNDO
+  - button "Redo selected track":
+    - generic: REDO
+  - generic: MEMORY
+  - generic: J=108.0
+  - generic: "01"
+  - generic: Memory01
+  - generic: TRACK 1
+  - generic: PLAYING
+  - generic: 1.00× PITCH LOOP IMMEDIATE
+  - generic: CENTER-MAIN
+  - button "Close open panel":
+    - generic: EXIT
+  - button "Open memory controls":
+    - generic: ENTER
+  - button "Increase tempo": +
+  - button "Select previous track": <
+  - button "Select next track": ">"
+  - button "Decrease tempo": −
+  - button "Record or play selected track": ●
+  - generic: MASTER LEVEL
+  - generic: 100%
+  - button "Tap tempo":
+    - generic: TAP TEMPO
+  - button "Open rhythm pattern and kit editor":
+    - generic: RHYTHM EDIT
+  - heading "TRACK FX" [level=2]
+  - paragraph: EDIT / FX BANK
+  - button "Toggle track FX edit mode":
+    - generic: EDIT
+  - generic: TRACK FX
+  - generic: TRACK 1 · SLOT A
+  - combobox "Active FX bank":
+    - option "Bank 1" [selected]
+    - option "Bank 2"
+    - option "Bank 3"
+    - option "Bank 4"
+  - combobox "Track FX type":
+    - option "EMPTY" [disabled] [selected]
+    - option "COMPRESSOR"
+    - option "FILTER"
+    - option "DELAY"
+    - option "REVERB"
+    - option "SLICER"
+    - option "PHASER"
+    - option "SHARED_DSP_FX_1"
+    - option "SHARED_DSP_FX_2"
+    - option "SHARED_DSP_FX_3"
+    - option "SHARED_DSP_FX_4"
+    - option "SHARED_DSP_FX_5"
+    - option "SHARED_DSP_FX_6"
+    - option "SHARED_DSP_FX_7"
+    - option "SHARED_DSP_FX_8"
+    - option "SHARED_DSP_FX_9"
+    - option "SHARED_DSP_FX_10"
+    - option "SHARED_DSP_FX_11"
+    - option "SHARED_DSP_FX_12"
+    - option "SHARED_DSP_FX_13"
+    - option "SHARED_DSP_FX_14"
+    - option "SHARED_DSP_FX_15"
+    - option "SHARED_DSP_FX_16"
+    - option "SHARED_DSP_FX_17"
+    - option "SHARED_DSP_FX_18"
+    - option "SHARED_DSP_FX_19"
+    - option "SHARED_DSP_FX_20"
+    - option "SHARED_DSP_FX_21"
+    - option "SHARED_DSP_FX_22"
+    - option "SHARED_DSP_FX_23"
+    - option "SHARED_DSP_FX_24"
+    - option "SHARED_DSP_FX_25"
+    - option "SHARED_DSP_FX_26"
+    - option "SHARED_DSP_FX_27"
+    - option "SHARED_DSP_FX_28"
+    - option "SHARED_DSP_FX_29"
+    - option "SHARED_DSP_FX_30"
+    - option "SHARED_DSP_FX_31"
+    - option "SHARED_DSP_FX_32"
+    - option "SHARED_DSP_FX_33"
+    - option "SHARED_DSP_FX_34"
+    - option "SHARED_DSP_FX_35"
+    - option "SHARED_DSP_FX_36"
+    - option "SHARED_DSP_FX_37"
+    - option "SHARED_DSP_FX_38"
+    - option "SHARED_DSP_FX_39"
+    - option "SHARED_DSP_FX_40"
+    - option "SHARED_DSP_FX_41"
+    - option "SHARED_DSP_FX_42"
+    - option "SHARED_DSP_FX_43"
+    - option "SHARED_DSP_FX_44"
+    - option "SHARED_DSP_FX_45"
+    - option "SHARED_DSP_FX_46"
+    - option "SHARED_DSP_FX_47"
+    - option "SHARED_DSP_FX_48"
+    - option "SHARED_DSP_FX_49"
+    - option "SHARED_DSP_FX_50"
+    - option "SHARED_DSP_FX_51"
+    - option "SHARED_DSP_FX_52"
+    - option "SHARED_DSP_FX_53"
+  - generic: PARAM 0%
+  - generic: APPLY T1 T2 T3 T4 T5
+  - button "Toggle track FX slot A" [disabled]:
+    - generic: ACTIVATE
+  - button "Select track FX slot A":
+    - generic: A
+  - button "Select track FX slot B":
+    - generic: B
+  - button "Select track FX slot C":
+    - generic: C
+  - button "Select track FX slot D":
+    - generic: D
+  - button "Disable track FX send for track 1" [pressed]: T1 ON
+  - button "Disable track FX send for track 2" [pressed]: T2 ON
+  - button "Disable track FX send for track 3" [pressed]: T3 ON
+  - button "Disable track FX send for track 4" [pressed]: T4 ON
+  - button "Disable track FX send for track 5" [pressed]: T5 ON
+  - generic: "1"
+  - generic: PLAY
+  - button "Track FX applied to track 1":
+    - generic: FX
+  - button "Track 1 selected":
+    - generic: TRACK
+  - generic: "CLEAR: HOLD"
+  - button "Stop track (hold to clear)"
+  - slider: "100"
+  - button "Record or play track":
+    - generic: ▶
+  - generic: REC
+  - generic: PLAY
+  - generic: DUB
+  - generic: REPLACE
+  - generic "TRACK 1 SETTINGS"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "LOOP"
+  - option "HALF"
+  - option "NORMAL" [selected]
+  - option "DOUBLE"
+  - option "PITCH" [selected]
+  - option "XFADE"
+  - option "OVERDUB" [selected]
+  - option "REPLACE 1"
+  - option "REPLACE 2"
+  - generic: "2"
+  - generic: EMPTY
+  - button "Track FX applied to track 2":
+    - generic: FX
+  - button "Select track 2":
+    - generic: TRACK
+  - generic: "CLEAR: HOLD"
+  - button "Stop track (hold to clear)"
+  - slider: "100"
+  - button "Record or play track":
+    - generic: ●
+  - generic: REC
+  - generic: PLAY
+  - generic: DUB
+  - generic: REPLACE
+  - generic "TRACK 2 SETTINGS"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "LOOP"
+  - option "HALF"
+  - option "NORMAL" [selected]
+  - option "DOUBLE"
+  - option "PITCH" [selected]
+  - option "XFADE"
+  - option "OVERDUB" [selected]
+  - option "REPLACE 1"
+  - option "REPLACE 2"
+  - generic: "3"
+  - generic: EMPTY
+  - button "Track FX applied to track 3":
+    - generic: FX
+  - button "Select track 3":
+    - generic: TRACK
+  - generic: "CLEAR: HOLD"
+  - button "Stop track (hold to clear)"
+  - slider: "100"
+  - button "Record or play track":
+    - generic: ●
+  - generic: REC
+  - generic: PLAY
+  - generic: DUB
+  - generic: REPLACE
+  - generic "TRACK 3 SETTINGS"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "LOOP"
+  - option "HALF"
+  - option "NORMAL" [selected]
+  - option "DOUBLE"
+  - option "PITCH" [selected]
+  - option "XFADE"
+  - option "OVERDUB" [selected]
+  - option "REPLACE 1"
+  - option "REPLACE 2"
+  - generic: "4"
+  - generic: EMPTY
+  - button "Track FX applied to track 4":
+    - generic: FX
+  - button "Select track 4":
+    - generic: TRACK
+  - generic: "CLEAR: HOLD"
+  - button "Stop track (hold to clear)"
+  - slider: "100"
+  - button "Record or play track":
+    - generic: ●
+  - generic: REC
+  - generic: PLAY
+  - generic: DUB
+  - generic: REPLACE
+  - generic "TRACK 4 SETTINGS"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "LOOP"
+  - option "HALF"
+  - option "NORMAL" [selected]
+  - option "DOUBLE"
+  - option "PITCH" [selected]
+  - option "XFADE"
+  - option "OVERDUB" [selected]
+  - option "REPLACE 1"
+  - option "REPLACE 2"
+  - generic: "5"
+  - generic: EMPTY
+  - button "Track FX applied to track 5":
+    - generic: FX
+  - button "Select track 5":
+    - generic: TRACK
+  - generic: "CLEAR: HOLD"
+  - button "Stop track (hold to clear)"
+  - slider: "100"
+  - button "Record or play track":
+    - generic: ●
+  - generic: REC
+  - generic: PLAY
+  - generic: DUB
+  - generic: REPLACE
+  - generic "TRACK 5 SETTINGS"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "IMMEDIATE" [selected]
+  - option "FADE"
+  - option "LOOP"
+  - option "HALF"
+  - option "NORMAL" [selected]
+  - option "DOUBLE"
+  - option "PITCH" [selected]
+  - option "XFADE"
+  - option "OVERDUB" [selected]
+  - option "REPLACE 1"
+  - option "REPLACE 2"
+- complementary:
+  - button "THRU OFF"
+  - button "AUDIO SETTINGS"
+  - generic: IO
+  - generic: AUDIO TEST
+  - button "Toggle audio performance panel" [active]: CLOSE
+  - generic: BROWSER AUDIO · BROWSER
+  - generic: 48000 Hz graph · 128 frames
+  - generic: ENGINE READY · UNKNOWN reported XRUNs
+  - region "Instrument grade audio performance":
+    - generic: AUDIO PERFORMANCE
+    - heading "Instrument-grade acceptance" [level=2]
+    - text: IMPORT REPORT
+    - button "Import instrument grade JSON report"
+    - status:
+      - strong: NOT_VERIFIED
+      - generic: Import a benchmark report with physical-path evidence.
+    - region "Measured report":
+      - heading "Measured report" [level=3]
+      - generic: No imported evidence
+      - generic: Hardware RTL
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: Input
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: Output
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: Jitter (RTL P95 − P50)
+      - generic: UNKNOWN
+      - generic: unknown · n=0
+      - generic: Trigger
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: REC trigger
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: PLAY trigger
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: STOP trigger
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: FX trigger
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: Overdub alignment
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: Render quantum
+      - generic: UNKNOWN
+      - generic: unknown · n=0
+      - generic: Callback P50/P95/P99/Max
+      - generic: P50 UNKNOWN
+      - generic: P95 UNKNOWN
+      - generic: P99 UNKNOWN
+      - generic: MAX UNKNOWN
+      - generic: MAXABS UNKNOWN
+      - generic: unknown · n=0
+      - generic: XRUN
+      - generic: UNKNOWN
+      - generic: unknown · n=0
+      - generic: Loop drift
+      - generic: UNKNOWN · stability UNKNOWN
+      - generic: unknown · n=0
+      - generic: Per-effect latency
+      - generic: UNKNOWN · no per-effect measurements in this report
+      - paragraph: "Strict pass gate: project-chain physical RTL P50 < 10 ms (target ≤ 10 ms), P95 ≤ 12 ms; same-trace jitter P95 − P50 < 1 ms; REC/PLAY/STOP/FX analog trigger MAX < 5 ms; overdub alignment MAXABS ≤ 1 ms; 30 min with 0 XRUNs plus continuous physical marker; loop drift MAXABS < 1 ms and non-accumulating. Browser estimates and software benchmarks cannot satisfy physical checks."
+    - region "Live software diagnostics":
+      - heading "Live software diagnostics" [level=3]
+      - generic: SOFTWARE DIAGNOSTIC
+      - generic: Backend
+      - strong: sab-worklet
+      - generic: Graph rate
+      - strong: 48000 Hz
+      - generic: Quantum
+      - strong: 128 fr
+      - generic: Rendered frame
+      - strong: "8368256"
+      - generic: Underruns
+      - strong: "0"
+      - generic: Command queue
+      - strong: "0"
+      - generic: Monitor
+      - strong: "OFF"
+      - generic: Last command ACK
+      - strong: "13"
+      - generic: Command overruns
+      - strong: "0"
+      - generic: Process deadline misses
+      - strong: UNKNOWN
+      - generic: Input dropout blocks
+      - strong: "0"
+      - generic: Track capacity overruns
+      - strong: "0"
+      - generic: "Loop frames: 426240 / 0 / 0 / 0 / 0"
+      - generic: "Recording frames: 426240 / 0 / 0 / 0 / 0"
+      - generic: "Track positions: 0.6129128932952881 / 0 / 0 / 0 / 0"
+      - generic: "Track states: 4 / 0 / 0 / 0 / 0"
+      - generic: "Browser I/O hint: base 10.00 ms, output 40.00 ms, monitor estimate UNKNOWN. Estimated only; not Hardware RTL."
+    - region "96 kHz / 128-frame profile":
+      - heading "96 kHz / 128-frame profile" [level=3]
+      - generic: NOT_VERIFIED
+      - paragraph: "Separate fail-closed certification on the same I/O devices: 96 kHz / 128 frames, callback P99 < 0.8 ms, and zero XRUNs for 30 minutes with physical sample-marker coverage."
+      - list:
+        - listitem: UNKNOWN — No report imported
+  - button "Refresh browser audio status":
+    - generic: REFRESH STATUS
