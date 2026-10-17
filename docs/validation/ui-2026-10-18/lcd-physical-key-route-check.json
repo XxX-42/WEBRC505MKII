@@ -1,0 +1,57 @@
+{
+  "browser": {
+    "track": {
+      "lcd": "BOSS RC-505MKII\nTRACK1/3\nTRACK 1\nTR 1 · EMPTY\n120 BPM\nTRACK LEVEL\n100%\nREVERSE\nOFF\nKEEP PITCH\nOFF\nLIVE MONO\nLIVE POLY\nPITCH SHIFT\n0\nKEEP PITCH OFF",
+      "floating": 0
+    },
+    "fx": {
+      "lcd": "BOSS RC-505MKII\nTRACK FX1/2\nTRACK FX · TRACK 1\nTR 1 · EMPTY\n120 BPM\nFX TARGET\nSHARED BANK\nTRACK 1\nTRACK 2\nTRACK 3\nTRACK 4\nTRACK 5\nSLOT\nA\nB\nC\nD\nEFFECT TYPE\nNONE\nDSP LPF\nDSP BPF\nDSP HPF\nFLANGER\nRING.MOD\nDELAY\nMOD DELAY\nPANNING DELAY\nCHORUS\nPHASER\nTREMOLO\nAUTO PAN\nDIST\nPREAMP\nSYNTH\nG2B\nDYNAMICS\nSUSTAINER\nFDN8 REVERB\nGATE REVERB\nBEAT REPEAT\nBEAT SCATTER\nROLL\nFREEZE\nWARP (EXPERIMENTAL)\nREVERSE DELAY\nREVERSE REVERB (EXPERIMENTAL)\nPATTERN SLICER\nSTEP SLICER\nSTEREO ENHANCE\nLO-FI\nEQ\nMANUAL PAN\nTAPE ECHO\nTWIST\nGRANULAR DELAY\nRADIO\nVIBRATO\nSLOW GEAR\nISOLATOR\nVOCODER\nELECTRIC\nOSC BOT\nAMOUNT\n0%\nBROWSER AUDIO NOT INITIALIZED",
+      "floating": 0
+    }
+  },
+  "native": {
+    "track": {
+      "lcd": "BOSS RC-505MKII\nTRACK1/3\nTRACK 2\nTR 2 · STOPPED\n120 BPM\nTRACK LEVEL\n100%\nREVERSE\nOFF\nKEEP PITCH\nOFF\nLIVE MONO\nLIVE POLY\nPITCH SHIFT\n0\nKEEP PITCH OFF",
+      "floating": 0
+    },
+    "fx": {
+      "lcd": "BOSS RC-505MKII\nTRACK FX1/2\nTRACK FX · TRACK 2\nTR 2 · STOPPED\n120 BPM\nFX TARGET\nSHARED BANK\nTRACK 1\nTRACK 2\nTRACK 3\nTRACK 4\nTRACK 5\nSLOT\nA\nB\nC\nD\nEFFECT TYPE\nNONE\nDSP LPF\nDSP BPF\nDSP HPF\nPHASER\nFLANGER\nDYNAMICS\nDIST\nREVERB (FDN16)\nGATE REVERB\nBEAT REPEAT\nBEAT SCATTER\nROLL\nFREEZE\nWARP (EXPERIMENTAL)\nTAPE ECHO\nREVERSE DELAY\nREVERSE REVERB (EXPERIMENTAL)\nDELAY\nMOD DELAY\nPANNING DELAY\nTWIST\nGRANULAR DELAY\nAUTO PAN\nMANUAL PAN\nCHORUS\nTREMOLO\nRING.MOD\nEQ\nISOLATOR\nSTEREO ENHANCE\nLO-FI\nRADIO\nSUSTAINER\nVIBRATO\nSLOW GEAR\nPATTERN SLICER\nSTEP SLICER\nPREAMP\nSYNTH\nG2B\nTRANSPOSE\nPITCH BEND\nHRM MANUAL\nOCTAVE\nVOCODER\nOSC VOC (M)\nOSC BOT (CLEAN-ROOM)\nAUTO RIFF (EXPERIMENTAL)\nROBOT (EXPERIMENTAL)\nELECTRIC\nAMOUNT\n0%\nSTOP NATIVE AUDIO BEFORE CLEARING OR REPLACING A CATALOG FX SLOT.",
+      "target": {
+        "options": [
+          {
+            "label": "SHARED BANK",
+            "selected": false,
+            "value": "0"
+          },
+          {
+            "label": "TRACK 1",
+            "selected": false,
+            "value": "1"
+          },
+          {
+            "label": "TRACK 2",
+            "selected": true,
+            "value": "2"
+          },
+          {
+            "label": "TRACK 3",
+            "selected": false,
+            "value": "3"
+          },
+          {
+            "label": "TRACK 4",
+            "selected": false,
+            "value": "4"
+          },
+          {
+            "label": "TRACK 5",
+            "selected": false,
+            "value": "5"
+          }
+        ],
+        "value": "2"
+      },
+      "floating": 0
+    }
+  }
+}

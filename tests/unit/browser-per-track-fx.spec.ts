@@ -249,6 +249,7 @@ describe('Browser five independent pre-mix A–D chains', () => {
     expect(transport[0]!.unavailableReason).toContain('forward');
     expect(transport[1]!.unavailableReason).toContain('LIVE_MONO');
     expect(transport[2]!.unavailableReason).toContain('LIVE_POLY');
+    await vi.waitFor(() => expect(engine.getTrackFxStatus(5)[0]!.slots[3]).toMatchObject({ state: 'ready', active: true }));
     expect(engine.getTrackFxStatus(5)[0]!.slots[3]).toMatchObject({ state: 'ready', active: true });
     expect(engine.setTrackFxType(1, 0, 'BEAT SHIFT')).toBe(false);
     expect(engine.getTrackFxStatus(1)[0]!.slots[0]).toMatchObject({ state: 'error', active: false, bypassed: true });

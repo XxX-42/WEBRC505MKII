@@ -1,0 +1,72 @@
+{
+  "observedAtUtc": "2026-10-17T20:10:24.7552120Z",
+  "operation": "Native UI restart / apply saved Input A PHASER",
+  "engineRunning": true,
+  "lastError": "",
+  "nativeTracks": [
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Stopped",
+      "trackId": 1
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Stopped",
+      "trackId": 2
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Empty",
+      "trackId": 3
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Empty",
+      "trackId": 4
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Empty",
+      "trackId": 5
+    }
+  ],
+  "inputCatalogSlots": [
+    {
+      "bypassed": true,
+      "effectId": "phaser",
+      "slot": "A"
+    },
+    {
+      "bypassed": false,
+      "effectId": "",
+      "slot": "B"
+    },
+    {
+      "bypassed": false,
+      "effectId": "",
+      "slot": "C"
+    },
+    {
+      "bypassed": false,
+      "effectId": "",
+      "slot": "D"
+    }
+  ],
+  "preservedLoopPcmHashes": [
+    {
+      "identical": true,
+      "trackId": 1,
+      "sha256": "5A81020BE3AAC2D50A124AD566E67E4091D6F77243E2F1040C5A350196D18C4F"
+    },
+    {
+      "identical": true,
+      "trackId": 2,
+      "sha256": "1C639FB438501E1F4E75CA2B1E4E107FA384E33A305EFCCAAF2C6423379BCC27"
+    }
+  ]
+}

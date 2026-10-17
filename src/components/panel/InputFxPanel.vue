@@ -208,7 +208,7 @@ const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlo
 const nativeFxRuntimeText = computed(() => {
   const status = runtimeStatus.value;
   if (!status) return '';
-  if (status.pendingRestart) return `SAVED; RESTART NATIVE AUDIO TO APPLY ${activeFx.value?.type || 'EMPTY SLOT'}`;
+  if (status.pendingRestart) return `SAVED; SETTINGS > RESTART NATIVE / APPLY FX TO APPLY ${activeFx.value?.type || 'EMPTY SLOT'}`;
   if (status.error) return `NATIVE FX NOT APPLIED: ${status.error}`;
   return status.acknowledged
     ? `NATIVE API ACK: ${status.acknowledgedEffectId ?? 'EMPTY SLOT'}; ${Object.keys(status.acknowledgedParameters ?? {}).length} PARAMETER(S) ACCEPTED`
@@ -280,6 +280,7 @@ const updateActiveValue = (value: number) => {
     updateStepSlicerParameters({ ...parameters, depth_percent: bounded });
   }
 };
+
 
 const updatePreampParameters = (parameters: PreampParameters) => {
   const slot = activeFx.value;
@@ -418,6 +419,37 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
     ? toNativeElectricParameters(slot.electricParameters)
     : toBrowserElectricParameters(slot.electricParameters));
 };
+function setLcdParameter(group: string, key: string, value: number): void {
+  if (!activeFx.value || fxDisabled.value) throw new Error('The selected FX bank is unavailable.');
+  if (!Number.isFinite(value)) throw new Error('FX parameter must be finite.');
+  const handlers: Record<string, (parameters: never) => void> = {
+    preampParameters: updatePreampParameters,
+    synthParameters: updateSynthParameters,
+    g2bParameters: updateG2bParameters,
+    rollParameters: updateRollParameters,
+    freezeParameters: updateFreezeParameters,
+    stepSlicerParameters: updateStepSlicerParameters,
+    pitchBendParameters: updatePitchBendParameters,
+    manualHarmonistParameters: updateManualHarmonistParameters,
+    octaveParameters: updateOctaveParameters,
+    vocoderParameters: updateVocoderParameters,
+    oscVocParameters: updateOscVocParameters,
+    autoRiffParameters: updateAutoRiffParameters,
+    robotParameters: updateRobotParameters,
+    hrmAutoParameters: updateHrmAutoParameters,
+    electricParameters: updateElectricParameters,
+  };
+  const handler = handlers[group];
+  if (!handler) throw new Error('This FX parameter group is not exposed by the engine.');
+  const slot = activeFx.value as unknown as Record<string, unknown>;
+  const previous = slot[group];
+  const parameters = typeof previous === 'object' && previous ? previous as Record<string, unknown> : {};
+  const nextValue = typeof parameters[key] === 'boolean' || (group === 'freezeParameters' && key === 'frozen') ? value >= 50 : value;
+  handler({ ...parameters, [key]: nextValue } as never);
+}
+
+defineExpose({ updateActiveValue, setLcdParameter });
+
 </script>
 
 <style scoped>
@@ -459,7 +491,7 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
 
 .eyebrow {
   margin: 0;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.8px;
   color: rgba(255, 255, 255, 0.66);
 }
@@ -494,12 +526,12 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   letter-spacing: 1px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .detail-line,
 .detail-note {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 1px;
 }
 
@@ -515,6 +547,7 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);
   color: #f3f3f5;
+  font: 14px/1.3 var(--font-hardware, system-ui, sans-serif);
 }
 
 .slot-row {
@@ -524,6 +557,22 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   gap: 8px;
   margin-top: auto;
 }
+
+.slot-row :deep(.button-label) { font-size: 13px; }
+.panel-shell :deep(.editor-heading),
+.panel-shell :deep(.editor-title) { font-size: 14px; }
+.panel-shell :deep(label),
+.panel-shell :deep(.control-row),
+.panel-shell :deep(.midi-row) { font-size: 13px; }
+.panel-shell :deep(p),
+.panel-shell :deep(.hint),
+.panel-shell :deep(.parameter-help),
+.panel-shell :deep([class$="-note"]),
+.panel-shell :deep(.robot-status) { font-size: 12px; line-height: 1.45; }
+.panel-shell :deep(small) { font-size: 12px; }
+.panel-shell :deep(select),
+.panel-shell :deep(input[type="number"]),
+.panel-shell :deep(textarea) { font-size: 14px; }
 
 .slot-toggle {
   display: flex;

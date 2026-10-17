@@ -1,0 +1,28 @@
+{
+  "observedAtUtc": "2026-10-17T20:11:54.5796454Z",
+  "action": "Classic physical INPUT FX A toggled on, macro keyboard 0 to 1 percent",
+  "engineRunning": true,
+  "lastError": "",
+  "inputCatalogSlots": [
+    {
+      "bypassed": false,
+      "effectId": "phaser",
+      "slot": "A"
+    },
+    {
+      "bypassed": false,
+      "effectId": "",
+      "slot": "B"
+    },
+    {
+      "bypassed": false,
+      "effectId": "",
+      "slot": "C"
+    },
+    {
+      "bypassed": false,
+      "effectId": "",
+      "slot": "D"
+    }
+  ]
+}

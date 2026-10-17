@@ -407,6 +407,32 @@ interface BridgeResponse {
   error?: string;
 }
 
+export const NATIVE_BRIDGE_REQUEST_TIMEOUT_MS = 5_000;
+
+export class NativeBridgeRequestTimeoutError extends Error {
+  public readonly path: string;
+  public readonly method: string;
+  public readonly timeoutMs: number;
+  public readonly reconciledStatus: NativeStatus | null;
+  public readonly statusReadError: unknown | null;
+
+  public constructor(
+    path: string,
+    method: string,
+    timeoutMs: number,
+    reconciledStatus: NativeStatus | null = null,
+    statusReadError: unknown | null = null,
+  ) {
+    super(`Native bridge request ${path} timed out after ${timeoutMs} ms.`);
+    this.name = 'TimeoutError';
+    this.path = path;
+    this.method = method;
+    this.timeoutMs = timeoutMs;
+    this.reconciledStatus = reconciledStatus;
+    this.statusReadError = statusReadError;
+  }
+}
+
 export class NativeBridgeClient {
   private readonly baseUrl: string;
 
@@ -793,23 +819,70 @@ export class NativeBridgeClient {
   }
 
   private async request<T extends BridgeResponse>(path: string, init?: RequestInit): Promise<T> {
-    let response: Response;
-    try {
-      response = await fetch(`${this.baseUrl}${path}`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        ...init,
-      });
-    } catch (error) {
-      throw new Error(`Native bridge is unreachable at ${this.baseUrl}: ${error}`);
-    }
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const controller = new AbortController();
+    let timedOut = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutError = new Error(`Native bridge request ${path} timed out after ${NATIVE_BRIDGE_REQUEST_TIMEOUT_MS} ms.`);
+    const deadline = new Promise<never>((_resolve, reject) => {
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        reject(timeoutError);
+      }, NATIVE_BRIDGE_REQUEST_TIMEOUT_MS);
+    });
 
-    const payload = (await response.json()) as T;
-    if (response.ok === false || !payload.ok) {
-      throw new Error(payload.error || `Native bridge request failed${response.status ? ` with HTTP ${response.status}` : ''}.`);
+    const operation = (async () => {
+      let response: Response;
+      try {
+        response = await fetch(`${this.baseUrl}${path}`, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          ...init,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (timedOut) throw timeoutError;
+        throw new Error(`Native bridge is unreachable at ${this.baseUrl}: ${error}`);
+      }
+
+      const payload = (await response.json()) as T;
+      if (response.ok === false || !payload.ok) {
+        throw new Error(payload.error || `Native bridge request failed${response.status ? ` with HTTP ${response.status}` : ''}.`);
+      }
+      return payload;
+    })();
+
+    try {
+      // The timeout covers both receiving headers and reading the JSON body.
+      // Timed-out commands are aborted and never replayed automatically.
+      return await Promise.race([operation, deadline]);
+    } catch (error) {
+      if (!timedOut) throw error;
+
+      // A timed-out write may have reached the host even though its response
+      // did not reach us. Read the host state once; never replay the write.
+      // GET timeouts do not enter this branch and therefore cannot recurse.
+      let reconciledStatus: NativeStatus | null = null;
+      let statusReadError: unknown | null = null;
+      if (method === 'POST') {
+        try {
+          reconciledStatus = await this.getStatus();
+        } catch (readError) {
+          statusReadError = readError;
+        }
+      }
+      throw new NativeBridgeRequestTimeoutError(
+        path,
+        method,
+        NATIVE_BRIDGE_REQUEST_TIMEOUT_MS,
+        reconciledStatus,
+        statusReadError,
+      );
+    } finally {
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
     }
-    return payload;
   }
 
   private async readHttpError(response: Response, fallback: string): Promise<Error> {

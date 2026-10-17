@@ -20,6 +20,8 @@
           :value="liveValue"
           @input="handleInput"
           :disabled="disabled"
+          :aria-disabled="disabled"
+          :aria-description="disabled && disabledReason ? disabledReason : undefined"
           :aria-label="ariaLabel || label || 'Track level control'"
           :title="disabled ? disabledReason : undefined"
           class="fader-input"

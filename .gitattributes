@@ -1,0 +1,7 @@
+# These upstream notices are verified byte-for-byte; do not translate newlines.
+public/THIRD_PARTY/** -text
+src/audio/pitch/vendor/*LICENSE* -text
+src/audio/pitch/vendor/NOTICE.md -text
+native-mvp/engine-cpp/third_party/**/COPYING -text
+native-mvp/engine-cpp/third_party/**/NOTICE.md -text
+native-mvp/engine-cpp/third_party/**/*LICENSE* -text

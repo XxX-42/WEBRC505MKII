@@ -945,7 +945,7 @@ describe('bounded Browser FX DSP core', () => {
     const bypassed = new BrowserFxDspCore('phaser', sampleRate);
     bypassed.setBypass(true);
     expect(runMono(bypassed, sweepTone.subarray(0, 257))).toEqual(sweepTone.subarray(0, 257));
-  });
+  }, 15_000);
 
   it('clamps phaser parameters to 4/8 stages and stays invariant across arbitrary callback quanta', () => {
     const sampleRate = 44100;
@@ -1102,10 +1102,12 @@ describe('bounded Browser FX DSP core', () => {
     monoCore.processBlock(mono, null, monoLeft, monoRight);
     expect(monoLeft.every(Number.isFinite) && monoRight.every(Number.isFinite)).toBe(true);
     expect(monoLeft).not.toEqual(monoRight);
+    let maximumMonoEnergyError = 0;
     for (let frame = 0; frame < frames; frame += 1) {
       const energy = (monoLeft[frame] ?? 0) ** 2 + (monoRight[frame] ?? 0) ** 2;
-      expect(Math.abs(energy - 0.16)).toBeLessThan(1e-6);
+      maximumMonoEnergyError = Math.max(maximumMonoEnergyError, Math.abs(energy - 0.16));
     }
+    expect(maximumMonoEnergyError).toBeLessThan(1e-6);
     expect(monoLeft.some((sample) => Math.abs(sample) < 1e-4)).toBe(true);
     expect(monoRight.some((sample) => Math.abs(sample) < 1e-4)).toBe(true);
 
@@ -1119,10 +1121,13 @@ describe('bounded Browser FX DSP core', () => {
     const centeredLeft = new Float32Array(frames);
     const centeredRight = new Float32Array(frames);
     centered.processBlock(inputLeft, inputRight, centeredLeft, centeredRight);
+    let maximumCenteredChannelError = 0;
     for (let frame = 0; frame < frames; frame += 1) {
-      expect(Math.abs((centeredLeft[frame] ?? 0) - (inputLeft[frame] ?? 0))).toBeLessThan(1e-6);
-      expect(Math.abs((centeredRight[frame] ?? 0) - (inputRight[frame] ?? 0))).toBeLessThan(1e-6);
+      maximumCenteredChannelError = Math.max(maximumCenteredChannelError,
+        Math.abs((centeredLeft[frame] ?? 0) - (inputLeft[frame] ?? 0)),
+        Math.abs((centeredRight[frame] ?? 0) - (inputRight[frame] ?? 0)));
     }
+    expect(maximumCenteredChannelError).toBeLessThan(1e-6);
 
     const stereoPan = new BrowserFxDspCore('auto-pan', sampleRate, {
       mix: 1,

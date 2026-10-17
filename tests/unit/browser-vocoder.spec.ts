@@ -160,12 +160,16 @@ describe('clean-room Browser VOCODER', () => {
     let bankEnergy = 0;
     let scalarEnergy = 0;
     let differenceEnergy = 0;
+    let invalidCenter: { frame: number; band: number; centerHz: number } | null = null;
     for (let frame = 0; frame < frames; frame += 1) {
       const modulation = 0.35 * Math.sin((2 * Math.PI * 180 * frame) / sampleRate);
       for (let band = 0; band < bankCore.bands; band += 1) {
         const centerHz = bankCore.getBandCenterFrequencyHz(band);
-        expect(centerHz).toBeGreaterThan(0);
-        if (band > 0) expect(centerHz).toBeGreaterThan(bankCore.getBandCenterFrequencyHz(band - 1));
+        // Check every frame/band without constructing 372,000 assertion
+        // objects; retain the first failing coordinate for a useful failure.
+        if (!(centerHz > 0) || (band > 0 && !(centerHz > bankCore.getBandCenterFrequencyHz(band - 1)))) {
+          invalidCenter ??= { frame, band, centerHz };
+        }
         carriers[band] = 0.2 * Math.sin((2 * Math.PI * centerHz * frame) / sampleRate);
       }
       const bankOutput = bankCore.processWithCarrierBank(modulation, carriers);
@@ -175,6 +179,7 @@ describe('clean-room Browser VOCODER', () => {
       differenceEnergy += (bankOutput - scalarOutput) ** 2;
     }
 
+    expect(invalidCenter).toBeNull();
     expect(Math.sqrt(bankEnergy / frames)).toBeGreaterThan(0.001);
     expect(Math.sqrt(scalarEnergy / frames)).toBeGreaterThan(0.001);
     expect(differenceEnergy).toBeGreaterThan(0.01);

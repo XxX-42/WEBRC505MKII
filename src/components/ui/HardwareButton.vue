@@ -12,17 +12,16 @@
     type="button"
     :disabled="disabled"
     :aria-label="computedAriaLabel"
-    :title="disabled ? computedAriaLabel : undefined"
-    @mousedown="handlePress"
-    @mouseup="handleRelease"
-    @mouseleave="handleRelease"
-    @touchstart="handlePress"
-    @touchend="handleRelease"
+    :aria-description="disabled && disabledReason ? disabledReason : undefined"
+    :title="disabled ? (disabledReason || computedAriaLabel) : undefined"
+    @pointerdown="handlePointerDown"
+    @pointerup="handlePointerUp"
+    @pointercancel="handlePointerCancel"
+    @lostpointercapture="handleLostPointerCapture"
     @click="handleClick"
-    @keydown.enter.prevent="handleKeyDown"
-    @keydown.space.prevent="handleKeyDown"
-    @keyup.enter.prevent="handleKeyUp"
-    @keyup.space.prevent="handleKeyUp"
+    @keydown="handleKeyDown"
+    @keyup="handleKeyUp"
+    @blur="cancelKeyboardPress"
   >
     <!-- LED Indicator (Dot for Rect, Ring for Circle) -->
     <div v-if="shape === 'rect'" class="led-dot" :class="ledClass"></div>
@@ -36,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 interface Props {
   size?: 'sm' | 'md' | 'lg';
@@ -46,6 +45,7 @@ interface Props {
   label?: string;
   shape?: 'circle' | 'rect';
   ariaLabel?: string;
+  disabledReason?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -55,16 +55,22 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   label: '',
   shape: 'circle',
-  ariaLabel: ''
+  ariaLabel: '',
+  disabledReason: '',
 });
 
 const emit = defineEmits<{
   (e: 'press'): void;
   (e: 'release'): void;
+  (e: 'cancel'): void;
 }>();
 
 const isPressed = ref(false);
-const pointerTriggered = ref(false);
+const activeInteraction = ref<'pointer' | 'keyboard' | null>(null);
+const activePointerId = ref<number | null>(null);
+const activeKey = ref<string | null>(null);
+const suppressNextClick = ref(false);
+let suppressClickTimer: number | null = null;
 
 const isActive = computed(() => props.active || isPressed.value);
 const computedAriaLabel = computed(() => props.ariaLabel || props.label || 'Hardware control');
@@ -83,39 +89,129 @@ const ledClass = computed(() => {
   }
 });
 
-const handlePress = () => {
-  if (props.disabled) return;
-  pointerTriggered.value = true;
+const clearClickSuppression = () => {
+  suppressNextClick.value = false;
+  if (suppressClickTimer !== null) {
+    window.clearTimeout(suppressClickTimer);
+    suppressClickTimer = null;
+  }
+};
+
+const suppressGeneratedClick = () => {
+  clearClickSuppression();
+  suppressNextClick.value = true;
+  suppressClickTimer = window.setTimeout(() => {
+    suppressNextClick.value = false;
+    suppressClickTimer = null;
+  }, 0);
+};
+
+const finishInteraction = (cancelled: boolean) => {
+  if (!activeInteraction.value) return;
+  activeInteraction.value = null;
+  activePointerId.value = null;
+  activeKey.value = null;
+  isPressed.value = false;
+  if (cancelled) {
+    emit('cancel');
+  } else {
+    emit('release');
+    suppressGeneratedClick();
+  }
+};
+
+const handlePointerDown = (event: PointerEvent) => {
+  if (props.disabled || event.button !== 0 || event.isPrimary === false || activeInteraction.value) return;
+  // Focus is explicit below; the browser's later default focus must not pull
+  // focus back out of a screen editor opened by this press.
+  if (event.cancelable) event.preventDefault();
+  activeInteraction.value = 'pointer';
+  activePointerId.value = event.pointerId;
+  isPressed.value = true;
+  const target = event.currentTarget as HTMLButtonElement | null;
+  // Editors can open synchronously from press, before the browser's default
+  // pointer focus. Establish the opener first so closing returns focus here.
+  target?.focus({ preventScroll: true });
+  try {
+    target?.setPointerCapture?.(event.pointerId);
+  } catch {
+    // Pointer capture is unavailable in some browser and test environments.
+  }
+  emit('press');
+};
+
+const handlePointerUp = (event: PointerEvent) => {
+  if (activeInteraction.value !== 'pointer' || activePointerId.value !== event.pointerId) return;
+  const target = event.currentTarget as HTMLButtonElement | null;
+  const pointerId = activePointerId.value;
+  finishInteraction(false);
+  try {
+    if (target?.hasPointerCapture?.(pointerId)) target.releasePointerCapture(pointerId);
+  } catch {
+    // A browser may already have released capture before dispatching pointerup.
+  }
+};
+
+const handlePointerCancel = (event: PointerEvent) => {
+  if (activeInteraction.value === 'pointer' && activePointerId.value === event.pointerId) {
+    finishInteraction(true);
+  }
+};
+
+const handleLostPointerCapture = (event: PointerEvent) => {
+  if (activeInteraction.value === 'pointer' && activePointerId.value === event.pointerId) {
+    finishInteraction(true);
+  }
+};
+
+const isActivationKey = (key: string) => key === 'Enter' || key === ' ' || key === 'Spacebar';
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (!isActivationKey(event.key)) return;
+  event.preventDefault();
+  if (props.disabled || event.repeat || activeInteraction.value) return;
+  activeInteraction.value = 'keyboard';
+  activeKey.value = event.key;
   isPressed.value = true;
   emit('press');
 };
 
-const handleRelease = () => {
-  if (props.disabled) return;
-  isPressed.value = false;
-  emit('release');
+const handleKeyUp = (event: KeyboardEvent) => {
+  if (!isActivationKey(event.key)) return;
+  event.preventDefault();
+  if (activeInteraction.value !== 'keyboard' || activeKey.value !== event.key) return;
+  finishInteraction(false);
 };
 
-const handleClick = () => {
+const cancelKeyboardPress = () => {
+  if (activeInteraction.value === 'keyboard') finishInteraction(true);
+};
+
+const handleClick = (event: MouseEvent) => {
   if (props.disabled) return;
-  if (pointerTriggered.value) {
-    pointerTriggered.value = false;
+  // Pointer activation was handled on pointerdown/up. Its compatibility click
+  // may arrive after timers have run, so a zero-ms suppression flag is not
+  // enough. Keep detail=0 activation for assistive/programmatic click input.
+  if (event.detail > 0) {
+    clearClickSuppression();
+    return;
+  }
+  if (suppressNextClick.value) {
+    clearClickSuppression();
     return;
   }
   emit('press');
   emit('release');
 };
 
-const handleKeyDown = (event: KeyboardEvent) => {
-  if (props.disabled) return;
-  if (event.repeat) return;
-  isPressed.value = true;
-};
+watch(() => props.disabled, (disabled) => {
+  if (disabled && activeInteraction.value) finishInteraction(true);
+});
 
-const handleKeyUp = () => {
-  if (props.disabled) return;
-  isPressed.value = false;
-};
+onUnmounted(() => {
+  if (activeInteraction.value) finishInteraction(true);
+  clearClickSuppression();
+});
 </script>
 
 <style scoped>
@@ -247,5 +343,56 @@ const handleKeyUp = () => {
   letter-spacing: 1px;
   text-transform: uppercase;
   pointer-events: none;
+}
+
+/* Lit hardware keys fill with their LED color; keep the legend above the glow. */
+.hardware-button.active:not(.is-disabled),
+.hardware-button:active:not(.is-disabled) {
+  transform: translateY(1px);
+}
+.hardware-button.active:not(.is-disabled) .button-label,
+.hardware-button:active:not(.is-disabled) .button-label {
+  position: relative;
+  z-index: 2;
+  color: #111318;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.hardware-button.active.color-red:not(.is-disabled),
+.hardware-button:active.color-red:not(.is-disabled) {
+  background: linear-gradient(145deg, #ff9aa5 0%, #ff4259 42%, #a90c2b 100%) !important;
+  border: 1px solid rgba(255, 221, 225, 0.9);
+  box-shadow: 0 0 8px rgba(255, 42, 72, 0.9), 0 0 20px rgba(255, 31, 64, 0.68), inset 0 0 12px rgba(255, 248, 248, 0.42), inset 0 -5px 12px rgba(86, 0, 16, 0.58);
+}
+.hardware-button.active.color-green:not(.is-disabled),
+.hardware-button:active.color-green:not(.is-disabled) {
+  background: linear-gradient(145deg, #a4ffc5 0%, #48f28a 42%, #0e8b49 100%) !important;
+  border: 1px solid rgba(224, 255, 235, 0.92);
+  box-shadow: 0 0 8px rgba(48, 255, 132, 0.92), 0 0 20px rgba(22, 236, 111, 0.68), inset 0 0 12px rgba(246, 255, 249, 0.42), inset 0 -5px 12px rgba(0, 66, 31, 0.54);
+}
+.hardware-button.active.color-yellow:not(.is-disabled),
+.hardware-button:active.color-yellow:not(.is-disabled) {
+  background: linear-gradient(145deg, #ffe9a0 0%, #ffc43e 42%, #b67507 100%) !important;
+  border: 1px solid rgba(255, 248, 213, 0.94);
+  box-shadow: 0 0 8px rgba(255, 197, 45, 0.94), 0 0 20px rgba(255, 172, 18, 0.68), inset 0 0 12px rgba(255, 255, 244, 0.4), inset 0 -5px 12px rgba(93, 49, 0, 0.54);
+}
+.hardware-button.active.color-blue:not(.is-disabled),
+.hardware-button:active.color-blue:not(.is-disabled) {
+  background: linear-gradient(145deg, #c2efff 0%, #56cfff 42%, #1473af 100%) !important;
+  border: 1px solid rgba(227, 249, 255, 0.94);
+  box-shadow: 0 0 8px rgba(69, 190, 255, 0.94), 0 0 20px rgba(42, 169, 255, 0.68), inset 0 0 12px rgba(247, 253, 255, 0.44), inset 0 -5px 12px rgba(0, 51, 85, 0.54);
+}
+.hardware-button.active.color-purple:not(.is-disabled),
+.hardware-button:active.color-purple:not(.is-disabled) {
+  background: linear-gradient(145deg, #e1bdff 0%, #b979ff 42%, #6835ad 100%) !important;
+  border: 1px solid rgba(244, 230, 255, 0.94);
+  box-shadow: 0 0 8px rgba(181, 112, 255, 0.92), 0 0 20px rgba(162, 78, 255, 0.66), inset 0 0 12px rgba(250, 244, 255, 0.42), inset 0 -5px 12px rgba(43, 7, 84, 0.56);
+}
+.hardware-button.active.color-white:not(.is-disabled),
+.hardware-button:active.color-white:not(.is-disabled),
+.hardware-button.active.color-neutral:not(.is-disabled),
+.hardware-button:active.color-neutral:not(.is-disabled) {
+  background: linear-gradient(145deg, #ffffff 0%, #dbe5f2 48%, #8794a7 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 8px rgba(225, 240, 255, 0.9), 0 0 18px rgba(190, 220, 255, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.55), inset 0 -5px 12px rgba(34, 47, 68, 0.35);
 }
 </style>

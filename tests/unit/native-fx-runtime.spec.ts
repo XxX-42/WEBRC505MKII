@@ -61,6 +61,7 @@ function installBridge(engine: NativeAudioEngine, startCalls?: string[]) {
     })),
     applyConfig: vi.fn(async () => { startCalls?.push('applyConfig'); return status(false); }),
     startEngine: vi.fn(async () => { startCalls?.push('startEngine'); return status(true); }),
+    stopEngine: vi.fn(async () => { startCalls?.push('stopEngine'); return status(false); }),
     getStatus: vi.fn(async () => status(true)),
     setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
       startCalls?.push(`set:${config.path}:${config.slot}:${config.effectId}`);
@@ -323,5 +324,54 @@ describe('Native catalog FX runtime and UI adapter', () => {
     expect(order.slice(1, 9)).toHaveLength(8);
     expect(order[9]).toBe('startEngine');
     expect(fakeBridge.setCatalogSlot).toHaveBeenCalledTimes(8);
+  });
+
+  it('stops a running host before applying saved catalog FX changes and starts it afterward', async () => {
+    const engine = NativeAudioEngine.getInstance();
+    const order: string[] = [];
+    const { fakeBridge, byPath } = installBridge(engine, order);
+    const internals = engine as unknown as {
+      engineRunning: boolean;
+      latestStatus: NativeStatus | null;
+    };
+    internals.engineRunning = true;
+    internals.latestStatus = nativeStatus(true, byPath.track, byPath.input);
+    engine.setFxType('input', 0, 'PHASER');
+    await settle();
+
+    expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({ pendingRestart: true, requestedEffectId: 'phaser' });
+    await engine.restartAudio();
+
+    expect(order[0]).toBe('stopEngine');
+    expect(order[1]).toBe('applyConfig');
+    expect(order.slice(2, 10)).toHaveLength(8);
+    expect(order[10]).toBe('startEngine');
+    expect(fakeBridge.stopEngine).toHaveBeenCalledTimes(1);
+    expect(fakeBridge.setCatalogSlot).toHaveBeenCalledWith({
+      path: 'input', slot: 'A', effectId: 'phaser', parameters: { depth: 0, wet_mix: 0 }, bypassed: true,
+    });
+    expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({
+      pendingRestart: false, acknowledged: true, acknowledgedEffectId: 'phaser',
+    });
+  });
+
+  it('does not apply configuration or restart when the stop request fails', async () => {
+    const engine = NativeAudioEngine.getInstance();
+    const { fakeBridge } = installBridge(engine);
+    const internals = engine as unknown as {
+      engineRunning: boolean;
+      latestStatus: NativeStatus | null;
+      stopPolling: () => void;
+    };
+    internals.engineRunning = true;
+    internals.latestStatus = nativeStatus(true);
+    fakeBridge.stopEngine.mockRejectedValueOnce(new Error('Native stop request failed'));
+
+    await expect(engine.restartAudio()).rejects.toThrow('Native stop request failed');
+    expect(fakeBridge.stopEngine).toHaveBeenCalledTimes(1);
+    expect(fakeBridge.applyConfig).not.toHaveBeenCalled();
+    expect(fakeBridge.setCatalogSlot).not.toHaveBeenCalled();
+    expect(fakeBridge.startEngine).not.toHaveBeenCalled();
+    internals.stopPolling();
   });
 });

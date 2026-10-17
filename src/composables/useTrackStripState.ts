@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import type { NativeHqEngine } from '../audio/NativeBridgeClient';
 import type { HqWavExportRequestOptions } from '../audio/export/hqWavExport';
@@ -71,7 +71,7 @@ export function useTrackStripState(trackId: number) {
   const hqExportTrack = typeof trackAudio.exportHqWav === 'function'
     ? trackAudio
     : null;
-  const trackCapabilities = engine.getTrackCapabilities(trackId);
+  const trackCapabilities = ref(engine.getTrackCapabilities(trackId));
   const focus = usePanelFocus();
 
   const trackState = ref(trackAudio.state);
@@ -79,7 +79,7 @@ export function useTrackStripState(trackId: number) {
   const playLevel = ref(trackAudio.track.playLevel);
   const trackAvailable = ref(trackAudio.isAvailable);
   const trackTransportEnabled = ref(trackAudio.transportEnabled);
-  const disabledReason = ref(trackCapabilities.availabilityReason || trackAudio.disabledReason);
+  const disabledReason = ref(trackCapabilities.value.availabilityReason || trackAudio.disabledReason);
   const getOverdubDiagnostic = () => 'overdubDiagnostic' in trackAudio ? trackAudio.overdubDiagnostic : null;
   const overdubDiagnostic = ref(getOverdubDiagnostic());
   const hqPitchSemitones = ref(0);
@@ -132,7 +132,17 @@ export function useTrackStripState(trackId: number) {
   let livePitchSelectionWasPersisted = storedTrackSettings.mode !== 'OFF' || storedTrackSettings.semitones !== 0;
   let pollInterval = 0;
   let stopPressTimer: number | null = null;
+  let clearVisualTimer: number | null = null;
+  const stopPressActive = ref(false);
+  let stopPressTriggered = false;
+  let stopPressSource: 'pointer' | 'keyboard' | null = null;
+  let stopPressPointerId: number | null = null;
   const LONG_PRESS_DURATION = 1500;
+
+  type StopPressSource = 'pointer' | 'keyboard';
+  const resolveStopPressSource = (sourceOrEvent?: StopPressSource | PointerEvent | MouseEvent | TouchEvent | KeyboardEvent): StopPressSource => (
+    sourceOrEvent === 'keyboard' ? 'keyboard' : 'pointer'
+  );
 
   const getPitchRuntimeReady = () => {
     if (typeof engine.getUiStatus === 'function') return engine.getUiStatus().ready;
@@ -324,6 +334,7 @@ export function useTrackStripState(trackId: number) {
   const syncTrackUi = () => {
     trackState.value = trackAudio.state;
     currentAudioMode.value = readAudioMode();
+    trackCapabilities.value = engine.getTrackCapabilities(trackId);
     const nativeRenderer = typeof engine.getNativeHqRenderer === 'function'
       ? engine.getNativeHqRenderer()
       : { available: false, engines: [] as NativeHqEngine[] };
@@ -337,8 +348,9 @@ export function useTrackStripState(trackId: number) {
     }
     playLevel.value = trackAudio.track.playLevel;
     trackAvailable.value = trackAudio.isAvailable;
-    trackTransportEnabled.value = trackAudio.transportEnabled;
-    disabledReason.value = trackCapabilities.availabilityReason || trackAudio.disabledReason;
+    const audioStatus = engine.getUiStatus();
+    trackTransportEnabled.value = trackAudio.transportEnabled && audioStatus.ready;
+    disabledReason.value = trackCapabilities.value.availabilityReason || trackAudio.disabledReason || (!audioStatus.ready ? audioStatus.message : '');
     overdubDiagnostic.value = getOverdubDiagnostic();
     restorePersistedLivePitchWhenReady();
   };
@@ -350,9 +362,8 @@ export function useTrackStripState(trackId: number) {
 
   onUnmounted(() => {
     window.clearInterval(pollInterval);
-    if (stopPressTimer) {
-      window.clearTimeout(stopPressTimer);
-    }
+    cancelStopPress();
+    if (clearVisualTimer !== null) window.clearTimeout(clearVisualTimer);
   });
 
   const isRecordingOrPlaying = computed(() => (
@@ -394,8 +405,8 @@ export function useTrackStripState(trackId: number) {
   const isCurrentTrack = computed(() => focus.state.currentTrackId === trackId);
   const isTrackFxApplied = computed(() => focus.state.trackFxApplyMap[trackId]);
 
-  const levelControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.supportsTrackLevel);
-  const trackFxControlEnabled = computed(() => trackAvailable.value && trackCapabilities.supportsTrackFx);
+  const levelControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsTrackLevel);
+  const trackFxControlEnabled = computed(() => trackAvailable.value && trackCapabilities.value.supportsTrackFx);
   const canExportHqWav = computed(() => {
     // Read this reactive snapshot before checking the non-reactive TrackAudio
     // getter. If the track starts empty, that getter short-circuits the old
@@ -414,12 +425,12 @@ export function useTrackStripState(trackId: number) {
     ? `Track ${trackId} selected`
     : `Select track ${trackId}`);
   const fxButtonAriaLabel = computed(() => !trackFxControlEnabled.value
-    ? `Track ${trackId} individual FX unavailable: ${trackCapabilities.trackFxReason || 'Track FX is unavailable'}`
+    ? `Track ${trackId} individual FX unavailable: ${trackCapabilities.value.trackFxReason || 'Track FX is unavailable'}`
     : isTrackFxApplied.value
       ? `Track FX applied to track ${trackId}`
       : `Apply Track FX to track ${trackId}`);
   const levelControlAriaLabel = computed(() => !levelControlEnabled.value
-    ? `Track ${trackId} level unavailable: ${trackCapabilities.levelReason || 'Track level is unavailable'}`
+    ? `Track ${trackId} level unavailable: ${trackCapabilities.value.levelReason || 'Track level is unavailable'}`
     : `Track ${trackId} level`);
 
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -488,33 +499,107 @@ export function useTrackStripState(trackId: number) {
     }
   };
 
-  const startStopPress = () => {
-    if (!trackTransportEnabled.value || stopPressTimer) return;
+  const startStopPress = (sourceOrEvent?: StopPressSource | PointerEvent | MouseEvent | TouchEvent | KeyboardEvent) => {
+    const source = resolveStopPressSource(sourceOrEvent);
+    if (!trackTransportEnabled.value || stopPressActive.value) return;
+    stopPressActive.value = true;
+    stopPressTriggered = false;
+    stopPressSource = source;
     stopPressTimer = window.setTimeout(() => {
+      stopPressTimer = null;
+      if (!stopPressActive.value || !trackTransportEnabled.value) {
+        stopPressActive.value = false;
+        stopPressSource = null;
+        return;
+      }
+      stopPressTriggered = true;
       isClearing.value = true;
       trackAudio.clear();
-      window.setTimeout(() => {
+      clearVisualTimer = window.setTimeout(() => {
         isClearing.value = false;
+        clearVisualTimer = null;
       }, 300);
-      stopPressTimer = null;
     }, LONG_PRESS_DURATION);
   };
 
-  const endStopPress = () => {
-    if (!trackTransportEnabled.value) return;
-    if (stopPressTimer) {
+  const endStopPress = (sourceOrEvent?: StopPressSource | PointerEvent | MouseEvent | TouchEvent | KeyboardEvent) => {
+    const source = resolveStopPressSource(sourceOrEvent);
+    if (!stopPressActive.value || stopPressSource !== source) return;
+    stopPressActive.value = false;
+    stopPressSource = null;
+    if (stopPressTimer !== null) {
       window.clearTimeout(stopPressTimer);
       stopPressTimer = null;
-      trackAudio.triggerStop();
+    }
+    if (!stopPressTriggered && trackTransportEnabled.value) trackAudio.triggerStop();
+    stopPressTriggered = false;
+  };
+
+  const cancelStopPress = (sourceOrEvent?: StopPressSource | PointerEvent | MouseEvent | TouchEvent | KeyboardEvent) => {
+    const source = sourceOrEvent === undefined ? null : resolveStopPressSource(sourceOrEvent);
+    if (source && stopPressSource && stopPressSource !== source) return;
+    stopPressActive.value = false;
+    stopPressTriggered = false;
+    stopPressSource = null;
+    stopPressPointerId = null;
+    if (stopPressTimer !== null) {
+      window.clearTimeout(stopPressTimer);
+      stopPressTimer = null;
     }
   };
 
-  const cancelStopPress = () => {
-    if (stopPressTimer) {
-      window.clearTimeout(stopPressTimer);
-      stopPressTimer = null;
+  const handleStopKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== ' ' && event.key !== 'Spacebar' && event.key !== 'Enter') return;
+    event.preventDefault();
+    if (event.repeat) return;
+    startStopPress('keyboard');
+  };
+
+  const handleStopKeyUp = (event: KeyboardEvent) => {
+    if (event.key !== ' ' && event.key !== 'Spacebar' && event.key !== 'Enter') return;
+    event.preventDefault();
+    endStopPress('keyboard');
+  };
+
+  const handleStopPointerDown = (event: PointerEvent) => {
+    if (!trackTransportEnabled.value || event.button !== 0 || event.isPrimary === false || stopPressPointerId !== null) return;
+    stopPressPointerId = event.pointerId;
+    try {
+      (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Pointer capture is unavailable in some browser and test environments.
+    }
+    startStopPress('pointer');
+  };
+
+  const handleStopPointerUp = (event: PointerEvent) => {
+    if (stopPressPointerId !== event.pointerId) return;
+    const target = event.currentTarget as HTMLElement | null;
+    const pointerId = stopPressPointerId;
+    stopPressPointerId = null;
+    endStopPress('pointer');
+    try {
+      if (target?.hasPointerCapture?.(pointerId)) target.releasePointerCapture(pointerId);
+    } catch {
+      // The browser may have already released capture before pointerup.
     }
   };
+
+  const handleStopPointerCancel = (event: PointerEvent) => {
+    if (stopPressPointerId !== event.pointerId) return;
+    stopPressPointerId = null;
+    cancelStopPress('pointer');
+  };
+
+  const handleStopLostPointerCapture = (event: PointerEvent) => {
+    if (stopPressPointerId !== event.pointerId) return;
+    stopPressPointerId = null;
+    cancelStopPress('pointer');
+  };
+
+  watch(trackTransportEnabled, (enabled) => {
+    if (!enabled) cancelStopPress();
+  });
 
   return {
     trackState,
@@ -555,8 +640,8 @@ export function useTrackStripState(trackId: number) {
     levelControlEnabled,
     trackFxControlEnabled,
     levelControlAriaLabel,
-    trackFxUnavailableReason: trackCapabilities.supportsTrackFx ? '' : trackCapabilities.trackFxReason,
-    trackLevelUnavailableReason: trackCapabilities.supportsTrackLevel ? '' : trackCapabilities.levelReason,
+    trackFxUnavailableReason: computed(() => trackCapabilities.value.supportsTrackFx ? '' : trackCapabilities.value.trackFxReason),
+    trackLevelUnavailableReason: computed(() => trackCapabilities.value.supportsTrackLevel ? '' : trackCapabilities.value.levelReason),
     trackButtonAriaLabel,
     fxButtonAriaLabel,
     handleRecPlay,
@@ -571,7 +656,14 @@ export function useTrackStripState(trackId: number) {
     handleHqPlaybackRateChange,
     handleHqNativeEngineChange,
     startStopPress,
+    stopPressActive,
     endStopPress,
     cancelStopPress,
+    handleStopKeyDown,
+    handleStopKeyUp,
+    handleStopPointerDown,
+    handleStopPointerUp,
+    handleStopPointerCancel,
+    handleStopLostPointerCapture,
   };
 }

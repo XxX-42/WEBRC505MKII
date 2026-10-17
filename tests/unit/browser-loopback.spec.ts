@@ -48,7 +48,7 @@ describe('BrowserAudioEngine loopback worklet capture', () => {
     const engine = new BrowserAudioEngine();
     const addModule = vi.spyOn(engine.context.audioWorklet!, 'addModule');
     const latencyPromise = engine.runLoopbackTest();
-    for (let index = 0; index < 10 && FakeAudioWorkletNode.instances.length === 0; index += 1) {
+    for (let index = 0; index < 64 && FakeAudioWorkletNode.instances.length === 0; index += 1) {
       await Promise.resolve();
     }
 

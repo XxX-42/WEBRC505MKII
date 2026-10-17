@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Locator } from '@playwright/test';
+import { startBrowserAudio } from './uiHelpers';
 
 const initScriptPath = path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js');
 
@@ -9,6 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 test('exposes and persists OCTAVE voice levels and mix in Browser Input and Track panels', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const setRange = async (editor: Locator, label: string, value: number) => {
     await editor.getByLabel(label).evaluate((element, nextValue) => {
@@ -60,6 +62,7 @@ test('exposes and persists OCTAVE voice levels and mix in Browser Input and Trac
   });
 
   await page.reload();
+  await startBrowserAudio(page);
   const restoredInput = page.locator('[data-panel="input-fx"] [data-octave-editor]');
   const restoredTrack = page.locator('[data-panel="track-fx"] [data-octave-editor]');
   await expect(restoredInput).toBeVisible();

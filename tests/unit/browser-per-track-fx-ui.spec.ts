@@ -17,6 +17,8 @@ async function loadPanel(mode: 'browser' | 'native' = 'browser', surface: 'class
     getMode: () => mode,
     onStatusChange: vi.fn((callback: () => void) => { listeners.push(callback); return () => {}; }),
     getCapabilities: () => ({ supportsInputFx: true, supportsTrackFx: true, fxReason: '' }),
+    isTrackAvailable: vi.fn(() => true),
+    getTrackCapabilities: vi.fn((trackId: number) => ({ trackId, isAvailable: true, availabilityReason: '', supportsTrackLevel: true, levelReason: '', supportsTrackFx: false, trackFxReason: '', supportsReverse: false, reverseReason: '' })),
     getNativeCatalogFxOptions: () => [],
     getNativeCatalogFxSlotStatus: () => null,
     setFxType: vi.fn(), setFxParam: vi.fn(), setFxActive: vi.fn(), setCatalogFxParameters: vi.fn(),
@@ -51,12 +53,16 @@ describe('Browser per-track FX target UI', () => {
     await target.setValue('2');
     expect(wrapper.get('[data-track-fx-context]').text()).toBe('TRACK 2 · SLOT A');
     const types = wrapper.get('[aria-label="Per-track FX type"]');
+    await types.setValue('DELAY');
+    const trackEditor = wrapper.vm as unknown as { updateActiveValue(value: number): void };
+    trackEditor.updateActiveValue(41);
+    expect(engine.setTrackFxParameter).toHaveBeenLastCalledWith(2, 0, 41);
+    expect(engine.setFxParam).not.toHaveBeenCalled();
     const options = types.findAll('option').map((option) => option.element.value);
     expect(options).toContain('DELAY');
     expect(options).not.toContain('BEAT SHIFT');
     expect(options).not.toContain('VINYL FLICK');
     expect(options).not.toContain('OSC VOC (M)');
-    await types.setValue('DELAY');
     await wrapper.get('[aria-label="Per-track FX amount"]').setValue('57');
     await wrapper.get('[aria-label="Track 2 slot A delayTimeMs"]').setValue('734');
     await wrapper.get('[aria-label="Toggle per-track FX slot"]').trigger('click');

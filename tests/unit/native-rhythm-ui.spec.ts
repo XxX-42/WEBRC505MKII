@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import type { NativeBridgeClient, NativeRhythmConfig, NativeStatus } from '../../src/audio/NativeBridgeClient';
 import { nativeRhythmStatus } from '../helpers/nativeRhythmStatus';
@@ -7,11 +7,13 @@ import { nativeRhythmStatus } from '../helpers/nativeRhythmStatus';
 const wrappers: VueWrapper[] = [];
 afterEach(() => {
   wrappers.splice(0).forEach((wrapper) => wrapper.unmount());
+  document.body.replaceChildren();
   vi.resetModules();
   vi.doUnmock('../../src/audio/AudioEngine');
 });
 
 async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 198, kitIndex: 13, variation: 'C', section: 'intro', swingPercent: 67, quantizeGrid: '1/8', volume: 73 })) {
+  window.localStorage.clear();
   const { NativeRhythmEngine } = await import('../../src/audio/NativeRhythmEngine');
   let status = initial;
   const listeners = new Set<() => void>();
@@ -24,97 +26,142 @@ async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 
   });
   const audio = {
     rhythmEngine: rhythm, tracks: [], getMode: () => 'native',
-    getCapabilities: () => ({ supportsRhythm: rhythm.available, rhythmReason: rhythm.unavailableReason }),
+    getCapabilities: () => ({
+      mode: 'native', modeSummary: 'NATIVE · TEST RUNTIME', supportedTrackCount: 0,
+      supportsInputFx: false, supportsTrackFx: false, supportsReverse: false, supportsRhythm: rhythm.available,
+      supportsBeatFeedback: false, fxReason: 'FX unavailable in this test runtime.',
+      reverseReason: 'Reverse unavailable in this test runtime.', rhythmReason: rhythm.unavailableReason,
+      beatReason: 'Beat feedback unavailable in this test runtime.', trackLevelReason: 'Track level unavailable in this test runtime.',
+      supportsOutputLevel: false, outputLevelReason: 'Output level unavailable in this test runtime.',
+    }),
+    getUiStatus: () => ({ ready: true, message: 'NATIVE READY', lastError: '' }),
+    getOutputLevel: () => 100,
+    getTrackCapabilities: () => ({
+      trackId: 1, isAvailable: false, availabilityReason: 'No track fixture',
+      supportsTrackLevel: false, levelReason: 'Track level unavailable in this test runtime.',
+      supportsTrackFx: false, trackFxReason: 'Track FX unavailable in this test runtime.',
+      supportsReverse: false, reverseReason: 'Reverse unavailable in this test runtime.',
+    }),
+    getNativeCatalogFxOptions: () => [],
+    getNativeCatalogFxSlotStatus: () => null,
+    setFxType: vi.fn(() => true), setFxParam: vi.fn(() => true), setFxActive: vi.fn(() => true),
+    setTrackFxType: vi.fn(() => true),
+    setOutputLevel: vi.fn(),
     onStatusChange: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); },
   };
   vi.doMock('../../src/audio/AudioEngine', () => ({ AudioEngine: { getInstance: () => audio } }));
-  const Top = (await import('../../src/components/RhythmControls.vue')).default;
   const Center = (await import('../../src/components/panel/CenterMainPanel.vue')).default;
-  const top = mount(Top);
-  const center = mount(Center, { global: { stubs: { HardwareKnob: true } } });
-  wrappers.push(top, center);
+  const center = mount(Center, {
+    props: {
+      inputFxValue: 0, trackFxValue: 0, inputFxDisabled: true, inputFxReason: 'Input FX unavailable in this test runtime.',
+      trackFxDisabled: true, trackFxReason: 'Track FX unavailable in this test runtime.',
+    },
+    global: { stubs: { HardwareKnob: true } },
+  });
+  wrappers.push(center);
   await flushPromises();
-  return { top, center, rhythm, setRhythm, setStatus: async (next: NativeStatus) => { status = next; notify(); await nextTick(); } };
+  await center.get('button[aria-label="Edit rhythm settings"]').trigger('click');
+  await flushPromises();
+  return { center, rhythm, setRhythm, setStatus: async (next: NativeStatus) => { status = next; notify(); await nextTick(); } };
+}
+
+function lcdGet(center: VueWrapper, selector: string): DOMWrapper<any> {
+  const element = center.element.querySelector(`[data-testid="rc505-lcd-screen"] ${selector}`);
+  if (!element) throw new Error(`Expected LCD rhythm control: ${selector}`);
+  return new DOMWrapper(element) as DOMWrapper<any>;
+}
+
+async function lcdPage(center: VueWrapper, pageIndex: number): Promise<void> {
+  const currentPage = () => Number(center.get('[data-testid="rc505-lcd-screen"] .lcd-row.top span:last-child').text().match(/(\d+)\//)?.[1] ?? '1') - 1;
+  while (currentPage() !== pageIndex) {
+    await center.get(`button[aria-label="${currentPage() < pageIndex ? 'Next' : 'Previous'} display page"]`).trigger('click');
+    await nextTick();
+  }
 }
 
 describe('Native ACK-backed shared rhythm panels', () => {
-  it('reads settings on mount and synchronizes all shared selections and volume between panels', async () => {
-    const { top, center, setRhythm } = await mountNativeControls();
+  it('reads and applies shared settings from the Native central LCD alongside the physical controls', async () => {
+    const { center, setRhythm } = await mountNativeControls();
     expect(setRhythm).not.toHaveBeenCalled();
-    expect(top.get('[data-testid="rhythm-pattern-select"]').element.value).toBe('198');
-    expect(center.get('[data-testid="center-rhythm-pattern-select"]').element.value).toBe('198');
-    expect(top.get('[data-testid="rhythm-kit-select"]').element.value).toBe('13');
-    expect(top.get('[data-testid="rhythm-variation-select"]').element.value).toBe('C');
-    expect(top.get('[data-testid="rhythm-section-select"]').element.value).toBe('intro');
-    expect(top.get('[data-testid="rhythm-swing"]').element.value).toBe('67');
-    expect(top.get('[data-testid="rhythm-quantize-select"]').element.value).toBe('1/8');
-    expect(top.get('input[aria-label="Rhythm volume"]').element.value).toBe('73');
-    await top.get('[data-testid="rhythm-pattern-select"]').setValue('240');
-    await top.get('[data-testid="rhythm-kit-select"]').setValue('16');
-    await top.get('[data-testid="rhythm-variation-select"]').setValue('D');
-    await top.get('[data-testid="rhythm-section-select"]').setValue('fill');
-    await top.get('[data-testid="rhythm-swing"]').setValue('75');
-    await top.get('[data-testid="rhythm-quantize-select"]').setValue('1/4');
-    await center.get('input[aria-label="Rhythm volume"]').setValue('84');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('198');
+    expect(lcdGet(center, '[data-testid="lcd-field-kit"]').element.value).toBe('13');
+    expect(lcdGet(center, '[data-testid="lcd-field-volume"]').element.value).toBe('73');
+    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('240');
+    await lcdGet(center, '[data-testid="lcd-field-kit"]').setValue('16');
+    await lcdGet(center, '[data-testid="lcd-field-volume"]').setValue('84');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('240');
+    expect(lcdGet(center, '[data-testid="lcd-field-volume"]').element.value).toBe('84');
+    await lcdPage(center, 1);
+    expect(lcdGet(center, '[data-testid="lcd-field-variation"]').element.value).toBe('2');
+    expect(lcdGet(center, '[data-testid="lcd-field-section"]').element.value).toBe('1');
+    expect(lcdGet(center, '[data-testid="lcd-field-swing"]').element.value).toBe('67');
+    expect(lcdGet(center, '[data-testid="lcd-field-quantize"]').element.value).toBe('1');
+    await lcdGet(center, '[data-testid="lcd-field-variation"]').setValue('3');
+    await lcdGet(center, '[data-testid="lcd-field-section"]').setValue('3');
+    await lcdGet(center, '[data-testid="lcd-field-swing"]').setValue('75');
+    await lcdGet(center, '[data-testid="lcd-field-quantize"]').setValue('2');
     await flushPromises();
-    expect(setRhythm).toHaveBeenLastCalledWith(expect.objectContaining({ patternIndex: 240, kitIndex: 16, variation: 'D', section: 'fill', swingPercent: 75, quantizeGrid: '1/4', volume: 84 }));
-    expect(center.get('[data-testid="center-rhythm-pattern-select"]').element.value).toBe('240');
-    expect(top.get('input[aria-label="Rhythm volume"]').element.value).toBe('84');
+    const configs = setRhythm.mock.calls.map(([config]) => config);
+    expect(configs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ patternIndex: 240 }), expect.objectContaining({ kitIndex: 16 }), expect.objectContaining({ volume: 84 }),
+      expect.objectContaining({ variation: 'D' }), expect.objectContaining({ section: 'fill' }),
+      expect.objectContaining({ swingPercent: 75 }), expect.objectContaining({ quantizeGrid: '1/4' }),
+    ]));
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('disabled')).toBeUndefined();
   });
 
   it('waits for the start ACK, blocks duplicate transport presses, and stops consistently from either panel', async () => {
-    const { top, center, rhythm, setRhythm } = await mountNativeControls();
+    const { center, rhythm, setRhythm } = await mountNativeControls();
     let acknowledge!: (status: NativeStatus) => void;
     setRhythm.mockImplementationOnce(() => new Promise((resolve) => { acknowledge = resolve; }));
-    await top.get('button[aria-label="Start rhythm"]').trigger('click');
+    await lcdPage(center, 2);
+    await lcdGet(center, '[data-testid="lcd-field-play-stop"]').trigger('click');
     await Promise.resolve();
-    expect(top.get('button[aria-label="Start rhythm"]').attributes('disabled')).toBeDefined();
-    expect(center.get('button[aria-label="Toggle rhythm"]').attributes('disabled')).toBeDefined();
-    expect(center.get('button[aria-label="Toggle rhythm"]').classes()).not.toContain('active');
+    expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').attributes('disabled')).toBeDefined();
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('disabled')).toBeDefined();
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').classes()).not.toContain('active');
     expect(rhythm.isRunning).toBe(false);
     acknowledge(nativeRhythmStatus({ ...rhythm.settings!, enabled: true }));
     await flushPromises();
-    expect(top.find('button[aria-label="Stop rhythm"]').exists()).toBe(true);
-    expect(center.get('button[aria-label="Toggle rhythm"]').classes()).toContain('active');
-    await center.get('button[aria-label="Toggle rhythm"]').trigger('click');
+    expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').text()).toContain('STOP RHYTHM');
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').classes()).toContain('active');
+    await lcdGet(center, '[data-testid="lcd-field-play-stop"]').trigger('click');
     await flushPromises();
-    expect(top.find('button[aria-label="Start rhythm"]').exists()).toBe(true);
-    expect(center.get('button[aria-label="Toggle rhythm"]').classes()).not.toContain('active');
+    expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').text()).toContain('START RHYTHM');
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').classes()).not.toContain('active');
     expect(setRhythm).toHaveBeenCalledTimes(2);
   });
 
   it('reacts to unavailable and incomplete old statuses, then re-enables only on a complete available status', async () => {
     const incomplete = nativeRhythmStatus();
     delete (incomplete.nativeRhythm as Partial<NativeRhythmConfig>).swingPercent;
-    const { top, center, setStatus, setRhythm } = await mountNativeControls(incomplete);
-    expect(top.get('[data-testid="rhythm-pattern-select"]').attributes('disabled')).toBeDefined();
-    expect(top.get('button[aria-label="Start rhythm"]').attributes('disabled')).toBeDefined();
-    expect(center.get('input[aria-label="Rhythm volume"]').attributes('disabled')).toBeDefined();
-    expect(top.get('[data-testid="rhythm-status"]').text()).toContain('does not report');
+    const { center, setStatus, setRhythm } = await mountNativeControls(incomplete);
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').attributes('disabled')).toBeDefined();
+    await lcdPage(center, 2);
+    expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').attributes('disabled')).toBeDefined();
+    expect(center.get('.lcd-status').text()).toContain('does not report');
     const unavailable = nativeRhythmStatus();
     unavailable.nativeRhythm!.available = false;
     unavailable.nativeRhythm!.statusNote = 'Rhythm DSP unavailable on this bridge';
     await setStatus(unavailable);
-    expect(top.get('[data-testid="rhythm-status"]').text()).toBe('Rhythm DSP unavailable on this bridge');
+    expect(center.get('.lcd-status').text()).toBe('Rhythm DSP unavailable on this bridge');
     await setStatus(nativeRhythmStatus());
-    expect(top.get('[data-testid="rhythm-pattern-select"]').attributes('disabled')).toBeUndefined();
-    expect(center.get('button[aria-label="Toggle rhythm"]').attributes('disabled')).toBeUndefined();
+    await lcdPage(center, 0);
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').attributes('disabled')).toBeUndefined();
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('disabled')).toBeUndefined();
     expect(setRhythm).not.toHaveBeenCalled();
   });
 
   it('shows Native failures in both panels, preserves acknowledged settings, and clears errors after retry', async () => {
-    const { top, center, setRhythm } = await mountNativeControls();
+    const { center, setRhythm } = await mountNativeControls();
     setRhythm.mockRejectedValueOnce(new Error('Native rhythm endpoint unsupported'));
-    await top.get('[data-testid="rhythm-pattern-select"]').setValue('240');
+    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('240');
     await flushPromises();
-    expect(top.get('[data-testid="rhythm-status"]').text()).toBe('Native rhythm endpoint unsupported');
-    expect(center.get('.rhythm-note').text()).toBe('Native rhythm endpoint unsupported');
-    expect(top.get('[data-testid="rhythm-pattern-select"]').element.value).toBe('198');
-    expect(top.find('button[aria-label="Start rhythm"]').exists()).toBe(true);
-    await top.get('[data-testid="rhythm-pattern-select"]').setValue('240');
+    expect(center.get('.lcd-status').text()).toBe('Native rhythm endpoint unsupported');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('198');
+    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('240');
     await flushPromises();
-    expect(top.find('[data-testid="rhythm-status"]').exists()).toBe(false);
-    expect(center.find('.rhythm-note').exists()).toBe(false);
-    expect(center.get('[data-testid="center-rhythm-pattern-select"]').element.value).toBe('240');
+    expect(center.get('.lcd-status').text()).not.toBe('Native rhythm endpoint unsupported');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('240');
   });
 });

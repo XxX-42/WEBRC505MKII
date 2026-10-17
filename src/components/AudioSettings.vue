@@ -361,7 +361,7 @@ const handleOverlayClick = () => {
 
 .setting-label {
   font-family: var(--font-hardware);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 1.4px;
   color: #888;
 }
@@ -372,11 +372,12 @@ const handleOverlayClick = () => {
   border: 1px solid #333;
   border-radius: 6px;
   padding: 10px 12px;
+  font-size: 14px;
 }
 
 .setting-help {
   color: #999;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.45;
 }
 
@@ -424,12 +425,12 @@ const handleOverlayClick = () => {
 .warning-icon {
   font-family: var(--font-hardware);
   color: var(--led-red-recording);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .warning-content {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .native-status {
@@ -440,7 +441,7 @@ const handleOverlayClick = () => {
   border-radius: 8px;
   background: rgba(0, 255, 102, 0.08);
   border: 1px solid rgba(0, 255, 102, 0.14);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .native-status.offline {

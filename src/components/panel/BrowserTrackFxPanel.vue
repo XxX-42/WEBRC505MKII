@@ -105,7 +105,7 @@ function updateNamed(key: string, event: Event) {
   gap: 8px;
 }
 .browser-track-chain { gap: 12px; }
-.chain-context { font-size: 11px; line-height: 1.5; }
+.chain-context { font-size: 13px; line-height: 1.45; }
 .chain-context strong { color: #ff6c7a; letter-spacing: 1px; }
 .chain-context span, .named-controls p { color: rgba(255, 255, 255, 0.65); }
 .chain-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -119,14 +119,16 @@ function updateNamed(key: string, event: Event) {
 }
 .chain-slots button.selected { border-color: #ff6c7a; box-shadow: 0 0 0 1px #ff6c7a; }
 .chain-slots button.enabled, .activation[aria-pressed="true"] { background: #63323a; }
-.chain-slots small { display: block; font-size: 9px; margin-top: 3px; }
-.chain-field { font-size: 11px; }
+.chain-slots small { display: block; font-size: 11px; margin-top: 3px; }
+.chain-field { font-size: 13px; }
+.chain-field :is(input, select) { font-size: 14px; }
+.chain-slots button, .activation { font-size: 13px; }
 .chain-field input, .chain-field select { width: 100%; box-sizing: border-box; }
 .named-controls { border-top: 1px solid #50434c; padding-top: 10px; }
 .named-controls summary { cursor: pointer; font-size: 12px; }
-.named-controls p { font-size: 11px; line-height: 1.5; }
+.named-controls p { font-size: 12px; line-height: 1.45; }
 .named-controls .chain-field { margin-top: 10px; }
 .chain-error { color: #ff9198; }
-.chain-status { font-size: 10px; line-height: 1.5; margin: 0; }
+.chain-status { font-size: 12px; line-height: 1.45; margin: 0; }
 button:disabled, input:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>

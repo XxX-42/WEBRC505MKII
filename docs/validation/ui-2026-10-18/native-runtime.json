@@ -1,0 +1,141 @@
+{
+  "runtime": "regular WASAPI native_bridge_host.exe",
+  "simulation": false,
+  "hardwareLatencyMeasured": false,
+  "observations": [
+    {
+      "observedAtUtc": "2026-10-17T20:00:29.8233415Z",
+      "operation": "record",
+      "backend": "WASAPI",
+      "inputDeviceName": "麦克风阵列 (Realtek(R) Audio)",
+      "outputDeviceName": "VoiceMeeter Aux Input (VB-Audio VoiceMeeter AUX VAIO)",
+      "sampleRate": 48000,
+      "bufferFrames": 128,
+      "track": {
+        "loopProgress": 0,
+        "loopTransportStatus": "disabled",
+        "state": "Recording",
+        "trackId": 2
+      },
+      "inputPeak": 0.00012401673302520066,
+      "outputPeak": 0,
+      "xrunsOrDropouts": 1749,
+      "phaser": [
+        {
+          "bypassed": false,
+          "effectId": "",
+          "slot": "A"
+        },
+        {
+          "bypassed": false,
+          "effectId": "",
+          "slot": "B"
+        },
+        {
+          "bypassed": false,
+          "effectId": "",
+          "slot": "C"
+        },
+        {
+          "bypassed": false,
+          "effectId": "",
+          "slot": "D"
+        }
+      ]
+    },
+    {
+      "observedAtUtc": "2026-10-17T20:00:54.1744107Z",
+      "operation": "stop-record",
+      "track": {
+        "loopProgress": 0,
+        "loopTransportStatus": "disabled",
+        "state": "Stopped",
+        "trackId": 2
+      },
+      "metadata": {
+        "channels": 2,
+        "frameCount": 1221632,
+        "ok": true,
+        "sampleFormat": "float32le",
+        "sampleRate": 48000,
+        "trackId": 2
+      },
+      "xrunsOrDropouts": 1749
+    },
+    {
+      "observedAtUtc": "2026-10-17T20:01:06.6473243Z",
+      "operation": "play",
+      "track": {
+        "loopProgress": 0.2460184395313263,
+        "loopTransportStatus": "disabled",
+        "state": "Playing",
+        "trackId": 2
+      },
+      "outputPeak": 0.00010352061508456245,
+      "xrunsOrDropouts": 1749
+    },
+    {
+      "observedAtUtc": "2026-10-17T20:01:17.9443397Z",
+      "operation": "overdub",
+      "track": {
+        "loopProgress": 0.6876571774482727,
+        "loopTransportStatus": "disabled",
+        "state": "Overdubbing",
+        "trackId": 2
+      },
+      "inputPeak": 0.00016910152044147253,
+      "outputPeak": 0.0009063085890375078,
+      "xrunsOrDropouts": 1749
+    },
+    {
+      "observedAtUtc": "2026-10-17T20:01:39.1312569Z",
+      "operation": "rhythm-start",
+      "track": {
+        "loopProgress": 0,
+        "loopTransportStatus": "disabled",
+        "state": "Stopped",
+        "trackId": 2
+      },
+      "rhythm": {
+        "available": true,
+        "beat": "4/4",
+        "bpm": 120,
+        "enabled": true,
+        "eventsCleanRoomProcedural": true,
+        "genre": "ACOUSTIC",
+        "kitIndex": 1,
+        "meterDenominator": 4,
+        "meterNumerator": 4,
+        "pattern": "SIDE STICK",
+        "patternCatalogAvailable": true,
+        "patternId": "rhythm-001",
+        "patternIndex": 1,
+        "patternSource": "metadata-only-240-pattern-catalog",
+        "quantizeGrid": "1/16",
+        "section": "main",
+        "statusNote": "Pattern names, styles, meter, and source notes are metadata-only projections of the 240-entry Browser catalog. Audio events are generated procedurally in clean-room code with 16 synthetic timbre profiles; factory MIDI, event sequences, and samples are not implemented.",
+        "swingPercent": 50,
+        "variation": "A",
+        "volume": 50
+      },
+      "outputPeak": 0.00047130195889621973,
+      "xrunsOrDropouts": 1749
+    },
+    {
+      "observedAtUtc": "2026-10-17T20:01:57.5774378Z",
+      "operation": "final-stop",
+      "track": {
+        "loopProgress": 0,
+        "loopTransportStatus": "disabled",
+        "state": "Stopped",
+        "trackId": 2
+      },
+      "rhythmEnabled": false,
+      "monitoringEnabled": false,
+      "inputLatencyMs": 2.6666666666666665,
+      "outputLatencyMs": 2.6666666666666665,
+      "driverRoundTripEstimateMs": 5.333333333333333,
+      "xrunsOrDropouts": 1749
+    }
+  ]
+}

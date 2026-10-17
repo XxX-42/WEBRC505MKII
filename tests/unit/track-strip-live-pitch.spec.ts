@@ -15,6 +15,7 @@ const HardwareFaderStub = defineComponent({
 
 describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
   let wrapper: VueWrapper | null = null;
+  let trackController: any = null;
   let trackAudio: any;
   let runtime: { ready: boolean };
   let nativeHqCapability: { available: boolean; engines: Array<'R2' | 'R3'> };
@@ -85,6 +86,9 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
   afterEach(() => {
     wrapper?.unmount();
     wrapper = null;
+    trackController = null;
+    document.body.replaceChildren();
+    window.localStorage.clear();
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.resetModules();
@@ -99,6 +103,9 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
       selectedBackend: options.backend ?? (mode === 'browser' ? 'BROWSER' : 'ASIO'),
       selectedSampleRate: 48_000,
       getMode: () => mode,
+      onStatusChange: () => () => {},
+      setTrackFxType: () => true,
+      getNativeCatalogFxOptions: () => ['DELAY'],
       getNativeHqRenderer: () => mode === 'native' ? nativeHqCapability : { available: false, engines: [] },
       getUiStatus: () => ({ ready: runtime.ready }),
       getTrackCapabilities: () => ({
@@ -119,29 +126,35 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
       props: { trackId: 1 },
       global: { stubs: { HardwareButton: HardwareButtonStub, HardwareFader: HardwareFaderStub, LoopHalo: true } },
     });
+    const registry = await import('../../src/composables/deviceTrackControllers');
+    trackController = registry.getDeviceTrackController(1);
+    if (!trackController) throw new Error('TrackStrip did not register its controller');
     await flushPromises();
-    return wrapper;
+    return trackController;
   }
 
   it('starts OFF without activating anything, then disables the prior mode before switching', async () => {
-    const view = await mountTrack();
-    expect(view.get('[data-testid="keep-pitch-mode"]').element.value).toBe('OFF');
+    const state = await mountTrack();
+    expect(state.livePitchMode.value).toBe('OFF');
     expect(trackAudio.setMono).not.toHaveBeenCalled();
     expect(trackAudio.setPoly).not.toHaveBeenCalled();
 
-    await view.get('[data-testid="keep-pitch-mode"]').setValue('LIVE_MONO');
+    state.livePitchMode.value = 'LIVE_MONO';
+    state.handleLivePitchModeChange();
     await flushPromises();
     expect(trackAudio.setMono).toHaveBeenNthCalledWith(1, true, { semitones: 0 });
-    expect(view.get('[data-testid="keep-pitch-status"]').text()).toContain('LIVE_MONO ACTIVE');
+    expect(state.livePitchStatus.value).toContain('LIVE_MONO ACTIVE');
 
-    await view.get('[data-testid="keep-pitch-mode"]').setValue('LIVE_POLY');
+    state.livePitchMode.value = 'LIVE_POLY';
+    state.handleLivePitchModeChange();
     await flushPromises();
     expect(trackAudio.setMono).toHaveBeenNthCalledWith(2, false, { semitones: 0 });
     expect(trackAudio.setPoly).toHaveBeenCalledWith(true, { semitones: 0 });
     expect(browserLikeState.monoEnabled).toBe(false);
     expect(browserLikeState.polyEnabled).toBe(true);
 
-    await view.get('[data-testid="keep-pitch-mode"]').setValue('OFF');
+    state.livePitchMode.value = 'OFF';
+    state.handleLivePitchModeChange();
     await flushPromises();
     expect(trackAudio.setPoly).toHaveBeenLastCalledWith(false, { semitones: 0 });
     expect(browserLikeState.polyEnabled).toBe(false);
@@ -149,31 +162,33 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
 
   it('clamps pitch to ±12 and reports fallback plus algorithmic frames/ms', async () => {
     browserLikeState.monoFallback = 'loop is shorter than the processor latency';
-    await mountTrack();
-    await wrapper!.get('[data-testid="keep-pitch-mode"]').setValue('LIVE_MONO');
-    await wrapper!.get('[data-testid="keep-pitch-semitones"]').setValue(99);
+    const state = await mountTrack();
+    state.livePitchMode.value = 'LIVE_MONO';
+    state.handleLivePitchModeChange();
+    state.livePitchSemitones.value = 99;
+    state.handleLivePitchSemitonesChange();
     await flushPromises();
 
-    expect(wrapper!.get('[data-testid="keep-pitch-semitones"]').element.value).toBe('12');
+    expect(state.livePitchSemitones.value).toBe(12);
     expect(trackAudio.setMono).toHaveBeenLastCalledWith(true, { semitones: 12 });
-    expect(wrapper!.get('[data-testid="keep-pitch-fallback"]').text()).toContain('loop is shorter');
-    expect(wrapper!.get('[data-testid="keep-pitch-status"]').text()).toContain('FALLBACK');
-    expect(wrapper!.get('[data-testid="keep-pitch-latency"]').text()).toContain('ALGORITHMIC LATENCY ONLY');
-    expect(wrapper!.get('[data-testid="keep-pitch-latency"]').text()).toContain('algorithmic latency: 2206 samples');
-    expect(wrapper!.get('[data-testid="keep-pitch-latency"]').text()).toContain('45.96 ms');
+    expect(state.livePitchFallbackReason.value).toContain('loop is shorter');
+    expect(state.livePitchStatus.value).toContain('FALLBACK');
+    expect(state.livePitchLatencyFrames.value).toBe(2_206);
+    expect(state.livePitchLatencyMs.value).toBeCloseTo(45.96, 2);
   });
 
-  it('restores saved Native settings only after runtime readiness and explains the single target limit', async () => {
+  it('restores saved Native settings only after runtime readiness on this track controller', async () => {
     runtime.ready = false;
     window.localStorage.setItem('webrc505_track_strip_settings_v1:native:ASIO:track:1', JSON.stringify({
       mode: 'LIVE_POLY', semitones: -7, hqMemoryBudgetMiB: 1024,
     }));
-    const view = await mountTrack({ mode: 'native', backend: 'ASIO' });
+    const state = await mountTrack({ mode: 'native', backend: 'ASIO' });
 
     expect(trackAudio.setPoly).not.toHaveBeenCalled();
-    expect(view.get('[data-testid="keep-pitch-status"]').text()).toContain('WAITING FOR AUDIO RUNTIME');
-    expect(view.get('[data-testid="keep-pitch-native-limit"]').text()).toContain('one selected track target at a time');
-    expect((view.get('[data-testid="hq-memory-budget-mib"]').element as HTMLInputElement).value).toBe('1024');
+    expect(state.livePitchStatus.value).toContain('WAITING FOR AUDIO RUNTIME');
+    expect(state.isNativePitchMode.value).toBe(true);
+    expect(state.livePolyPitchSupported.value).toBe(true);
+    expect(state.hqMemoryBudgetMiB.value).toBe(1024);
 
     runtime.ready = true;
     await vi.advanceTimersByTimeAsync(60);
@@ -183,12 +198,13 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
 
   it('keeps a mode chosen before startup saved and applies it once the runtime becomes ready', async () => {
     runtime.ready = false;
-    const view = await mountTrack();
-    await view.get('[data-testid="keep-pitch-mode"]').setValue('LIVE_MONO');
-    await view.get('[data-testid="keep-pitch-semitones"]').setValue(-5);
-    await flushPromises();
+    window.localStorage.setItem('webrc505_track_strip_settings_v1:browser:BROWSER:track:1', JSON.stringify({
+      mode: 'LIVE_MONO', semitones: -5, hqMemoryBudgetMiB: 512,
+    }));
+    const state = await mountTrack();
+    expect(state.livePitchMode.value).toBe('LIVE_MONO');
     expect(trackAudio.setMono).not.toHaveBeenCalled();
-    expect(view.get('[data-testid="keep-pitch-status"]').text()).toContain('WAITING FOR AUDIO RUNTIME');
+    expect(state.livePitchStatus.value).toContain('WAITING FOR AUDIO RUNTIME');
 
     runtime.ready = true;
     await vi.advanceTimersByTimeAsync(60);
@@ -198,72 +214,78 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
 
   it('locks live controls during recording and exposes asynchronous setter errors', async () => {
     trackAudio.state = 'RECORDING';
-    const view = await mountTrack();
-    expect(view.get('[data-testid="keep-pitch-mode"]').attributes('disabled')).toBeDefined();
+    const state = await mountTrack();
+    expect(state.livePitchControlsDisabled.value).toBe(true);
+    state.livePitchMode.value = 'LIVE_MONO';
+    state.handleLivePitchModeChange();
+    expect(state.livePitchMode.value).toBe('OFF');
+    expect(state.livePitchError.value).toContain('locked while recording');
     expect(trackAudio.setMono).not.toHaveBeenCalled();
 
     trackAudio.state = 'STOPPED';
     trackAudio.setLiveMonoPitchEnabled.mockRejectedValueOnce(new Error('pitch processor failed'));
     await vi.advanceTimersByTimeAsync(60);
-    await view.get('[data-testid="keep-pitch-mode"]').setValue('LIVE_MONO');
+    state.livePitchMode.value = 'LIVE_MONO';
+    state.handleLivePitchModeChange();
     await flushPromises();
-    expect(view.get('[data-testid="keep-pitch-error"]').text()).toContain('pitch processor failed');
+    expect(state.livePitchError.value).toContain('pitch processor failed');
   });
 
   it('persists and passes the configurable HQ estimate to export without changing the default', async () => {
     const urlStub = { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() };
     vi.stubGlobal('URL', urlStub);
-    const view = await mountTrack();
-    expect((view.get('[data-testid="hq-memory-budget-mib"]').element as HTMLInputElement).value).toBe('512');
-    expect(view.text()).toContain('not an OS memory guarantee');
+    const state = await mountTrack();
+    expect(state.hqMemoryBudgetMiB.value).toBe(512);
+    expect(state.canExportHqWav.value).toBe(true);
 
-    await view.get('[data-testid="hq-memory-budget-mib"]').setValue(1024);
+    state.hqMemoryBudgetMiB.value = 1024;
+    state.handleHqMemoryBudgetChange();
     await flushPromises();
     expect(JSON.parse(window.localStorage.getItem('webrc505_track_strip_settings_v1:browser:BROWSER:track:1')!).hqMemoryBudgetMiB).toBe(1024);
-    await view.get('.hq-export-controls button').trigger('click');
-    await flushPromises();
+    await state.exportHqWav();
     expect(trackAudio.exportHqWav).toHaveBeenCalledWith(expect.objectContaining({
       memoryBudgetBytes: 1024 * 1024 * 1024,
     }), expect.any(Function));
     expect(trackAudio.exportHqWav.mock.calls[0][0]).not.toHaveProperty('nativeHqEngine');
   });
 
-  it('shows the advertised Native R2/R3 selector, defaults to R3, and passes the selected engine', async () => {
+  it('uses the advertised Native R2/R3 engines, defaults to R3, and passes the selected engine', async () => {
     const urlStub = { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() };
     vi.stubGlobal('URL', urlStub);
-    const view = await mountTrack({ mode: 'native' });
+    const state = await mountTrack({ mode: 'native' });
 
-    const selector = view.get('[data-testid="native-hq-engine"]');
-    expect((selector.element as HTMLSelectElement).value).toBe('R3');
-    expect(selector.findAll('option').map((option) => option.element.value)).toEqual(['R2', 'R3']);
-    await selector.setValue('R2');
-    await view.get('.hq-export-controls button').trigger('click');
-    await flushPromises();
+    expect(state.nativeHqRendererEngines.value).toEqual(['R2', 'R3']);
+    expect(state.hqNativeEngine.value).toBe('R3');
+    state.hqNativeEngine.value = 'R2';
+    state.handleHqNativeEngineChange();
+    await state.exportHqWav();
 
     expect(trackAudio.exportHqWav).toHaveBeenCalledWith(expect.objectContaining({ nativeHqEngine: 'R2' }), expect.any(Function));
   });
 
   it('uses an advertised R2-only renderer and clamps HQ controls to their supported ranges', async () => {
     nativeHqCapability = { available: true, engines: ['R2'] };
-    const view = await mountTrack({ mode: 'native' });
-    expect((view.get('[data-testid="native-hq-engine"]').element as HTMLSelectElement).value).toBe('R2');
-    expect(view.get('[data-testid="native-hq-engine"]').findAll('option').map((option) => option.element.value)).toEqual(['R2']);
-    const numberControls = view.findAll('.hq-export-panel input[type="number"]');
-    await numberControls[0]!.setValue(99);
-    await numberControls[1]!.setValue(3);
-    await flushPromises();
-    expect((numberControls[0]!.element as HTMLInputElement).value).toBe('24');
-    expect((numberControls[1]!.element as HTMLInputElement).value).toBe('2');
+    const state = await mountTrack({ mode: 'native' });
+    expect(state.hqNativeEngine.value).toBe('R2');
+    state.hqPitchSemitones.value = 99;
+    state.handleHqPitchChange();
+    state.hqPlaybackRate.value = 3;
+    state.handleHqPlaybackRateChange();
+
+    expect(state.nativeHqRendererEngines.value).toEqual(['R2']);
+    expect(state.hqPitchSemitones.value).toBe(24);
+    expect(state.hqPlaybackRate.value).toBe(2);
   });
 
   it('treats missing Native HQ capability as unavailable', async () => {
     nativeHqCapability = { available: false, engines: [] };
     const urlStub = { createObjectURL: vi.fn(() => 'blob:test'), revokeObjectURL: vi.fn() };
     vi.stubGlobal('URL', urlStub);
-    const nativeView = await mountTrack({ mode: 'native' });
-    expect(nativeView.get('[data-testid="native-hq-engine"]').attributes('disabled')).toBeDefined();
-    expect(nativeView.get('[data-testid="native-hq-unavailable"]').text()).toContain('unavailable');
-    expect(nativeView.get('.hq-export-controls button').attributes('disabled')).toBeDefined();
+    const state = await mountTrack({ mode: 'native' });
+
+    expect(state.nativeHqRendererAvailable.value).toBe(false);
+    expect(state.canExportHqWav.value).toBe(false);
+    await state.exportHqWav();
     expect(trackAudio.exportHqWav).not.toHaveBeenCalled();
   });
 });

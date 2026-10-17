@@ -1,0 +1,55 @@
+{
+  "observedAtUtc": "2026-10-17T20:42:33.5367475Z",
+  "operation": "Classic LCD Track 2 KeepPitch OFF to LIVE_MONO",
+  "engineRunning": true,
+  "nativePitch": {
+    "active": false,
+    "algorithm": "cleanRoomYinPsola",
+    "confidence": 0.0,
+    "enabled": true,
+    "fallbackReason": "notRequested",
+    "frequencyHz": 0.0,
+    "latencySamples": 2206,
+    "mode": "liveMonoKeepPitch",
+    "pitchCorrectionAvailable": true,
+    "pitchCorrectionImplemented": true,
+    "reversePlayback": false,
+    "semitones": 0.0,
+    "statusNote": "Native LIVE_MONO and LIVE_POLY use one bounded pitch processor. trackId 0 preserves the legacy route on the summed playback bus after the shared A-D bank; trackId 1-5 processes only that loop before it is mixed with other playback, before that track's independent A-D chain and the shared playback mix chain. Live monitoring/recording, input FX, rhythm, and global output stages remain outside the pitch path. Reverse playback and a selected loop no longer than the configured latency fall back dry. HQ_RENDER uses a metadata preflight, audio-callback-pinned loop snapshot, and optional C++ Rubber Band offline renderer; WAV encoding occurs in the UI.",
+    "trackId": 2,
+    "voiced": false
+  },
+  "nativeTracks": [
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Stopped",
+      "trackId": 1
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Stopped",
+      "trackId": 2
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Empty",
+      "trackId": 3
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Empty",
+      "trackId": 4
+    },
+    {
+      "loopProgress": 0.0,
+      "loopTransportStatus": "disabled",
+      "state": "Empty",
+      "trackId": 5
+    }
+  ],
+  "lastError": ""
+}

@@ -13,6 +13,25 @@ describe('AudioEngine capabilities', () => {
     localStorage.clear();
   });
 
+  it('routes the Browser output knob through the master gain and bounds its value', async () => {
+    const engine = await loadEngineForSearch('/?audio=browser');
+    expect(engine.getCapabilities().supportsOutputLevel).toBe(true);
+    expect(engine.getOutputLevel()).toBe(100);
+    engine.setOutputLevel(35);
+    expect(engine.getOutputLevel()).toBe(35);
+    expect((engine as any).browser.masterGainNode.gain.value).toBe(0.35);
+    engine.setOutputLevel(180);
+    expect(engine.getOutputLevel()).toBe(100);
+    expect(() => engine.setOutputLevel(NaN)).toThrow('finite');
+  });
+
+  it('explains that the Native output knob has no exposed backing command', async () => {
+    const engine = await loadEngineForSearch('/?audio=native');
+    expect(engine.getCapabilities().supportsOutputLevel).toBe(false);
+    expect(engine.getCapabilities().outputLevelReason).toContain('not exposed');
+    expect(() => engine.setOutputLevel(50)).toThrow('not exposed');
+  });
+
   it('reports browser track capabilities and incomplete DSP parity', async () => {
     const engine = await loadEngineForSearch('/?audio=browser');
 

@@ -130,7 +130,7 @@ function applyNamedParameters() {
 <style scoped>
 .native-track-chain, .chain-context, .chain-field { display: flex; flex-direction: column; gap: 8px; }
 .native-track-chain { gap: 12px; }
-.chain-context { font-size: 11px; line-height: 1.5; }
+.chain-context { font-size: 13px; line-height: 1.45; }
 .chain-context strong { color: #ff6c7a; letter-spacing: 1px; }
 .chain-context span, .parameter-help { color: rgba(255, 255, 255, 0.65); }
 .chain-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -140,12 +140,14 @@ function applyNamedParameters() {
 }
 .chain-slots button.selected { border-color: #ff6c7a; box-shadow: 0 0 0 1px #ff6c7a; }
 .chain-slots button.enabled, .activation[aria-pressed="true"] { background: #63323a; }
-.chain-slots small { display: block; font-size: 9px; margin-top: 3px; }
-.chain-field { font-size: 11px; }
+.chain-slots small { display: block; font-size: 11px; margin-top: 3px; }
+.chain-field { font-size: 13px; }
+.chain-field :is(input, select, textarea) { font-size: 14px; }
+.chain-slots button, .activation, .apply-parameters { font-size: 13px; }
 .chain-field input, .chain-field select, .chain-field textarea { width: 100%; box-sizing: border-box; }
 .chain-field textarea { resize: vertical; font-family: monospace; }
 .chain-error { color: #ff9198; }
-.chain-status { font-size: 10px; line-height: 1.5; margin: 0; overflow-wrap: anywhere; }
-.parameter-help { margin: -4px 0 0; font-size: 10px; line-height: 1.4; }
+.chain-status { font-size: 12px; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
+.parameter-help { margin: -4px 0 0; font-size: 12px; line-height: 1.45; }
 button:disabled, input:disabled, textarea:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>

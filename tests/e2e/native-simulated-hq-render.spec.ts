@@ -1,12 +1,13 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { activateLcdAction, findLcdField, openTrackLcd, selectLcdEnum, setLcdRange } from './uiHelpers';
 
 const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
 
 test.skip(!simulationHost, 'Set NATIVE_BRIDGE_SIMULATION_EXECUTABLE to the explicit no-hardware bridge simulation target.');
 
-test('Native browser bridge captures and exports a synthetic loop through HQ_RENDER', async ({ page }) => {
+test('Native browser bridge captures and exports a synthetic loop through the LCD HQ_RENDER editor', async ({ page }) => {
   if (!simulationHost) return;
 
   let host: ChildProcess | undefined;
@@ -34,7 +35,6 @@ test('Native browser bridge captures and exports a synthetic loop through HQ_REN
     const strip = page.locator('[data-track-id="1"]');
     await expect(page.locator('.top-status-strip')).toContainText('NATIVE AUDIO READY', { timeout: 20_000 });
     await expect(page.locator('.top-status-strip')).toContainText('TRACK A–D AVAILABLE');
-    await expect(strip.locator('[data-testid="native-hq-engine"] option')).toHaveCount(2);
 
     // The explicit simulation host feeds a synthetic 440 Hz tone. This checks
     // the real browser-to-loopback HTTP and WAV export path, not device input,
@@ -56,15 +56,22 @@ test('Native browser bridge captures and exports a synthetic loop through HQ_REN
     expect(metadata.frameCount).toBeGreaterThan(0);
     expect(metadata.channels).toBe(2);
 
-    await strip.locator('.hq-export-panel summary').click();
-    await strip.locator('[data-testid="native-hq-engine"]').selectOption('R2');
-    const numericInputs = strip.locator('.hq-export-controls input[type="number"]');
-    await numericInputs.nth(0).fill('7');
-    await numericInputs.nth(1).fill('1');
-    await strip.locator('.hq-export-controls select').last().selectOption('pcm16');
+    const trackScreen = await openTrackLcd(page, 1);
+    const rendererField = await findLcdField(page, 'wav-engine');
+    const renderer = rendererField.getByTestId('lcd-field-wav-engine');
+    await expect(renderer.locator('option')).toHaveCount(2);
+    const r2Option = renderer.locator('option').filter({ hasText: 'R2' });
+    await expect(r2Option).toHaveCount(1);
+    await renderer.selectOption(await r2Option.getAttribute('value') ?? '');
+    await setLcdRange(page, 'wav-pitch', 7);
+    await setLcdRange(page, 'wav-rate', 1);
+    await selectLcdEnum(page, 'wav-format', 'PCM 16-BIT');
+    const exportField = await findLcdField(page, 'wav-export');
+    await expect(exportField.getByTestId('lcd-field-wav-export')).toBeEnabled();
+    await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 
     const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });
-    await strip.getByRole('button', { name: 'EXPORT HQ WAV' }).click();
+    await activateLcdAction(page, 'wav-export');
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('webrc505-track-01-hq-render.wav');
     const downloadPath = await download.path();
@@ -78,6 +85,7 @@ test('Native browser bridge captures and exports a synthetic loop through HQ_REN
     expect(wav.readUInt32LE(24)).toBe(metadata.sampleRate);
     expect(wav.readUInt16LE(34)).toBe(16);
     expect(wav.readUInt32LE(40)).toBe(metadata.frameCount * metadata.channels * 2);
+    await expect(trackScreen).toBeVisible();
   } finally {
     if (host && host.exitCode === null) {
       host.kill('SIGTERM');

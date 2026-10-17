@@ -7,10 +7,10 @@
           <span class="led-digits">{{ bpmDisplay }}</span>
         </div>
         <div class="bpm-controls" :class="{ 'is-disabled': controlsDisabled }">
-          <button @click="adjustBpm(-1)" class="bpm-adjust-btn" aria-label="Decrease BPM">
+          <button @click="adjustBpm(-1)" class="bpm-adjust-btn" aria-label="Decrease BPM" :disabled="controlsDisabled">
             <span>-</span>
           </button>
-          <button @click="adjustBpm(1)" class="bpm-adjust-btn" aria-label="Increase BPM">
+          <button @click="adjustBpm(1)" class="bpm-adjust-btn" aria-label="Increase BPM" :disabled="controlsDisabled">
             <span>+</span>
           </button>
         </div>
@@ -26,6 +26,7 @@
         :active="isPlaying"
         :label="isPlaying ? 'STOP ALL' : 'PLAY ALL'"
         :aria-label="isPlaying ? 'Stop all tracks' : 'Play all tracks'"
+        :disabled="controlsDisabled"
         @press="toggleTransport"
         class="transport-button"
       />
@@ -36,6 +37,7 @@
         :active="tapActive"
         label="TAP"
         aria-label="Tap tempo"
+        :disabled="controlsDisabled"
         @press="handleTap"
         class="tap-button"
         :class="{ 'is-disabled': controlsDisabled }"
@@ -58,11 +60,12 @@
         color="red"
         :active="isThruActive"
         label="THRU"
-        aria-label="Toggle direct monitoring"
+        :aria-label="thruAriaLabel"
+        :disabled="monitoringDisabled"
         @press="toggleThru"
         class="thru-button"
-        :class="{ 'is-disabled': controlsDisabled }"
       />
+      <p v-if="monitoringError" class="thru-error" role="alert">{{ monitoringError }}</p>
     </div>
 
     <div class="divider"></div>
@@ -91,6 +94,7 @@ import { AudioEngine } from '../audio/AudioEngine';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
 import BrowserAudioSettings from './BrowserAudioSettings.vue';
+import { useMonitoringControls } from '../composables/useMonitoringControls';
 
 const transport = Transport.getInstance();
 const engine = AudioEngine.getInstance();
@@ -101,10 +105,19 @@ const isPlaying = ref(false);
 const beatIndicator = ref(false);
 const tapActive = ref(false);
 const showSettings = ref(false);
-const isThruActive = ref(engine.monitoringEnabled);
 const nativeReady = ref(engine.isNativeReady());
 const audioMode = ref(engine.getMode());
-let unsubscribeMonitoring: (() => void) | null = null;
+const monitoring = useMonitoringControls(engine);
+const isThruActive = monitoring.active;
+const monitoringError = monitoring.error;
+const monitoringPending = monitoring.pending;
+const monitoringReady = monitoring.ready;
+const monitoringDisabled = computed(() => !monitoringReady.value || monitoringPending.value);
+const thruAriaLabel = computed(() => monitoringPending.value
+  ? 'Changing direct monitoring state'
+  : !monitoringReady.value
+    ? `Direct monitoring unavailable: ${monitoring.unavailableReason.value}`
+    : isThruActive.value ? 'Disable direct monitoring' : 'Enable direct monitoring');
 let unsubscribeStatus: (() => void) | null = null;
 
 const bpmDisplay = computed(() => bpm.value.toString().padStart(3, '0'));
@@ -164,26 +177,7 @@ const openSettings = () => {
   showSettings.value = true;
 };
 
-const toggleThru = () => {
-  if (controlsDisabled.value) return;
-  if (!isThruActive.value) {
-    const confirmed = confirm(
-      'WARNING: FEEDBACK RISK!\n\n' +
-      'Enabling THRU will route your microphone directly to speakers.\n\n' +
-      'This will cause loud squealing/howling if you are using speakers.\n\n' +
-      'Only proceed if you are using headphones.\n\n' +
-      'Enable THRU?'
-    );
-
-    if (confirmed) {
-      void engine.setMonitoring(true);
-      console.log('THRU ENABLED - Monitoring active (use headphones)');
-    }
-  } else {
-    void engine.setMonitoring(false);
-    console.log('THRU DISABLED - Monitoring off');
-  }
-};
+const toggleThru = () => monitoring.toggle();
 
 let tapTimes: number[] = [];
 let tapResetTimer: number | null = null;
@@ -274,9 +268,6 @@ onMounted(() => {
   transport.on('start', handleTransportStart);
   transport.on('stop', handleTransportStop);
   syncPlaybackState();
-  unsubscribeMonitoring = engine.onMonitoringChange((enabled) => {
-    isThruActive.value = enabled;
-  });
   unsubscribeStatus = engine.onStatusChange((status) => {
     audioMode.value = status.mode;
     nativeReady.value = status.ready;
@@ -302,7 +293,6 @@ onUnmounted(() => {
   if (tapFlashTimer) {
     clearTimeout(tapFlashTimer);
   }
-  unsubscribeMonitoring?.();
   unsubscribeStatus?.();
 });
 </script>
@@ -431,6 +421,11 @@ onUnmounted(() => {
   color: rgba(240, 240, 240, 0.9);
 }
 
+.bpm-adjust-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .bpm-adjust-btn:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
@@ -462,6 +457,20 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-end;
   padding-bottom: 2px;
+}
+
+.thru-module {
+  position: relative;
+}
+
+.thru-error {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  margin: 0;
+  max-width: 220px;
+  color: #ff9a9a;
+  font: 10px/1.4 var(--font-hardware);
 }
 
 .beat-led {

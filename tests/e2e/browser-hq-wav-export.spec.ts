@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { activateLcdAction, findLcdField, openTrackLcd, selectLcdEnum, setLcdRange, startBrowserAudio } from './uiHelpers';
 
 const initScriptPath = path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js');
 
@@ -23,9 +24,10 @@ function goertzelPower(samples: Buffer, firstFrame: number, frameCount: number, 
   return previous * previous + previous2 * previous2 - coefficient * previous * previous2;
 }
 
-test('exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from the Track Strip', async ({ page }) => {
-  await page.goto('/?audio=browser');
-  await page.locator('[data-track-id="1"] .hq-export-panel').waitFor();
+test('exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from the selected track LCD', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+  const trackScreen = await openTrackLcd(page, 1);
 
   const setup = await page.evaluate(async () => {
     const [{ AudioEngine }, { TrackState }, { TrackAudio }] = await Promise.all([
@@ -75,19 +77,19 @@ test('exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from the Track S
       channels: track.audioBuffer?.numberOfChannels ?? 0,
     };
   });
-  const strip = page.locator('[data-track-id="1"]');
   expect(setup.mode).toBe('browser');
   expect(setup.trackIsActualEngineTrack).toBe(true);
   expect(setup.canExport).toBe(true);
   expect(setup.state).toBe('STOPPED');
-  await expect(strip.locator('button', { hasText: 'EXPORT HQ WAV' })).toBeEnabled();
-  await strip.locator('.hq-export-panel summary').click();
-  await strip.locator('.hq-export-panel input[type="number"]').nth(0).fill('7');
-  await strip.locator('.hq-export-panel input[type="number"]').nth(1).fill('0.8');
-  await strip.locator('.hq-export-panel select').selectOption('pcm24');
+  await setLcdRange(page, 'wav-pitch', 7);
+  await setLcdRange(page, 'wav-rate', 0.8);
+  await selectLcdEnum(page, 'wav-format', 'PCM 24-BIT');
+  const exportField = await findLcdField(page, 'wav-export');
+  await expect(exportField.getByTestId('lcd-field-wav-export')).toBeEnabled();
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 
   const downloadPromise = page.waitForEvent('download');
-  await strip.getByRole('button', { name: 'EXPORT HQ WAV' }).click();
+  await activateLcdAction(page, 'wav-export');
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('webrc505-track-01-hq-render.wav');
   const filePath = await download.path();
@@ -106,4 +108,5 @@ test('exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from the Track S
   const targetPitchPower = goertzelPower(wav, 6_000, 18_000, setup.sampleRate, 440 * 2 ** (7 / 12));
   const originalPitchPower = goertzelPower(wav, 6_000, 18_000, setup.sampleRate, 440);
   expect(targetPitchPower).toBeGreaterThan(originalPitchPower * 4);
+  await expect(trackScreen).toBeVisible();
 });

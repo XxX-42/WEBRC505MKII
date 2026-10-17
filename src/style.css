@@ -26,8 +26,8 @@
     --button-size-md: 48px;
     --button-size-lg: 64px;
 
-    --font-hardware: 'Rajdhani', sans-serif;
-    --font-mono: 'Roboto Mono', monospace;
+    --font-hardware: 'Bahnschrift', 'Arial Narrow', 'Segoe UI', sans-serif;
+    --font-mono: 'Consolas', 'Courier New', monospace;
 
     --text-primary: #f2f2f2;
     --text-muted: rgba(240, 240, 240, 0.55);
@@ -53,21 +53,26 @@
 }
 
 :root[data-ui-style='classic'] {
-    --text-primary: #2c2418;
-    --text-muted: rgba(76, 58, 35, 0.62);
-    --bg-panel-main: #ebe4d7;
-    --bg-panel-secondary: #f6efe2;
-    --bg-groove-dark: #d9cfbf;
-    --gradient-plastic-light: linear-gradient(180deg, #fffdf7 0%, #ece2d2 100%);
-    --app-background: radial-gradient(circle at top, #fff7eb 0%, #e4dacc 100%);
-    --track-list-background: rgba(255, 255, 255, 0.46);
-    --panel-border: rgba(94, 72, 42, 0.18);
-    --panel-border-strong: rgba(94, 72, 42, 0.28);
-    --shell-divider: rgba(94, 72, 42, 0.2);
-    --shell-surface: rgba(255, 252, 246, 0.7);
-    --shell-status-background: rgba(255, 250, 242, 0.86);
-    --bg-button-gradient: linear-gradient(180deg, #fffdf7 0%, #e6dccb 100%);
-    --bg-button-active: linear-gradient(180deg, #ded3c1 0%, #efe5d6 100%);
+    --text-primary: #e8e8ed;
+    --text-muted: #999ba5;
+    --bg-panel-main: #141519;
+    --bg-panel-secondary: #222329;
+    --bg-groove-dark: #090a0d;
+    --gradient-plastic-light: linear-gradient(180deg, #393a40 0%, #222329 100%);
+    --app-background: radial-gradient(ellipse at top, #27282e 0%, #0d0e11 100%);
+    --track-list-background: rgba(0, 0, 0, 0.28);
+    --panel-border: rgba(218, 219, 230, 0.16);
+    --panel-border-strong: rgba(218, 219, 230, 0.3);
+    --shell-divider: rgba(218, 219, 230, 0.14);
+    --shell-surface: rgba(24, 25, 31, 0.94);
+    --shell-status-background: #111216;
+    --bg-button-gradient: linear-gradient(180deg, #3b3b42 0%, #202025 100%);
+    --bg-button-active: linear-gradient(180deg, #19191f 0%, #303037 100%);
+    --classic-panel-surface: linear-gradient(180deg, #303138, #1c1d23);
+    --classic-panel-surface-strong: linear-gradient(180deg, #383941, #222329);
+    --classic-panel-border: rgba(218, 219, 230, 0.2);
+    --classic-panel-border-strong: rgba(218, 219, 230, 0.35);
+    --classic-panel-shadow: 0 16px 35px #0008, inset 0 1px #ffffff12;
 }
 
 :root[data-ui-style='tech'] {

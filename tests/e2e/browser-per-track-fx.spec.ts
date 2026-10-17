@@ -1,5 +1,13 @@
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+import {
+  findLcdField,
+  openFxEditor,
+  openLcdPage,
+  selectLcdEnum,
+  setLcdBoolean,
+  startBrowserAudio,
+} from './uiHelpers';
 
 test('renders five private Browser A–D banks with real AudioWorklets and isolated track signals', async ({ page }) => {
   await page.goto('/?audio=browser');
@@ -73,10 +81,13 @@ test('keeps real per-track serial processing order through the shipped worklet b
   expect(result.nonFinite).toBe(0); expect(result.difference).toBeGreaterThan(0.001);
 });
 
-test('selects target track/slot explicitly and restores independent settings without changing the shared bank', async ({ page }) => {
+test('Tech compatibility FX editor: selects target track/slot and restores state independently from the shared bank', async ({ page }) => {
   await page.addInitScript({ path: path.join(process.cwd(), 'tests/e2e/initMocks.js') });
-  await page.goto('/?audio=browser&ui=classic');
-  const panel = page.locator('[data-panel="track-fx"]');
+  await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
+  const panel = await openFxEditor(page, 'track');
+  await expect(page.locator('.app-root')).toHaveAttribute('data-ui-style', 'tech');
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
   await panel.getByLabel('Track FX target', { exact: true }).selectOption('1');
   await expect(panel.locator('[data-track-fx-context]')).toHaveText('TRACK 1 · SLOT A');
   await panel.getByLabel('Per-track FX type', { exact: true }).selectOption('DELAY');
@@ -90,14 +101,137 @@ test('selects target track/slot explicitly and restores independent settings wit
   await panel.getByLabel('Select Track 5 FX slot D', { exact: true }).click();
   await panel.getByLabel('Per-track FX type', { exact: true }).selectOption('MANUAL PAN');
   await page.reload();
-  await expect(panel.getByLabel('Track FX target', { exact: true })).toHaveValue('5');
-  await expect(panel.locator('[data-track-fx-context]')).toHaveText('TRACK 5 · SLOT D');
-  await expect(panel.getByLabel('Per-track FX type', { exact: true })).toHaveValue('MANUAL PAN');
-  await panel.getByLabel('Track FX target', { exact: true }).selectOption('1');
-  await expect(panel.getByLabel('Per-track FX type', { exact: true })).toHaveValue('DELAY');
-  await expect(panel.getByLabel('Toggle per-track FX slot', { exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await panel.locator('summary').click();
-  await expect(panel.getByLabel('Track 1 slot A delayTimeMs', { exact: true })).toHaveValue('211');
-  await panel.getByLabel('Track FX target', { exact: true }).selectOption('shared');
-  await expect(panel.locator('select.fx-select')).toHaveValue('FILTER');
+  await startBrowserAudio(page);
+  const restoredPanel = await openFxEditor(page, 'track');
+  await expect(restoredPanel.getByLabel('Track FX target', { exact: true })).toHaveValue('5');
+  await expect(restoredPanel.locator('[data-track-fx-context]')).toHaveText('TRACK 5 · SLOT D');
+  await expect(restoredPanel.getByLabel('Per-track FX type', { exact: true })).toHaveValue('MANUAL PAN');
+  await restoredPanel.getByLabel('Track FX target', { exact: true }).selectOption('1');
+  await expect(restoredPanel.getByLabel('Per-track FX type', { exact: true })).toHaveValue('DELAY');
+  await expect(restoredPanel.getByLabel('Toggle per-track FX slot', { exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await restoredPanel.locator('summary').click();
+  await expect(restoredPanel.getByLabel('Track 1 slot A delayTimeMs', { exact: true })).toHaveValue('211');
+  await restoredPanel.getByLabel('Track FX target', { exact: true }).selectOption('shared');
+  await expect(restoredPanel.locator('select.fx-select').first()).toHaveValue('FILTER');
+});
+
+test('Classic LCD FX fields and four screen knobs preserve the selected target in Browser DSP and Native mock bridge', async ({ page }) => {
+  await page.addInitScript({ path: path.join(process.cwd(), 'tests/e2e/initMocks.js') });
+
+  const setKnob = async (knob: Locator, value: number) => {
+    await knob.focus();
+    await knob.press('Home');
+    for (let step = 0; step < value / 10; step += 1) await knob.press('PageUp');
+    await expect(knob).toHaveAttribute('aria-valuenow', String(value));
+  };
+  const setScreenKnobIndex = async (knob: Locator, value: number) => {
+    await knob.focus();
+    await knob.press('Home');
+    for (let step = 0; step < value; step += 1) await knob.press('ArrowRight');
+    await expect(knob).toHaveAttribute('aria-valuenow', String(value));
+  };
+
+  const runMode = async (mode: 'browser' | 'native') => {
+    const native = mode === 'native';
+    const url = native
+      ? '/?audio=native&ui=classic&nativeTrackFxUiE2e=1'
+      : '/?audio=browser&ui=classic';
+    if (native) {
+      // Seed a running, already-installed per-track slot so Native accepts live
+      // amount changes and the test can assert the exact bridge target.
+      await page.addInitScript(() => {
+        const tracks = Array.from({ length: 5 }, (_, index) => ({
+          trackId: index + 1,
+          activeSlot: 'A',
+          slots: ['A', 'B', 'C', 'D'].map((id) => ({
+            id,
+            type: index === 1 && id === 'B' ? 'PHASER' : 'NONE',
+            value: 0,
+            active: false,
+            namedParameters: {},
+          })),
+        }));
+        localStorage.setItem('webrc505_native_per_track_fx_v1', JSON.stringify({ version: 1, target: 'shared', tracks }));
+      });
+    }
+    await page.goto(url);
+    if (!native) await startBrowserAudio(page);
+
+    const screen = await openLcdPage(page, 'track-fx-edit-button');
+    await expect(screen).toContainText(/TRACK FX/i);
+    await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+
+    const targetField = await findLcdField(page, 'target');
+    const targetSelect = targetField.getByTestId('lcd-field-target');
+    await expect(targetSelect).toHaveValue('0');
+
+    const physicalKnob = page.getByRole('slider', { name: 'TRACK FX selected effect value', exact: true });
+    await expect(physicalKnob).toHaveAttribute('aria-disabled', 'false');
+    await setKnob(physicalKnob, 90);
+    let amountField = await findLcdField(page, 'amount');
+    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('90');
+
+    const targetKnob = page.getByRole('slider', { name: 'FX TARGET screen control', exact: true });
+    await setScreenKnobIndex(targetKnob, 2);
+    await expect(targetSelect).toHaveValue('2');
+
+    const slotKnob = page.getByRole('slider', { name: 'SLOT screen control', exact: true });
+    await setScreenKnobIndex(slotKnob, 1);
+    const slotField = await findLcdField(page, 'slot');
+    await expect(slotField.getByTestId('lcd-field-slot').locator('option:checked')).toHaveText('B');
+
+    const effectType = native ? 'PHASER' : 'DELAY';
+    const typeField = await findLcdField(page, 'type');
+    const typeSelect = typeField.getByTestId('lcd-field-type');
+    const typeOptions = await typeSelect.locator('option').allTextContents();
+    const typeIndex = typeOptions.findIndex((label) => label.trim() === effectType);
+    expect(typeIndex, `${effectType} must be offered by the ${mode} Track FX editor`).toBeGreaterThanOrEqual(0);
+    const typeKnob = page.getByRole('slider', { name: 'EFFECT TYPE screen control', exact: true });
+    await setScreenKnobIndex(typeKnob, typeIndex);
+    await expect(typeSelect.locator('option:checked')).toHaveText(effectType);
+    await expect(physicalKnob).toHaveAttribute('aria-disabled', 'false');
+
+    const amountKnob = page.getByRole('slider', { name: 'AMOUNT screen control', exact: true });
+    await setKnob(amountKnob, 60);
+    amountField = await findLcdField(page, 'amount');
+    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('60');
+    await setLcdBoolean(page, 'active', true);
+
+    if (native) {
+      await expect.poll(() => page.evaluate(() => {
+        const requests = (window as unknown as { __rc505NativeCatalogSlotRequests: Array<Record<string, unknown>> }).__rc505NativeCatalogSlotRequests;
+        return requests.some((request) => request.trackId === 2 && request.slot === 'B' && request.effectId === 'phaser'
+          && (request.parameters as Record<string, number> | undefined)?.depth === 0.6);
+      })).toBe(true);
+    }
+
+    await selectLcdEnum(page, 'target', 'SHARED BANK');
+    amountField = await findLcdField(page, 'amount');
+    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('90');
+    await selectLcdEnum(page, 'target', 'TRACK 2');
+    amountField = await findLcdField(page, 'amount');
+    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('60');
+
+    const activeField = await findLcdField(page, 'active');
+    await expect(activeField.getByTestId('lcd-field-active')).toHaveAttribute('aria-pressed', 'true');
+    amountField = await findLcdField(page, 'amount');
+    const screenAmountKnob = page.getByRole('slider', { name: 'AMOUNT screen control', exact: true });
+    await setKnob(screenAmountKnob, 0);
+    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('0');
+    await selectLcdEnum(page, 'target', 'SHARED BANK');
+    amountField = await findLcdField(page, 'amount');
+    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('90');
+    await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+
+    if (native) {
+      await expect.poll(() => page.evaluate(() => {
+        const requests = (window as unknown as { __rc505NativeCatalogSlotRequests: Array<Record<string, unknown>> }).__rc505NativeCatalogSlotRequests;
+        return requests.some((request) => request.trackId === 2 && request.slot === 'B' && request.effectId === 'phaser'
+          && (request.parameters as Record<string, number> | undefined)?.depth === 0);
+      })).toBe(true);
+    }
+  };
+
+  await runMode('browser');
+  await runMode('native');
 });

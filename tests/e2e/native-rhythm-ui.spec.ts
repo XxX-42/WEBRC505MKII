@@ -1,89 +1,119 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import {
+  activateLcdAction,
+  findLcdField,
+  lcdField,
+  lcdScreen,
+  openLcdPage,
+  selectLcdEnum,
+  setLcdRange,
+} from './uiHelpers';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript({ path: path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js') });
 });
 
-test('Native rhythm controls read host settings, send every shared setting, and survive a shell switch', async ({ page }) => {
+test('Native rhythm reads host settings, sends every LCD setting, and survives a shell switch', async ({ page }) => {
   await page.goto('/?audio=native&ui=tech&rhythmUiE2e=1');
-  const pattern = page.getByTestId('rhythm-pattern-select');
+  const screen = await openLcdPage(page, 'rhythm-edit-button');
+  const pattern = lcdField(page, 'pattern');
+  const volume = lcdField(page, 'volume');
+  const kit = lcdField(page, 'kit');
+
   await expect(pattern).toBeEnabled();
   await expect(pattern).toHaveValue('198');
   await expect(pattern.locator('option')).toHaveCount(240);
-  await expect(page.getByRole('slider', { name: 'Rhythm volume', exact: true })).toHaveValue('73');
+  await expect(volume).toHaveValue('73');
+  await expect(kit).toHaveValue('13');
+  const variation = await findLcdField(page, 'variation');
+  await expect(lcdScreen(page).locator('.lcd-row.top')).toContainText('2/3');
+  await expect(variation.getByTestId('lcd-field-variation').locator('option:checked')).toHaveText('C');
+  await expect(lcdField(page, 'section').locator('option:checked')).toHaveText('INTRO');
+  await expect(lcdField(page, 'swing')).toHaveValue('67');
+  await expect(lcdField(page, 'quantize').locator('option:checked')).toHaveText('1/8');
   expect(await page.evaluate(() => (window as unknown as { __rc505NativeRhythmRequests: unknown[] }).__rc505NativeRhythmRequests.length)).toBe(0);
-  await page.locator('summary[aria-label="More rhythm settings"]').click();
-  await expect(page.getByTestId('rhythm-kit-select')).toHaveValue('13');
-  await expect(page.getByTestId('rhythm-variation-select')).toHaveValue('C');
-  await expect(page.getByTestId('rhythm-section-select')).toHaveValue('intro');
-  await expect(page.getByTestId('rhythm-swing')).toHaveValue('67');
-  await expect(page.getByTestId('rhythm-quantize-select')).toHaveValue('1/8');
+
+  await page.getByRole('button', { name: 'Previous display page', exact: true }).click();
+  await expect(lcdScreen(page).locator('.lcd-row.top')).toContainText('1/3');
   await pattern.selectOption('240');
-  await page.getByTestId('rhythm-kit-select').selectOption('16');
-  await page.getByTestId('rhythm-variation-select').selectOption('D');
-  await page.getByTestId('rhythm-section-select').selectOption('fill');
-  await page.getByTestId('rhythm-quantize-select').selectOption('1/4');
-  await page.getByTestId('rhythm-swing').evaluate((element) => {
-    const input = element as HTMLInputElement;
-    input.value = '75';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  await page.getByRole('slider', { name: 'Rhythm volume', exact: true }).evaluate((element) => {
-    const input = element as HTMLInputElement;
-    input.value = '84';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await page.getByRole('button', { name: 'Increase BPM', exact: true }).click();
-  await page.getByRole('button', { name: 'Start rhythm', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Stop rhythm', exact: true })).toBeEnabled();
+  await kit.selectOption('16');
+  await setLcdRange(page, 'volume', 84);
+  await setLcdRange(page, 'bpm', 94);
+  await page.getByRole('button', { name: 'Next display page', exact: true }).click();
+  await expect(lcdScreen(page).locator('.lcd-row.top')).toContainText('2/3');
+  await selectLcdEnum(page, 'variation', 'D');
+  await selectLcdEnum(page, 'section', 'FILL');
+  await setLcdRange(page, 'swing', 75);
+  await selectLcdEnum(page, 'quantize', '1/4');
+  const playStop = await findLcdField(page, 'play-stop');
+  await expect(lcdScreen(page).locator('.lcd-row.top')).toContainText('3/3');
+  await expect(playStop).toContainText('START RHYTHM');
+
+  await activateLcdAction(page, 'play-stop');
   await expect.poll(() => page.evaluate(() => {
     const requests = (window as unknown as { __rc505NativeRhythmRequests: unknown[] }).__rc505NativeRhythmRequests;
     return requests.at(-1);
   })).toEqual({ enabled: true, bpm: 94, kitIndex: 16, patternIndex: 240, variation: 'D', section: 'fill', swingPercent: 75, quantizeGrid: '1/4', volume: 84 });
-  await page.getByTestId('ui-style-toggle').click();
-  await expect(page.getByTestId('center-rhythm-pattern-select')).toHaveValue('240');
-  await expect(page.getByRole('slider', { name: 'Rhythm volume', exact: true })).toHaveValue('84');
-  await expect(page.getByRole('button', { name: 'Toggle rhythm', exact: true })).toHaveClass(/\bactive\b/);
-  await page.getByRole('button', { name: 'Toggle rhythm', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Toggle rhythm', exact: true })).not.toHaveClass(/\bactive\b/);
+  await expect(playStop).toContainText('STOP RHYTHM');
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+
+  await activateLcdAction(page, 'play-stop');
+  await expect.poll(() => page.evaluate(() => {
+    const requests = (window as unknown as { __rc505NativeRhythmRequests: unknown[] }).__rc505NativeRhythmRequests;
+    return requests.at(-1);
+  })).toMatchObject({ enabled: false });
+  await expect(playStop).toContainText('START RHYTHM');
 });
 
-test('Native rhythm follows current availability and fails closed for incomplete old bridge status', async ({ page }) => {
-  await page.goto('/?audio=native&ui=tech&rhythmUiE2e=1');
-  const pattern = page.getByTestId('rhythm-pattern-select');
+test('Native rhythm LCD fields fail closed for incomplete or unavailable bridge status', async ({ page }) => {
+  await page.goto('/?audio=native&ui=classic&rhythmUiE2e=1');
+  const screen = await openLcdPage(page, 'rhythm-edit-button');
+  const pattern = lcdField(page, 'pattern');
   await expect(pattern).toBeEnabled();
+
   await page.evaluate(() => {
     const state = (window as unknown as { __rc505NativeRhythmState: Record<string, unknown> }).__rc505NativeRhythmState;
     delete state.swingPercent;
   });
   await expect(pattern).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Start rhythm', exact: true })).toBeDisabled();
-  await expect(page.getByTestId('rhythm-status')).toContainText('does not report the supported rhythm settings');
+  await expect(screen.locator('.lcd-status')).toContainText('does not report the supported rhythm settings');
+  const playStop = await findLcdField(page, 'play-stop');
+  await expect(playStop.getByTestId('lcd-field-play-stop')).toBeDisabled();
+
   await page.evaluate(() => {
     const state = (window as unknown as { __rc505NativeRhythmState: Record<string, unknown> }).__rc505NativeRhythmState;
     Object.assign(state, { swingPercent: 67, available: false, statusNote: 'Native rhythm DSP unavailable in this host' });
   });
-  await expect(page.getByTestId('rhythm-status')).toHaveText('Native rhythm DSP unavailable in this host');
+  await expect(screen.locator('.lcd-status')).toHaveText('Native rhythm DSP unavailable in this host');
   await page.evaluate(() => {
     (window as unknown as { __rc505NativeRhythmState: Record<string, unknown> }).__rc505NativeRhythmState.available = true;
   });
+  await page.getByRole('button', { name: 'Previous display page', exact: true }).click();
+  await page.getByRole('button', { name: 'Previous display page', exact: true }).click();
   await expect(pattern).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Start rhythm', exact: true })).toBeEnabled();
+  const readyAction = await findLcdField(page, 'play-stop');
+  await expect(readyAction.getByTestId('lcd-field-play-stop')).toBeEnabled();
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });
 
-test('Native rhythm exposes request failures and only lights playback after a successful retry', async ({ page }) => {
-  await page.goto('/?audio=native&ui=tech&rhythmUiE2e=1');
-  const start = page.getByRole('button', { name: 'Start rhythm', exact: true });
-  await expect(start).toBeEnabled();
+test('Native rhythm LCD action shows request failures and lights playback only after a successful retry', async ({ page }) => {
+  await page.goto('/?audio=native&ui=classic&rhythmUiE2e=1');
+  const screen = await openLcdPage(page, 'rhythm-edit-button');
   await page.evaluate(() => { (window as unknown as { __rc505RejectNativeRhythmConfig: boolean }).__rc505RejectNativeRhythmConfig = true; });
-  await start.click();
-  await expect(page.getByTestId('rhythm-status')).toHaveText('Native rhythm configuration rejected by test bridge');
-  await expect(start).toBeEnabled();
-  await expect(start).not.toHaveClass(/\bactive\b/);
+
+  const playStop = await activateLcdAction(page, 'play-stop');
+  await expect(screen.locator('.lcd-status')).toHaveText('Native rhythm configuration rejected by test bridge');
+  await expect(playStop).toBeEnabled();
+  await expect(playStop).toContainText('START RHYTHM');
+
   await page.evaluate(() => { (window as unknown as { __rc505RejectNativeRhythmConfig: boolean }).__rc505RejectNativeRhythmConfig = false; });
-  await start.click();
-  await expect(page.getByRole('button', { name: 'Stop rhythm', exact: true })).toBeEnabled();
-  await expect(page.getByTestId('rhythm-status')).toHaveCount(0);
+  await activateLcdAction(page, 'play-stop');
+  await expect.poll(() => page.evaluate(() => {
+    const requests = (window as unknown as { __rc505NativeRhythmRequests: Array<{ enabled?: boolean }> }).__rc505NativeRhythmRequests;
+    return requests.at(-1)?.enabled;
+  })).toBe(true);
+  await expect(playStop).toContainText('STOP RHYTHM');
+  await expect(screen.locator('.lcd-status')).not.toContainText('Native rhythm configuration rejected by test bridge');
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });

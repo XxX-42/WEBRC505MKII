@@ -1,22 +1,29 @@
 <template>
-  <section ref="hostRef" class="classic-shell">
-    <div class="classic-fit" :style="fitStyle">
-      <div ref="stageRef" class="classic-stage" :style="stageStyle">
-        <div class="classic-console">
-          <div class="classic-branding">
-            <div class="brand-left">BOSS</div>
-            <div class="brand-strip">RC-505mkII LOOP STATION</div>
-            <div class="brand-right">LIVE LOOPING</div>
-          </div>
+  <section class="classic-shell" aria-label="RC-505mkII replica view">
+    <div class="viewport-toolbar" role="toolbar" aria-label="Faceplate zoom and pan">
+      <span class="viewport-label">FACEPLATE VIEW</span>
+      <div class="viewport-actions">
+        <button type="button" aria-label="Zoom out" title="Zoom out" @click="adjustZoom(-0.1)">−</button>
+        <label class="zoom-slider-label">
+          <span>ZOOM</span>
+          <input v-model.number="zoom" type="range" min="0.45" max="1.2" step="0.05" aria-label="Faceplate zoom">
+          <output>{{ Math.round(zoom * 100) }}%</output>
+        </label>
+        <button type="button" aria-label="Zoom in" title="Zoom in" @click="adjustZoom(0.1)">+</button>
+        <button type="button" class="fit-button" @click="fitFace">FIT</button>
+        <span class="pan-separator" aria-hidden="true"></span>
+        <button type="button" aria-label="Pan left" title="Pan left" @click="pan(-260, 0)">←</button>
+        <button type="button" aria-label="Pan right" title="Pan right" @click="pan(260, 0)">→</button>
+        <button type="button" aria-label="Pan up" title="Pan up" @click="pan(0, -180)">↑</button>
+        <button type="button" aria-label="Pan down" title="Pan down" @click="pan(0, 180)">↓</button>
+      </div>
+    </div>
 
-          <div class="classic-upper">
-            <InputFxPanel />
-            <CenterMainPanel />
-            <TrackFxPanel />
-          </div>
+    <div ref="viewportRef" class="classic-viewport" tabindex="0" aria-label="Scrollable RC-505mkII faceplate">
+      <div class="classic-fit" :style="fitStyle">
+        <div ref="stageRef" class="classic-stage" :style="stageStyle">
+          <Rc505Face />
         </div>
-
-        <TrackBay />
       </div>
     </div>
   </section>
@@ -24,149 +31,138 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import CenterMainPanel from '../panel/CenterMainPanel.vue';
-import InputFxPanel from '../panel/InputFxPanel.vue';
-import TrackBay from '../panel/TrackBay.vue';
-import TrackFxPanel from '../panel/TrackFxPanel.vue';
+import Rc505Face from '../panel/Rc505Face.vue';
 
-const hostRef = ref<HTMLElement | null>(null);
+const viewportRef = ref<HTMLElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
-const scale = ref(1);
-const scaledWidth = ref(0);
-const scaledHeight = ref(0);
+const zoom = ref(0.72);
 let resizeObserver: ResizeObserver | null = null;
+let userZoomed = false;
 
-const updateScale = async () => {
-  await nextTick();
-  const host = hostRef.value;
+function fitFace(): void {
+  const viewport = viewportRef.value;
   const stage = stageRef.value;
-  if (!host || !stage) {
-    return;
-  }
+  if (!viewport || !stage) return;
+  const widthRatio = (viewport.clientWidth - 24) / stage.scrollWidth;
+  const heightRatio = (viewport.clientHeight - 24) / stage.scrollHeight;
+  zoom.value = Math.min(1.2, Math.max(0.8, Math.min(widthRatio, heightRatio, 1)));
+  userZoomed = true;
+  viewport.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+}
 
-  const naturalWidth = stage.scrollWidth;
-  const naturalHeight = stage.scrollHeight;
-  if (!naturalWidth || !naturalHeight) {
-    return;
-  }
+function adjustZoom(delta: number): void {
+  userZoomed = true;
+  zoom.value = Math.max(0.45, Math.min(1.2, Math.round((zoom.value + delta) * 100) / 100));
+}
 
-  const availableWidth = Math.max(host.clientWidth - 8, 320);
-  const availableHeight = Math.max(host.clientHeight - 8, 320);
-  const nextScale = Math.min(1, availableWidth / naturalWidth, availableHeight / naturalHeight);
-
-  scale.value = nextScale;
-  scaledWidth.value = naturalWidth * nextScale;
-  scaledHeight.value = naturalHeight * nextScale;
-};
+function pan(left: number, top: number): void {
+  viewportRef.value?.scrollBy({ left, top, behavior: 'smooth' });
+}
 
 const fitStyle = computed(() => ({
-  width: scaledWidth.value > 0 ? `${scaledWidth.value}px` : '100%',
-  height: scaledHeight.value > 0 ? `${scaledHeight.value}px` : '100%',
+  width: `${1520 * zoom.value}px`,
+  height: `${(stageRef.value?.scrollHeight ?? 720) * zoom.value}px`,
 }));
 
-const stageStyle = computed(() => ({
-  transform: `scale(${scale.value})`,
-}));
+const stageStyle = computed(() => ({ transform: `scale(${zoom.value})` }));
+
+async function measureInitialScale(): Promise<void> {
+  await nextTick();
+  if (userZoomed) return;
+  const viewport = viewportRef.value;
+  const stage = stageRef.value;
+  if (!viewport || !stage) return;
+  const widthRatio = (viewport.clientWidth - 24) / stage.scrollWidth;
+  const heightRatio = (viewport.clientHeight - 24) / stage.scrollHeight;
+  zoom.value = Math.min(1, Math.max(0.8, Math.min(widthRatio, heightRatio, 1)));
+}
 
 onMounted(() => {
-  void updateScale();
-  resizeObserver = new ResizeObserver(() => {
-    void updateScale();
-  });
-  if (hostRef.value) {
-    resizeObserver.observe(hostRef.value);
-  }
-  if (stageRef.value) {
-    resizeObserver.observe(stageRef.value);
-  }
-  window.addEventListener('resize', updateScale);
+  void measureInitialScale();
+  resizeObserver = new ResizeObserver(() => { void measureInitialScale(); });
+  if (viewportRef.value) resizeObserver.observe(viewportRef.value);
+  if (stageRef.value) resizeObserver.observe(stageRef.value);
+  window.addEventListener('resize', measureInitialScale);
 });
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect();
-  window.removeEventListener('resize', updateScale);
+  window.removeEventListener('resize', measureInitialScale);
 });
 </script>
 
 <style scoped>
 .classic-shell {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
-  display: grid;
-  place-items: start center;
-  padding: 12px 16px 8px;
-}
-
-.classic-fit {
-  position: relative;
-  overflow: visible;
-}
-
-.classic-stage {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: top left;
-}
-
-.classic-console {
-  min-width: 1240px;
-  padding: 6px 14px 12px;
-  border-radius: 26px 26px 8px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 12px 10px;
   background:
-    linear-gradient(180deg, rgba(43, 43, 48, 0.98) 0%, rgba(13, 13, 16, 0.99) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.78),
-    0 16px 30px rgba(0, 0, 0, 0.34);
+    radial-gradient(ellipse at 50% -20%, rgba(83, 88, 98, 0.35), transparent 70%),
+    #101115;
 }
 
-.classic-branding {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+.viewport-toolbar {
+  display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 16px;
-  padding: 2px 10px 8px;
-  color: #f5f5f5;
-  font-family: var(--font-hardware);
-  text-transform: uppercase;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 4px 7px;
+  color: #afb5bf;
+  font: 700 12px/1.2 var(--font-hardware);
+  letter-spacing: 0.15em;
 }
 
-.brand-left,
-.brand-right {
-  font-size: 13px;
-  letter-spacing: 1.8px;
-  opacity: 0.88;
+.viewport-actions { display: flex; align-items: center; gap: 5px; }
+.viewport-actions button {
+  min-width: 30px;
+  height: 27px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  color: #e7eaf0;
+  background: linear-gradient(180deg, #30343c, #202329);
+  font: 700 13px/1 var(--font-hardware);
+  cursor: pointer;
+}
+.viewport-actions button:hover { border-color: #79caff; background: #353b44; }
+.viewport-actions button:focus-visible { outline: 2px solid #79caff; outline-offset: 2px; }
+.viewport-actions .fit-button { min-width: 48px; font-size: 12px; letter-spacing: 0.08em; }
+.zoom-slider-label { display: flex; align-items: center; gap: 7px; padding: 0 6px; letter-spacing: 0.07em; }
+.zoom-slider-label input { width: clamp(70px, 12vw, 150px); accent-color: #6ec7ff; }
+.zoom-slider-label output { width: 38px; color: #d7dce4; text-align: right; }
+.pan-separator { width: 1px; height: 18px; margin-inline: 3px; background: rgba(255, 255, 255, 0.14); }
+
+.classic-viewport {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: radial-gradient(ellipse at 50% 15%, #282a2e 0%, #151619 80%);
+  scrollbar-color: #515761 #1b1d22;
+  scrollbar-width: thin;
+  touch-action: pan-x pan-y;
 }
 
-.brand-right {
-  text-align: right;
-}
+.classic-viewport:focus-visible { outline: 2px solid #6ec7ff; outline-offset: -3px; }
+.classic-fit { position: relative; overflow: visible; margin: 12px auto; }
+.classic-stage { position: absolute; top: 0; left: 0; transform-origin: top left; }
 
-.brand-strip {
-  padding: 3px 28px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ff2c38 0%, #8c111c 100%);
-  letter-spacing: 2.4px;
-  font-size: 16px;
-  font-weight: 700;
-  box-shadow: 0 8px 18px rgba(255, 0, 51, 0.18);
-}
-
-.classic-upper {
-  display: grid;
-  grid-template-columns: 280px minmax(520px, 1fr) 280px;
-  gap: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 8px solid #babdc5;
-  min-height: 302px;
-}
-
-@media (max-width: 1400px) {
-  .classic-shell {
-    place-items: start left;
-  }
+@media (max-width: 640px) {
+  .classic-shell { padding: 6px; }
+  .viewport-toolbar { align-items: flex-start; flex-direction: column; gap: 4px; padding-bottom: 6px; }
+  .viewport-actions { width: 100%; justify-content: space-between; gap: 3px; }
+  .viewport-actions button { min-width: 27px; height: 25px; padding-inline: 5px; }
+  .zoom-slider-label { gap: 4px; }
+  .zoom-slider-label input { width: 72px; }
+  .classic-fit { margin: 8px; }
 }
 </style>

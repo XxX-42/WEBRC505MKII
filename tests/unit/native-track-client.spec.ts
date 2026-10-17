@@ -82,8 +82,10 @@ describe('Native multi-track bridge client', () => {
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
         body: JSON.stringify({ trackId: 3, ...config }),
+        signal: expect.any(AbortSignal),
       },
     );
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it('rejects invalid loop-transport track IDs and config values before making requests', async () => {

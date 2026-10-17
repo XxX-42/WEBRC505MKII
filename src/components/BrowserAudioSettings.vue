@@ -335,7 +335,7 @@ const handleOverlayClick = () => {
 
 .setting-label {
   font-family: var(--font-hardware);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 1.4px;
   color: #888;
 }
@@ -348,6 +348,7 @@ const handleOverlayClick = () => {
   border-radius: 6px;
   padding: 10px 12px;
   min-height: 42px;
+  font-size: 14px;
 }
 
 .monitoring-group {
@@ -394,12 +395,12 @@ const handleOverlayClick = () => {
 .warning-icon {
   font-family: var(--font-hardware);
   color: var(--led-blue-accent);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .warning-content {
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .status-box {
@@ -416,12 +417,12 @@ const handleOverlayClick = () => {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .status-error {
   color: #ff8b8b;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .modal-footer {

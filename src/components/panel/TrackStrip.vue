@@ -1,14 +1,14 @@
 <template>
   <section
     class="track-strip"
-    :class="{ selected: isCurrentTrack, disabled: !trackAvailable }"
+    :class="{ selected: isCurrentTrack, disabled: !trackInteractionReady }"
     :data-track-id="trackId"
   >
     <header class="track-strip-header">
       <span class="track-label">{{ trackId }}</span>
       <span class="track-state">{{ stateLabel }}</span>
       <span v-if="disabledReason" class="track-note">{{ disabledReason }}</span>
-      <span v-if="trackFxUnavailableReason" class="track-note" data-testid="track-fx-unavailable">{{ trackFxUnavailableReason }}</span>
+      <span v-if="trackFxDisabledReason" class="track-note" data-testid="track-fx-unavailable">{{ trackFxDisabledReason }}</span>
       <span v-if="trackLevelUnavailableReason" class="track-note" data-testid="track-level-unavailable">{{ trackLevelUnavailableReason }}</span>
       <span v-if="overdubDiagnostic" class="track-note track-warning" role="status" aria-live="polite">
         {{ overdubDiagnostic }}
@@ -20,32 +20,49 @@
         <HardwareButton
           shape="rect"
           size="sm"
-          :color="trackFxControlEnabled && isTrackFxApplied ? 'red' : 'neutral'"
-          :active="trackFxControlEnabled && isTrackFxApplied"
-          :disabled="!trackFxControlEnabled"
+          :color="trackFxButtonActive ? 'red' : 'neutral'"
+          :active="trackFxButtonActive"
+          :disabled="!trackFxButtonEnabled"
+          :disabled-reason="trackFxDisabledReason"
           label="FX"
-          :aria-label="fxButtonAriaLabel"
-          @press="toggleTrackFx"
+          class="track-function-button"
+          data-track-control="fx"
+          :aria-label="trackFxButtonAriaLabel"
+          data-hardware-control="button"
+          @press="openTrackFxEditor"
         />
         <HardwareButton
           shape="rect"
           size="sm"
           :color="isCurrentTrack ? 'green' : 'neutral'"
           :active="isCurrentTrack"
+          :disabled="!trackAvailable"
+          :disabled-reason="disabledReason"
           label="TRACK"
+          class="track-function-button"
+          data-track-control="select"
           :aria-label="trackButtonAriaLabel"
-          @press="handleTrackSelect"
+          data-hardware-control="button"
+          @press="openTrackEditor"
         />
         <div class="clear-note">CLEAR: HOLD</div>
         <button
           class="stop-disc"
+          :class="{ 'is-pressed': stopPressActive }"
           type="button"
+          :disabled="!trackInteractionReady"
+          :title="trackInteractionDisabledReason || 'Hold to clear this track'"
           aria-label="Stop track (hold to clear)"
-          @mousedown="startStopPress"
-          @touchstart.prevent="startStopPress"
-          @mouseup="endStopPress"
-          @touchend.prevent="endStopPress"
-          @mouseleave="cancelStopPress"
+          data-hardware-control="button"
+          @pointerdown="handleStopPointerDown"
+          @pointerup="handleStopPointerUp"
+          @pointercancel="handleStopPointerCancel"
+          @lostpointercapture="handleStopLostPointerCapture"
+          @keydown.space.prevent="handleStopKeyDown"
+          @keyup.space.prevent="handleStopKeyUp"
+          @keydown.enter.prevent="handleStopKeyDown"
+          @keyup.enter.prevent="handleStopKeyUp"
+          @blur="cancelStopPress('keyboard')"
         >
           <span class="stop-square"></span>
         </button>
@@ -59,6 +76,7 @@
           :disabled-reason="trackLevelUnavailableReason"
           :aria-label="levelControlAriaLabel"
           data-testid="track-level-fader"
+          data-hardware-control="fader"
           label=""
           @update:model-value="handleLevelChange"
         />
@@ -73,7 +91,12 @@
           size="lg"
           :color="buttonLedColor"
           :active="isRecordingOrPlaying"
+          :disabled="!trackInteractionReady"
+          :disabled-reason="trackInteractionDisabledReason"
           aria-label="Record or play track"
+          label="▶ / ●"
+          data-panel-control="record-play"
+          data-hardware-control="button"
           @press="handleRecPlay"
         />
       </div>
@@ -84,122 +107,20 @@
       </div>
     </div>
 
-    <section class="keep-pitch-panel" :aria-label="`Track ${trackId} live KeepPitch controls`">
-      <div class="keep-pitch-title">LIVE KEEP PITCH</div>
-      <label>
-        <span>Mode</span>
-        <select
-          v-model="livePitchMode"
-          data-testid="keep-pitch-mode"
-          :disabled="livePitchControlsDisabled"
-          @change="handleLivePitchModeChange"
-        >
-          <option value="OFF">OFF</option>
-          <option value="LIVE_MONO" :disabled="!liveMonoPitchSupported">LIVE MONO</option>
-          <option value="LIVE_POLY" :disabled="!livePolyPitchSupported">LIVE POLY</option>
-        </select>
-      </label>
-      <label>
-        <span>Semitones (−12 to +12)</span>
-        <input
-          v-model.number="livePitchSemitones"
-          data-testid="keep-pitch-semitones"
-          type="number"
-          min="-12"
-          max="12"
-          step="1"
-          :disabled="livePitchControlsDisabled"
-          @change="handleLivePitchSemitonesChange"
-        >
-      </label>
-      <p class="keep-pitch-status" data-testid="keep-pitch-status" role="status" aria-live="polite">
-        {{ livePitchStatus }}
-      </p>
-      <p v-if="livePitchFallbackReason" class="keep-pitch-warning" data-testid="keep-pitch-fallback">
-        FALLBACK: {{ livePitchFallbackReason }}
-      </p>
-      <p v-if="livePitchMode !== 'OFF'" class="keep-pitch-latency" data-testid="keep-pitch-latency">
-        ALGORITHMIC LATENCY ONLY:
-        <template v-if="livePitchLatencyFrames !== null && livePitchLatencyMs !== null">
-          algorithmic latency: {{ livePitchLatencyFrames }} samples / {{ livePitchLatencyMs.toFixed(2) }} ms
-        </template>
-        <template v-else>not measured yet</template>
-      </p>
-      <p v-if="isNativePitchMode" class="keep-pitch-note" data-testid="keep-pitch-native-limit">
-        Native KeepPitch supports one selected track target at a time
-      </p>
-      <p v-if="!liveMonoPitchSupported && !livePolyPitchSupported" class="keep-pitch-note" data-testid="keep-pitch-unavailable">
-        KeepPitch is unavailable on this audio runtime
-      </p>
-      <p v-if="livePitchError" class="keep-pitch-error" data-testid="keep-pitch-error" role="alert">
-        {{ livePitchError }}
-      </p>
-    </section>
-
-    <details class="hq-export-panel">
-      <summary>HQ RENDER / WAV</summary>
-      <div class="hq-export-controls">
-        <p class="hq-export-note">Offline pitch render. Loop length follows playback rate. Browser uses Signalsmith.</p>
-        <label v-if="isNativeAudioMode">
-          <span>Native Rubber Band engine</span>
-          <select
-            v-model="hqNativeEngine"
-            data-testid="native-hq-engine"
-            :disabled="isHqExporting || !nativeHqRendererAvailable"
-            @change="handleHqNativeEngineChange"
-          >
-            <option v-if="!nativeHqRendererAvailable" value="R3" disabled>Unavailable</option>
-            <option v-for="engine in nativeHqRendererEngines" :key="engine" :value="engine">{{ engine }}</option>
-          </select>
-        </label>
-        <p v-if="isNativeAudioMode && !nativeHqRendererAvailable" class="hq-export-note" data-testid="native-hq-unavailable">
-          Native HQ render is unavailable in this bridge status.
-        </p>
-        <label>
-          <span>Pitch (semitones)</span>
-          <input v-model.number="hqPitchSemitones" type="number" min="-24" max="24" step="1" :disabled="isHqExporting" @change="handleHqPitchChange">
-        </label>
-        <label>
-          <span>Playback rate</span>
-          <input v-model.number="hqPlaybackRate" type="number" min="0.5" max="2" step="0.05" :disabled="isHqExporting" @change="handleHqPlaybackRateChange">
-        </label>
-        <label>
-          <span>WAV format</span>
-          <select v-model="hqWavFormat" :disabled="isHqExporting">
-            <option value="pcm16">PCM 16-bit</option>
-            <option value="pcm24">PCM 24-bit</option>
-            <option value="float32">Float 32-bit</option>
-          </select>
-        </label>
-        <label>
-          <span>Memory budget estimate (MiB)</span>
-          <input
-            v-model.number="hqMemoryBudgetMiB"
-            data-testid="hq-memory-budget-mib"
-            type="number"
-            min="64"
-            max="4096"
-            step="64"
-            :disabled="isHqExporting"
-            @change="handleHqMemoryBudgetChange"
-          >
-        </label>
-        <p class="hq-export-note">This is a preflight estimate, not an OS memory guarantee; a larger value can still exceed available device memory.</p>
-        <button type="button" :disabled="!canExportHqWav || isHqExporting" @click="exportHqWav">
-          {{ isHqExporting ? `RENDERING ${hqExportProgress}%` : 'EXPORT HQ WAV' }}
-        </button>
-        <p v-if="isHqExporting" class="hq-export-status" role="status" aria-live="polite">
-          Rendering off the audio thread… {{ hqExportProgress }}%
-        </p>
-        <p v-if="hqExportError" class="hq-export-error" role="alert">{{ hqExportError }}</p>
-      </div>
-    </details>
   </section>
+
+
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { registerDeviceTrackController } from '../../composables/deviceTrackControllers';
+import { AudioEngine } from '../../audio/AudioEngine';
 import { TrackState } from '../../core/types';
+import { useBrowserTrackFxState } from '../../composables/useBrowserTrackFxState';
+import { useDevicePanel } from '../../composables/useDevicePanel';
+import { useNativeTrackFxState } from '../../composables/useNativeTrackFxState';
+import { usePanelFocus } from '../../composables/usePanelFocus';
 import { useTrackStripState } from '../../composables/useTrackStripState';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareFader from '../ui/HardwareFader.vue';
@@ -209,37 +130,40 @@ const props = defineProps<{
   trackId: number;
 }>();
 
+const device = useDevicePanel();
+const panelFocus = usePanelFocus();
+const browserTrackFx = useBrowserTrackFxState();
+const nativeTrackFx = useNativeTrackFxState();
+const audioEngine = AudioEngine.getInstance();
+const audioStatusRevision = ref(0);
+const audioReady = computed(() => {
+  audioStatusRevision.value;
+  return audioEngine.getUiStatus().ready;
+});
+const trackInteractionReady = computed(() => trackTransportEnabled.value && audioReady.value);
+const trackInteractionDisabledReason = computed(() => audioReady.value
+  ? disabledReason.value
+  : audioEngine.getUiStatus().message || 'Start audio before using track transport.');
+const trackDrawerOpen = computed(() => device.state.page === 'track' && device.currentTrackId.value === props.trackId);
+const nativeTrackFxOptions = computed(() => {
+  audioStatusRevision.value;
+  if (audioEngine.getMode() !== 'native') return [];
+  return audioEngine.getNativeCatalogFxOptions('track', props.trackId)
+    .filter((type) => type !== 'VINYL FLICK' && type !== 'VINYL FLICK (EXPERIMENTAL)' && type !== 'BEAT SHIFT');
+});
+
+const trackController = useTrackStripState(props.trackId);
 const {
   trackState,
   playLevel,
+  trackTransportEnabled,
   trackAvailable,
   disabledReason,
   overdubDiagnostic,
-  hqPitchSemitones,
-  hqPlaybackRate,
-  hqWavFormat,
-  hqMemoryBudgetMiB,
-  hqNativeEngine,
-  nativeHqRendererAvailable,
-  nativeHqRendererEngines,
   isHqExporting,
-  hqExportProgress,
   hqExportError,
-  canExportHqWav,
-  livePitchMode,
-  livePitchSemitones,
-  liveMonoPitchSupported,
-  livePolyPitchSupported,
-  livePitchControlsDisabled,
-  livePitchStatus,
-  livePitchFallbackReason,
-  livePitchLatencyFrames,
-  livePitchLatencyMs,
   livePitchError,
-  isNativeAudioMode,
-  isNativePitchMode,
   isCurrentTrack,
-  isTrackFxApplied,
   trackFxControlEnabled,
   isRecordingOrPlaying,
   buttonLedColor,
@@ -248,23 +172,78 @@ const {
   levelControlAriaLabel,
   trackFxUnavailableReason,
   trackLevelUnavailableReason,
-  fxButtonAriaLabel,
   trackButtonAriaLabel,
   handleRecPlay,
   handleLevelChange,
   handleTrackSelect,
-  toggleTrackFx,
-  exportHqWav,
-  handleLivePitchModeChange,
-  handleLivePitchSemitonesChange,
-  handleHqNativeEngineChange,
-  handleHqPitchChange,
-  handleHqPlaybackRateChange,
-  handleHqMemoryBudgetChange,
-  startStopPress,
-  endStopPress,
   cancelStopPress,
-} = useTrackStripState(props.trackId);
+  stopPressActive,
+  handleStopPointerDown,
+  handleStopPointerUp,
+  handleStopPointerCancel,
+  handleStopLostPointerCapture,
+  handleStopKeyDown,
+  handleStopKeyUp,
+} = trackController;
+
+const trackFxButtonEnabled = computed(() => audioEngine.getMode() === 'native'
+  ? audioReady.value && trackAvailable.value && nativeTrackFxOptions.value.length > 0
+  : trackAvailable.value && trackFxControlEnabled.value);
+const trackFxDisabledReason = computed(() => {
+  if (trackFxButtonEnabled.value) return '';
+  if (audioEngine.getMode() === 'native') {
+    if (!audioReady.value) return audioEngine.getUiStatus().message || 'Start audio before using Native track FX.';
+    if (!trackAvailable.value) return disabledReason.value || 'This track is not available.';
+    return 'Native per-track FX are not exposed for this track.';
+  }
+  return trackFxUnavailableReason.value || disabledReason.value || 'Track FX are unavailable.';
+});
+const trackFxButtonAriaLabel = computed(() => trackFxButtonEnabled.value
+  ? `Open ${audioEngine.getMode() === 'native' ? 'Native ' : ''}track FX editor for track ${props.trackId}`
+  : `Track ${props.trackId} FX unavailable: ${trackFxDisabledReason.value}`);
+const trackFxButtonActive = computed(() => {
+  if (device.state.page === 'track-fx' && panelFocus.state.currentTrackId === props.trackId) return true;
+  const trackBank = audioEngine.getMode() === 'native'
+    ? nativeTrackFx.state.tracks[props.trackId - 1]
+    : browserTrackFx.state.tracks[props.trackId - 1];
+  return trackBank?.slots.some((slot) => slot.active) ?? false;
+});
+
+function openTrackFxEditor(): void {
+  if (!trackFxButtonEnabled.value) return;
+  const selected = audioEngine.getMode() === 'native'
+    ? nativeTrackFx.selectTarget(props.trackId as 1 | 2 | 3 | 4 | 5)
+    : browserTrackFx.selectTarget(props.trackId as 1 | 2 | 3 | 4 | 5);
+  if (!selected) return;
+  panelFocus.setCurrentTrack(props.trackId);
+  panelFocus.setActiveFxSlot('track', panelFocus.state.activeTrackFxSlot);
+  device.openPage('track-fx');
+}
+
+function openTrackEditor(): void {
+  handleTrackSelect();
+  device.openSelectedTrack();
+}
+
+watch([trackDrawerOpen, isHqExporting, hqExportError, livePitchError], ([open, exporting, exportError, pitchError]) => {
+  if (!open) {
+    device.clearPageStatus('track', props.trackId);
+    return;
+  }
+  device.setPageActionStatus('track', {
+    trackId: props.trackId,
+    pending: exporting ? 'HQ WAV rendering is still running.' : '',
+    error: exportError || pitchError || '',
+  });
+}, { immediate: true });
+
+let unsubscribeAudioStatus: (() => void) | undefined;
+let unregisterTrackController: (() => void) | undefined;
+onMounted(() => {
+  unregisterTrackController = registerDeviceTrackController(props.trackId, trackController);
+  unsubscribeAudioStatus = audioEngine.onStatusChange(() => { audioStatusRevision.value += 1; });
+});
+onUnmounted(() => { unsubscribeAudioStatus?.(); unregisterTrackController?.(); });
 
 const stateLabel = computed(() => {
   switch (trackState.value) {
@@ -290,11 +269,12 @@ const stateLabel = computed(() => {
 
 <style scoped>
 .track-strip {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 612px;
-  padding: 12px 12px 20px;
+  gap: 8px;
+  min-height: 385px;
+  padding: 9px 9px 12px;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   border-right: 1px solid rgba(0, 0, 0, 0.8);
   background: linear-gradient(180deg, #18191e 0%, #0d0d11 100%);
@@ -317,8 +297,10 @@ const stateLabel = computed(() => {
 .track-strip-header {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-height: 48px;
+  gap: 1px;
+  min-height: 40px;
+  max-height: 58px;
+  overflow: hidden;
 }
 
 .track-label,
@@ -331,7 +313,7 @@ const stateLabel = computed(() => {
 }
 
 .track-label {
-  font-size: 40px;
+  font-size: 29px;
   letter-spacing: 1px;
   line-height: 1;
 }
@@ -344,9 +326,11 @@ const stateLabel = computed(() => {
   color: rgba(255, 255, 255, 0.62);
 }
 
+.track-note { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .track-top {
   display: grid;
-  grid-template-columns: 78px 64px;
+  grid-template-columns: minmax(0, 1fr) 56px;
   justify-content: space-between;
   gap: 8px;
   align-items: start;
@@ -355,18 +339,47 @@ const stateLabel = computed(() => {
 .track-button-stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
   align-items: flex-start;
 }
 
+:deep(.track-button-stack > .track-function-button.hardware-button) {
+  flex: 0 0 80px;
+  width: 80px;
+  height: 28px;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #5b5e64 0%, #24262b 56%, #101115 100%);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.14), 0 2px 4px rgba(0, 0, 0, 0.72);
+}
+
+:deep(.track-button-stack > .track-function-button .button-label) {
+  color: #d6d9de;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
 .stop-disc {
-  width: 72px;
-  height: 72px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
   border-radius: 50%;
   border: 2px solid rgba(210, 220, 235, 0.82);
   background: radial-gradient(circle at 35% 30%, #31343a 0%, #191b21 72%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
   cursor: pointer;
+  touch-action: none;
+}
+
+.stop-disc:hover:not(:disabled) { border-color: #fff; background: radial-gradient(circle at 35% 30%, #444850 0%, #191b21 72%); }
+.stop-disc:focus-visible { outline: 3px solid #6bc5ff; outline-offset: 3px; }
+.stop-disc:disabled { opacity: 0.42; cursor: not-allowed; }
+.stop-disc:active:not(:disabled) { transform: translateY(1px); }
+
+.stop-disc .stop-square {
+  width: 12px;
+  height: 12px;
 }
 
 .stop-square {
@@ -378,7 +391,7 @@ const stateLabel = computed(() => {
 }
 
 .slider-column {
-  height: 286px;
+  height: 112px;
   padding-top: 0;
   display: flex;
   align-items: flex-start;
@@ -392,24 +405,24 @@ const stateLabel = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-top: auto;
+  gap: 7px;
+  margin-top: 6px;
 }
 
 .halo-wrapper {
   position: relative;
   display: grid;
   place-items: center;
-  width: 178px;
-  height: 178px;
+  width: 220px;
+  height: 220px;
 }
 
 .halo-wrapper::before {
   content: '';
   position: absolute;
-  inset: 6px;
+  inset: 4px;
   border-radius: 50%;
-  border: 10px solid rgba(15, 15, 18, 0.96);
+  border: 7px solid rgba(15, 15, 18, 0.96);
   box-shadow:
     inset 0 0 0 2px rgba(255, 255, 255, 0.08),
     0 10px 18px rgba(0, 0, 0, 0.34);
@@ -428,17 +441,20 @@ const stateLabel = computed(() => {
   inset: 0;
 }
 
+:deep(.halo-layer.loop-halo-container) { width: 100%; height: 100%; }
+:deep(.halo-wrapper > .hardware-button.shape-circle.size-lg) { width: 126px; height: 126px; }
+
 .loop-indicator-row {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .indicator-chip {
-  min-width: 48px;
-  min-height: 26px;
-  padding: 4px 8px;
+  min-width: 40px;
+  min-height: 20px;
+  padding: 3px 6px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
@@ -465,7 +481,7 @@ const stateLabel = computed(() => {
 
 .keep-pitch-title {
   color: #8fd7ff;
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.9px;
 }
 
@@ -473,7 +489,7 @@ const stateLabel = computed(() => {
   display: grid;
   gap: 3px;
   color: rgba(255, 255, 255, 0.72);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .keep-pitch-panel input,
@@ -485,7 +501,7 @@ const stateLabel = computed(() => {
   border-radius: 4px;
   background: #111217;
   color: #f4f4f7;
-  font: 11px var(--font-hardware);
+  font: 14px var(--font-hardware);
 }
 
 .keep-pitch-panel input:disabled,
@@ -499,7 +515,7 @@ const stateLabel = computed(() => {
 .keep-pitch-note,
 .keep-pitch-error {
   margin: 0;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -529,7 +545,7 @@ const stateLabel = computed(() => {
 .hq-export-panel summary {
   padding: 8px 10px;
   color: rgba(255, 255, 255, 0.78);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.9px;
   cursor: pointer;
 }
@@ -545,15 +561,31 @@ const stateLabel = computed(() => {
 .hq-export-error {
   margin: 0;
   font-family: var(--font-hardware);
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.35;
   color: rgba(255, 255, 255, 0.62);
 }
 
+.track-utility-drawer { display: grid; gap: 14px; max-width: 780px; margin-inline: auto; }
+.drawer-track-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  color: #bdc5cf;
+  background: rgba(0, 0, 0, 0.2);
+  font: 13px var(--font-hardware);
+  letter-spacing: 0.1em;
+}
+.drawer-track-summary strong { color: #f5f6f7; font-size: 16px; }
+
 .hq-export-controls label {
   display: grid;
   gap: 3px;
-  font-size: 9px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -566,7 +598,7 @@ const stateLabel = computed(() => {
   border-radius: 4px;
   background: #111217;
   color: #f4f4f7;
-  font: 11px var(--font-hardware);
+  font: 14px var(--font-hardware);
 }
 
 .hq-export-controls button {
@@ -575,7 +607,7 @@ const stateLabel = computed(() => {
   border-radius: 5px;
   background: linear-gradient(180deg, #174567 0%, #0e2b43 100%);
   color: white;
-  font: 10px var(--font-hardware);
+  font: 13px var(--font-hardware);
   letter-spacing: 0.4px;
   cursor: pointer;
 }
@@ -595,8 +627,8 @@ const stateLabel = computed(() => {
 }
 
 :deep(.slider-column .fader-track-container) {
-  min-height: 248px;
-  gap: 6px;
+  min-height: 100px;
+  gap: 2px;
 }
 
 :deep(.slider-column .led-strip) {
@@ -604,7 +636,7 @@ const stateLabel = computed(() => {
 }
 
 :deep(.slider-column .fader-groove) {
-  width: 20px;
+  width: 11px;
   border-radius: 2px;
   background: #06070a;
   box-shadow:
@@ -613,8 +645,8 @@ const stateLabel = computed(() => {
 }
 
 :deep(.slider-column .fader-cap) {
-  width: 34px;
-  height: 18px;
+  width: 28px;
+  height: 14px;
   border-radius: 2px;
   background: linear-gradient(180deg, #f8fbff 0%, #7d8494 100%);
   box-shadow:
@@ -623,11 +655,178 @@ const stateLabel = computed(() => {
 }
 
 :deep(.slider-column .cap-ridge) {
-  width: 24px;
+  width: 19px;
   background: rgba(0, 0, 0, 0.28);
 }
 
 :deep(.slider-column .fader-value) {
   display: none;
 }
+
+/* Manual-aligned five-track face geometry: the top section ends at y=321. */
+.track-strip {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 275px;
+  height: 520px;
+  min-height: 520px;
+  padding: 0;
+  overflow: hidden;
+}
+.track-strip-header {
+  position: absolute;
+  top: 12px;
+  left: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 86px;
+  min-height: 26px;
+  max-height: 34px;
+  overflow: hidden;
+  text-align: center;
+}
+.track-label { font-size: 17px; line-height: 1; }
+.track-state { font-size: 12px; line-height: 1; letter-spacing: 0.03em; }
+.track-note { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.track-top,
+.track-button-stack { position: absolute; inset: 0; display: block; }
+.track-top,
+.track-button-stack,
+.main-button-column,
+.halo-wrapper { pointer-events: none; }
+.track-strip :deep(button),
+.slider-column,
+.track-strip :deep(.hardware-fader) { pointer-events: auto; }
+.track-button-stack > :deep([data-track-control="fx"]),
+.track-button-stack > :deep([data-track-control="select"]) {
+  position: absolute !important;
+  left: 35px;
+  box-sizing: border-box;
+  width: 80px !important;
+  min-width: 80px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #5c6067 0%, #30333a 56%, #191b20 100%) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 2px 4px rgba(0, 0, 0, 0.72) !important;
+}
+.track-button-stack > :deep([data-track-control="fx"]) { top: 48px; }
+.track-button-stack > :deep([data-track-control="select"]) { top: 114px; }
+.track-button-stack > :deep([data-track-control="fx"] .button-label),
+.track-button-stack > :deep([data-track-control="select"] .button-label) {
+  color: #d6d9de;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.track-strip .track-button-stack > :deep([data-track-control="fx"].active:not(.is-disabled)) {
+  background: linear-gradient(145deg, #ffc1df 0%, #ff72b4 42%, #a52d68 100%) !important;
+  border: 1px solid rgba(255, 231, 243, 0.96);
+  box-shadow: 0 0 8px rgba(255, 101, 176, 0.95), 0 0 20px rgba(255, 72, 163, 0.72), inset 0 0 11px rgba(255, 247, 252, 0.48), inset 0 -5px 12px rgba(80, 10, 43, 0.5) !important;
+}
+.track-strip .track-button-stack > :deep([data-track-control="fx"].active:not(.is-disabled) .button-label) {
+  color: #25101b;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+.track-strip .track-button-stack > :deep([data-track-control="fx"]:active:not(.is-disabled)) {
+  background: linear-gradient(145deg, #ffc1df 0%, #ff72b4 42%, #a52d68 100%) !important;
+}
+.track-strip .track-button-stack > :deep([data-track-control="select"].active:not(.is-disabled)),
+.track-strip .track-button-stack > :deep([data-track-control="select"]:active:not(.is-disabled)) {
+  background: linear-gradient(145deg, #baffd2 0%, #55e88e 42%, #177c45 100%) !important;
+  border: 1px solid rgba(226, 255, 237, 0.96);
+  box-shadow: 0 0 8px rgba(76, 255, 145, 0.94), 0 0 20px rgba(49, 230, 119, 0.68), inset 0 0 11px rgba(247, 255, 250, 0.46), inset 0 -5px 12px rgba(0, 67, 32, 0.52) !important;
+}
+.track-strip .track-button-stack > :deep([data-track-control="select"].active:not(.is-disabled) .button-label),
+.track-strip .track-button-stack > :deep([data-track-control="select"]:active:not(.is-disabled) .button-label) {
+  color: #0d2115;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+.clear-note { position: absolute; top: 183px; left: 35px; width: 80px; color: #e3e6eb; font-size: 11px; line-height: 1; letter-spacing: 0.03em; text-align: center; }
+.track-button-stack > .stop-disc { position: absolute; top: 212px; left: 51px; width: 48px; height: 48px; }
+.track-button-stack > .stop-disc.is-pressed:not(:disabled) {
+  border-color: #ffffff;
+  background: radial-gradient(circle at 34% 28%, #ffffff 0%, #eaf4ff 48%, #9fb3c8 100%);
+  box-shadow: 0 0 9px rgba(226, 241, 255, 0.98), 0 0 22px rgba(200, 228, 255, 0.8), inset 0 0 12px rgba(255, 255, 255, 0.96), inset 0 -5px 9px rgba(43, 63, 84, 0.45);
+}
+.track-button-stack > .stop-disc.is-pressed:not(:disabled) .stop-square {
+  background: #15202d;
+  box-shadow: 0 0 5px rgba(12, 25, 41, 0.38);
+}
+.slider-column {
+  position: absolute;
+  top: 65px;
+  left: 185.5px;
+  display: block;
+  box-sizing: border-box;
+  width: 36px;
+  height: 180px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:deep(.slider-column .hardware-fader) { width: 100%; height: 180px; min-height: 180px; gap: 0; }
+:deep(.slider-column .fader-track-container) { box-sizing: border-box; width: 100%; height: 180px; min-height: 180px; flex: 0 0 180px; gap: 5px; }
+:deep(.slider-column .led-strip) { width: 2px; border-radius: 1px; }
+:deep(.slider-column .fader-groove) { width: 10px; border-radius: 2px; }
+:deep(.slider-column .fader-cap) { width: 28px; height: 14px; }
+.main-button-column { position: absolute; inset: 0; display: block; margin: 0; }
+.halo-wrapper {
+  position: absolute;
+  top: 280px;
+  left: 26px;
+  display: grid;
+  place-items: center;
+  width: 203px;
+  height: 203px;
+}
+.halo-wrapper::before { inset: 4px; border-width: 7px; pointer-events: none; }
+.halo-wrapper::after { inset: 0; border-width: 3px; pointer-events: none; }
+.halo-layer,
+:deep(.halo-layer.loop-halo-container) {
+  position: absolute !important;
+  inset: 0 !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+}
+.halo-layer :deep(svg),
+.halo-layer :deep(canvas) { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; pointer-events: none !important; }
+.halo-wrapper > :deep([data-panel-control="record-play"]) {
+  position: relative;
+  z-index: 3;
+  width: 129px !important;
+  min-width: 129px !important;
+  height: 129px !important;
+  min-height: 129px !important;
+  pointer-events: auto;
+}
+.halo-wrapper > :deep([data-panel-control="record-play"] .button-label) {
+  position: relative;
+  z-index: 4;
+  margin: 0;
+  color: #edf0f5;
+  font: 700 15px/1 var(--font-hardware);
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px #050609;
+  pointer-events: none;
+}
+.halo-wrapper > :deep([data-panel-control="record-play"].active:not(.is-disabled) .button-label),
+.halo-wrapper > :deep([data-panel-control="record-play"]:active:not(.is-disabled) .button-label) {
+  color: #171014;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+.loop-indicator-row { position: absolute; top: 267px; left: 44px; display: flex; gap: 7px; width: 170px; justify-content: center; }
+.indicator-chip { min-width: auto; min-height: 0; padding: 1px 2px; border: 0; border-radius: 0; background: transparent; font-size: 11px; line-height: 1; letter-spacing: 0.06em; }
+.indicator-chip.active { box-shadow: none; text-shadow: 0 0 7px currentColor, 0 0 14px currentColor; }
+.indicator-chip:nth-child(1).active { color: #ff596b; }
+.indicator-chip:nth-child(2).active { color: #52ef91; }
+.indicator-chip:nth-child(3).active { color: #ffc34a; }
 </style>

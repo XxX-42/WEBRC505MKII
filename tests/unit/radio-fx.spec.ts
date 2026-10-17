@@ -70,13 +70,15 @@ describe('clean-room Browser RADIO DSP', () => {
     const second = new BrowserRadioDsp(sampleRate, { band: 2, drive: 0, noise: 100 });
     let checksumA = 0;
     let checksumB = 0;
+    let firstMismatch = -1;
     for (let frame = 0; frame < sampleRate * 3; frame += 1) {
       first.processSample(0.3, 0.3);
       second.processSample(0.3, 0.3);
-      expect(first.wetLeft).toBe(second.wetLeft);
+      if (firstMismatch < 0 && !Object.is(first.wetLeft, second.wetLeft)) firstMismatch = frame;
       checksumA += Math.abs(first.wetLeft - 0.3);
       checksumB += Math.abs(second.wetLeft - 0.3);
     }
+    expect(firstMismatch, 'All 144000 noise/dropout samples must match exactly').toBe(-1);
     expect(checksumA).toBeGreaterThan(0);
     expect(checksumA).toBe(checksumB);
     expect(first.dropoutEvents).toBeGreaterThan(0);

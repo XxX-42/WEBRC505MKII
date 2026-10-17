@@ -12,15 +12,18 @@
 
     <div class="upper-deck">
       <div class="left-controls">
-        <div class="knobs-row" :class="{ 'is-disabled': !filterControlsEnabled }">
+        <div class="knobs-row">
           <HardwareKnob
             :model-value="filterFreq"
             @update:modelValue="handleFilterFreqChange"
             :min="0"
             :max="100"
             label="FREQ"
+            aria-label="Track filter frequency"
             color="blue"
             :size="40"
+            :disabled="!filterControlsEnabled"
+            :disabled-reason="filterButtonAriaLabel"
           />
           <HardwareKnob
             :model-value="filterRes"
@@ -28,8 +31,11 @@
             :min="0"
             :max="10"
             label="RES"
+            aria-label="Track filter resonance"
             color="blue"
             :size="40"
+            :disabled="!filterControlsEnabled"
+            :disabled-reason="filterButtonAriaLabel"
           />
         </div>
 
@@ -41,9 +47,9 @@
             :color="isFilterActive ? 'blue' : 'neutral'"
             :active="isFilterActive"
             :aria-label="filterButtonAriaLabel"
+            :disabled="!filterControlsEnabled"
             @press="toggleFilter"
             class="ctrl-btn"
-            :class="{ 'is-disabled': !filterControlsEnabled }"
           />
           <HardwareButton
             label="TRACK"
@@ -52,36 +58,38 @@
             :color="isReverse ? 'purple' : 'neutral'"
             :active="isReverse"
             :aria-label="reverseButtonAriaLabel"
+            :disabled="!reverseControlEnabled"
             @press="handleReverseToggle"
             class="ctrl-btn"
-            :class="{ 'is-disabled': !reverseControlEnabled }"
           />
         </div>
       </div>
 
-      <div class="right-fader" :class="{ 'is-disabled': !levelControlEnabled }">
+      <div class="right-fader">
         <HardwareFader
           :model-value="playLevel"
           @update:modelValue="handleLevelChange"
           :led-color="faderLedColor"
           label="LEVEL"
+          :disabled="!levelControlEnabled"
+          :disabled-reason="levelControlAriaLabel"
+          :aria-label="levelControlAriaLabel"
         />
       </div>
     </div>
 
     <div class="lower-deck">
-      <div class="stop-wrapper" :class="{ 'is-disabled': !trackTransportEnabled }">
+      <div class="stop-wrapper">
         <HardwareButton
           label="STOP"
           shape="rect"
           size="sm"
           color="red"
-          aria-label="Stop track (hold to clear)"
-          @mousedown="startStopPress"
-          @touchstart.prevent="startStopPress"
-          @mouseup="endStopPress"
-          @touchend.prevent="endStopPress"
-          @mouseleave="cancelStopPress"
+          :aria-label="stopButtonAriaLabel"
+          :disabled="!trackTransportEnabled"
+          @press="startStopPress"
+          @release="endStopPress"
+          @cancel="cancelStopPress"
           class="ctrl-btn stop-btn"
         />
       </div>
@@ -94,9 +102,9 @@
           :color="buttonLedColor"
           :active="isRecordingOrPlaying"
           aria-label="Record or play track"
+          :disabled="!trackTransportEnabled"
           @press="handleRecPlay"
           class="main-btn"
-          :class="{ 'is-disabled': !trackTransportEnabled }"
         />
       </div>
     </div>
@@ -104,7 +112,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { TrackState } from '../core/types';
 import LoopHalo from './LoopHalo.vue';
@@ -118,7 +126,10 @@ const props = defineProps<{
 
 const engine = AudioEngine.getInstance();
 const trackAudio = engine.tracks[props.trackId - 1]!;
-const trackCapabilities = engine.getTrackCapabilities(props.trackId);
+const trackCapabilities = ref(engine.getTrackCapabilities(props.trackId));
+
+const getEngineUiStatus = () => typeof engine.getUiStatus === 'function' ? engine.getUiStatus() : null;
+const isEngineReady = () => getEngineUiStatus()?.ready ?? trackAudio.transportEnabled;
 
 const trackState = ref(trackAudio.state);
 const playLevel = ref(trackAudio.track.playLevel);
@@ -128,45 +139,55 @@ const filterFreq = ref(Math.round(trackAudio.track.filterValue * 100));
 const filterRes = ref(Math.round(trackAudio.track.filterResonance * 10));
 const fxState = ref({ filter: trackAudio.track.filterEnabled });
 const trackAvailable = ref(trackAudio.isAvailable);
-const trackTransportEnabled = ref(trackAudio.transportEnabled);
-const disabledReason = ref(trackAudio.disabledReason);
+const trackTransportEnabled = ref(trackAudio.transportEnabled && isEngineReady());
+const disabledReason = ref(trackAudio.disabledReason || (isEngineReady() ? '' : getEngineUiStatus()?.message || 'Audio engine is not ready'));
 const isFilterActive = computed(() => fxState.value.filter);
-const levelControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.supportsTrackLevel);
-const filterControlsEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.supportsTrackFx);
-const reverseControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.supportsReverse);
-const filterButtonAriaLabel = computed(() => filterControlsEnabled.value ? 'Toggle track filter' : trackCapabilities.trackFxReason);
-const reverseButtonAriaLabel = computed(() => reverseControlEnabled.value ? 'Toggle reverse playback' : trackCapabilities.reverseReason);
+const levelControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsTrackLevel);
+const levelControlAriaLabel = computed(() => !levelControlEnabled.value
+  ? `Track ${props.trackId} level unavailable: ${trackCapabilities.value.levelReason || 'Track level is unavailable'}`
+  : `Track ${props.trackId} level`);
+const filterControlsEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsTrackFx);
+const reverseControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsReverse);
+const filterButtonAriaLabel = computed(() => filterControlsEnabled.value ? 'Toggle track filter' : trackCapabilities.value.trackFxReason);
+const reverseButtonAriaLabel = computed(() => reverseControlEnabled.value ? 'Toggle reverse playback' : trackCapabilities.value.reverseReason);
+const stopButtonAriaLabel = computed(() => trackTransportEnabled.value
+  ? 'Stop track (hold to clear)'
+  : `Stop track unavailable: ${disabledReason.value || 'Audio engine is not ready'}`);
 const capabilityNotes = computed(() => {
   if (!trackAvailable.value) {
     return [] as string[];
   }
 
   const notes: string[] = [];
-  if (!trackCapabilities.supportsTrackLevel && trackCapabilities.levelReason) {
-    notes.push(trackCapabilities.levelReason);
+  if (!trackCapabilities.value.supportsTrackLevel && trackCapabilities.value.levelReason) {
+    notes.push(trackCapabilities.value.levelReason);
   }
-  if (!trackCapabilities.supportsTrackFx && trackCapabilities.trackFxReason) {
-    notes.push(trackCapabilities.trackFxReason);
+  if (!trackCapabilities.value.supportsTrackFx && trackCapabilities.value.trackFxReason) {
+    notes.push(trackCapabilities.value.trackFxReason);
   }
-  if (!trackCapabilities.supportsReverse && trackCapabilities.reverseReason) {
-    notes.push(trackCapabilities.reverseReason);
+  if (!trackCapabilities.value.supportsReverse && trackCapabilities.value.reverseReason) {
+    notes.push(trackCapabilities.value.reverseReason);
   }
 
   return Array.from(new Set(notes));
 });
 
 let pollInterval: number;
+let unsubscribeFromEngineStatus: (() => void) | undefined;
 
 const clamp = (value: number, min: number, max: number) => {
   return Math.max(min, Math.min(max, value));
 };
 
 const syncTrackUi = () => {
+  const engineStatus = getEngineUiStatus();
+  const engineReady = engineStatus?.ready ?? trackAudio.transportEnabled;
   trackState.value = trackAudio.state;
   isReverse.value = trackAudio.isReverse;
   trackAvailable.value = trackAudio.isAvailable;
-  trackTransportEnabled.value = trackAudio.transportEnabled;
-  disabledReason.value = trackAudio.disabledReason;
+  trackCapabilities.value = engine.getTrackCapabilities(props.trackId);
+  trackTransportEnabled.value = trackAudio.transportEnabled && engineReady;
+  disabledReason.value = trackAudio.disabledReason || (engineReady ? '' : engineStatus?.message || 'Audio engine is not ready');
 };
 
 onMounted(() => {
@@ -175,13 +196,17 @@ onMounted(() => {
   trackAudio.fxChain.setFilterParam('resonance', trackAudio.track.filterResonance);
   trackAudio.updateSettings();
   syncTrackUi();
+  unsubscribeFromEngineStatus = engine.onStatusChange?.(() => syncTrackUi());
   pollInterval = window.setInterval(() => {
     syncTrackUi();
   }, 50);
 });
 
 onUnmounted(() => {
+  unsubscribeFromEngineStatus?.();
   clearInterval(pollInterval);
+  cancelStopPress();
+  if (clearVisualTimer !== null) clearTimeout(clearVisualTimer);
 });
 
 const buttonLedColor = computed(() => {
@@ -260,33 +285,53 @@ const handleReverseToggle = () => {
 };
 
 let stopPressTimer: number | null = null;
+let clearVisualTimer: number | null = null;
+let stopPressActive = false;
+let stopPressTriggered = false;
 const LONG_PRESS_DURATION = 1500;
 
 const startStopPress = () => {
-  if (!trackTransportEnabled.value || stopPressTimer) return;
+  if (!trackTransportEnabled.value || stopPressActive) return;
+  stopPressActive = true;
+  stopPressTriggered = false;
   stopPressTimer = window.setTimeout(() => {
+    stopPressTimer = null;
+    if (!stopPressActive || !trackTransportEnabled.value) {
+      stopPressActive = false;
+      return;
+    }
+    stopPressTriggered = true;
     isClearing.value = true;
     trackAudio.clear();
-    setTimeout(() => { isClearing.value = false; }, 300);
-    stopPressTimer = null;
+    clearVisualTimer = window.setTimeout(() => {
+      isClearing.value = false;
+      clearVisualTimer = null;
+    }, 300);
   }, LONG_PRESS_DURATION);
 };
 
 const endStopPress = () => {
-  if (!trackTransportEnabled.value) return;
-  if (stopPressTimer) {
+  if (!stopPressActive) return;
+  stopPressActive = false;
+  if (stopPressTimer !== null) {
     clearTimeout(stopPressTimer);
     stopPressTimer = null;
-    trackAudio.triggerStop();
   }
+  if (!stopPressTriggered && trackTransportEnabled.value) trackAudio.triggerStop();
 };
 
 const cancelStopPress = () => {
-  if (stopPressTimer) {
+  stopPressActive = false;
+  stopPressTriggered = false;
+  if (stopPressTimer !== null) {
     clearTimeout(stopPressTimer);
     stopPressTimer = null;
   }
 };
+
+watch(trackTransportEnabled, (enabled) => {
+  if (!enabled) cancelStopPress();
+});
 </script>
 
 <style scoped>

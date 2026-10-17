@@ -120,14 +120,15 @@ function(add_signalsmith_notice_test test_name output_dir)
   )
 endfunction()
 
-if(NATIVE_PORTABLE_TESTS_ONLY)
-  function(enable_strict_warnings target)
+function(enable_strict_warnings target)
     if(MSVC)
       target_compile_options(${target} PRIVATE /W4 /WX)
     else()
       target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
-  endfunction()
+endfunction()
+
+if(NATIVE_PORTABLE_TESTS_ONLY)
 
   add_library(native_dsp_portable STATIC
     src/looper_core.cpp

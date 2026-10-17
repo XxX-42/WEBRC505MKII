@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
+import { closeDeviceDrawer, findLcdField, lcdField, lcdScreen, openAppSettingsMenu, openFxEditor, openLcdPage, startBrowserAudio } from './uiHelpers';
 
 const initScriptPath = path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js');
 
@@ -9,22 +10,32 @@ test.beforeEach(async ({ page }) => {
 
 test('defaults to classic shell and persists UI style toggling', async ({ page }) => {
   await page.goto('/?audio=browser');
+  await startBrowserAudio(page);
 
   await expect(page.locator('#app > [data-ui-style="classic"]')).toBeVisible();
-  await expect(page.locator('[data-panel="input-fx"]')).toBeVisible();
   await expect(page.locator('[data-panel="center-main"]')).toBeVisible();
-  await expect(page.locator('[data-panel="track-fx"]')).toBeVisible();
   await expect(page.locator('[data-panel="track-bay"]')).toBeVisible();
+  await expect(page.getByTestId('rc505-physical-face')).toBeVisible();
 
+  const lcd = await openLcdPage(page, 'input-fx-edit-button');
+  await expect(lcd).toContainText(/INPUT FX/i);
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+  await page.getByTestId('track-fx-edit-button').click();
+  await expect(lcd).toContainText(/TRACK FX/i);
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+
+  await openAppSettingsMenu(page);
   await page.getByTestId('ui-style-toggle').click();
   await expect(page.locator('#app > [data-ui-style="tech"]')).toBeVisible();
 
   await page.reload();
+  await startBrowserAudio(page);
   await expect(page.locator('#app > [data-ui-style="tech"]')).toBeVisible();
 });
 
 test('keeps original tech-shell interactions available after switching UI style', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   await expect(page.locator('.mode-summary')).toHaveText('BROWSER: 5 TRACKS; LIMITED EFFECTS/RHYTHM; DSP PARITY INCOMPLETE');
 
@@ -45,6 +56,7 @@ test('keeps original tech-shell interactions available after switching UI style'
 
 test('selects the explicitly experimental REVERSE REVERB from the Browser FX panel', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const panel = page.locator('[data-panel="input-fx"]');
   const selector = panel.locator('select.fx-select').first();
@@ -76,25 +88,29 @@ test('selects the explicitly experimental REVERSE REVERB from the Browser FX pan
   expect(routed.bpm).toBeLessThanOrEqual(300);
 });
 
-test('shows native capability reasons inside the classic shell structure', async ({ page }) => {
-  await page.goto('/?audio=native');
+test('shows Native capability reasons in the Tech compatibility shell', async ({ page }) => {
+  await page.goto('/?audio=native&ui=tech');
 
   await expect(page.locator('.mode-summary')).toHaveText(
     'NATIVE: 1 LOOP TRACK; INPUT A–D UNAVAILABLE; TRACK A–D UNAVAILABLE',
   );
-  await expect(page.locator('[data-panel="input-fx"] .detail-note').first())
+  const inputPanel = await openFxEditor(page, 'input');
+  await expect(inputPanel.locator('.section-note').first())
     .toContainText('Native catalog FX is unavailable');
-  await expect(page.getByText('Native rhythm is unavailable in the current bridge status.').first()).toBeVisible();
+  await closeDeviceDrawer(page);
+  await expect(page.getByTestId('rhythm-status'))
+    .toContainText('Native rhythm is unavailable in the current bridge status.');
 
-  const secondTrack = page.locator('[data-track-id="2"]').first();
-  await expect(secondTrack.getByTestId('track-fx-unavailable'))
-    .toHaveText('TRACK 2 IS NOT EXPOSED BY THE NATIVE HOST');
-  await expect(secondTrack.getByTestId('track-level-unavailable'))
-    .toHaveText('TRACK 2 IS NOT EXPOSED BY THE NATIVE HOST');
+  const secondTrack = page.locator('.tech-track-list .track-unit[data-track-id="2"]');
+  await expect(secondTrack.locator('.track-note').first())
+    .toHaveText('NATIVE HOST DOES NOT EXPOSE THIS LOOP TRACK');
+  await expect(secondTrack.getByRole('slider', { name: /Track 2 level unavailable:/ }))
+    .toBeDisabled();
 });
 
 test('edits and restores all six PREAMP controls from the live Browser FX panel', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const panel = page.locator('.top-panel [data-panel="input-fx"]');
   await panel.locator('select.fx-select').first().selectOption('PREAMP');
@@ -172,6 +188,7 @@ test('edits and restores all six PREAMP controls from the live Browser FX panel'
   await setRange('Preamp gain percent', '72');
 
   await page.reload();
+  await startBrowserAudio(page);
   const restored = page.locator('[data-panel="input-fx"] [data-preamp-editor]');
   await expect(restored).toBeVisible();
   await expect(restored.getByLabel('Preamp model')).toHaveValue('3');
@@ -184,6 +201,7 @@ test('edits and restores all six PREAMP controls from the live Browser FX panel'
 
 test('sends all six PREAMP controls from the Browser Track A editor to its FX worklet', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const panel = page.locator('[data-panel="track-fx"]');
   await panel.locator('select.fx-select').first().selectOption('PREAMP');
@@ -223,6 +241,7 @@ test('sends all six PREAMP controls from the Browser Track A editor to its FX wo
   });
 
   await page.reload();
+  await startBrowserAudio(page);
   const restored = page.locator('[data-panel="track-fx"] [data-preamp-editor]');
   await expect(restored).toBeVisible();
   await expect(restored.getByLabel('Preamp model')).toHaveValue('2');
@@ -235,6 +254,7 @@ test('sends all six PREAMP controls from the Browser Track A editor to its FX wo
 
 test('edits, routes and restores the Browser ROLL controls through the live FX worklet', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const panel = page.locator('[data-panel="input-fx"]');
   await panel.locator('select.fx-select').first().selectOption('ROLL');
@@ -300,6 +320,7 @@ test('edits, routes and restores the Browser ROLL controls through the live FX w
   });
 
   await page.reload();
+  await startBrowserAudio(page);
   const restored = page.locator('[data-panel="input-fx"] [data-roll-editor]');
   await expect(restored).toBeVisible();
   await expect(restored.getByLabel('ROLL slice length in beats')).toHaveValue('1');
@@ -310,6 +331,7 @@ test('edits, routes and restores the Browser ROLL controls through the live FX w
 
 test('routes and restores the Browser FREEZE micro-loop controls through the FX worklet', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const panel = page.locator('[data-panel="input-fx"]');
   await panel.locator('select.fx-select').first().selectOption('FREEZE');
@@ -347,6 +369,7 @@ test('routes and restores the Browser FREEZE micro-loop controls through the FX 
   });
 
   await page.reload();
+  await startBrowserAudio(page);
   const restored = page.locator('[data-panel="input-fx"] [data-freeze-editor]');
   await expect(restored).toBeVisible();
   await expect(restored.getByLabel('FREEZE capture length milliseconds')).toHaveValue('420');
@@ -356,6 +379,7 @@ test('routes and restores the Browser FREEZE micro-loop controls through the FX 
 
 test('sends and restores Browser SYNTH controls on Input and Track A worklet routes', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const setRange = async (editor: ReturnType<typeof page.locator>, label: string, value: string) => {
     await editor.getByLabel(label).evaluate((element, nextValue) => {
@@ -425,6 +449,7 @@ test('sends and restores Browser SYNTH controls on Input and Track A worklet rou
   await expectDelivered(trackParameters);
 
   await page.reload();
+  await startBrowserAudio(page);
   const restoredInput = page.locator('[data-panel="input-fx"] [data-synth-editor]');
   const restoredTrack = page.locator('[data-panel="track-fx"] [data-synth-editor]');
   await expect(restoredInput).toBeVisible();
@@ -440,13 +465,20 @@ test('sends and restores Browser SYNTH controls on Input and Track A worklet rou
   await expect(restoredTrack.getByLabel('Synth tone cutoff hertz')).toHaveValue('900');
   await expect(restoredTrack.getByLabel('Synth effect mix percent')).toHaveValue('22');
 
+  await openAppSettingsMenu(page);
   await page.getByTestId('ui-style-toggle').click();
   await expect(page.locator('#app > [data-ui-style="classic"]')).toBeVisible();
-  await expect(page.locator('.classic-shell [data-synth-editor]')).toHaveCount(2);
+  const techInput = await openFxEditor(page, 'input');
+  await expect(page.locator('#app > [data-ui-style="tech"]')).toBeVisible();
+  await expect(techInput.locator('[data-synth-editor]')).toBeVisible();
+  await closeDeviceDrawer(page);
+  const techTrack = await openFxEditor(page, 'track');
+  await expect(techTrack.locator('[data-synth-editor]')).toBeVisible();
 });
 
 test('sends and restores Browser G2B tracking, octave blend, and body controls on Input and Track A', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
   const setRange = async (editor: ReturnType<typeof page.locator>, label: string, value: string) => {
     await editor.getByLabel(label).evaluate((element, nextValue) => {
       const input = element as HTMLInputElement;
@@ -497,6 +529,7 @@ test('sends and restores Browser G2B tracking, octave blend, and body controls o
   await expectDelivered({ g2bTrackingPercent: 33, g2bBlendPercent: 81, g2bBodyHz: 60 * (20 ** 0.79) });
 
   await page.reload();
+  await startBrowserAudio(page);
   const restoredInput = page.locator('[data-panel="input-fx"] [data-g2b-editor]');
   const restoredTrack = page.locator('[data-panel="track-fx"] [data-g2b-editor]');
   await expect(restoredInput.getByLabel('G2B tracking sensitivity')).toHaveValue('77');
@@ -506,13 +539,20 @@ test('sends and restores Browser G2B tracking, octave blend, and body controls o
   await expect(restoredTrack.getByLabel('G2B sub octave blend')).toHaveValue('81');
   await expect(restoredTrack.getByLabel('G2B body cutoff hertz')).toHaveValue('79');
 
+  await openAppSettingsMenu(page);
   await page.getByTestId('ui-style-toggle').click();
   await expect(page.locator('#app > [data-ui-style="classic"]')).toBeVisible();
-  await expect(page.locator('.classic-shell [data-g2b-editor]')).toHaveCount(2);
+  const techInput = await openFxEditor(page, 'input');
+  await expect(page.locator('#app > [data-ui-style="tech"]')).toBeVisible();
+  await expect(techInput.locator('[data-g2b-editor]')).toBeVisible();
+  await closeDeviceDrawer(page);
+  const techTrack = await openFxEditor(page, 'track');
+  await expect(techTrack.locator('[data-g2b-editor]')).toBeVisible();
 });
 
 test('exposes the full clean-room rhythm catalog and shared kit, variation, section, and timing controls', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const topPattern = page.getByTestId('rhythm-pattern-select');
   await expect(topPattern.locator('option')).toHaveCount(240);
@@ -543,7 +583,17 @@ test('exposes the full clean-room rhythm catalog and shared kit, variation, sect
   await expect(quantize).toHaveValue('1/8');
   await expect(page.getByTestId('rhythm-provenance')).toContainText('not factory MIDI or samples');
 
+  await openAppSettingsMenu(page);
   await page.getByTestId('ui-style-toggle').click();
   await expect(page.locator('#app > [data-ui-style="classic"]')).toBeVisible();
-  await expect(page.getByTestId('center-rhythm-pattern-select')).toHaveValue('240');
+  const lcd = await openLcdPage(page, 'rhythm-edit-button');
+  await expect(lcd).toContainText(/RHYTHM/i);
+  await expect(lcdField(page, 'pattern')).toHaveValue('240');
+  await expect(lcdField(page, 'kit')).toHaveValue('16');
+  await findLcdField(page, 'variation');
+  await expect(lcdField(page, 'variation').locator('option:checked')).toHaveText('D');
+  await expect(lcdField(page, 'section').locator('option:checked')).toHaveText('FILL');
+  await expect(lcdField(page, 'quantize').locator('option:checked')).toHaveText('1/8');
+  await expect(lcdField(page, 'swing')).toHaveValue('67');
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });

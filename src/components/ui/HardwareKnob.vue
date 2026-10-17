@@ -1,5 +1,20 @@
 <template>
-  <div class="hardware-knob-wrapper hardware-interactive" @pointerdown="startDrag">
+  <div
+    class="hardware-knob-wrapper hardware-interactive"
+    :class="{ 'is-disabled': disabled }"
+    role="slider"
+    :tabindex="disabled ? -1 : 0"
+    :aria-label="ariaLabel || label || 'Hardware knob'"
+    :aria-valuemin="min"
+    :aria-valuemax="max"
+    :aria-valuenow="liveValue"
+    :aria-valuetext="`${ariaLabel || label || 'Value'}: ${displayValue}`"
+    :aria-disabled="disabled"
+    :aria-description="disabled && disabledReason ? disabledReason : undefined"
+    :title="disabled && disabledReason ? disabledReason : undefined"
+    @pointerdown="startDrag"
+    @keydown="handleKeyDown"
+  >
     <div class="knob-stage">
       <!-- LED Ring (SVG) -->
       <svg class="led-ring" viewBox="0 0 100 100">
@@ -42,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 const props = withDefaults(defineProps<{
   modelValue: number;
@@ -51,12 +66,20 @@ const props = withDefaults(defineProps<{
   label?: string;
   color?: 'red' | 'green' | 'blue' | 'yellow' | 'white';
   size?: number; // size in px
+  step?: number;
+  disabled?: boolean;
+  disabledReason?: string;
+  ariaLabel?: string;
 }>(), {
   min: 0,
   max: 100,
   label: '',
   color: 'blue',
-  size: 48
+  size: 48,
+  step: 0,
+  disabled: false,
+  disabledReason: '',
+  ariaLabel: '',
 });
 
 const emit = defineEmits<{
@@ -69,6 +92,9 @@ const emit = defineEmits<{
 
 const rotationRange = 270; // Degrees (Start at -135, End at +135)
 const startAngle = -135;
+const displayValue = computed(() => Number.isInteger(liveValue.value)
+  ? String(liveValue.value)
+  : liveValue.value.toFixed(2).replace(/\.?0+$/, ''));
 
 const liveValue = ref(props.modelValue);
 
@@ -125,20 +151,25 @@ const startY = ref(0);
 const startValue = ref(0);
 
 const startDrag = (e: PointerEvent) => {
+  if (props.disabled || (e.button !== 0 && e.pointerType !== 'touch') || e.isPrimary === false || isDragging.value) return;
   const y = e.clientY;
   isDragging.value = true;
   activePointerId.value = e.pointerId;
   startY.value = y;
   startValue.value = liveValue.value;
 
-  (e.currentTarget as HTMLElement | null)?.setPointerCapture?.(e.pointerId);
+  try {
+    (e.currentTarget as HTMLElement | null)?.setPointerCapture?.(e.pointerId);
+  } catch {
+    // Pointer capture is unavailable in some browser and test environments.
+  }
   window.addEventListener('pointermove', onDrag, { passive: true });
   window.addEventListener('pointerup', stopDrag);
   window.addEventListener('pointercancel', stopDrag);
 };
 
 const onDrag = (e: PointerEvent) => {
-  if (!isDragging.value) return;
+  if (props.disabled || !isDragging.value) return;
   if (activePointerId.value !== null && e.pointerId !== activePointerId.value) return;
 
   const currentY = e.clientY;
@@ -167,6 +198,53 @@ const stopDrag = (e?: PointerEvent) => {
   window.removeEventListener('pointercancel', stopDrag);
 };
 
+const setKeyboardValue = (value: number) => {
+  const nextValue = Math.max(props.min, Math.min(props.max, value));
+  if (nextValue === liveValue.value) return;
+  liveValue.value = nextValue;
+  emit('update:modelValue', nextValue);
+};
+
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (props.disabled) return;
+  const range = Math.max(0, props.max - props.min);
+  const step = props.step > 0 ? props.step : range / 100 || 1;
+  const largeStep = step * 10;
+  let nextValue: number | null = null;
+  switch (event.key) {
+    case 'ArrowUp':
+    case 'ArrowRight':
+      nextValue = liveValue.value + step * (event.shiftKey ? 10 : 1);
+      break;
+    case 'ArrowDown':
+    case 'ArrowLeft':
+      nextValue = liveValue.value - step * (event.shiftKey ? 10 : 1);
+      break;
+    case 'PageUp':
+      nextValue = liveValue.value + largeStep;
+      break;
+    case 'PageDown':
+      nextValue = liveValue.value - largeStep;
+      break;
+    case 'Home':
+      nextValue = props.min;
+      break;
+    case 'End':
+      nextValue = props.max;
+      break;
+    default:
+      return;
+  }
+  event.preventDefault();
+  setKeyboardValue(nextValue);
+};
+
+watch(() => props.disabled, (disabled) => {
+  if (disabled) stopDrag();
+});
+
+onUnmounted(() => stopDrag());
+
 </script>
 
 <style scoped>
@@ -180,6 +258,18 @@ const stopDrag = (e?: PointerEvent) => {
   width: 64px;
   min-height: 78px;
   touch-action: none;
+}
+
+.hardware-knob-wrapper:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.hardware-knob-wrapper.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.65);
 }
 
 .hardware-knob-wrapper:active {

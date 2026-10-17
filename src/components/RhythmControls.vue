@@ -128,7 +128,7 @@ const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
 }
 
 .native-note {
-  font-size: 9px;
+  font-size: 12px;
   font-family: var(--font-hardware);
   letter-spacing: 1px;
   color: #777;
@@ -166,7 +166,7 @@ const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
   border: 1px solid #333;
   padding: 2px 6px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 4px;
   outline: none;
   cursor: pointer;
@@ -178,7 +178,7 @@ const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
   position: relative;
   color: var(--led-blue-accent);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .rhythm-details summary {
@@ -224,7 +224,7 @@ const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
   border-radius: 3px;
   padding: 3px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .swing-field {
@@ -243,7 +243,7 @@ const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
 .provenance-note {
   grid-column: span 2;
   color: #a0a6ad;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.35;
   text-transform: uppercase;
 }
@@ -261,7 +261,7 @@ const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
 }
 
 .sub-label {
-  font-size: 9px;
+  font-size: 12px;
   color: #666;
   font-weight: 700;
   font-family: var(--font-mono);

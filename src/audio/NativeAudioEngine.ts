@@ -1,6 +1,6 @@
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, NativeBridgeClient, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -133,6 +133,7 @@ export class NativeAudioEngine {
   private bridgeAvailable = false;
   private engineRunning = false;
   private initInFlight: Promise<void> | null = null;
+  private restartInFlight: Promise<void> | null = null;
   private pollHandle: number | null = null;
   private lastError = '';
   private readonly nativeCatalogFxStates: Record<NativeFxPath, NativeCatalogFxState[]> = {
@@ -167,7 +168,8 @@ export class NativeAudioEngine {
       bridgeAvailable: () => this.bridgeAvailable,
       applyStatus: (status) => this.applyStatus(status),
       reportError: (error) => {
-        if (/Native bridge is unreachable/i.test(String(error))) this.handleBridgeFailure(error);
+        if (error instanceof NativeBridgeRequestTimeoutError && error.reconciledStatus) this.handleBridgeFailure(error, false);
+        else if (/Native bridge is unreachable/i.test(String(error))) this.handleBridgeFailure(error);
         else {
           this.lastError = error instanceof Error ? error.message : String(error);
           this.syncNativeRhythmBpm();
@@ -201,6 +203,52 @@ export class NativeAudioEngine {
       await this.initInFlight;
     } finally {
       this.initInFlight = null;
+    }
+  }
+
+  /** Stop the live host before applying saved FX type changes, then restore audio. */
+  public async restartAudio(): Promise<void> {
+    if (this.initInFlight) await this.initInFlight;
+    if (this.restartInFlight) return this.restartInFlight;
+
+    const restart = this.performRestartAudio();
+    this.restartInFlight = restart;
+    try {
+      await restart;
+    } finally {
+      if (this.restartInFlight === restart) this.restartInFlight = null;
+    }
+  }
+
+  private async performRestartAudio(): Promise<void> {
+    this.stopPolling();
+    let failureHandled = false;
+    try {
+      if (!this.bridgeAvailable) {
+        failureHandled = true;
+        await this.init();
+        return;
+      }
+      if (!this.deviceCatalog) await this.refreshCatalog();
+
+      if (this.engineRunning) {
+        const stopped = await this.bridge.stopEngine();
+        this.applyStatus(stopped);
+        if (stopped.engineRunning) {
+          throw new Error('Native audio host acknowledged the stop request but still reports running; saved FX were not applied.');
+        }
+      }
+
+      // applyAndStart applies the latest configuration, synchronizes every
+      // shared and per-track catalog slot while stopped, then starts the host.
+      failureHandled = true;
+      await this.applyAndStart();
+      this.emitAll();
+    } catch (error) {
+      if (!failureHandled) this.handleBridgeFailure(error, false);
+      throw error;
+    } finally {
+      if (this.bridgeAvailable) this.startPolling();
     }
   }
 
@@ -1165,6 +1213,16 @@ export class NativeAudioEngine {
   }
 
   private handleBridgeFailure(error: unknown, markBridgeMissing = true) {
+    if (error instanceof NativeBridgeRequestTimeoutError && error.reconciledStatus) {
+      // The request may have been applied before its response timed out. Keep
+      // the bridge's acknowledged transport state, but surface the timeout so
+      // the user can see that the command response itself was lost.
+      this.applyStatus(error.reconciledStatus);
+      this.lastError = error.message;
+      this.emitAll();
+      return;
+    }
+
     if (markBridgeMissing) {
       this.bridgeAvailable = false;
       this.engineRunning = false;

@@ -23,6 +23,11 @@ import { BrowserTrackFxChain, type BrowserTrackFxStatus } from './BrowserTrackFx
 
 import { RhythmEngine } from './RhythmEngine';
 import type { IAudioEngine } from './AudioEngineInterface';
+import {
+    addAudioWorkletModuleWithTimeout,
+    getUserMediaWithTimeout,
+    resumeAudioContextWithTimeout,
+} from './browserAudioStartup';
 
 export interface BrowserAudioLatencyInfo {
     sampleRate: number;
@@ -39,6 +44,10 @@ export interface BrowserAudioUiStatus {
     ready: boolean;
     message: string;
     lastError: string;
+    /** Input readiness is independent of output/worklet readiness. */
+    inputReady?: boolean;
+    inputState?: 'not-requested' | 'requesting' | 'ready' | 'error';
+    inputError?: string;
 }
 
 export type BrowserStepSlicerControl = 'step_count' | 'rate_beats' | 'pan_depth_percent' | 'filter_hz';
@@ -114,9 +123,11 @@ export class BrowserAudioEngine implements IAudioEngine {
     private readonly midiInput: MidiInputController;
     private initialized = false;
     private lastError = '';
+    private inputState: 'not-requested' | 'requesting' | 'ready' | 'error' = 'not-requested';
+    private inputError = '';
+    private workletModulePromises = new Map<string, Promise<void>>();
     private fxWorkletModuleReady: Promise<void> | null = null;
     private fxWorkletGeneration = 0;
-    private trackIoWorkletModuleReady: Promise<void> | null = null;
     /** Real private A–D banks before TrackMix; legacy trackFxInstances stay postmix. */
     private perTrackFxChains: BrowserTrackFxChain[] = [];
     private handleTransportBpmChange(): void {
@@ -209,18 +220,16 @@ export class BrowserAudioEngine implements IAudioEngine {
 
     public async init() {
         if (this.initialized) {
-            if (this.context.state === 'suspended') await this.context.resume();
+            await this.resumeFromUserActivation();
             return;
         }
 
         try {
-            if (this.context.state === 'suspended') {
-                await this.context.resume();
-            }
+            await this.resumeFromUserActivation();
 
-            await this.context.audioWorklet.addModule('/worklets/looper-processor.js');
+            await this.loadAudioWorkletModule('/worklets/looper-processor.js');
             await this.ensureTrackIoWorkletModule();
-            await this.context.audioWorklet.addModule('/worklets/browser-block-meter.js');
+            await this.loadAudioWorkletModule('/worklets/browser-block-meter.js');
 
             if (!this.workletNode) {
                 const meterNode = new AudioWorkletNode(this.context, 'rc505-browser-block-meter', {
@@ -243,14 +252,26 @@ export class BrowserAudioEngine implements IAudioEngine {
                         this.emitLatencyInfo();
                     }
                 };
-                this.masterGainNode.disconnect();
-                this.masterGainNode.connect(meterNode);
-                meterNode.connect(this.context.destination);
-                this.workletNode = meterNode;
+                try {
+                    this.masterGainNode.disconnect();
+                    this.masterGainNode.connect(meterNode);
+                    meterNode.connect(this.context.destination);
+                    this.workletNode = meterNode;
+                } catch (error) {
+                    meterNode.port.onmessage = null;
+                    meterNode.disconnect();
+                    this.masterGainNode.disconnect();
+                    this.masterGainNode.connect(this.context.destination);
+                    throw error;
+                }
             }
 
             if (this.selectedInputDeviceId) {
-                await this.setInputDevice(this.selectedInputDeviceId);
+                try {
+                    await this.setInputDevice(this.selectedInputDeviceId);
+                } catch {
+                    // A denied or unavailable microphone must not disable Browser output.
+                }
             }
 
             if (this.selectedOutputDeviceId) {
@@ -269,22 +290,24 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
     }
 
+    /** Resume the Browser output graph from an explicit user gesture. */
+    public async resumeFromUserActivation(): Promise<void> {
+        if (this.context.state === 'running') return;
+        try {
+            await resumeAudioContextWithTimeout(this.context);
+        } catch (error) {
+            this.lastError = error instanceof Error ? error.message : String(error);
+            this.emitStatus();
+            throw error;
+        }
+    }
+
     /** Load Browser overdub/loopback worklets without introducing a main-thread fallback. */
     public async ensureTrackIoWorkletModule(): Promise<void> {
         if (!this.context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
             throw new Error('AudioWorklet is unavailable in this browser context');
         }
-
-        if (!this.trackIoWorkletModuleReady) {
-            this.trackIoWorkletModuleReady = this.context.audioWorklet
-                .addModule('/worklets/browser-track-io.js')
-                .catch((error: unknown) => {
-                    this.trackIoWorkletModuleReady = null;
-                    throw error;
-                });
-        }
-
-        await this.trackIoWorkletModuleReady;
+        await this.loadAudioWorkletModule('/worklets/browser-track-io.js');
     }
 
     /**
@@ -302,15 +325,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (!this.context.audioWorklet || typeof AudioWorkletNode === 'undefined') return false;
 
         const generation = ++this.fxWorkletGeneration;
-        if (!this.fxWorkletModuleReady) {
-            this.fxWorkletModuleReady = this.context.audioWorklet.addModule('/worklets/fx-processor.js');
-        }
-        try {
-            await this.fxWorkletModuleReady;
-        } catch (error) {
-            if (generation === this.fxWorkletGeneration) this.fxWorkletModuleReady = null;
-            throw error;
-        }
+        await this.ensureFxWorkletModule();
         if (generation !== this.fxWorkletGeneration) return false;
 
         const node = new AudioWorkletNode(this.context, 'rc505-fx-processor', {
@@ -373,12 +388,12 @@ export class BrowserAudioEngine implements IAudioEngine {
      * Get list of available audio input and output devices
      */
     public async getDevices(): Promise<{ inputs: MediaDeviceInfo[], outputs: MediaDeviceInfo[] }> {
+        let permissionStream: MediaStream | null = null;
         try {
             // Request permissions first
-            const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            permissionStream = await getUserMediaWithTimeout(navigator.mediaDevices, { audio: true });
 
             const devices = await navigator.mediaDevices.enumerateDevices();
-            permissionStream.getTracks().forEach(track => track.stop());
 
             const inputs = devices.filter(d => d.kind === 'audioinput');
             const outputs = devices.filter(d => d.kind === 'audiooutput');
@@ -389,6 +404,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         } catch (error) {
             console.error('Failed to enumerate devices:', error);
             return { inputs: [], outputs: [] };
+        } finally {
+            permissionStream?.getTracks().forEach(track => track.stop());
         }
     }
 
@@ -402,6 +419,9 @@ export class BrowserAudioEngine implements IAudioEngine {
      */
     public async setInputDevice(deviceId: string) {
         console.log(`\n?? Switching input device to: ${deviceId}`);
+        this.inputState = 'requesting';
+        this.inputError = '';
+        this.emitStatus();
 
         try {
             const stream = await this.requestInputStream(deviceId);
@@ -409,6 +429,8 @@ export class BrowserAudioEngine implements IAudioEngine {
 
             this.selectedInputDeviceId = deviceId || null;
             this.saveDevicePreferences();
+            this.inputState = 'ready';
+            this.inputError = '';
 
             console.log('  ? New input device connected');
             console.log(`  ??  Monitoring: ${this.monitoringEnabled ? 'ENABLED' : 'DISABLED (SAFE)'}\n`);
@@ -421,19 +443,31 @@ export class BrowserAudioEngine implements IAudioEngine {
                     this.replaceInputStream(fallbackStream);
                     this.selectedInputDeviceId = null;
                     this.saveDevicePreferences();
+                    this.inputState = 'ready';
+                    this.inputError = '';
+                    this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
+                    this.emitLatencyInfo();
+                    this.emitStatus();
                     console.log('  ? Default input device connected');
                     return;
                 } catch (fallbackError) {
+                    this.inputState = this.currentInputStream ? 'ready' : 'error';
+                    this.inputError = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+                    this.emitStatus();
                     console.error('Failed to set default input device after fallback:', fallbackError);
                     throw fallbackError;
                 }
             }
+            this.inputState = this.currentInputStream ? 'ready' : 'error';
+            this.inputError = error instanceof Error ? error.message : String(error);
+            this.emitStatus();
             console.error('Failed to set input device:', error);
             throw error;
         }
 
         this.monitoringListeners.forEach(listener => listener(this.monitoringEnabled));
         this.emitLatencyInfo();
+        this.emitStatus();
     }
 
     // ========================================
@@ -847,12 +881,32 @@ export class BrowserAudioEngine implements IAudioEngine {
             return Promise.reject(new Error('AudioWorklet is unavailable in this browser context.'));
         }
         if (!this.fxWorkletModuleReady) {
-            this.fxWorkletModuleReady = this.context.audioWorklet.addModule('/worklets/fx-processor.js');
+            this.fxWorkletModuleReady = addAudioWorkletModuleWithTimeout(
+                this.context.audioWorklet,
+                '/worklets/fx-processor.js',
+            );
         }
         return this.fxWorkletModuleReady.catch((error: unknown) => {
             this.fxWorkletModuleReady = null;
             throw error;
         });
+    }
+
+    private loadAudioWorkletModule(moduleUrl: string): Promise<void> {
+        if (!this.context.audioWorklet) {
+            return Promise.reject(new Error('AudioWorklet is unavailable in this browser context.'));
+        }
+        const promises = this.workletModulePromises ?? (this.workletModulePromises = new Map());
+        const existing = promises.get(moduleUrl);
+        if (existing) return existing;
+
+        let loading: Promise<void>;
+        loading = addAudioWorkletModuleWithTimeout(this.context.audioWorklet, moduleUrl).catch((error: unknown) => {
+            if (promises.get(moduleUrl) === loading) promises.delete(moduleUrl);
+            throw error;
+        });
+        promises.set(moduleUrl, loading);
+        return loading;
     }
 
     /** Request Web MIDI permission only after a user-triggered explicit call. */
@@ -1246,6 +1300,9 @@ export class BrowserAudioEngine implements IAudioEngine {
             ready: this.initialized,
             message: this.initialized ? 'BROWSER AUDIO READY' : 'BROWSER AUDIO NOT INITIALIZED',
             lastError: this.lastError,
+            inputReady: this.currentInputStream !== null,
+            inputState: this.inputState,
+            inputError: this.inputError,
         };
     }
 
@@ -1541,13 +1598,22 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     private async requestInputStream(deviceId: string): Promise<MediaStream> {
-        return navigator.mediaDevices.getUserMedia(this.createInputConstraints(deviceId));
+        return getUserMediaWithTimeout(navigator.mediaDevices, this.createInputConstraints(deviceId));
     }
 
     private replaceInputStream(stream: MediaStream) {
+        let nextInput: MediaStreamAudioSourceNode | null = null;
+        try {
+            nextInput = this.context.createMediaStreamSource(stream);
+            nextInput.connect(this.inputFxChain.input);
+        } catch (error) {
+            nextInput?.disconnect();
+            stream.getTracks().forEach(track => track.stop());
+            throw error;
+        }
+
         if (this.currentInputStream) {
             this.currentInputStream.disconnect();
-            this.currentInputStream = null;
             console.log('  ? Disconnected old input node');
         }
 
@@ -1556,9 +1622,8 @@ export class BrowserAudioEngine implements IAudioEngine {
             console.log('  ? Stopped old input stream');
         }
 
-        this.currentInputStream = this.context.createMediaStreamSource(stream);
+        this.currentInputStream = nextInput;
         this.currentMediaStream = stream;
-        this.currentInputStream.connect(this.inputFxChain.input);
     }
 
     private shouldFallbackToDefaultInput(error: unknown): boolean {

@@ -43,6 +43,8 @@
         label="TRACK FX"
         color="red"
         :size="118"
+        :disabled="sharedFxValueDisabled"
+        :disabled-reason="sharedFxValueDisabledReason"
         @update:model-value="updateActiveValue"
       />
 
@@ -55,7 +57,7 @@
           <option v-for="option in fxOptions" :key="option" :value="option">{{ option }}</option>
         </select>
         <div class="detail-line">SLOT {{ activeFx?.id ?? 'A' }}</div>
-        <div class="detail-line">APPLY {{ appliedTrackSummary }}</div>
+        <div class="detail-line" title="The shared post-mix FX bank has no per-track apply route.">APPLY PER TRACK · UNAVAILABLE</div>
         <div v-if="fxUnavailableReason" class="detail-note">{{ fxUnavailableReason }}</div>
         <div v-if="nativeFxRuntimeText" class="detail-note" data-native-fx-status>{{ nativeFxRuntimeText }}</div>
       </div>
@@ -172,10 +174,12 @@
         v-for="trackId in 5"
         :key="trackId"
         class="apply-chip"
-        :class="{ active: trackFxApplyMap[trackId] }"
         type="button"
+        :disabled="true"
+        :aria-label="`Track ${trackId} shared FX apply unavailable`"
+        title="The shared post-mix FX bank has no per-track apply route. Select an independent Track FX target to edit that track."
       >
-        T{{ trackId }} {{ trackFxApplyMap[trackId] ? 'ON' : 'OFF' }}
+        T{{ trackId }} UNAVAILABLE
       </button>
     </div>
     </template>
@@ -190,8 +194,7 @@ import { createDefaultPreampParameters, sanitizePreampParameters, type PreampPar
 import { createDefaultSynthParameters, sanitizeSynthParameters, type SynthParameters } from '../../audio/synthParameters';
 import { useFxPanelState } from '../../composables/useFxPanelState';
 import { usePanelFocus } from '../../composables/usePanelFocus';
-import { useBrowserTrackFxState, type BrowserTrackFxTarget } from '../../composables/useBrowserTrackFxState';
-import { useNativeTrackFxState, type NativeTrackFxTarget } from '../../composables/useNativeTrackFxState';
+import { useTrackFxTargetState } from '../../composables/useTrackFxTargetState';
 import BrowserTrackFxPanel from './BrowserTrackFxPanel.vue';
 import NativeTrackFxPanel from './NativeTrackFxPanel.vue';
 import HardwareButton from '../ui/HardwareButton.vue';
@@ -225,8 +228,7 @@ import ElectricFxEditor from '../fx/ElectricFxEditor.vue';
 import { createDefaultElectricParameters, sanitizeElectricParameters, toBrowserElectricParameters, toNativeElectricParameters, type ElectricParameters } from '../../audio/electricParameters';
 
 const { slots, fxOptions, fxDisabled, fxUnavailableReason, runtimeStatus, activeSlot, selectSlot } = useFxPanelState('track');
-const { target: browserTrackTarget, selectTarget: selectBrowserTrackTarget } = useBrowserTrackFxState();
-const { target: nativeTrackTarget, selectTarget: selectNativeTrackTarget } = useNativeTrackFxState();
+const trackFxTarget = useTrackFxTargetState();
 const { state } = usePanelFocus();
 const editMode = ref(false);
 const browserMode = computed(() => {
@@ -234,36 +236,40 @@ const browserMode = computed(() => {
   return AudioEngine.getInstance().getMode() === 'browser';
 });
 const nativeMode = computed(() => !browserMode.value);
+const browserTrackTarget = computed(() => browserMode.value ? trackFxTarget.target.value : 'shared');
+const nativeTrackTarget = computed(() => nativeMode.value ? trackFxTarget.target.value : 'shared');
 function changeBrowserTrackTarget(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
-  selectBrowserTrackTarget(value === 'shared' ? 'shared' : Number(value) as BrowserTrackFxTarget);
+  trackFxTarget.selectTarget(value === 'shared' ? 'shared' : Number(value) as 1 | 2 | 3 | 4 | 5);
 }
 function changeNativeTrackTarget(event: Event) {
   const value = (event.target as HTMLSelectElement).value;
-  selectNativeTrackTarget(value === 'shared' ? 'shared' : Number(value) as NativeTrackFxTarget);
+  trackFxTarget.selectTarget(value === 'shared' ? 'shared' : Number(value) as 1 | 2 | 3 | 4 | 5);
 }
 
 const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlot.value) ?? slots.value[0]);
+const sharedFxIsEmpty = computed(() => !activeFx.value?.type || activeFx.value.type === 'NONE');
+const sharedFxValueDisabled = computed(() => fxDisabled.value || sharedFxIsEmpty.value);
+const sharedFxValueDisabledReason = computed(() => fxDisabled.value
+  ? fxUnavailableReason.value
+  : sharedFxIsEmpty.value ? 'Select an effect first to edit its value.' : '');
 const nativeFxRuntimeText = computed(() => {
   const status = runtimeStatus.value;
   if (!status) return '';
-  if (status.pendingRestart) return `SAVED; RESTART NATIVE AUDIO TO APPLY ${activeFx.value?.type || 'EMPTY SLOT'}`;
+  if (status.pendingRestart) return `SAVED; SETTINGS > RESTART NATIVE / APPLY FX TO APPLY ${activeFx.value?.type || 'EMPTY SLOT'}`;
   if (status.error) return `NATIVE FX NOT APPLIED: ${status.error}`;
   return status.acknowledged
     ? `NATIVE API ACK: ${status.acknowledgedEffectId ?? 'EMPTY SLOT'}; ${Object.keys(status.acknowledgedParameters ?? {}).length} PARAMETER(S) ACCEPTED`
     : 'NATIVE FX WAITING FOR API ACK';
 });
 const currentTrackId = computed(() => state.currentTrackId);
-const trackFxApplyMap = computed(() => state.trackFxApplyMap);
-const appliedTrackSummary = computed(() => {
-  const activeTracks = Object.entries(trackFxApplyMap.value)
-    .filter(([, active]) => active)
-    .map(([trackId]) => `T${trackId}`);
-  return activeTracks.length > 0 ? activeTracks.join(' ') : 'NONE';
-});
 
 const updateActiveValue = (value: number) => {
-  if (!activeFx.value) return;
+  if (!trackFxTarget.isSharedTarget.value) {
+    trackFxTarget.setValue(value);
+    return;
+  }
+  if (!activeFx.value || !activeFx.value.type || activeFx.value.type === 'NONE' || fxDisabled.value) return;
   const bounded = Math.max(0, Math.min(100, Math.round(value)));
   activeFx.value.value = bounded;
   if (activeFx.value.type === 'PREAMP') {
@@ -461,6 +467,39 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
     ? toNativeElectricParameters(slot.electricParameters)
     : toBrowserElectricParameters(slot.electricParameters));
 };
+
+function setLcdParameter(group: string, key: string, value: number): void {
+  if (!trackFxTarget.isSharedTarget.value) throw new Error('Use the selected independent track parameter route.');
+  if (!activeFx.value || fxDisabled.value) throw new Error('The selected FX bank is unavailable.');
+  if (!Number.isFinite(value)) throw new Error('FX parameter must be finite.');
+  const handlers: Record<string, (parameters: never) => void> = {
+    preampParameters: updatePreampParameters,
+    synthParameters: updateSynthParameters,
+    g2bParameters: updateG2bParameters,
+    rollParameters: updateRollParameters,
+    freezeParameters: updateFreezeParameters,
+    stepSlicerParameters: updateStepSlicerParameters,
+    pitchBendParameters: updatePitchBendParameters,
+    manualHarmonistParameters: updateManualHarmonistParameters,
+    octaveParameters: updateOctaveParameters,
+    vocoderParameters: updateVocoderParameters,
+    oscVocParameters: updateOscVocParameters,
+    autoRiffParameters: updateAutoRiffParameters,
+    robotParameters: updateRobotParameters,
+    hrmAutoParameters: updateHrmAutoParameters,
+    electricParameters: updateElectricParameters,
+  };
+  const handler = handlers[group];
+  if (!handler) throw new Error('This FX parameter group is not exposed by the engine.');
+  const slot = activeFx.value as unknown as Record<string, unknown>;
+  const previous = slot[group];
+  const parameters = typeof previous === 'object' && previous ? previous as Record<string, unknown> : {};
+  const nextValue = typeof parameters[key] === 'boolean' || (group === 'freezeParameters' && key === 'frozen') ? value >= 50 : value;
+  handler({ ...parameters, [key]: nextValue } as never);
+}
+
+defineExpose({ updateActiveValue, setLcdParameter });
+
 </script>
 
 <style scoped>
@@ -503,7 +542,7 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
 
 .eyebrow {
   margin: 0;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.8px;
   color: rgba(255, 255, 255, 0.66);
 }
@@ -538,12 +577,12 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   letter-spacing: 1px;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .detail-line,
 .detail-note {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 1px;
 }
 
@@ -559,6 +598,7 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);
   color: #f3f3f5;
+  font: 14px/1.3 var(--font-hardware, system-ui, sans-serif);
 }
 
 .fx-target {
@@ -566,7 +606,7 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 1px;
   white-space: nowrap;
 }
@@ -580,7 +620,24 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   border-radius: 8px;
   background: #26232a;
   color: #f3f3f5;
+  font: 14px/1.3 var(--font-hardware, system-ui, sans-serif);
 }
+
+.slot-row :deep(.button-label) { font-size: 13px; }
+.panel-shell :deep(.editor-heading),
+.panel-shell :deep(.editor-title) { font-size: 14px; }
+.panel-shell :deep(label),
+.panel-shell :deep(.control-row),
+.panel-shell :deep(.midi-row) { font-size: 13px; }
+.panel-shell :deep(p),
+.panel-shell :deep(.hint),
+.panel-shell :deep(.parameter-help),
+.panel-shell :deep([class$="-note"]),
+.panel-shell :deep(.robot-status) { font-size: 12px; line-height: 1.45; }
+.panel-shell :deep(small) { font-size: 12px; }
+.panel-shell :deep(select),
+.panel-shell :deep(input[type="number"]),
+.panel-shell :deep(textarea) { font-size: 14px; }
 
 .slot-row {
   display: grid;
@@ -603,7 +660,7 @@ const updateElectricParameters = (parameters: ElectricParameters) => {
   background: rgba(255, 255, 255, 0.06);
   color: #f3f3f5;
   letter-spacing: 1px;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .apply-chip.active {

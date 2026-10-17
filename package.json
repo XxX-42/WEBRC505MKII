@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/start-dev.ps1",
     "build:worklet": "esbuild src/audio/worklet/FxProcessor.ts --bundle --format=iife --target=es2022 --outfile=public/worklets/fx-processor.js",
     "build": "vue-tsc -b && npm run build:worklet && vite build && node scripts/verify-third-party-notices.mjs --built",
     "test": "npm run test:unit",

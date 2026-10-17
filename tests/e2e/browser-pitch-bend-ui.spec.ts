@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Locator } from '@playwright/test';
+import { startBrowserAudio } from './uiHelpers';
 
 const initScriptPath = path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js');
 
@@ -9,6 +10,7 @@ test.beforeEach(async ({ page }) => {
 
 test('exposes and persists PITCH BEND controls in the Browser Input FX panel', async ({ page }) => {
   await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
 
   const panel = page.locator('.top-panel [data-panel="input-fx"]');
   const selector = panel.locator('select.fx-select').first();
@@ -63,6 +65,7 @@ test('exposes and persists PITCH BEND controls in the Browser Input FX panel', a
   });
 
   await page.reload();
+  await startBrowserAudio(page);
   const restored = page.locator('[data-panel="input-fx"] [data-pitch-bend-editor]');
   await expect(restored).toBeVisible();
   await expect(restored.getByLabel('Pitch bend range in semitones')).toHaveValue('18');

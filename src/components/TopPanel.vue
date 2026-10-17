@@ -760,8 +760,8 @@ function updateTrackFxValue(slotId: string, value: number): void {
 
 const nativeStatusText = (status: NativeCatalogFxSlotRuntime | null) => {
   if (!status) return '';
-  if (status.pendingRestart) return 'SAVED; RESTART NATIVE AUDIO TO APPLY EFFECT TYPE';
   if (status.error) return `NATIVE FX NOT APPLIED: ${status.error}`;
+  if (status.pendingRestart) return 'SAVED; RESTART NATIVE AUDIO TO APPLY EFFECT TYPE';
   return status.acknowledged
     ? `NATIVE API ACK: ${status.acknowledgedEffectId ?? 'EMPTY SLOT'}; ${Object.keys(status.acknowledgedParameters ?? {}).length} PARAMETER(S) ACCEPTED`
     : 'NATIVE FX WAITING FOR API ACK';
@@ -865,8 +865,8 @@ const nativeStatusText = (status: NativeCatalogFxSlotRuntime | null) => {
 
 @media (max-width: 1360px) {
   .top-panel {
-    padding-left: 96px;
-    padding-right: 96px;
+    padding-left: 24px;
+    padding-right: 24px;
   }
 }
 

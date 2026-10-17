@@ -23,7 +23,7 @@ export function applyRhythmUiSettings(): boolean | Promise<boolean> {
 const playback = reactive({ available: false, reason: '', isPlaying: false, volume: 50, error: '', pending: 0 });
 
 /** Both panels observe the same ACK-backed Native state and Browser worklet state. */
-export function useRhythmUiControls() {
+export function useRhythmUiControls(options: { initializeOnMount?: boolean } = {}) {
   const audio = AudioEngine.getInstance();
   let unsubscribe: (() => void) | undefined;
   const sync = () => {
@@ -84,12 +84,16 @@ export function useRhythmUiControls() {
     const volume = playback.volume;
     return perform(() => audio.rhythmEngine.setVolume(volume));
   };
+  const updateSelection = (selection: Partial<RhythmPlaybackSettings>) => {
+    Object.assign(rhythmUiState, selection);
+    return applySelection();
+  };
 
   sync();
   onMounted(() => {
     sync();
     // A Native mount reads the running host instead of overwriting its settings.
-    if (!(audio.rhythmEngine instanceof NativeRhythmEngine)) {
+    if (options.initializeOnMount !== false && !(audio.rhythmEngine instanceof NativeRhythmEngine)) {
       void applySelection();
       void updateVolume();
     }
@@ -104,6 +108,6 @@ export function useRhythmUiControls() {
     disabled: computed(() => !playback.available),
     pending: computed(() => playback.pending > 0),
     message: computed(() => playback.error || playback.reason),
-    toggleRhythm, applySelection, updateVolume,
+    toggleRhythm, applySelection, updateSelection, updateVolume,
   };
 }

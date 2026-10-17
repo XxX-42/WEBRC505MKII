@@ -331,6 +331,53 @@
     loopProgress: 0,
   };
 
+  const nativeTrackFxUiE2e = new URLSearchParams(window.location.search).get('nativeTrackFxUiE2e') === '1';
+  window.__rc505NativeCatalogSlotRequests = [];
+  if (nativeTrackFxUiE2e && new URLSearchParams(window.location.search).get('audio') === 'native') {
+    const makeSlotStatus = (slot, effectId = '') => ({
+      slot,
+      effectId,
+      bypassed: effectId === 'phaser',
+      appliedBypassed: effectId === 'phaser',
+      prepared: effectId !== '',
+      processingFaulted: false,
+      controlFaulted: false,
+      requestedRevision: effectId === 'phaser' ? 1 : 0,
+      appliedRevision: effectId === 'phaser' ? 1 : 0,
+    });
+    const perTrackCatalogBanks = Array.from({ length: 5 }, (_, index) => ({
+      trackId: index + 1,
+      slots: ['A', 'B', 'C', 'D'].map((slot) => makeSlotStatus(slot, index === 1 && slot === 'B' ? 'phaser' : '')),
+      midiSlots: [],
+    }));
+    // The physical shared TRACK FX knob needs an installed effect too. Seed
+    // the app's saved editor state and the matching bridge status together so
+    // this fixture exercises real enabled-control behavior in both contexts.
+    const nativeSharedSlots = ['A', 'B', 'C', 'D'].map((id) => ({
+      id,
+      type: id === 'A' ? 'PHASER' : '',
+      value: 0,
+      active: false,
+    }));
+    localStorage.setItem('webrc505_native_fx_catalog', JSON.stringify({ inputSlots: [], trackSlots: nativeSharedSlots }));
+    nativeStatus.nativeLooperTrackCount = 5;
+    nativeStatus.nativeLooperMultiTrackImplemented = true;
+    nativeStatus.nativeTracks = Array.from({ length: 5 }, (_, index) => ({
+      trackId: index + 1,
+      state: 'Empty',
+      loopProgress: 0,
+    }));
+    nativeStatus.nativeFx = {
+      implementedCatalogEffects: ['phaser'],
+      catalogEffectAvailability: [{ effectId: 'phaser', input: false, track: true, perTrackInsert: true }],
+      catalogGraphAvailable: true,
+      perTrackCatalogAvailable: true,
+      perTrackCatalogBanks,
+      catalogSlots: ['A', 'B', 'C', 'D'].map((slot) => makeSlotStatus(slot, slot === 'A' ? 'phaser' : '')),
+      inputCatalogSlots: ['A', 'B', 'C', 'D'].map((slot) => makeSlotStatus(slot)),
+    };
+  }
+
   if (pitchUiE2e && new URLSearchParams(window.location.search).get('audio') === 'native') {
     // Advertise multi-track support only in the explicit mock-bridge scenario.
     // The ordinary Native fixture still exercises the legacy one-track fallback.
@@ -410,6 +457,23 @@
       const body = init && init.body ? JSON.parse(String(init.body)) : { enabled: false };
       nativeStatus.monitoringEnabled = Boolean(body.enabled);
       return { json: async () => nativeStatus };
+    }
+    if (path === '/v1/native-fx/catalog-slot' && nativeTrackFxUiE2e) {
+      const config = init && init.body ? JSON.parse(String(init.body)) : {};
+      window.__rc505NativeCatalogSlotRequests.push(config);
+      const targetSlots = config.trackId
+        ? nativeStatus.nativeFx?.perTrackCatalogBanks?.find((bank) => bank.trackId === config.trackId)?.slots
+        : config.path === 'input' ? nativeStatus.nativeFx?.inputCatalogSlots : nativeStatus.nativeFx?.catalogSlots;
+      const slot = targetSlots?.find((item) => item.slot === config.slot);
+      if (slot) {
+        slot.effectId = config.effectId || '';
+        slot.bypassed = Boolean(config.bypassed);
+        slot.appliedBypassed = Boolean(config.bypassed);
+        slot.prepared = Boolean(config.effectId);
+        slot.requestedRevision += 1;
+        slot.appliedRevision = slot.requestedRevision;
+      }
+      return { json: async () => ({ ...nativeStatus }) };
     }
     if (path === '/v1/native-rhythm/config' && rhythmUiE2e) {
       const config = init && init.body ? JSON.parse(String(init.body)) : {};

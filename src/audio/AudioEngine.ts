@@ -56,6 +56,9 @@ export interface AudioUiStatus {
   ready: boolean;
   message: string;
   lastError: string;
+  inputReady?: boolean;
+  inputState?: 'not-requested' | 'requesting' | 'ready' | 'error';
+  inputError?: string;
 }
 
 export interface AudioCapabilities {
@@ -72,6 +75,8 @@ export interface AudioCapabilities {
   rhythmReason: string;
   beatReason: string;
   trackLevelReason: string;
+  supportsOutputLevel?: boolean;
+  outputLevelReason?: string;
 }
 
 export interface TrackCapabilities {
@@ -153,6 +158,7 @@ export class AudioEngine {
   private readonly nativeEngine = NativeAudioEngine.getInstance();
   private browserEngine: BrowserAudioEngine | null = null;
   private currentMode: AudioMode = resolveInitialMode();
+  private browserOutputLevelPercent = 100;
   private nativeMidiInput: MidiInputController | null = null;
   private nativeMidiTarget: TrackFxMidiTarget | null = null;
   private nativeMidiInputState: MidiInputState = 'disconnected';
@@ -270,12 +276,36 @@ export class AudioEngine {
     await this.activeEngine.init();
   }
 
+  /** Apply saved Native FX choices while the host is stopped, then restart audio. */
+  public async restartNativeAudio(): Promise<void> {
+    if (this.currentMode !== 'native') throw new Error('Restart Native audio is only available in Native mode.');
+    await this.nativeEngine.restartAudio();
+  }
+
   /** Resume a suspended Browser AudioContext directly from a trusted user gesture. */
   public resumeFromUserActivation(): Promise<void> {
     if (this.currentMode !== 'browser') return Promise.resolve();
-    const context = this.browser.context;
-    if (context.state !== 'suspended') return Promise.resolve();
-    return context.resume();
+    return this.browser.resumeFromUserActivation();
+  }
+
+  /** Request the recording input separately so playback survives a denied microphone. */
+  public async prepareInputFromUserActivation(): Promise<void> {
+    if (this.currentMode === 'browser') await this.browser.getInputStream();
+  }
+
+  public getOutputLevel(): number {
+    return this.currentMode === 'browser' ? this.browserOutputLevelPercent : 0;
+  }
+
+  public setOutputLevel(percent: number): void {
+    if (this.currentMode !== 'browser') throw new Error('Native master output level is not exposed by this bridge.');
+    if (!Number.isFinite(percent)) throw new RangeError('Output level must be finite.');
+    this.browserOutputLevelPercent = Math.max(0, Math.min(100, percent));
+    this.browser.masterGainNode.gain.setTargetAtTime(this.browserOutputLevelPercent / 100, this.browser.context.currentTime, 0.005);
+  }
+
+  public hasUnsavedLoops(): boolean {
+    return this.tracks.some((track) => track.state !== 'EMPTY');
   }
 
   public async getDevices(): Promise<AudioDeviceSelection> {
@@ -449,6 +479,8 @@ export class AudioEngine {
         rhythmReason: '',
         beatReason: '',
         trackLevelReason: '',
+        supportsOutputLevel: true,
+        outputLevelReason: '',
       };
     }
 
@@ -479,6 +511,8 @@ export class AudioEngine {
       rhythmReason: this.nativeEngine.rhythmEngine.unavailableReason,
       beatReason: 'NO BEAT IN NATIVE V1',
       trackLevelReason: 'TRACK MIX IN BROWSER ONLY',
+      supportsOutputLevel: false,
+      outputLevelReason: 'Native master output level is not exposed by this bridge.',
     };
   }
 
