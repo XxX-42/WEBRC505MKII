@@ -8,6 +8,9 @@
         class="fx-select"
         :disabled="props.disabled"
       >
+        <option v-if="selectedType && !options.includes(selectedType)" :value="selectedType" disabled>
+          UNAVAILABLE: {{ selectedType }}
+        </option>
         <option v-for="opt in options" :key="opt" :value="opt">
           {{ opt }}
         </option>

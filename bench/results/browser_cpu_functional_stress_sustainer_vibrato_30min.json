@@ -1,0 +1,95 @@
+{
+  "schema": "rc505-browser-cpu-functional-simulation-v1",
+  "status": "passed-functional-simulation",
+  "explicitlyNotEvidenceFor": [
+    "browser AudioWorklet execution",
+    "physical device audio",
+    "XRUN/dropout acceptance",
+    "P99/P99.9/deadline compliance",
+    "acoustic latency",
+    "whole-app CPU admission",
+    "30-minute hardware acceptance"
+  ],
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v24.19.0",
+    "sampleRate": 48000,
+    "channels": 2,
+    "blockPatternFrames": [
+      64,
+      96,
+      128,
+      192,
+      256
+    ],
+    "actualElapsedSeconds": 588.9718869120001
+  },
+  "workload": {
+    "simulatedAudioSeconds": 1800,
+    "simulatedFrames": 86400000,
+    "callbackBlocks": 586958,
+    "fiveTrackPlaybackMix": true,
+    "inputFxBank": [
+      "lpf",
+      "distortion",
+      "vibrato",
+      "sustainer"
+    ],
+    "trackFxBank": [
+      "chorus",
+      "reverb",
+      "delay",
+      "auto-pan"
+    ],
+    "pitch": {
+      "mode": "LIVE_MONO clean-room YIN/PSOLA",
+      "semitones": 5,
+      "minimumFrequencyHz": 110,
+      "maximumFrequencyHz": 700,
+      "latencySamples": 1585
+    },
+    "rhythm": {
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "voicesPeak": 2,
+      "voicesStolen": 0
+    },
+    "recording": {
+      "framesCaptured": 86400000,
+      "chunks": 5274,
+      "droppedFrames": 0,
+      "sequenceError": false
+    },
+    "overdub": {
+      "patches": 586958,
+      "patchFrames": 86400000,
+      "overflowFrames": 0,
+      "sequenceError": false
+    },
+    "parameterAutomationUpdates": 181
+  },
+  "functionalChecks": {
+    "nonFiniteOutputSamples": 0,
+    "outputPeak": 0.9424946308135986,
+    "checksum": 9108046.708897654,
+    "rhythmProgressCheckpoints": 29
+  },
+  "cpuUsageMicros": {
+    "user": 588652515,
+    "system": 582609
+  },
+  "memoryBytes": {
+    "startRss": 186134528,
+    "endRss": 208031744,
+    "startHeapUsed": 46509504,
+    "endHeapUsed": 60342608
+  },
+  "notes": [
+    "Loop data, input, rhythm, and kit timbres are synthetic and clean-room; this is a software simulation only.",
+    "The workload executes production BrowserFxDspCore, LiveMonoPitchProcessor, RhythmWorkletCore, and source recording/overdub AudioWorklet processor code in a Node VM with a same-process simulated MessagePort.",
+    "The actual audio callback worklet thread, structured-clone timing, browser scheduling, UI, browser memory, and audio hardware are not exercised.",
+    "No callback timing percentile, XRUN, latency, fidelity or acoustic claim is reported."
+  ]
+}

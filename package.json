@@ -1,16 +1,19 @@
 {
   "name": "webrc505mkii-v2",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build:worklet": "esbuild src/audio/worklet/FxProcessor.ts --bundle --format=iife --target=es2022 --outfile=public/worklets/fx-processor.js",
+    "build": "vue-tsc -b && npm run build:worklet && vite build && node scripts/verify-third-party-notices.mjs --built",
     "test": "npm run test:unit",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:ci": "npm run build && npm run test:unit && npm run test:e2e",
+    "bench:fx-quality": "vite-node bench/run_browser_fx_quality_sweep.ts",
     "preview": "vite preview",
     "native:configure": "cmake -S native-mvp/engine-cpp -B native-mvp/build-v145 -G \"Visual Studio 17 2022\" -T v145 -A x64",
     "native:build": "cmake --build native-mvp/build-v145 --config Release --target native_bridge_host"

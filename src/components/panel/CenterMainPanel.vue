@@ -99,24 +99,32 @@
           size="sm"
           :color="isRhythmPlaying ? 'red' : 'white'"
           :active="isRhythmPlaying"
+          :disabled="rhythmDisabled || rhythmPending"
           :label="isRhythmPlaying ? 'START/STOP' : 'START/STOP'"
           aria-label="Toggle rhythm"
           @press="toggleRhythm"
         />
       </div>
 
-      <select v-model="selectedPattern" class="pattern-select" @change="updatePattern">
-        <option value="ROCK">ROCK</option>
-        <option value="TECHNO">TECHNO</option>
-        <option value="METRONOME">METRO</option>
+      <select
+        v-model.number="rhythmSelection.patternIndex"
+        class="pattern-select"
+        data-testid="center-rhythm-pattern-select"
+        aria-label="Rhythm pattern catalog"
+        :disabled="rhythmDisabled"
+        @change="applyRhythmSelection"
+      >
+        <option v-for="pattern in rhythmPatterns" :key="pattern.id" :value="pattern.globalIndex">
+          {{ pattern.globalIndex }} · {{ pattern.genre }} / {{ pattern.pattern }} · {{ pattern.beat }}
+        </option>
       </select>
 
       <div class="rhythm-level">
         <span>VOL</span>
-        <input v-model.number="rhythmVolume" type="range" min="0" max="100" @input="updateVolume">
+        <input v-model.number="rhythmVolume" type="range" min="0" max="100" :disabled="rhythmDisabled" aria-label="Rhythm volume" @input="updateVolume">
       </div>
 
-      <div v-if="rhythmUnavailableReason" class="rhythm-note">{{ rhythmUnavailableReason }}</div>
+      <div v-if="rhythmMessage" class="rhythm-note" role="status">{{ rhythmMessage }}</div>
     </div>
   </section>
 </template>
@@ -124,10 +132,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { AudioEngine } from '../../audio/AudioEngine';
-import type { RhythmPattern } from '../../audio/RhythmEngine';
+import { RHYTHM_PATTERN_CATALOG } from '../../audio/rhythm';
 import { Transport } from '../../core/Transport';
 import { TrackState, TransportState } from '../../core/types';
 import { usePanelFocus } from '../../composables/usePanelFocus';
+import { useRhythmUiControls } from '../../composables/rhythmUiState';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareKnob from '../ui/HardwareKnob.vue';
 
@@ -140,9 +149,12 @@ const tapActive = ref(false);
 const isPlaying = ref(false);
 const outputLevel = ref(76);
 const statusHint = ref('CENTER CONTROL FOCUSED');
-const isRhythmPlaying = ref(false);
-const selectedPattern = ref<RhythmPattern>('ROCK');
-const rhythmVolume = ref(50);
+const {
+  selection: rhythmSelection, isPlaying: isRhythmPlaying, volume: rhythmVolume,
+  disabled: rhythmDisabled, pending: rhythmPending, message: rhythmMessage,
+  toggleRhythm, applySelection: applyRhythmSelection, updateVolume,
+} = useRhythmUiControls();
+const rhythmPatterns = RHYTHM_PATTERN_CATALOG;
 const screenKnobs = reactive([
   { label: '1', value: 30 },
   { label: '2', value: 54 },
@@ -156,10 +168,6 @@ const tapTimes: number[] = [];
 
 const bpmDisplay = computed(() => bpm.value.toString().padStart(3, '0'));
 const currentTrackId = computed(() => state.currentTrackId);
-const rhythmUnavailableReason = computed(() => {
-  const capabilities = engine.getCapabilities();
-  return capabilities.supportsRhythm ? '' : capabilities.rhythmReason;
-});
 const focusLabel = computed(() => {
   if (state.panelFocusContext === 'track-fx') {
     return `TRK FX ${state.activeTrackFxSlot}`;
@@ -243,37 +251,11 @@ const handleTap = () => {
   }, 3000);
 };
 
-const toggleRhythm = () => {
-  if (!engine.getCapabilities().supportsRhythm) {
-    flashPlaceholder(engine.getCapabilities().rhythmReason || 'RHYTHM UNAVAILABLE');
-    return;
-  }
-
-  if (isRhythmPlaying.value) {
-    engine.rhythmEngine.stop();
-    isRhythmPlaying.value = false;
-    return;
-  }
-
-  engine.rhythmEngine.start();
-  isRhythmPlaying.value = true;
-};
-
-const updatePattern = () => {
-  engine.rhythmEngine.setPattern(selectedPattern.value);
-};
-
-const updateVolume = () => {
-  engine.rhythmEngine.setVolume(rhythmVolume.value);
-};
-
 onMounted(() => {
   transport.on('bpm-change', updateBpm);
   transport.on('start', syncPlaybackState);
   transport.on('stop', syncPlaybackState);
   syncPlaybackState();
-  engine.rhythmEngine.setPattern(selectedPattern.value);
-  engine.rhythmEngine.setVolume(rhythmVolume.value);
   unsubscribeStatus = engine.onStatusChange(() => {
     syncPlaybackState();
   });

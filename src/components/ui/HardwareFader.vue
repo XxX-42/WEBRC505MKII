@@ -1,5 +1,5 @@
 <template>
-  <div class="hardware-fader hardware-interactive">
+  <div class="hardware-fader hardware-interactive" :class="{ 'is-disabled': disabled }">
     <!-- Fader Track Container -->
     <div class="fader-track-container">
       <!-- LED Strip (Left Side) -->
@@ -19,6 +19,9 @@
           :max="max"
           :value="liveValue"
           @input="handleInput"
+          :disabled="disabled"
+          :aria-label="ariaLabel || label || 'Track level control'"
+          :title="disabled ? disabledReason : undefined"
           class="fader-input"
           orient="vertical"
         />
@@ -52,13 +55,19 @@ interface Props {
   max?: number;
   label?: string;
   ledColor?: 'red' | 'green' | 'yellow' | 'blue' | 'white';
+  disabled?: boolean;
+  disabledReason?: string;
+  ariaLabel?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   min: 0,
   max: 100,
   label: '',
-  ledColor: 'green'
+  ledColor: 'green',
+  disabled: false,
+  disabledReason: '',
+  ariaLabel: '',
 });
 
 const emit = defineEmits<{
@@ -91,6 +100,7 @@ const ledColorClass = computed(() => {
 });
 
 const handleInput = (event: Event) => {
+  if (props.disabled) return;
   const target = event.target as HTMLInputElement;
   const rawValue = parseFloat(target.value);
   liveValue.value = rawValue;
@@ -162,6 +172,15 @@ const handleInput = (event: Event) => {
   writing-mode: vertical-lr;
   direction: rtl;
   appearance: none;
+}
+
+.hardware-fader.is-disabled .fader-input {
+  cursor: not-allowed;
+}
+
+.hardware-fader.is-disabled .fader-cap {
+  filter: grayscale(1);
+  opacity: 0.5;
 }
 
 .fader-cap {

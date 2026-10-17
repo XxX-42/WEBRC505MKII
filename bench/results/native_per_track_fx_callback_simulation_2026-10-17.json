@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-10-17T17:53:03.668846+00:00",
+  "benchmark": "native_audio_core_per_track_fx_callback",
+  "repositoryCommitBeforeChanges": "204a8966a1de4742a172269e2ff3342f0389f96a",
+  "build": {
+    "cmake": "4.4.4",
+    "compiler": "/usr/bin/c++ (GCC 14.2.0)",
+    "buildType": "Release",
+    "effectiveOptimizationFlags": "-O3 -DNDEBUG",
+    "explicitCxxFlags": "none",
+    "configuration": "NATIVE_PORTABLE_TESTS_ONLY=ON; NATIVE_ENABLE_RUBBERBAND_HQ=OFF",
+    "target": "native_per_track_fx_bench (EXCLUDE_FROM_ALL; explicitly built)",
+    "configurationCommand": "cmake -S native-mvp/engine-cpp -B /tmp/rc505-pertrack-bench -DNATIVE_PORTABLE_TESTS_ONLY=ON -DNATIVE_ENABLE_RUBBERBAND_HQ=OFF -DCMAKE_BUILD_TYPE=Release",
+    "buildCommand": "cmake --build /tmp/rc505-pertrack-bench --target native_per_track_fx_bench"
+  },
+  "run": {
+    "fullProcessElapsedSeconds": 79.15,
+    "sameTaskConcurrentBuildTestOrBenchmark": "none during timed run",
+    "externalHostContention": "not isolated or measured; other host activity cannot be ruled out",
+    "hostLoadAverageObservedAfterRun": "0.64 0.95 1.19"
+  },
+  "results": {
+    "benchmark": "native_audio_core_per_track_fx_callback",
+    "evidenceScope": "portable Linux CPU callback simulation; no RtAudio device, no hardware acceptance",
+    "platform": "Linux 6.18.55 x86_64",
+    "hardwareConcurrency": 9,
+    "measurementClock": "std::chrono::steady_clock",
+    "observedClockQuantumNs": 20,
+    "sampleRate": 48000,
+    "framesPerCallback": 64,
+    "callbackDeadlineNs": 1333333.333,
+    "loopCapacitySecondsPerTrack": 300,
+    "loopTracks": 5,
+    "configuredPerTrackFxSlots": 20,
+    "warmupCallbacks": 5000,
+    "measuredCallbacks": 100000,
+    "callbackMeanNs": 470145.258,
+    "callbackP50Ns": 445789.0,
+    "callbackP95Ns": 629680.0,
+    "callbackP99Ns": 836205.0,
+    "callbackP999Ns": 2355160.0,
+    "callbackMaxNs": 20520281,
+    "callbacksOverDeadline": 301,
+    "measuredWallMs": 47032.539,
+    "finiteOutputSamples": 12800000,
+    "expectedOutputSamples": 12800000,
+    "outputPeak": 1.0,
+    "reportedFaultedSlots": 0,
+    "fxIdsByTrack": [
+      [
+        "reverse_reverb",
+        "reverse_delay",
+        "warp",
+        "granular_delay"
+      ],
+      [
+        "beat_scatter",
+        "beat_repeat",
+        "roll",
+        "freeze"
+      ],
+      [
+        "reverb",
+        "fractional_delay",
+        "panning_delay",
+        "tape_echo"
+      ],
+      [
+        "dist",
+        "preamp",
+        "dynamics",
+        "flanger"
+      ],
+      [
+        "chorus",
+        "vocoder",
+        "robot",
+        "electric"
+      ]
+    ],
+    "nativeLoopBuffersBytes": 576000000,
+    "loopStorageBudgetBytes": 805306368,
+    "rssBeforeFxSetupKiB": 567072,
+    "rssAfterFxAndCallbacksKiB": 608032,
+    "rssDeltaKiB": 40960,
+    "rssMetric": "getrusage ru_maxrss high-water mark, KiB on Linux; includes loop store and runtime; not PSS"
+  },
+  "acceptance": {
+    "functionalOutput": "passed: all 12,800,000 output samples finite; 20/20 configured FX slots healthy",
+    "callbackP99Deadline": "P99 836205 ns is below 1333333 ns, but P99.9 2355160 ns exceeds deadline",
+    "callbackP999Deadline": "failed in this simulated workload",
+    "overallRealTimeAcceptance": "not passed; 301/100000 callbacks exceeded 1.333 ms deadline",
+    "hardwareAcceptance": "not measured: this was portable Native callback CPU simulation without RtAudio/audio device"
+  },
+  "limitations": [
+    "No real audio device, XRUN counter, output route, physical latency, thermal condition, or sound-quality panel was measured.",
+    "The workload had five synthetic 300-second stereo loop buffers (576,000,000 bytes total) at 48 kHz and 20 per-track FX slots; it did not fill the global input and shared legacy banks simultaneously.",
+    "ru_maxrss is a Linux process high-water metric and includes loop storage/runtime; the delta is not exact per-FX allocation and is not PSS.",
+    "The environment reports an AMD EPYC 9V74 host model but only 9 hardware-concurrency threads to the process; host isolation/CPU scheduling is not guaranteed."
+  ]
+}

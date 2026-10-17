@@ -1,19 +1,31 @@
 #pragma once
 
 #include "looper_core.hpp"
+#include "native_autopan_processor.hpp"
+#include "native_osc_voc_processor.hpp"
+#include "native_output_stage.hpp"
+#include "native_pitch_processor.hpp"
+#include "native_poly_pitch_processor.hpp"
 
 #include <array>
 #include <atomic>
+#include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "RtAudio.h"
 
 namespace webrc::native {
+
+inline constexpr std::size_t kNativeTrackCount = 5U;
+
+enum class NativePitchMode : std::uint8_t { LiveMonoKeepPitch = 0, LivePolyPhaseVocoder };
 
 enum class Backend : std::uint8_t {
     Wasapi = 0,
@@ -25,6 +37,8 @@ struct DeviceDescriptor {
     std::string name;
     std::vector<unsigned int> sampleRates;
     bool isDefault = false;
+    unsigned int maxInputChannels = 0U;
+    unsigned int maxOutputChannels = 0U;
 };
 
 struct DeviceCatalog {
@@ -43,6 +57,7 @@ struct EngineConfig {
     unsigned int sampleRate = 48000;
     unsigned int bufferFrames = 128;
     bool monitoringEnabled = false;
+    std::uint64_t nativeLooperStorageBudgetBytes = LooperCore::kDefaultAggregateLoopStorageBudgetBytes;
 };
 
 struct EngineStatus {
@@ -56,7 +71,124 @@ struct EngineStatus {
     unsigned int sampleRate = 0;
     unsigned int bufferFrames = 0;
     bool monitoringEnabled = false;
+    bool nativeOutputLowPassAvailable = true;
+    bool nativeOutputLowPassEnabled = false;
+    bool nativeOutputHighPassAvailable = true;
+    bool nativeOutputHighPassEnabled = false;
+    // Retained for JSON/source compatibility; Native distortion is unavailable.
+    bool nativeOutputDriveAvailable = false;
+    bool nativeOutputDriveEnabled = false;
+    bool nativeReverbAvailable = true;
+    bool nativeReverbEnabled = false;
+    float nativeReverbWetMix = 0.25f;
+    float nativeReverbRt60Seconds = 2.0f;
+    float nativeReverbDampingCutoffHz = 7000.0f;
+    unsigned int nativeReverbAlgorithmicLatencyFrames = 0;
+    bool nativeTrackOutputBankAvailable = true;
+    std::array<bool, 4> nativeTrackOutputSlotActive = NativeTrackOutputBank::kActiveSlots;
+    bool nativeTrackOutputMultiTrackImplemented = false;
+    bool nativeFractionalDelayAvailable = true;
+    bool nativeFractionalDelayEnabled = false;
+    NativeTrackOutputSlot nativeFractionalDelaySlot = NativeTrackOutputSlot::A;
+    NativeFractionalDelayAlgorithm nativeFractionalDelayAlgorithm = NativeFractionalDelayAlgorithm::Lagrange4;
+    float nativeFractionalDelayMs = 350.0f;
+    float nativeFractionalDelayWetMix = 0.3f;
+    float nativeFractionalDelayFeedback = 0.35f;
+    float nativeFractionalDelayMaxMs = 2000.0f;
+    bool nativeCompressorAvailable = true;
+    bool nativeCompressorEnabled = false;
+    NativeTrackOutputSlot nativeCompressorSlot = NativeTrackOutputSlot::A;
+    NativeCompressorAlgorithm nativeCompressorAlgorithm = NativeCompressorAlgorithm::PeakCompressor;
+    float nativeCompressorThresholdDb = -18.0f;
+    float nativeCompressorRatio = 4.0f;
+    float nativeCompressorAttackMs = 10.0f;
+    float nativeCompressorReleaseMs = 120.0f;
+    float nativeCompressorWetMix = 1.0f;
+    float nativeCompressorMakeupDb = 0.0f;
+    bool nativeChorusAvailable = true;
+    bool nativeChorusEnabled = false;
+    NativeTrackOutputSlot nativeChorusSlot = NativeTrackOutputSlot::A;
+    NativeChorusAlgorithm nativeChorusAlgorithm = NativeChorusAlgorithm::StereoLfoLagrange4;
+    float nativeChorusRateHz = 0.8f;
+    float nativeChorusDepthMs = 5.0f;
+    float nativeChorusFeedback = 0.0f;
+    float nativeChorusWetMix = 0.25f;
+    bool nativePhaserAvailable = true;
+    bool nativePhaserEnabled = false;
+    NativeTrackOutputSlot nativePhaserSlot = NativeTrackOutputSlot::A;
+    NativePhaserAlgorithm nativePhaserAlgorithm = NativePhaserAlgorithm::AllpassSweep;
+    unsigned int nativePhaserStages = 8U;
+    float nativePhaserRateHz = 0.5f;
+    float nativePhaserDepth = 0.65f;
+    float nativePhaserFeedback = 0.0f;
+    float nativePhaserWetMix = 0.5f;
+    bool nativeAutoPanAvailable = true;
+    bool nativeAutoPanEnabled = false;
+    NativeTrackOutputSlot nativeAutoPanSlot = NativeTrackOutputSlot::A;
+    NativeAutoPanAlgorithm nativeAutoPanAlgorithm = NativeAutoPanAlgorithm::EqualPowerMidSideLfo;
+    float nativeAutoPanRateHz = 0.5f;
+    float nativeAutoPanDepth = 0.7f;
+    NativeAutoPanWaveform nativeAutoPanWaveform = NativeAutoPanWaveform::Sine;
+    float nativeAutoPanWetMix = 1.0f;
+    std::array<std::string, NativeEffectBank::kSlotCount> nativeCatalogSlotEffectIds{};
+    std::array<bool, NativeEffectBank::kSlotCount> nativeCatalogSlotBypassed{};
+    std::array<std::string, NativeEffectBank::kSlotCount> nativeInputCatalogSlotEffectIds{};
+    std::array<bool, NativeEffectBank::kSlotCount> nativeInputCatalogSlotBypassed{};
+    struct NativePerTrackCatalogSlotStatus {
+        std::string effectId;
+        bool bypassed = false; // Last accepted control request
+        bool appliedBypassed = false; // Published by the DSP owner
+        bool prepared = false;
+        bool processingFaulted = false;
+        bool controlFaulted = false;
+        std::uint64_t requestedRevision = 0U;
+        std::uint64_t appliedRevision = 0U;
+    };
+    bool nativePerTrackCatalogAvailable = true;
+    std::array<std::array<NativePerTrackCatalogSlotStatus, NativeEffectBank::kSlotCount>, kNativeTrackCount>
+        nativePerTrackCatalogSlots{};
+    std::uint64_t nativeCatalogControlFaultCount = 0U;
+    bool nativeCatalogGraphAvailable = true;
+    bool fullFxGraphImplemented = false;
+    bool nativeRhythmAvailable = true;
+    bool nativeRhythmEnabled = false;
+    bool nativeRhythmPatternCatalogAvailable = false;
+    unsigned int nativeRhythmPatternIndex = 1U;
+    std::string nativeRhythmPatternId;
+    std::string nativeRhythmGenre;
+    std::string nativeRhythmPatternName;
+    std::string nativeRhythmBeat;
+    unsigned int nativeRhythmMeterNumerator = 4U;
+    unsigned int nativeRhythmMeterDenominator = 4U;
+    bool nativeRhythmEventsCleanRoomProcedural = true;
+    bool nativePitchCorrectionAvailable = false;
+    bool nativePitchCorrectionImplemented = false;
+    bool nativePitchEnabled = false;
+    // 0 preserves the legacy global summed-playback route; 1..5 targets one looper.
+    std::uint8_t nativePitchTrackId = 0U;
+    NativePitchMode nativePitchMode = NativePitchMode::LiveMonoKeepPitch;
+    bool nativePitchReversePlayback = false;
+    bool nativePitchActive = false;
+    bool nativePitchVoiced = false;
+    float nativePitchSemitones = 0.0f;
+    float nativePitchFrequencyHz = 0.0f;
+    float nativePitchConfidence = 0.0f;
+    unsigned int nativePitchLatencySamples = 0U;
+    NativePitchFallbackReason nativePitchFallbackReason = NativePitchFallbackReason::NotRequested;
+    double nativeRhythmBpm = 120.0;
+    unsigned int nativeRhythmKitIndex = 1;
+    NativeRhythmVariation nativeRhythmVariation = NativeRhythmVariation::A;
+    NativeRhythmSection nativeRhythmSection = NativeRhythmSection::Main;
+    unsigned int nativeRhythmSwingPercent = 50U;
+    NativeRhythmQuantizeGrid nativeRhythmQuantizeGrid = NativeRhythmQuantizeGrid::Sixteenth;
+    unsigned int nativeRhythmVolume = 50U;
     LooperState state = LooperState::Empty;
+    unsigned int nativeLooperTrackCount = 0U;
+    bool nativeLooperMultiTrackImplemented = false;
+    bool nativeLooperTracksStereo = false;
+    unsigned int nativeLooperMaxRecordSeconds = 0U;
+    std::uint64_t nativeLooperPreallocatedBytes = 0U;
+    std::uint64_t nativeLooperStorageBudgetBytes = LooperCore::kDefaultAggregateLoopStorageBudgetBytes;
     double inputLatencyMs = 0.0;
     double outputLatencyMs = 0.0;
     double roundTripEstimateMs = 0.0;
@@ -65,8 +197,99 @@ struct EngineStatus {
     unsigned int xrunsOrDropouts = 0;
     std::string lastError;
     float loopProgress = 0.0f;
+    std::array<LooperState, kNativeTrackCount> nativeTrackStates{};
+    std::array<float, kNativeTrackCount> nativeTrackProgress{};
+    std::array<LoopTransportStatus, kNativeTrackCount> nativeTrackLoopTransportStatus{};
     double streamTimeSeconds = 0.0;
     unsigned long long callbackTicks = 0;
+    std::uint64_t nativeSampleFrame = 0U;
+    struct NativeOscVocSlotStatus {
+        bool selected = false;
+        std::uint64_t currentFrame = 0U;
+        std::size_t queuedEvents = 0U;
+        std::uint64_t overflowEventCount = 0U;
+        std::uint64_t lateEventCount = 0U;
+        std::uint64_t rejectedEventCount = 0U;
+    };
+    std::array<NativeOscVocSlotStatus, NativeEffectBank::kSlotCount> nativeInputOscVocSlots{};
+    std::array<NativeOscVocSlotStatus, NativeEffectBank::kSlotCount> nativeTrackOscVocSlots{};
+    struct NativeCatalogMidiSlotStatus {
+        bool selected = false;
+        std::string effectId;
+        std::size_t queueCapacity = 0U;
+        std::uint64_t currentFrame = 0U;
+        std::size_t queuedEvents = 0U;
+        std::uint64_t overflowEventCount = 0U;
+        std::uint64_t lateEventCount = 0U;
+        std::uint64_t rejectedEventCount = 0U;
+    };
+    std::array<NativeCatalogMidiSlotStatus, NativeEffectBank::kSlotCount> nativeInputCatalogMidiSlots{};
+    std::array<NativeCatalogMidiSlotStatus, NativeEffectBank::kSlotCount> nativeTrackCatalogMidiSlots{};
+    std::array<std::array<NativeCatalogMidiSlotStatus, NativeEffectBank::kSlotCount>, kNativeTrackCount>
+        nativePerTrackCatalogMidiSlots{};
+};
+
+struct NativeOutputEffectCommand {
+    NativeOutputEffect effect = NativeOutputEffect::LowPass;
+    bool enabled = false;
+};
+
+struct NativeReverbCommand {
+    NativeReverbConfig config{};
+};
+
+struct NativeFractionalDelayCommand {
+    NativeFractionalDelayConfig config{};
+};
+
+struct NativeCompressorCommand {
+    NativeCompressorConfig config{};
+};
+
+struct NativeChorusCommand {
+    NativeChorusConfig config{};
+};
+
+struct NativePhaserCommand {
+    NativePhaserConfig config{};
+};
+
+enum class NativeCatalogFxPath : std::uint8_t { Track, Input };
+
+struct NativeCatalogFxCommand {
+    enum class Type : std::uint8_t { SetParameter, SetBypassed };
+    Type type = Type::SetParameter;
+    NativeCatalogFxPath path = NativeCatalogFxPath::Track;
+    NativeEffectSlot slot = NativeEffectSlot::A;
+    std::uint8_t parameterIndex = 0U;
+    float value = 0.0f;
+    // Track 0 = legacy shared playback bank; Track 1..5 = pre-sum looper bank.
+    // Input accepts only target 0.
+    std::uint8_t trackId = 0U;
+    std::uint64_t revision = 0U;
+};
+
+struct NativePitchConfig {
+    bool enabled = false;
+    // 0 is the legacy global playback bus. Values 1..5 pitch one loop before
+    // it is mixed with the other tracks and the shared A-D playback bank.
+    std::uint8_t trackId = 0U;
+    NativePitchMode mode = NativePitchMode::LiveMonoKeepPitch;
+    float semitones = 0.0f;
+    // Native LooperCore has no reverse transport command yet. This flag is a
+    // route hint from the host so KeepPitch always falls back for reversed
+    // playback until the pitch path supports reverse traversal.
+    bool reversePlayback = false;
+};
+
+struct NativePitchCommand {
+    NativePitchConfig config{};
+    bool resetProcessor = false;
+};
+
+struct NativeLoopTransportCommand {
+    std::size_t trackIndex = 0U; // zero-based, matching recordTrack()/playTrack()
+    LoopTransportConfig config{};
 };
 
 template <typename T, std::size_t Capacity>
@@ -132,9 +355,103 @@ public:
     bool play(std::string& error);
     bool toggleOverdub(std::string& error);
     bool clear(std::string& error);
+    bool recordTrack(std::size_t trackIndex, std::string& error);
+    bool stopTrack(std::size_t trackIndex, std::string& error);
+    bool playTrack(std::size_t trackIndex, std::string& error);
+    bool toggleTrackOverdub(std::size_t trackIndex, std::string& error);
+    bool clearTrack(std::size_t trackIndex, std::string& error);
     bool setMonitoring(bool enabled, std::string& error);
+    bool setOutputLowPassEnabled(bool enabled, std::string& error);
+    bool setOutputHighPassEnabled(bool enabled, std::string& error);
+    bool setNativeReverbConfig(const NativeReverbConfig& config, std::string& error);
+    bool setNativeFractionalDelayConfig(const NativeFractionalDelayConfig& config, std::string& error);
+    bool setNativeCompressorConfig(const NativeCompressorConfig& config, std::string& error);
+    bool setNativeChorusConfig(const NativeChorusConfig& config, std::string& error);
+    bool setNativePhaserConfig(const NativePhaserConfig& config, std::string& error);
+    bool setNativeAutoPanConfig(const NativeAutoPanConfig& config, std::string& error);
+    bool setNativePitchConfig(const NativePitchConfig& config, std::string& error);
+    // Configures a source-aware transport on one stored loop before Native
+    // sums the tracks. This is intentionally separate from the shared A-D
+    // post-sum Track catalog bank. Index is zero-based (0..4).
+    bool setNativeLoopTransport(
+        std::size_t trackIndex,
+        const LoopTransportConfig& config,
+        std::string& error
+    );
+    // Track target 0 preserves the shared post-sum playback bank. Targets
+    // 1..5 select independent A->D chains before summing; Input only allows 0.
+    // Per-track chains affect playback (including overdub playback and tails),
+    // never stored PCM, live monitoring, or rhythm. Type/clear changes require
+    // stopped audio; live parameter/bypass edits are queued at block boundaries.
+    bool setNativeCatalogSlot(
+        NativeEffectSlot slot,
+        const std::string& effectId,
+        const std::map<std::string, float>& parameters,
+        bool bypassed,
+        std::string& error,
+        NativeCatalogFxPath path = NativeCatalogFxPath::Track,
+        std::uint8_t trackId = 0U
+    );
+    // MIDI channels at the bridge boundary are one-based (1..16). Events are
+    // inserted into the selected slot's bounded SPSC queue under the control
+    // mutex; no oscillator/filterbank state is changed on this thread.
+    bool queueNativeOscVocMidiEvent(
+        NativeCatalogFxPath path,
+        NativeEffectSlot slot,
+        bool noteOn,
+        int channel,
+        int note,
+        int velocity,
+        std::uint64_t absoluteFrame,
+        std::string& error,
+        std::uint8_t trackId = 0U
+    );
+    bool queueNativeCatalogMidiEvent(
+        std::string_view effectId,
+        NativeCatalogFxPath path,
+        NativeEffectSlot slot,
+        bool noteOn,
+        int channel,
+        int note,
+        int velocity,
+        std::uint64_t absoluteFrame,
+        std::string& error,
+        std::uint8_t trackId = 0U
+    );
+    bool setNativeRhythmConfig(const NativeRhythmConfig& config, std::string& error);
+
+    // Takes an exact copy of the finalized mono loop without reading mutable
+    // LooperCore storage until the audio callback has pinned loop mutations.
+    // The callback remains non-blocking and continues playback during the copy.
+    bool captureLoopSnapshot(
+        std::vector<float>& samples,
+        unsigned int& sampleRate,
+        std::string& error
+    );
+
+    // Captures one independently addressable Native track as interleaved
+    // stereo (mono source tracks are duplicated to L/R).
+    bool captureTrackSnapshot(
+        std::size_t trackIndex,
+        std::vector<float>& interleavedStereo,
+        unsigned int& sampleRate,
+        std::string& error,
+        std::size_t maximumFrameCount = std::numeric_limits<std::size_t>::max()
+    );
+
+    // Reads callback-pinned loop dimensions without copying PCM. This lets a
+    // caller reject an over-budget HQ render before allocating either the
+    // track snapshot or the offline renderer output.
+    bool getTrackSnapshotMetadata(
+        std::size_t trackIndex,
+        std::size_t& frameCount,
+        unsigned int& sampleRate,
+        std::string& error
+    );
 
 private:
+    friend struct NativeAudioCoreTestAccess;
+
     static constexpr unsigned int kMaxCallbackFrames = 4096;
 
     struct AudioBlock {
@@ -146,9 +463,46 @@ private:
     std::vector<RtAudio::Api> compiledApis() const;
     bool ensureAudioInstanceLocked(std::unique_ptr<RtAudio>& instance, Backend backend, std::string& error);
     bool validateConfigLocked(EngineConfig& config, std::string& error) const;
+    bool validateLoopStorageBudgetLocked(unsigned int sampleRate, std::uint64_t budgetBytes, std::string& error) const;
+    bool prepareLoopStorageLocked(unsigned int sampleRate, std::uint64_t budgetBytes, std::string& error);
+    bool hasNonEmptyTrackLocked() const noexcept;
     bool openStreamLocked(std::string& error);
     void closeStreamLocked() noexcept;
     void resetRuntimeStateLocked() noexcept;
+    void applyOutputStageCommands() noexcept;
+    void applyNativeReverbCommands() noexcept;
+    void applyNativeFractionalDelayCommands() noexcept;
+    void applyNativeCompressorCommands() noexcept;
+    void applyNativeChorusCommands() noexcept;
+    void applyNativePhaserCommands() noexcept;
+    void applyNativeCatalogFxCommands() noexcept;
+    [[nodiscard]] const float* processInputFxForCallback(
+        const float* inputInterleaved,
+        unsigned int frames
+    ) noexcept;
+    void applyNativePitchCommands() noexcept;
+    void applyNativeLoopTransportCommands() noexcept;
+    [[nodiscard]] bool processLoopSnapshotRequestAtCallback() noexcept;
+    bool configureNativeCatalogSlotLocked(
+        NativeEffectSlot slot,
+        const std::string& effectId,
+        const std::map<std::string, float>& parameters,
+        bool bypassed,
+        std::string& error,
+        NativeCatalogFxPath path,
+        std::uint8_t trackId = 0U
+    );
+    void applyNativeRhythmCommands() noexcept;
+    [[nodiscard]] LooperCore& looperForTrack(std::size_t trackIndex) noexcept;
+    [[nodiscard]] const LooperCore& looperForTrack(std::size_t trackIndex) const noexcept;
+    [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error);
+    [[nodiscard]] ProcessStats processNativeTracksForCallback(
+        const float* inputInterleaved,
+        float* outputInterleaved,
+        unsigned int frames,
+        NativePitchRouteDecision* pitchRouteDecision
+    ) noexcept;
+    bool setOutputEffectEnabled(NativeOutputEffect effect, bool enabled, std::string& error);
     void updateLastErrorLocked(const std::string& error) const;
     const DeviceDescriptor* findDeviceLocked(const std::vector<DeviceDescriptor>& devices, const std::string& id) const;
 
@@ -199,25 +553,106 @@ private:
     );
 
     mutable std::mutex controlMutex_;
+    std::mutex loopSnapshotMutex_;
     mutable std::string lastError_;
     std::unique_ptr<RtAudio> audio_;
     std::unique_ptr<RtAudio> captureAudio_;
     std::optional<EngineConfig> currentConfig_;
     DeviceCatalog deviceCatalog_;
     LooperCore looper_;
+    std::array<LooperCore, kNativeTrackCount - 1U> additionalLoopers_;
+    std::size_t nativeLooperMaxRecordSeconds_ = 0U;
+    std::uint64_t nativeLooperPreallocatedBytes_ = 0U;
+    std::array<float, kMaxCallbackFrames * 2U> nativeTrackMixScratch_{};
+    std::array<float, kMaxCallbackFrames * 2U> nativeTrackPlaybackScratch_{};
+    std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetDryScratch_{};
+    std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetProcessedScratch_{};
     unsigned int inputChannels_ = 1;
     unsigned int outputChannels_ = 2;
 
     SpscRingQueue<Command, 64> commandQueue_;
+    SpscRingQueue<NativeOutputEffectCommand, 32> outputStageCommandQueue_;
+    SpscRingQueue<NativeReverbCommand, 16> nativeReverbCommandQueue_;
+    SpscRingQueue<NativeFractionalDelayCommand, 16> nativeFractionalDelayCommandQueue_;
+    SpscRingQueue<NativeCompressorCommand, 16> nativeCompressorCommandQueue_;
+    SpscRingQueue<NativeChorusCommand, 16> nativeChorusCommandQueue_;
+    SpscRingQueue<NativePhaserCommand, 16> nativePhaserCommandQueue_;
+    SpscRingQueue<NativeCatalogFxCommand, 64> nativeCatalogFxCommandQueue_;
+    SpscRingQueue<NativePitchCommand, 16> nativePitchCommandQueue_;
+    SpscRingQueue<NativeLoopTransportCommand, 16> nativeLoopTransportCommandQueue_;
+    SpscRingQueue<NativeRhythmConfig, 16> nativeRhythmCommandQueue_;
     SpscRingQueue<AudioBlock, 8> outputQueue_;
+    NativeOutputStage outputStage_;
+    NativeEffectBank nativeInputFxBank_{};
+    // Exactly 5 x 4 individually owned processor slots. Selection and all
+    // storage preparation happen while stopped, on the control thread.
+    std::array<NativeEffectBank, kNativeTrackCount> nativePerTrackFxBanks_{};
+    std::array<std::array<bool, NativeEffectBank::kSlotCount>, kNativeTrackCount> nativePerTrackSlotBypassed_{};
+    std::array<std::array<std::uint64_t, NativeEffectBank::kSlotCount>, kNativeTrackCount> nativePerTrackSlotRevision_{};
+    struct PublishedTrackFxSlot {
+        std::atomic<bool> appliedBypassed{false};
+        std::atomic<bool> processingFaulted{false};
+        std::atomic<std::uint64_t> appliedRevision{0U};
+        std::atomic<std::uint64_t> controlFaultRevision{0U};
+    };
+    std::array<std::array<PublishedTrackFxSlot, NativeEffectBank::kSlotCount>, kNativeTrackCount> nativePerTrackFxPublished_{};
+    std::atomic<std::uint64_t> nativeCatalogControlFaultCount_{0U};
+    std::array<float, kMaxCallbackFrames * 2U> nativeInputFxScratch_{};
+    NativePitchProcessor nativePitchProcessor_;
+    NativePolyPitchProcessor nativePolyPitchProcessor_;
+    NativeRhythmEngine nativeRhythmEngine_;
+    NativeReverbConfig nativeReverbConfig_{};
+    NativeFractionalDelayConfig nativeFractionalDelayConfig_{};
+    NativeCompressorConfig nativeCompressorConfig_{};
+    NativeChorusConfig nativeChorusConfig_{};
+    NativePhaserConfig nativePhaserConfig_{};
+    NativeAutoPanConfig nativeAutoPanConfig_{};
+    NativePitchConfig nativePitchConfig_{};
+    // These fields are owned by the audio callback; control changes cross the
+    // boundary through nativePitchCommandQueue_.
+    bool nativePitchRuntimeEnabled_ = false;
+    std::uint8_t nativePitchRuntimeTrackId_ = 0U;
+    NativePitchMode nativePitchRuntimeMode_ = NativePitchMode::LiveMonoKeepPitch;
+    bool nativePitchRuntimeReverse_ = false;
+    std::array<bool, NativeEffectBank::kSlotCount> nativeCatalogSlotBypassed_{};
+    std::array<bool, NativeEffectBank::kSlotCount> nativeInputCatalogSlotBypassed_{};
+    NativeRhythmConfig nativeRhythmConfig_{};
+    std::uint64_t callbackFrameCursor_ = 0;
+    std::atomic<std::uint64_t> publishedCallbackFrameCursor_{0U};
     std::atomic<bool> engineRunning_{false};
+    std::atomic<bool> outputLowPassEnabled_{false};
+    std::atomic<bool> outputHighPassEnabled_{false};
+    std::atomic<bool> nativePitchActive_{false};
+    std::atomic<bool> nativePitchVoiced_{false};
+    std::atomic<float> nativePitchFrequencyHz_{0.0f};
+    std::atomic<float> nativePitchConfidence_{0.0f};
+    std::atomic<NativePitchFallbackReason> nativePitchFallbackReason_{NativePitchFallbackReason::NotRequested};
     std::atomic<int> looperState_{static_cast<int>(LooperState::Empty)};
     std::atomic<float> loopProgress_{0.0f};
+    std::array<std::atomic<int>, kNativeTrackCount> trackStates_{{
+        static_cast<int>(LooperState::Empty), static_cast<int>(LooperState::Empty),
+        static_cast<int>(LooperState::Empty), static_cast<int>(LooperState::Empty),
+        static_cast<int>(LooperState::Empty)
+    }};
+    std::array<std::atomic<float>, kNativeTrackCount> trackProgress_{{0.0f, 0.0f, 0.0f, 0.0f, 0.0f}};
+    std::array<std::atomic<LoopTransportStatus>, kNativeTrackCount> trackLoopTransportStatus_{{
+        LoopTransportStatus::Disabled, LoopTransportStatus::Disabled, LoopTransportStatus::Disabled,
+        LoopTransportStatus::Disabled, LoopTransportStatus::Disabled
+    }};
     std::atomic<float> inputPeak_{0.0f};
     std::atomic<float> outputPeak_{0.0f};
     std::atomic<unsigned int> xrunsOrDropouts_{0};
     std::atomic<unsigned long long> callbackTicks_{0};
     std::atomic<bool> renderPrimed_{false};
+    std::atomic<bool> loopSnapshotRequested_{false};
+    std::atomic<bool> loopSnapshotAcknowledged_{false};
+    std::atomic<bool> loopSnapshotReleaseRequested_{false};
+    std::atomic<bool> loopSnapshotReleaseAcknowledged_{true};
+    std::atomic<bool> loopSnapshotEligible_{false};
+    std::atomic<LooperState> loopSnapshotState_{LooperState::Empty};
+    std::atomic<std::size_t> loopSnapshotTrackIndex_{0U};
+    // Only the single active loop-processing callback reads/writes this flag.
+    bool loopSnapshotPinned_ = false;
 };
 
 std::string backendToString(Backend backend);

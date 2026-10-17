@@ -26,6 +26,15 @@ native-mvp\build-v145\Release\native_bridge_host.exe
 
 The host binds to `http://127.0.0.1:17755`.
 
+For the browser UI, the host accepts cross-origin requests only from the
+project's exact local Vite origins: `http://localhost:5173`,
+`http://127.0.0.1:5173`, `http://localhost:4173`, `http://127.0.0.1:4173`,
+and the Playwright UI test origins on port `4174`. It exposes only the
+`Content-Type` header for `GET`/`POST` preflights, does not allow credentials,
+and rejects POST requests whose `Origin` is absent or outside that allowlist.
+Serve the UI on one of these loopback origins; the bridge is not exposed to a
+LAN interface or arbitrary remote web pages.
+
 ## Frontend
 
 ```powershell

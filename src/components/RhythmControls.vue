@@ -8,6 +8,7 @@
         size="md"
         :color="isPlaying ? 'red' : 'neutral'"
         :active="isPlaying"
+        :disabled="disabled || pending"
         :label="isPlaying ? 'STOP' : 'PLAY'"
         :aria-label="isPlaying ? 'Stop rhythm' : 'Start rhythm'"
         @press="toggleRhythm"
@@ -17,15 +18,64 @@
         <label class="sub-label" for="rhythm-pattern">PATTERN</label>
         <select
           id="rhythm-pattern"
-          v-model="selectedPattern"
-          @change="updatePattern"
+          v-model.number="selection.patternIndex"
+          @change="applySelection"
           class="pattern-select"
+          data-testid="rhythm-pattern-select"
           :disabled="disabled"
+          aria-label="Rhythm pattern catalog"
         >
-          <option value="ROCK">ROCK</option>
-          <option value="TECHNO">TECHNO</option>
-          <option value="METRONOME">METRO</option>
+          <option v-for="pattern in patterns" :key="pattern.id" :value="pattern.globalIndex">
+            {{ pattern.globalIndex }} · {{ pattern.genre }} / {{ pattern.pattern }} · {{ pattern.beat }}
+          </option>
         </select>
+
+        <details class="rhythm-details" :class="{ 'is-disabled': disabled }">
+          <summary aria-label="More rhythm settings">KIT · VARIATION · TIMING</summary>
+          <div class="rhythm-settings-popover">
+            <label class="setting-field">
+              <span class="sub-label">KIT</span>
+              <select v-model.number="selection.kitIndex" data-testid="rhythm-kit-select" :disabled="disabled" @change="applySelection">
+                <option v-for="kit in kits" :key="kit.index" :value="kit.index">{{ kit.index }} · {{ kit.officialName }}</option>
+              </select>
+            </label>
+            <label class="setting-field">
+              <span class="sub-label">VARIATION</span>
+              <select v-model="selection.variation" data-testid="rhythm-variation-select" :disabled="disabled" @change="applySelection">
+                <option v-for="variation in variations" :key="variation" :value="variation">{{ variation }}</option>
+              </select>
+            </label>
+            <label class="setting-field">
+              <span class="sub-label">SECTION</span>
+              <select v-model="selection.section" data-testid="rhythm-section-select" :disabled="disabled" @change="applySelection">
+                <option v-for="section in sections" :key="section" :value="section">{{ section.toUpperCase() }}</option>
+              </select>
+            </label>
+            <label class="setting-field swing-field">
+              <span class="sub-label">SWING <output>{{ selection.swingPercent }}%</output></span>
+              <input
+                v-model.number="selection.swingPercent"
+                type="range"
+                min="50"
+                max="75"
+                step="1"
+                data-testid="rhythm-swing"
+                aria-label="Rhythm swing percent"
+                :disabled="disabled"
+                @change="applySelection"
+              />
+            </label>
+            <label class="setting-field">
+              <span class="sub-label">QUANTIZE</span>
+              <select v-model="selection.quantizeGrid" data-testid="rhythm-quantize-select" :disabled="disabled" @change="applySelection">
+                <option v-for="grid in quantizeGrids" :key="grid" :value="grid">{{ grid }}</option>
+              </select>
+            </label>
+            <div class="provenance-note" data-testid="rhythm-provenance">
+              Clean-room patterns and timbres; not factory MIDI or samples
+            </div>
+          </div>
+        </details>
 
         <div class="level-control">
           <span class="sub-label">VOL</span>
@@ -42,49 +92,22 @@
         </div>
       </div>
     </div>
-    <div v-if="disabled" class="native-note">{{ unavailableReason }}</div>
+    <div v-if="message" class="native-note" role="status" data-testid="rhythm-status">{{ message }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
-import { AudioEngine } from '../audio/AudioEngine';
-import type { RhythmPattern } from '../audio/RhythmEngine';
+import { DRUM_KIT_CATALOG, RHYTHM_PATTERN_CATALOG, RHYTHM_QUANTIZE_GRIDS, RHYTHM_SECTIONS, RHYTHM_VARIATIONS } from '../audio/rhythm';
+import { useRhythmUiControls } from '../composables/rhythmUiState';
 import HardwareButton from './ui/HardwareButton.vue';
 
-const engine = AudioEngine.getInstance();
-const capabilities = engine.getCapabilities();
-const isPlaying = ref(false);
-const selectedPattern = ref<RhythmPattern>('ROCK');
-const volume = ref(50);
-const disabled = computed(() => !capabilities.supportsRhythm);
-const unavailableReason = capabilities.rhythmReason;
+const { selection, isPlaying, volume, disabled, pending, message, toggleRhythm, applySelection, updateVolume } = useRhythmUiControls();
+const patterns = RHYTHM_PATTERN_CATALOG;
+const kits = DRUM_KIT_CATALOG;
+const variations = RHYTHM_VARIATIONS;
+const sections = RHYTHM_SECTIONS;
+const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
 
-const toggleRhythm = () => {
-  if (disabled.value) return;
-  if (isPlaying.value) {
-    engine.rhythmEngine.stop();
-    isPlaying.value = false;
-  } else {
-    engine.rhythmEngine.start();
-    isPlaying.value = true;
-  }
-};
-
-const updatePattern = () => {
-  if (disabled.value) return;
-  engine.rhythmEngine.setPattern(selectedPattern.value);
-};
-
-const updateVolume = () => {
-  if (disabled.value) return;
-  engine.rhythmEngine.setVolume(volume.value);
-};
-
-onMounted(() => {
-  engine.rhythmEngine.setVolume(volume.value);
-  engine.rhythmEngine.setPattern(selectedPattern.value);
-});
 </script>
 
 <style scoped>
@@ -133,6 +156,10 @@ onMounted(() => {
   gap: 6px;
 }
 
+.rhythm-controls {
+  position: relative;
+}
+
 .pattern-select {
   background: var(--bg-groove-dark);
   color: var(--led-blue-accent);
@@ -144,7 +171,81 @@ onMounted(() => {
   outline: none;
   cursor: pointer;
   text-transform: uppercase;
-  width: 84px;
+  width: 148px;
+}
+
+.rhythm-details {
+  position: relative;
+  color: var(--led-blue-accent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.rhythm-details summary {
+  cursor: pointer;
+  color: #8a8a91;
+  letter-spacing: 0.45px;
+  list-style-position: inside;
+}
+
+.rhythm-details.is-disabled summary {
+  cursor: not-allowed;
+}
+
+.rhythm-settings-popover {
+  position: absolute;
+  z-index: 500;
+  top: 17px;
+  right: -6px;
+  width: 232px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 10px;
+  padding: 10px;
+  border: 1px solid #3e4852;
+  border-radius: 5px;
+  background: #111820;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.setting-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.setting-field select {
+  width: 100%;
+  min-width: 0;
+  background: #18232d;
+  color: var(--led-blue-accent);
+  border: 1px solid #394550;
+  border-radius: 3px;
+  padding: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.swing-field {
+  grid-column: span 2;
+}
+
+.swing-field .sub-label {
+  display: flex;
+  justify-content: space-between;
+}
+
+.swing-field input {
+  width: 100%;
+}
+
+.provenance-note {
+  grid-column: span 2;
+  color: #a0a6ad;
+  font-size: 8px;
+  line-height: 1.35;
+  text-transform: uppercase;
 }
 
 .pattern-select:hover,

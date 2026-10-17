@@ -47,3 +47,9 @@ npm run test:ci
 - This repository snapshot is documentation-heavy; some older phase docs no longer match the latest UI implementation.
 - Audio behavior depends on browser support for Web Audio, microphone permissions, and output-device APIs such as `setSinkId`.
 - `test:e2e` uses mocked browser audio and native-bridge shims for repeatable UI verification. Real audio/device validation remains a manual check.
+
+## License and third-party components
+
+First-party WebRC-505MKII source is distributed under the GNU General Public License, version 3 or (at your option) any later version; see [`LICENSE`](LICENSE). The project includes separately licensed third-party components. Their upstream licenses and notices are preserved and are not replaced by the project license; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the component notices shipped under `public/THIRD_PARTY/`.
+
+The historical generated code snapshots (`2025_WebRC505MKII_v2_code_only.md`, `project_code_full.md`, and `project_code.zip`) may reproduce third-party material from the snapshot date. Keep any component-specific copyright notices and license terms included with that material; the root project license does not relicense third-party code.

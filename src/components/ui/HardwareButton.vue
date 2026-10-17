@@ -6,10 +6,13 @@
       `size-${size}`,
       `color-${color}`,
       `shape-${shape}`,
+      { 'is-disabled': disabled },
       { 'active': isActive }
     ]"
     type="button"
+    :disabled="disabled"
     :aria-label="computedAriaLabel"
+    :title="disabled ? computedAriaLabel : undefined"
     @mousedown="handlePress"
     @mouseup="handleRelease"
     @mouseleave="handleRelease"
@@ -39,6 +42,7 @@ interface Props {
   size?: 'sm' | 'md' | 'lg';
   color?: 'red' | 'green' | 'yellow' | 'blue' | 'purple' | 'white' | 'neutral';
   active?: boolean;
+  disabled?: boolean;
   label?: string;
   shape?: 'circle' | 'rect';
   ariaLabel?: string;
@@ -48,6 +52,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   color: 'neutral',
   active: false,
+  disabled: false,
   label: '',
   shape: 'circle',
   ariaLabel: ''
@@ -79,17 +84,20 @@ const ledClass = computed(() => {
 });
 
 const handlePress = () => {
+  if (props.disabled) return;
   pointerTriggered.value = true;
   isPressed.value = true;
   emit('press');
 };
 
 const handleRelease = () => {
+  if (props.disabled) return;
   isPressed.value = false;
   emit('release');
 };
 
 const handleClick = () => {
+  if (props.disabled) return;
   if (pointerTriggered.value) {
     pointerTriggered.value = false;
     return;
@@ -99,11 +107,13 @@ const handleClick = () => {
 };
 
 const handleKeyDown = (event: KeyboardEvent) => {
+  if (props.disabled) return;
   if (event.repeat) return;
   isPressed.value = true;
 };
 
 const handleKeyUp = () => {
+  if (props.disabled) return;
   isPressed.value = false;
 };
 </script>
@@ -141,6 +151,12 @@ const handleKeyUp = () => {
 .hardware-button:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+.hardware-button.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.65);
 }
 
 /* === SHAPES === */

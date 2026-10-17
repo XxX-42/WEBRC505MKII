@@ -21,6 +21,10 @@ const audioModeLabel = computed(() => audioMode.value === 'browser' ? 'BROWSER' 
 const uiStyleLabel = computed(() => currentStyle.value === 'classic' ? 'CLASSIC' : 'TECH');
 const capabilitySummary = computed(() => {
   audioMode.value;
+  // Capability fields live on the Native bridge snapshot rather than in Vue
+  // state. Track the subscribed status ref so a post-init bridge ACK rerenders
+  // the summary (for example, one track becoming five, or FX becoming ready).
+  void uiStatus.value;
   return engine.getCapabilities().modeSummary;
 });
 
@@ -48,6 +52,20 @@ const initAudio = async (silent = false) => {
   } finally {
     initInFlight.value = false;
   }
+};
+
+const retryAudio = () => {
+  if (initInFlight.value) {
+    // BrowserAudioEngine.init may be waiting for a resume() call made before
+    // user activation. Re-issue only resume in this trusted click handler; do
+    // not start a second initialization while the first one is still pending.
+    void engine.resumeFromUserActivation().catch((error: unknown) => {
+      console.error('Failed to resume audio engine from user activation:', error);
+    });
+    return;
+  }
+
+  void initAudio();
 };
 
 const toggleAudioMode = () => {
@@ -83,7 +101,7 @@ onUnmounted(() => {
       :ui-style-label="uiStyleLabel"
       :capability-summary="capabilitySummary"
       :ui-status="uiStatus"
-      @retry-audio="initAudio()"
+      @retry-audio="retryAudio"
       @toggle-audio-mode="toggleAudioMode"
       @toggle-ui-style="toggleStyle"
     />

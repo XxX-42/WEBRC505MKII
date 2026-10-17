@@ -186,11 +186,69 @@
   }
 
   class MockAudioWorkletNode extends MockAudioNode {
-    constructor() {
+    constructor(context, processorName, options = {}) {
       super();
+      this.context = context;
+      this.name = processorName;
+      this.processorOptions = options.processorOptions || {};
+      const mockNode = this;
+      let onmessage = null;
+      let monoSemitones = Number.isFinite(this.processorOptions.semitones)
+        ? this.processorOptions.semitones
+        : 0;
+      if (pitchUiE2e && processorName === 'rc505-live-mono-pitch') {
+        window.__rc505LivePitchNodeCreations.push({
+          processorName,
+          processorOptions: { ...this.processorOptions },
+        });
+      }
       this.port = {
-        onmessage: null,
+        get onmessage() { return onmessage; },
+        set onmessage(handler) {
+          onmessage = handler;
+          if (pitchUiE2e && processorName === 'rc505-live-mono-pitch' && typeof handler === 'function') {
+            // Synthetic ready ack for the UI-to-worklet boundary only. DSP
+            // execution is covered separately by the real Browser DSP tests.
+            queueMicrotask(() => handler({ data: {
+              type: 'ready',
+              sampleRate: mockNode.context.sampleRate,
+              latencySamples: 2206,
+              latencySeconds: 2206 / mockNode.context.sampleRate,
+              semitones: monoSemitones,
+              voiced: false,
+              frequencyHz: 0,
+              confidence: 0,
+            } }));
+          }
+        },
+        close: () => undefined,
         postMessage: (message) => {
+          // Test-only observation point for proving UI controls reach the
+          // AudioWorklet adapter. Real DSP execution is covered by the
+          // unmocked browser-fx-audio-worklet tests.
+          window.__rc505AudioWorkletMessages.push({
+            processorName,
+            algorithm: mockNode.processorOptions.algorithm || null,
+            message,
+          });
+          if (pitchUiE2e && processorName === 'rc505-live-mono-pitch' && message?.type === 'set-semitones') {
+            monoSemitones = message.semitones;
+          }
+          if (pitchUiE2e && processorName === 'rc505-live-mono-pitch' && message?.type === 'get-status') {
+            queueMicrotask(() => {
+              if (onmessage) onmessage({ data: {
+                type: 'status',
+                requestId: message.requestId,
+                sampleRate: mockNode.context.sampleRate,
+                latencySamples: 2206,
+                latencySeconds: 2206 / mockNode.context.sampleRate,
+                semitones: monoSemitones,
+                voiced: false,
+                frequencyHz: 0,
+                confidence: 0,
+              } });
+            });
+          }
           if (message && message.type === 'STOP_RECORD' && this.port.onmessage) {
             this.port.onmessage({
               data: {
@@ -202,7 +260,18 @@
         },
       };
     }
+
+    addEventListener() {}
   }
+
+  window.__rc505AudioWorkletMessages = [];
+
+  // This opt-in path belongs only to the focused LIVE KEEP PITCH E2E. Keep the
+  // default recording response below unchanged for the legacy one-track cases.
+  const pitchUiE2e = new URLSearchParams(window.location.search).get('pitchUiE2e') === '1';
+  window.__rc505NativePitchRequests = [];
+  window.__rc505NativePitchAcks = [];
+  window.__rc505LivePitchNodeCreations = [];
 
   Object.defineProperty(window, 'AudioContext', {
     configurable: true,
@@ -262,6 +331,31 @@
     loopProgress: 0,
   };
 
+  if (pitchUiE2e && new URLSearchParams(window.location.search).get('audio') === 'native') {
+    // Advertise multi-track support only in the explicit mock-bridge scenario.
+    // The ordinary Native fixture still exercises the legacy one-track fallback.
+    nativeStatus.nativeLooperTrackCount = 5;
+    nativeStatus.nativeLooperMultiTrackImplemented = true;
+    nativeStatus.nativeTracks = Array.from({ length: 5 }, (_, index) => ({
+      trackId: index + 1,
+      state: 'Empty',
+      loopProgress: 0,
+    }));
+  }
+
+  const rhythmUiE2e = new URLSearchParams(window.location.search).get('rhythmUiE2e') === '1';
+  window.__rc505NativeRhythmRequests = [];
+  if (rhythmUiE2e) {
+    nativeStatus.nativeRhythm = {
+      available: true, enabled: false, bpm: 93, patternIndex: 198, kitIndex: 13,
+      variation: 'C', section: 'intro', swingPercent: 67, quantizeGrid: '1/8', volume: 73,
+      patternCatalogAvailable: true, patternId: 'rhythm-198', genre: 'ELCTRO', pattern: 'ELCTRO1', beat: '4/4',
+      meterNumerator: 4, meterDenominator: 4, eventsCleanRoomProcedural: true,
+      patternSource: 'metadata-only-240-pattern-catalog', statusNote: 'TEST-ONLY clean-room Native rhythm fixture',
+    };
+    window.__rc505NativeRhythmState = nativeStatus.nativeRhythm;
+  }
+
   const originalFetch = window.fetch?.bind(window);
   window.fetch = async (input, init) => {
     const url = typeof input === 'string' ? input : input.url;
@@ -316,6 +410,40 @@
       const body = init && init.body ? JSON.parse(String(init.body)) : { enabled: false };
       nativeStatus.monitoringEnabled = Boolean(body.enabled);
       return { json: async () => nativeStatus };
+    }
+    if (path === '/v1/native-rhythm/config' && rhythmUiE2e) {
+      const config = init && init.body ? JSON.parse(String(init.body)) : {};
+      window.__rc505NativeRhythmRequests.push(config);
+      if (window.__rc505RejectNativeRhythmConfig) {
+        return { json: async () => ({ ok: false, error: 'Native rhythm configuration rejected by test bridge' }) };
+      }
+      Object.assign(nativeStatus.nativeRhythm, config);
+      return { json: async () => nativeStatus };
+    }
+    if (path === '/v1/native-pitch/config' && pitchUiE2e) {
+      const config = init && init.body ? JSON.parse(String(init.body)) : {};
+      window.__rc505NativePitchRequests.push(config);
+      const mode = config.mode === 'livePolyPhaseVocoder' ? 'livePolyPhaseVocoder' : 'liveMonoKeepPitch';
+      const acknowledgement = {
+        pitchCorrectionAvailable: true,
+        pitchCorrectionImplemented: true,
+        enabled: Boolean(config.enabled),
+        active: Boolean(config.enabled),
+        trackId: Number.isInteger(config.trackId) ? config.trackId : 0,
+        reversePlayback: Boolean(config.reversePlayback),
+        mode,
+        algorithm: mode === 'livePolyPhaseVocoder' ? 'signalsmithStretch132Cheaper' : 'cleanRoomYinPsola',
+        semitones: Number.isFinite(config.semitones) ? config.semitones : 0,
+        frequencyHz: 0,
+        confidence: 0,
+        voiced: false,
+        latencySamples: mode === 'livePolyPhaseVocoder' ? 6720 : 2206,
+        fallbackReason: 'none',
+        statusNote: `TEST-ONLY MOCK BRIDGE ACK for track ${config.trackId}`,
+      };
+      window.__rc505NativePitchAcks.push(acknowledgement);
+      nativeStatus.nativePitch = acknowledgement;
+      return { json: async () => ({ ...nativeStatus }) };
     }
 
     return { json: async () => ({ ok: true }) };

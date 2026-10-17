@@ -1,204 +1,307 @@
 import { Transport } from '../core/Transport';
+import {
+  createCleanRoomPatternEvents,
+  getDrumKitByIndex,
+  getDrumKitByName,
+  getRhythmPatternByIndex,
+  RHYTHM_QUANTIZE_GRIDS,
+  type CleanRoomDrumEvent,
+  type DrumKitProfile,
+  type RhythmPatternMetadata,
+  type RhythmQuantizeGrid,
+  type RhythmSection,
+  type RhythmVariation,
+} from './rhythm';
+import type { RhythmWorkletConfiguration } from './worklet/RhythmProcessor';
 
+/** The three selections retained by the existing RhythmControls UI. */
 export type RhythmPattern = 'ROCK' | 'TECHNO' | 'METRONOME';
 
+type PatternSelection =
+  | { readonly kind: 'legacy'; readonly value: RhythmPattern }
+  | { readonly kind: 'catalog'; readonly index: number };
+
+export interface RhythmPlaybackSettings {
+  readonly patternIndex: number;
+  readonly kitIndex: number;
+  readonly variation: RhythmVariation;
+  readonly section: RhythmSection;
+  readonly swingPercent: number;
+  readonly quantizeGrid: RhythmQuantizeGrid;
+}
+
+const LEGACY_CATALOG_INDEX: Record<RhythmPattern, number> = {
+  ROCK: 106,       // first 4/4 ROCK metadata row
+  TECHNO: 198,     // first electronic-kit's `ELCTRO` metadata row (source spelling retained)
+  METRONOME: 210,  // 4/4 GUIDE meter metadata; click events below remain clean-room
+};
+const WORKLET_URL = '/worklets/rhythm-processor.js';
+const WORKLET_PROCESSOR_NAME = 'rc505-rhythm-processor';
+const START_LEAD_SECONDS = 0.05;
+const MAX_VOICE_COUNT = 16;
+
 export class RhythmEngine {
-    private context: AudioContext;
-    private transport: Transport;
-    public outputNode: GainNode;
-    private isPlaying: boolean = false;
+  private readonly context: AudioContext;
+  private readonly transport: Transport;
+  public readonly outputNode: GainNode;
 
-    // Scheduler
-    private nextNoteTime: number = 0;
-    private current16thNote: number = 0;
-    private scheduleAheadTime: number = 0.1; // 100ms
-    private lookahead: number = 25; // 25ms
-    private timerID: number | null = null;
+  private isPlaying = false;
+  private selection: PatternSelection = { kind: 'legacy', value: 'ROCK' };
+  private kitIndex = 1;
+  private variation: RhythmVariation = 'A';
+  private section: RhythmSection = 'main';
+  private swing = 50;
+  private quantize: RhythmQuantizeGrid = '1/16';
+  private workletNode: AudioWorkletNode | null = null;
+  private workletReady: Promise<AudioWorkletNode> | null = null;
+  private lastError = '';
+  private readonly onBpmChange = (): void => {
+    if (this.isPlaying && this.workletNode) this.configureWorklet(this.workletNode);
+  };
 
-    // Patterns (16 steps)
-    private patterns: Record<RhythmPattern, { kick: number[], snare: number[], hihat: number[] }> = {
-        ROCK: {
-            kick: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-            snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            hihat: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
-        },
-        TECHNO: {
-            kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-            snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], // Claps usually, but snare works
-            hihat: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0] // Off-beat hats
-        },
-        METRONOME: {
-            kick: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // Downbeat
-            snare: [0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], // Clicks
-            hihat: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        }
+  constructor(context: AudioContext) {
+    this.context = context;
+    this.transport = Transport.getInstance();
+    this.outputNode = context.createGain();
+    this.outputNode.gain.value = 0.5;
+    this.transport.on('bpm-change', this.onBpmChange);
+  }
+
+  /** Current catalog metadata selected by either the legacy control or 240-row API. */
+  get patternMetadata(): RhythmPatternMetadata {
+    const index = this.selection.kind === 'legacy'
+      ? LEGACY_CATALOG_INDEX[this.selection.value]
+      : this.selection.index;
+    return getRhythmPatternByIndex(index)!;
+  }
+
+  get selectedKit(): DrumKitProfile {
+    return getDrumKitByIndex(this.kitIndex)!;
+  }
+
+  get selectedVariation(): RhythmVariation {
+    return this.variation;
+  }
+
+  get selectedSection(): RhythmSection {
+    return this.section;
+  }
+
+  get swingPercent(): number {
+    return this.swing;
+  }
+
+  get quantizeGrid(): RhythmQuantizeGrid {
+    return this.quantize;
+  }
+
+  get isRunning(): boolean {
+    return this.isPlaying;
+  }
+
+  /** Event data and sound generation are clean-room approximations, not factory MIDI. */
+  get eventProvenance(): 'clean-room-generated' {
+    return 'clean-room-generated';
+  }
+
+  get error(): string {
+    return this.lastError;
+  }
+
+  connect(destination: AudioNode): void {
+    this.outputNode.connect(destination);
+  }
+
+  /** Existing UI/API signature is unchanged. */
+  setPattern(pattern: RhythmPattern): void {
+    this.selection = { kind: 'legacy', value: pattern };
+    this.restartPatternIfRunning();
+  }
+
+  /** Select any of the 240 metadata entries by its one-based global index. */
+  setCatalogPattern(globalIndex: number): boolean {
+    if (!getRhythmPatternByIndex(globalIndex)) return false;
+    this.selection = { kind: 'catalog', index: globalIndex };
+    this.restartPatternIfRunning();
+    return true;
+  }
+
+  /** Select one of the 16 clean-room procedural kit profiles by index or source name. */
+  setKit(kit: number | string): boolean {
+    const profile = typeof kit === 'number' ? getDrumKitByIndex(kit) : getDrumKitByName(kit);
+    if (!profile) return false;
+    this.kitIndex = profile.index;
+    this.restartPatternIfRunning();
+    return true;
+  }
+
+  setVariation(variation: RhythmVariation): void {
+    this.variation = variation;
+    this.restartPatternIfRunning();
+  }
+
+  setSection(section: RhythmSection): void {
+    this.section = section;
+    this.restartPatternIfRunning();
+  }
+
+  /** Configure straight-to-triplet/dotted eighth swing for clean-room offbeats. */
+  setSwingPercent(value: number): boolean {
+    if (!Number.isInteger(value) || value < 50 || value > 75) return false;
+    if (this.swing === value) return true;
+    this.swing = value;
+    this.restartPatternIfRunning();
+    return true;
+  }
+
+  /** Quantize generated events to the nearest 16th, 8th, or quarter-note grid. */
+  setQuantizeGrid(grid: RhythmQuantizeGrid): boolean {
+    if (!RHYTHM_QUANTIZE_GRIDS.includes(grid)) return false;
+    if (this.quantize === grid) return true;
+    this.quantize = grid;
+    this.restartPatternIfRunning();
+    return true;
+  }
+
+  /** Apply all UI settings atomically so a control mount causes at most one restart. */
+  setSettings(settings: RhythmPlaybackSettings): boolean {
+    const pattern = getRhythmPatternByIndex(settings.patternIndex);
+    const kit = getDrumKitByIndex(settings.kitIndex);
+    if (!pattern || !kit || !pattern.variations.includes(settings.variation)
+      || !isRhythmSection(settings.section)
+      || !Number.isInteger(settings.swingPercent) || settings.swingPercent < 50 || settings.swingPercent > 75
+      || !RHYTHM_QUANTIZE_GRIDS.includes(settings.quantizeGrid)) {
+      return false;
+    }
+    const unchanged = this.selection.kind === 'catalog'
+      && this.selection.index === settings.patternIndex
+      && this.kitIndex === settings.kitIndex
+      && this.variation === settings.variation
+      && this.section === settings.section
+      && this.swing === settings.swingPercent
+      && this.quantize === settings.quantizeGrid;
+    if (unchanged) return true;
+    this.selection = { kind: 'catalog', index: settings.patternIndex };
+    this.kitIndex = settings.kitIndex;
+    this.variation = settings.variation;
+    this.section = settings.section;
+    this.swing = settings.swingPercent;
+    this.quantize = settings.quantizeGrid;
+    this.restartPatternIfRunning();
+    return true;
+  }
+
+  /** Value is 0–100, matching the existing control. */
+  setVolume(value: number): void {
+    const normalized = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) / 100 : 0;
+    this.outputNode.gain.value = normalized;
+  }
+
+  /** Loads one worklet processor and starts sample-frame playback; remains fire-and-forget. */
+  start(): void {
+    if (this.isPlaying) return;
+    this.isPlaying = true;
+    this.lastError = '';
+    if (this.context.state === 'suspended') {
+      void this.context.resume().catch((error: unknown) => this.recordError(error));
+    }
+    void this.ensureWorklet().then((node) => {
+      if (this.isPlaying) this.configureWorklet(node);
+    }).catch((error: unknown) => {
+      this.isPlaying = false;
+      this.recordError(error);
+    });
+  }
+
+  stop(): void {
+    this.isPlaying = false;
+    this.workletNode?.port.postMessage({ type: 'stop' });
+  }
+
+  /** Release the module/node and transport listener if an owner tears the engine down. */
+  dispose(): void {
+    this.stop();
+    this.transport.off('bpm-change', this.onBpmChange);
+    this.workletNode?.disconnect();
+    this.workletNode = null;
+    this.workletReady = null;
+  }
+
+  private restartPatternIfRunning(): void {
+    if (this.isPlaying && this.workletNode) this.configureWorklet(this.workletNode);
+  }
+
+  private ensureWorklet(): Promise<AudioWorkletNode> {
+    if (this.workletNode) return Promise.resolve(this.workletNode);
+    if (this.workletReady) return this.workletReady;
+
+    this.workletReady = (async (): Promise<AudioWorkletNode> => {
+      if (!this.context.audioWorklet) throw new Error('AudioWorklet is unavailable in this browser context');
+      await this.context.audioWorklet.addModule(WORKLET_URL);
+      const node = new AudioWorkletNode(this.context, WORKLET_PROCESSOR_NAME, {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+        channelCount: 1,
+        channelCountMode: 'explicit',
+      });
+      node.onprocessorerror = (): void => {
+        this.lastError = 'The rhythm AudioWorklet processor stopped unexpectedly';
+      };
+      node.connect(this.outputNode);
+      this.workletNode = node;
+      return node;
+    })().catch((error: unknown) => {
+      this.workletReady = null;
+      throw error;
+    });
+    return this.workletReady;
+  }
+
+  private configureWorklet(node: AudioWorkletNode): void {
+    const metadata = this.patternMetadata;
+    const bpm = this.transport.bpm;
+    const template = this.createEventTemplate(metadata, bpm);
+    const stepsPerBar = metadata.meter.numerator * (16 / metadata.meter.denominator);
+    const configuration: RhythmWorkletConfiguration = {
+      sampleRate: this.context.sampleRate,
+      bpm,
+      swingPercent: this.swing,
+      quantizeGrid: this.quantize,
+      startFrame: Math.max(0, Math.ceil((this.context.currentTime + START_LEAD_SECONDS) * this.context.sampleRate)),
+      stepsPerBar,
+      kitIndex: this.kitIndex,
+      maxVoices: MAX_VOICE_COUNT,
+      eventTemplate: template,
     };
+    node.port.postMessage({ type: 'start', configuration });
+  }
 
-    private currentPattern: RhythmPattern = 'ROCK';
+  private createEventTemplate(metadata: RhythmPatternMetadata, bpm: number): CleanRoomDrumEvent[] {
+    const events = createCleanRoomPatternEvents(metadata, {
+      sampleRate: this.context.sampleRate,
+      bpm,
+      bars: 1,
+      variation: this.selection.kind === 'legacy' && this.selection.value === 'METRONOME' ? 'A' : this.variation,
+      section: this.section,
+    });
+    if (this.selection.kind !== 'legacy' || this.selection.value !== 'METRONOME') return events;
 
-    constructor(context: AudioContext) {
-        this.context = context;
-        this.transport = Transport.getInstance();
-        this.outputNode = context.createGain();
-        this.outputNode.gain.value = 0.5; // Default volume
-    }
+    // Preserve the old click-track control as a four-beat clean-room click variation.
+    // Its source is still metadata + the clean-room event generator, not factory notes.
+    const beatTicks = events.filter((event) => event.instrument === 'closedHat' && event.step % 4 === 0);
+    return beatTicks.map((event, index) => ({
+      ...event,
+      instrument: index === 0 ? 'kick' : 'snare',
+      velocity: index === 0 ? 112 : 86,
+    }));
+  }
 
-    public connect(destination: AudioNode) {
-        this.outputNode.connect(destination);
-    }
+  private recordError(error: unknown): void {
+    this.lastError = error instanceof Error ? error.message : String(error);
+  }
+}
 
-    public setPattern(pattern: RhythmPattern) {
-        this.currentPattern = pattern;
-    }
-
-    public setVolume(value: number) {
-        // Value 0-100
-        this.outputNode.gain.value = value / 100;
-    }
-
-    public start() {
-        if (this.isPlaying) return;
-
-        // Resume context if needed
-        if (this.context.state === 'suspended') {
-            this.context.resume();
-        }
-
-        this.isPlaying = true;
-        this.current16thNote = 0;
-        this.nextNoteTime = this.context.currentTime + 0.05;
-        this.scheduler();
-    }
-
-    public stop() {
-        this.isPlaying = false;
-        if (this.timerID) {
-            window.clearTimeout(this.timerID);
-            this.timerID = null;
-        }
-    }
-
-    private scheduler() {
-        if (!this.isPlaying) return;
-
-        while (this.nextNoteTime < this.context.currentTime + this.scheduleAheadTime) {
-            this.scheduleNote(this.current16thNote, this.nextNoteTime);
-            this.nextNote();
-        }
-
-        this.timerID = window.setTimeout(() => this.scheduler(), this.lookahead);
-    }
-
-    private nextNote() {
-        const secondsPerBeat = 60.0 / this.transport.bpm;
-        this.nextNoteTime += 0.25 * secondsPerBeat; // Advance 1/16th note
-        this.current16thNote++;
-        if (this.current16thNote === 16) {
-            this.current16thNote = 0;
-        }
-    }
-
-    private scheduleNote(beatNumber: number, time: number) {
-        const pattern = this.patterns[this.currentPattern];
-
-        if (pattern.kick[beatNumber]) {
-            this.playKick(time);
-        }
-        if (pattern.snare[beatNumber]) {
-            this.playSnare(time);
-        }
-        if (pattern.hihat[beatNumber]) {
-            this.playHihat(time);
-        }
-    }
-
-    // ========================================
-    // SYNTHESIS METHODS
-    // ========================================
-
-    private playKick(time: number) {
-        const osc = this.context.createOscillator();
-        const gain = this.context.createGain();
-
-        osc.connect(gain);
-        gain.connect(this.outputNode);
-
-        osc.frequency.setValueAtTime(150, time);
-        osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.5);
-
-        gain.gain.setValueAtTime(1, time);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
-
-        osc.start(time);
-        osc.stop(time + 0.5);
-    }
-
-    private playSnare(time: number) {
-        // Noise Buffer
-        const bufferSize = this.context.sampleRate * 0.5; // 0.5s noise
-        const buffer = this.context.createBuffer(1, bufferSize, this.context.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-
-        const noise = this.context.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = this.context.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.value = 1000;
-
-        const gain = this.context.createGain();
-        gain.gain.setValueAtTime(1, time);
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.outputNode);
-
-        noise.start(time);
-        noise.stop(time + 0.2);
-
-        // Add a "tone" to the snare for body
-        const osc = this.context.createOscillator();
-        const oscGain = this.context.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(180, time);
-        oscGain.gain.setValueAtTime(0.5, time);
-        oscGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-
-        osc.connect(oscGain);
-        oscGain.connect(this.outputNode);
-        osc.start(time);
-        osc.stop(time + 0.1);
-    }
-
-    private playHihat(time: number) {
-        // Noise Buffer
-        const bufferSize = this.context.sampleRate * 0.1; // Short
-        const buffer = this.context.createBuffer(1, bufferSize, this.context.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
-        }
-
-        const noise = this.context.createBufferSource();
-        noise.buffer = buffer;
-
-        const filter = this.context.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.value = 5000; // High frequency
-
-        const gain = this.context.createGain();
-        gain.gain.setValueAtTime(0.3, time); // Lower volume
-        gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05); // Very short decay
-
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.outputNode);
-
-        noise.start(time);
-        noise.stop(time + 0.05);
-    }
+function isRhythmSection(section: string): section is RhythmSection {
+  return section === 'main' || section === 'intro' || section === 'ending' || section === 'fill';
 }

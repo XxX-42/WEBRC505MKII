@@ -42,16 +42,28 @@
                     {{ sampleRate }} Hz
                   </option>
                 </select>
+                <small v-if="selectedBackend !== 'BROWSER'" class="setting-help">Changing Native sample rate requires all five tracks to be empty. Export or back up loops, clear every track, then change the rate.</small>
               </div>
 
               <div class="setting-group half">
                 <label class="setting-label" for="buffer-frames">BUFFER</label>
-                <select id="buffer-frames" v-model.number="selectedBufferFrames" @change="handleBufferChange" class="device-select" :disabled="!bridgeAvailable">
+                <span v-if="selectedBackend === 'BROWSER'" class="device-select" aria-live="polite">
+                  {{ selectedBufferFrames > 0 ? `${selectedBufferFrames} actual frames` : 'Waiting for render quantum' }}
+                </span>
+                <select v-else id="buffer-frames" v-model.number="selectedBufferFrames" @change="handleBufferChange" class="device-select" :disabled="!bridgeAvailable">
                   <option v-for="buffer in bufferOptions" :key="buffer" :value="buffer">
                     {{ buffer }} frames
                   </option>
                 </select>
               </div>
+            </div>
+
+            <div v-if="selectedBackend !== 'BROWSER'" class="setting-group">
+              <label class="setting-label" for="loop-storage-budget">NATIVE LOOP MEMORY BUDGET</label>
+              <select id="loop-storage-budget" v-model.number="selectedLoopStorageBudget" @change="handleLoopStorageBudgetChange" class="device-select" :disabled="!bridgeAvailable">
+                <option v-for="budget in loopStorageBudgets" :key="budget.bytes" :value="budget.bytes">{{ budget.label }}</option>
+              </select>
+              <small class="setting-help">The default 768 MiB covers 300 seconds per track at 48 kHz. Choose 1.5 GiB for 96 kHz or 2.5 GiB for 192 kHz. The Native engine must allocate and touch this loop memory; available system RAM can still limit startup.</small>
             </div>
 
             <div class="setting-group monitoring-group">
@@ -124,6 +136,12 @@ const selectedInput = ref('');
 const selectedOutput = ref('');
 const selectedSampleRate = ref(48000);
 const selectedBufferFrames = ref(128);
+const loopStorageBudgets = [
+  { bytes: 768 * 1024 * 1024, label: '768 MiB (up to 48 kHz / 300 s)' },
+  { bytes: 1536 * 1024 * 1024, label: '1.5 GiB (up to 96 kHz / 300 s)' },
+  { bytes: 2560 * 1024 * 1024, label: '2.5 GiB (up to 192 kHz / 300 s)' },
+];
+const selectedLoopStorageBudget = ref(768 * 1024 * 1024);
 const monitoringEnabled = ref(false);
 const bridgeAvailable = ref(engine.isBridgeAvailable());
 const lastError = ref(engine.getUiStatus().lastError);
@@ -169,6 +187,7 @@ const loadDevices = async () => {
     selectedOutput.value = engine.selectedOutputDeviceId || selection.outputs[0]?.id || '';
     selectedSampleRate.value = engine.selectedSampleRate;
     selectedBufferFrames.value = engine.selectedBufferFrames;
+    selectedLoopStorageBudget.value = engine.nativeLooperStorageBudgetBytes;
     monitoringEnabled.value = engine.monitoringEnabled;
   } catch (error) {
     console.error('Failed to load native devices:', error);
@@ -207,7 +226,18 @@ const handleSampleRateChange = async () => {
     await engine.setSampleRate(selectedSampleRate.value);
     await loadDevices();
   } catch (error) {
+    selectedSampleRate.value = engine.selectedSampleRate;
     alert(`Failed to change sample rate: ${error}`);
+  }
+};
+
+const handleLoopStorageBudgetChange = async () => {
+  try {
+    await engine.setNativeLooperStorageBudget(selectedLoopStorageBudget.value);
+    await loadDevices();
+  } catch (error) {
+    selectedLoopStorageBudget.value = engine.nativeLooperStorageBudgetBytes;
+    alert(`Failed to change loop memory budget: ${error}`);
   }
 };
 
@@ -342,6 +372,12 @@ const handleOverlayClick = () => {
   border: 1px solid #333;
   border-radius: 6px;
   padding: 10px 12px;
+}
+
+.setting-help {
+  color: #999;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .monitoring-group {

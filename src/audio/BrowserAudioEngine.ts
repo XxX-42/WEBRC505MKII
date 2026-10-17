@@ -8,6 +8,18 @@ import { DelayFX } from './fx/DelayFX';
 import { ReverbFX } from './fx/ReverbFX';
 import { SlicerFX } from './fx/SlicerFX';
 import { PhaserFX } from './fx/PhaserFX';
+import { BrowserAutoRiffFX } from './fx/BrowserAutoRiffFX';
+import { BrowserTransposeFX } from './fx/BrowserTransposeFX';
+import { BrowserPitchBendFX } from './fx/BrowserPitchBendFX';
+import { BrowserManualHarmonistFX } from './fx/BrowserManualHarmonistFX';
+import { BrowserHrmAutoFX } from './fx/BrowserHrmAutoFX';
+import { BrowserRobotFX } from './fx/BrowserRobotFX';
+import { BrowserOctaveFX } from './fx/BrowserOctaveFX';
+import { BrowserVocoderFX } from './fx/BrowserVocoderFX';
+import { MidiInputController, type MidiInputState, type MidiNoteEvent } from './MidiInputController';
+import type { BrowserFxAlgorithm, BrowserFxParameters } from './fx/dsp/BrowserFxDspCore';
+import { BrowserWorkletFX, type BrowserWorkletFxName } from './fx/BrowserWorkletFX';
+import { BrowserTrackFxChain, type BrowserTrackFxStatus } from './BrowserTrackFxChain';
 
 import { RhythmEngine } from './RhythmEngine';
 import type { IAudioEngine } from './AudioEngineInterface';
@@ -29,9 +41,43 @@ export interface BrowserAudioUiStatus {
     lastError: string;
 }
 
+export type BrowserStepSlicerControl = 'step_count' | 'rate_beats' | 'pan_depth_percent' | 'filter_hz';
+export interface BrowserMidiInputTarget {
+    readonly path: 'input' | 'track';
+    readonly slot: 'A' | 'B' | 'C' | 'D';
+    /** Omitted/OSC VOC targets retain the existing broadcast-to-OSC behavior. */
+    readonly effectId?: 'osc_voc_m' | 'hrm_auto_m';
+}
+
+export type BrowserLoopTransportFxName = 'BEAT SHIFT' | 'VINYL FLICK';
+export interface BrowserTrackTransportStatus {
+    readonly trackIndex: number;
+    readonly trackId: number;
+    /** Experimental source transport; legacy Track-bank processing remains shared after TrackMix. */
+    readonly routeMode: 'experimental-source-pre-track-mix-shared-postmix';
+    readonly perTrackFxChainAvailable: boolean;
+    /** True while a source-aware reader is currently driving this track. */
+    readonly active: boolean;
+    /** Active source-aware A–D slots, even if the track is stopped or unavailable. */
+    readonly configuredEffects: ReadonlyArray<{
+        readonly slot: 'A' | 'B' | 'C' | 'D';
+        readonly type: BrowserLoopTransportFxName;
+    }>;
+    readonly unsupportedEffects: ReadonlyArray<{
+        readonly slot: 'A' | 'B' | 'C' | 'D';
+        readonly type: BrowserLoopTransportFxName;
+        readonly reason: string;
+    }>;
+    /** Reverse, LIVE_MONO, and LIVE_POLY conflicts are reported here per track. */
+    readonly unavailableReason: string | null;
+}
+
 export class BrowserAudioEngine implements IAudioEngine {
     public context: AudioContext;
+    /** Transparent master-bus worklet that reports the actual browser quantum. */
     public workletNode: AudioWorkletNode | null = null;
+    /** Optional clean-room DSP worklet inserted on the Browser output path. */
+    public outputDspFxNode: AudioWorkletNode | null = null;
     public tracks: TrackAudio[] = [];
     public sharedBuffer: SharedArrayBuffer | null = null;
     public trackStates: Int32Array | null = null; // State enum
@@ -57,19 +103,68 @@ export class BrowserAudioEngine implements IAudioEngine {
 
     public selectedInputDeviceId: string | null = null;
     public selectedOutputDeviceId: string | null = null;
-    public selectedBufferFrames: number = 128;
+    /** Last render-quantum size observed from the browser; 0 means not yet known. */
+    public selectedBufferFrames: number = 0;
     public monitoringEnabled: boolean = false; // DEFAULT: FALSE to prevent feedback!
     private monitoringListeners = new Set<(enabled: boolean) => void>();
     private latencyListeners = new Set<(info: BrowserAudioLatencyInfo) => void>();
     private statusListeners = new Set<(status: BrowserAudioUiStatus) => void>();
+    private midiInputListeners = new Set<(state: MidiInputState) => void>();
+    private midiInputState: MidiInputState = 'disconnected';
+    private readonly midiInput: MidiInputController;
     private initialized = false;
     private lastError = '';
+    private fxWorkletModuleReady: Promise<void> | null = null;
+    private fxWorkletGeneration = 0;
+    private trackIoWorkletModuleReady: Promise<void> | null = null;
+    /** Real private A–D banks before TrackMix; legacy trackFxInstances stay postmix. */
+    private perTrackFxChains: BrowserTrackFxChain[] = [];
+    private handleTransportBpmChange(): void {
+        const bpm = Transport.getInstance().bpm;
+        this.trackFxInstances.forEach((fx) => {
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'beat-repeat') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'beat-scatter') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'roll') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'beat-shift') {
+                fx.setParam('bpm', bpm);
+            }
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'pattern-slicer') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'step-slicer') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'isolator') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'reverse-delay') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'reverse-reverb') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'osc-bot') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'warp') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserAutoRiffFX) fx.setParam('bpm', bpm);
+        });
+        for (const fx of this.inputFxInstances) {
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'isolator') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'roll') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'reverse-delay') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'reverse-reverb') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'pattern-slicer') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'step-slicer') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'osc-bot') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserWorkletFX && fx.algorithm === 'warp') fx.setParam('bpm', bpm);
+            if (fx instanceof BrowserAutoRiffFX) fx.setParam('bpm', bpm);
+        }
+        for (const track of this.tracks ?? []) track.refreshLoopTransportTempo();
+        for (const bank of this.perTrackFxChains ?? []) bank.setBpm(bpm);
+    }
 
     public constructor() {
         this.context = new AudioContext({
             latencyHint: 'interactive',
             sampleRate: 44100,
         });
+
+        this.midiInput = new MidiInputController(
+            (event) => this.handleMidiNote(event),
+            { onStateChange: (state) => {
+                this.midiInputState = state;
+                for (const listener of this.midiInputListeners) listener(state);
+            } },
+        );
 
         // Initialize SharedArrayBuffer
         this.sharedBuffer = new SharedArrayBuffer(1024);
@@ -100,20 +195,59 @@ export class BrowserAudioEngine implements IAudioEngine {
         // Initialize 5 tracks
         for (let i = 0; i < 5; i++) {
             const trackData = new Track(i + 1);
-            this.tracks.push(new TrackAudio(this, trackData, i, this.trackStates, this.trackPositions));
+            const track = new TrackAudio(this, trackData, i, this.trackStates, this.trackPositions);
+            const bank = new BrowserTrackFxChain(this.context, () => this.ensureFxWorkletModule(), () => this.emitStatus(), () => Transport.getInstance().bpm);
+            track.installTrackFxInsert(bank.input, bank.output);
+            this.perTrackFxChains.push(bank);
+            this.tracks.push(track);
         }
 
         // Load saved device preferences
         this.loadDevicePreferences();
+        Transport.getInstance().on('bpm-change', this.handleTransportBpmChange.bind(this));
     }
 
     public async init() {
+        if (this.initialized) {
+            if (this.context.state === 'suspended') await this.context.resume();
+            return;
+        }
+
         try {
             if (this.context.state === 'suspended') {
                 await this.context.resume();
             }
 
             await this.context.audioWorklet.addModule('/worklets/looper-processor.js');
+            await this.ensureTrackIoWorkletModule();
+            await this.context.audioWorklet.addModule('/worklets/browser-block-meter.js');
+
+            if (!this.workletNode) {
+                const meterNode = new AudioWorkletNode(this.context, 'rc505-browser-block-meter', {
+                    numberOfInputs: 1,
+                    numberOfOutputs: 1,
+                    outputChannelCount: [2],
+                    channelCount: 2,
+                    channelCountMode: 'explicit',
+                    channelInterpretation: 'speakers',
+                });
+                meterNode.port.onmessage = (event: MessageEvent) => {
+                    const message = event.data as { type?: string; frames?: number } | null;
+                    if (
+                        message?.type === 'render-quantum-shape' &&
+                        Number.isInteger(message.frames) &&
+                        (message.frames ?? 0) > 0 &&
+                        message.frames !== this.selectedBufferFrames
+                    ) {
+                        this.selectedBufferFrames = message.frames as number;
+                        this.emitLatencyInfo();
+                    }
+                };
+                this.masterGainNode.disconnect();
+                this.masterGainNode.connect(meterNode);
+                meterNode.connect(this.context.destination);
+                this.workletNode = meterNode;
+            }
 
             if (this.selectedInputDeviceId) {
                 await this.setInputDevice(this.selectedInputDeviceId);
@@ -133,6 +267,102 @@ export class BrowserAudioEngine implements IAudioEngine {
             this.emitStatus();
             throw error;
         }
+    }
+
+    /** Load Browser overdub/loopback worklets without introducing a main-thread fallback. */
+    public async ensureTrackIoWorkletModule(): Promise<void> {
+        if (!this.context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+            throw new Error('AudioWorklet is unavailable in this browser context');
+        }
+
+        if (!this.trackIoWorkletModuleReady) {
+            this.trackIoWorkletModuleReady = this.context.audioWorklet
+                .addModule('/worklets/browser-track-io.js')
+                .catch((error: unknown) => {
+                    this.trackIoWorkletModuleReady = null;
+                    throw error;
+                });
+        }
+
+        await this.trackIoWorkletModuleReady;
+    }
+
+    /**
+     * Put one selected clean-room DSP stage on the real Browser master-output
+     * path. The stage is per-engine and replaces the previous DSP selection;
+     * existing input/track FX graphs remain intact. The call returns false for
+     * contexts that cannot provide AudioWorklet rather than silently using a
+     * main-thread fallback.
+     */
+    public async setOutputDspFx(
+        algorithm: BrowserFxAlgorithm,
+        parameters: BrowserFxParameters = {},
+        enabled = true,
+    ): Promise<boolean> {
+        if (!this.context.audioWorklet || typeof AudioWorkletNode === 'undefined') return false;
+
+        const generation = ++this.fxWorkletGeneration;
+        if (!this.fxWorkletModuleReady) {
+            this.fxWorkletModuleReady = this.context.audioWorklet.addModule('/worklets/fx-processor.js');
+        }
+        try {
+            await this.fxWorkletModuleReady;
+        } catch (error) {
+            if (generation === this.fxWorkletGeneration) this.fxWorkletModuleReady = null;
+            throw error;
+        }
+        if (generation !== this.fxWorkletGeneration) return false;
+
+        const node = new AudioWorkletNode(this.context, 'rc505-fx-processor', {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [2],
+            channelCount: 2,
+            channelCountMode: 'explicit',
+            processorOptions: {
+                algorithm,
+                sampleRate: this.context.sampleRate,
+                parameters,
+                bypassed: !enabled,
+            },
+        });
+
+        // If another request won the race while the module was loading, discard
+        // this unused node before it can alter the live signal route.
+        if (generation !== this.fxWorkletGeneration) {
+            node.disconnect();
+            return false;
+        }
+
+        const output = this.outputFxChain.output;
+        const previous = this.outputDspFxNode;
+        if (previous) {
+            output.disconnect(previous);
+            previous.disconnect();
+        } else {
+            // The constructor's direct connection is retained until a DSP node
+            // is requested, so ordinary Browser audio is unchanged by default.
+            output.disconnect(this.masterGainNode);
+        }
+
+        output.connect(node);
+        node.connect(this.masterGainNode);
+        this.outputDspFxNode = node;
+        return true;
+    }
+
+    /** Bypass/activate the current output DSP with a short click-free ramp. */
+    public setOutputDspFxEnabled(enabled: boolean, rampFrames = this.selectedBufferFrames || 128): void {
+        this.outputDspFxNode?.port.postMessage({
+            type: 'set-bypass',
+            value: !enabled,
+            rampFrames: Math.max(0, Math.floor(rampFrames)),
+        });
+    }
+
+    /** Smoothly update parameters on the currently selected output algorithm. */
+    public configureOutputDspFx(parameters: BrowserFxParameters): void {
+        this.outputDspFxNode?.port.postMessage({ type: 'configure', parameters });
     }
 
     // ========================================
@@ -247,6 +477,44 @@ export class BrowserAudioEngine implements IAudioEngine {
     private trackFxInstances: (FXBase | null)[] = [null, null, null, null];
     private inputFxTypes: (string | null)[] = [null, null, null, null];
     private trackFxTypes: (string | null)[] = [null, null, null, null];
+    /** Track-bank transport FX use TrackAudio readers; their shared postmix worklets stay bypassed. */
+    private trackFxActive: boolean[] = [false, false, false, false];
+
+    /** Targeted methods never dispatch to the compatible legacy shared postmix bank. */
+    public setTrackFxType(trackId: number, slotIndex: number, type: string): boolean {
+        return this.getPerTrackFxChain(trackId)?.setType(slotIndex, type) ?? false;
+    }
+
+    public setTrackFxParameter(trackId: number, slotIndex: number, value: number): boolean {
+        return this.getPerTrackFxChain(trackId)?.setParameter(slotIndex, value) ?? false;
+    }
+
+    public setTrackFxNamedParameters(trackId: number, slotIndex: number, parameters: Record<string, number>): boolean {
+        return this.getPerTrackFxChain(trackId)?.setNamedParameters(slotIndex, parameters) ?? false;
+    }
+
+    public setTrackFxActive(trackId: number, slotIndex: number, active: boolean): boolean {
+        return this.getPerTrackFxChain(trackId)?.setActive(slotIndex, active) ?? false;
+    }
+
+    public getTrackFxStatus(trackId?: number): BrowserTrackFxStatus[] {
+        if (trackId !== undefined) {
+            const bank = this.getPerTrackFxChain(trackId);
+            return bank ? [bank.getStatus(trackId)] : [];
+        }
+        return (this.perTrackFxChains ?? []).map((bank, index) => bank.getStatus(index + 1));
+    }
+
+    private getPerTrackFxChain(trackId: number): BrowserTrackFxChain | undefined {
+        if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return undefined;
+        return this.perTrackFxChains?.[trackId - 1];
+    }
+    /** Only the explicitly connected HRM AUTO slot receives melodic MIDI events. */
+    private selectedHrmAutoMidiTarget: {
+        path: BrowserMidiInputTarget['path'];
+        slot: BrowserMidiInputTarget['slot'];
+        effect: BrowserHrmAutoFX;
+    } | null = null;
 
     /**
      * Set FX Type for a specific slot
@@ -255,9 +523,42 @@ export class BrowserAudioEngine implements IAudioEngine {
      * @param type 'FILTER' | 'DELAY' | 'REVERB' | 'SLICER'
      */
     public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
-        if (slotIndex < 0 || slotIndex > 3) return;
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3 || typeof type !== 'string') return;
+        this.trackFxActive ??= [false, false, false, false];
+
+        // Reject stale/manual calls too: Browser Track-only beat FX never enter Input.
+        const normalizedType = type.trim().toUpperCase();
+        if (location === 'input' && (normalizedType === 'BEAT REPEAT' || normalizedType === 'BEAT SCATTER'
+            || normalizedType === 'BEAT SHIFT' || normalizedType === 'VINYL FLICK')) {
+            console.warn(`${normalizedType} is available only in the Browser Track FX bank.`);
+            return;
+        }
 
         const fxTypes = location === 'input' ? this.inputFxTypes : this.trackFxTypes;
+        const fxInstances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
+
+        // The FX panel uses an empty choice (or NONE) to remove a slot. Tear
+        // down a source-aware reader first so its transport can return cleanly
+        // to the ordinary TrackAudio source route.
+        if (normalizedType === '' || normalizedType === 'NONE') {
+            const previousFx = fxInstances[slotIndex];
+            if (previousFx instanceof BrowserHrmAutoFX && previousFx === this.selectedHrmAutoMidiTarget?.effect) {
+                previousFx.clearMidiState();
+                this.selectedHrmAutoMidiTarget = null;
+            }
+            previousFx?.dispose();
+            fxInstances[slotIndex] = null;
+            fxTypes[slotIndex] = null;
+            if (location === 'track') {
+                this.trackFxActive[slotIndex] = false;
+                this.syncAllTrackLoopTransportFx();
+                this.rebuildOutputChain();
+            } else {
+                this.rebuildInputChain();
+            }
+            return;
+        }
+
         if (fxTypes[slotIndex] === type) {
             return;
         }
@@ -266,6 +567,12 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (!newFx) {
             console.warn(`Unknown FX type: ${type}`);
             return;
+        }
+
+        const previousFx = (location === 'input' ? this.inputFxInstances : this.trackFxInstances)[slotIndex];
+        if (previousFx instanceof BrowserHrmAutoFX && previousFx === this.selectedHrmAutoMidiTarget?.effect) {
+            previousFx.clearMidiState();
+            this.selectedHrmAutoMidiTarget = null;
         }
 
         // Update Chain
@@ -279,29 +586,361 @@ export class BrowserAudioEngine implements IAudioEngine {
             this.trackFxInstances[slotIndex]?.dispose();
             this.trackFxInstances[slotIndex] = newFx;
             this.trackFxTypes[slotIndex] = type;
+            this.trackFxActive[slotIndex] = false;
+            if (this.isLoopTransportFxName(normalizedType)) {
+                // Source-aware transport must never also process the shared
+                // TrackMix postmix stream.
+                newFx.setBypass(true);
+            }
+            this.syncAllTrackLoopTransportFx();
             this.rebuildOutputChain();
         }
 
         console.log(`FX Set: ${location.toUpperCase()} [${['A', 'B', 'C', 'D'][slotIndex]}] -> ${type}`);
     }
 
+    /** Query source-aware Track transport support and conflicts for every loop. */
+    public getTrackTransportStatus(): BrowserTrackTransportStatus[] {
+        const configuredEffects = [0, 1, 2, 3].flatMap((slotIndex) => {
+            const type = this.trackFxTypes[slotIndex]?.trim().toUpperCase() ?? '';
+            const fx = this.trackFxInstances[slotIndex];
+            if (!this.trackFxActive?.[slotIndex] || !(fx instanceof BrowserWorkletFX)
+                || !this.isLoopTransportFxName(type) || this.getTrackTransportPlacementReason(slotIndex)) return [];
+            return [{ slot: ['A', 'B', 'C', 'D'][slotIndex] as 'A' | 'B' | 'C' | 'D', type }];
+        });
+        const unsupportedEffects = [0, 1, 2, 3].flatMap((slotIndex) => {
+            const type = this.trackFxTypes[slotIndex]?.trim().toUpperCase() ?? '';
+            const fx = this.trackFxInstances[slotIndex];
+            const reason = this.getTrackTransportPlacementReason(slotIndex);
+            if (!this.trackFxActive?.[slotIndex] || !(fx instanceof BrowserWorkletFX)
+                || !this.isLoopTransportFxName(type) || !reason) return [];
+            return [{ slot: ['A', 'B', 'C', 'D'][slotIndex] as 'A' | 'B' | 'C' | 'D', type, reason }];
+        });
+        return (this.tracks ?? []).map((track, trackIndex) => ({
+            trackIndex,
+            trackId: track.track.id,
+            routeMode: 'experimental-source-pre-track-mix-shared-postmix' as const,
+            perTrackFxChainAvailable: Boolean(this.perTrackFxChains?.[trackIndex]),
+            active: track.loopTransportActive,
+            configuredEffects: configuredEffects.map((effect) => ({ ...effect })),
+            unsupportedEffects: unsupportedEffects.map((effect) => ({ ...effect })),
+            unavailableReason: track.loopTransportUnavailableReason,
+        }));
+    }
+
+    private isLoopTransportFxName(type: string | null): type is BrowserLoopTransportFxName {
+        const normalized = type?.trim().toUpperCase();
+        return normalized === 'BEAT SHIFT' || normalized === 'VINYL FLICK';
+    }
+
+    /** Source readers run before TrackMix, so no active earlier A–D stage may be skipped. */
+    private getTrackTransportPlacementReason(slotIndex: number): string | null {
+        for (let previousIndex = 0; previousIndex < slotIndex; previousIndex += 1) {
+            if (!this.trackFxActive?.[previousIndex] || !this.trackFxTypes[previousIndex]) continue;
+            const currentSlot = ['A', 'B', 'C', 'D'][slotIndex];
+            const previousSlot = ['A', 'B', 'C', 'D'][previousIndex];
+            return `Track FX ${currentSlot} source-aware transport is unsupported because active slot ${previousSlot} must run before it`;
+        }
+        return null;
+    }
+
+    /** Keep each TrackAudio's source-aware A–D snapshot aligned with its Track-bank slot. */
+    private syncTrackLoopTransportFx(slotIndex: number): void {
+        const type = this.trackFxTypes[slotIndex]?.trim().toUpperCase() ?? '';
+        const fx = this.trackFxInstances[slotIndex];
+        const enabled = Boolean(this.trackFxActive?.[slotIndex]
+            && fx instanceof BrowserWorkletFX
+            && this.isLoopTransportFxName(type)
+            && !this.getTrackTransportPlacementReason(slotIndex));
+        const canonicalType: BrowserLoopTransportFxName | null = enabled && this.isLoopTransportFxName(type) ? type : null;
+        let parameters: Record<string, number> = {};
+        if (enabled && fx instanceof BrowserWorkletFX) {
+            parameters = Object.fromEntries(
+                Object.entries(fx.getParameterSnapshot()).filter((entry): entry is [string, number] =>
+                    typeof entry[1] === 'number' && Number.isFinite(entry[1])
+                    && !(canonicalType === 'BEAT SHIFT' && entry[0] === 'bpm')),
+            );
+        }
+        for (const track of this.tracks ?? []) {
+            track.configureLoopTransportFx(slotIndex, canonicalType, parameters);
+        }
+    }
+
+    private syncAllTrackLoopTransportFx(): void {
+        for (let slotIndex = 0; slotIndex < 4; slotIndex += 1) this.syncTrackLoopTransportFx(slotIndex);
+    }
+
     private createFxInstance(type: string): FXBase | null {
         const context = this.context;
 
+        if (type === 'AUTO RIFF' || type === 'AUTO RIFF (EXPERIMENTAL)') {
+            if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                this.lastError = 'AudioWorklet is unavailable; AUTO RIFF remains bypassed.';
+                this.emitStatus();
+                return null;
+            }
+            return new BrowserAutoRiffFX(
+                context,
+                () => this.ensureFxWorkletModule(),
+                (error) => {
+                    this.lastError = `Browser DSP AUTO RIFF failed: ${error.message}`;
+                    this.emitStatus();
+                },
+            );
+        }
+
         switch (type) {
+            case 'DSP LPF':
+            case 'DSP BPF':
+            case 'DSP HPF':
+            case 'FLANGER':
+            case 'RING.MOD':
+            case 'DELAY':
+            case 'MOD DELAY':
+            case 'PANNING DELAY':
+            case 'CHORUS':
+            case 'PHASER':
+            case 'TREMOLO':
+            case 'AUTO PAN':
+            case 'DIST':
+            case 'PREAMP':
+            case 'SYNTH':
+            case 'G2B':
+            case 'ELECTRIC':
+            case 'DYNAMICS':
+            case 'SUSTAINER':
+            case 'FDN8 REVERB':
+            case 'GATE REVERB':
+            case 'STEREO ENHANCE':
+            case 'BEAT REPEAT':
+            case 'BEAT SCATTER':
+            case 'ROLL':
+            case 'FREEZE':
+            case 'BEAT SHIFT':
+            case 'REVERSE DELAY':
+            case 'REVERSE REVERB':
+            case 'REVERSE REVERB (EXPERIMENTAL)':
+            case 'WARP':
+            case 'WARP (EXPERIMENTAL)':
+            case 'PATTERN SLICER':
+            case 'STEP SLICER':
+            case 'LO-FI':
+            case 'EQ':
+            case 'MANUAL PAN':
+            case 'TAPE ECHO':
+            case 'TWIST':
+            case 'GRANULAR DELAY':
+            case 'RADIO':
+            case 'VIBRATO':
+            case 'SLOW GEAR':
+            case 'ISOLATOR':
+            case 'VINYL FLICK':
+            case 'OSC VOC (M)':
+            case 'OSC BOT': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = `AudioWorklet is unavailable; ${type} remains bypassed.`;
+                    this.emitStatus();
+                    return null;
+                }
+                const name = (type === 'REVERSE REVERB (EXPERIMENTAL)' || type === 'WARP (EXPERIMENTAL)' ? type.replace(' (EXPERIMENTAL)', '') : type) as BrowserWorkletFxName;
+                return new BrowserWorkletFX(
+                    context,
+                    name,
+                    () => this.ensureFxWorkletModule(),
+                    (error) => {
+                        this.lastError = `Browser DSP ${name} failed: ${error.message}`;
+                        this.emitStatus();
+                    },
+                    name === 'BEAT REPEAT' || name === 'BEAT SCATTER' || name === 'ROLL' || name === 'BEAT SHIFT' || name === 'ISOLATOR' || name === 'REVERSE DELAY' || name === 'REVERSE REVERB' || name === 'PATTERN SLICER' || name === 'STEP SLICER' || name === 'OSC BOT' || name === 'WARP' ? { bpm: Transport.getInstance().bpm } : name === 'OSC VOC (M)' ? { oscVocWaveform: 0, oscVocMidiChannel: 1, oscVocOctave: 0, oscVocBands: 16, mix: 0.7 } : name === 'ELECTRIC' ? { electricCharacter: 0, electricPitchSnapPercent: 50, electricToneHz: 5000, mix: 0.7 } : {},
+                );
+            }
+            case 'TRANSPOSE': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = 'AudioWorklet is unavailable; TRANSPOSE remains bypassed.';
+                    this.emitStatus();
+                    return null;
+                }
+                return new BrowserTransposeFX(context, (error) => {
+                    this.lastError = error.message;
+                    this.emitStatus();
+                });
+            }
+            case 'PITCH BEND': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = 'AudioWorklet is unavailable; PITCH BEND remains bypassed.';
+                    this.emitStatus();
+                    return null;
+                }
+                return new BrowserPitchBendFX(context, (error) => {
+                    this.lastError = error.message;
+                    this.emitStatus();
+                });
+            }
+            case 'HRM MANUAL': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = 'AudioWorklet is unavailable; HRM MANUAL remains bypassed.';
+                    this.emitStatus();
+                    return null;
+                }
+                return new BrowserManualHarmonistFX(context, (error) => {
+                    this.lastError = error.message;
+                    this.emitStatus();
+                });
+            }
+            case 'HRM AUTO (M)': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = 'AudioWorklet is unavailable; HRM AUTO (M) remains bypassed.';
+                    this.emitStatus();
+                    return null;
+                }
+                return new BrowserHrmAutoFX(context, () => this.ensureFxWorkletModule(), (error) => {
+                    this.lastError = `Browser HRM AUTO (M) failed: ${error.message}`;
+                    this.emitStatus();
+                });
+            }
+            case 'ROBOT': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = 'AudioWorklet is unavailable; ROBOT remains bypassed.';
+                    this.emitStatus();
+                    return null;
+                }
+                return new BrowserRobotFX(context, () => this.ensureFxWorkletModule(), (error) => {
+                    this.lastError = `Browser ROBOT failed: ${error.message}`;
+                    this.emitStatus();
+                });
+            }
+            case 'OCTAVE': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = 'AudioWorklet is unavailable; OCTAVE remains bypassed.';
+                    this.emitStatus();
+                    return null;
+                }
+                return new BrowserOctaveFX(context, (error) => {
+                    this.lastError = error.message;
+                    this.emitStatus();
+                });
+            }
+            case 'VOCODER': {
+                if (!context.audioWorklet || typeof AudioWorkletNode === 'undefined') {
+                    this.lastError = 'AudioWorklet is unavailable; VOCODER remains bypassed.';
+                    this.emitStatus();
+                    return null;
+                }
+                return new BrowserVocoderFX(context, () => this.ensureFxWorkletModule(), (error) => {
+                    this.lastError = error.message;
+                    this.emitStatus();
+                });
+            }
             case 'FILTER':
                 return new FilterFX(context);
-            case 'DELAY':
-                return new DelayFX(context);
             case 'REVERB':
                 return new ReverbFX(context);
             case 'SLICER':
                 return new SlicerFX(context);
-            case 'PHASER':
-                return new PhaserFX(context);
             default:
                 return null;
         }
+    }
+
+    private ensureFxWorkletModule(): Promise<void> {
+        if (!this.context.audioWorklet) {
+            return Promise.reject(new Error('AudioWorklet is unavailable in this browser context.'));
+        }
+        if (!this.fxWorkletModuleReady) {
+            this.fxWorkletModuleReady = this.context.audioWorklet.addModule('/worklets/fx-processor.js');
+        }
+        return this.fxWorkletModuleReady.catch((error: unknown) => {
+            this.fxWorkletModuleReady = null;
+            throw error;
+        });
+    }
+
+    /** Request Web MIDI permission only after a user-triggered explicit call. */
+    public connectMidiInput(target?: BrowserMidiInputTarget): Promise<MidiInputState> {
+        if (!target) {
+            this.clearHrmAutoMidiTarget();
+            return this.midiInput.connect();
+        }
+        if (target.effectId !== 'hrm_auto_m') {
+            this.clearHrmAutoMidiTarget();
+            return this.midiInput.connect();
+        }
+        const slotIndex = this.slotIndex(target.slot);
+        const instances = target.path === 'input' ? this.inputFxInstances : this.trackFxInstances;
+        const fx = instances[slotIndex];
+        if (!(fx instanceof BrowserHrmAutoFX)) {
+            this.clearHrmAutoMidiTarget();
+            this.lastError = `Selected HRM AUTO (M) slot ${target.path.toUpperCase()} ${target.slot} is unavailable.`;
+            this.emitStatus();
+            return Promise.resolve('error');
+        }
+        this.selectHrmAutoMidiTarget(target, fx);
+        return this.midiInput.connect();
+    }
+
+    public disconnectMidiInput(): void {
+        this.midiInput.disconnect();
+        this.clearHrmAutoMidiTarget();
+    }
+
+    public getMidiInputState(): MidiInputState {
+        return this.midiInputState;
+    }
+
+    public onMidiInputStateChange(listener: (state: MidiInputState) => void): () => void {
+        this.midiInputListeners.add(listener);
+        listener(this.midiInputState);
+        return () => this.midiInputListeners.delete(listener);
+    }
+
+    private handleMidiNote(event: MidiNoteEvent): void {
+        const performanceNow = typeof performance !== 'undefined' && Number.isFinite(performance.now())
+            ? performance.now()
+            : event.timeStampMs;
+        const remainingTimestampSeconds = Math.max(0, (event.timeStampMs - performanceNow) / 1000);
+        // Web MIDI delivery and MessagePort transfer are asynchronous. Keep a
+        // small bounded lead so an on-time device timestamp is not already
+        // behind the AudioWorklet's current sample frame when it arrives.
+        const targetTime = this.context.currentTime + remainingTimestampSeconds + 0.02;
+        const frame = Math.ceil(targetTime * this.context.sampleRate);
+        const selectedAuto = this.selectedHrmAutoMidiTarget?.effect;
+        if (selectedAuto) {
+            const accepted = selectedAuto.sendMidiNote({
+                ...event,
+                velocity: event.velocity,
+                frame,
+            });
+            if (!accepted) {
+                this.lastError = selectedAuto.error || 'HRM AUTO (M) rejected a Web MIDI note event.';
+                this.emitStatus();
+            }
+        }
+        for (const fx of [...this.inputFxInstances, ...this.trackFxInstances]) {
+            if (!(fx instanceof BrowserWorkletFX) || fx.algorithm !== 'osc-voc') continue;
+            const accepted = fx.sendMidiNote({
+                channel: event.channel,
+                note: event.note,
+                velocity: Math.round(event.velocity * 127),
+                noteOn: event.noteOn,
+                frame,
+            });
+            if (!accepted) this.lastError = fx.error || 'OSC VOC rejected a Web MIDI note event.';
+        }
+    }
+
+    private selectHrmAutoMidiTarget(target: BrowserMidiInputTarget, effect: BrowserHrmAutoFX): void {
+        if (this.selectedHrmAutoMidiTarget?.effect === effect) return;
+        this.clearHrmAutoMidiTarget();
+        this.selectedHrmAutoMidiTarget = { path: target.path, slot: target.slot, effect };
+    }
+
+    private clearHrmAutoMidiTarget(): void {
+        this.selectedHrmAutoMidiTarget?.effect.clearMidiState();
+        this.selectedHrmAutoMidiTarget = null;
+    }
+
+    private slotIndex(slot: BrowserMidiInputTarget['slot']): number {
+        return slot === 'A' ? 0 : slot === 'B' ? 1 : slot === 'C' ? 2 : 3;
     }
 
     /**
@@ -356,8 +995,9 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     /**
-     * Rebuild the entire Output FX Chain
-     * TrackMix -> Slot A -> Slot B -> Slot C -> Slot D -> MasterGain
+     * Rebuild the Output FX Chain: the shared postmix from all loops enters
+     * Track FX A–D before the master output. These slots do not target a
+     * particular loop track independently.
      */
     private rebuildOutputChain() {
         const head = this.outputFxChain.input;
@@ -421,18 +1061,112 @@ export class BrowserAudioEngine implements IAudioEngine {
                 fx.setParam('rate', value);
             } else if (fx instanceof PhaserFX) {
                 fx.setParam('rate', value);
+            } else if (fx instanceof BrowserWorkletFX) {
+                fx.setAmount(value / 100);
+            } else if (fx instanceof BrowserTransposeFX) {
+                fx.setParam('shift', (value / 100 * 48) - 24);
+            } else if (fx instanceof BrowserManualHarmonistFX) {
+                fx.setParam('mix_percent', value);
+            } else if (fx instanceof BrowserHrmAutoFX) {
+                fx.setParam('mix', value);
+            } else if (fx instanceof BrowserRobotFX) {
+                fx.setParam('robot.mix', value);
+            } else if (fx instanceof BrowserOctaveFX) {
+                fx.setParam('mix_percent', value);
+            } else if (fx instanceof BrowserVocoderFX) {
+                fx.setParam('mix', value);
+            } else if (fx instanceof BrowserPitchBendFX) {
+                fx.setParam('range', (value / 100) * 24);
+            }
+            if (location === 'track' && fx instanceof BrowserWorkletFX && this.isLoopTransportFxName(this.trackFxTypes[slotIndex] ?? null)) {
+                this.syncTrackLoopTransportFx(slotIndex);
             }
         }
+    }
+
+    /** Set authored named controls on one existing Browser catalog slot. */
+    public setFxNamedParameters(location: 'input' | 'track', slotIndex: number, parameters: Record<string, number>) {
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3 || !parameters || typeof parameters !== 'object') return;
+        const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
+        const fx = instances[slotIndex];
+        if (!fx) return;
+        for (const [key, value] of Object.entries(parameters)) {
+            if (typeof key !== 'string' || key.length === 0) continue;
+            // TRANSPOSE itself rejects invalid values by switching to a clean
+            // bypass; do not silently keep a previously active pitch target.
+            if (fx instanceof BrowserTransposeFX) fx.setParam(key, value);
+            else if (fx instanceof BrowserManualHarmonistFX) fx.setParam(key, value);
+            else if (fx instanceof BrowserHrmAutoFX) fx.setParam(key, value);
+            else if (fx instanceof BrowserRobotFX) fx.setParam(key, value);
+            else if (fx instanceof BrowserOctaveFX) fx.setParam(key, value);
+            else if (fx instanceof BrowserVocoderFX) fx.setParam(key, value);
+            else if (fx instanceof BrowserPitchBendFX) fx.setParam(key, value);
+            else if (Number.isFinite(value)) fx.setParam(key, value);
+        }
+        if (location === 'track' && fx instanceof BrowserWorkletFX && this.isLoopTransportFxName(this.trackFxTypes[slotIndex] ?? null)) {
+            this.syncTrackLoopTransportFx(slotIndex);
+        }
+    }
+
+    /** Set one zero-based STEP SLICER amplitude target without exposing the rest of the Browser FX internals. */
+    public setStepSlicerStep(location: 'input' | 'track', slotIndex: number, stepIndex: number, amplitudePercent: number) {
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) return;
+        if (!Number.isInteger(stepIndex) || stepIndex < 0 || stepIndex > 15 || !Number.isFinite(amplitudePercent)) return;
+        const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
+        const effect = instances[slotIndex];
+        if (!(effect instanceof BrowserWorkletFX) || effect.algorithm !== 'step-slicer') return;
+        const level = Math.max(0, Math.min(100, Math.round(amplitudePercent)));
+        const key = `step_${String(stepIndex + 1).padStart(2, '0')}`;
+        effect.setParam(key, level);
+    }
+
+    /** Set a bounded musical/global STEP SLICER control on one Browser bank slot. */
+    public setStepSlicerControl(
+        location: 'input' | 'track',
+        slotIndex: number,
+        control: BrowserStepSlicerControl,
+        value: number,
+    ) {
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3 || !Number.isFinite(value)) return;
+        const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
+        const effect = instances[slotIndex];
+        if (!(effect instanceof BrowserWorkletFX) || effect.algorithm !== 'step-slicer') return;
+
+        let bounded = value;
+        if (control === 'step_count') {
+            bounded = [4, 8, 16].reduce((closest, candidate) =>
+                Math.abs(candidate - value) < Math.abs(closest - value) ? candidate : closest, 4);
+        } else if (control === 'rate_beats') {
+            bounded = [0.25, 0.5, 1, 2, 4].reduce((closest, candidate) =>
+                Math.abs(candidate - value) < Math.abs(closest - value) ? candidate : closest, 0.25);
+        } else if (control === 'pan_depth_percent') {
+            bounded = Math.round(Math.max(0, Math.min(100, value)));
+        } else {
+            bounded = Math.round(Math.max(20, Math.min(20000, value)));
+        }
+        effect.setParam(control, bounded);
     }
 
     /**
      * Set FX Active/Bypass
      */
     public setFxActive(location: 'input' | 'track', slotIndex: number, active: boolean) {
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) return;
         const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
         const fx = instances[slotIndex];
         if (fx) {
-            fx.setBypass(!active);
+            if (location === 'track') {
+                this.trackFxActive ??= [false, false, false, false];
+                const type = this.trackFxTypes[slotIndex];
+                const sourceAware = this.isLoopTransportFxName(type ?? null);
+                this.trackFxActive[slotIndex] = Boolean(active);
+                // Active is represented by TrackAudio's source route for these
+                // two effects, so the shared postmix adapter must remain dry.
+                fx.setBypass(sourceAware ? true : !active);
+                this.syncAllTrackLoopTransportFx();
+            } else {
+                fx.setBypass(!active);
+            }
         }
     }
 
@@ -637,6 +1371,14 @@ export class BrowserAudioEngine implements IAudioEngine {
     public async runLoopbackTest(): Promise<number> {
         console.log('Starting Loopback Latency Test...');
 
+        try {
+            await this.ensureTrackIoWorkletModule();
+        } catch (error) {
+            this.lastError = `Loopback capture requires AudioWorklet: ${error instanceof Error ? error.message : String(error)}`;
+            this.emitStatus();
+            throw new Error(`${this.lastError}. Track playback remains available.`);
+        }
+
         let stream: MediaStream;
         try {
             stream = await this.getTestStream();
@@ -645,46 +1387,75 @@ export class BrowserAudioEngine implements IAudioEngine {
             throw new Error('Could not access microphone. Check permissions.');
         }
 
+        const captureResult: { buffer: Float32Array | null; error: string | null } = { buffer: null, error: null };
         const source = this.context.createMediaStreamSource(stream);
-        const recorder = this.context.createScriptProcessor(4096, 1, 1);
-        const recordingBuffer = new Float32Array(this.context.sampleRate * 1.0);
-        let writeIndex = 0;
-
-        recorder.onaudioprocess = (e) => {
-            const input = e.inputBuffer.getChannelData(0);
-            if (writeIndex < recordingBuffer.length) {
-                const len = Math.min(input.length, recordingBuffer.length - writeIndex);
-                recordingBuffer.set(input.subarray(0, len), writeIndex);
-                writeIndex += len;
+        const recorder = new AudioWorkletNode(this.context, 'rc505-loopback-capture', {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [1],
+            channelCount: 1,
+            channelCountMode: 'explicit',
+            processorOptions: { captureFrames: this.context.sampleRate },
+        });
+        recorder.port.onmessage = (event: MessageEvent) => {
+            const message = event.data as { type?: string; framesCaptured?: number; samples?: Float32Array } | null;
+            if (
+                message?.type === 'LOOPBACK_CAPTURE' &&
+                message.samples instanceof Float32Array &&
+                Number.isInteger(message.framesCaptured) &&
+                (message.framesCaptured ?? 0) > 0
+            ) {
+                captureResult.buffer = message.samples;
             }
+        };
+        recorder.onprocessorerror = () => {
+            captureResult.error = 'The loopback AudioWorklet stopped unexpectedly.';
         };
 
         const mute = this.context.createGain();
         mute.gain.value = 0;
-        source.connect(recorder);
-        recorder.connect(mute);
-        mute.connect(this.context.destination);
-
         const osc = this.context.createOscillator();
         const oscGain = this.context.createGain();
-        osc.frequency.value = 1000;
-        oscGain.gain.value = 0.8;
-        osc.connect(oscGain);
-        oscGain.connect(this.context.destination);
-
-        const now = this.context.currentTime;
         const signalDelay = 0.1;
-        osc.start(now + signalDelay);
-        osc.stop(now + signalDelay + 0.05);
 
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        try {
+            source.connect(recorder);
+            recorder.connect(mute);
+            mute.connect(this.context.destination);
 
-        osc.disconnect();
-        oscGain.disconnect();
-        source.disconnect();
-        recorder.disconnect();
-        mute.disconnect();
-        stream.getTracks().forEach(t => t.stop());
+            osc.frequency.value = 1000;
+            oscGain.gain.value = 0.8;
+            osc.connect(oscGain);
+            oscGain.connect(this.context.destination);
+
+            const now = this.context.currentTime;
+            osc.start(now + signalDelay);
+            osc.stop(now + signalDelay + 0.05);
+
+            // One second of mono capture is returned as a single bounded transfer.
+            // Waiting through the same observation window preserves the old test timing.
+            await new Promise(resolve => setTimeout(resolve, 1200));
+        } finally {
+            recorder.port.onmessage = null;
+            osc.disconnect();
+            oscGain.disconnect();
+            source.disconnect();
+            recorder.disconnect();
+            mute.disconnect();
+            stream.getTracks().forEach(t => t.stop());
+        }
+
+        const recordingBuffer = captureResult.buffer as Float32Array | null;
+        if (captureResult.error) {
+            this.lastError = captureResult.error;
+            this.emitStatus();
+            throw new Error(captureResult.error);
+        }
+        if (!recordingBuffer) {
+            this.lastError = 'AudioWorklet loopback capture did not return a complete sample buffer.';
+            this.emitStatus();
+            throw new Error(this.lastError);
+        }
 
         let peakIndex = -1;
         const threshold = 0.05;
@@ -703,6 +1474,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         const latencyMs = ((peakIndex / this.context.sampleRate) - signalDelay) * 1000;
         console.log(`Latency Test: Peak at ${(peakIndex / this.context.sampleRate).toFixed(4)}s, Delay ${signalDelay}s, Result ${latencyMs.toFixed(2)}ms`);
 
+        this.lastError = '';
+        this.emitStatus();
         return Math.max(0, latencyMs);
     }
 

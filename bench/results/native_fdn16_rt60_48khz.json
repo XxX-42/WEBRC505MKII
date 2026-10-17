@@ -1,0 +1,20 @@
+{
+  "schema": "rc505-native-fdn16-rt60-v1",
+  "environment": {
+    "platform": "linux",
+    "compiler": "14.2.0",
+    "cplusplus": 201703,
+    "sampleRateHz": 48000,
+    "channels": 2,
+    "dampingCutoffHz": 20000,
+    "feedbackNetwork": "normalized Hadamard 16-line FDN"
+  },
+  "method": "unit impulse; backward-integrated stereo energy (Schroeder EDC); least-squares fit from -5 to -35 dB; extrapolate slope to -60 dB",
+  "measurements": [
+    {"targetRt60Seconds": 0.5, "measuredRt60Seconds": 0.519519, "relativeError": 0.0390378, "slopeDbPerSecond": -115.491, "fitPoints": 12418, "frames": 60000, "peak": 0.0625},
+    {"targetRt60Seconds": 2, "measuredRt60Seconds": 1.99949, "relativeError": 0.000255873, "slopeDbPerSecond": -30.0077, "fitPoints": 47258, "frames": 240000, "peak": 0.0625},
+    {"targetRt60Seconds": 4, "measuredRt60Seconds": 3.98031, "relativeError": 0.00492173, "slopeDbPerSecond": -15.0742, "fitPoints": 94670, "frames": 480000, "peak": 0.0625}
+  ],
+  "acceptance": {"maximumRelativeError": 0.08, "passed": true},
+  "limitations": ["synthetic algorithm measurement only", "not perceptual listening or Roland hardware equivalence", "damping is set high to minimize its influence on base RT60 calibration"]
+}

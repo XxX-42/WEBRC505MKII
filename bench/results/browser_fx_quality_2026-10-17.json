@@ -1,0 +1,1768 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-17T07:28:04.530Z",
+  "status": "RAW_MEASUREMENTS_NOT_ACCEPTANCE",
+  "runtime": "Node-hosted production TypeScript BrowserFxDspCore",
+  "scope": "All FX_CATALOG effects marked implemented with a Browser runtime route; experimental BEAT SHIFT excluded.",
+  "sampleRateHz": 48000,
+  "framesPerChannel": 48000,
+  "durationSeconds": 1,
+  "blockPatternFrames": [
+    64,
+    96,
+    128,
+    192,
+    256
+  ],
+  "inputSignal": "Independent stereo 997 Hz / 401 Hz sinusoids at 0.25 / 0.20 amplitude plus a 0.5 / -0.25 impulse at frame 128.",
+  "parameterization": "BrowserFxDspCore constructor defaults with BPM 120; no custom algorithm parameters.",
+  "rawFile": "/workspace/shared/rc505-implementation/WEBRC505MKII/bench/results/browser_fx_quality_2026-10-17.raw.f32",
+  "rawFormat": "Little-endian Float32 interleaved by effect as inputLeft, inputRight, outputLeft, outputRight; each channel is FRAME_COUNT samples.",
+  "rawBytes": 23808000,
+  "rawSha256": "2c897d42c12cb22a738874f79ca73f06e132b0f86dd180733046c52ae8c2fcfc",
+  "effectCount": 31,
+  "measurements": [
+    {
+      "catalogId": "lpf",
+      "sourceIndex": 1,
+      "displayName": "LPF",
+      "browserEffectName": "DSP LPF",
+      "algorithm": "lpf",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "5d1cc2c235c2d0faec9787b6075c346e5d4e0835652f89f5b5d5c37e7335e943:5c21449768dbae32b2c976d4606d6daf64de1b23a41354778094d1faa5560706",
+      "rawOffsetBytes": 0,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.20605024695396423,
+          "rms": 0.1455212264507648,
+          "meanDc": 0.00004395103603565076,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.19931384921073914,
+          "rms": 0.1405474722413473,
+          "meanDc": 0.0000054544508430656905,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 22.881659000000013,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "bpf",
+      "sourceIndex": 2,
+      "displayName": "BPF",
+      "browserEffectName": "DSP BPF",
+      "algorithm": "bpf",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "ca5e806016a15ee2bfee6b79743eca29671f71ba8084dd40c044b17a64c6ce9b:a5513fad7d1b5113640bc96f0729fc2bd76c1ebbbd87a8ae28787ccae0245175",
+      "rawOffsetBytes": 768000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.1708991527557373,
+          "rms": 0.12081378576023012,
+          "meanDc": -0.000026792013117907724,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.06633839756250381,
+          "rms": 0.04687064112560341,
+          "meanDc": -0.000012944361414459612,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 19.558989999999994,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "hpf",
+      "sourceIndex": 3,
+      "displayName": "HPF",
+      "browserEffectName": "DSP HPF",
+      "algorithm": "hpf",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "b3dcbc9f0cce7ef719359d9d707de257344146d2ec1d9c6617055bcd23d0b518:88e40f67817648d22c5a759f62ae8201b49977ee5577b162e83f27729d31268e",
+      "rawOffsetBytes": 1536000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.4034300148487091,
+          "rms": 0.10034090775888457,
+          "meanDc": 0.000004355258767645864,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.22255787253379822,
+          "rms": 0.015681564605759063,
+          "meanDc": 0.000007643308218926374,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 15.327035999999907,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "phaser",
+      "sourceIndex": 4,
+      "displayName": "PHASER",
+      "browserEffectName": "PHASER",
+      "algorithm": "phaser",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "65148e9250ac4c61126ddd91eebb1d9259d379103e764ccc4d2bf741a72dde91:4d937e6df57a465e21257ec5478a15715a22f60ec1c2593b6a6f860c8386c4d4",
+      "rawOffsetBytes": 2304000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.4196816682815552,
+          "rms": 0.17669031868967666,
+          "meanDc": 0.000042231416281339304,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.3005765378475189,
+          "rms": 0.15056185076438366,
+          "meanDc": 0.000027523968834324582,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 39.858654,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "flanger",
+      "sourceIndex": 5,
+      "displayName": "FLANGER",
+      "browserEffectName": "FLANGER",
+      "algorithm": "flanger",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "46d23c3201a3637d226e1b69f24d418b35042a60c06e0a6f2eb49b03f781d750:2a1534577d363c0f60a6bd825d7b881d96c0cf3cdca9ff88a464dfe2f53e49db",
+      "rawOffsetBytes": 3072000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.3128468096256256,
+          "rms": 0.15371321462858503,
+          "meanDc": 0.000037773914767115,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.253577321767807,
+          "rms": 0.12640557909694897,
+          "meanDc": 0.000016656461661710865,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 25.409564000000046,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "lo-fi",
+      "sourceIndex": 7,
+      "displayName": "LO-FI",
+      "browserEffectName": "LO-FI",
+      "algorithm": "lo-fi",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "1b8d0e967c9545d595ec42702909256de372e09148148bbab8d319b04ec677b6:a9c9ac8cc99a9d56cf52c23ff83ca755f9ebc643c0e46a37c12352f783a074aa",
+      "rawOffsetBytes": 3840000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.33465611934661865,
+          "rms": 0.2348885090647977,
+          "meanDc": 0.000045797201222721166,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.26931026577949524,
+          "rms": 0.18983375849232473,
+          "meanDc": -0.000020287185102716877,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 23.817281999999977,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "radio",
+      "sourceIndex": 8,
+      "displayName": "RADIO",
+      "browserEffectName": "RADIO",
+      "algorithm": "radio",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "6032a05e2c7bf1d3368ebff607f6fc11f3606b567ec88e9804f8fd0a3f0479c8:45b1ee45571ab11c22eea8d73bed29ebe469ed8b0be1fa612111e274f25f6a1c",
+      "rawOffsetBytes": 4608000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.8662124872207642,
+          "rms": 0.6484464347533307,
+          "meanDc": -0.00012360200175082052,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.5369420051574707,
+          "rms": 0.38704557319390615,
+          "meanDc": -0.00003036310878750707,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 38.252625999999964,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "ring-mod",
+      "sourceIndex": 9,
+      "displayName": "RING.MOD",
+      "browserEffectName": "RING.MOD",
+      "algorithm": "ring-mod",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "73f7a54a3cf3345080c71efc64004a2a0b4fec1d4ef79bb20a6088041f17c623:322609448035bc6b8ed4cba740aa67540f63de8e4f31c96bbecff752253d8c86",
+      "rawOffsetBytes": 5376000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.2560298442840576,
+          "rms": 0.1250728559418954,
+          "meanDc": 5.454019171698595e-7,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.19822081923484802,
+          "rms": 0.09850983911971145,
+          "meanDc": 0.00009808650028181395,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 29.856203999999934,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "sustainer",
+      "sourceIndex": 11,
+      "displayName": "SUSTAINER",
+      "browserEffectName": "SUSTAINER",
+      "algorithm": "sustainer",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "9639f19f70ddb9ac11b26894dcee46bb9e9cf69bab45eb9753c0bcf5a0ec6246:b154bce768465de788b9bf1a7e3e538914d493311cae9a96111f65b48e386456",
+      "rawOffsetBytes": 6144000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.14925533533096313,
+          "rms": 0.06446131998208508,
+          "meanDc": -0.000002490334477670428,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.10649736225605011,
+          "rms": 0.05157429657019876,
+          "meanDc": -0.0000032014289166490685,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 29.400771000000077,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "slow-gear",
+      "sourceIndex": 13,
+      "displayName": "SLOW GEAR",
+      "browserEffectName": "SLOW GEAR",
+      "algorithm": "slow-gear",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "a8fbcad7e042f1fc119928944a5fca51304b7e4fa29d4aeeb35a4cfd3f99e7c0:ac205e366114f8c8560196d3c0c3565f336a5e2aeffabec46efc570f1d82b710",
+      "rawOffsetBytes": 6912000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.25,
+          "rms": 0.16237775850753933,
+          "meanDc": -0.00003984898506936885,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.129902206802733,
+          "meanDc": -0.00007936316219102982,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 43.05118500000003,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "dist",
+      "sourceIndex": 24,
+      "displayName": "DIST",
+      "browserEffectName": "DIST",
+      "algorithm": "distortion",
+      "algorithmicLatencySamples": 16,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "0c0db177561205eb0eda4c45cb25f026a0dc97698105815a14b935a57765617f:3b15cde52ef7ac7ddccc948b00e556629c3e0a529f3cd2ab804aa7eb6381f9bb",
+      "rawOffsetBytes": 7680000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 1.1140954494476318,
+          "rms": 0.8003093696660472,
+          "meanDc": 0.0003324927426610968,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 2
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.9199374914169312,
+          "rms": 0.7381854568303451,
+          "meanDc": 0.0001458929941246483,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 82.82482900000014,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "dynamics",
+      "sourceIndex": 25,
+      "displayName": "DYNAMICS",
+      "browserEffectName": "DYNAMICS",
+      "algorithm": "dynamics",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "e0cab6e8b14a6ed410c19601748471a3aca6b47e7971a3c82152950ba09917d8:6394ad005952c95ddda1f8bc1e9b95653d0e5f1cbe6126de92b8d16e0eb09e98",
+      "rawOffsetBytes": 8448000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.11506228348846181,
+          "meanDc": 0.0000247273207860036,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.19999845325946808,
+          "rms": 0.0920509472201984,
+          "meanDc": 0.000022918627146130966,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 29.899298000000044,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "eq",
+      "sourceIndex": 26,
+      "displayName": "EQ",
+      "browserEffectName": "EQ",
+      "algorithm": "eq",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "rawOffsetBytes": 9216000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 25.878987999999936,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "isolator",
+      "sourceIndex": 27,
+      "displayName": "ISOLATOR",
+      "browserEffectName": "ISOLATOR",
+      "algorithm": "isolator",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "598585d084f048b269f450045748524e1817740a931936edbeb4dbca5d560467:830067394c276bed96d5fa6f863992d8b93a9cc3e934c53ac05a9251faa3ab56",
+      "rawOffsetBytes": 9984000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 36.18283199999996,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "auto-pan",
+      "sourceIndex": 29,
+      "displayName": "AUTO PAN",
+      "browserEffectName": "AUTO PAN",
+      "algorithm": "auto-pan",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "47e2588c99ac769fd319cdd9058d99aad7b6a2e7f7f0b044b3d18d7774cbb5d5:2c66791c7d58e742a7b17d46f2cfa0a76a2c007aa053a6e7fe183093ba11f396",
+      "rawOffsetBytes": 10752000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.28842437267303467,
+          "rms": 0.10775920722093013,
+          "meanDc": 0.000010358830157201663,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.3017125725746155,
+          "rms": 0.14613591667070897,
+          "meanDc": -0.000005150552218158781,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 25.882331999999906,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "manual-pan",
+      "sourceIndex": 30,
+      "displayName": "MANUAL PAN",
+      "browserEffectName": "MANUAL PAN",
+      "algorithm": "manual-pan",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "rawOffsetBytes": 11520000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 31.932260999999926,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "stereo-enhance",
+      "sourceIndex": 31,
+      "displayName": "STEREO ENHANCE",
+      "browserEffectName": "STEREO ENHANCE",
+      "algorithm": "stereo-enhance",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "3252b54de99013a8325dfcf1b2c5f58c0547108c8ea7dfa53c95f18efa895ba4:b3f563cb6f5419f2d39f4c4ab1711de7989ff6cbe45d2156139704f2765d8495",
+      "rawOffsetBytes": 12288000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29427745938301086,
+          "rms": 0.17632208762746202,
+          "meanDc": 0.000019400939723103268,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.207199826836586,
+          "rms": 0.1368573530140561,
+          "meanDc": -0.000014192611728579625,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 24.46396700000014,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "tremolo",
+      "sourceIndex": 32,
+      "displayName": "TREMOLO",
+      "browserEffectName": "TREMOLO",
+      "algorithm": "tremolo",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "4beae0e1ff0253b8ba29ab346583bbf643df2ffb4f50a1262dcf9371d4098a0f:7200c04e5752efcc8077559d42f770b9e1989e7647c103343e76a1ee5fdcd0e2",
+      "rawOffsetBytes": 13056000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.2499997466802597,
+          "rms": 0.13621739242889735,
+          "meanDc": 0.000007986902259290014,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.1999450922012329,
+          "rms": 0.10897361449928367,
+          "meanDc": -0.000003993450974443258,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 31.578588999999965,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "vibrato",
+      "sourceIndex": 33,
+      "displayName": "VIBRATO",
+      "browserEffectName": "VIBRATO",
+      "algorithm": "vibrato",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "529395002c61c401a86518e537cdde38e3bd0e4477d1e6fa7541e3c2138dc88a:0769bbdc7a62871e0264dc86d798356f90ca415d33e7c7efc0ac93a71dff0890",
+      "rawOffsetBytes": 13824000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.3852282166481018,
+          "rms": 0.1766006389641925,
+          "meanDc": 0.000010550869064350839,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000006258487701,
+          "rms": 0.14124634531730726,
+          "meanDc": 1.6503299510380505e-8,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 35.952101000000084,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "pattern-slicer",
+      "sourceIndex": 34,
+      "displayName": "PATTERN SLICER",
+      "browserEffectName": "PATTERN SLICER",
+      "algorithm": "pattern-slicer",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "da2be2e166fe74da742ff93e6b8f03490f61b19de7c0e74085e8c691ca4d5497:2d6270cf749a9a5185040c78af36d05f6e61a6329a508807c85d26f515e3533a",
+      "rawOffsetBytes": 14592000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.12491047670045559,
+          "meanDc": 0.00005298737510169834,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.09992644789200548,
+          "meanDc": 0.00010734628985987627,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 24.625706000000037,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "delay",
+      "sourceIndex": 36,
+      "displayName": "DELAY",
+      "browserEffectName": "DELAY",
+      "algorithm": "delay",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "0ba47e4c01224294c1150a5d1e8b229d30554617fc6bc0033648dc9639176731:d489a95f8b6f1979d4904fe29510a848ccbd21cced65cee53d3adcfd4b63d242",
+      "rawOffsetBytes": 15360000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.30496710538864136,
+          "rms": 0.13384920263439087,
+          "meanDc": 0.000044111243075273145,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.18477590382099152,
+          "rms": 0.10707567349635355,
+          "meanDc": 0.000053935081140973265,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 27.014815,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "panning-delay",
+      "sourceIndex": 37,
+      "displayName": "PANNING DELAY",
+      "browserEffectName": "PANNING DELAY",
+      "algorithm": "panning-delay",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "64272517f1139a5c84bc15da1be8145cfa081728f54524390a567c151dfededa:bf2e29dc2d477c9c2e5760c2cf7fe9731b280284668b5e1e48876afbd702006a",
+      "rawOffsetBytes": 16128000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.2679690718650818,
+          "rms": 0.1579646989372625,
+          "meanDc": 0.000025014018659172855,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.19791960716247559,
+          "rms": 0.11825167011900953,
+          "meanDc": 0.00005929329349631537,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 54.01595999999995,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "reverse-delay",
+      "sourceIndex": 38,
+      "displayName": "REVERSE DELAY",
+      "browserEffectName": "REVERSE DELAY",
+      "algorithm": "reverse-delay",
+      "algorithmicLatencySamples": 24000,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "55afef9646248887b501ae80efc8b3cb15ecdabf63da2e1a30568ff10de87266:ce1a779237fffdc64367d0a1dcf99a61898202133d8f1e322b311145be66dd59",
+      "rawOffsetBytes": 16896000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.33289411664009094,
+          "rms": 0.13724895283191826,
+          "meanDc": 0.000041892934039992484,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.10953556534407465,
+          "meanDc": 0.00004566186605569598,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 39.667911000000004,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "mod-delay",
+      "sourceIndex": 39,
+      "displayName": "MOD DELAY",
+      "browserEffectName": "MOD DELAY",
+      "algorithm": "mod-delay",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "e5fffa71eaae2c7b4227833698b916bac900bfac09046e3cdd4e65e6a0a852ea:6272b17449095e0457c0024e50c523fe836390555db7b50d91090ae16aa81286",
+      "rawOffsetBytes": 17664000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.3266218602657318,
+          "rms": 0.16464404349153228,
+          "meanDc": 0.000013892268966050595,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.2613115608692169,
+          "rms": 0.13373793565508008,
+          "meanDc": 0.000025961693785348406,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 50.09597900000017,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "tape-echo",
+      "sourceIndex": 40,
+      "displayName": "TAPE ECHO",
+      "browserEffectName": "TAPE ECHO",
+      "algorithm": "tape-echo",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "06c36004d31a3c259b918501264bcbe1cbca469eca651994488552a439e8ef69:2becd375ac00cc0562fa788a4e26c2f54e86d8701259407bad61a2da0d0e3634",
+      "rawOffsetBytes": 18432000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.3253687918186188,
+          "rms": 0.18931205155279138,
+          "meanDc": 0.000018503540243235268,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.17820130288600922,
+          "rms": 0.11014100693491566,
+          "meanDc": 0.00004592074825728787,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 84.18115200000011,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "granular-delay",
+      "sourceIndex": 41,
+      "displayName": "GRANULAR DELAY",
+      "browserEffectName": "GRANULAR DELAY",
+      "algorithm": "granular-delay",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "7642573401ec3c49f7025333bdcde3501692418cf13ceab3471da199b4536f32:af6041ad7459ee69a9ff5205475a7f2e6b52667d6f1d3e3183895bdfb6d9a6e3",
+      "rawOffsetBytes": 19200000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.3434711694717407,
+          "rms": 0.17117888265861286,
+          "meanDc": 0.00006138071740203562,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.28375157713890076,
+          "rms": 0.1200119854976878,
+          "meanDc": 0.00001406747655966356,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 47.733168000000205,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "chorus",
+      "sourceIndex": 46,
+      "displayName": "CHORUS",
+      "browserEffectName": "CHORUS",
+      "algorithm": "chorus",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "80985bbd7155b1166f5d8d79caeb2c940dc5feb3a79d8fb6a5e9098a5cd26d7a:e81bec59f753c89fd8e9f4b0be7ba902ff121eccca2084b495ac199028c3709b",
+      "rawOffsetBytes": 19968000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.345762699842453,
+          "rms": 0.17259522772216546,
+          "meanDc": 0.000039241547234828055,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.2790561318397522,
+          "rms": 0.13862078401047812,
+          "meanDc": 0.00007314508437610812,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 52.971727999999985,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "reverb",
+      "sourceIndex": 47,
+      "displayName": "REVERB",
+      "browserEffectName": "FDN8 REVERB",
+      "algorithm": "reverb",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "f7173ed4cc39775fde4eb65670c7a397380ee65c5729e0c77c9325090aa69e43:280019220a69a45a676c3f6e2ac197f95826adbfd55854784ef76757a746a2b2",
+      "rawOffsetBytes": 20736000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.036874014884233475,
+          "rms": 0.01442479043902344,
+          "meanDc": 0.00005918371540433635,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.035083185881376266,
+          "rms": 0.01791307291577586,
+          "meanDc": 0.00008452081519089086,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 66.8593780000001,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "gate-reverb",
+      "sourceIndex": 48,
+      "displayName": "GATE REVERB",
+      "browserEffectName": "GATE REVERB",
+      "algorithm": "gate-reverb",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "cf2058da8b3baa59867b1bdb1f1b398ac263bcfb041bbec35d14e97cff31e37c:2a663426e70b1f0eac236083f598a8c3f10254c12c452b8b2d83e70767d73632",
+      "rawOffsetBytes": 21504000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.26956120133399963,
+          "rms": 0.16117745553789303,
+          "meanDc": 0.00003272337644093426,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.18740873038768768,
+          "rms": 0.12813875256107438,
+          "meanDc": 0.00002875604366893943,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 77.67145200000004,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "beat-scatter",
+      "sourceIndex": 50,
+      "displayName": "BEAT SCATTER",
+      "browserEffectName": "BEAT SCATTER",
+      "algorithm": "beat-scatter",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "fd455d17cb1f1d8f9864f0680e160fe11e1bd76598956cf78014036995689515:5f931f0c17a0efe57e45764d64f909888e4cfc873ede5c9349416492b033eb1e",
+      "rawOffsetBytes": 22272000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.30034294724464417,
+          "rms": 0.11581520460938215,
+          "meanDc": 0.00007121804495951286,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.2774079442024231,
+          "rms": 0.1408891817565585,
+          "meanDc": -0.00020318412167637234,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 29.341693999999734,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    },
+    {
+      "catalogId": "beat-repeat",
+      "sourceIndex": 51,
+      "displayName": "BEAT REPEAT",
+      "browserEffectName": "BEAT REPEAT",
+      "algorithm": "beat-repeat",
+      "algorithmicLatencySamples": 0,
+      "inputSha256": "0d61a6b2d5edeb438e4e7a7007362ba0112ec43da730a5ac8599c38531cc5e4b:71fc39067118d1c0806ae00a9d3c67f99af7b285c6916f492cc0e7aa4cc249cd",
+      "outputSha256": "359ec2117f8756b6d163c78f1c5b66942f21abe7af51dd304c7d047df0c467e3:1ff51b40ba7e88bfc2380a5c77dfbe4227a7c906dce1fb10b6c7fe0a989a10aa",
+      "rawOffsetBytes": 23040000,
+      "rawLayout": [
+        "inputLeft",
+        "inputRight",
+        "outputLeft",
+        "outputRight"
+      ],
+      "rawFramesPerChannel": 48000,
+      "input": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.29004764556884766,
+          "rms": 0.1767790551046309,
+          "meanDc": 0.000010416666666666388,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.20000000298023224,
+          "rms": 0.14142285156458861,
+          "meanDc": -0.000005208333178150319,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "output": {
+        "left": {
+          "frames": 48000,
+          "peakAbs": 0.2991391122341156,
+          "rms": 0.16254175945938856,
+          "meanDc": 0.00005951947122166719,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        },
+        "right": {
+          "frames": 48000,
+          "peakAbs": 0.2461366504430771,
+          "rms": 0.13352430816826305,
+          "meanDc": 0.00006294674779360321,
+          "nonFiniteSamples": 0,
+          "samplesAboveFullScale": 0
+        }
+      },
+      "processingElapsedMs": 38.03840300000002,
+      "processingTimingNote": "Wall elapsed around a Node-hosted DSP core loop; not AudioWorklet callback CPU or real-time evidence."
+    }
+  ],
+  "limitations": [
+    "Synthetic deterministic signals are diagnostic inputs, not perceptual music or reference-device captures.",
+    "Metrics record peak, RMS, DC mean, non-finite count and samples above full scale; this script applies no subjective or product quality threshold.",
+    "Node core measurements do not substitute for the shipped AudioWorklet, browser/device timing, XRUN, acoustic latency or hardware acceptance.",
+    "Clean-room reconstructions are not original Roland algorithms, presets or factory samples."
+  ]
+}

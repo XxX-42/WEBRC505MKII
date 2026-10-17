@@ -1,0 +1,269 @@
+{
+  "title": "Signalsmith HQ_RENDER synthetic objective measurements",
+  "classification": "objective regression/measurement only; synthetic fixtures do not establish sound-quality acceptance, listening quality, device performance, hardware behavior, or Roland fidelity",
+  "generatedAtUtc": "2026-10-17T14:34:37.812Z",
+  "exactCommand": "./node_modules/.bin/vite-node bench/run_hq_render_quality_measurements.ts",
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "linux",
+    "architecture": "x64",
+    "osRelease": "6.18.55",
+    "runtime": "Node.js invoking production TypeScript adapter and pinned Signalsmith Stretch WASM; no browser AudioWorklet or audio device used"
+  },
+  "methodology": {
+    "input": "deterministic synthetic signals, no random generator; 2.4 seconds/channel; harmonic mono pitch source at 220 Hz; four-partial decaying broadband transient; stereo phase-offset harmonic pair; vowel-like harmonic source at 110 Hz with Gaussian spectral bands centered at 650, 1200, and 2500 Hz",
+    "ratesHz": [
+      44100,
+      48000
+    ],
+    "shiftSemitones": 7,
+    "playbackRate": 1,
+    "steadyWindow": {
+      "startSecondsAfterLatencyRemoval": 0.55,
+      "durationSeconds": 1,
+      "window": "Hann",
+      "fftZeroPadding": "next power of two",
+      "sampleAlignment": "input analysis window index is offset by result.leadingLatencySamples in rendered output"
+    },
+    "transient": "18 ms deterministic four-partial decaying burst beginning at 0.8 s; energy centroid measured within +/-120 ms; output centroid has result.leadingLatencySamples removed; peak ratio compares max absolute output/input samples in the ROI",
+    "stereo": "zero-lag Pearson correlation over the same 1-second steady-state window in both channels, no lag search",
+    "formants": "integrated FFT power in +/-18% nominal bands and pitch-shifted bands; reports relative band-energy movement, not formant-preservation quality",
+    "limitations": [
+      "Synthetic signals only",
+      "No listening panel or subjective quality rating",
+      "No hardware or real-time load benchmark",
+      "No acceptance threshold is applied",
+      "The offline render API does not expose an independent formant-preservation control"
+    ]
+  },
+  "results": [
+    {
+      "sampleRate": 44100,
+      "sampleCountPerInputChannel": 105840,
+      "renderer": {
+        "mode": "HQ_RENDER",
+        "implementation": "production renderPitchOffline from src/audio/pitch/signalsmith.ts",
+        "playbackRate": 1,
+        "semitones": 7,
+        "chunkFrames": 128,
+        "measured": {
+          "latencySamples": 5292,
+          "inputLatencySamples": 2646,
+          "outputLatencySamples": 2646,
+          "windowSamples": 5292,
+          "hopSamples": 1323
+        }
+      },
+      "dominantPitch": {
+        "inputFundamentalHz": 220,
+        "shiftSemitones": 7,
+        "expectedOutputFundamentalHz": 329.6275569128699,
+        "measuredDominantFundamentalHz": 329.87542028961235,
+        "signedCentsError": 1.3013119041779742,
+        "analysisWindow": {
+          "startSecondsAfterLatencyRemoval": 0.55,
+          "durationSeconds": 1,
+          "fftSize": 32768,
+          "window": "Hann",
+          "peakEstimator": "largest FFT power bin in +/-22% target range with parabolic interpolation of log power"
+        },
+        "renderLatencySamples": 5292
+      },
+      "transientAlignmentAndOvershoot": {
+        "roiHalfWidthMs": 120,
+        "inputEnergyCentroidSeconds": 0.8022208314819628,
+        "outputEnergyCentroidSecondsAfterLatencyRemoval": 0.8021891549288704,
+        "energyCentroidAlignmentErrorMs": -0.03167655309241174,
+        "outputPeakOffsetFromTransientOnsetMs": 0.045351473922902494,
+        "transientPeakAbsRatio": 0.8539324969178891,
+        "inputRmsInRoi": 0.027505703921407762,
+        "outputRmsInRoi": 0.02748215611266562
+      },
+      "stereoCoherence": {
+        "inputZeroLagPearsonCorrelation": 0.6058201570577477,
+        "outputZeroLagPearsonCorrelation": 0.6055792671425988,
+        "deltaCorrelation": -0.000240889915148923,
+        "note": "Pearson correlation is measured without additional lag search over the aligned steady-state window; both channels are the same harmonic template with a fixed 0.92 rad phase offset."
+      },
+      "formantBandMovement": {
+        "source": {
+          "type": "deterministic harmonic synthesis with Gaussian amplitude bands",
+          "fundamentalHz": 110,
+          "nominalFormantsHz": [
+            650,
+            1200,
+            2500
+          ]
+        },
+        "bandMethod": "integrated Hann-window FFT power in +/-18% bands about each synthetic source center and the same center multiplied by the semitone ratio, compared before and after pitch shift",
+        "measurements": [
+          {
+            "formantBand": 1,
+            "inputNominalCenterHz": 650,
+            "targetShiftedCenterHz": 973.8995999698429,
+            "sourceBandHz": [
+              533,
+              767
+            ],
+            "shiftedBandHz": [
+              798.5976719752713,
+              1149.2015279644147
+            ],
+            "inputTargetVsSourceBandPowerDb": -6.0596560044507815,
+            "outputTargetVsSourceBandPowerDb": 17.44021426287771,
+            "changeTowardShiftedBandDb": 23.49987026732849,
+            "interpretation": "Positive change means relatively more energy in the pitch-shifted band than the unshifted source band; it is not a formant-preservation score."
+          },
+          {
+            "formantBand": 2,
+            "inputNominalCenterHz": 1200,
+            "targetShiftedCenterHz": 1797.9684922520178,
+            "sourceBandHz": [
+              984.0000000000001,
+              1416
+            ],
+            "shiftedBandHz": [
+              1474.3341636466546,
+              2121.6028208573807
+            ],
+            "inputTargetVsSourceBandPowerDb": -20.239610627343154,
+            "outputTargetVsSourceBandPowerDb": -1.457264892961494,
+            "changeTowardShiftedBandDb": 18.78234573438166,
+            "interpretation": "Positive change means relatively more energy in the pitch-shifted band than the unshifted source band; it is not a formant-preservation score."
+          },
+          {
+            "formantBand": 3,
+            "inputNominalCenterHz": 2500,
+            "targetShiftedCenterHz": 3745.7676921917036,
+            "sourceBandHz": [
+              2050,
+              2950
+            ],
+            "shiftedBandHz": [
+              3071.529507597197,
+              4420.00587678621
+            ],
+            "inputTargetVsSourceBandPowerDb": -32.79301040321174,
+            "outputTargetVsSourceBandPowerDb": 9.571569961609814,
+            "changeTowardShiftedBandDb": 42.36458036482155,
+            "interpretation": "Positive change means relatively more energy in the pitch-shifted band than the unshifted source band; it is not a formant-preservation score."
+          }
+        ]
+      }
+    },
+    {
+      "sampleRate": 48000,
+      "sampleCountPerInputChannel": 115200,
+      "renderer": {
+        "mode": "HQ_RENDER",
+        "implementation": "production renderPitchOffline from src/audio/pitch/signalsmith.ts",
+        "playbackRate": 1,
+        "semitones": 7,
+        "chunkFrames": 128,
+        "measured": {
+          "latencySamples": 5760,
+          "inputLatencySamples": 2880,
+          "outputLatencySamples": 2880,
+          "windowSamples": 5760,
+          "hopSamples": 1440
+        }
+      },
+      "dominantPitch": {
+        "inputFundamentalHz": 220,
+        "shiftSemitones": 7,
+        "expectedOutputFundamentalHz": 329.6275569128699,
+        "measuredDominantFundamentalHz": 329.50405106531673,
+        "signedCentsError": -0.6487855489168561,
+        "analysisWindow": {
+          "startSecondsAfterLatencyRemoval": 0.55,
+          "durationSeconds": 1,
+          "fftSize": 32768,
+          "window": "Hann",
+          "peakEstimator": "largest FFT power bin in +/-22% target range with parabolic interpolation of log power"
+        },
+        "renderLatencySamples": 5760
+      },
+      "transientAlignmentAndOvershoot": {
+        "roiHalfWidthMs": 120,
+        "inputEnergyCentroidSeconds": 0.8022234300825484,
+        "outputEnergyCentroidSecondsAfterLatencyRemoval": 0.802192549033353,
+        "energyCentroidAlignmentErrorMs": -0.030881049195310577,
+        "outputPeakOffsetFromTransientOnsetMs": 0.375,
+        "transientPeakAbsRatio": 0.8781182078686933,
+        "inputRmsInRoi": 0.02748967925092828,
+        "outputRmsInRoi": 0.027472792304837276
+      },
+      "stereoCoherence": {
+        "inputZeroLagPearsonCorrelation": 0.605820157063433,
+        "outputZeroLagPearsonCorrelation": 0.6059900363002059,
+        "deltaCorrelation": 0.0001698792367729185,
+        "note": "Pearson correlation is measured without additional lag search over the aligned steady-state window; both channels are the same harmonic template with a fixed 0.92 rad phase offset."
+      },
+      "formantBandMovement": {
+        "source": {
+          "type": "deterministic harmonic synthesis with Gaussian amplitude bands",
+          "fundamentalHz": 110,
+          "nominalFormantsHz": [
+            650,
+            1200,
+            2500
+          ]
+        },
+        "bandMethod": "integrated Hann-window FFT power in +/-18% bands about each synthetic source center and the same center multiplied by the semitone ratio, compared before and after pitch shift",
+        "measurements": [
+          {
+            "formantBand": 1,
+            "inputNominalCenterHz": 650,
+            "targetShiftedCenterHz": 973.8995999698429,
+            "sourceBandHz": [
+              533,
+              767
+            ],
+            "shiftedBandHz": [
+              798.5976719752713,
+              1149.2015279644147
+            ],
+            "inputTargetVsSourceBandPowerDb": -6.059648965439376,
+            "outputTargetVsSourceBandPowerDb": 17.21581828726606,
+            "changeTowardShiftedBandDb": 23.275467252705436,
+            "interpretation": "Positive change means relatively more energy in the pitch-shifted band than the unshifted source band; it is not a formant-preservation score."
+          },
+          {
+            "formantBand": 2,
+            "inputNominalCenterHz": 1200,
+            "targetShiftedCenterHz": 1797.9684922520178,
+            "sourceBandHz": [
+              984.0000000000001,
+              1416
+            ],
+            "shiftedBandHz": [
+              1474.3341636466546,
+              2121.6028208573807
+            ],
+            "inputTargetVsSourceBandPowerDb": -20.23961046523501,
+            "outputTargetVsSourceBandPowerDb": -1.6630991009402836,
+            "changeTowardShiftedBandDb": 18.576511364294728,
+            "interpretation": "Positive change means relatively more energy in the pitch-shifted band than the unshifted source band; it is not a formant-preservation score."
+          },
+          {
+            "formantBand": 3,
+            "inputNominalCenterHz": 2500,
+            "targetShiftedCenterHz": 3745.7676921917036,
+            "sourceBandHz": [
+              2050,
+              2950
+            ],
+            "shiftedBandHz": [
+              3071.529507597197,
+              4420.00587678621
+            ],
+            "inputTargetVsSourceBandPowerDb": -32.79300988467062,
+            "outputTargetVsSourceBandPowerDb": 9.453412301596986,
+            "changeTowardShiftedBandDb": 42.2464221862676,
+            "interpretation": "Positive change means relatively more energy in the pitch-shifted band than the unshifted source band; it is not a formant-preservation score."
+          }
+        ]
+      }
+    }
+  ]
+}

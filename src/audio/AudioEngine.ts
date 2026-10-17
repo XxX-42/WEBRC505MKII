@@ -1,8 +1,17 @@
 import type { TrackAudio } from './TrackAudio';
-import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus } from './BrowserAudioEngine';
-import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus } from './NativeAudioEngine';
-import type { NativeBackend, NativeDeviceInfo } from './NativeBridgeClient';
+import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserStepSlicerControl } from './BrowserAudioEngine';
+import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus, type NativeCatalogFxSlotRuntime } from './NativeAudioEngine';
+import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeStatus } from './NativeBridgeClient';
 import type { NativeTrackProxy } from './NativeTrackProxy';
+import type { BrowserFxAlgorithm, BrowserFxParameters } from './fx/dsp/BrowserFxDspCore';
+import type { NativeFxPath } from './nativeFxCatalog';
+import type { NativeStepSlicerParameters } from './nativeStepSlicerParameters';
+import { toBrowserPreampParameters, toNativePreampParameters, type PreampParameters } from './preampParameters';
+import { MidiInputController, type MidiInputState, type MidiNoteEvent } from './MidiInputController';
+import type { NativeCatalogMidiEvent } from './NativeBridgeClient';
+import { mapMidiNoteToNativeCatalogEvent, type OscVocMidiTarget } from './nativeOscVocMidi';
+export type TrackFxMidiTarget = OscVocMidiTarget & { trackId?: number };
+export type { OscVocMidiTarget } from './nativeOscVocMidi';
 
 export type AudioMode = 'native' | 'browser';
 export type AudioBackend = NativeBackend | 'BROWSER';
@@ -77,6 +86,35 @@ export interface TrackCapabilities {
   reverseReason: string;
 }
 
+export interface TrackFxSlotStatus {
+  readonly slotIndex: number;
+  readonly slot: NativeFxSlot;
+  readonly type: string | null;
+  readonly active: boolean;
+  readonly bypassed: boolean;
+  readonly state: 'empty' | 'loading' | 'ready' | 'error';
+  readonly error: string | null;
+  readonly requestedEffectId?: string | null;
+  readonly acknowledgedEffectId?: string | null;
+  readonly acknowledged?: boolean;
+  readonly pendingApply?: boolean;
+  readonly pendingRestart?: boolean;
+  readonly prepared?: boolean | null;
+  readonly processingFaulted?: boolean;
+  readonly controlFaulted?: boolean;
+  readonly requestedRevision?: number | null;
+  readonly appliedRevision?: number | null;
+}
+
+export interface TrackFxStatus {
+  readonly trackId: number;
+  readonly available: boolean;
+  readonly routeMode: 'per-track-pre-mix' | 'unavailable';
+  readonly perTrackFxChainAvailable: boolean;
+  readonly legacySharedPostmix: boolean;
+  readonly slots: readonly TrackFxSlotStatus[];
+}
+
 export type NativeUiStatus = AudioUiStatus;
 
 const AUDIO_MODE_KEY = 'webrc505_audio_mode';
@@ -115,6 +153,14 @@ export class AudioEngine {
   private readonly nativeEngine = NativeAudioEngine.getInstance();
   private browserEngine: BrowserAudioEngine | null = null;
   private currentMode: AudioMode = resolveInitialMode();
+  private nativeMidiInput: MidiInputController | null = null;
+  private nativeMidiTarget: TrackFxMidiTarget | null = null;
+  private nativeMidiInputState: MidiInputState = 'disconnected';
+  private readonly midiInputListeners = new Set<(state: MidiInputState) => void>();
+  private browserMidiInputUnsubscribe: (() => void) | null = null;
+  private nativeMidiQueue: NativeCatalogMidiEvent[] = [];
+  private nativeMidiFlushRunning = false;
+  private suppressNativeMidiCallbacks = false;
 
   public static getInstance(): AudioEngine {
     if (!AudioEngine.instance) {
@@ -136,8 +182,11 @@ export class AudioEngine {
   }
 
   public setMode(mode: AudioMode) {
+    if (mode !== this.currentMode) this.disconnectMidiInput();
     this.currentMode = mode;
+    if (mode === 'browser' && this.midiInputListeners.size > 0) this.ensureBrowserMidiStateSubscription();
     AudioEngine.setPreferredMode(mode);
+    this.emitMidiInputState();
   }
 
   public get tracks(): EngineTrack[] {
@@ -182,11 +231,35 @@ export class AudioEngine {
     return this.nativeEngine.selectedSampleRate;
   }
 
+  public get nativeLooperStorageBudgetBytes(): number {
+    return this.nativeEngine.nativeLooperStorageBudgetBytes;
+  }
+
   public get selectedBufferFrames(): number {
     if (this.currentMode === 'browser') {
-      return 128;
+      return this.browser.selectedBufferFrames;
     }
     return this.nativeEngine.selectedBufferFrames;
+  }
+
+  /** Select a real clean-room Browser master-output DSP stage; Native currently returns false. */
+  public async setOutputDspFx(
+    algorithm: BrowserFxAlgorithm,
+    parameters: BrowserFxParameters = {},
+    enabled = true,
+  ): Promise<boolean> {
+    if (this.currentMode !== 'browser') return false;
+    return this.browser.setOutputDspFx(algorithm, parameters, enabled);
+  }
+
+  public setOutputDspFxEnabled(enabled: boolean, rampFrames?: number): void {
+    if (this.currentMode !== 'browser') return;
+    this.browser.setOutputDspFxEnabled(enabled, rampFrames);
+  }
+
+  public configureOutputDspFx(parameters: BrowserFxParameters): void {
+    if (this.currentMode !== 'browser') return;
+    this.browser.configureOutputDspFx(parameters);
   }
 
   public get monitoringEnabled(): boolean {
@@ -195,6 +268,14 @@ export class AudioEngine {
 
   public async init() {
     await this.activeEngine.init();
+  }
+
+  /** Resume a suspended Browser AudioContext directly from a trusted user gesture. */
+  public resumeFromUserActivation(): Promise<void> {
+    if (this.currentMode !== 'browser') return Promise.resolve();
+    const context = this.browser.context;
+    if (context.state !== 'suspended') return Promise.resolve();
+    return context.resume();
   }
 
   public async getDevices(): Promise<AudioDeviceSelection> {
@@ -218,7 +299,9 @@ export class AudioEngine {
       inputs: mapBrowserDevices(devices.inputs, sampleRate),
       outputs: mapBrowserDevices(devices.outputs, sampleRate),
       sampleRates: [sampleRate],
-      bufferOptions: [128],
+      // Browser render quantum is runtime-defined and reported by the
+      // AudioWorklet; it is not a selectable hardware buffer size.
+      bufferOptions: [],
     };
   }
 
@@ -240,6 +323,26 @@ export class AudioEngine {
     if (this.currentMode === 'native') {
       await this.nativeEngine.setSampleRate(sampleRate);
     }
+  }
+
+  public async setNativeLooperStorageBudget(budgetBytes: number) {
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.setNativeLooperStorageBudget(budgetBytes);
+    }
+  }
+
+  /** Configure source-aware Native playback on one stored loop. */
+  public async setNativeLoopTransport(trackId: number, config: NativeLoopTransportConfig): Promise<NativeStatus> {
+    if (this.currentMode !== 'native') {
+      throw new Error('Native per-track loop transport is only available in Native audio mode.');
+    }
+    return this.nativeEngine.setLoopTransport(trackId, config);
+  }
+
+  /** Read the latest acknowledged Native per-track loop-transport state. */
+  public getNativeLoopTransportStatus(trackId: number): NativeLoopTransportStatus | null {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.getLoopTransportStatus(trackId);
   }
 
   public async setBufferFrames(bufferFrames: number) {
@@ -324,11 +427,17 @@ export class AudioEngine {
     return this.activeEngine.supportsReverse();
   }
 
+  /** Browser rendering remains Signalsmith; this capability is Native-only. */
+  public getNativeHqRenderer(): { available: boolean; engines: NativeHqEngine[] } {
+    if (this.currentMode !== 'native') return { available: false, engines: [] };
+    return this.nativeEngine.getNativeHqRenderer();
+  }
+
   public getCapabilities(): AudioCapabilities {
     if (this.currentMode === 'browser') {
       return {
         mode: 'browser',
-        modeSummary: 'BROWSER: FULL TRACK CONTROLS',
+        modeSummary: 'BROWSER: 5 TRACKS; LIMITED EFFECTS/RHYTHM; DSP PARITY INCOMPLETE',
         supportedTrackCount: 5,
         supportsInputFx: true,
         supportsTrackFx: true,
@@ -343,18 +452,31 @@ export class AudioEngine {
       };
     }
 
+    const supportsInputFx = this.nativeEngine.getCatalogFxOptions('input').length > 0;
+    const supportsTrackFx = this.nativeEngine.getCatalogFxOptions('track').length > 0;
+    const supportedTrackCount = this.nativeEngine.getNativeTrackCount();
+    const status = this.nativeEngine.getUiStatus();
+    const fxReason = status.bridgeAvailable
+      ? !supportsInputFx && !supportsTrackFx
+        ? 'Native catalog FX is unavailable in the current bridge status.'
+        : !supportsInputFx
+          ? 'Native catalog Input A–D FX is unavailable; Track A–D availability is reported separately.'
+          : !supportsTrackFx
+            ? 'Native catalog Track A–D FX is unavailable; Input A–D availability is reported separately.'
+            : ''
+      : 'Connect the Native bridge to read the available Input and Track catalog FX.';
     return {
       mode: 'native',
-      modeSummary: 'NATIVE V1: TRACK 1 ONLY',
-      supportedTrackCount: 1,
-      supportsInputFx: false,
-      supportsTrackFx: false,
+      modeSummary: `NATIVE: ${supportedTrackCount} LOOP TRACK${supportedTrackCount === 1 ? '' : 'S'}; INPUT A–D ${supportsInputFx ? 'AVAILABLE' : 'UNAVAILABLE'}; TRACK A–D ${supportsTrackFx ? 'AVAILABLE' : 'UNAVAILABLE'}`,
+      supportedTrackCount,
+      supportsInputFx,
+      supportsTrackFx,
       supportsReverse: false,
-      supportsRhythm: false,
+      supportsRhythm: this.nativeEngine.supportsRhythm(),
       supportsBeatFeedback: false,
-      fxReason: 'NO FX IN NATIVE V1',
+      fxReason,
       reverseReason: 'NO REVERSE IN NATIVE V1',
-      rhythmReason: 'NO RHYTHM IN NATIVE V1',
+      rhythmReason: this.nativeEngine.rhythmEngine.unavailableReason,
       beatReason: 'NO BEAT IN NATIVE V1',
       trackLevelReason: 'TRACK MIX IN BROWSER ONLY',
     };
@@ -365,10 +487,14 @@ export class AudioEngine {
     const isAvailable = this.isTrackAvailable(trackId);
     const availabilityReason = isAvailable || capabilities.mode === 'browser'
       ? ''
-      : `TRACK ${trackId} UNAVAILABLE IN NATIVE V1`;
+      : `TRACK ${trackId} IS NOT EXPOSED BY THE NATIVE HOST`;
     const controlReason = availabilityReason || capabilities.trackLevelReason;
-    const trackFxReason = availabilityReason || capabilities.fxReason;
+    const nativePerTrackFxUnavailable = capabilities.mode === 'native' && isAvailable;
+    const trackFxReason = availabilityReason || (nativePerTrackFxUnavailable
+      ? 'NATIVE TRACK A–D FX USE A SHARED POSTMIX BUS; PER-TRACK FILTER CONTROLS ARE UNAVAILABLE'
+      : capabilities.fxReason);
     const reverseReason = availabilityReason || capabilities.reverseReason;
+    const supportsTrackStripFx = capabilities.mode === 'browser' && capabilities.supportsTrackFx && isAvailable;
 
     return {
       trackId,
@@ -376,8 +502,8 @@ export class AudioEngine {
       availabilityReason,
       supportsTrackLevel: capabilities.mode === 'browser' && isAvailable,
       levelReason: capabilities.mode === 'browser' && isAvailable ? '' : controlReason,
-      supportsTrackFx: capabilities.supportsTrackFx && isAvailable,
-      trackFxReason: capabilities.supportsTrackFx && isAvailable ? '' : trackFxReason,
+      supportsTrackFx: supportsTrackStripFx,
+      trackFxReason: supportsTrackStripFx ? '' : trackFxReason,
       supportsReverse: capabilities.supportsReverse && isAvailable,
       reverseReason: capabilities.supportsReverse && isAvailable ? '' : reverseReason,
     };
@@ -385,7 +511,7 @@ export class AudioEngine {
 
   public isTrackAvailable(trackId: number) {
     if (this.currentMode === 'native') {
-      return this.nativeEngine.isTrackAvailable(trackId);
+      return this.nativeEngine.isNativeTrackAvailable(trackId);
     }
     return this.browser.isTrackAvailable(trackId);
   }
@@ -442,8 +568,215 @@ export class AudioEngine {
     this.activeEngine.setFxType(location, slotIndex, type);
   }
 
+  /** Independent pre-mix track A–D chains; legacy setFxType still edits the shared bank. */
+  public setTrackFxType(trackId: number, slotIndex: number, type: string): boolean {
+    return this.activeEngine.setTrackFxType(trackId, slotIndex, type);
+  }
+
+  public setTrackFxParameter(trackId: number, slotIndex: number, value: number): boolean {
+    return this.activeEngine.setTrackFxParameter(trackId, slotIndex, value);
+  }
+
+  public setTrackFxNamedParameters(trackId: number, slotIndex: number, parameters: Record<string, number>): boolean {
+    return this.activeEngine.setTrackFxNamedParameters(trackId, slotIndex, parameters);
+  }
+
+  public setTrackFxActive(trackId: number, slotIndex: number, active: boolean): boolean {
+    return this.activeEngine.setTrackFxActive(trackId, slotIndex, active);
+  }
+
+  public getTrackFxStatus(trackId?: number): TrackFxStatus[] {
+    return this.activeEngine.getTrackFxStatus(trackId);
+  }
+
+  /** Web MIDI permission is opt-in; Native routing requires a selected, running MIDI-driven catalog slot. */
+  public connectMidiInput(target?: TrackFxMidiTarget): Promise<MidiInputState> {
+    if (this.currentMode === 'browser') {
+      this.ensureBrowserMidiStateSubscription();
+      return this.browser.connectMidiInput(target).then((state) => {
+        this.emitMidiInputState();
+        return state;
+      });
+    }
+    if (!target) {
+      this.setNativeMidiInputState('runtime-unavailable');
+      return Promise.resolve(this.nativeMidiInputState);
+    }
+    const slotIndex = ['A', 'B', 'C', 'D'].indexOf(target.slot);
+    if (slotIndex < 0 || (target.path !== 'input' && target.path !== 'track') ||
+        (target.trackId !== undefined && (!Number.isInteger(target.trackId) || target.trackId < 0 || target.trackId > 5 ||
+          (target.path === 'input' && target.trackId !== 0)))) {
+      this.setNativeMidiInputState('runtime-unavailable');
+      return Promise.resolve(this.nativeMidiInputState);
+    }
+    const runtime = this.nativeEngine.getCatalogFxSlotStatus(target.path, slotIndex, target.trackId ?? 0);
+    if (!this.nativeEngine.isNativeReady() || !runtime.acknowledged ||
+        runtime.acknowledgedEffectId !== (target.effectId ?? 'osc_voc_m') || runtime.pendingRestart) {
+      this.setNativeMidiInputState('runtime-unavailable');
+      return Promise.resolve(this.nativeMidiInputState);
+    }
+
+    if (this.nativeMidiInput && (this.nativeMidiTarget?.path !== target.path ||
+        this.nativeMidiTarget?.slot !== target.slot ||
+        this.nativeMidiTarget?.effectId !== target.effectId ||
+        (this.nativeMidiTarget?.trackId ?? 0) !== (target.trackId ?? 0))) {
+      this.nativeMidiInput.disconnect();
+      this.nativeMidiInput = null;
+    }
+    if (!this.nativeMidiInput) {
+      const route = { ...target };
+      this.nativeMidiTarget = route;
+      this.nativeMidiInput = new MidiInputController(
+        (event) => this.handleNativeMidiNote(event, route),
+        { onStateChange: (state) => this.setNativeMidiInputState(state) },
+      );
+    }
+    return this.nativeMidiInput.connect();
+  }
+
+  public disconnectMidiInput(): void {
+    this.browserEngine?.disconnectMidiInput();
+    this.nativeMidiInput?.disconnect();
+    this.nativeMidiInput = null;
+    this.nativeMidiTarget = null;
+    this.setNativeMidiInputState('disconnected');
+    this.emitMidiInputState();
+  }
+
+  public getMidiInputState(): MidiInputState {
+    if (this.currentMode === 'browser') {
+      return this.browserEngine ? this.browserEngine.getMidiInputState() : 'disconnected';
+    }
+    return this.nativeMidiInputState;
+  }
+
+  public onMidiInputStateChange(listener: (state: MidiInputState) => void): () => void {
+    this.midiInputListeners.add(listener);
+    if (this.currentMode === 'browser') this.ensureBrowserMidiStateSubscription();
+    listener(this.getMidiInputState());
+    return () => {
+      this.midiInputListeners.delete(listener);
+      if (this.midiInputListeners.size === 0) {
+        this.browserMidiInputUnsubscribe?.();
+        this.browserMidiInputUnsubscribe = null;
+      }
+    };
+  }
+
+  private setNativeMidiInputState(state: MidiInputState): void {
+    if (state === this.nativeMidiInputState) return;
+    this.nativeMidiInputState = state;
+    this.emitMidiInputState();
+  }
+
+  private ensureBrowserMidiStateSubscription(): void {
+    if (this.browserMidiInputUnsubscribe) return;
+    this.browserMidiInputUnsubscribe = this.browser.onMidiInputStateChange(() => this.emitMidiInputState());
+  }
+
+  private emitMidiInputState(): void {
+    const state = this.getMidiInputState();
+    for (const listener of this.midiInputListeners) listener(state);
+  }
+
+  private handleNativeMidiNote(event: MidiNoteEvent, target: TrackFxMidiTarget): void {
+    if (this.suppressNativeMidiCallbacks) return;
+    const anchor = this.nativeEngine.getOscVocMidiFrameAnchor();
+    if (!anchor) {
+      this.setNativeMidiInputState('runtime-unavailable');
+      return;
+    }
+    let nativeEvent: NativeCatalogMidiEvent;
+    try {
+      nativeEvent = { ...mapMidiNoteToNativeCatalogEvent(event, target, anchor), ...(target.trackId !== undefined ? { trackId: target.trackId } : {}) };
+    } catch {
+      if (this.currentMode === 'native') this.disconnectNativeMidiWithError();
+      return;
+    }
+    if (this.nativeMidiQueue.length >= 128) {
+      this.disconnectNativeMidiWithError();
+      return;
+    }
+    this.nativeMidiQueue.push(nativeEvent);
+    void this.flushNativeMidiQueue();
+  }
+
+  private async flushNativeMidiQueue(): Promise<void> {
+    if (this.nativeMidiFlushRunning) return;
+    this.nativeMidiFlushRunning = true;
+    try {
+      while (this.nativeMidiQueue.length > 0) {
+        const queued = this.nativeMidiQueue.shift()!;
+        await this.nativeEngine.queueCatalogMidiEvent(queued);
+      }
+    } catch {
+      this.disconnectNativeMidiWithError();
+    } finally {
+      this.nativeMidiFlushRunning = false;
+      if (this.nativeMidiQueue.length > 0) void this.flushNativeMidiQueue();
+    }
+  }
+
+  private disconnectNativeMidiWithError(): void {
+    const input = this.nativeMidiInput;
+    this.nativeMidiInput = null;
+    this.nativeMidiTarget = null;
+    this.nativeMidiQueue = [];
+    this.suppressNativeMidiCallbacks = true;
+    input?.disconnect();
+    this.suppressNativeMidiCallbacks = false;
+    this.setNativeMidiInputState('error');
+  }
+
+  public getNativeCatalogFxOptions(path: NativeFxPath, trackId = 0): string[] {
+    if (this.currentMode !== 'native') return [];
+    return this.nativeEngine.getCatalogFxOptions(path, trackId);
+  }
+
+  public getNativeCatalogFxSlotStatus(path: NativeFxPath, slotIndex: number, trackId = 0): NativeCatalogFxSlotRuntime | null {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.getCatalogFxSlotStatus(path, slotIndex, trackId);
+  }
+
+  public getNativeCatalogMidiSlotStatus(path: NativeFxPath, slotIndex: number, trackId = 0): NativeCatalogMidiSlotStatus | null {
+    return this.currentMode === 'native' ? this.nativeEngine.getCatalogMidiSlotStatus(path, slotIndex, trackId) : null;
+  }
+
+  public setNativeStepSlicerParameters(path: NativeFxPath, slotIndex: number, parameters: NativeStepSlicerParameters, trackId = 0) {
+    if (this.currentMode !== 'native') return;
+    this.nativeEngine.setCatalogStepSlicerParameters(path, slotIndex, parameters, trackId);
+  }
+
+  /** Apply effect-specific parameters to the selected runtime's A–D catalog slot. */
+  public setCatalogFxParameters(path: NativeFxPath, slotIndex: number, parameters: Record<string, number>) {
+    if (this.currentMode === 'native') {
+      this.nativeEngine.setCatalogFxParameters(path, slotIndex, parameters);
+      return;
+    }
+    this.browser.setFxNamedParameters(path, slotIndex, parameters);
+  }
+
+  /** Apply the six canonical PREAMP controls to Browser or Native key names. */
+  public setPreampParameters(path: NativeFxPath, slotIndex: number, parameters: PreampParameters) {
+    if (this.currentMode === 'native') {
+      this.nativeEngine.setCatalogFxParameters(path, slotIndex, toNativePreampParameters(parameters));
+      return;
+    }
+    this.browser.setFxNamedParameters(path, slotIndex, toBrowserPreampParameters(parameters));
+  }
+
   public setFxParam(location: 'input' | 'track', slotIndex: number, value: number) {
     this.activeEngine.setFxParam(location, slotIndex, value);
+  }
+
+  public setBrowserStepSlicerStep(location: 'input' | 'track', slotIndex: number, stepIndex: number, amplitudePercent: number) {
+    if (this.currentMode !== 'browser') return;
+    this.browserEngine?.setStepSlicerStep(location, slotIndex, stepIndex, amplitudePercent);
+  }
+
+  public setBrowserStepSlicerControl(location: 'input' | 'track', slotIndex: number, control: BrowserStepSlicerControl, value: number) {
+    if (this.currentMode !== 'browser') return;
+    this.browserEngine?.setStepSlicerControl(location, slotIndex, control, value);
   }
 
   public setFxActive(location: 'input' | 'track', slotIndex: number, active: boolean) {
