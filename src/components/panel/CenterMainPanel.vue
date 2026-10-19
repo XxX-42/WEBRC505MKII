@@ -66,7 +66,7 @@
             <span>{{ pageLabel }}<template v-if="screenEditor.active.value"> {{ screenEditor.pageIndex.value + 1 }}/{{ screenEditor.pageCount.value }}</template></span>
           </div>
           <div v-if="!screenEditor.active.value" class="lcd-main">{{ bpmDisplay }}</div>
-          <div class="lcd-name">{{ pageTitle }}</div>
+          <div v-if="!screenEditor.active.value" class="lcd-name">{{ pageTitle }}</div>
           <div class="lcd-row lcd-track-line">
             <span>TR {{ currentTrackId }} · {{ selectedTrackState }}</span>
             <span>{{ bpmDisplay }} BPM</span>
@@ -74,7 +74,7 @@
           <LcdFieldGrid v-if="screenEditor.active.value" :fields="screenFields" :selected-index="screenEditor.selectedFieldIndex.value"
             @select="screenEditor.selectField" @update="setScreenField" @activate="activateScreenField" />
           <div v-else class="lcd-parameter-row" aria-label="Current screen controls">
-            <span v-for="(field, index) in screenFields" :key="field.key">{{ index + 1 }} {{ field.label }} {{ displayFieldValue(field) }}</span>
+            <span v-for="(field, index) in screenFields" :key="field.key">{{ index + 1 }} {{ homeFieldLabel(field) }} {{ displayFieldValue(field) }}</span>
           </div>
           <div class="lcd-status" role="status" aria-live="polite" :title="statusHint">{{ statusHint }}</div>
           <div id="rc505-lcd-confirmations" class="lcd-confirmations"></div>
@@ -438,6 +438,15 @@ const screenFields = computed<ScreenField[]>(() => {
 function displayFieldValue(field: ScreenField): string {
   return field.format ? field.format(field.value) : `${Math.round(field.value)}${field.max === 100 ? '%' : ''}`;
 }
+
+function homeFieldLabel(field: ScreenField): string {
+  switch (field.key) {
+    case 'rhythm-volume': return 'RHY VOL';
+    case 'input-fx-value': return 'IN FX';
+    case 'track-fx-value': return 'TR FX';
+    default: return field.label;
+  }
+}
 function setScreenField(index: number, value: number): void {
   if (screenEditor.active.value) screenEditor.selectField(index);
   if (screenFields.value[index]?.disabled) return;
@@ -618,7 +627,7 @@ onUnmounted(() => {
   pointer-events: auto;
   display: grid;
   box-sizing: border-box;
-  grid-template-rows: 12px 22px 14px 12px 22px 22px;
+  grid-template-rows: 12px 25px 15px 12px 28px 24px;
   gap: 1px;
   width: 100%;
   height: 100%;
@@ -633,19 +642,18 @@ onUnmounted(() => {
   font-family: var(--font-lcd, 'Lucida Console', monospace);
 }
 .lcd-display:not(.lcd-editor-active) { aspect-ratio: 2 / 1; }
-.lcd-display.lcd-editor-active { grid-template-rows: 11px 16px 11px minmax(0, 1fr) 24px; gap: 1px; }
-.lcd-editor-active .lcd-name { font-size: 13px; line-height: 16px; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lcd-editor-active .lcd-status { display: -webkit-box; line-height: 11px; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; -webkit-line-clamp: 2; }
+.lcd-display.lcd-editor-active { grid-template-rows: 12px 12px minmax(0, 1fr) 24px; gap: 1px; }
+.lcd-editor-active .lcd-status { display: -webkit-box; line-height: 12px; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; -webkit-line-clamp: 2; }
 .lcd-confirmations { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
 .lcd-confirmations:not(:empty) { pointer-events: auto; }
-.lcd-row { display: flex; justify-content: space-between; gap: 8px; min-width: 0; font-size: 11px; line-height: 1; letter-spacing: 0.03em; }
+.lcd-row { display: flex; justify-content: space-between; gap: 8px; min-width: 0; font-size: 12px; line-height: 1; letter-spacing: 0.03em; }
 .lcd-row.top { color: #384860; }
-.lcd-parameter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); align-items: center; gap: 1px 8px; overflow: hidden; color: #202d41; font-size: 12px; line-height: 1.05; white-space: normal; }
+.lcd-parameter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); align-items: center; gap: 1px 8px; overflow: hidden; color: #202d41; font-size: 13px; line-height: 1; white-space: normal; }
 .lcd-parameter-row span { min-width: 0; overflow-wrap: anywhere; }
-.lcd-main { align-self: center; font-size: 24px; font-weight: 700; line-height: 0.9; text-align: center; }
-.lcd-name { font-size: 14px; line-height: 1; letter-spacing: 0.06em; text-align: center; }
+.lcd-main { align-self: center; font-size: 26px; font-weight: 700; line-height: 0.9; text-align: center; }
+.lcd-name { font-size: 15px; line-height: 1; letter-spacing: 0.06em; text-align: center; }
 .lcd-track-line { color: #24344e; }
-.lcd-status { display: -webkit-box; min-height: 0; overflow: hidden; color: #1c3957; font-size: 11px; line-height: 1.05; letter-spacing: 0.02em; text-align: center; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.lcd-status { display: -webkit-box; min-height: 0; overflow: hidden; color: #1c3957; font-size: 12px; line-height: 1; letter-spacing: 0.02em; text-align: center; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 
 .soft-control-row { position: absolute; inset: 0; display: block; width: auto; }
 .soft-field { position: absolute; top: 185px; display: grid; justify-items: center; gap: 0; width: 64px; min-width: 64px; }

@@ -22,6 +22,17 @@ test('replica keeps the physical control inventory and warns below readable view
     await expect(face.locator('.hardware-fader')).toHaveCount(5);
     await expect(face.getByRole('button', { name: 'Undo and redo are unavailable' })).toBeDisabled();
     await expect(face.getByRole('button', { name: 'Record or play track', exact: true }).first()).toBeDisabled();
+    const disabledRecord = face.locator('.track-strip[data-track-id="1"] [data-panel-control="record-play"]');
+    await expect(disabledRecord).toHaveCSS('opacity', '0.64');
+    await expect(disabledRecord.locator('.button-label')).toHaveCSS('color', 'rgb(241, 242, 245)');
+    await expect(face.locator('.track-strip[data-track-id="1"] .stop-disc')).toHaveCSS('opacity', '0.62');
+    if (viewport.width === 1366) {
+      const parameterCells = page.locator('.lcd-parameter-row span');
+      expect(await parameterCells.allTextContents()).toEqual(['1 BPM 120', '2 RHY VOL 50%', '3 IN FX 0%', '4 TR FX 0%']);
+      expect(await parameterCells.evaluateAll((elements) => elements.every((element) => {
+        return element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight;
+      }))).toBe(true);
+    }
     const zoom = Number(await page.getByRole('slider', { name: 'Faceplate zoom' }).inputValue());
     expect(zoom).toBeGreaterThanOrEqual(0.8);
     if (viewport.width === 390) await expect(page.locator('.viewport-warning')).toContainText('当前窗口过窄／过矮');
@@ -53,6 +64,12 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
   const rhythmEdit = face.getByTestId('rhythm-edit-button');
   await rhythmEdit.click();
   await expect(screen).toContainText(/RHYTHM/i);
+  await expect(screen.locator('.lcd-name')).toHaveCount(0);
+  const rhythmVolumeLabel = screen.locator('[data-field-key="volume"] .lcd-field-label');
+  await expect(rhythmVolumeLabel).toHaveText('VOLUME');
+  const labelWidths = await rhythmVolumeLabel.evaluate((element) => ({ scroll: element.scrollWidth, client: element.clientWidth }));
+  expect(labelWidths.scroll).toBeLessThanOrEqual(labelWidths.client);
+  await expect(screen.locator('[data-field-key="pattern"] .lcd-field-label')).toHaveCSS('font-size', '13px');
   await screen.screenshot({ path: testInfo.outputPath('lcd-editor-1920.png') });
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
   await expect(screen.locator(':focus')).toHaveCount(1);

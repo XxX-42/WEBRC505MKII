@@ -439,5 +439,9 @@ onUnmounted(() => {
   border-color: #e1f6ff;
   box-shadow: 0 0 7px rgba(79,195,255,.88), 0 0 18px rgba(42,169,255,.56), inset 0 1px rgba(255,255,255,.65), inset 0 -4px 9px rgba(0,44,74,.54);
 }
-.hardware-button.appearance-classic.is-disabled { filter: grayscale(.65); opacity: .42; }
+.hardware-button.appearance-classic.is-disabled { filter: grayscale(.55); opacity: .64; }
+.hardware-button.appearance-classic.is-disabled .button-label {
+  color: #f1f2f5;
+  text-shadow: 0 1px 1px #090a0d;
+}
 </style>

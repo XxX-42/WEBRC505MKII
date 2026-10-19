@@ -186,6 +186,10 @@ const handleInput = (event: Event) => {
   filter: grayscale(1);
   opacity: 0.5;
 }
+.hardware-fader.appearance-classic.is-disabled .fader-cap {
+  filter: grayscale(0.65);
+  opacity: 0.66;
+}
 
 .fader-cap {
   position: absolute;

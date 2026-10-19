@@ -228,8 +228,9 @@ function activateField(index: number): void {
   color: #e9f1ff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
-.lcd-field-card:has(.lcd-enum-control) { display: grid; grid-template-rows: 11px minmax(0, 1fr); gap: 0; padding: 1px 2px; }
+.lcd-field-card:has(.lcd-enum-control) { display: grid; grid-template-rows: 12px minmax(0, 1fr); gap: 0; padding: 1px 2px; }
 .lcd-field-card.is-number { flex-direction: column; align-items: stretch; justify-content: center; gap: 1px; padding: 1px 3px; }
+.lcd-field-card.is-number .lcd-field-label { font-size: 12px; letter-spacing: 0; }
 
 .lcd-field-card.is-disabled {
   border-style: dashed;
@@ -249,7 +250,7 @@ function activateField(index: number): void {
   min-width: 0;
   overflow: hidden;
   color: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.03em;
@@ -261,10 +262,10 @@ function activateField(index: number): void {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   width: 100%;
   min-width: 0;
-  height: 14px;
+  height: 16px;
 }
 
 .lcd-field-value {
@@ -272,7 +273,7 @@ function activateField(index: number): void {
   max-width: 86px;
   overflow: hidden;
   color: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.02em;
@@ -319,7 +320,7 @@ function activateField(index: number): void {
   grid-template-rows: minmax(0, 1fr) 5px;
   align-items: center;
   min-width: 0;
-  height: 16px;
+  height: 20px;
   border-top: 1px solid rgba(37, 50, 72, 0.32);
   border-bottom: 1px solid rgba(37, 50, 72, 0.32);
 }
@@ -327,10 +328,10 @@ function activateField(index: number): void {
 .lcd-enum-value {
   display: block;
   width: 100%;
-  max-height: 11px;
+  max-height: 14px;
   overflow: hidden;
   color: inherit;
-  font: 700 11px/1 var(--font-lcd, 'Lucida Console', monospace);
+  font: 700 13px/1 var(--font-lcd, 'Lucida Console', monospace);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -401,7 +402,7 @@ function activateField(index: number): void {
 .lcd-field-action strong {
   min-width: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;

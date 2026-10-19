@@ -273,6 +273,10 @@ onUnmounted(() => stopDrag());
   cursor: not-allowed;
   filter: grayscale(0.65);
 }
+.hardware-knob-wrapper.appearance-classic.is-disabled {
+  opacity: 0.64;
+  filter: grayscale(0.55);
+}
 
 .hardware-knob-wrapper:active {
   cursor: grabbing;

@@ -293,7 +293,7 @@ const stateLabel = computed(() => {
 }
 
 .track-strip.disabled {
-  opacity: 0.72;
+  opacity: 0.84;
 }
 
 .track-warning {
@@ -380,7 +380,7 @@ const stateLabel = computed(() => {
 
 .stop-disc:hover:not(:disabled) { border-color: #fff; background: radial-gradient(circle at 35% 30%, #444850 0%, #191b21 72%); }
 .stop-disc:focus-visible { outline: 3px solid #6bc5ff; outline-offset: 3px; }
-.stop-disc:disabled { opacity: 0.42; cursor: not-allowed; }
+.stop-disc:disabled { opacity: 0.62; cursor: not-allowed; }
 .stop-disc:active:not(:disabled) { transform: translateY(1px); }
 
 .stop-disc .stop-square {

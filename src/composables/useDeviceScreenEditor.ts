@@ -495,7 +495,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const kitOptions = DRUM_KIT_CATALOG.map((kit) => ({ label: `${kit.index} · ${kit.officialName}`, value: kit.index }));
     const base: DeviceScreenField[] = [
       makeNumberField('bpm', 'TEMPO', Transport.getInstance().bpm, (value) => { Transport.getInstance().setBpm(Math.max(40, Math.min(300, Math.round(value)))); }, { min: 40, max: 300, step: 1, disabled: rhythm.disabled.value, reason: rhythm.message.value }),
-      makeNumberField('volume', 'RHYTHM VOLUME', rhythm.volume.value, async (value) => { rhythm.volume.value = Math.max(0, Math.min(100, value)); await rhythm.updateVolume(); }, { min: 0, max: 100, step: 1, disabled: rhythm.disabled.value, reason: rhythm.message.value }),
+      makeNumberField('volume', 'VOLUME', rhythm.volume.value, async (value) => { rhythm.volume.value = Math.max(0, Math.min(100, value)); await rhythm.updateVolume(); }, { min: 0, max: 100, step: 1, disabled: rhythm.disabled.value, reason: rhythm.message.value }),
       makeEnumField('pattern', 'PATTERN', rhythmUiState.patternIndex, patternOptions, (value) => { void rhythm.updateSelection({ patternIndex: value }); }, { disabled: rhythm.disabled.value, reason: rhythm.message.value }),
       makeEnumField('kit', 'KIT', rhythmUiState.kitIndex, kitOptions, (value) => { void rhythm.updateSelection({ kitIndex: value }); }, { disabled: rhythm.disabled.value, reason: rhythm.message.value }),
       makeEnumField('variation', 'VARIATION', RHYTHM_VARIATIONS.indexOf(rhythmUiState.variation), fieldOptions(RHYTHM_VARIATIONS), (value) => { void rhythm.updateSelection({ variation: RHYTHM_VARIATIONS[value] ?? 'A' }); }, { disabled: rhythm.disabled.value, reason: rhythm.message.value }),
