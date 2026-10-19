@@ -64,6 +64,35 @@ describe('TrackAudio HQ WAV export integration', () => {
     expect(buffer.getChannelData(1)).toEqual(new Float32Array([-0.1, -0.2, -0.3]));
   });
 
+  it('preserves recorded Browser L/R identity through the HQ export handoff', async () => {
+    const { context, TrackState, trackAudio } = await makeTrack();
+    const privateApi = trackAudio as unknown as {
+      processRecordedBuffer: (buffer: Float32Array, channelCount: 1 | 2) => void;
+      resumeAfterRecording: boolean;
+      audioBuffer: AudioBuffer | null;
+    };
+    privateApi.resumeAfterRecording = false;
+    privateApi.processRecordedBuffer(Float32Array.from([0.1, -0.1, 0.2, -0.2, 0.3, -0.3]), 2);
+    trackAudio.state = TrackState.STOPPED;
+    const exportResult = { mode: 'HQ_RENDER', bytes: new Uint8Array(48), frameCount: 3 };
+    exportHarness.createHqWavExport.mockResolvedValue(exportResult);
+
+    await expect(trackAudio.exportHqWav({
+      semitones: 0,
+      playbackRate: 1,
+      format: 'pcm16',
+    })).resolves.toBe(exportResult);
+
+    const [channels, options] = exportHarness.createHqWavExport.mock.calls[0] ?? [];
+    expect(Array.from(channels?.[0] ?? [])).toEqual(
+      Array.from(new Float32Array([0.1, 0.2, 0.3])),
+    );
+    expect(Array.from(channels?.[1] ?? [])).toEqual(
+      Array.from(new Float32Array([-0.1, -0.2, -0.3])),
+    );
+    expect(options).toMatchObject({ sampleRate: context.sampleRate, format: 'pcm16' });
+  });
+
   it('rejects export while the track is recording and when it has no audio buffer', async () => {
     const { context, TrackState, trackAudio } = await makeTrack();
     await expect(trackAudio.exportHqWav({ semitones: 0, playbackRate: 1, format: 'pcm16' }))
