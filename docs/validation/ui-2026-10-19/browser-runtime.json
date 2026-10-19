@@ -1,0 +1,16 @@
+{
+  "input": "Chromium virtual microphone",
+  "hardwareLatencyMeasured": false,
+  "operations": [
+    "record",
+    "stop",
+    "play",
+    "overdub",
+    "stop"
+  ],
+  "frames": 56448,
+  "sampleRate": 44100,
+  "channels": 1,
+  "peak": 4.000207901000977,
+  "ready": true
+}

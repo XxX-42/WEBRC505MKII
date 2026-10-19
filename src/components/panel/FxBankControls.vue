@@ -8,6 +8,7 @@
     <div class="bank-body">
       <HardwareKnob
         class="fx-bank-knob"
+        appearance="classic"
         :model-value="modelValue"
         :label="activeFx?.type ?? 'FX VALUE'"
         :color="color"
@@ -27,6 +28,7 @@
             shape="circle"
             size="sm"
             class="fx-slot-button"
+            appearance="classic"
             :label="slot.id"
             :color="color"
             :active="slot.active"
@@ -46,6 +48,7 @@
           shape="rect"
           size="sm"
           class="fx-edit-button"
+          appearance="classic"
           color="white"
           label="EDIT"
           :aria-label="`Edit ${title.toLowerCase()} effects`"
@@ -129,8 +132,8 @@ function pressSlot(slotId: FxSlotId): void {
 }
 
 .bank-heading { position: absolute; top: 10px; left: 16px; display: grid; gap: 3px; }
-.bank-heading h2 { margin: 0; color: #e0e3e8; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
-.bank-kicker { color: #b6bdc7; font-size: 11px; letter-spacing: 0.08em; }
+.bank-heading h2 { margin: 0; color: #e8e4eb; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-shadow: 0 1px #07070a; }
+.bank-kicker { color: #cbc4ce; font-size: 12px; letter-spacing: 0.08em; }
 .bank-body { display: contents; }
 .bank-actions { position: static; display: contents; width: auto; }
 .fx-slot-row { display: contents; }
@@ -193,17 +196,15 @@ function pressSlot(slotId: FxSlotId): void {
   border: 1px solid rgba(245, 248, 255, 0.76);
   box-shadow: 0 0 0 1px rgba(220, 232, 248, 0.32), inset 0 0 7px rgba(220, 232, 248, 0.16);
 }
-.fx-bank-input :deep(.fx-slot-button.active.color-blue:not(.is-disabled)),
-.fx-bank-input :deep(.fx-slot-button:active.color-blue:not(.is-disabled)) {
-  background: linear-gradient(145deg, #c2efff 0%, #56cfff 42%, #1473af 100%) !important;
-  border: 1px solid rgba(227, 249, 255, 0.94);
-  box-shadow: 0 0 8px rgba(69, 190, 255, 0.94), 0 0 20px rgba(42, 169, 255, 0.68), inset 0 0 12px rgba(247, 253, 255, 0.44), inset 0 -5px 12px rgba(0, 51, 85, 0.54);
+.fx-bank :deep(.fx-slot-button.active.color-red:not(.is-disabled)) {
+  background: linear-gradient(155deg, #ffb5ba 0%, #ff4d5d 45%, #9e162b 100%) !important;
+  border-color: #ffced1;
+  box-shadow: 0 0 7px rgba(255,57,77,.95), 0 0 18px rgba(255,35,61,.62), inset 0 1px rgba(255,255,255,.66), inset 0 -4px 9px rgba(75,0,8,.55);
 }
-.fx-bank-track :deep(.fx-slot-button.active.color-red:not(.is-disabled)),
-.fx-bank-track :deep(.fx-slot-button:active.color-red:not(.is-disabled)) {
-  background: linear-gradient(145deg, #ffc1df 0%, #ff72b4 42%, #a52d68 100%) !important;
-  border: 1px solid rgba(255, 231, 243, 0.96);
-  box-shadow: 0 0 8px rgba(255, 101, 176, 0.95), 0 0 20px rgba(255, 72, 163, 0.72), inset 0 0 11px rgba(255, 247, 252, 0.48), inset 0 -5px 12px rgba(80, 10, 43, 0.5);
+.fx-bank :deep(.fx-slot-button[data-fx-selected="true"].active.color-red:not(.is-disabled)) {
+  background: linear-gradient(155deg, #ffd8eb 0%, #ff79ba 46%, #a92c68 100%) !important;
+  border-color: #ffe8f4;
+  box-shadow: 0 0 8px rgba(255,111,183,.96), 0 0 20px rgba(255,62,156,.7), inset 0 1px rgba(255,255,255,.74), inset 0 -4px 9px rgba(83,5,42,.55);
 }
 .bank-status {
   min-height: 13px;

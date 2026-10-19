@@ -26,6 +26,7 @@
           :disabled-reason="trackFxDisabledReason"
           label="FX"
           class="track-function-button"
+          appearance="classic"
           data-track-control="fx"
           :aria-label="trackFxButtonAriaLabel"
           data-hardware-control="button"
@@ -40,6 +41,7 @@
           :disabled-reason="disabledReason"
           label="TRACK"
           class="track-function-button"
+          appearance="classic"
           data-track-control="select"
           :aria-label="trackButtonAriaLabel"
           data-hardware-control="button"
@@ -70,6 +72,7 @@
 
       <div class="slider-column">
         <HardwareFader
+          appearance="classic"
           :model-value="playLevel"
           :led-color="faderLedColor"
           :disabled="!levelControlEnabled"
@@ -94,6 +97,7 @@
           :disabled="!trackInteractionReady"
           :disabled-reason="trackInteractionDisabledReason"
           aria-label="Record or play track"
+          appearance="classic"
           label="▶ / ●"
           data-panel-control="record-play"
           data-hardware-control="button"
@@ -275,15 +279,17 @@ const stateLabel = computed(() => {
   gap: 8px;
   min-height: 385px;
   padding: 9px 9px 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  border-right: 1px solid rgba(0, 0, 0, 0.8);
-  background: linear-gradient(180deg, #18191e 0%, #0d0d11 100%);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(0, 0, 0, 0.86);
+  background:
+    linear-gradient(115deg, transparent 0 67%, rgba(255,255,255,.018) 67.2% 67.5%, transparent 67.7%),
+    linear-gradient(180deg, #26252b 0%, #17171c 42%, #111115 100%);
   color: #f4f4f7;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .track-strip.selected {
-  box-shadow: inset 0 0 0 2px rgba(0, 153, 255, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 72, 115, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .track-strip.disabled {
@@ -689,6 +695,7 @@ const stateLabel = computed(() => {
   overflow: hidden;
   text-align: center;
 }
+.track-strip-header .track-state { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 .track-label { font-size: 17px; line-height: 1; }
 .track-state { font-size: 12px; line-height: 1; letter-spacing: 0.03em; }
 .track-note { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
@@ -708,10 +715,10 @@ const stateLabel = computed(() => {
   box-sizing: border-box;
   width: 80px !important;
   min-width: 80px !important;
-  height: 28px !important;
-  min-height: 28px !important;
+  height: 36px !important;
+  min-height: 36px !important;
   padding: 0 8px !important;
-  border-radius: 999px !important;
+  border-radius: 5px !important;
   background: linear-gradient(180deg, #5c6067 0%, #30333a 56%, #191b20 100%) !important;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 2px 4px rgba(0, 0, 0, 0.72) !important;
 }
@@ -745,6 +752,10 @@ const stateLabel = computed(() => {
 .track-strip .track-button-stack > :deep([data-track-control="select"]:active:not(.is-disabled) .button-label) {
   color: #0d2115;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+.track-strip .track-button-stack > :deep([data-track-control="fx"].appearance-classic.active:not(.is-disabled)) {
+  background: linear-gradient(155deg, #ffb5ba 0%, #ff4d5d 45%, #9e162b 100%) !important;
+  box-shadow: 0 0 7px rgba(255,57,77,.95), 0 0 18px rgba(255,35,61,.62), inset 0 1px rgba(255,255,255,.66), inset 0 -4px 9px rgba(75,0,8,.55) !important;
 }
 .clear-note { position: absolute; top: 183px; left: 35px; width: 80px; color: #e3e6eb; font-size: 11px; line-height: 1; letter-spacing: 0.03em; text-align: center; }
 .track-button-stack > .stop-disc { position: absolute; top: 212px; left: 51px; width: 48px; height: 48px; }
@@ -824,6 +835,7 @@ const stateLabel = computed(() => {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
 }
 .loop-indicator-row { position: absolute; top: 267px; left: 44px; display: flex; gap: 7px; width: 170px; justify-content: center; }
+.loop-indicator-row { width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; clip-path: inset(50%); white-space: nowrap; }
 .indicator-chip { min-width: auto; min-height: 0; padding: 1px 2px; border: 0; border-radius: 0; background: transparent; font-size: 11px; line-height: 1; letter-spacing: 0.06em; }
 .indicator-chip.active { box-shadow: none; text-shadow: 0 0 7px currentColor, 0 0 14px currentColor; }
 .indicator-chip:nth-child(1).active { color: #ff596b; }

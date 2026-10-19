@@ -5,6 +5,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="white"
           label="MENU"
           :active="device.state.page === 'settings' || device.state.page === 'menu'"
@@ -16,6 +17,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="white"
           label="LOOP"
           :active="device.state.page === 'track'"
@@ -30,6 +32,7 @@
         <HardwareButton
           shape="rect"
           size="md"
+          appearance="classic"
           :color="isPlaying ? 'red' : 'green'"
           :active="isPlaying"
           :label="isPlaying ? 'ALL STOP' : 'ALL START'"
@@ -43,6 +46,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="yellow"
           label="UNDO/REDO"
           aria-label="Undo and redo are unavailable"
@@ -81,6 +85,7 @@
         <div v-for="(field, index) in screenFields" :key="field.key" class="soft-field">
           <HardwareKnob
             :model-value="field.value"
+            appearance="classic"
             :label="field.label"
             :color="field.color"
             :size="55"
@@ -101,6 +106,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="white"
           label="EXIT"
           aria-label="Exit current page"
@@ -111,6 +117,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="blue"
           label="ENTER"
           aria-label="Enter selected page"
@@ -122,6 +129,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="white"
           label="K ‹"
           aria-label="Previous display page"
@@ -132,6 +140,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="white"
           label="J ›"
           aria-label="Next display page"
@@ -147,6 +156,7 @@
         <div class="engraved-label output-caption"><span>OUTPUT</span><span>LEVEL</span></div>
         <HardwareKnob
           :model-value="outputLevel"
+          appearance="classic"
           label="MASTER"
           color="red"
           :size="66"
@@ -164,6 +174,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="white"
           label="EDIT"
           aria-label="Edit rhythm settings"
@@ -176,6 +187,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           :color="isRhythmPlaying ? 'red' : 'white'"
           :active="isRhythmPlaying"
           :disabled="rhythmControlDisabled"
@@ -189,6 +201,7 @@
         <HardwareButton
           shape="rect"
           size="sm"
+          appearance="classic"
           color="blue"
           :active="tapActive"
           label="TAP TEMPO"
@@ -568,7 +581,7 @@ onUnmounted(() => {
   min-width: 830px;
   padding: 0;
   color: #f0f2f5;
-  background: linear-gradient(180deg, #24262b 0%, #18191d 100%);
+  background: linear-gradient(180deg, #28262d 0%, #1a191f 74%, #141419 100%);
   font-family: var(--font-hardware);
 }
 
@@ -592,46 +605,47 @@ onUnmounted(() => {
   left: 300px;
   box-sizing: border-box;
   width: 280px;
-  height: 135px;
+  height: 150px;
   padding: 6px;
   overflow: hidden;
-  border: 2px solid #c0c3c9;
-  border-radius: 5px;
-  background: linear-gradient(160deg, #d9dce1, #8e949d);
-  box-shadow: inset 0 1px 2px white, 0 3px 7px rgba(0, 0, 0, 0.28);
+  border: 3px solid #b3b4bd;
+  border-radius: 3px;
+  background: linear-gradient(145deg, #e1e2e8 0%, #898b96 100%);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.85), inset 0 -2px 3px rgba(0,0,0,.35), 0 3px 7px rgba(0,0,0,.45);
 }
 .lcd-display {
   position: relative;
   pointer-events: auto;
   display: grid;
   box-sizing: border-box;
-  grid-template-rows: 11px 22px 14px 12px 22px 22px;
+  grid-template-rows: 12px 22px 14px 12px 22px 22px;
   gap: 1px;
   width: 100%;
   height: 100%;
   min-height: 0;
   padding: 4px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 3px;
-  background: linear-gradient(180deg, #c6c0cf 0%, #b3adbf 100%);
-  color: #211e28;
-  box-shadow: inset 0 0 10px rgba(31, 26, 43, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 1px;
+  background: linear-gradient(180deg, #d7e3f4 0%, #b5c5dc 100%);
+  color: #1b273a;
+  box-shadow: inset 0 0 8px rgba(30, 48, 75, 0.24);
   text-transform: uppercase;
+  font-family: var(--font-lcd, 'Lucida Console', monospace);
 }
-.screen-shell:has(.lcd-editor-active) { height: 147px; }
-.lcd-display.lcd-editor-active { grid-template-rows: 11px 16px 11px minmax(0, 1fr) 16px; gap: 1px; }
+.lcd-display:not(.lcd-editor-active) { aspect-ratio: 2 / 1; }
+.lcd-display.lcd-editor-active { grid-template-rows: 11px 16px 11px minmax(0, 1fr) 24px; gap: 1px; }
 .lcd-editor-active .lcd-name { font-size: 13px; line-height: 16px; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lcd-editor-active .lcd-status { display: block; line-height: 16px; white-space: nowrap; text-overflow: ellipsis; }
+.lcd-editor-active .lcd-status { display: -webkit-box; line-height: 11px; white-space: normal; overflow-wrap: anywhere; text-overflow: clip; -webkit-line-clamp: 2; }
 .lcd-confirmations { position: absolute; inset: 0; z-index: 8; pointer-events: none; }
 .lcd-confirmations:not(:empty) { pointer-events: auto; }
-.lcd-row { display: flex; justify-content: space-between; gap: 8px; min-width: 0; font-size: 11px; line-height: 1; letter-spacing: 0.06em; }
-.lcd-row.top { color: #514c5b; }
-.lcd-parameter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); align-items: center; gap: 1px 8px; overflow: hidden; color: #292633; font-size: 11px; line-height: 1; white-space: normal; }
+.lcd-row { display: flex; justify-content: space-between; gap: 8px; min-width: 0; font-size: 11px; line-height: 1; letter-spacing: 0.03em; }
+.lcd-row.top { color: #384860; }
+.lcd-parameter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); align-items: center; gap: 1px 8px; overflow: hidden; color: #202d41; font-size: 12px; line-height: 1.05; white-space: normal; }
 .lcd-parameter-row span { min-width: 0; overflow-wrap: anywhere; }
 .lcd-main { align-self: center; font-size: 24px; font-weight: 700; line-height: 0.9; text-align: center; }
-.lcd-name { font-size: 14px; line-height: 1; letter-spacing: 0.12em; text-align: center; }
-.lcd-track-line { color: #292633; }
-.lcd-status { display: -webkit-box; min-height: 0; overflow: hidden; color: #244832; font-size: 11px; line-height: 1; letter-spacing: 0.04em; text-align: center; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.lcd-name { font-size: 14px; line-height: 1; letter-spacing: 0.06em; text-align: center; }
+.lcd-track-line { color: #24344e; }
+.lcd-status { display: -webkit-box; min-height: 0; overflow: hidden; color: #1c3957; font-size: 11px; line-height: 1.05; letter-spacing: 0.02em; text-align: center; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 
 .soft-control-row { position: absolute; inset: 0; display: block; width: auto; }
 .soft-field { position: absolute; top: 185px; display: grid; justify-items: center; gap: 0; width: 64px; min-width: 64px; }

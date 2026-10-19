@@ -24,8 +24,10 @@ describe('LcdFieldGrid interactions', () => {
     level.element.value = '73';
     await level.trigger('input');
 
-    const mode = wrapper.get<HTMLSelectElement>('[data-testid="lcd-field-mode"]');
-    await mode.setValue('2');
+    const mode = wrapper.get<HTMLInputElement>('[data-testid="lcd-field-mode"]');
+    expect(mode.element.value).toBe('0');
+    mode.element.value = '1';
+    await mode.trigger('input');
 
     expect(wrapper.emitted('update')).toEqual([[0, 73], [1, 2]]);
     expect(setLevel).not.toHaveBeenCalled();
@@ -69,7 +71,7 @@ describe('LcdFieldGrid interactions', () => {
     const wrapper = mount(LcdFieldGrid, { props: { fields } });
 
     for (const key of ['number', 'enum', 'boolean', 'action']) {
-      const control = wrapper.get<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>(`[data-testid="lcd-field-${key}"]`);
+      const control = wrapper.get<HTMLInputElement | HTMLButtonElement>(`[data-testid="lcd-field-${key}"]`);
       expect(control.element.disabled).toBe(true);
       expect(control.attributes('title')).toBe(reason);
     }

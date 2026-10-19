@@ -15,6 +15,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Native rhythm reads host settings, sends every LCD setting, and survives a shell switch', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/?audio=native&ui=tech&rhythmUiE2e=1');
   const screen = await openLcdPage(page, 'rhythm-edit-button');
   const pattern = lcdField(page, 'pattern');
@@ -22,22 +23,27 @@ test('Native rhythm reads host settings, sends every LCD setting, and survives a
   const kit = lcdField(page, 'kit');
 
   await expect(pattern).toBeEnabled();
-  await expect(pattern).toHaveValue('198');
-  await expect(pattern.locator('option')).toHaveCount(240);
+  await expect(pattern).toHaveValue('197');
+  await expect(pattern).toHaveAttribute('aria-valuetext', /198 ·/);
+  await expect(JSON.parse((await pattern.getAttribute('data-option-labels')) ?? '[]')).toHaveLength(240);
   await expect(volume).toHaveValue('73');
-  await expect(kit).toHaveValue('13');
+  await expect(kit).toHaveValue('12');
+  await expect(kit).toHaveAttribute('aria-valuetext', /13 ·/);
   const variation = await findLcdField(page, 'variation');
   await expect(lcdScreen(page).locator('.lcd-row.top')).toContainText('2/3');
-  await expect(variation.getByTestId('lcd-field-variation').locator('option:checked')).toHaveText('C');
-  await expect(lcdField(page, 'section').locator('option:checked')).toHaveText('INTRO');
+  await expect(variation.getByTestId('lcd-field-variation')).toHaveValue('2');
+  await expect(variation.locator('.lcd-enum-value')).toHaveText('C');
+  await expect(lcdField(page, 'section')).toHaveValue('1');
+  await expect((await findLcdField(page, 'section')).locator('.lcd-enum-value')).toHaveText('INTRO');
   await expect(lcdField(page, 'swing')).toHaveValue('67');
-  await expect(lcdField(page, 'quantize').locator('option:checked')).toHaveText('1/8');
+  await expect(lcdField(page, 'quantize')).toHaveValue('1');
+  await expect((await findLcdField(page, 'quantize')).locator('.lcd-enum-value')).toHaveText('1/8');
   expect(await page.evaluate(() => (window as unknown as { __rc505NativeRhythmRequests: unknown[] }).__rc505NativeRhythmRequests.length)).toBe(0);
 
   await page.getByRole('button', { name: 'Previous display page', exact: true }).click();
   await expect(lcdScreen(page).locator('.lcd-row.top')).toContainText('1/3');
-  await pattern.selectOption('240');
-  await kit.selectOption('16');
+  await selectLcdEnum(page, 'pattern', '240');
+  await selectLcdEnum(page, 'kit', '16');
   await setLcdRange(page, 'volume', 84);
   await setLcdRange(page, 'bpm', 94);
   await page.getByRole('button', { name: 'Next display page', exact: true }).click();

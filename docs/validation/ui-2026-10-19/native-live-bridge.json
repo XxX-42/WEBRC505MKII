@@ -1,0 +1,12 @@
+{
+  "mode": "Native",
+  "bridgeStatus": "NATIVE AUDIO READY",
+  "capabilitySummary": "NATIVE: 5 LOOP TRACKS; INPUT A–D AVAILABLE; TRACK A–D AVAILABLE",
+  "lcdStatus": "NATIVE AUDIO READY",
+  "controlCounts": {
+    "buttons": 41,
+    "knobs": 7,
+    "faders": 5
+  },
+  "commandWritten": false
+}

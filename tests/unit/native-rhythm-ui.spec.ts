@@ -83,13 +83,13 @@ describe('Native ACK-backed shared rhythm panels', () => {
   it('reads and applies shared settings from the Native central LCD alongside the physical controls', async () => {
     const { center, setRhythm } = await mountNativeControls();
     expect(setRhythm).not.toHaveBeenCalled();
-    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('198');
-    expect(lcdGet(center, '[data-testid="lcd-field-kit"]').element.value).toBe('13');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('197');
+    expect(lcdGet(center, '[data-testid="lcd-field-kit"]').element.value).toBe('12');
     expect(lcdGet(center, '[data-testid="lcd-field-volume"]').element.value).toBe('73');
-    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('240');
-    await lcdGet(center, '[data-testid="lcd-field-kit"]').setValue('16');
+    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('239');
+    await lcdGet(center, '[data-testid="lcd-field-kit"]').setValue('15');
     await lcdGet(center, '[data-testid="lcd-field-volume"]').setValue('84');
-    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('240');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('239');
     expect(lcdGet(center, '[data-testid="lcd-field-volume"]').element.value).toBe('84');
     await lcdPage(center, 1);
     expect(lcdGet(center, '[data-testid="lcd-field-variation"]').element.value).toBe('2');
@@ -155,13 +155,13 @@ describe('Native ACK-backed shared rhythm panels', () => {
   it('shows Native failures in both panels, preserves acknowledged settings, and clears errors after retry', async () => {
     const { center, setRhythm } = await mountNativeControls();
     setRhythm.mockRejectedValueOnce(new Error('Native rhythm endpoint unsupported'));
-    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('240');
+    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('239');
     await flushPromises();
     expect(center.get('.lcd-status').text()).toBe('Native rhythm endpoint unsupported');
-    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('198');
-    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('240');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('197');
+    await lcdGet(center, '[data-testid="lcd-field-pattern"]').setValue('239');
     await flushPromises();
     expect(center.get('.lcd-status').text()).not.toBe('Native rhythm endpoint unsupported');
-    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('240');
+    expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').element.value).toBe('239');
   });
 });

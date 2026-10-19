@@ -1,7 +1,7 @@
 <template>
   <div
     class="hardware-knob-wrapper hardware-interactive"
-    :class="{ 'is-disabled': disabled }"
+    :class="[`appearance-${appearance}`, { 'is-disabled': disabled }]"
     role="slider"
     :tabindex="disabled ? -1 : 0"
     :aria-label="ariaLabel || label || 'Hardware knob'"
@@ -70,6 +70,7 @@ const props = withDefaults(defineProps<{
   disabled?: boolean;
   disabledReason?: string;
   ariaLabel?: string;
+  appearance?: 'standard' | 'classic';
 }>(), {
   min: 0,
   max: 100,
@@ -80,6 +81,7 @@ const props = withDefaults(defineProps<{
   disabled: false,
   disabledReason: '',
   ariaLabel: '',
+  appearance: 'standard',
 });
 
 const emit = defineEmits<{
@@ -352,5 +354,41 @@ onUnmounted(() => stopDrag());
   letter-spacing: 0.5px;
   text-transform: uppercase;
   pointer-events: none;
+}
+
+.hardware-knob-wrapper.appearance-classic {
+  gap: 3px;
+  color: #d4d2d8;
+}
+.hardware-knob-wrapper.appearance-classic .led-ring { display: none; }
+.hardware-knob-wrapper.appearance-classic .knob-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, #aaa5ae 0deg .55deg, transparent .65deg 9deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent 75%, #000 77% 83%, transparent 85%);
+  mask: radial-gradient(farthest-side, transparent 75%, #000 77% 83%, transparent 85%);
+  opacity: .72;
+  pointer-events: none;
+}
+.hardware-knob-wrapper.appearance-classic .knob-cap {
+  border: 1px solid #07080b;
+  background: radial-gradient(circle at 34% 27%, #44434a 0%, #25252b 45%, #101115 100%);
+  box-shadow: inset 0 1px rgba(255,255,255,.18), inset 0 -4px 6px rgba(0,0,0,.72), 0 3px 5px rgba(0,0,0,.78);
+}
+.hardware-knob-wrapper.appearance-classic .knob-indicator {
+  background: #d7d2dc;
+  box-shadow: 0 0 2px rgba(255,255,255,.45);
+}
+.hardware-knob-wrapper.appearance-classic .knob-texture {
+  background: repeating-conic-gradient(from 0deg, transparent 0deg 4deg, rgba(0,0,0,.2) 4deg 5deg);
+  opacity: .42;
+}
+.hardware-knob-wrapper.appearance-classic .knob-label {
+  color: #d4d2d8;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-shadow: 0 1px #08090b;
 }
 </style>

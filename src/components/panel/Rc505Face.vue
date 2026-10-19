@@ -6,14 +6,13 @@
         <span class="model-name">RC-505mkII</span>
         <span class="model-subtitle">LOOP STATION</span>
       </div>
-      <span class="panel-caption">LOOP STATION</span>
     </header>
 
     <div class="face-upper" data-panel="hardware-top">
       <FxBankControls
         location="input"
         title="INPUT FX"
-        color="blue"
+        color="red"
         :model-value="inputFxValue"
         @update:model-value="setInputFxValue"
         @edit="device.openPage('input-fx')"
@@ -102,8 +101,11 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
   border: 1px solid #52565d;
   border-radius: 24px 24px 8px 8px;
   color: #e6e8ec;
-  background: linear-gradient(180deg, #777b82 0%, #36393f 4%, #1e2024 16%, #17181c 100%);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.42), inset 0 1px rgba(255, 255, 255, 0.26), inset 0 -3px rgba(0, 0, 0, 0.6);
+  background:
+    linear-gradient(112deg, transparent 0 19.8%, rgba(255,255,255,.028) 19.9% 20%, transparent 20.1% 79.8%, rgba(0,0,0,.32) 79.9% 80%, transparent 80.1%),
+    radial-gradient(ellipse at 46% 5%, rgba(106, 53, 70, .15), transparent 52%),
+    linear-gradient(180deg, #37363d 0%, #211f26 10%, #16161b 100%);
+  box-shadow: 0 22px 44px rgba(0,0,0,.48), inset 0 1px rgba(255,255,255,.22), inset 0 -3px rgba(0,0,0,.72);
 }
 
 .face-branding {
@@ -112,15 +114,15 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
   align-items: center;
   min-height: 51px;
   padding: 0 28px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(180deg, #282a2f, #1b1c20);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(71,69,77,.72), rgba(29,28,34,.3));
   font-family: var(--font-hardware);
   text-transform: uppercase;
 }
 
-.boss-mark { color: #f5f6f7; font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: 0.1em; }
+.boss-mark { color: #f5f3f6; font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: 0.1em; text-shadow: 0 1px 1px #000; }
 .model-mark { display: flex; align-items: baseline; gap: 13px; color: #f5f6f7; }
-.model-name { font-size: 18px; font-weight: 800; letter-spacing: 0.12em; }
+.model-name { color: #f44f72; font-size: 18px; font-weight: 800; letter-spacing: 0.12em; text-shadow: 0 1px #09090c; }
 .model-subtitle { color: #d1d6dd; font-size: 12px; letter-spacing: 0.12em; }
 .panel-caption { justify-self: end; color: #c0c6cf; font-size: 11px; letter-spacing: 0.12em; }
 
@@ -130,13 +132,29 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
   width: 100%;
   height: 269px;
   min-height: 269px;
-  border-bottom: 1px solid #686d75;
-  background: linear-gradient(180deg, #3d4046 0%, #27292e 100%);
+  border-bottom: 1px solid #6a2b40;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(130,118,132,.14), transparent 56%),
+    linear-gradient(180deg, #39363e 0%, #29262e 66%, #201e25 100%);
+}
+.face-upper::after {
+  content: '';
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  border-top: 1px solid rgba(255,134,170,.58);
+  background: linear-gradient(90deg, #4e2638, #cf365d 22%, #6f2c48 50%, #e74770 78%, #44243a);
+  box-shadow: 0 0 6px rgba(213,42,91,.36);
+  pointer-events: none;
 }
 .face-upper > :deep(.fx-bank-input) { position: absolute; inset: 0 auto 0 0; width: 330px; }
 .face-upper > :deep(.center-main-panel) { position: absolute; inset: 0 auto 0 329px; width: 830px; }
 .face-upper > :deep(.fx-bank-track) { position: absolute; inset: 0 0 0 auto; width: 360px; }
 .face-upper > :deep(.fx-bank) { min-width: 0; min-height: 0; overflow: visible; }
+.face-upper > :deep(.fx-bank .bank-status) { display: none; }
 .track-header { display: none; }
 .rc505-face :deep(.track-bay) {
   width: 1375px;
@@ -144,6 +162,8 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
   min-width: 1375px;
   margin-inline: auto;
   padding-bottom: 0;
+  border-top: 3px solid #2f1d2a;
+  background: linear-gradient(180deg, #281c28 0%, #17171c 8px, transparent 8px);
 }
 
 .menu-page { display: grid; gap: 10px; max-width: 760px; margin-inline: auto; font-family: var(--font-hardware); }

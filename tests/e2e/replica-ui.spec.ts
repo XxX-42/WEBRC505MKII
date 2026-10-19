@@ -9,7 +9,7 @@ async function actualTrackState(page: Page): Promise<string> {
   });
 }
 
-test('replica keeps the physical control inventory and reachable small-screen viewport', async ({ page }, testInfo) => {
+test('replica keeps the physical control inventory and warns below readable viewport size', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   for (const viewport of [{ width: 1920, height: 1080 }, { width: 1366, height: 768 }, { width: 390, height: 844 }]) {
@@ -22,13 +22,20 @@ test('replica keeps the physical control inventory and reachable small-screen vi
     await expect(face.locator('.hardware-fader')).toHaveCount(5);
     await expect(face.getByRole('button', { name: 'Undo and redo are unavailable' })).toBeDisabled();
     await expect(face.getByRole('button', { name: 'Record or play track', exact: true }).first()).toBeDisabled();
+    const zoom = Number(await page.getByRole('slider', { name: 'Faceplate zoom' }).inputValue());
+    expect(zoom).toBeGreaterThanOrEqual(0.8);
+    if (viewport.width === 390) await expect(page.locator('.viewport-warning')).toContainText('当前窗口过窄／过矮');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`replica-${viewport.width}.png`), fullPage: true });
+    if (viewport.width !== 390) {
+      await page.getByTestId('rc505-lcd-screen').screenshot({ path: testInfo.outputPath(`lcd-${viewport.width}.png`) });
+    }
   }
   expect(errors).toEqual([]);
 });
 
-test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD without floating editors', async ({ page }) => {
+test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD without floating editors', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);
   const face = page.getByTestId('rc505-physical-face');
@@ -46,14 +53,15 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
   const rhythmEdit = face.getByTestId('rhythm-edit-button');
   await rhythmEdit.click();
   await expect(screen).toContainText(/RHYTHM/i);
+  await screen.screenshot({ path: testInfo.outputPath('lcd-editor-1920.png') });
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
   await expect(screen.locator(':focus')).toHaveCount(1);
   const patternField = await findLcdField(page, 'pattern');
   const pattern = patternField.getByTestId('lcd-field-pattern');
   await expect(pattern).toBeEnabled();
-  await expect(pattern.locator('option')).toHaveCount(240);
-  await pattern.selectOption('240');
-  await expect(pattern).toHaveValue('240');
+  await expect(JSON.parse((await pattern.getAttribute('data-option-labels')) ?? '[]')).toHaveLength(240);
+  await selectLcdEnum(page, 'pattern', '240');
+  await expect(patternField.locator('.lcd-enum-value')).toContainText('240 ·');
   await selectLcdEnum(page, 'variation', 'D');
   await page.getByRole('button', { name: 'Exit current page', exact: true }).click();
   await expect(rhythmEdit).toBeFocused();
@@ -97,6 +105,28 @@ test('LCD Input FX exposes slot, type, active and named parameters across PAGE s
   await expect(screen.locator('.lcd-row.top')).toContainText('3/3');
   await expect(screen.locator('.lcd-field-grid [data-field-key^="input-"]')).toHaveCount(2);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+});
+
+test('real Native bridge readiness is visible on the shared Classic faceplate', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/?audio=native&ui=classic');
+  await expect(page.locator('.status-pill')).toContainText('NATIVE AUDIO READY', { timeout: 15_000 });
+  const face = page.getByTestId('rc505-physical-face');
+  await expect(face.locator('button:visible')).toHaveCount(41);
+  await expect(face.locator('.hardware-knob-wrapper:visible')).toHaveCount(7);
+  await expect(face.locator('.hardware-fader')).toHaveCount(5);
+  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+  const result = {
+    mode: 'Native',
+    bridgeStatus: (await page.locator('.status-pill').innerText()).trim(),
+    capabilitySummary: (await page.locator('.mode-summary').innerText()).trim(),
+    lcdStatus: (await page.locator('[data-testid="rc505-lcd-screen"] .lcd-status').innerText()).trim(),
+    controlCounts: { buttons: 41, knobs: 7, faders: 5 },
+    commandWritten: false,
+  };
+  await fs.writeFile(testInfo.outputPath('native-live-bridge.json'), JSON.stringify(result, null, 2));
+  await page.screenshot({ path: testInfo.outputPath('native-live-bridge-1920.png'), fullPage: true });
+  await page.getByTestId('rc505-lcd-screen').screenshot({ path: testInfo.outputPath('native-live-lcd-1920.png') });
 });
 
 test('real Browser UI starts on a gesture and records, plays, overdubs and stops virtual input', async ({ page }, testInfo) => {

@@ -2,11 +2,14 @@
   <section class="classic-shell" aria-label="RC-505mkII replica view">
     <div class="viewport-toolbar" role="toolbar" aria-label="Faceplate zoom and pan">
       <span class="viewport-label">FACEPLATE VIEW</span>
+      <p v-if="tooNarrow" class="viewport-warning" role="status" aria-live="polite">
+        当前窗口过窄／过矮，请放大窗口或收起侧栏（面板按 80% 以上比例显示）。
+      </p>
       <div class="viewport-actions">
         <button type="button" aria-label="Zoom out" title="Zoom out" @click="adjustZoom(-0.1)">−</button>
         <label class="zoom-slider-label">
           <span>ZOOM</span>
-          <input v-model.number="zoom" type="range" min="0.45" max="1.2" step="0.05" aria-label="Faceplate zoom">
+          <input v-model.number="zoom" type="range" min="0.8" max="1.2" step="0.05" aria-label="Faceplate zoom" @input="markUserZoomed">
           <output>{{ Math.round(zoom * 100) }}%</output>
         </label>
         <button type="button" aria-label="Zoom in" title="Zoom in" @click="adjustZoom(0.1)">+</button>
@@ -35,9 +38,18 @@ import Rc505Face from '../panel/Rc505Face.vue';
 
 const viewportRef = ref<HTMLElement | null>(null);
 const stageRef = ref<HTMLElement | null>(null);
-const zoom = ref(0.72);
+const zoom = ref(0.8);
+const availableSize = ref({ width: 0, height: 0 });
 let resizeObserver: ResizeObserver | null = null;
 let userZoomed = false;
+const tooNarrow = computed(() => {
+  const { width, height } = availableSize.value;
+  return width < 1520 * 0.8 + 24 || height < 846 * 0.8 + 24;
+});
+
+function markUserZoomed(): void {
+  userZoomed = true;
+}
 
 function fitFace(): void {
   const viewport = viewportRef.value;
@@ -46,13 +58,14 @@ function fitFace(): void {
   const widthRatio = (viewport.clientWidth - 24) / stage.scrollWidth;
   const heightRatio = (viewport.clientHeight - 24) / stage.scrollHeight;
   zoom.value = Math.min(1.2, Math.max(0.8, Math.min(widthRatio, heightRatio, 1)));
+  availableSize.value = { width: viewport.clientWidth, height: viewport.clientHeight };
   userZoomed = true;
   viewport.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
 }
 
 function adjustZoom(delta: number): void {
   userZoomed = true;
-  zoom.value = Math.max(0.45, Math.min(1.2, Math.round((zoom.value + delta) * 100) / 100));
+  zoom.value = Math.max(0.8, Math.min(1.2, Math.round((zoom.value + delta) * 100) / 100));
 }
 
 function pan(left: number, top: number): void {
@@ -74,6 +87,7 @@ async function measureInitialScale(): Promise<void> {
   if (!viewport || !stage) return;
   const widthRatio = (viewport.clientWidth - 24) / stage.scrollWidth;
   const heightRatio = (viewport.clientHeight - 24) / stage.scrollHeight;
+  availableSize.value = { width: viewport.clientWidth, height: viewport.clientHeight };
   zoom.value = Math.min(1, Math.max(0.8, Math.min(widthRatio, heightRatio, 1)));
 }
 
@@ -116,6 +130,14 @@ onBeforeUnmount(() => {
   color: #afb5bf;
   font: 700 12px/1.2 var(--font-hardware);
   letter-spacing: 0.15em;
+}
+.viewport-warning {
+  flex: 1 1 280px;
+  margin: 0;
+  color: #ffd487;
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: .02em;
 }
 
 .viewport-actions { display: flex; align-items: center; gap: 5px; }
@@ -164,5 +186,6 @@ onBeforeUnmount(() => {
   .zoom-slider-label { gap: 4px; }
   .zoom-slider-label input { width: 72px; }
   .classic-fit { margin: 8px; }
+  .viewport-warning { font-size: 11px; }
 }
 </style>

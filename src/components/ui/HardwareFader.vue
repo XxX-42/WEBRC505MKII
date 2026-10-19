@@ -1,5 +1,5 @@
 <template>
-  <div class="hardware-fader hardware-interactive" :class="{ 'is-disabled': disabled }">
+  <div class="hardware-fader hardware-interactive" :class="[`appearance-${appearance}`, { 'is-disabled': disabled }]">
     <!-- Fader Track Container -->
     <div class="fader-track-container">
       <!-- LED Strip (Left Side) -->
@@ -60,6 +60,7 @@ interface Props {
   disabled?: boolean;
   disabledReason?: string;
   ariaLabel?: string;
+  appearance?: 'standard' | 'classic';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -70,6 +71,7 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false,
   disabledReason: '',
   ariaLabel: '',
+  appearance: 'standard',
 });
 
 const emit = defineEmits<{
@@ -231,4 +233,33 @@ const handleInput = (event: Event) => {
   font-weight: 700;
   letter-spacing: 1px;
 }
+
+.hardware-fader.appearance-classic .led-strip { display: none; }
+.hardware-fader.appearance-classic .fader-track-container { gap: 0; }
+.hardware-fader.appearance-classic .fader-groove {
+  width: 12px;
+  border: 1px solid #08090c;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #08090b, #25242b 42%, #08090b);
+  box-shadow: inset 0 0 0 2px #111216, inset 0 2px 3px #000;
+}
+.hardware-fader.appearance-classic .fader-groove::before {
+  content: '';
+  position: absolute;
+  inset: 4px -9px;
+  background: repeating-linear-gradient(to top, transparent 0 11px, rgba(211,205,215,.68) 11px 12px, transparent 12px 22px);
+  pointer-events: none;
+}
+.hardware-fader.appearance-classic .fader-cap {
+  z-index: 2;
+  width: 30px;
+  height: 16px;
+  border: 1px solid #0a0b0e;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #d0cbd3 0%, #797780 24%, #38383f 48%, #77747c 76%, #c1bdc5 100%);
+  box-shadow: 0 2px 3px #000, inset 0 1px rgba(255,255,255,.48), inset 0 -1px rgba(0,0,0,.7);
+}
+.hardware-fader.appearance-classic .cap-ridge { width: 20px; background: rgba(8,8,11,.72); border-color: rgba(235,230,238,.5); }
+.hardware-fader.appearance-classic .fader-value,
+.hardware-fader.appearance-classic .fader-label { display: none; }
 </style>

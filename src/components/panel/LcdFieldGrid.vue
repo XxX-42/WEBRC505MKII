@@ -56,6 +56,12 @@ function displayValue(field: LcdField): string {
   return Math.round(field.value) + (field.max === 100 ? '%' : '');
 }
 
+function enumIndex(field: LcdField): number {
+  if (!field.options?.length) return 0;
+  const index = field.options.findIndex((option) => option.value === field.value);
+  return index < 0 ? 0 : index;
+}
+
 function updateNumber(index: number, event: Event): void {
   const target = event.target;
   if (!(target instanceof HTMLInputElement)) return;
@@ -63,11 +69,11 @@ function updateNumber(index: number, event: Event): void {
   if (Number.isFinite(value)) emit('update', index, value);
 }
 
-function updateEnum(index: number, event: Event): void {
+function updateEnum(index: number, field: LcdField, event: Event): void {
   const target = event.target;
-  if (!(target instanceof HTMLSelectElement)) return;
-  const value = Number(target.value);
-  if (Number.isFinite(value)) emit('update', index, value);
+  if (!(target instanceof HTMLInputElement)) return;
+  const option = field.options?.[Number(target.value)];
+  if (option) emit('update', index, option.value);
 }
 
 function toggleBoolean(index: number, field: LcdField): void {
@@ -99,22 +105,29 @@ function activateField(index: number): void {
     >
       <template v-if="field">
         <template v-if="field.kind === 'enum'">
-          <label class="lcd-field-label" :for="fieldId(field.key)">{{ field.label }}</label>
-          <select
-            :id="fieldId(field.key)"
-            :data-testid="fieldId(field.key)"
-            class="lcd-field-select"
-            :value="field.value"
-            :disabled="field.disabled"
-            :title="field.reason || undefined"
-            :aria-description="field.reason || undefined"
-            :aria-label="field.label"
-            @change="updateEnum(index, $event)"
-          >
-            <option v-for="option in field.options ?? []" :key="field.key + '-' + option.value" :value="option.value">
-              {{ option.label }}
-            </option>
-          </select>
+          <span class="lcd-field-label">{{ field.label }}</span>
+          <div class="lcd-enum-control">
+            <output class="lcd-enum-value" :aria-label="`${field.label}: ${displayValue(field)}`">
+              {{ displayValue(field) }}
+            </output>
+            <input
+              :id="fieldId(field.key)"
+              :data-testid="fieldId(field.key)"
+              class="lcd-enum-range"
+              type="range"
+              min="0"
+              :max="Math.max(0, (field.options?.length ?? 1) - 1)"
+              step="1"
+              :value="enumIndex(field)"
+              :disabled="field.disabled || !field.options?.length"
+              :data-option-labels="JSON.stringify(field.options?.map((option) => option.label) ?? [])"
+              :aria-label="field.label"
+              :aria-valuetext="displayValue(field)"
+              :aria-description="field.reason || undefined"
+              :title="field.reason || undefined"
+              @input="updateEnum(index, field, $event)"
+            >
+          </div>
         </template>
 
         <template v-else-if="field.kind === 'boolean'">
@@ -184,13 +197,13 @@ function activateField(index: number): void {
   box-sizing: border-box;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 4px 6px;
+  gap: 2px 4px;
   width: 100%;
-  height: 62px;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   color: #24212a;
-  font-family: var(--font-hardware, system-ui, sans-serif);
+  font-family: var(--font-lcd, 'Lucida Console', monospace);
   text-transform: uppercase;
 }
 
@@ -202,20 +215,20 @@ function activateField(index: number): void {
   gap: 5px;
   min-width: 0;
   min-height: 0;
-  padding: 2px 5px;
+  padding: 3px 5px;
   overflow: hidden;
-  border: 1px solid rgba(49, 44, 58, 0.32);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
 }
 
 .lcd-field-card.is-selected {
-  border-color: #36303f;
-  background: #36303f;
-  color: #f8f5ff;
+  border-color: #313e55;
+  background: #313e55;
+  color: #e9f1ff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
-.lcd-field-card:has(.lcd-field-select) { display: grid; grid-template-rows: 11px minmax(0, 1fr); gap: 0; padding: 1px 3px; }
+.lcd-field-card:has(.lcd-enum-control) { display: grid; grid-template-rows: 11px minmax(0, 1fr); gap: 0; padding: 1px 2px; }
 .lcd-field-card.is-number { flex-direction: column; align-items: stretch; justify-content: center; gap: 1px; padding: 1px 3px; }
 
 .lcd-field-card.is-disabled {
@@ -236,7 +249,7 @@ function activateField(index: number): void {
   min-width: 0;
   overflow: hidden;
   color: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.03em;
@@ -274,13 +287,13 @@ function activateField(index: number): void {
   min-height: 8px;
   margin: 0;
   padding: 0;
-  accent-color: #485e72;
+  accent-color: #344e72;
   cursor: pointer;
   touch-action: pan-y;
 }
 
 .is-selected .lcd-field-range {
-  accent-color: #c8dcf4;
+  accent-color: #e0e9f7;
 }
 
 .lcd-field-range:disabled {
@@ -291,38 +304,82 @@ function activateField(index: number): void {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: 16px;
-  padding: 0 2px;
-  border: 1px solid rgba(49, 44, 58, 0.52);
-  border-radius: 2px;
-  color: #24212a;
-  background: #e1dce8;
-  font: 700 14px/1 var(--font-hardware, system-ui, sans-serif);
+  padding: 0 3px;
+  color: inherit;
+  font: 700 12px/1.15 var(--font-lcd, 'Lucida Console', monospace);
+  text-align: center;
   text-overflow: ellipsis;
+  white-space: normal;
+  overflow: hidden;
 }
 
-.is-selected .lcd-field-select {
-  border-color: #c8bbd8;
-  color: #f8f5ff;
-  background: #4a4354;
+.lcd-enum-control {
+  display: grid;
+  box-sizing: border-box;
+  grid-template-rows: minmax(0, 1fr) 5px;
+  align-items: center;
+  min-width: 0;
+  height: 16px;
+  border-top: 1px solid rgba(37, 50, 72, 0.32);
+  border-bottom: 1px solid rgba(37, 50, 72, 0.32);
+}
+
+.lcd-enum-value {
+  display: block;
+  width: 100%;
+  max-height: 11px;
+  overflow: hidden;
+  color: inherit;
+  font: 700 11px/1 var(--font-lcd, 'Lucida Console', monospace);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lcd-enum-range {
+  box-sizing: border-box;
+  width: 100%;
+  height: 5px;
+  min-height: 5px;
+  margin: 0;
+  accent-color: #344e72;
+  cursor: pointer;
+}
+.is-selected .lcd-enum-range { accent-color: #e0e9f7; }
+.lcd-enum-range:disabled { cursor: not-allowed; }
+.is-disabled .lcd-enum-control { opacity: .6; }
+.is-selected .lcd-enum-control { border-color: rgba(255, 255, 255, .45); }
+.lcd-field-card.is-action { border-color: rgba(37, 50, 72, .24); }
+.lcd-field-card.is-action.is-selected { border-color: #313e55; }
+.lcd-field-card.is-disabled:not(.is-selected) { color: #4f607b; }
+.lcd-field-card.is-disabled.is-selected { color: #d4deef; }
+
+.lcd-field-card :is(input, button):focus-visible {
+  outline: 2px solid #273953;
+  outline-offset: -2px;
+}
+.lcd-field-card.is-selected :is(input, button):focus-visible { outline-color: #fff; }
+.lcd-field-card :is(input, button):disabled { cursor: not-allowed; }
+
+.lcd-field-range {
+  accent-color: #344e72;
 }
 
 .lcd-field-toggle {
-  min-width: 54px;
-  min-height: 22px;
+  min-width: 46px;
+  min-height: 24px;
   padding: 1px 6px;
-  border: 1px solid #665e70;
-  border-radius: 2px;
-  color: #27222f;
-  background: #eeeaf4;
-  font: 800 14px/1 var(--font-hardware, system-ui, sans-serif);
+  border: 1px solid rgba(37, 50, 72, .5);
+  border-radius: 0;
+  color: #222d40;
+  background: transparent;
+  font: 800 13px/1 var(--font-lcd, monospace);
   cursor: pointer;
 }
 
 .is-selected .lcd-field-toggle {
-  border-color: #e5d9f2;
-  color: #17131c;
-  background: #d5c9e4;
+  border-color: #e4efff;
+  color: #182237;
+  background: #d7e4f7;
 }
 
 .lcd-field-action {
@@ -344,7 +401,7 @@ function activateField(index: number): void {
 .lcd-field-action strong {
   min-width: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;

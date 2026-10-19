@@ -97,11 +97,21 @@ export async function setLcdRange(page: Page, keyOrLabel: string, value: number)
 
 export async function selectLcdEnum(page: Page, keyOrLabel: string, optionLabel: string): Promise<Locator> {
   const field = await findLcdField(page, keyOrLabel);
-  const control = field.locator('select');
+  const control = field.locator('input.lcd-enum-range');
   await expect(control).toBeVisible();
   await expect(control).toBeEnabled();
-  await control.selectOption({ label: optionLabel });
-  await expect(control.locator('option:checked')).toHaveText(optionLabel);
+  const labels = JSON.parse((await control.getAttribute('data-option-labels')) ?? '[]') as string[];
+  const optionIndex = labels.indexOf(optionLabel) >= 0
+    ? labels.indexOf(optionLabel)
+    : labels.findIndex((label) => label.startsWith(`${optionLabel} ·`));
+  expect(optionIndex, `Option "${optionLabel}" should be present in ${keyOrLabel}`).toBeGreaterThanOrEqual(0);
+  await control.evaluate((element, nextValue) => {
+    const input = element as HTMLInputElement;
+    input.value = String(nextValue);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, optionIndex);
+  await expect(field.locator('.lcd-enum-value')).toHaveText(labels[optionIndex]!);
   return control;
 }
 

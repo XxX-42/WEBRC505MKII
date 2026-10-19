@@ -6,6 +6,7 @@
       `size-${size}`,
       `color-${color}`,
       `shape-${shape}`,
+      `appearance-${appearance}`,
       { 'is-disabled': disabled },
       { 'active': isActive }
     ]"
@@ -45,6 +46,7 @@ interface Props {
   label?: string;
   shape?: 'circle' | 'rect';
   ariaLabel?: string;
+  appearance?: 'standard' | 'classic';
   disabledReason?: string;
 }
 
@@ -56,6 +58,7 @@ const props = withDefaults(defineProps<Props>(), {
   label: '',
   shape: 'circle',
   ariaLabel: '',
+  appearance: 'standard',
   disabledReason: '',
 });
 
@@ -395,4 +398,46 @@ onUnmounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.95);
   box-shadow: 0 0 8px rgba(225, 240, 255, 0.9), 0 0 18px rgba(190, 220, 255, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.55), inset 0 -5px 12px rgba(34, 47, 68, 0.35);
 }
+
+/* Classic faceplate caps transmit the selected LED color through the whole key. */
+.hardware-button.appearance-classic {
+  border: 1px solid #090a0d;
+  color: #dedde2;
+  background: linear-gradient(180deg, #383840, #17181d 66%, #101115);
+  box-shadow: inset 0 1px rgba(255,255,255,.16), inset 0 -2px rgba(0,0,0,.7), 0 2px 3px rgba(0,0,0,.76);
+  transition: transform .08s ease, box-shadow .1s ease, background .1s ease;
+}
+.hardware-button.appearance-classic.shape-rect { border-radius: 5px; }
+.hardware-button.appearance-classic .led-dot { display: none; }
+.hardware-button.appearance-classic .led-ring { border-width: 1px; inset: 5px; }
+.hardware-button.appearance-classic .button-label { letter-spacing: .08em; }
+.hardware-button.appearance-classic.active.color-red:not(.is-disabled),
+.hardware-button.appearance-classic:active.color-red:not(.is-disabled) {
+  color: #291015;
+  background: linear-gradient(155deg, #ffb5ba 0%, #ff4d5d 45%, #9e162b 100%) !important;
+  border-color: #ffced1;
+  box-shadow: 0 0 7px rgba(255,57,77,.95), 0 0 18px rgba(255,35,61,.62), inset 0 1px rgba(255,255,255,.66), inset 0 -4px 9px rgba(75,0,8,.55);
+}
+.hardware-button.appearance-classic.active.color-green:not(.is-disabled),
+.hardware-button.appearance-classic:active.color-green:not(.is-disabled) {
+  color: #082512;
+  background: linear-gradient(155deg, #c1ffd4 0%, #41ee84 46%, #08763c 100%) !important;
+  border-color: #d3ffe1;
+  box-shadow: 0 0 7px rgba(56,255,131,.92), 0 0 18px rgba(25,236,111,.62), inset 0 1px rgba(255,255,255,.68), inset 0 -4px 9px rgba(0,67,29,.56);
+}
+.hardware-button.appearance-classic.active.color-yellow:not(.is-disabled),
+.hardware-button.appearance-classic:active.color-yellow:not(.is-disabled) {
+  color: #2a1b04;
+  background: linear-gradient(155deg, #fff0bd 0%, #ffd24f 46%, #9d6706 100%) !important;
+  border-color: #fff7d8;
+  box-shadow: 0 0 7px rgba(255,207,68,.9), 0 0 18px rgba(255,183,35,.6), inset 0 1px rgba(255,255,255,.65), inset 0 -4px 9px rgba(74,44,0,.54);
+}
+.hardware-button.appearance-classic.active.color-blue:not(.is-disabled),
+.hardware-button.appearance-classic:active.color-blue:not(.is-disabled) {
+  color: #071d31;
+  background: linear-gradient(155deg, #c1ecff 0%, #54c8ff 46%, #12558a 100%) !important;
+  border-color: #e1f6ff;
+  box-shadow: 0 0 7px rgba(79,195,255,.88), 0 0 18px rgba(42,169,255,.56), inset 0 1px rgba(255,255,255,.65), inset 0 -4px 9px rgba(0,44,74,.54);
+}
+.hardware-button.appearance-classic.is-disabled { filter: grayscale(.65); opacity: .42; }
 </style>
