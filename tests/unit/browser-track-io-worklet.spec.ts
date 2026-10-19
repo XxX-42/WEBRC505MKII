@@ -50,11 +50,11 @@ function loadProcessors() {
   return { worklets, setCurrentFrame(frame: number) { context.currentFrame = frame; } };
 }
 
-function makePool(size: number, capacity: number) {
+function makePool(size: number, capacity: number, channelCount = 1) {
   return Array.from({ length: size }, (_, slotIndex) => ({
     slotIndex,
     indices: new Uint32Array(capacity),
-    values: new Float32Array(capacity),
+    values: new Float32Array(capacity * channelCount),
   }));
 }
 
@@ -66,13 +66,16 @@ function initOverdub(processor: WorkletInstance, samples: number[], options: {
   latencySamples?: number;
   recordingOffsetSamples?: number;
   reverse?: boolean;
+  channelCount?: 1 | 2;
 } = {}) {
   const capacity = options.capacity ?? 4;
   const poolSize = options.poolSize ?? 3;
+  const channelCount = options.channelCount ?? 1;
   processor.port.receive({
     type: 'OVERDUB_INIT',
     samples: Float32Array.from(samples),
-    buffers: makePool(poolSize, capacity),
+    channelCount,
+    buffers: makePool(poolSize, capacity, channelCount),
     startFrame: options.startFrame ?? 0,
     startOffsetSamples: options.startOffsetSamples ?? 0,
     latencySamples: options.latencySamples ?? 0,
@@ -104,6 +107,22 @@ describe('browser track I/O AudioWorklets', () => {
     expect(Array.from(patch?.indices ?? [])).toEqual([2, 3, 4, 0]);
     expect(Array.from(patch?.values ?? [])).toEqual([31, 42, 53, 0]);
     expect(processor.port.posted[0]?.transferList).toHaveLength(2);
+  });
+
+  it('preserves independent L/R samples during stereo overdub and patch transfer', () => {
+    const { worklets, setCurrentFrame } = loadProcessors();
+    const OverdubProcessor = worklets.get('rc505-overdub-processor');
+    const processor = new OverdubProcessor!({ processorOptions: { transferBufferFrames: 4, transferBufferPoolSize: 3 } });
+    initOverdub(processor, [10, 100, 20, 200, 30, 300], { channelCount: 2 });
+    setCurrentFrame(0);
+    const outLeft = new Float32Array(2), outRight = new Float32Array(2);
+    processor.process([[Float32Array.from([1, 2]), Float32Array.from([10, 20])]], [[outLeft, outRight]]);
+    expect([...outLeft]).toEqual([11, 22]);
+    expect([...outRight]).toEqual([110, 220]);
+    const patch = processor.port.posted[0]?.message;
+    expect(patch).toMatchObject({ type: 'OVERDUB_PATCH', validFrames: 2, channelCount: 2 });
+    expect(Array.from((patch?.indices as Uint32Array).subarray(0, 2))).toEqual([0, 1]);
+    expect(Array.from((patch?.values as Float32Array).subarray(0, 4))).toEqual([11, 110, 22, 220]);
   });
 
   it('uses reverse playback indices and wraps the latency/offset-compensated write positions', () => {

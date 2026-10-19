@@ -407,6 +407,26 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.overdubDiagnostic).toContain('dropped 4 input frames');
   });
 
+  it('applies stereo overdub patches to both track channels independently', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    const audioBuffer = context.createBuffer(2, 8, context.sampleRate);
+    audioBuffer.getChannelData(0).set([1, 2, 3, 4, 5, 6, 7, 8]);
+    audioBuffer.getChannelData(1).set([10, 20, 30, 40, 50, 60, 70, 80]);
+    (trackAudio as any).audioBuffer = audioBuffer;
+    trackAudio.state = TrackState.PLAYING;
+    trackAudio.triggerRecord();
+    for (let index = 0; index < 6; index += 1) await Promise.resolve();
+    const node = FakeAudioWorkletNode.instances[0];
+    expect(node?.port.posted[0]?.message.channelCount).toBe(2);
+    expect(Array.from((node?.port.posted[0]?.message.samples as Float32Array).subarray(0, 6))).toEqual([1, 10, 2, 20, 3, 30]);
+    node?.port.receive({ type: 'OVERDUB_PATCH', sequence: 0, slotIndex: 0, validFrames: 2, channelCount: 2, indices: Uint32Array.from([1, 3]), values: Float32Array.from([2.5, 25, 4.5, 45]) });
+    expect(audioBuffer.getChannelData(0)[1]).toBe(2.5);
+    expect(audioBuffer.getChannelData(1)[1]).toBe(25);
+    expect(audioBuffer.getChannelData(0)[3]).toBe(4.5);
+    expect(audioBuffer.getChannelData(1)[3]).toBe(45);
+  });
+
   it('reports AudioWorklet unavailability and returns the audible track to PLAYING', async () => {
     vi.stubGlobal('AudioWorkletNode', undefined);
     const { TrackState, trackAudio } = await createTrackAudioHarness();

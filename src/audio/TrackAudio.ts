@@ -12,10 +12,12 @@ const RECORDING_CHUNK_SIZE = 16_384;
 const RECORDING_CHUNK_POOL_SIZE = 3;
 const OVERDUB_TRANSFER_BUFFER_FRAMES = 16_384;
 const OVERDUB_TRANSFER_BUFFER_POOL_SIZE = 3;
-// Bound capture memory to 384 MiB of float samples while supporting 30+ minutes
-// at common 44.1/48 kHz rates. The time limit varies with the selected sample rate.
+// Bound retained capture PCM to 384 MiB across all channels. Mono retains the
+// previous 30+ minute ceiling; stereo uses the same byte budget with half as many frames.
 const MAX_RECORDING_CAPTURE_BYTES = 384 * 1024 * 1024;
-const MAX_RECORDING_CHUNKS = MAX_RECORDING_CAPTURE_BYTES / Float32Array.BYTES_PER_ELEMENT / RECORDING_CHUNK_SIZE;
+const MAX_RECORDING_CAPTURE_SAMPLES = MAX_RECORDING_CAPTURE_BYTES / Float32Array.BYTES_PER_ELEMENT;
+const MAX_RECORDING_CHANNELS = 2;
+const MAX_RECORDING_CHUNKS = MAX_RECORDING_CAPTURE_SAMPLES / RECORDING_CHUNK_SIZE;
 
 export type LoopTransportFxName = 'BEAT SHIFT' | 'VINYL FLICK';
 
@@ -143,6 +145,7 @@ type RecordingWorkletMessage =
         chunkIndex: number;
         sequence: number;
         validFrames: number;
+        channelCount: 1 | 2;
         samples: Float32Array;
     }
     | {
@@ -151,6 +154,7 @@ type RecordingWorkletMessage =
         droppedFrames: number;
         overflowEvents: number;
         maxRecordingFrames: number;
+        channelCount: 1 | 2;
         limitReached: boolean;
         chunksSent: number;
     };
@@ -222,6 +226,7 @@ export class TrackAudio {
     private recordingChunkCount = 0;
     private recordingReceivedChunkMessages = 0;
     private recordingStoredFrames = 0;
+    private recordingChannelCount: 1 | 2 = 1;
     private pendingRecordingComplete: Extract<RecordingWorkletMessage, { type: 'RECORD_COMPLETE' }> | null = null;
     private readonly recycleChunkMessage = {
         type: 'RECYCLE_CHUNK' as const,
@@ -1162,13 +1167,11 @@ export class TrackAudio {
 
     public async startRecording() {
         if (this.isRecording || this.isFinalizingRecording) return;
-
         const ctx = this.engine.context;
         const input = await this.engine.getProcessedInputNode();
         if (this.isRecording || this.isFinalizingRecording) return;
         this.resumeAfterRecording = true;
-
-        const maxRecordingFrames = RECORDING_CHUNK_SIZE * MAX_RECORDING_CHUNKS;
+        const maxRecordingFrames = MAX_RECORDING_CAPTURE_SAMPLES;
         this.clearRecordingChunkStorage();
         this.pendingRecordingComplete = null;
         this.recordingFramesCaptured = 0;
@@ -1178,27 +1181,26 @@ export class TrackAudio {
         this.recordingMaximumDurationSeconds = maxRecordingFrames / ctx.sampleRate;
         this.recordingLimitReached = false;
         this.recordingDiagnostic = null;
-
         const workletNode = new AudioWorkletNode(ctx, 'looper-processor', {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [MAX_RECORDING_CHANNELS],
+            channelCount: MAX_RECORDING_CHANNELS,
+            channelCountMode: 'max',
+            channelInterpretation: 'speakers',
             processorOptions: {
                 chunkSize: RECORDING_CHUNK_SIZE,
                 chunkPoolSize: RECORDING_CHUNK_POOL_SIZE,
                 maxRecordingFrames,
+                maxRecordingSamples: MAX_RECORDING_CAPTURE_SAMPLES,
             },
         });
-
-        workletNode.port.onmessage = (event) => {
-            this.handleRecordingMessage(workletNode, event.data as RecordingWorkletMessage);
-        };
-
+        workletNode.port.onmessage = (event) => this.handleRecordingMessage(workletNode, event.data as RecordingWorkletMessage);
         input.connect(workletNode);
         workletNode.connect(this.fxChain.input);
-
         this.workletNode = workletNode;
-
         this.isRecording = true;
         this.state = TrackState.RECORDING;
-
         workletNode.port.postMessage({ type: 'START_RECORD' });
     }
 
@@ -1236,17 +1238,22 @@ export class TrackAudio {
             this.finishRecordingWhenReady(workletNode);
             return;
         }
-
+        const channelCount: 1 | 2 = message.channelCount === 2 ? 2 : 1;
+        if (this.recordingChunkCount === 0) {
+            this.recordingChannelCount = channelCount;
+            this.recordingMaximumFrames = Math.floor(MAX_RECORDING_CAPTURE_SAMPLES / channelCount);
+            this.recordingMaximumDurationSeconds = this.recordingMaximumFrames / this.engine.context.sampleRate;
+        }
         const sequence = Number.isInteger(message.sequence) ? message.sequence : -1;
         const validFrames = Number.isFinite(message.validFrames)
-            ? Math.max(0, Math.min(Math.floor(message.validFrames), samples.length))
+            ? Math.max(0, Math.min(Math.floor(message.validFrames), Math.floor(samples.length / channelCount)))
             : 0;
         const hasAvailableSlot = sequence >= 0 && sequence < MAX_RECORDING_CHUNKS;
-        const isNewSequence = hasAvailableSlot && this.receivedChunkFlags[sequence] === 0;
+        const isNewSequence = hasAvailableSlot && channelCount === this.recordingChannelCount && this.receivedChunkFlags[sequence] === 0;
         if (isNewSequence && validFrames > 0) {
-            // Keep ownership of the transferred data on the main thread. It remains a
-            // fixed-size chunk; only the small reference table grows (and it is preallocated).
-            this.recordedChunks[sequence] = samples;
+            const retainedSamples = new Float32Array(validFrames * channelCount);
+            retainedSamples.set(samples.subarray(0, retainedSamples.length));
+            this.recordedChunks[sequence] = retainedSamples;
             this.recordedChunkLengths[sequence] = validFrames;
             this.receivedChunkFlags[sequence] = 1;
             this.recordingChunkCount += 1;
@@ -1255,23 +1262,20 @@ export class TrackAudio {
         } else {
             this.recordingOverflowEvents += 1;
         }
-
-        // Replenish the worklet's fixed pool with a fresh fixed-size buffer. The original
-        // chunk stays main-thread-owned for final assembly. This allocation happens only
-        // when a chunk message arrives, never in the audio rendering callback.
+        const expectedPoolSamples = RECORDING_CHUNK_SIZE * MAX_RECORDING_CHANNELS;
+        const legacyMonoPoolSamples = RECORDING_CHUNK_SIZE;
         if (
-            isNewSequence && validFrames === samples.length &&
-            samples.length === RECORDING_CHUNK_SIZE &&
+            isNewSequence && validFrames === RECORDING_CHUNK_SIZE &&
+            (samples.length === expectedPoolSamples || (channelCount === 1 && samples.length === legacyMonoPoolSamples)) &&
             !this.isFinalizingRecording &&
             message.chunkIndex >= 0 && message.chunkIndex < RECORDING_CHUNK_POOL_SIZE
         ) {
-            const replacement = new Float32Array(RECORDING_CHUNK_SIZE);
+            const replacement = new Float32Array(samples.length);
             this.recycleChunkMessage.chunkIndex = message.chunkIndex;
             this.recycleChunkMessage.samples = replacement;
             this.recycleChunkTransferList[0] = replacement.buffer;
             workletNode.port.postMessage(this.recycleChunkMessage, this.recycleChunkTransferList);
         }
-
         this.finishRecordingWhenReady(workletNode);
     }
 
@@ -1292,51 +1296,46 @@ export class TrackAudio {
         workletNode: AudioWorkletNode,
         message: Extract<RecordingWorkletMessage, { type: 'RECORD_COMPLETE' }>,
     ) {
-        const reportedFrames = Number.isFinite(message.framesCaptured)
-            ? Math.max(0, Math.floor(message.framesCaptured))
-            : this.recordingStoredFrames;
+        const channelCount: 1 | 2 = this.recordingChunkCount > 0 ? this.recordingChannelCount : (message.channelCount === 2 ? 2 : 1);
+        const reportedFrames = Number.isFinite(message.framesCaptured) ? Math.max(0, Math.floor(message.framesCaptured)) : this.recordingStoredFrames;
         const missingFrames = Math.max(0, reportedFrames - this.recordingStoredFrames);
-
+        const reportedMaximumFrames = Number.isFinite(message.maxRecordingFrames)
+            ? Math.max(0, Math.floor(message.maxRecordingFrames))
+            : Math.floor(MAX_RECORDING_CAPTURE_SAMPLES / channelCount);
+        this.recordingMaximumFrames = reportedMaximumFrames;
+        this.recordingMaximumDurationSeconds = reportedMaximumFrames / this.engine.context.sampleRate;
         this.recordingFramesCaptured = this.recordingStoredFrames;
-        this.recordingDroppedFrames += Math.max(0, Number.isFinite(message.droppedFrames) ? message.droppedFrames : 0);
-        this.recordingDroppedFrames += missingFrames;
+        this.recordingDroppedFrames += Math.max(0, Number.isFinite(message.droppedFrames) ? message.droppedFrames : 0) + missingFrames;
         this.recordingOverflowEvents += Math.max(0, Number.isFinite(message.overflowEvents) ? message.overflowEvents : 0);
         this.recordingLimitReached = message.limitReached === true;
         if (missingFrames > 0) this.recordingOverflowEvents += 1;
-
         if (this.recordingLimitReached) {
             this.recordingDiagnostic = `Recording capacity reached (${Math.ceil(this.recordingMaximumDurationSeconds / 60)} min); ${this.recordingDroppedFrames} frames were dropped.`;
         } else if (this.recordingDroppedFrames > 0) {
             this.recordingDiagnostic = `Audio capture overflow dropped ${this.recordingDroppedFrames} frames.`;
-        } else {
-            this.recordingDiagnostic = null;
-        }
+        } else this.recordingDiagnostic = null;
 
         if (this.recordingStoredFrames > 0) {
-            const rawBuffer = new Float32Array(this.recordingStoredFrames);
+            const rawBuffer = new Float32Array(this.recordingStoredFrames * channelCount);
             let writeOffset = 0;
             for (let sequence = 0; sequence < MAX_RECORDING_CHUNKS; sequence += 1) {
                 if (this.receivedChunkFlags[sequence] === 0) continue;
                 const chunk = this.recordedChunks[sequence];
-                const length = this.recordedChunkLengths[sequence];
-                if (!chunk || length === undefined || length === 0) continue;
-                for (let index = 0; index < length; index += 1) {
-                    rawBuffer[writeOffset] = chunk[index] ?? 0;
-                    writeOffset += 1;
-                }
+                const frames = this.recordedChunkLengths[sequence];
+                if (!chunk || frames === undefined || frames === 0) continue;
+                const sampleCount = Math.min(chunk.length, frames * channelCount);
+                rawBuffer.set(chunk.subarray(0, sampleCount), writeOffset);
+                writeOffset += sampleCount;
             }
-
-            // Release the retained chunk references as soon as the one-time assembly is done.
-            // This keeps finalization to at most the assembled float buffer plus AudioBuffer.
-            const assembledBuffer = writeOffset === rawBuffer.length ? rawBuffer : rawBuffer.subarray(0, writeOffset);
+            const validSamples = Math.floor(writeOffset / channelCount) * channelCount;
+            const assembledBuffer = validSamples === rawBuffer.length ? rawBuffer : rawBuffer.subarray(0, validSamples);
             this.clearRecordingChunkStorage();
-            this.processRecordedBuffer(assembledBuffer);
+            this.processRecordedBuffer(assembledBuffer, channelCount);
         } else {
             this.state = this.resumeAfterRecording ? TrackState.EMPTY : TrackState.STOPPED;
             this.resumeAfterRecording = true;
             this.syncTransportState();
         }
-
         workletNode.port.onmessage = null;
         workletNode.disconnect();
         if (this.workletNode === workletNode) this.workletNode = null;
@@ -1353,69 +1352,54 @@ export class TrackAudio {
         this.recordingChunkCount = 0;
         this.recordingReceivedChunkMessages = 0;
         this.recordingStoredFrames = 0;
+        this.recordingChannelCount = 1;
         this.pendingRecordingComplete = null;
     }
 
-    private processRecordedBuffer(rawBuffer: Float32Array) {
+    private processRecordedBuffer(rawBuffer: Float32Array, channelCount: 1 | 2 = 1) {
         const ctx = this.engine.context;
+        const channels: 1 | 2 = channelCount === 2 ? 2 : 1;
+        const rawFrames = Math.floor(rawBuffer.length / channels);
+        if (rawFrames <= 0) {
+            this.state = this.resumeAfterRecording ? TrackState.EMPTY : TrackState.STOPPED;
+            this.resumeAfterRecording = true;
+            this.syncTransportState();
+            return;
+        }
         const browserOffset = this.getBrowserRecordingOffsetConfig();
         const latencySamples = Math.round(this.engine.roundTripLatency * ctx.sampleRate);
-
         let startOffset = Math.max(0, latencySamples);
-        if (startOffset >= rawBuffer.length) startOffset = 0;
-
-        const processedLength = rawBuffer.length - startOffset;
-        if (startOffset > 0) rawBuffer.copyWithin(0, startOffset);
-        const processedBuffer = rawBuffer.subarray(0, processedLength);
-        shiftSamplesInPlace(processedBuffer, browserOffset.recordingOffsetSamples);
-
-        const durationSeconds = processedBuffer.length / ctx.sampleRate;
-        const lengthSamples = processedBuffer.length;
-
-        console.log(`Track ${this.track.id} recorded: ${durationSeconds.toFixed(2)}s (${lengthSamples} samples)`);
-
-        // ========================================
-        // MASTER / SLAVE LOGIC
-        // ========================================
-
+        if (startOffset >= rawFrames) startOffset = 0;
+        const lengthSamples = rawFrames - startOffset;
+        const durationSeconds = lengthSamples / ctx.sampleRate;
+        console.log(`Track ${this.track.id} recorded: ${durationSeconds.toFixed(2)}s (${lengthSamples} frames, ${channels}ch)`);
         let finalBufferLength = lengthSamples;
-
         if (!this.transport.hasMasterTrack()) {
-            // This is the first track - it becomes the master
             console.log(`\n🎯 Track ${this.track.id} is becoming the MASTER track`);
-
-            // Set master track with enhanced BPM calculation
-            this.transport.setMasterTrack(
-                this.track.id,
-                durationSeconds,
-                ctx.sampleRate,
-                lengthSamples
-            );
-
-            // Start global transport
+            this.transport.setMasterTrack(this.track.id, durationSeconds, ctx.sampleRate, lengthSamples);
             this.transport.start();
-
             console.log(`✓ Global transport started with calculated BPM\n`);
         } else {
-            // This is a slave track - Apply Hard Quantization (Drift Fix)
             const masterLength = this.transport.masterLoopLengthSamples;
-
             if (masterLength > 0 && Number.isFinite(masterLength)) {
-                // Calculate ratio (how many measures), retaining the prior min-one-loop rule.
                 let ratio = Math.round(lengthSamples / masterLength);
                 if (ratio < 1) ratio = 1;
-
                 finalBufferLength = ratio * masterLength;
                 console.log(`Track ${this.track.id} recorded as SLAVE track (Master: Track ${this.transport.masterTrackId})`);
                 console.log(`Drift Fix: Resized track from ${lengthSamples} to ${finalBufferLength} (Exact multiple: ${ratio})`);
             }
         }
-
-        // Create final AudioBuffer
-        this.audioBuffer = ctx.createBuffer(1, finalBufferLength, ctx.sampleRate);
-        const audioChannel = this.audioBuffer.getChannelData(0);
-        audioChannel.set(processedBuffer.subarray(0, Math.min(processedBuffer.length, finalBufferLength)));
-
+        this.audioBuffer = ctx.createBuffer(channels, finalBufferLength, ctx.sampleRate);
+        let shift = lengthSamples > 0 ? Math.trunc(browserOffset.recordingOffsetSamples) % lengthSamples : 0;
+        if (shift < 0) shift += lengthSamples;
+        const copyFrames = Math.min(lengthSamples, finalBufferLength);
+        for (let channel = 0; channel < channels; channel += 1) {
+            const output = this.audioBuffer.getChannelData(channel);
+            for (let frame = 0; frame < copyFrames; frame += 1) {
+                const sourceFrame = startOffset + ((frame + shift) % lengthSamples);
+                output[frame] = rawBuffer[(sourceFrame * channels) + channel] ?? 0;
+            }
+        }
         if (this.resumeAfterRecording) {
             this.state = TrackState.PLAYING;
             this.play();
@@ -1423,7 +1407,6 @@ export class TrackAudio {
             this.state = TrackState.STOPPED;
             this.syncTransportState();
         }
-
         this.resumeAfterRecording = true;
     }
 
@@ -1865,13 +1848,21 @@ export class TrackAudio {
                 throw new Error('AudioWorkletNode is unavailable in this browser context');
             }
 
-            const loopSamples = new Float32Array(audioBuffer.getChannelData(0));
-            if (loopSamples.length === 0) throw new Error('The loop has no audio samples to overdub');
+            if (audioBuffer.numberOfChannels < 1 || audioBuffer.numberOfChannels > 2) {
+                throw new Error('Browser overdub supports one or two track-buffer channels');
+            }
+            const channelCount: 1 | 2 = audioBuffer.numberOfChannels === 2 ? 2 : 1;
+            const loopSamples = new Float32Array(audioBuffer.length * channelCount);
+            for (let channel = 0; channel < channelCount; channel += 1) {
+                const source = audioBuffer.getChannelData(channel);
+                for (let frame = 0; frame < audioBuffer.length; frame += 1) loopSamples[(frame * channelCount) + channel] = source[frame] ?? 0;
+            }
+            if (audioBuffer.length === 0) throw new Error('The loop has no audio samples to overdub');
 
             const patchBuffers = Array.from({ length: OVERDUB_TRANSFER_BUFFER_POOL_SIZE }, (_, slotIndex) => ({
                 slotIndex,
                 indices: new Uint32Array(OVERDUB_TRANSFER_BUFFER_FRAMES),
-                values: new Float32Array(OVERDUB_TRANSFER_BUFFER_FRAMES),
+                values: new Float32Array(OVERDUB_TRANSFER_BUFFER_FRAMES * channelCount),
             }));
             const transferList: Transferable[] = [loopSamples.buffer];
             for (const buffer of patchBuffers) {
@@ -1881,8 +1872,8 @@ export class TrackAudio {
             const workletNode = new AudioWorkletNode(ctx, 'rc505-overdub-processor', {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
-                outputChannelCount: [1],
-                channelCount: 1,
+                outputChannelCount: [channelCount],
+                channelCount,
                 channelCountMode: 'explicit',
                 processorOptions: {
                     transferBufferFrames: OVERDUB_TRANSFER_BUFFER_FRAMES,
@@ -1914,6 +1905,7 @@ export class TrackAudio {
             workletNode.port.postMessage({
                 type: 'OVERDUB_INIT',
                 samples: loopSamples,
+                channelCount,
                 buffers: patchBuffers,
                 startFrame: Math.floor(this.startTime * ctx.sampleRate),
                 startOffsetSamples: Math.floor(this.startOffset * ctx.sampleRate),
@@ -1956,6 +1948,7 @@ export class TrackAudio {
             validFrames?: number;
             indices?: Uint32Array;
             values?: Float32Array;
+            channelCount?: number;
             overflowFrames?: number;
             overflowEvents?: number;
             message?: string;
@@ -1964,8 +1957,9 @@ export class TrackAudio {
         if (payload.type === 'OVERDUB_PATCH') {
             const indices = payload.indices;
             const values = payload.values;
+            const patchChannelCount: 1 | 2 = payload.channelCount === 2 ? 2 : 1;
             const validFrames = Number.isFinite(payload.validFrames)
-                ? Math.max(0, Math.min(Math.floor(payload.validFrames as number), indices?.length ?? 0, values?.length ?? 0))
+                ? Math.max(0, Math.min(Math.floor(payload.validFrames as number), indices?.length ?? 0, Math.floor((values?.length ?? 0) / patchChannelCount)))
                 : 0;
             if (
                 this.overdubSessionAudioBuffer === audioBuffer && this.audioBuffer === audioBuffer &&
@@ -1973,11 +1967,18 @@ export class TrackAudio {
             ) {
                 if (payload.sequence !== this.overdubNextPatchSequence) {
                     this.overdubDiagnostic = 'Overdub patch messages arrived out of sample order; a patch was skipped.';
+                } else if (patchChannelCount !== audioBuffer.numberOfChannels) {
+                    this.overdubDiagnostic = `Overdub patch channel mismatch: expected ${audioBuffer.numberOfChannels}, received ${patchChannelCount}.`;
                 } else {
-                    const trackBuffer = audioBuffer.getChannelData(0);
+                    const trackBuffers = Array.from({ length: patchChannelCount }, (_, channel) => audioBuffer.getChannelData(channel));
                     for (let frame = 0; frame < validFrames; frame += 1) {
-                        const index = indices[frame] ?? trackBuffer.length;
-                        if (index < trackBuffer.length) trackBuffer[index] = values[frame] ?? trackBuffer[index] ?? 0;
+                        const index = indices[frame] ?? audioBuffer.length;
+                        if (index >= audioBuffer.length) continue;
+                        for (let channel = 0; channel < patchChannelCount; channel += 1) {
+                            const trackBuffer = trackBuffers[channel]!;
+                            const value = values[(frame * patchChannelCount) + channel];
+                            trackBuffer[index] = value ?? trackBuffer[index] ?? 0;
+                        }
                     }
                     this.overdubNextPatchSequence += 1;
                 }
@@ -2076,31 +2077,5 @@ export class TrackAudio {
             this.transport.off('measure', this.quantizeStopListener);
             this.quantizeStopListener = null;
         }
-    }
-}
-
-function shiftSamplesInPlace(samples: Float32Array, offsetSamples: number) {
-    const length = samples.length;
-    if (length < 2 || !Number.isFinite(offsetSamples)) return;
-
-    let shift = Math.trunc(offsetSamples) % length;
-    if (shift < 0) shift += length;
-    if (shift === 0) return;
-
-    // Existing offset semantics rotate left by the configured sample offset.
-    reverseRange(samples, 0, shift);
-    reverseRange(samples, shift, length);
-    reverseRange(samples, 0, length);
-}
-
-function reverseRange(samples: Float32Array, start: number, end: number) {
-    let left = start;
-    let right = end - 1;
-    while (left < right) {
-        const value = samples[left] ?? 0;
-        samples[left] = samples[right] ?? 0;
-        samples[right] = value;
-        left += 1;
-        right -= 1;
     }
 }

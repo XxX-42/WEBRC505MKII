@@ -147,6 +147,21 @@ describe('bounded recording worklet capture', () => {
       maxRecordingFrames: 3,
     });
   });
+  it('captures independent stereo channels without collapsing right into left', () => {
+    const { Processor } = loadLooperProcessor();
+    const processor = new Processor({ processorOptions: { chunkSize: 3, chunkPoolSize: 2, maxRecordingFrames: 16, maxRecordingSamples: 32 } });
+    processor.port.receive({ type: 'START_RECORD' });
+    const left = Float32Array.from([1, 2, 3]), right = Float32Array.from([10, 20, 30]);
+    const outLeft = new Float32Array(3), outRight = new Float32Array(3);
+    processor.process([[left, right]], [[outLeft, outRight]]);
+    processor.port.receive({ type: 'STOP_RECORD' });
+    const chunk = processor.port.posted.find(({ message }) => message.type === 'RECORD_CHUNK')?.message;
+    expect(chunk).toMatchObject({ validFrames: 3, channelCount: 2 });
+    expect(Array.from((chunk?.samples as Float32Array).subarray(0, 6))).toEqual([1, 10, 2, 20, 3, 30]);
+    expect([...outLeft]).toEqual([1, 2, 3]);
+    expect([...outRight]).toEqual([10, 20, 30]);
+    expect(processor.port.posted.at(-1)?.message).toMatchObject({ type: 'RECORD_COMPLETE', framesCaptured: 3, channelCount: 2, maxRecordingFrames: 16 });
+  });
 });
 
 describe('TrackAudio recording chunk assembly', () => {
@@ -358,6 +373,32 @@ describe('TrackAudio recording chunk assembly', () => {
     expect(trackAudio.recordingDroppedFrames).toBe(1);
     expect(trackAudio.recordingOverflowEvents).toBe(1);
     expect(trackAudio.recordingDiagnostic).toContain('Recording capacity reached');
+  });
+
+  it('builds a two-channel AudioBuffer from interleaved Browser PCM without L/R crosstalk', async () => {
+    vi.resetModules();
+    const [{ TrackAudio }, { Track, TransportState }, { Transport }] = await Promise.all([
+      import('../../src/audio/TrackAudio'), import('../../src/core/types'), import('../../src/core/Transport'),
+    ]);
+    const context = createMockAudioContext();
+    const engine = {
+      context, trackMixNode: context.createGain(), roundTripLatency: 0,
+      selectedInputDeviceId: null, selectedOutputDeviceId: null, selectedBufferFrames: 128,
+      getProcessedInputNode: async () => context.createGain(), checkAndResetMaster: vi.fn(), tracks: [] as unknown[],
+    };
+    const transport = Transport.getInstance();
+    transport.masterTrackId = null; transport.masterLoopLengthSamples = 0; transport.state = TransportState.STOPPED;
+    try {
+      const trackAudio = new TrackAudio(engine as never, new Track(1), 0, null, null);
+      const api = trackAudio as unknown as { processRecordedBuffer: (buffer: Float32Array, channelCount: 1 | 2) => void; resumeAfterRecording: boolean; audioBuffer: AudioBuffer | null };
+      api.resumeAfterRecording = false;
+      api.processRecordedBuffer(Float32Array.from([1, 10, 2, 20, 3, 30]), 2);
+      expect(api.audioBuffer?.numberOfChannels).toBe(2);
+      expect(Array.from(api.audioBuffer?.getChannelData(0) ?? [])).toEqual([1, 2, 3]);
+      expect(Array.from(api.audioBuffer?.getChannelData(1) ?? [])).toEqual([10, 20, 30]);
+    } finally {
+      transport.masterTrackId = null; transport.masterLoopLengthSamples = 0; transport.state = TransportState.STOPPED;
+    }
   });
 
   it('keeps latency trim, circular offset, and slave sizing while processing in place', async () => {

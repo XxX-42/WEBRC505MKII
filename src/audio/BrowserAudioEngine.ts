@@ -1592,7 +1592,8 @@ export class BrowserAudioEngine implements IAudioEngine {
                 deviceId: deviceId ? { exact: deviceId } : undefined,
                 echoCancellation: false,
                 autoGainControl: false,
-                noiseSuppression: false
+                noiseSuppression: false,
+                channelCount: { ideal: 2 }
             }
         };
     }
