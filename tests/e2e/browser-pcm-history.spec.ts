@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { ensureClassicStyle, startBrowserAudio } from './uiHelpers';
 
-test('selected-track LCD undo and redo restore exact recorded stereo PCM', async ({ page }) => {
+test('physical Undo/Redo control layer restores exact recorded stereo PCM through track REC/PLAY', async ({ page }) => {
   await page.addInitScript(() => {
     const mediaDevices = navigator.mediaDevices;
     mediaDevices.getUserMedia = async () => {
@@ -74,19 +74,23 @@ test('selected-track LCD undo and redo restore exact recorded stereo PCM', async
     };
   });
 
-  const historyButton = page.locator('[data-panel-control="undo-redo"]');
-  await expect(historyButton).toBeEnabled();
-  await expect(historyButton).toHaveAttribute('aria-label', 'Undo last PCM edit on track 1');
-  await historyButton.click();
-  await expect(historyButton).toHaveAttribute('aria-label', 'Redo PCM edit on track 1');
+  const historyLayerButton = page.locator('[data-panel-control="undo-redo"]');
+  await expect(historyLayerButton).toBeEnabled();
+  await expect(historyLayerButton).toHaveAttribute('aria-label', 'Toggle Undo/Redo control layer');
+  await historyLayerButton.click();
+  const recordPlayButton = page.locator('[data-track-id="1"] [data-panel-control="record-play"]');
+  await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'UNDO');
+  await recordPlayButton.click();
+  await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'REDO');
   await page.waitForFunction(() => {
     const root = document.querySelector('.app-root') as (HTMLElement & { __vueParentComponent?: any }) | null;
     const engine = root?.__vueParentComponent?.setupState?.engine;
     return engine?.tracks?.[0]?.audioBuffer === null;
   });
 
-  await historyButton.click();
-  await expect(historyButton).toHaveAttribute('aria-label', 'Undo last PCM edit on track 1');
+  await recordPlayButton.click();
+  await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'UNDO');
+  await historyLayerButton.click();
   const restored = await page.evaluate(async () => {
     const loadModule = (specifier: string) =>
       (new Function('specifier', 'return import(specifier)') as (value: string) => Promise<any>)(specifier);

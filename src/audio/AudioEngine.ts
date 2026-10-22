@@ -781,6 +781,20 @@ export class AudioEngine {
     return this.browser.isTrackAvailable(trackId);
   }
 
+  /** UI metadata only: never infer a committed phrase from selection or input activity. */
+  public getTrackHasPhrase(trackId: number): boolean | null {
+    if (!this.isTrackAvailable(trackId)) return null;
+    if (this.currentMode === 'browser') return this.browser.tracks[trackId - 1]?.hasCommittedPhrase ?? null;
+    const state = this.nativeEngine.nativeTrackState(trackId);
+    if (state === 'Empty' || state === 'Recording') return false;
+    return state === 'Stopped' || state === 'Playing' || state === 'Overdubbing' ? true : null;
+  }
+
+  /** Immutable Browser shared-slot configuration, with actual processor readiness. */
+  public getBrowserSharedFxSnapshot(path: 'input' | 'track') {
+    return this.currentMode === 'browser' ? this.browser.getSharedFxSnapshot(path) : null;
+  }
+
   /** Last acknowledged one-step PCM history for the selected loop. */
   public getTrackHistoryStatus(trackId: number): TrackPcmHistoryStatus {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) {

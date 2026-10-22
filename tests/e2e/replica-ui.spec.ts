@@ -1,6 +1,9 @@
 import fs from 'node:fs/promises';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { findLcdField, lcdScreen, openLcdPage, selectLcdEnum, setLcdBoolean, setLcdRange, startBrowserAudio } from './uiHelpers';
+import { findLcdField, lcdScreen, openClassicFxEditor, selectLcdEnum, setLcdBoolean, setLcdRange, startBrowserAudio } from './uiHelpers';
+
+const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
 
 async function actualTrackState(page: Page): Promise<string> {
   return page.evaluate(async () => {
@@ -20,16 +23,16 @@ test('replica keeps the physical control inventory and warns below readable view
     await expect(face.locator('button:visible')).toHaveCount(41);
     await expect(face.locator('.hardware-knob-wrapper:visible')).toHaveCount(7);
     await expect(face.locator('.hardware-fader')).toHaveCount(5);
-    await expect(face.getByRole('button', { name: 'No PCM undo or redo available for track 1' })).toBeDisabled();
+    await expect(face.getByRole('button', { name: 'Toggle Undo/Redo control layer', exact: true })).toBeDisabled();
     await expect(face.getByRole('button', { name: 'Record or play track', exact: true }).first()).toBeDisabled();
     const disabledRecord = face.locator('.track-strip[data-track-id="1"] [data-panel-control="record-play"]');
     await expect(disabledRecord).toHaveCSS('opacity', '0.64');
     await expect(disabledRecord.locator('.button-label')).toHaveCSS('color', 'rgb(241, 242, 245)');
     await expect(face.locator('.track-strip[data-track-id="1"] .stop-disc')).toHaveCSS('opacity', '0.62');
     if (viewport.width === 1366) {
-      const parameterCells = page.locator('.lcd-parameter-row span');
-      expect(await parameterCells.allTextContents()).toEqual(['1 BPM 120', '2 RHY VOL 50%', '3 IN FX 0%', '4 TR FX 0%']);
-      expect(await parameterCells.evaluateAll((elements) => elements.every((element) => {
+      const memoryCells = page.locator('.lcd-data-rows .lcd-data-row span');
+      expect(await memoryCells.allTextContents()).toEqual(['MEMORY NO.', '—', 'MEMORY DATA', 'PARTIAL', 'NUMBER SOURCE', 'UNAVAILABLE']);
+      expect(await memoryCells.evaluateAll((elements) => elements.every((element) => {
         return element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight;
       }))).toBe(true);
     }
@@ -57,7 +60,7 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
   await expect(screen).toBeVisible();
   await expect(screen).toContainText(/SYSTEM|MENU|SETTINGS/i);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
-  await expect(screen.locator(':focus')).toHaveCount(1);
+  await expect(face.locator('[data-panel-control="screen-encoder-3"]')).toBeFocused();
   await page.getByRole('button', { name: 'Exit current page', exact: true }).click();
   await expect(menu).toBeFocused();
 
@@ -85,17 +88,23 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
 
   const loop = face.getByTestId('physical-loop-button');
   await loop.click();
-  await expect(screen).toContainText(/TRACK\s*1|TR\s*1/i);
+  await expect(screen).toHaveAttribute('data-classic-screen', 'loop-root');
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
-  await expect(screen.locator(':focus')).toHaveCount(1);
+  await expect(face.locator('[data-panel-control="screen-encoder-1"]')).toBeFocused();
   await page.getByRole('button', { name: 'Exit current page', exact: true }).click();
   await expect(loop).toBeFocused();
 
   const trackOne = face.locator('.track-strip[data-track-id="1"]');
-  await trackOne.locator('[data-track-control="fx"]').click();
+  const perTrackFx = trackOne.locator('[data-track-control="fx"]');
+  await expect(perTrackFx).toBeDisabled();
+  await expect(perTrackFx).toHaveAttribute('data-hardware-role', 'TRACK_FX_APPLY');
+  await openClassicFxEditor(page, 'track');
+  await expect(screen).toHaveAttribute('data-classic-screen', 'editor-track-fx');
   await expect(screen).toContainText(/TRACK FX/i);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Exit current page', exact: true }).click();
   await trackOne.locator('[data-track-control="select"]').click();
+  await expect(screen).toHaveAttribute('data-classic-screen', 'editor-track');
   await expect(screen).toContainText(/TRACK\s*1|TR\s*1/i);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });
@@ -103,7 +112,7 @@ test('hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD witho
 test('LCD Input FX exposes slot, type, active and named parameters across PAGE subpages', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);
-  const screen = await openLcdPage(page, 'input-fx-edit-button');
+  const screen = await openClassicFxEditor(page, 'input');
   await expect(screen).toContainText(/INPUT FX/i);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 
@@ -124,26 +133,66 @@ test('LCD Input FX exposes slot, type, active and named parameters across PAGE s
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });
 
-test('real Native bridge readiness is visible on the shared Classic faceplate', async ({ page }, testInfo) => {
+test('Native simulation bridge readiness is visible on the shared Classic faceplate', async ({ page }, testInfo) => {
+  test.skip(!simulationHost, 'Set NATIVE_BRIDGE_SIMULATION_EXECUTABLE to the explicit no-hardware Native simulation target.');
+  if (!simulationHost) return;
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto('/?audio=native&ui=classic');
-  await expect(page.locator('.status-pill')).toContainText('NATIVE AUDIO READY', { timeout: 15_000 });
-  const face = page.getByTestId('rc505-physical-face');
-  await expect(face.locator('button:visible')).toHaveCount(41);
-  await expect(face.locator('.hardware-knob-wrapper:visible')).toHaveCount(7);
-  await expect(face.locator('.hardware-fader')).toHaveCount(5);
-  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
-  const result = {
-    mode: 'Native',
-    bridgeStatus: (await page.locator('.status-pill').innerText()).trim(),
-    capabilitySummary: (await page.locator('.mode-summary').innerText()).trim(),
-    lcdStatus: (await page.locator('[data-testid="rc505-lcd-screen"] .lcd-status').innerText()).trim(),
-    controlCounts: { buttons: 41, knobs: 7, faders: 5 },
-    commandWritten: false,
-  };
-  await fs.writeFile(testInfo.outputPath('native-live-bridge.json'), JSON.stringify(result, null, 2));
-  await page.screenshot({ path: testInfo.outputPath('native-live-bridge-1920.png'), fullPage: true });
-  await page.getByTestId('rc505-lcd-screen').screenshot({ path: testInfo.outputPath('native-live-lcd-1920.png') });
+  let host: ChildProcess | undefined;
+  let hostStartError: Error | undefined;
+  try {
+    let preexistingHealth = false;
+    try {
+      preexistingHealth = (await fetch('http://127.0.0.1:17755/health')).ok;
+    } catch {
+      // The simulation must own the port before readiness is checked.
+    }
+    expect(preexistingHealth, 'Port 17755 must be free before starting the Native simulation host.').toBe(false);
+    host = spawn(simulationHost, [], { stdio: 'ignore' });
+    host.once('error', (error) => { hostStartError = error; });
+    let ready = false;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (hostStartError) throw hostStartError;
+      if (host.exitCode !== null) throw new Error(`Native simulation host exited early with code ${host.exitCode}`);
+      try {
+        const response = await fetch('http://127.0.0.1:17755/health');
+        ready = response.ok && (await response.json()).ok === true;
+        if (ready) break;
+      } catch {
+        // The explicit simulation host may need a moment to bind its local port.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    await page.goto('/?audio=native&ui=classic');
+    await expect(page.locator('.status-pill')).toContainText('NATIVE AUDIO READY', { timeout: 15_000 });
+    const face = page.getByTestId('rc505-physical-face');
+    await expect(face.locator('button:visible')).toHaveCount(41);
+    await expect(face.locator('.hardware-knob-wrapper:visible')).toHaveCount(7);
+    await expect(face.locator('.hardware-fader')).toHaveCount(5);
+    await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+    const result = {
+      mode: 'Native simulation',
+      simulation: true,
+      physicalDeviceValidated: false,
+      bridgeStatus: (await page.locator('.status-pill').innerText()).trim(),
+      capabilitySummary: (await page.locator('.mode-summary').innerText()).trim(),
+      lcdStatus: (await page.locator('[data-testid="rc505-lcd-screen"] .lcd-status').innerText()).trim(),
+      controlCounts: { buttons: 41, knobs: 7, faders: 5 },
+      commandWritten: false,
+    };
+    await fs.writeFile(testInfo.outputPath('native-simulation-bridge.json'), JSON.stringify(result, null, 2));
+    await page.screenshot({ path: testInfo.outputPath('native-simulation-bridge-1920.png'), fullPage: true });
+    await page.getByTestId('rc505-lcd-screen').screenshot({ path: testInfo.outputPath('native-simulation-lcd-1920.png') });
+  } finally {
+    if (host && host.exitCode === null) {
+      host.kill('SIGTERM');
+      await new Promise<void>((resolve) => {
+        host?.once('exit', () => resolve());
+        setTimeout(() => resolve(), 2_000);
+      });
+    }
+  }
 });
 
 test('real Browser UI starts on a gesture and records, plays, overdubs and stops virtual input', async ({ page }, testInfo) => {
@@ -154,24 +203,23 @@ test('real Browser UI starts on a gesture and records, plays, overdubs and stops
   await page.getByTestId('start-audio').click();
   await expect(page.getByTestId('input-status')).toHaveText('INPUT READY · OUTPUT READY', { timeout: 25000 });
   const firstTrack = page.locator('.track-strip[data-track-id="1"]');
-  const lcd = lcdScreen(page);
   const record = firstTrack.getByRole('button', { name: 'Record or play track', exact: true });
   const stop = firstTrack.getByRole('button', { name: 'Stop track (hold to clear)', exact: true });
   await record.click();
   await expect.poll(() => actualTrackState(page)).toBe('RECORDING');
-  await expect(lcd).toContainText('RECORDING');
+  await expect(firstTrack.locator('.indicator-chip.active')).toHaveText('REC');
   await page.waitForTimeout(350);
   await page.screenshot({ path: testInfo.outputPath('browser-recording-glow.png'), fullPage: true });
   await stop.click();
   await expect.poll(() => actualTrackState(page)).toBe('STOPPED');
-  await expect(lcd).toContainText('STOPPED');
+  await expect(firstTrack.locator('.indicator-chip.active')).toHaveCount(0);
   await record.click();
   await expect.poll(() => actualTrackState(page)).toBe('PLAYING');
-  await expect(lcd).toContainText('PLAYING');
+  await expect(firstTrack.locator('.indicator-chip.active')).toHaveText('PLAY');
   await page.screenshot({ path: testInfo.outputPath('browser-playing-glow.png'), fullPage: true });
   await record.click();
   await expect.poll(() => actualTrackState(page)).toBe('OVERDUBBING');
-  await expect(lcd).toContainText('OVERDUBBING');
+  await expect(firstTrack.locator('.indicator-chip.active')).toHaveText('DUB');
   await page.screenshot({ path: testInfo.outputPath('browser-overdub-glow.png'), fullPage: true });
   await stop.click();
   await expect.poll(() => actualTrackState(page)).toBe('STOPPED');
@@ -195,17 +243,20 @@ test('real Browser UI starts on a gesture and records, plays, overdubs and stops
     operations: ['record', 'stop', 'play', 'overdub', 'stop'], ...result,
   }, null, 2));
   await page.screenshot({ path: testInfo.outputPath('browser-recorded.png'), fullPage: true });
-  // Cancelling a key-held STOP must cancel its 1500 ms clear timer.
+  // Cancelling a key-held STOP must cancel its 2000 ms clear timer.
   await stop.focus();
   await page.keyboard.down('Space');
   await page.waitForTimeout(100);
   await record.focus();
   await page.keyboard.up('Space');
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(2100);
   await expect.poll(() => actualTrackState(page)).toBe('STOPPED');
   await stop.focus();
   await page.keyboard.down('Space');
-  await page.waitForTimeout(1600);
+  // Leave room for browser/driver IPC before asserting the pre-clear state.
+  await page.waitForTimeout(1500);
+  await expect.poll(() => actualTrackState(page)).toBe('STOPPED');
+  await page.waitForTimeout(600);
   await page.keyboard.up('Space');
   await expect.poll(() => actualTrackState(page)).toBe('EMPTY');
   const output = page.getByRole('slider', { name: 'Master output level', exact: true });

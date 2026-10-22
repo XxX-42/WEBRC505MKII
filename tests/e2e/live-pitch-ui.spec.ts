@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { openTrackLcd, selectLcdEnum, setLcdRange, startBrowserAudio } from './uiHelpers';
+import { findEnhancedControl, openEnhancedTools, selectEnhancedEnum, selectEnhancedTrack, setEnhancedNumber, startBrowserAudio } from './uiHelpers';
 
 declare global {
   interface Window {
@@ -15,7 +15,7 @@ const track = (page: import('@playwright/test').Page, trackId: number) => page.l
   `[data-panel="track-bay"] .track-strip[data-track-id="${trackId}"]`,
 );
 
-test('Classic LCD persists independent Browser LIVE_MONO settings through the mock worklet adapter', async ({ page }) => {
+test('Enhanced Tools persists independent Browser LIVE_MONO settings through the mock worklet adapter', async ({ page }) => {
   // A query-gated worklet-port shim supplies synthetic ready/status responses.
   // This proves TrackStrip-to-adapter configuration and persistence only; it
   // makes no claim about real worklet execution or audio output.
@@ -24,14 +24,14 @@ test('Classic LCD persists independent Browser LIVE_MONO settings through the mo
   await startBrowserAudio(page);
 
   const track2 = track(page, 2);
-  const track1Screen = await openTrackLcd(page, 1);
-  const mode1 = track1Screen.getByTestId('lcd-field-keep-pitch');
+  const tools = await openEnhancedTools(page, 'PITCH / HQ WAV');
+  await selectEnhancedTrack(tools, 1);
+  const mode1 = await findEnhancedControl(page, 'keep-pitch');
   await expect(mode1).toBeEnabled();
 
-  await setLcdRange(page, 'keep-pitch-semitones', 5);
-  await selectLcdEnum(page, 'keep-pitch', 'LIVE MONO');
-  await expect(track1Screen.locator('.lcd-status'))
-    .toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
+  await setEnhancedNumber(page, 'keep-pitch-semitones', 5);
+  await selectEnhancedEnum(page, 'keep-pitch', 'LIVE MONO');
+  await expect(tools.getByRole('status')).toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
 
   const track1AdapterAck = await page.evaluate(async () => {
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
@@ -61,17 +61,15 @@ test('Classic LCD persists independent Browser LIVE_MONO settings through the mo
   expect(track1AdapterAck.observedNode?.processorOptions.semitones).toBe(5);
   expect(track1AdapterAck.routedMessages).toContainEqual({ type: 'get-status', requestId: 1 });
 
-  const track2Screen = await openTrackLcd(page, 2);
+  await selectEnhancedTrack(tools, 2);
   await expect(track2).toHaveClass(/selected/);
-  const mode2 = track2Screen.getByTestId('lcd-field-keep-pitch');
+  const mode2 = await findEnhancedControl(page, 'keep-pitch');
   await expect(mode2).toBeEnabled();
-  await setLcdRange(page, 'keep-pitch-semitones', -7);
-  await selectLcdEnum(page, 'keep-pitch', 'LIVE MONO');
-  await expect(track2Screen.locator('.lcd-status'))
-    .toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
-  const track1AfterSecondEdit = await openTrackLcd(page, 1);
-  await expect(track1AfterSecondEdit.locator('.lcd-status'))
-    .toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
+  await setEnhancedNumber(page, 'keep-pitch-semitones', -7);
+  await selectEnhancedEnum(page, 'keep-pitch', 'LIVE MONO');
+  await expect(tools.getByRole('status')).toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
+  await selectEnhancedTrack(tools, 1);
+  await expect(tools.getByRole('status')).toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
 
   const bothAdapterAcks = await page.evaluate(async () => {
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
@@ -84,30 +82,30 @@ test('Classic LCD persists independent Browser LIVE_MONO settings through the mo
 
   await page.reload();
   await startBrowserAudio(page);
-  const restoredTrack1Screen = await openTrackLcd(page, 1);
-  await expect(restoredTrack1Screen.getByTestId('lcd-field-keep-pitch')).toHaveValue('1');
-  await expect(restoredTrack1Screen.getByTestId('lcd-field-keep-pitch-semitones')).toHaveValue('5');
-  await expect(restoredTrack1Screen.locator('.lcd-status'))
-    .toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
-  const restoredTrack2Screen = await openTrackLcd(page, 2);
-  await expect(restoredTrack2Screen.getByTestId('lcd-field-keep-pitch')).toHaveValue('1');
-  await expect(restoredTrack2Screen.getByTestId('lcd-field-keep-pitch-semitones')).toHaveValue('-7');
-  await expect(restoredTrack2Screen.locator('.lcd-status'))
-    .toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
+  const restoredTools = await openEnhancedTools(page, 'PITCH / HQ WAV');
+  await selectEnhancedTrack(restoredTools, 1);
+  await expect(await findEnhancedControl(page, 'keep-pitch')).toHaveValue('1');
+  await expect(await findEnhancedControl(page, 'keep-pitch-semitones')).toHaveValue('5');
+  await expect(restoredTools.getByRole('status')).toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
+  await selectEnhancedTrack(restoredTools, 2);
+  await expect(await findEnhancedControl(page, 'keep-pitch')).toHaveValue('1');
+  await expect(await findEnhancedControl(page, 'keep-pitch-semitones')).toHaveValue('-7');
+  await expect(restoredTools.getByRole('status')).toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK');
 });
 
-test('Classic LCD sends Native LIVE_POLY track selection to an explicitly labeled mock bridge acknowledgment', async ({ page }) => {
+test('Enhanced Tools sends Native LIVE_POLY track selection to an explicitly labeled mock bridge acknowledgment', async ({ page }) => {
   await page.addInitScript({ path: initScriptPath });
   await page.goto('/?audio=native&ui=classic&pitchUiE2e=1');
   await expect(page.locator('.top-status-strip')).toContainText('NATIVE AUDIO READY', { timeout: 20_000 });
 
+  const tools = await openEnhancedTools(page, 'PITCH / HQ WAV');
+  await selectEnhancedTrack(tools, 2);
   const track2 = track(page, 2);
-  const track2Screen = await openTrackLcd(page, 2);
-  const mode2 = track2Screen.getByTestId('lcd-field-keep-pitch');
+  const mode2 = await findEnhancedControl(page, 'keep-pitch');
   await expect(mode2).toBeEnabled();
-  await setLcdRange(page, 'keep-pitch-semitones', -4);
-  await selectLcdEnum(page, 'keep-pitch', 'LIVE POLY');
-  await expect(track2Screen.locator('.lcd-status')).toHaveText('LIVE_POLY ACTIVE');
+  await setEnhancedNumber(page, 'keep-pitch-semitones', -4);
+  await selectEnhancedEnum(page, 'keep-pitch', 'LIVE POLY');
+  await expect(tools.getByRole('status')).toHaveText('LIVE_POLY ACTIVE');
 
   const firstMockRequests = await page.evaluate(() => (
     (window as unknown as { __rc505NativePitchRequests: Array<Record<string, unknown>> })
@@ -126,10 +124,10 @@ test('Classic LCD sends Native LIVE_POLY track selection to an explicitly labele
   ));
   expect(firstMockAck.latencySamples).toBe(6720);
 
-  const track3Screen = await openTrackLcd(page, 3);
-  await setLcdRange(page, 'keep-pitch-semitones', 6);
-  await selectLcdEnum(page, 'keep-pitch', 'LIVE MONO');
-  await expect(track3Screen.locator('.lcd-status')).toHaveText('LIVE_MONO ACTIVE');
+  await selectEnhancedTrack(tools, 3);
+  await setEnhancedNumber(page, 'keep-pitch-semitones', 6);
+  await selectEnhancedEnum(page, 'keep-pitch', 'LIVE MONO');
+  await expect(tools.getByRole('status')).toHaveText('LIVE_MONO ACTIVE');
   // The bridge mock reports a single selected Native target. This checks UI
   // behavior under that mock contract, not a physical Native audio route.
   const allMockRequests = await page.evaluate(() => (
@@ -148,8 +146,8 @@ test('Classic LCD sends Native LIVE_POLY track selection to an explicitly labele
       .__rc505NativePitchAcks.at(-1)
   ));
   expect(mockAck.statusNote).toContain('TEST-ONLY MOCK BRIDGE ACK');
-  const inactiveTrack2Screen = await openTrackLcd(page, 2);
-  await expect(inactiveTrack2Screen.locator('.lcd-status')).toHaveText('LIVE_POLY INACTIVE');
+  await selectEnhancedTrack(tools, 2);
+  await expect(tools.getByRole('status')).toHaveText('LIVE_POLY INACTIVE');
 });
 
 test('Browser START AUDIO uses a trusted gesture and reaches real LIVE_MONO worklet readiness', async ({ page }) => {
@@ -192,10 +190,11 @@ test('Browser START AUDIO uses a trusted gesture and reaches real LIVE_MONO work
   expect(audioRuntime.resumeCalls.length).toBeGreaterThan(0);
   expect(audioRuntime.resumeCalls.every((call: { activated: boolean }) => call.activated)).toBe(true);
 
-  const trackScreen = await openTrackLcd(page, 1);
-  await setLcdRange(page, 'keep-pitch-semitones', 5);
-  await selectLcdEnum(page, 'keep-pitch', 'LIVE MONO');
-  await expect(trackScreen.locator('.lcd-status'))
+  const tools = await openEnhancedTools(page, 'PITCH / HQ WAV');
+  await selectEnhancedTrack(tools, 1);
+  await setEnhancedNumber(page, 'keep-pitch-semitones', 5);
+  await selectEnhancedEnum(page, 'keep-pitch', 'LIVE MONO');
+  await expect(tools.getByRole('status'))
     .toHaveText('LIVE_MONO ENABLED; WAITING FOR LOOP PLAYBACK', { timeout: 15_000 });
   const pitchWorklet = await page.evaluate(async () => {
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');

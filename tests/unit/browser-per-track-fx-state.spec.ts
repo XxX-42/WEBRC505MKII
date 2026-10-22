@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 
 function mockEngine(mode: 'browser' | 'native' = 'browser') {
   return {
@@ -20,10 +21,72 @@ async function loadState(mode: 'browser' | 'native' = 'browser') {
   return { ...module, panel: module.useBrowserTrackFxState(), engine };
 }
 
+async function loadUnifiedState(mode: 'browser' | 'native' = 'browser') {
+  vi.resetModules();
+  const engine = {
+    ...mockEngine(mode),
+    isTrackAvailable: () => true,
+    getCapabilities: () => ({ supportsTrackFx: true }),
+    getTrackCapabilities: () => ({ availabilityReason: '' }),
+  };
+  const browser = {
+    target: ref<number | 'shared'>(2),
+    slots: ref([]),
+    activeSlot: ref('A'),
+    fxOptions: [],
+    runtimeStatus: ref(null),
+    warning: ref(''),
+    selectTarget: vi.fn((value: number | 'shared') => { browser.target.value = value; return true; }),
+  };
+  const native = {
+    target: ref<number | 'shared'>(4),
+    slots: ref([]),
+    activeSlot: ref('A'),
+    fxOptions: ref([]),
+    slotRuntime: ref(null),
+    warning: ref(''),
+    selectTarget: vi.fn((value: number | 'shared') => { native.target.value = value; return true; }),
+  };
+  const shared = {
+    slots: ref([]),
+    activeSlot: ref('A'),
+    fxOptions: ref([]),
+    fxDisabled: ref(false),
+    fxUnavailableReason: ref(''),
+    runtimeStatus: ref(null),
+    nativeNamedParametersPending: ref(false),
+    selectSlot: vi.fn(),
+    setNativeNamedParameters: vi.fn(() => true),
+  };
+  vi.doMock('../../src/audio/AudioEngine', () => ({ AudioEngine: { getInstance: () => engine } }));
+  vi.doMock('../../src/composables/useFxPanelState', () => ({ useFxPanelState: () => shared }));
+  vi.doMock('../../src/composables/useBrowserTrackFxState', () => ({ useBrowserTrackFxState: () => browser }));
+  vi.doMock('../../src/composables/useNativeTrackFxState', () => ({ useNativeTrackFxState: () => native }));
+  const module = await import('../../src/composables/useTrackFxTargetState');
+  return { state: module.useTrackFxTargetState({ sharedOnly: true }), regular: module.useTrackFxTargetState(), browser, native, engine };
+}
+
 beforeEach(() => localStorage.clear());
-afterEach(() => vi.doUnmock('../../src/audio/AudioEngine'));
+afterEach(() => {
+  vi.doUnmock('../../src/audio/AudioEngine');
+  vi.doUnmock('../../src/composables/useFxPanelState');
+  vi.doUnmock('../../src/composables/useBrowserTrackFxState');
+  vi.doUnmock('../../src/composables/useNativeTrackFxState');
+});
 
 describe('Browser independent per-track FX state', () => {
+  it.each(['browser', 'native'] as const)('lets a Classic shared-only view read the shared bank without changing the %s private target', async (mode) => {
+    const { state, regular, browser, native } = await loadUnifiedState(mode);
+
+    expect(state.target.value).toBe('shared');
+    expect(state.selectTarget(3)).toBe(false);
+    expect(regular.target.value).toBe(mode === 'native' ? 4 : 2);
+    expect(browser.target.value).toBe(2);
+    expect(native.target.value).toBe(4);
+    expect(browser.selectTarget).not.toHaveBeenCalled();
+    expect(native.selectTarget).not.toHaveBeenCalled();
+  });
+
   it('persists five independent four-slot banks without altering the shared bank', async () => {
     localStorage.setItem('webrc505_top_panel', 'shared-bank-sentinel');
     const { panel, engine, BROWSER_TRACK_FX_STORAGE_KEY } = await loadState();

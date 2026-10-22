@@ -1,12 +1,12 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { expect, test } from '@playwright/test';
-import { activateLcdAction, findLcdField, lcdScreen } from './uiHelpers';
+import { activateEnhancedAction, findEnhancedControl, openEnhancedTools } from './uiHelpers';
 
 const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
 
 test.skip(!simulationHost, 'Set NATIVE_BRIDGE_SIMULATION_EXECUTABLE to the explicit no-hardware bridge simulation target.');
 
-test('Native LCD saves a revision-consistent PCM project to one of the 99 browser-local slots', async ({ page }) => {
+test('Native runtime saves a revision-consistent PCM project to a browser-local slot through Enhanced tools', async ({ page }) => {
   if (!simulationHost) return;
   let host: ChildProcess | undefined;
   let hostStartError: Error | undefined;
@@ -35,7 +35,7 @@ test('Native LCD saves a revision-consistent PCM project to one of the 99 browse
       }
     }
     expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
-    await page.goto('/?audio=native');
+    await page.goto('/?audio=native&ui=classic');
     const strip = page.locator('[data-track-id="1"]');
     await expect(page.locator('.top-status-strip')).toContainText('NATIVE AUDIO READY', { timeout: 20_000 });
 
@@ -55,16 +55,14 @@ test('Native LCD saves a revision-consistent PCM project to one of the 99 browse
     expect(before[0]).toMatchObject({ trackId: 1, state: 'Stopped' });
     expect(Number.isSafeInteger(before[0]?.contentRevision)).toBe(true);
 
-    await page.getByRole('button', { name: 'Open menu' }).click();
-    await expect(lcdScreen(page)).toBeVisible();
-    await activateLcdAction(page, 'memory-save');
-    await expect(lcdScreen(page)).toContainText(/MEMORY|PROJECT/i);
+    const tools = await openEnhancedTools(page, 'PROJECT MEMORY');
+    const status = tools.getByRole('status');
 
     page.once('dialog', (dialog) => { void dialog.accept('Native Snapshot'); });
-    await activateLcdAction(page, 'memory-name');
-    await activateLcdAction(page, 'memory-save-slot');
+    await activateEnhancedAction(page, 'memory-name');
+    await activateEnhancedAction(page, 'memory-save-slot');
     try {
-      await expect(lcdScreen(page)).toContainText(/SAVED SLOT 01|SAVE FAILED/, { timeout: 20_000 });
+      await expect(status).toContainText(/SAVED SLOT 01|SAVE FAILED/, { timeout: 20_000 });
     } catch (error) {
       await test.info().attach('native-save-diagnostics.txt', {
         body: JSON.stringify({ hostExit, hostStderr, browserErrors, health: await fetch('http://127.0.0.1:17755/health').then(async (response) => ({ status: response.status, body: await response.text() })).catch((error) => String(error)) }, null, 2),
@@ -73,8 +71,8 @@ test('Native LCD saves a revision-consistent PCM project to one of the 99 browse
       throw error;
     }
     expect(hostExit, 'Native host exited while the LCD was saving project memory').toBeUndefined();
-    await expect(lcdScreen(page)).toContainText('SAVED SLOT 01 · Native Snapshot');
-    await expect(await findLcdField(page, 'memory-load-slot').then((field) => field.locator('button'))).toBeEnabled();
+    await expect(status).toContainText('SAVED SLOT 01 · Native Snapshot');
+    await expect(await findEnhancedControl(page, 'memory-load-slot')).toBeEnabled();
 
     const saved = await page.evaluate(async () => {
       const open = indexedDB.open('webrc505-project-memory', 1);
@@ -117,10 +115,7 @@ test('Native LCD saves a revision-consistent PCM project to one of the 99 browse
     expect(after.map((track) => track.contentRevision)).toEqual(before.map((track) => track.contentRevision));
     expect(after[0]).toMatchObject({ trackId: 1, state: 'Stopped' });
 
-    await page.getByRole('button', { name: 'Open menu' }).click();
-    await expect(await findLcdField(page, 'memory-load').then((field) => field.locator('button'))).toBeEnabled();
-    await activateLcdAction(page, 'memory-load');
-    await expect(lcdScreen(page)).toContainText(/MEMORY · PCM\/TEMPO/);
+    await expect(await findEnhancedControl(page, 'memory-load-slot')).toBeEnabled();
 
     await page.evaluate(async () => {
       const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
@@ -133,8 +128,8 @@ test('Native LCD saves a revision-consistent PCM project to one of the 99 browse
     expect(cleared[0]).toMatchObject({ trackId: 1, state: 'Empty' });
     expect(cleared[0]?.contentRevision).toBeGreaterThan(after[0]?.contentRevision ?? -1);
 
-    await activateLcdAction(page, 'memory-load-slot');
-    await expect(lcdScreen(page)).toContainText('LOADED Native Snapshot · 1/5 LOOPS', { timeout: 20_000 });
+    await activateEnhancedAction(page, 'memory-load-slot');
+    await expect(status).toContainText('LOADED Native Snapshot · 1/5 LOOPS', { timeout: 20_000 });
     const restored = await page.evaluate(async () => {
       const response = await fetch('http://127.0.0.1:17755/v1/export/loop-snapshot?trackId=1');
       if (!response.ok) throw new Error(`Restored Native snapshot returned HTTP ${response.status}`);

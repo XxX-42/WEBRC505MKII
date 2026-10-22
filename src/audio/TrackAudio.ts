@@ -276,6 +276,8 @@ export interface ProjectBufferRestoreResult {
 }
 
 export class TrackAudio {
+    /** Read-only committed phrase existence; first recording is not a phrase yet. */
+    public get hasCommittedPhrase(): boolean { return this.audioBuffer !== null; }
     public track: Track;
     public state: TrackState = TrackState.EMPTY;
 

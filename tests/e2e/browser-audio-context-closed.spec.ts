@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
-import { activateLcdAction, findLcdField, lcdScreen, startBrowserAudio } from './uiHelpers';
+import { activateEnhancedAction, findEnhancedControl, openEnhancedTools, startBrowserAudio } from './uiHelpers';
 
 test('closed Browser AudioContext clears READY, preserves PCM/history and leaves project export available', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
@@ -664,25 +664,24 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   expect(rollbackResult.fxUnchanged).toBe(true);
   expect(rollbackResult.transportUnchanged).toBe(true);
 
-  // A user can reach the Memory screen and export the surviving PCM even though
-  // transport is unavailable. This avoids making reload the only recovery path.
-  await page.getByRole('button', { name: 'Open menu', exact: true }).click();
-  await expect(lcdScreen(page)).toBeVisible();
-  await activateLcdAction(page, 'memory-save');
-  const exportAction = await findLcdField(page, 'memory-export-file');
-  await expect(exportAction.locator('button')).toBeEnabled();
-  const loadAction = await findLcdField(page, 'memory-load-slot');
-  await expect(loadAction.locator('button')).toBeDisabled();
-  const importAction = await findLcdField(page, 'memory-import-file');
-  await expect(importAction.locator('button')).toBeDisabled();
+  // Enhanced project export remains available after context closure even though
+  // transport/import are unavailable. Reload is not the only recovery path.
+  const tools = await openEnhancedTools(page, 'PROJECT MEMORY');
+  const status = tools.getByRole('status');
+  await expect(await findEnhancedControl(page, 'memory-export-file')).toBeEnabled();
+  await expect(await findEnhancedControl(page, 'memory-load-slot')).toBeDisabled();
+  await expect(await findEnhancedControl(page, 'memory-import-file')).toBeDisabled();
   await page.evaluate(() => { window.prompt = () => 'closed-context-rescue'; });
   const downloadPromise = page.waitForEvent('download');
-  await activateLcdAction(page, 'memory-export-file');
+  await activateEnhancedAction(page, 'memory-export-file');
   const download = await downloadPromise;
   const path = await download.path();
   expect(download.suggestedFilename()).toBe('closed-context-rescue.rc505proj');
   expect(path).not.toBeNull();
   expect((await fs.stat(path!)).size).toBeGreaterThan(0);
+  await expect(status).toContainText('EXPORTED closed-context-rescue · PCM/TEMPO');
+  await tools.getByRole('button', { name: 'CLOSE', exact: true }).click();
+  await expect(tools).toHaveCount(0);
 
   // Exercise the app's production recovery route. First inject failure while
   // the real replacement BrowserAudioEngine builds its persisted FX graph;

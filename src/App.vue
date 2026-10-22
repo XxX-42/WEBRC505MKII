@@ -18,20 +18,25 @@ const toolsOpen = ref(false);
 const audioMode = ref<AudioMode>(engine.getMode());
 const uiStatus = ref<AudioUiStatus>(engine.getUiStatus());
 const confirmation = ref('');
+const confirmationSurface = ref<'classic' | 'enhanced'>('enhanced');
 const cancelConfirmationButton = ref<HTMLButtonElement | null>(null);
 let resolveConfirmation: ((confirmed: boolean) => void) | null = null;
 let confirmationOpener: HTMLElement | null = null;
 let unsubscribeStatus: (() => void) | null = null;
 
-function requestConfirmation(message: string): Promise<boolean> {
+function requestConfirmation(message: string, surface: 'classic' | 'enhanced' = 'enhanced'): Promise<boolean> {
   if (resolveConfirmation) return Promise.resolve(false);
   confirmationOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   confirmation.value = message;
+  confirmationSurface.value = surface;
+  window.dispatchEvent(new CustomEvent('rc505-confirmation-state', { detail: { open: true, surface, prompt: message } }));
   void nextTick(() => cancelConfirmationButton.value?.focus());
   return new Promise((resolve) => { resolveConfirmation = resolve; });
 }
 
 function finishConfirmation(confirmed: boolean): void {
+  if (!confirmation.value) return;
+  window.dispatchEvent(new CustomEvent('rc505-confirmation-state', { detail: { open: false, surface: confirmationSurface.value, accepted: confirmed } }));
   confirmation.value = '';
   resolveConfirmation?.(confirmed);
   resolveConfirmation = null;
@@ -47,14 +52,15 @@ function trapConfirmationFocus(event: KeyboardEvent): void {
 }
 
 function handleConfirmationRequest(event: Event): void {
-  const request = (event as CustomEvent<{ message: string; resolve: (confirmed: boolean) => void }>).detail;
+  const request = (event as CustomEvent<{ message: string; surface?: 'classic' | 'enhanced'; resolve: (confirmed: boolean) => void }>).detail;
   if (!request || typeof request.resolve !== 'function') return;
-  void requestConfirmation(request.message).then(request.resolve);
+  void requestConfirmation(request.message, request.surface ?? 'enhanced').then(request.resolve);
 }
 const acceptScreenConfirmation = () => { if (confirmation.value) finishConfirmation(true); };
 const cancelScreenConfirmation = () => { if (confirmation.value) finishConfirmation(false); };
 
 const { currentStyle, toggleStyle } = useUiStyle();
+const confirmationInLcd = computed(() => currentStyle.value === 'classic' && confirmationSurface.value === 'classic');
 
 const audioModeLabel = computed(() => audioMode.value === 'browser' ? 'BROWSER' : 'NATIVE');
 const uiStyleLabel = computed(() => currentStyle.value === 'classic' ? 'CLASSIC' : 'TECH');
@@ -236,8 +242,8 @@ onUnmounted(() => {
     <div class="tool-dock" :class="{ 'tools-open': toolsOpen }">
       <WebToolLayer />
     </div>
-    <Teleport v-if="confirmation" :to="currentStyle === 'classic' ? '#rc505-lcd-confirmations' : 'body'">
-    <div class="confirmation-backdrop" :class="{ 'confirmation-in-lcd': currentStyle === 'classic' }" @click.self="finishConfirmation(false)">
+    <Teleport v-if="confirmation" :to="confirmationInLcd ? '#rc505-lcd-confirmations' : 'body'">
+    <div class="confirmation-backdrop" :class="{ 'confirmation-in-lcd': confirmationInLcd }" @click.self="finishConfirmation(false)">
       <section role="alertdialog" aria-modal="true" aria-labelledby="audio-confirm-title" aria-describedby="audio-confirm-message"
         class="audio-confirmation" @keydown.esc.stop.prevent="finishConfirmation(false)" @keydown.tab="trapConfirmationFocus">
         <h2 id="audio-confirm-title">Confirm audio change</h2>

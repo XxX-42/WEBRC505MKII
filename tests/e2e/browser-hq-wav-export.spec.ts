@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { activateLcdAction, findLcdField, openTrackLcd, selectLcdEnum, setLcdRange, startBrowserAudio } from './uiHelpers';
+import { activateEnhancedAction, findEnhancedControl, openEnhancedTools, openTrackLcd, selectEnhancedEnum, setEnhancedNumber, startBrowserAudio } from './uiHelpers';
 
 const initScriptPath = path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js');
 
@@ -24,7 +24,7 @@ function goertzelPower(samples: Buffer, firstFrame: number, frameCount: number, 
   return previous * previous + previous2 * previous2 - coefficient * previous * previous2;
 }
 
-test('exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from the selected track LCD', async ({ page }) => {
+test('exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from Enhanced tools for the selected track', async ({ page }) => {
   await page.goto('/?audio=browser&ui=classic');
   await startBrowserAudio(page);
   const trackScreen = await openTrackLcd(page, 1);
@@ -81,15 +81,15 @@ test('exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from the selecte
   expect(setup.trackIsActualEngineTrack).toBe(true);
   expect(setup.canExport).toBe(true);
   expect(setup.state).toBe('STOPPED');
-  await setLcdRange(page, 'wav-pitch', 7);
-  await setLcdRange(page, 'wav-rate', 0.8);
-  await selectLcdEnum(page, 'wav-format', 'PCM 24-BIT');
-  const exportField = await findLcdField(page, 'wav-export');
-  await expect(exportField.getByTestId('lcd-field-wav-export')).toBeEnabled();
-  await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+  await openEnhancedTools(page, 'PITCH / HQ WAV');
+  await setEnhancedNumber(page, 'wav-pitch', 7);
+  await setEnhancedNumber(page, 'wav-rate', 0.8);
+  await selectEnhancedEnum(page, 'wav-format', 'PCM 24-BIT');
+  const exportAction = await findEnhancedControl(page, 'wav-export');
+  await expect(exportAction).toBeEnabled();
 
   const downloadPromise = page.waitForEvent('download');
-  await activateLcdAction(page, 'wav-export');
+  await activateEnhancedAction(page, 'wav-export');
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('webrc505-track-01-hq-render.wav');
   const filePath = await download.path();

@@ -83,7 +83,8 @@ test('Native rhythm LCD fields fail closed for incomplete or unavailable bridge 
     delete state.swingPercent;
   });
   await expect(pattern).toBeDisabled();
-  await expect(screen.locator('.lcd-status')).toContainText('does not report the supported rhythm settings');
+  await expect(screen.locator('.lcd-status')).toContainText('This Native bridge does not report the suppor');
+  await expect(screen.locator('.lcd-status')).toHaveAttribute('title', /does not report the supported rhythm settings/);
   const playStop = await findLcdField(page, 'play-stop');
   await expect(playStop.getByTestId('lcd-field-play-stop')).toBeDisabled();
 
@@ -109,7 +110,8 @@ test('Native rhythm LCD action shows request failures and lights playback only a
   await page.evaluate(() => { (window as unknown as { __rc505RejectNativeRhythmConfig: boolean }).__rc505RejectNativeRhythmConfig = true; });
 
   const playStop = await activateLcdAction(page, 'play-stop');
-  await expect(screen.locator('.lcd-status')).toHaveText('Native rhythm configuration rejected by test bridge');
+  await expect(screen.locator('.lcd-status')).toContainText('Native rhythm configuration rejected');
+  await expect(screen.locator('.lcd-status')).toHaveAttribute('title', 'Native rhythm configuration rejected by test bridge');
   await expect(playStop).toBeEnabled();
   await expect(playStop).toContainText('START RHYTHM');
 

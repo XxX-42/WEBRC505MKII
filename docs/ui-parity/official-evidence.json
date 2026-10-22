@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "product": "BOSS RC-505mkII",
+  "scope": "Official hardware behavior evidence for Classic UI parity",
+  "overall_status": "PARTIAL",
+  "hardware_observations": [],
+  "sources": [
+    {
+      "id": "owner-manual",
+      "title": "RC-505mkII Owner's Manual",
+      "version": "English",
+      "url": "https://static.roland.com/assets/media/pdf/RC-505mk2_eng02_W.pdf"
+    },
+    {
+      "id": "parameter-guide",
+      "title": "RC-505mkII Parameter Guide",
+      "version": "English v1.3",
+      "url": "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf"
+    },
+    {
+      "id": "boss-product",
+      "title": "BOSS RC-505mkII Loop Station product page",
+      "url": "https://www.boss.info/global/products/rc-505mk2/"
+    },
+    {
+      "id": "top-panel-photo",
+      "title": "Official BOSS top-panel photo",
+      "url": "https://static.roland.com/products/rc-505mkii/images/rc-505mkii_top_gal.jpg"
+    }
+  ],
+  "claims": [
+    {
+      "id": "play-screen-order",
+      "claim": "Owner's Manual p. 8 numbers the Play Screen variations as MEMORY NUMBER, TRACK STATUS, LOOP TRACKS, LOOP STATUS, LOOP LEVEL, INPUT FX, TRACK FX.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "8"
+        }
+      ]
+    },
+    {
+      "id": "play-screen-direction-wrap",
+      "claim": "The manual says left/right arrows switch variations but does not establish forward direction or wrap behavior.",
+      "status": "UNKNOWN",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "8"
+        }
+      ]
+    },
+    {
+      "id": "mixer",
+      "claim": "MIXER has three documented pages; ENTER from Play opens it, arrows switch pages, knob turn changes level, and input knob push mutes.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "4, 8"
+        }
+      ]
+    },
+    {
+      "id": "menu-and-loop",
+      "claim": "MENU opens system settings/USB/MIDI; LOOP opens memory editing. The manual lists MENU categories on p. 17 and LOOP edit categories on p. 13.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "4, 13, 17-18"
+        }
+      ]
+    },
+    {
+      "id": "exit-return-graph",
+      "claim": "EXIT returns to the previous screen; repeated EXIT returns to Play in documented MENU and LOOP-edit procedures, but all origin-specific return edges are not defined.",
+      "status": "UNKNOWN",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "4, 13, 17-18"
+        }
+      ]
+    },
+    {
+      "id": "encoder",
+      "claim": "Knob push is used to select/enter in documented MENU/LOOP procedures and some parameters require push-to-edit; no universal encoder-press action is documented.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "4, 13, 17-18"
+        }
+      ]
+    },
+    {
+      "id": "track-phrase-lamp",
+      "claim": "Track-button lamp indicates phrase existence; current-track identity is a separate display marker.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "5, 8"
+        }
+      ]
+    },
+    {
+      "id": "rec-play-colors",
+      "claim": "Default REC red, PLAY green, DUB yellow per Owner's Manual p. 5 (amber in Parameter Guide v1.3 p. 33), STOP off; track-button colors are configurable.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "5"
+        },
+        {
+          "id": "parameter-guide",
+          "pages": "33"
+        }
+      ]
+    },
+    {
+      "id": "auto-rec-standby",
+      "claim": "AUTO REC causes rapid blinking before detected input starts recording; blink color is not specified.",
+      "status": "OFFICIAL_CONFIRMED",
+      "unknown_detail": "Standby blink color and exact cadence.",
+      "sources": [
+        {
+          "id": "parameter-guide",
+          "pages": "4"
+        }
+      ]
+    },
+    {
+      "id": "quantized-recording-finish-led",
+      "claim": "Quantize can align recording completion to a measure, but the guide does not specify a distinct LED color or pattern while waiting for the completion point.",
+      "status": "UNKNOWN",
+      "sources": [
+        {
+          "id": "parameter-guide",
+          "pages": "4"
+        }
+      ]
+    },
+    {
+      "id": "undo-redo-layer",
+      "claim": "UNDO/REDO secondary assignments are FX=MARK CLEAR, TRACK=MARK SET, STOP=MARK BACK, REC/PLAY=UNDO/REDO; green means undo available, red redo available, off neither.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "5, 9"
+        }
+      ]
+    },
+    {
+      "id": "fx-bank-layout",
+      "claim": "There are four banks A-D with four FX slots A-D per bank; each slot is assigned an Input FX or Track FX type and associated settings for the selected bank/memory.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "4-5"
+        },
+        {
+          "id": "parameter-guide",
+          "pages": "5-6"
+        },
+        {
+          "id": "boss-product",
+          "pages": "Feature text"
+        }
+      ]
+    },
+    {
+      "id": "fx-lamps-and-selection",
+      "claim": "FX slot red=on, pink=current operable/editable effect while on, off=off; selected bank blue in bank selection. Pink is not explicitly documented as meaning the edit screen is open.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "4-5"
+        }
+      ]
+    },
+    {
+      "id": "fx-switch-mode",
+      "claim": "Input FX and Track FX A-D switches may be configured as TOGGLE or MOMENT; TOGGLE changes on/off each press, while MOMENT is on only while the button is pressed.",
+      "status": "OFFICIAL_CONFIRMED",
+      "sources": [
+        {
+          "id": "parameter-guide",
+          "pages": "5-6"
+        }
+      ]
+    },
+    {
+      "id": "fx-edit-hold-threshold",
+      "claim": "The official manual says hold EDIT with a slot to edit and hold EDIT to enter bank selection, but gives no duration.",
+      "status": "UNKNOWN",
+      "sources": [
+        {
+          "id": "owner-manual",
+          "pages": "4-5"
+        }
+      ]
+    },
+    {
+      "id": "loop-indicator",
+      "claim": "Parameter Guide v1.3 lists STATUS, LOOP POSITION, and LEVEL modes and names several phrase states and indication concepts; text extraction does not preserve the exact pictogram-to-state mapping.",
+      "status": "OFFICIAL_CONFIRMED",
+      "unknown_detail": "Exact LED pattern for each mode/state.",
+      "sources": [
+        {
+          "id": "parameter-guide",
+          "pages": "30"
+        }
+      ]
+    }
+  ],
+  "ui_decisions": [
+    {
+      "id": "right-arrow-next-wrap",
+      "decision": "Right arrow advances Play Screen variations and wraps after TRACK FX.",
+      "status": "USER_SPECIFICATION",
+      "hardware_evidence": "Official direction and wrap are unspecified."
+    },
+    {
+      "id": "fx-edit-threshold",
+      "decision": "Use a 1500 ms long-press threshold for the FX EDIT action.",
+      "status": "ENGINEERING_CHOICE",
+      "hardware_evidence": "Official duration is unspecified."
+    },
+    {
+      "id": "stop-clear-threshold",
+      "decision": "Clear a track after STOP is held for at least 2000 ms.",
+      "status": "OFFICIAL_CONFIRMED",
+      "hardware_evidence": "Owner's Manual p. 5 says hold STOP for 2 seconds."
+    }
+  ],
+  "validation": {
+    "physical_hardware_test": "NOT_RUN",
+    "status": "PARTIAL",
+    "note": "Software behavior and local WASAPI control/ACK evidence are recorded in validation.json and local-native-smoke.json. This does not certify full physical-hardware parity."
+  }
+}

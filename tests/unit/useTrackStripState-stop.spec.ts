@@ -65,7 +65,7 @@ describe('useTrackStripState STOP interactions', () => {
     state.handleStopKeyDown(down);
     expect(state.stopPressActive.value).toBe(true);
     state.handleStopKeyDown(new KeyboardEvent('keydown', { key: ' ', repeat: true, cancelable: true }));
-    await vi.advanceTimersByTimeAsync(1499);
+    await vi.advanceTimersByTimeAsync(1999);
     expect(trackAudio.clear).not.toHaveBeenCalled();
     state.handleStopKeyUp(new KeyboardEvent('keyup', { key: ' ', cancelable: true }));
     expect(state.stopPressActive.value).toBe(false);
@@ -73,7 +73,7 @@ describe('useTrackStripState STOP interactions', () => {
     expect(trackAudio.triggerStop).toHaveBeenCalledTimes(1);
 
     state.startStopPress('keyboard');
-    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2000);
     expect(trackAudio.clear).toHaveBeenCalledTimes(1);
     state.endStopPress('keyboard');
     expect(trackAudio.triggerStop).toHaveBeenCalledTimes(1);
@@ -81,7 +81,7 @@ describe('useTrackStripState STOP interactions', () => {
     state.startStopPress({} as PointerEvent);
     state.cancelStopPress({} as PointerEvent);
     expect(state.stopPressActive.value).toBe(false);
-    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2000);
     expect(trackAudio.clear).toHaveBeenCalledTimes(1);
     expect(trackAudio.triggerStop).toHaveBeenCalledTimes(1);
     wrapper.unmount();
@@ -91,10 +91,62 @@ describe('useTrackStripState STOP interactions', () => {
     const { wrapper, state, trackAudio } = await mountStripState(false);
     state.startStopPress('keyboard');
     state.endStopPress('keyboard');
-    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2000);
 
     expect(trackAudio.triggerStop).not.toHaveBeenCalled();
     expect(trackAudio.clear).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('cancels a pending clear on window blur, control-layer change and unmount', async () => {
+    const { wrapper, state, trackAudio } = await mountStripState();
+    state.startStopPress('keyboard');
+    await vi.advanceTimersByTimeAsync(1000);
+    window.dispatchEvent(new Event('blur'));
+    await vi.advanceTimersByTimeAsync(1200);
+    expect(trackAudio.clear).not.toHaveBeenCalled();
+    expect(trackAudio.triggerStop).not.toHaveBeenCalled();
+    state.startStopPress('keyboard');
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    useRc505Controls().toggleUndoLayer();
+    await vi.advanceTimersByTimeAsync(2100);
+    expect(trackAudio.clear).not.toHaveBeenCalled();
+    useRc505Controls().toggleUndoLayer();
+    state.startStopPress('keyboard');
+    wrapper.unmount();
+    await vi.advanceTimersByTimeAsync(2100);
+    expect(trackAudio.clear).not.toHaveBeenCalled();
+  });
+
+  it('cancels on runtime state or availability changes during a hold', async () => {
+    const { wrapper, state, trackAudio } = await mountStripState();
+    state.startStopPress('keyboard');
+    await vi.advanceTimersByTimeAsync(1000);
+    trackAudio.state = 'PLAYING';
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(state.stopPressActive.value).toBe(false);
+    expect(trackAudio.clear).not.toHaveBeenCalled();
+    state.startStopPress('keyboard');
+    trackAudio.transportEnabled = false;
+    await vi.advanceTimersByTimeAsync(2100);
+    state.endStopPress('keyboard');
+    expect(trackAudio.clear).not.toHaveBeenCalled();
+    expect(trackAudio.triggerStop).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('ignores mismatched pointers and cancels lost pointer capture', async () => {
+    const { wrapper, state, trackAudio } = await mountStripState();
+    const target = { setPointerCapture: vi.fn(), hasPointerCapture: () => false };
+    const pointer = { button: 0, isPrimary: true, pointerId: 7, currentTarget: target } as unknown as PointerEvent;
+    state.handleStopPointerDown(pointer);
+    state.handleStopPointerUp({ ...pointer, pointerId: 8 } as PointerEvent);
+    expect(state.stopPressActive.value).toBe(true);
+    state.handleStopLostPointerCapture(pointer);
+    await vi.advanceTimersByTimeAsync(2100);
+    expect(state.stopPressActive.value).toBe(false);
+    expect(trackAudio.clear).not.toHaveBeenCalled();
+    expect(trackAudio.triggerStop).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 });

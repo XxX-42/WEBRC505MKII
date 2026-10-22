@@ -74,20 +74,20 @@ function pan(left: number, top: number): void {
 
 const fitStyle = computed(() => ({
   width: `${1520 * zoom.value}px`,
-  height: `${(stageRef.value?.scrollHeight ?? 720) * zoom.value}px`,
+  height: `${(stageRef.value?.scrollHeight ?? 846) * zoom.value}px`,
 }));
 
 const stageStyle = computed(() => ({ transform: `scale(${zoom.value})` }));
 
 async function measureInitialScale(): Promise<void> {
   await nextTick();
-  if (userZoomed) return;
   const viewport = viewportRef.value;
   const stage = stageRef.value;
   if (!viewport || !stage) return;
+  availableSize.value = { width: viewport.clientWidth, height: viewport.clientHeight };
+  if (userZoomed) return;
   const widthRatio = (viewport.clientWidth - 24) / stage.scrollWidth;
   const heightRatio = (viewport.clientHeight - 24) / stage.scrollHeight;
-  availableSize.value = { width: viewport.clientWidth, height: viewport.clientHeight };
   zoom.value = Math.min(1, Math.max(0.8, Math.min(widthRatio, heightRatio, 1)));
 }
 

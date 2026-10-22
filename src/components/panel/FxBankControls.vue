@@ -1,5 +1,8 @@
 <template>
-  <section class="fx-bank" :class="`fx-bank-${location}`" :aria-label="`${title} controls`">
+  <section class="fx-bank" :class="`fx-bank-${location}`" :aria-label="`${title} controls`"
+    :aria-busy="banks.state.busy"
+    :aria-description="controlLayer === 'BANK_SELECT' ? `Bank selection. Requested ${banks.state.requestedBank ?? 'none'}; confirmed ${banks.state.appliedBank ?? 'none'}.` : undefined"
+    @keydown="handleChordKey">
     <div class="bank-heading">
       <span class="bank-kicker">{{ location === 'input' ? 'MIC · INST' : 'TRACK' }}</span>
       <h2>{{ title }}</h2>
@@ -32,12 +35,15 @@
             :label="slot.id"
             :color="color"
             :active="slot.active"
-            :data-fx-selected="activeSlot === slot.id ? 'true' : 'false'"
+            :selected="slotStates[slot.id]?.selected ?? false"
+            :led-on="slotStates[slot.id]?.ledOn ?? false"
+            :led-color="slotStates[slot.id]?.ledColor ?? 'off'"
+            :data-fx-selected="slotStates[slot.id]?.selected ? 'true' : 'false'"
             :data-fx-enabled="slot.active ? 'true' : 'false'"
-            :aria-pressed="slot.active"
-            :disabled="fxDisabled"
+            :aria-pressed="controlLayer === 'BANK_SELECT' ? banks.state.appliedBank === slot.id : slot.active"
+            :disabled="slotsDisabled"
             :disabled-reason="fxUnavailableReason"
-            :aria-label="`${title} FX ${slot.id}${slot.active ? ' active' : ''}`"
+            :aria-label="controlLayer === 'BANK_SELECT' ? `${title} Bank ${slot.id}` : `${title} FX ${slot.id}${slot.active ? ' active' : ''}`"
             :data-testid="`${location}-fx-slot-${slot.id.toLowerCase()}`"
             data-hardware-control="button"
             @press="pressSlot(slot.id)"
@@ -54,7 +60,12 @@
           :aria-label="`Edit ${title.toLowerCase()} effects`"
           :data-testid="`${location}-fx-edit-button`"
           data-hardware-control="button"
-          @press="$emit('edit')"
+          :selected="controlLayer !== 'NORMAL'"
+          :led-on="false"
+          :data-fx-layer="controlLayer"
+          @press="beginEdit"
+          @release="finishEdit"
+          @cancel="cancelEdit"
         />
       </div>
     </div>
@@ -65,55 +76,102 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
+import { createRc505FxControlState, reduceRc505FxControl, type Rc505FxEvent } from '../../ui/rc505/Rc505FxControlStateMachine';
+import { AudioEngine } from '../../audio/AudioEngine';
 import { useFxPanelState } from '../../composables/useFxPanelState';
 import { useTrackFxTargetState } from '../../composables/useTrackFxTargetState';
-import { useDevicePanel } from '../../composables/useDevicePanel';
+import { useRc505Controls } from '../../composables/useRc505Controls';
+import { useRc505FxBanks } from '../../composables/useRc505FxBanks';
+import { resolveRc505FxSlot } from '../../ui/rc505/Rc505ControlStateResolver';
+import { resolveNativeFxReadback } from '../../ui/rc505/Rc505FxReadback';
 import type { FxLocation, FxSlotId } from '../../composables/usePanelFocus';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareKnob from '../ui/HardwareKnob.vue';
 
-const props = withDefaults(defineProps<{
-  location: FxLocation;
-  title: string;
-  color: 'red' | 'blue';
-  modelValue: number;
-}>(), {});
-
-defineEmits<{
-  'update:modelValue': [value: number];
-  edit: [];
-}>();
-
+const props = defineProps<{ location: FxLocation; title: string; color: 'red' | 'blue'; modelValue: number }>();
+const emit = defineEmits<{ 'update:modelValue': [value: number]; edit: [] }>();
 const sharedBank = useFxPanelState(props.location);
-const device = useDevicePanel();
+const controls = useRc505Controls();
+const banks = useRc505FxBanks(props.location);
+const engine = AudioEngine.getInstance();
 const trackTarget = useTrackFxTargetState();
-const slots = computed(() => props.location === 'track' ? trackTarget.slots.value : sharedBank.slots.value);
-const activeSlot = computed(() => props.location === 'track' ? trackTarget.activeSlot.value : sharedBank.activeSlot.value);
-const fxDisabled = computed(() => props.location === 'track' ? trackTarget.fxDisabled.value : sharedBank.fxDisabled.value);
-const fxUnavailableReason = computed(() => props.location === 'track'
-  ? trackTarget.fxUnavailableReason.value
-  : sharedBank.fxUnavailableReason.value);
+const revision = ref(0);
+const poll = window.setInterval(() => revision.value++, 100);
+const slots = sharedBank.slots;
+const activeSlot = sharedBank.activeSlot;
+const fxDisabled = sharedBank.fxDisabled;
+const fxUnavailableReason = computed(() => banks.state.error || banks.state.unavailableReason || sharedBank.fxUnavailableReason.value);
+const controlLayer = computed(() => controls.state.fxLayers[props.location]);
+const slotsDisabled = computed(() => fxDisabled.value || banks.state.busy
+  || (controlLayer.value === 'BANK_SELECT' && !banks.canSelect.value));
 const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlot.value) ?? slots.value[0]);
-const activeFxIsEmpty = computed(() => !activeFx.value?.type || activeFx.value.type === 'NONE');
-const valueDisabled = computed(() => fxDisabled.value || activeFxIsEmpty.value);
-const valueDisabledReason = computed(() => fxDisabled.value
-  ? fxUnavailableReason.value
-  : activeFxIsEmpty.value ? 'Select an effect first to edit its value.' : '');
-
-function pressSlot(slotId: FxSlotId): void {
-  if (fxDisabled.value) return;
-  device.openPage(props.location === 'input' ? 'input-fx' : 'track-fx');
-  if (props.location === 'track') {
-    trackTarget.selectSlot(slotId);
-    const slot = trackTarget.slots.value.find((item) => item.id === slotId);
-    if (slot?.type && slot.type !== 'NONE') trackTarget.setSlotActive(slotId, !slot.active);
-    return;
+const valueDisabled = computed(() => fxDisabled.value || banks.state.busy || !activeFx.value?.type || activeFx.value.type === 'NONE');
+const valueDisabledReason = computed(() => fxUnavailableReason.value || 'Select an effect before editing its value.');
+const slotStates = computed(() => {
+  revision.value;
+  return Object.fromEntries(slots.value.map((slot, index) => {
+    let active = false;
+    if (engine.getMode() === 'native') {
+      const runtime = engine.getNativeCatalogFxSlotStatus(props.location, index);
+      active = resolveNativeFxReadback(runtime).activeLabel === 'ON';
+    } else {
+      const runtime = engine.getBrowserSharedFxSnapshot?.(props.location)?.[index];
+      active = !!runtime?.active && runtime.state === 'ready';
+    }
+    return [slot.id, resolveRc505FxSlot({ enabled: !slotsDisabled.value, active,
+      selected: controlLayer.value === 'BANK_SELECT' ? banks.state.requestedBank === slot.id : activeSlot.value === slot.id,
+      layer: controlLayer.value,
+      appliedBank: banks.state.appliedBank === slot.id, reason: fxUnavailableReason.value })];
+  }));
+});
+let interaction = createRc505FxControlState();
+let editTimer: number | null = null;
+function clearEditTimer() { if (editTimer !== null) window.clearTimeout(editTimer); editTimer = null; }
+function dispatch(event: Rc505FxEvent): void {
+  const result = reduceRc505FxControl({ ...interaction, layer: controlLayer.value }, event);
+  interaction = result.state;
+  controls.setFxLayer(props.location, interaction.layer);
+  for (const effect of result.effects) {
+    if (effect.type === 'APPLY_BANK') { void banks.selectBank(effect.slot); continue; }
+    if (props.location === 'track') trackTarget.selectTarget('shared');
+    if (effect.type === 'OPEN_EDITOR') {
+      if (effect.slot) sharedBank.selectSlot(effect.slot);
+      emit('edit');
+    } else {
+      sharedBank.selectSlot(effect.slot);
+      const slot = slots.value.find((item) => item.id === effect.slot);
+      if (slot?.type && slot.type !== 'NONE') slot.active = !slot.active;
+    }
   }
-  sharedBank.selectSlot(slotId);
-  const slot = sharedBank.slots.value.find((item) => item.id === slotId);
-  if (slot?.type && slot.type !== 'NONE') slot.active = !slot.active;
 }
+function beginEdit(): void {
+  if (interaction.editHeld || banks.state.busy) return;
+  dispatch({ type: 'EDIT_DOWN' });
+  // Engineering hold duration selected by the user; no official time is published.
+  if (!interaction.consumed) editTimer = window.setTimeout(() => { editTimer = null; dispatch({ type: 'EDIT_HOLD' }); }, 1500);
+}
+function finishEdit(): void { clearEditTimer(); dispatch({ type: 'EDIT_UP' }); }
+function cancelEdit(): void { clearEditTimer(); dispatch({ type: 'CANCEL' }); }
+function pressSlot(slotId: FxSlotId): void {
+  if (slotsDisabled.value) return;
+  dispatch({ type: 'SLOT', slot: slotId });
+  if (interaction.consumed) clearEditTimer();
+}
+function handleChordKey(event: KeyboardEvent): void {
+  if ((!interaction.editHeld && controlLayer.value !== 'BANK_SELECT') || !/^[a-d]$/i.test(event.key)) return;
+  event.preventDefault();
+  if (!event.repeat) pressSlot(event.key.toUpperCase() as FxSlotId);
+}
+watch(() => banks.state.error, (error) => {
+  const scope = props.location === 'input' ? 'input-fx' : 'track-fx';
+  if (error) controls.reportError('FX BANK ERROR', error, scope);
+  else controls.clearError(scope);
+});
+watch(() => banks.state.busy, (busy) => controls.setFxBusy(props.location, busy), { immediate: true, flush: 'sync' });
+watch(fxDisabled, (disabled) => { if (disabled) cancelEdit(); });
+window.addEventListener('blur', cancelEdit);
+onUnmounted(() => { cancelEdit(); controls.setFxBusy(props.location, false); window.clearInterval(poll); window.removeEventListener('blur', cancelEdit); });
 </script>
 
 <style scoped>
@@ -192,20 +250,6 @@ function pressSlot(slotId: FxSlotId): void {
   border-radius: 50% !important;
 }
 .bank-actions :deep(.fx-edit-button .button-label) { font-size: 12px; }
-.fx-bank :deep(.fx-slot-button[data-fx-selected="true"]:not(.active)) {
-  border: 1px solid rgba(245, 248, 255, 0.76);
-  box-shadow: 0 0 0 1px rgba(220, 232, 248, 0.32), inset 0 0 7px rgba(220, 232, 248, 0.16);
-}
-.fx-bank :deep(.fx-slot-button.active.color-red:not(.is-disabled)) {
-  background: linear-gradient(155deg, #ffb5ba 0%, #ff4d5d 45%, #9e162b 100%) !important;
-  border-color: #ffced1;
-  box-shadow: 0 0 7px rgba(255,57,77,.95), 0 0 18px rgba(255,35,61,.62), inset 0 1px rgba(255,255,255,.66), inset 0 -4px 9px rgba(75,0,8,.55);
-}
-.fx-bank :deep(.fx-slot-button[data-fx-selected="true"].active.color-red:not(.is-disabled)) {
-  background: linear-gradient(155deg, #ffd8eb 0%, #ff79ba 46%, #a92c68 100%) !important;
-  border-color: #ffe8f4;
-  box-shadow: 0 0 8px rgba(255,111,183,.96), 0 0 20px rgba(255,62,156,.7), inset 0 1px rgba(255,255,255,.74), inset 0 -4px 9px rgba(83,5,42,.55);
-}
 .bank-status {
   min-height: 13px;
   margin: 0;

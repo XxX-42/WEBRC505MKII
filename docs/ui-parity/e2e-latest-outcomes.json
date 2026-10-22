@@ -1,0 +1,769 @@
+{
+  "evidenceScope": "Cumulative latest outcome for each unique test across the listed runs. This is not a single final-source 108/108 full-suite run. Native evidence uses explicit no-hardware simulation; Browser input is virtual.",
+  "runs": [
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-postfx.json",
+      "stats": {
+        "startTime": "2026-10-22T13:53:57.014Z",
+        "duration": 610786.6190000001,
+        "expected": 103,
+        "skipped": 0,
+        "unexpected": 5,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-release.json",
+      "stats": {
+        "startTime": "2026-10-22T14:07:16.801Z",
+        "duration": 201446.90099999998,
+        "expected": 21,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-release-app-retry.json",
+      "stats": {
+        "startTime": "2026-10-22T14:10:52.585Z",
+        "duration": 21715.647,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-native-diagnostic.json",
+      "stats": {
+        "startTime": "2026-10-22T14:12:44.073Z",
+        "duration": 39536.256,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-final.json",
+      "stats": {
+        "startTime": "2026-10-22T14:18:06.090Z",
+        "duration": 66000.249,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-native-led-final.json",
+      "stats": {
+        "startTime": "2026-10-22T14:23:56.733Z",
+        "duration": 41315.25199999999,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-native-led-enabled-final.json",
+      "stats": {
+        "startTime": "2026-10-22T14:25:13.134Z",
+        "duration": 48052.234,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-native-led-delivery.json",
+      "stats": {
+        "startTime": "2026-10-22T14:27:38.433Z",
+        "duration": 59768.271,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-classic-e2e-native-led-delivery60.json",
+      "stats": {
+        "startTime": "2026-10-22T14:28:57.403Z",
+        "duration": 59720.84299999999,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    }
+  ],
+  "latestUnique": [
+    {
+      "file": "app.spec.ts",
+      "title": "defaults to classic shell and persists UI style toggling",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release-app-retry.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "keeps original tech-shell interactions available after switching UI style",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "selects the explicitly experimental REVERSE REVERB from the Browser FX panel",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "shows Native capability reasons in the Tech compatibility shell",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "edits and restores all six PREAMP controls from the live Browser FX panel",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "sends all six PREAMP controls from the Browser Track A editor to its FX worklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "edits, routes and restores the Browser ROLL controls through the live FX worklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "routes and restores the Browser FREEZE micro-loop controls through the FX worklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "sends and restores Browser SYNTH controls on Input and Track A worklet routes",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "sends and restores Browser G2B tracking, octave blend, and body controls on Input and Track A",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "app.spec.ts",
+      "title": "exposes the full clean-room rhythm catalog and shared kit, variation, section, and timing controls",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "browser-audio-context-closed.spec.ts",
+      "title": "closed Browser AudioContext clears READY, preserves PCM/history and leaves project export available",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-auto-riff.spec.ts",
+      "title": "connects Browser AUTO RIFF onset events to the real Signalsmith LIVE_FX shifter",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-auto-riff.spec.ts",
+      "title": "routes AUTO RIFF through the BrowserAudioEngine Track A catalog slot",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "changes RING.MOD from its default sine to the selected triangle in a real AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "LPF routes catalog resonance percent into smoothed filter Q in a real AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "HPF routes catalog resonance percent into smoothed filter Q in a real AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes the shipped VIBRATO processor in a real Chromium AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes clean-room OSC BOT carrier-bank synthesis in the shipped AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes experimental REVERSE REVERB segment capture and diffuse tail in Chromium AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes sample-clocked stereo ROLL capture and retrigger in Chromium AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes Browser FREEZE capture and hold in the shipped AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes experimental WARP granular capture and FDN8 in the shipped AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes PREAMP in a real Chromium AudioWorklet and applies model/tone controls",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "renders an octave-down G2B bass voice in Chromium AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes SYNTH in a real Chromium AudioWorklet and applies named controls through configure messages",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes the shipped REVERSE DELAY bundle with segment-reversed stereo audio",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "executes MIDI-scheduled OSC VOC through the shipped Browser AudioWorklet",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-fx-audio-worklet.spec.ts",
+      "title": "routes MIDI OSC VOC through one exact private Browser track slot in real audio",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-hq-wav-export.spec.ts",
+      "title": "exports a latency-aligned Signalsmith HQ_RENDER PCM24 WAV from Enhanced tools for the selected track",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-input-capture.spec.ts",
+      "title": "real Chromium AudioWorklet captures the requested stereo PCM frame range",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-input-capture.spec.ts",
+      "title": "Browser engine records connected stereo input through its shared tap",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-input-capture.spec.ts",
+      "title": "Browser UI blocks new recording and overdub while the shared tap rewarms",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-input-named-controls.spec.ts",
+      "title": "routes Browser Input named controls to the selected worklet and restores them per slot and effect",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-loop-source-transport.spec.ts",
+      "title": "applies BEAT SHIFT to one selected stored loop and audibly starts at its source offset",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-loop-source-transport.spec.ts",
+      "title": "VINYL FLICK speed is independent of dry/wet mix on one real Browser loop source",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-manual-harmonist-ui.spec.ts",
+      "title": "exposes and persists the two HRM MANUAL voices in Browser Input and Track panels",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-manual-harmonist.spec.ts",
+      "title": "adds two independently shifted voices on a running AudioContext with centered dry, shared pan, mix and direct bypass",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-octave-ui.spec.ts",
+      "title": "exposes and persists OCTAVE voice levels and mix in Browser Input and Track panels",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-octave.spec.ts",
+      "title": "produces the three octave targets from a competing harmonic input and scales the harmony layer",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-octave.spec.ts",
+      "title": "aligns active dry to voice latency and keeps bypass on a direct zero-latency path",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-pcm-history.spec.ts",
+      "title": "physical Undo/Redo control layer restores exact recorded stereo PCM through track REC/PLAY",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-per-track-fx.spec.ts",
+      "title": "renders five private Browser A–D banks with real AudioWorklets and isolated track signals",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-per-track-fx.spec.ts",
+      "title": "keeps real per-track serial processing order through the shipped worklet bundle",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-per-track-fx.spec.ts",
+      "title": "Tech compatibility FX editor: selects target track/slot and restores state independently from the shared bank",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-per-track-fx.spec.ts",
+      "title": "LCD per-track OSC VOC editor sends MIDI connect for its exact track and slot",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-per-track-fx.spec.ts",
+      "title": "Enhanced Tools keeps private Track FX targets isolated from the shared bank in Browser DSP and Native mock bridge",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-pitch-bend-ui.spec.ts",
+      "title": "exposes and persists PITCH BEND controls in the Browser Input FX panel",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-pitch-bend.spec.ts",
+      "title": "sweeps up and down on a running AudioContext, then bypasses and retriggers from zero",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-project-memory.spec.ts",
+      "title": "Browser project archives preserve stereo PCM and slot loads restore all five tracks atomically",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-project-memory.spec.ts",
+      "title": "Browser project loads reject PCM, history, or transport edits completed during asynchronous reads",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-record-stop-timeout.spec.ts",
+      "title": "a suspended AudioContext cannot leave a shared recording stuck busy or corrupt a resumed take",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-record-stop-timeout.spec.ts",
+      "title": "a shared capture receives its exact stop ACK while running and keeps the committed take after suspension",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-repeated-recovery.spec.ts",
+      "title": "repeated closed-context recovery preserves authored gain before explicit output resume",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-rhythm-worklet.spec.ts",
+      "title": "the production Browser rhythm worklet renders audible hits on a live AudioContext",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-robot.spec.ts",
+      "title": "routes stable voiced ROBOT through PSOLA-lite and keeps formant control on Signalsmith",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-stereo-track-io.spec.ts",
+      "title": "records, plays and overdubs distinct stereo through all five Browser tracks",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-auto-riff.spec.ts",
+      "title": "routes experimental AUTO RIFF through one private A–D chain with transport tempo and track isolation",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-auto-riff.spec.ts",
+      "title": "per-track LCD exposes AUTO RIFF experiment controls on the selected track and persists them",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-hrm-auto.spec.ts",
+      "title": "routes HRM AUTO MIDI to one exact private Browser track slot in running audio",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-hrm-manual.spec.ts",
+      "title": "runs two private HRM MANUAL voices on one track without changing its neighbor",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-hrm-manual.spec.ts",
+      "title": "per-track LCD persists HRM MANUAL voice, pan and mix controls",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-octave.spec.ts",
+      "title": "routes three fixed Signalsmith OCTAVE voices through one private track chain",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-octave.spec.ts",
+      "title": "per-track LCD persists the OCTAVE voice levels and mix",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-pitch-bend.spec.ts",
+      "title": "routes private Browser PITCH BEND to one track, leaves its neighbor untouched, and retriggers",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-pitch-bend.spec.ts",
+      "title": "per-track LCD exposes and persists private PITCH BEND controls",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-robot.spec.ts",
+      "title": "routes experimental ROBOT through one private track chain and preserves neighboring audio",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-robot.spec.ts",
+      "title": "per-track LCD exposes and persists private ROBOT controls",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-transpose.spec.ts",
+      "title": "routes Signalsmith TRANSPOSE on one private track chain without changing a neighboring track",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-track-transpose.spec.ts",
+      "title": "keeps the active TRANSPOSE signal when a replacement AudioWorklet module fails",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-transpose.spec.ts",
+      "title": "runs connected live-input TRANSPOSE at the full ±24-semitone range in Chromium",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-transpose.spec.ts",
+      "title": "keeps the connected live TRANSPOSE dry path aligned and bypasses to the direct path",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-transpose.spec.ts",
+      "title": "changes pitch on a running AudioContext after the Signalsmith delay",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-vocoder-ui.spec.ts",
+      "title": "exposes and persists VOCODER filterbank, carrier and mix on Browser Input and Track panels",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-vocoder-ui.spec.ts",
+      "title": "exposes and persists OSC VOC (M) MIDI carrier controls on Browser Input and Track banks",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "browser-vocoder.spec.ts",
+      "title": "executes Browser VOCODER in the shipped AudioWorklet with modulator-gated carrier energy",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "live-pitch-ui.spec.ts",
+      "title": "Enhanced Tools persists independent Browser LIVE_MONO settings through the mock worklet adapter",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "live-pitch-ui.spec.ts",
+      "title": "Enhanced Tools sends Native LIVE_POLY track selection to an explicitly labeled mock bridge acknowledgment",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "live-pitch-ui.spec.ts",
+      "title": "Browser START AUDIO uses a trusted gesture and reaches real LIVE_MONO worklet readiness",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "native-classic-schema-parameters.spec.ts",
+      "title": "default Classic LCD exposes Native Input and shared Track named controls with restart and ACK status",
+      "status": "passed",
+      "source": "rc505-classic-e2e-native-led-delivery60.json"
+    },
+    {
+      "file": "native-project-load-race.spec.ts",
+      "title": "Native project decode refuses to overwrite a recording completed after load began",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "native-project-memory-import.spec.ts",
+      "title": "Native ProjectMemory import resolves after host commit and leaves imported PCM stopped",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "native-project-memory-save.spec.ts",
+      "title": "Native runtime saves a revision-consistent PCM project to a browser-local slot through Enhanced tools",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "native-rhythm-ui.spec.ts",
+      "title": "Native rhythm reads host settings, sends every LCD setting, and survives a shell switch",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "native-rhythm-ui.spec.ts",
+      "title": "Native rhythm LCD fields fail closed for incomplete or unavailable bridge status",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "native-rhythm-ui.spec.ts",
+      "title": "Native rhythm LCD action shows request failures and lights playback only after a successful retry",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "native-shared-bank-named-parameters.spec.ts",
+      "title": "Native Input and shared Track banks expose schema-backed controls and persist only after host ACK",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "native-simulated-hq-render.spec.ts",
+      "title": "Native browser bridge captures and exports a synthetic loop through Enhanced HQ_RENDER tools",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "rc505-classic-parity.spec.ts",
+      "title": "seven Play screens wrap in both directions and retain the returning page",
+      "status": "passed",
+      "source": "rc505-classic-e2e-final.json"
+    },
+    {
+      "file": "rc505-classic-parity.spec.ts",
+      "title": "LOOP and MENU expose hardware roots; encoder push and EXIT retain context",
+      "status": "passed",
+      "source": "rc505-classic-e2e-final.json"
+    },
+    {
+      "file": "rc505-classic-parity.spec.ts",
+      "title": "Classic LCD excludes software tools while Enhanced keeps the tools reachable",
+      "status": "passed",
+      "source": "rc505-classic-e2e-final.json"
+    },
+    {
+      "file": "rc505-classic-parity.spec.ts",
+      "title": "FX ordinary, EDIT chord, hold and Bank layers preserve actual switch state",
+      "status": "passed",
+      "source": "rc505-classic-e2e-final.json"
+    },
+    {
+      "file": "rc505-classic-parity.spec.ts",
+      "title": "virtual input records, plays, overdubs, stops and uses the Undo secondary layer",
+      "status": "passed",
+      "source": "rc505-classic-e2e-final.json"
+    },
+    {
+      "file": "rc505-classic-parity.spec.ts",
+      "title": "fixed Classic layout and LCD at 1920x1080",
+      "status": "passed",
+      "source": "rc505-classic-e2e-final.json"
+    },
+    {
+      "file": "rc505-classic-parity.spec.ts",
+      "title": "fixed Classic layout and LCD at 1366x768",
+      "status": "passed",
+      "source": "rc505-classic-e2e-final.json"
+    },
+    {
+      "file": "replica-ui.spec.ts",
+      "title": "replica keeps the physical control inventory and warns below readable viewport size",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "replica-ui.spec.ts",
+      "title": "hardware MENU, LOOP and RHYTHM controls navigate in the physical LCD without floating editors",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "replica-ui.spec.ts",
+      "title": "LCD Input FX exposes slot, type, active and named parameters across PAGE subpages",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "replica-ui.spec.ts",
+      "title": "Native simulation bridge readiness is visible on the shared Classic faceplate",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "replica-ui.spec.ts",
+      "title": "real Browser UI starts on a gesture and records, plays, overdubs and stops virtual input",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "replica-ui.spec.ts",
+      "title": "microphone denial keeps real output ready and CONNECT INPUT retries successfully",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "replica-ui.spec.ts",
+      "title": "microphone timeout can retry and closes a late granted stream",
+      "status": "passed",
+      "source": "rc505-classic-e2e-release.json"
+    },
+    {
+      "file": "signalsmith-live-poly-stretch.spec.ts",
+      "title": "retunes a running Signalsmith LIVE_POLY loop by +7 semitones in Chromium",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "signalsmith-live-poly-stretch.spec.ts",
+      "title": "renders a +7 semitone Signalsmith LIVE_POLY loop from its initial schedule",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "signalsmith-live-poly-stretch.spec.ts",
+      "title": "measures sequential LIVE_POLY retunes in a running AudioContext after loop wraps",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "signalsmith-live-wasm-budget.spec.ts",
+      "title": "reserves and reports actual 192 kHz LIVE_FX and LIVE_POLY WASM heaps, then releases on ACK",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "signalsmith-live-wasm-budget.spec.ts",
+      "title": "refuses an over-budget pitch replacement while preserving the incumbent processor and audio",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    },
+    {
+      "file": "signalsmith-live-wasm-budget.spec.ts",
+      "title": "keeps an unconfirmed release charged until the AudioContext closes",
+      "status": "passed",
+      "source": "rc505-classic-e2e-postfx.json"
+    }
+  ],
+  "counts": {
+    "passed": 108,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nativeLedFinalValidation": {
+    "source": "rc505-classic-e2e-native-led-delivery60.json",
+    "assertions": [
+      "All eight empty Native FX slots have data-led-on=false after NATIVE AUDIO READY.",
+      "Both PHASER slots are explicitly enabled before restart; after host ACK both A slots have data-led-on=true and data-led-color=pink.",
+      "Original Play RESTART/ACK, named parameter ACK, sidecar persistence and no FX BANK ERROR assertions remain."
+    ],
+    "budget": "Only this expanded journey uses a 60000 ms total test budget, including cold page loading and both FX banks. Individual expect and ACK timeouts retain their original limits.",
+    "entry": "Later editor visits use the dedicated EDIT button so ordinary slot clicks do not toggle bypass."
+  }
+}

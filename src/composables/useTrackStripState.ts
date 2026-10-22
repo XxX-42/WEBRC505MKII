@@ -5,6 +5,7 @@ import type { HqWavExportRequestOptions } from '../audio/export/hqWavExport';
 import type { WavSampleFormat } from '../audio/export/wavEncoder';
 import { TrackState } from '../core/types';
 import { usePanelFocus } from './usePanelFocus';
+import { useRc505Controls } from './useRc505Controls';
 
 type LivePitchMode = 'OFF' | 'LIVE_MONO' | 'LIVE_POLY';
 
@@ -73,8 +74,10 @@ export function useTrackStripState(trackId: number) {
     : null;
   const trackCapabilities = ref(engine.getTrackCapabilities(trackId));
   const focus = usePanelFocus();
+  const classicControls = useRc505Controls();
 
   const trackState = ref(trackAudio.state);
+  const runtimeRevision = ref(0);
   const currentAudioMode = ref(readAudioMode());
   const playLevel = ref(trackAudio.track.playLevel);
   const trackAvailable = ref(trackAudio.isAvailable);
@@ -139,7 +142,8 @@ export function useTrackStripState(trackId: number) {
   let stopPressTriggered = false;
   let stopPressSource: 'pointer' | 'keyboard' | null = null;
   let stopPressPointerId: number | null = null;
-  const LONG_PRESS_DURATION = 1500;
+  let stopPressTrackState = trackAudio.state;
+  const LONG_PRESS_DURATION = 2000;
 
   type StopPressSource = 'pointer' | 'keyboard';
   const resolveStopPressSource = (sourceOrEvent?: StopPressSource | PointerEvent | MouseEvent | TouchEvent | KeyboardEvent): StopPressSource => (
@@ -356,15 +360,18 @@ export function useTrackStripState(trackId: number) {
     overdubDiagnostic.value = getOverdubDiagnostic();
     recordingDiagnostic.value = getRecordingDiagnostic();
     restorePersistedLivePitchWhenReady();
+    runtimeRevision.value += 1;
   };
 
   onMounted(() => {
     syncTrackUi();
     pollInterval = window.setInterval(syncTrackUi, 50);
+    window.addEventListener('blur', cancelStopOnBlur);
   });
 
   onUnmounted(() => {
     window.clearInterval(pollInterval);
+    window.removeEventListener('blur', cancelStopOnBlur);
     cancelStopPress();
     if (clearVisualTimer !== null) window.clearTimeout(clearVisualTimer);
   });
@@ -504,13 +511,14 @@ export function useTrackStripState(trackId: number) {
 
   const startStopPress = (sourceOrEvent?: StopPressSource | PointerEvent | MouseEvent | TouchEvent | KeyboardEvent) => {
     const source = resolveStopPressSource(sourceOrEvent);
-    if (!trackTransportEnabled.value || stopPressActive.value) return;
+    if (!trackTransportEnabled.value || !getPitchRuntimeReady() || classicControls.state.controlLayer !== 'NORMAL' || stopPressActive.value) return;
     stopPressActive.value = true;
+    stopPressTrackState = trackAudio.state;
     stopPressTriggered = false;
     stopPressSource = source;
     stopPressTimer = window.setTimeout(() => {
       stopPressTimer = null;
-      if (!stopPressActive.value || !trackTransportEnabled.value) {
+      if (!stopPressActive.value || !trackTransportEnabled.value || !getPitchRuntimeReady() || classicControls.state.controlLayer !== 'NORMAL' || trackAudio.state !== stopPressTrackState) {
         stopPressActive.value = false;
         stopPressSource = null;
         return;
@@ -534,7 +542,7 @@ export function useTrackStripState(trackId: number) {
       window.clearTimeout(stopPressTimer);
       stopPressTimer = null;
     }
-    if (!stopPressTriggered && trackTransportEnabled.value) trackAudio.triggerStop();
+    if (!stopPressTriggered && trackTransportEnabled.value && getPitchRuntimeReady() && classicControls.state.controlLayer === 'NORMAL' && trackAudio.state === stopPressTrackState) trackAudio.triggerStop();
     stopPressTriggered = false;
   };
 
@@ -550,6 +558,8 @@ export function useTrackStripState(trackId: number) {
       stopPressTimer = null;
     }
   };
+
+  function cancelStopOnBlur(): void { cancelStopPress(); }
 
   const handleStopKeyDown = (event: KeyboardEvent) => {
     if (event.key !== ' ' && event.key !== 'Spacebar' && event.key !== 'Enter') return;
@@ -603,9 +613,11 @@ export function useTrackStripState(trackId: number) {
   watch(trackTransportEnabled, (enabled) => {
     if (!enabled) cancelStopPress();
   });
+  watch([trackState, currentAudioMode, () => classicControls.state.controlLayer, () => focus.state.currentTrackId], () => cancelStopPress(), { flush: 'sync' });
 
   return {
     trackState,
+    runtimeRevision,
     playLevel,
     trackAvailable,
     trackTransportEnabled,

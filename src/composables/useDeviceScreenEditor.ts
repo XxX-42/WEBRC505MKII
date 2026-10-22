@@ -23,6 +23,8 @@ import { useNativeTrackFxState } from './useNativeTrackFxState';
 import { usePanelFocus, type FxSlotId } from './usePanelFocus';
 import { useRhythmUiControls, rhythmUiState } from './rhythmUiState';
 import { useTrackFxTargetState } from './useTrackFxTargetState';
+import type { DeviceEditorPanel } from './createEnhancedDevicePanel';
+import { useRc505Controls } from './useRc505Controls';
 
 export type DeviceScreenFieldKind = 'number' | 'enum' | 'boolean' | 'action';
 
@@ -48,6 +50,8 @@ export interface DeviceScreenField {
 }
 
 export interface DeviceScreenEditorOptions {
+  surface?: 'classic' | 'enhanced';
+  panel?: DeviceEditorPanel;
   setInputMacro?: (value: number) => void;
   setTrackMacro?: (value: number) => void;
   setInputParameter?: (group: string, key: string, value: number) => void;
@@ -210,10 +214,10 @@ function chunks(items: DeviceScreenField[], size = 4): DeviceScreenField[][] {
   return pages.length ? pages : [[]];
 }
 
-function eventConfirmation(message: string): Promise<boolean> {
+function eventConfirmation(message: string, surface: 'classic' | 'enhanced' = 'enhanced'): Promise<boolean> {
   if (typeof window === 'undefined') return Promise.resolve(false);
   return new Promise((resolve) => {
-    window.dispatchEvent(new CustomEvent('rc505-request-confirmation', { detail: { message, resolve } }));
+    window.dispatchEvent(new CustomEvent('rc505-request-confirmation', { detail: { message, surface, resolve } }));
   });
 }
 
@@ -232,12 +236,15 @@ const MONITORING_WARNING = [
  * capability checks and status semantics.
  */
 export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
-  const device = useDevicePanel();
+  const device = options.panel ?? useDevicePanel();
+  const classic = options.surface === 'classic';
+  const controls = useRc505Controls();
+  const confirmAction = options.confirm ?? ((message: string) => eventConfirmation(message, options.surface ?? 'enhanced'));
   const focus = usePanelFocus();
   const engine = AudioEngine.getInstance();
   const projectMemory = new ProjectMemory(engine);
   const input = useFxPanelState('input');
-  const trackFx = useTrackFxTargetState();
+  const trackFx = useTrackFxTargetState({ sharedOnly: classic });
   const browserTrack = useBrowserTrackFxState();
   const nativeTrack = useNativeTrackFxState();
   const rhythm = useRhythmUiControls({ initializeOnMount: false });
@@ -673,7 +680,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       makeEnumField('wav-engine', 'NATIVE RENDERER', Math.max(0, rendererIndex), rendererOptions, (index) => { const selected = rendererOptions[index]; if (selected) { controller.hqNativeEngine.value = selected.label as typeof controller.hqNativeEngine.value; controller.handleHqNativeEngineChange(); } }, { disabled: controller.isNativeAudioMode.value && !controller.nativeHqRendererAvailable.value, reason: 'A Native HQ renderer is not available.' }),
       makeActionField('wav-export', controller.isHqExporting.value ? `EXPORTING ${controller.hqExportProgress.value}%` : 'EXPORT HQ WAV', async () => { await controller.exportHqWav(); }, { disabled: !controller.canExportHqWav.value || controller.isHqExporting.value, reason: controller.hqExportError.value || 'Record a loop and wait for the supported renderer before exporting.' }),
     ];
-    return chunks(fields);
+    return chunks(classic ? fields.filter((field) => field.key === 'track-level' || field.key === 'track-reverse') : fields);
   }
 
   function deviceOptions(devices: readonly AudioDeviceInfo[]): DeviceScreenOption[] {
@@ -744,7 +751,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   async function saveMemorySlot(): Promise<void> {
     try {
       const existing = memorySlots.value.find((entry) => entry.slot === memorySlot.value);
-      if (existing && !(await (options.confirm ?? eventConfirmation)(`Replace saved project memory slot ${memorySlot.value} (${existing.name})?`))) return;
+      if (existing && !(await confirmAction(`Replace saved project memory slot ${memorySlot.value} (${existing.name})?`))) return;
       // The name is edited by the separate PROJECT NAME action. Asking again
       // here caused a second browser prompt on every save and silently
       // cancelled when clients only acknowledged the first prompt.
@@ -901,7 +908,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       makeActionField('memory-import-file', 'IMPORT PROJECT FILE', importMemoryFile, { disabled: disabled || !audioReady, reason: !audioReady ? audioUnavailableReason : '' }),
       makeActionField('memory-export-file', 'EXPORT PROJECT FILE', exportMemoryFile, { disabled: disabled || !exportAllowed, reason: exportUnavailableReason }),
       makeActionField('memory-delete-slot', 'ERASE SLOT', async () => {
-        if (!(await (options.confirm ?? eventConfirmation)(`Erase saved project memory slot ${memorySlot.value}? This permanently removes its PCM archive from this browser.`))) return;
+        if (!(await confirmAction(`Erase saved project memory slot ${memorySlot.value}? This permanently removes its PCM archive from this browser.`))) return;
         await projectMemory.delete(memorySlot.value);
         await refreshMemoryMetadata(memorySlot.value);
       }, { disabled: !storageAvailable || disabled || !saved, reason: saved ? 'Erases only the selected saved slot.' : 'Selected memory slot is empty.' }),
@@ -932,7 +939,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   }
 
   async function setMonitoring(enabled: boolean): Promise<void> {
-    if (enabled && !(await (options.confirm ?? eventConfirmation)(MONITORING_WARNING))) return;
+    if (enabled && !(await confirmAction(MONITORING_WARNING))) return;
     await applyDeviceSetting(() => engine.setMonitoring(enabled));
   }
 
@@ -973,19 +980,22 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     statusRevision.value;
     switch (device.state.page) {
       case 'input-fx': return inputFxFields();
-      case 'track-fx': return trackFxFields();
+      case 'track-fx': return classic ? trackFxFields().map((page) => page.filter((field) => field.key !== 'target')).filter((page) => page.length) : trackFxFields();
       case 'rhythm': return rhythmFields();
       case 'track': return trackFields();
-      case 'menu': return menuFields();
-      case 'memory': return memoryFields();
-      case 'settings': return settingsFields();
+      case 'menu': return classic ? [[makeActionField('partial-menu', 'UNAVAILABLE', () => {}, { disabled: true, reason: 'Use the hardware MENU hierarchy.' })]] : menuFields();
+      case 'memory': return classic ? [[makeActionField('partial-memory', 'MEMORY PARTIAL', () => {}, { disabled: true, reason: 'Hardware Memory mapping is unavailable. Project archives are in Enhanced.' })]] : memoryFields();
+      case 'settings': return classic ? [[makeActionField('partial-settings', 'UNAVAILABLE', () => {}, { disabled: true, reason: 'Audio device tools are available in Enhanced.' })]] : settingsFields();
       default: return [[]];
     }
   });
+  const fxChangeBlocked = () => (device.state.page === 'input-fx' && controls.state.fxBusy.input) || (device.state.page === 'track-fx' && controls.state.fxBusy.track);
   const fields = computed<readonly DeviceScreenField[]>(() => (pages.value[Math.min(pageIndex.value, pages.value.length - 1)] ?? []).map((field) => ({
     ...field,
-    ...(field.setValue ? { setValue: (value: number) => { if (!field.disabled) void runEdit(() => field.setValue?.(value)); } } : {}),
-    ...(field.activate ? { activate: () => { if (!field.disabled) void runEdit(() => field.activate?.()); } } : {}),
+    ...(fxChangeBlocked()
+      ? { disabled: true, reason: 'Wait for the current FX bank application.' } : {}),
+    ...(field.setValue ? { setValue: (value: number) => { if (!field.disabled && !fxChangeBlocked()) void runEdit(() => field.setValue?.(value)); } } : {}),
+    ...(field.activate ? { activate: () => { if (!field.disabled && !fxChangeBlocked()) void runEdit(() => field.activate?.()); } } : {}),
   })));
   const pageTitle = computed(() => {
     const titles: Record<DevicePanelPage, string> = {
@@ -1006,7 +1016,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     // Native deliberately rejects a live effect-type replacement and marks
     // the saved choice pending restart. That actionable state is more useful
     // than the accompanying rejection text until the user restarts Native.
-    if (runtime?.pendingRestart) return 'SAVED · MENU → APPLY FX';
+    if (runtime?.pendingRestart) return classic ? 'APPLY IN ENHANCED' : 'SAVED · RESTART / APPLY FX';
     if (runtime?.error) return runtime.error;
     if (device.state.page === 'input-fx' && input.nativeNamedParametersPending.value) return 'NAMED PARAMETERS PENDING · WAIT FOR NATIVE ACK';
     if (device.state.page === 'track-fx' && trackFx.nativeNamedParametersPending.value) return 'NAMED PARAMETERS PENDING · WAIT FOR NATIVE ACK';
@@ -1017,6 +1027,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     if (device.state.page === 'input-fx') return input.fxUnavailableReason.value || '';
     if (device.state.page === 'track-fx') return trackFx.fxUnavailableReason.value || '';
     if (device.state.page === 'rhythm') return rhythm.message.value;
+    if (device.state.page === 'track' && classic) return '';
     if (device.state.page === 'track') return currentTrackController.value?.hqExportError.value || currentTrackController.value?.livePitchError.value || currentTrackController.value?.livePitchStatus.value || '';
     if (device.state.page === 'memory') return memoryNotice.value;
     if (device.actionStatus.error || device.actionStatus.pending) return '';

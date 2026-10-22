@@ -15,7 +15,7 @@
         color="red"
         :model-value="inputFxValue"
         @update:model-value="setInputFxValue"
-        @edit="device.openPage('input-fx')"
+        @edit="openFxEditor('input-fx')"
       />
 
       <CenterMainPanel
@@ -37,7 +37,7 @@
         color="red"
         :model-value="trackFxValue"
         @update:model-value="setTrackFxValue"
-        @edit="device.openPage('track-fx')"
+        @edit="openFxEditor('track-fx')"
       />
     </div>
 
@@ -69,24 +69,32 @@ const trackBank = useTrackFxTargetState();
 const inputFxEditor = ref<FxEditorHandle | null>(null);
 const trackFxEditor = ref<FxEditorHandle | null>(null);
 const inputActiveSlot = computed(() => inputBank.slots.value.find((slot) => slot.id === inputBank.activeSlot.value) ?? inputBank.slots.value[0]);
-const trackActiveSlot = trackBank.activeFx;
+const trackSharedBank = useFxPanelState('track');
+const trackActiveSlot = computed(() => trackSharedBank.slots.value.find((slot) => slot.id === trackSharedBank.activeSlot.value) ?? trackSharedBank.slots.value[0]);
 const inputFxValue = computed(() => inputActiveSlot.value?.value ?? 0);
 const trackFxValue = computed(() => trackActiveSlot.value?.value ?? 0);
 const inputFxEmpty = computed(() => !inputActiveSlot.value?.type || inputActiveSlot.value.type === 'NONE');
 const trackFxEmpty = computed(() => !trackActiveSlot.value?.type || trackActiveSlot.value.type === 'NONE');
 const inputFxDisabled = computed(() => inputBank.fxDisabled.value || inputFxEmpty.value);
-const trackFxDisabled = computed(() => trackBank.fxDisabled.value || trackFxEmpty.value);
+const trackFxDisabled = computed(() => trackSharedBank.fxDisabled.value || trackFxEmpty.value);
 const inputFxReason = computed(() => inputBank.fxUnavailableReason.value || (inputFxEmpty.value ? 'Select an effect first to edit its value.' : 'Input FX is unavailable on this audio runtime.'));
-const trackFxReason = computed(() => trackBank.fxUnavailableReason.value || (trackFxEmpty.value ? 'Select an effect first to edit its value.' : 'Track FX is unavailable on this audio runtime.'));
+const trackFxReason = computed(() => trackSharedBank.fxUnavailableReason.value || (trackFxEmpty.value ? 'Select an effect first to edit its value.' : 'Track FX is unavailable on this audio runtime.'));
+
+function openFxEditor(target: 'input-fx' | 'track-fx'): void {
+  if (target === 'track-fx') trackBank.selectTarget('shared');
+  device.classicDispatch({ type: 'OPEN_EDITOR', target, category: target });
+  device.openPage(target);
+}
 
 function setInputFxValue(value: number): void { inputFxEditor.value?.updateActiveValue(value); }
-function setTrackFxValue(value: number): void { trackFxEditor.value?.updateActiveValue(value); }
+function setTrackFxValue(value: number): void { trackBank.selectTarget('shared'); trackFxEditor.value?.updateActiveValue(value); }
 function setInputFxParameter(group: string, key: string, value: number): void {
   if (!inputFxEditor.value) throw new Error('Input FX controller is not ready.');
   inputFxEditor.value.setLcdParameter(group, key, value);
 }
 function setTrackFxParameter(group: string, key: string, value: number): void {
   if (!trackFxEditor.value) throw new Error('Track FX controller is not ready.');
+  trackBank.selectTarget('shared');
   trackFxEditor.value.setLcdParameter(group, key, value);
 }
 </script>

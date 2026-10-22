@@ -1,5 +1,6 @@
 import { access, constants } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const requiredExecutables = [
   ['NATIVE_BRIDGE_SIMULATION_EXECUTABLE', 'the explicit no-audio Native bridge simulation host'],
@@ -25,8 +26,11 @@ for (const [name, description] of requiredExecutables) {
 if (invalid) process.exit(2);
 
 console.log('Running the complete Playwright E2E suite with the explicit Native simulation host and browser.');
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const result = spawnSync(npm, ['run', 'test:e2e', '--', '--workers=1'], {
+// Launch the pinned CLI through Node. Windows cannot spawn npm.cmd without a
+// command shell; using the JS entry point also avoids shell quoting entirely.
+const require = createRequire(import.meta.url);
+const playwrightCli = require.resolve('@playwright/test/cli');
+const result = spawnSync(process.execPath, [playwrightCli, 'test', '--workers=1', ...process.argv.slice(2)], {
   cwd: process.cwd(),
   env: process.env,
   stdio: 'inherit',

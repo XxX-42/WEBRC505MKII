@@ -1,11 +1,12 @@
 import fs from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import {
-  activateLcdAction,
-  findLcdField,
+  activateEnhancedAction,
+  findEnhancedControl,
+  openEnhancedTools,
   openTrackLcd,
-  selectLcdEnum,
-  setLcdRange,
+  selectEnhancedEnum,
+  setEnhancedNumber,
   startBrowserAudio,
 } from './uiHelpers';
 
@@ -388,16 +389,17 @@ test('records, plays and overdubs distinct stereo through all five Browser track
   expect(result.exactBackfillChecks).toEqual([{ track: 1, frames: expect.any(Number), exact: true }]);
 
   // Carry the real recorded-and-overdubbed stereo loop through the production
-  // LCD -> TrackAudio -> Signalsmith worker -> PCM24 WAV download path.
+  // Enhanced tools -> TrackAudio -> Signalsmith worker -> PCM24 WAV download path.
   const trackScreen = await openTrackLcd(page, 1);
-  await setLcdRange(page, 'wav-pitch', 0);
-  await setLcdRange(page, 'wav-rate', 1);
-  await selectLcdEnum(page, 'wav-format', 'PCM 24-BIT');
-  const exportField = await findLcdField(page, 'wav-export');
-  await expect(exportField.getByTestId('lcd-field-wav-export')).toBeEnabled();
+  await openEnhancedTools(page, 'PITCH / HQ WAV');
+  await setEnhancedNumber(page, 'wav-pitch', 0);
+  await setEnhancedNumber(page, 'wav-rate', 1);
+  await selectEnhancedEnum(page, 'wav-format', 'PCM 24-BIT');
+  const exportAction = await findEnhancedControl(page, 'wav-export');
+  await expect(exportAction).toBeEnabled();
 
   const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });
-  await activateLcdAction(page, 'wav-export');
+  await activateEnhancedAction(page, 'wav-export');
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('webrc505-track-01-hq-render.wav');
   const downloadPath = await download.path();

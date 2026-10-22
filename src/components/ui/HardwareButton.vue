@@ -8,8 +8,13 @@
       `shape-${shape}`,
       `appearance-${appearance}`,
       { 'is-disabled': disabled },
-      { 'active': isActive }
+      { 'active': legacyActiveClass },
+      { 'is-active': active },
+      { 'is-selected': selected },
+      { 'is-pressed': isPressed },
+      { 'led-blinking': renderedLedOn && ledBlinkPeriodMs > 0 }
     ]"
+    :style="ledStyle"
     type="button"
     :disabled="disabled"
     :aria-label="computedAriaLabel"
@@ -23,6 +28,11 @@
     @keydown="handleKeyDown"
     @keyup="handleKeyUp"
     @blur="cancelKeyboardPress"
+    :data-active="active ? 'true' : 'false'"
+    :data-selected="selected ? 'true' : 'false'"
+    :data-pressed="isPressed ? 'true' : 'false'"
+    :data-led-on="renderedLedOn ? 'true' : 'false'"
+    :data-led-color="resolvedLedColor"
   >
     <!-- LED Indicator (Dot for Rect, Ring for Circle) -->
     <div v-if="shape === 'rect'" class="led-dot" :class="ledClass"></div>
@@ -36,57 +46,88 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 interface Props {
   size?: 'sm' | 'md' | 'lg';
   color?: 'red' | 'green' | 'yellow' | 'blue' | 'purple' | 'white' | 'neutral';
   active?: boolean;
+  selected?: boolean;
+  ledOn?: boolean;
+  ledColor?: 'off' | 'red' | 'green' | 'yellow' | 'pink' | 'blue' | 'white' | 'purple' | 'cyan' | 'neutral';
+  /** Enables a caller-timed LED blink. No hardware blink period is assumed. */
+  ledBlinkPeriodMs?: number;
   disabled?: boolean;
   label?: string;
   shape?: 'circle' | 'rect';
   ariaLabel?: string;
   appearance?: 'standard' | 'classic';
   disabledReason?: string;
+  /** Optional pointer hold event for controls that intentionally need a chord. */
+  longPressMs?: number;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   color: 'neutral',
   active: false,
+  selected: false,
+  ledOn: undefined,
+  ledColor: undefined,
+  ledBlinkPeriodMs: 0,
   disabled: false,
   label: '',
   shape: 'circle',
   ariaLabel: '',
   appearance: 'standard',
   disabledReason: '',
+  longPressMs: 0,
 });
 
 const emit = defineEmits<{
   (e: 'press'): void;
   (e: 'release'): void;
   (e: 'cancel'): void;
+  (e: 'pointer-press', detail: { pointerId: number; pointerType: string }): void;
+  (e: 'pointer-release', detail: { pointerId: number; pointerType: string }): void;
+  (e: 'pointer-cancel', detail: { pointerId: number; pointerType: string }): void;
+  (e: 'longpress', detail: { pointerId: number; pointerType: string }): void;
 }>();
 
 const isPressed = ref(false);
 const activeInteraction = ref<'pointer' | 'keyboard' | null>(null);
 const activePointerId = ref<number | null>(null);
+const activePointerType = ref<string>('mouse');
+const activePointerTarget = ref<HTMLButtonElement | null>(null);
 const activeKey = ref<string | null>(null);
 const suppressNextClick = ref(false);
 let suppressClickTimer: number | null = null;
+let longPressTimer: number | null = null;
 
-const isActive = computed(() => props.active || isPressed.value);
+const legacyActiveClass = computed(() => props.appearance === 'standard' && (props.active || isPressed.value));
+const ledIsOn = computed(() => props.ledOn ?? (props.appearance === 'standard' && (props.active || isPressed.value)));
+const resolvedLedColor = computed(() => props.ledColor ?? props.color);
+const renderedLedOn = computed(() => ledIsOn.value && resolvedLedColor.value !== 'off');
 const computedAriaLabel = computed(() => props.ariaLabel || props.label || 'Hardware control');
+const ledStyle = computed(() => {
+  const period = Number.isFinite(props.ledBlinkPeriodMs) && props.ledBlinkPeriodMs > 0
+    ? `${props.ledBlinkPeriodMs}ms`
+    : undefined;
+  return period ? { '--led-blink-period': period } : undefined;
+});
 
 const ledClass = computed(() => {
-  if (!isActive.value) return 'led-off';
+  if (!renderedLedOn.value) return 'led-off';
   
-  switch (props.color) {
+  switch (resolvedLedColor.value) {
+    case 'off': return 'led-off';
     case 'red': return 'led-red';
     case 'green': return 'led-green';
     case 'yellow': return 'led-yellow';
+    case 'pink': return 'led-pink';
     case 'blue': return 'led-blue';
     case 'purple': return 'led-purple';
+    case 'cyan': return 'led-cyan';
     case 'white': return 'led-white';
     default: return 'led-white';
   }
@@ -109,16 +150,43 @@ const suppressGeneratedClick = () => {
   }, 0);
 };
 
+const clearLongPressTimer = () => {
+  if (longPressTimer !== null) {
+    window.clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+};
+
+const pointerDetail = () => ({
+  pointerId: activePointerId.value ?? -1,
+  pointerType: activePointerType.value,
+});
+
 const finishInteraction = (cancelled: boolean) => {
   if (!activeInteraction.value) return;
+  const interaction = activeInteraction.value;
+  const pointerId = activePointerId.value;
+  const target = activePointerTarget.value;
+  const detail = interaction === 'pointer' ? pointerDetail() : null;
+  clearLongPressTimer();
   activeInteraction.value = null;
   activePointerId.value = null;
+  activePointerTarget.value = null;
   activeKey.value = null;
   isPressed.value = false;
   if (cancelled) {
+    try {
+      if (interaction === 'pointer' && pointerId !== null && target?.hasPointerCapture?.(pointerId)) {
+        target.releasePointerCapture(pointerId);
+      }
+    } catch {
+      // Capture may already have been released during cancellation.
+    }
     emit('cancel');
+    if (detail) emit('pointer-cancel', detail);
   } else {
     emit('release');
+    if (detail) emit('pointer-release', detail);
     suppressGeneratedClick();
   }
 };
@@ -130,6 +198,8 @@ const handlePointerDown = (event: PointerEvent) => {
   if (event.cancelable) event.preventDefault();
   activeInteraction.value = 'pointer';
   activePointerId.value = event.pointerId;
+  activePointerType.value = event.pointerType || 'mouse';
+  activePointerTarget.value = event.currentTarget as HTMLButtonElement | null;
   isPressed.value = true;
   const target = event.currentTarget as HTMLButtonElement | null;
   // Editors can open synchronously from press, before the browser's default
@@ -141,6 +211,16 @@ const handlePointerDown = (event: PointerEvent) => {
     // Pointer capture is unavailable in some browser and test environments.
   }
   emit('press');
+  emit('pointer-press', { pointerId: event.pointerId, pointerType: activePointerType.value });
+  clearLongPressTimer();
+  if (props.longPressMs > 0) {
+    longPressTimer = window.setTimeout(() => {
+      longPressTimer = null;
+      if (activeInteraction.value === 'pointer' && activePointerId.value === event.pointerId) {
+        emit('longpress', { pointerId: event.pointerId, pointerType: activePointerType.value });
+      }
+    }, props.longPressMs);
+  }
 };
 
 const handlePointerUp = (event: PointerEvent) => {
@@ -190,6 +270,10 @@ const cancelKeyboardPress = () => {
   if (activeInteraction.value === 'keyboard') finishInteraction(true);
 };
 
+const handleWindowBlur = () => {
+  if (activeInteraction.value) finishInteraction(true);
+};
+
 const handleClick = (event: MouseEvent) => {
   if (props.disabled) return;
   // Pointer activation was handled on pointerdown/up. Its compatibility click
@@ -211,8 +295,12 @@ watch(() => props.disabled, (disabled) => {
   if (disabled && activeInteraction.value) finishInteraction(true);
 });
 
+onMounted(() => window.addEventListener('blur', handleWindowBlur));
+
 onUnmounted(() => {
   if (activeInteraction.value) finishInteraction(true);
+  window.removeEventListener('blur', handleWindowBlur);
+  clearLongPressTimer();
   clearClickSuppression();
 });
 </script>
@@ -252,6 +340,11 @@ onUnmounted(() => {
   outline-offset: 2px;
 }
 
+.hardware-button.is-selected:not(:focus-visible):not(.is-disabled) {
+  outline: 1px solid rgba(210, 218, 230, .72);
+  outline-offset: 2px;
+}
+
 .hardware-button.is-disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -284,9 +377,9 @@ onUnmounted(() => {
 .hardware-button.shape-rect.size-md { height: 44px; font-size: 12px; }
 .hardware-button.shape-rect.size-lg { height: 60px; font-size: 14px; }
 
-/* === ACTIVE STATE (Pressed In) === */
+/* Mechanical depression is independent from the LED and logical active state. */
 .hardware-button:active,
-.hardware-button.active {
+.hardware-button.is-pressed {
   background: var(--bg-button-active);
   
   /* Deep Inset Shadow */
@@ -317,8 +410,10 @@ onUnmounted(() => {
 .led-ring.led-red { border-color: var(--led-red-recording); box-shadow: 0 0 8px var(--led-red-recording), inset 0 0 4px var(--led-red-recording); }
 .led-ring.led-green { border-color: var(--led-green-playing); box-shadow: 0 0 8px var(--led-green-playing), inset 0 0 4px var(--led-green-playing); }
 .led-ring.led-yellow { border-color: var(--led-yellow-overdub); box-shadow: 0 0 8px var(--led-yellow-overdub), inset 0 0 4px var(--led-yellow-overdub); }
+.led-ring.led-pink { border-color: #ec4899; box-shadow: 0 0 8px #ec4899, inset 0 0 4px #ec4899; }
 .led-ring.led-blue { border-color: var(--led-blue-accent); box-shadow: 0 0 8px var(--led-blue-accent), inset 0 0 4px var(--led-blue-accent); }
 .led-ring.led-purple { border-color: #a855f7; box-shadow: 0 0 8px #a855f7, inset 0 0 4px #a855f7; }
+.led-ring.led-cyan { border-color: #22d3ee; box-shadow: 0 0 8px #22d3ee, inset 0 0 4px #22d3ee; }
 .led-ring.led-white { border-color: var(--led-white-neutral); box-shadow: 0 0 8px var(--led-white-neutral), inset 0 0 4px var(--led-white-neutral); }
 
 /* Dot (for Rect) */
@@ -335,9 +430,25 @@ onUnmounted(() => {
 .led-dot.led-red { background: var(--led-red-recording); box-shadow: 0 0 6px var(--led-red-recording); }
 .led-dot.led-green { background: var(--led-green-playing); box-shadow: 0 0 6px var(--led-green-playing); }
 .led-dot.led-yellow { background: var(--led-yellow-overdub); box-shadow: 0 0 6px var(--led-yellow-overdub); }
+.led-dot.led-pink { background: #ec4899; box-shadow: 0 0 6px #ec4899; }
 .led-dot.led-blue { background: var(--led-blue-accent); box-shadow: 0 0 6px var(--led-blue-accent); }
 .led-dot.led-purple { background: #a855f7; box-shadow: 0 0 6px #a855f7; }
+.led-dot.led-cyan { background: #22d3ee; box-shadow: 0 0 6px #22d3ee; }
 .led-dot.led-white { background: var(--led-white-neutral); box-shadow: 0 0 6px var(--led-white-neutral); }
+
+@keyframes hardware-led-blink {
+  50% { opacity: 0.18; }
+}
+
+.hardware-button.led-blinking .led-dot,
+.hardware-button.led-blinking .led-ring {
+  animation: hardware-led-blink var(--led-blink-period) steps(1, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hardware-button.led-blinking .led-dot,
+  .hardware-button.led-blinking .led-ring { animation: none; }
+}
 
 /* Label */
 .button-label {
@@ -349,57 +460,57 @@ onUnmounted(() => {
 }
 
 /* Lit hardware keys fill with their LED color; keep the legend above the glow. */
-.hardware-button.active:not(.is-disabled),
-.hardware-button:active:not(.is-disabled) {
+.hardware-button.appearance-standard.active:not(.is-disabled),
+.hardware-button.appearance-standard:active:not(.is-disabled) {
   transform: translateY(1px);
 }
-.hardware-button.active:not(.is-disabled) .button-label,
-.hardware-button:active:not(.is-disabled) .button-label {
+.hardware-button.appearance-standard.active:not(.is-disabled) .button-label,
+.hardware-button.appearance-standard:active:not(.is-disabled) .button-label {
   position: relative;
   z-index: 2;
   color: #111318;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
 }
-.hardware-button.active.color-red:not(.is-disabled),
-.hardware-button:active.color-red:not(.is-disabled) {
+.hardware-button.appearance-standard.active.color-red:not(.is-disabled),
+.hardware-button.appearance-standard:active.color-red:not(.is-disabled) {
   background: linear-gradient(145deg, #ff9aa5 0%, #ff4259 42%, #a90c2b 100%) !important;
   border: 1px solid rgba(255, 221, 225, 0.9);
   box-shadow: 0 0 8px rgba(255, 42, 72, 0.9), 0 0 20px rgba(255, 31, 64, 0.68), inset 0 0 12px rgba(255, 248, 248, 0.42), inset 0 -5px 12px rgba(86, 0, 16, 0.58);
 }
-.hardware-button.active.color-green:not(.is-disabled),
-.hardware-button:active.color-green:not(.is-disabled) {
+.hardware-button.appearance-standard.active.color-green:not(.is-disabled),
+.hardware-button.appearance-standard:active.color-green:not(.is-disabled) {
   background: linear-gradient(145deg, #a4ffc5 0%, #48f28a 42%, #0e8b49 100%) !important;
   border: 1px solid rgba(224, 255, 235, 0.92);
   box-shadow: 0 0 8px rgba(48, 255, 132, 0.92), 0 0 20px rgba(22, 236, 111, 0.68), inset 0 0 12px rgba(246, 255, 249, 0.42), inset 0 -5px 12px rgba(0, 66, 31, 0.54);
 }
-.hardware-button.active.color-yellow:not(.is-disabled),
-.hardware-button:active.color-yellow:not(.is-disabled) {
+.hardware-button.appearance-standard.active.color-yellow:not(.is-disabled),
+.hardware-button.appearance-standard:active.color-yellow:not(.is-disabled) {
   background: linear-gradient(145deg, #ffe9a0 0%, #ffc43e 42%, #b67507 100%) !important;
   border: 1px solid rgba(255, 248, 213, 0.94);
   box-shadow: 0 0 8px rgba(255, 197, 45, 0.94), 0 0 20px rgba(255, 172, 18, 0.68), inset 0 0 12px rgba(255, 255, 244, 0.4), inset 0 -5px 12px rgba(93, 49, 0, 0.54);
 }
-.hardware-button.active.color-blue:not(.is-disabled),
-.hardware-button:active.color-blue:not(.is-disabled) {
+.hardware-button.appearance-standard.active.color-blue:not(.is-disabled),
+.hardware-button.appearance-standard:active.color-blue:not(.is-disabled) {
   background: linear-gradient(145deg, #c2efff 0%, #56cfff 42%, #1473af 100%) !important;
   border: 1px solid rgba(227, 249, 255, 0.94);
   box-shadow: 0 0 8px rgba(69, 190, 255, 0.94), 0 0 20px rgba(42, 169, 255, 0.68), inset 0 0 12px rgba(247, 253, 255, 0.44), inset 0 -5px 12px rgba(0, 51, 85, 0.54);
 }
-.hardware-button.active.color-purple:not(.is-disabled),
-.hardware-button:active.color-purple:not(.is-disabled) {
+.hardware-button.appearance-standard.active.color-purple:not(.is-disabled),
+.hardware-button.appearance-standard:active.color-purple:not(.is-disabled) {
   background: linear-gradient(145deg, #e1bdff 0%, #b979ff 42%, #6835ad 100%) !important;
   border: 1px solid rgba(244, 230, 255, 0.94);
   box-shadow: 0 0 8px rgba(181, 112, 255, 0.92), 0 0 20px rgba(162, 78, 255, 0.66), inset 0 0 12px rgba(250, 244, 255, 0.42), inset 0 -5px 12px rgba(43, 7, 84, 0.56);
 }
-.hardware-button.active.color-white:not(.is-disabled),
-.hardware-button:active.color-white:not(.is-disabled),
-.hardware-button.active.color-neutral:not(.is-disabled),
-.hardware-button:active.color-neutral:not(.is-disabled) {
+.hardware-button.appearance-standard.active.color-white:not(.is-disabled),
+.hardware-button.appearance-standard:active.color-white:not(.is-disabled),
+.hardware-button.appearance-standard.active.color-neutral:not(.is-disabled),
+.hardware-button.appearance-standard:active.color-neutral:not(.is-disabled) {
   background: linear-gradient(145deg, #ffffff 0%, #dbe5f2 48%, #8794a7 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.95);
   box-shadow: 0 0 8px rgba(225, 240, 255, 0.9), 0 0 18px rgba(190, 220, 255, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.55), inset 0 -5px 12px rgba(34, 47, 68, 0.35);
 }
 
-/* Classic faceplate caps transmit the selected LED color through the whole key. */
+/* Classic caps stay dark; only the localized LED lens emits light. */
 .hardware-button.appearance-classic {
   border: 1px solid #090a0d;
   color: #dedde2;
@@ -408,36 +519,13 @@ onUnmounted(() => {
   transition: transform .08s ease, box-shadow .1s ease, background .1s ease;
 }
 .hardware-button.appearance-classic.shape-rect { border-radius: 5px; }
-.hardware-button.appearance-classic .led-dot { display: none; }
 .hardware-button.appearance-classic .led-ring { border-width: 1px; inset: 5px; }
 .hardware-button.appearance-classic .button-label { letter-spacing: .08em; }
-.hardware-button.appearance-classic.active.color-red:not(.is-disabled),
-.hardware-button.appearance-classic:active.color-red:not(.is-disabled) {
-  color: #291015;
-  background: linear-gradient(155deg, #ffb5ba 0%, #ff4d5d 45%, #9e162b 100%) !important;
-  border-color: #ffced1;
-  box-shadow: 0 0 7px rgba(255,57,77,.95), 0 0 18px rgba(255,35,61,.62), inset 0 1px rgba(255,255,255,.66), inset 0 -4px 9px rgba(75,0,8,.55);
-}
-.hardware-button.appearance-classic.active.color-green:not(.is-disabled),
-.hardware-button.appearance-classic:active.color-green:not(.is-disabled) {
-  color: #082512;
-  background: linear-gradient(155deg, #c1ffd4 0%, #41ee84 46%, #08763c 100%) !important;
-  border-color: #d3ffe1;
-  box-shadow: 0 0 7px rgba(56,255,131,.92), 0 0 18px rgba(25,236,111,.62), inset 0 1px rgba(255,255,255,.68), inset 0 -4px 9px rgba(0,67,29,.56);
-}
-.hardware-button.appearance-classic.active.color-yellow:not(.is-disabled),
-.hardware-button.appearance-classic:active.color-yellow:not(.is-disabled) {
-  color: #2a1b04;
-  background: linear-gradient(155deg, #fff0bd 0%, #ffd24f 46%, #9d6706 100%) !important;
-  border-color: #fff7d8;
-  box-shadow: 0 0 7px rgba(255,207,68,.9), 0 0 18px rgba(255,183,35,.6), inset 0 1px rgba(255,255,255,.65), inset 0 -4px 9px rgba(74,44,0,.54);
-}
-.hardware-button.appearance-classic.active.color-blue:not(.is-disabled),
-.hardware-button.appearance-classic:active.color-blue:not(.is-disabled) {
-  color: #071d31;
-  background: linear-gradient(155deg, #c1ecff 0%, #54c8ff 46%, #12558a 100%) !important;
-  border-color: #e1f6ff;
-  box-shadow: 0 0 7px rgba(79,195,255,.88), 0 0 18px rgba(42,169,255,.56), inset 0 1px rgba(255,255,255,.65), inset 0 -4px 9px rgba(0,44,74,.54);
+.hardware-button.appearance-classic:active:not(.is-disabled),
+.hardware-button.appearance-classic.is-pressed:not(.is-disabled) {
+  background: linear-gradient(180deg, #292a30, #131419 66%, #0c0d10);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.8), inset 0 1px 2px rgba(0,0,0,.6);
+  transform: translateY(1px);
 }
 .hardware-button.appearance-classic.is-disabled { filter: grayscale(.55); opacity: .64; }
 .hardware-button.appearance-classic.is-disabled .button-label {

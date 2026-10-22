@@ -27,7 +27,7 @@ const engine = AudioEngine.getInstance();
  * The shared bank keeps its existing post-mix state; independent Browser and
  * Native targets use their acknowledged per-track chains.
  */
-export function useTrackFxTargetState() {
+export function useTrackFxTargetState(options: { sharedOnly?: boolean } = {}) {
   const shared = useFxPanelState('track');
   const browser = useBrowserTrackFxState();
   const native = useNativeTrackFxState();
@@ -42,6 +42,7 @@ export function useTrackFxTargetState() {
   const nativeMode = computed(() => mode.value === 'native');
   const target = computed<TrackFxTarget>(() => {
     statusRevision.value;
+    if (options.sharedOnly) return 'shared';
     return nativeMode.value ? native.target.value : browser.target.value;
   });
   const isSharedTarget = computed(() => target.value === 'shared');
@@ -103,6 +104,7 @@ export function useTrackFxTargetState() {
   });
 
   function selectTarget(value: 'shared' | number): boolean {
+    if (options.sharedOnly && value !== 'shared') return false;
     if (value !== 'shared' && (!Number.isInteger(value) || value < 1 || value > 5)) return false;
     const selected = value as TrackFxTarget;
     if (nativeMode.value) return native.selectTarget(selected as NativeTrackFxTarget);

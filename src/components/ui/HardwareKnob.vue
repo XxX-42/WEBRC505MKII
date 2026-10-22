@@ -1,7 +1,12 @@
 <template>
   <div
     class="hardware-knob-wrapper hardware-interactive"
-    :class="[`appearance-${appearance}`, { 'is-disabled': disabled }]"
+    :class="[
+      `appearance-${appearance}`,
+      { 'is-disabled': disabled },
+      { 'is-interacting': isDragging },
+      { 'is-pressing': isPushHeld }
+    ]"
     role="slider"
     :tabindex="disabled ? -1 : 0"
     :aria-label="ariaLabel || label || 'Hardware knob'"
@@ -13,7 +18,10 @@
     :aria-description="disabled && disabledReason ? disabledReason : undefined"
     :title="disabled && disabledReason ? disabledReason : undefined"
     @pointerdown="startDrag"
+    @lostpointercapture="handleLostPointerCapture"
     @keydown="handleKeyDown"
+    @keyup="handleKeyUp"
+    @blur="handleBlur"
   >
     <div class="knob-stage">
       <!-- LED Ring (SVG) -->
@@ -57,7 +65,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+
+type InteractionMode = 'value' | 'relative';
+type EncoderGesture = 'press' | 'rotate' | 'pressRotate';
+type EncoderSource = 'pointer' | 'keyboard';
+type EncoderCancelReason = 'pointercancel' | 'lostpointercapture' | 'blur' | 'disabled' | 'unmount' | 'context-change';
+
+interface EncoderInteractionDetail {
+  source: EncoderSource;
+  pointerType?: string;
+  gesture?: EncoderGesture;
+  contextKey?: string | number;
+}
 
 const props = withDefaults(defineProps<{
   modelValue: number;
@@ -71,6 +91,9 @@ const props = withDefaults(defineProps<{
   disabledReason?: string;
   ariaLabel?: string;
   appearance?: 'standard' | 'classic';
+  interactionMode?: InteractionMode;
+  pushable?: boolean;
+  interactionContextKey?: string | number;
 }>(), {
   min: 0,
   max: 100,
@@ -82,10 +105,18 @@ const props = withDefaults(defineProps<{
   disabledReason: '',
   ariaLabel: '',
   appearance: 'standard',
+  interactionMode: 'value',
+  pushable: false,
+  interactionContextKey: undefined,
 });
 
 const emit = defineEmits<{
   'update:modelValue': [value: number];
+  rotate: [delta: number, detail: EncoderInteractionDetail];
+  pressRotate: [delta: number, detail: EncoderInteractionDetail];
+  press: [detail: EncoderInteractionDetail];
+  release: [detail: EncoderInteractionDetail];
+  cancel: [reason: EncoderCancelReason, detail: EncoderInteractionDetail];
 }>();
 
 // ========================================
@@ -94,20 +125,47 @@ const emit = defineEmits<{
 
 const rotationRange = 270; // Degrees (Start at -135, End at +135)
 const startAngle = -135;
+const isDragging = ref(false);
+const isPushHeld = ref(false);
+const activePointerId = ref<number | null>(null);
+const activePointerType = ref<string>('mouse');
+const pointerTarget = ref<HTMLElement | null>(null);
+const interactionStartKey = ref<string | number | undefined>();
+let keyboardPushHeld = false;
+let keyboardPushRotated = false;
+let pointerGesture: 'pending' | 'value' | 'rotate' | 'pressRotate' | null = null;
+let pointerStartX = 0;
+let pointerStartY = 0;
+let pointerLastAxis = 0;
+let pointerAxis: 'x' | 'y' | null = null;
+let pointerRemainder = 0;
+let pointerShiftHeld = false;
+let pointerTouchPushArmed = false;
+let pointerTouchTimer: number | null = null;
+let pointerInteractionMode: InteractionMode = 'value';
+let pointerPushable = false;
+let keyboardGestureStartedKey: string | number | undefined;
+let keyboardInteractionMode: InteractionMode = 'relative';
+let keyboardGesturePushable = false;
+const dragThresholdPx = 4;
+const pixelsPerRelativeStep = 4;
+const touchPushHoldMs = 350;
+
 const displayValue = computed(() => Number.isInteger(liveValue.value)
   ? String(liveValue.value)
   : liveValue.value.toFixed(2).replace(/\.?0+$/, ''));
 
 const liveValue = ref(props.modelValue);
-
-watch(() => props.modelValue, (value) => {
-  if (!isDragging.value) {
-    liveValue.value = value;
-  }
+const normalizedValue = computed(() => {
+  const range = props.max - props.min;
+  if (!(range > 0)) return 0;
+  return Math.max(0, Math.min(1, (liveValue.value - props.min) / range));
 });
 
-const normalizedValue = computed(() => {
-  return (liveValue.value - props.min) / (props.max - props.min);
+watch(() => props.modelValue, (value) => {
+  if (props.interactionMode === 'relative' || !isDragging.value) {
+    liveValue.value = value;
+  }
 });
 
 const rotation = computed(() => {
@@ -147,17 +205,53 @@ const dashArray = computed(() => {
 // INTERACTION (Vertical Drag)
 // ========================================
 
-const isDragging = ref(false);
-const activePointerId = ref<number | null>(null);
 const startY = ref(0);
 const startValue = ref(0);
 
+const interactionDetail = (
+  source: EncoderSource,
+  gesture?: EncoderGesture,
+  pointerType?: string,
+  contextKey = interactionStartKey.value,
+): EncoderInteractionDetail => ({ source, pointerType, gesture, contextKey });
+
+const clearPointerTimer = () => {
+  if (pointerTouchTimer !== null) {
+    window.clearTimeout(pointerTouchTimer);
+    pointerTouchTimer = null;
+  }
+};
+
+const attachPointerListeners = () => {
+  window.addEventListener('pointermove', onPointerMove, { passive: true });
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerCancel);
+};
+
+const removePointerListeners = () => {
+  window.removeEventListener('pointermove', onPointerMove);
+  window.removeEventListener('pointerup', onPointerUp);
+  window.removeEventListener('pointercancel', onPointerCancel);
+};
+
 const startDrag = (e: PointerEvent) => {
-  if (props.disabled || (e.button !== 0 && e.pointerType !== 'touch') || e.isPrimary === false || isDragging.value) return;
-  const y = e.clientY;
+  if (props.disabled || keyboardPushHeld || (e.button !== 0 && e.pointerType !== 'touch') || e.isPrimary === false || isDragging.value) return;
   isDragging.value = true;
   activePointerId.value = e.pointerId;
-  startY.value = y;
+  activePointerType.value = e.pointerType || 'mouse';
+  pointerTarget.value = e.currentTarget as HTMLElement | null;
+  interactionStartKey.value = props.interactionContextKey;
+  pointerInteractionMode = props.interactionMode;
+  pointerPushable = props.pushable;
+  pointerGesture = props.interactionMode === 'value' ? 'value' : 'pending';
+  pointerStartX = e.clientX;
+  pointerStartY = e.clientY;
+  startY.value = e.clientY;
+  pointerLastAxis = 0;
+  pointerAxis = null;
+  pointerRemainder = 0;
+  pointerShiftHeld = Boolean(e.shiftKey);
+  pointerTouchPushArmed = false;
   startValue.value = liveValue.value;
 
   try {
@@ -165,25 +259,28 @@ const startDrag = (e: PointerEvent) => {
   } catch {
     // Pointer capture is unavailable in some browser and test environments.
   }
-  window.addEventListener('pointermove', onDrag, { passive: true });
-  window.addEventListener('pointerup', stopDrag);
-  window.addEventListener('pointercancel', stopDrag);
+  attachPointerListeners();
+
+  if (props.interactionMode === 'relative' && props.pushable && activePointerType.value === 'touch') {
+    const pointerId = e.pointerId;
+    pointerTouchTimer = window.setTimeout(() => {
+      pointerTouchTimer = null;
+      if (activePointerId.value === pointerId && pointerGesture === 'pending') {
+        pointerTouchPushArmed = true;
+        isPushHeld.value = true;
+      }
+    }, touchPushHoldMs);
+  }
 };
 
-const onDrag = (e: PointerEvent) => {
-  if (props.disabled || !isDragging.value) return;
-  if (activePointerId.value !== null && e.pointerId !== activePointerId.value) return;
-
+const updateLegacyValueFromPointer = (e: PointerEvent) => {
   const currentY = e.clientY;
   const dy = startY.value - currentY; // Up is positive
   const sensitivity = 0.5; // Pixels to Value ratio
 
   const rawDelta = dy * sensitivity;
-  
-  // Calculate new value
   let newValue = startValue.value + rawDelta;
-  
-  // Clamp
+
   if (newValue < props.min) newValue = props.min;
   if (newValue > props.max) newValue = props.max;
 
@@ -191,13 +288,111 @@ const onDrag = (e: PointerEvent) => {
   emit('update:modelValue', newValue);
 };
 
-const stopDrag = (e?: PointerEvent) => {
-  if (activePointerId.value !== null && e && e.pointerId !== activePointerId.value) return;
+const emitRelativeSteps = (delta: number, gesture: 'rotate' | 'pressRotate') => {
+  if (delta === 0) return;
+  const source = interactionDetail('pointer', gesture, activePointerType.value);
+  const step = props.step > 0 ? props.step : (Math.max(0, props.max - props.min) / 100 || 1);
+  liveValue.value = Math.max(props.min, Math.min(props.max, liveValue.value + delta * step));
+  if (gesture === 'pressRotate') emit('pressRotate', delta, source);
+  else emit('rotate', delta, source);
+};
+
+const onPointerMove = (e: PointerEvent) => {
+  if (props.disabled || !isDragging.value) return;
+  if (activePointerId.value !== null && e.pointerId !== activePointerId.value) return;
+  if (interactionStartKey.value !== props.interactionContextKey) {
+    cancelPointerGesture('context-change');
+    return;
+  }
+
+  pointerShiftHeld = pointerShiftHeld || Boolean(e.shiftKey);
+
+  if (pointerGesture === 'value') {
+    updateLegacyValueFromPointer(e);
+    return;
+  }
+
+  const dx = e.clientX - pointerStartX;
+  const dy = pointerStartY - e.clientY;
+  const dominantDistance = Math.max(Math.abs(dx), Math.abs(dy));
+
+  if (pointerGesture === 'pending') {
+    if (dominantDistance <= dragThresholdPx) return;
+    pointerAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    const axisDelta = pointerAxis === 'x' ? dx : dy;
+    pointerGesture = (pointerShiftHeld || pointerTouchPushArmed) && props.pushable
+      ? 'pressRotate'
+      : 'rotate';
+    isPushHeld.value = pointerGesture === 'pressRotate';
+    const excess = Math.sign(axisDelta) * Math.max(0, Math.abs(axisDelta) - dragThresholdPx);
+    pointerRemainder = excess;
+    pointerLastAxis = pointerAxis === 'x' ? e.clientX : e.clientY;
+  } else if (pointerAxis) {
+    const axisPosition = pointerAxis === 'x' ? e.clientX : e.clientY;
+    const axisDelta = pointerAxis === 'x'
+      ? axisPosition - pointerLastAxis
+      : pointerLastAxis - axisPosition;
+    pointerRemainder += axisDelta;
+    pointerLastAxis = axisPosition;
+  }
+
+  const steps = Math.trunc(pointerRemainder / pixelsPerRelativeStep);
+  if (steps !== 0) {
+    pointerRemainder -= steps * pixelsPerRelativeStep;
+    emitRelativeSteps(steps, pointerGesture === 'pressRotate' ? 'pressRotate' : 'rotate');
+  }
+};
+
+const finishPointerGesture = (cancelReason?: EncoderCancelReason) => {
+  if (activePointerId.value === null) return;
+  const pointerId = activePointerId.value;
+  const target = pointerTarget.value;
+  const pointerType = activePointerType.value;
+  const gesture: EncoderGesture = pointerGesture === 'rotate'
+    ? 'rotate'
+    : pointerGesture === 'pressRotate'
+      ? 'pressRotate'
+      : 'press';
+  const detail = interactionDetail('pointer', gesture, pointerType);
+  clearPointerTimer();
+  removePointerListeners();
   isDragging.value = false;
+  isPushHeld.value = false;
   activePointerId.value = null;
-  window.removeEventListener('pointermove', onDrag);
-  window.removeEventListener('pointerup', stopDrag);
-  window.removeEventListener('pointercancel', stopDrag);
+  pointerGesture = null;
+  pointerAxis = null;
+  pointerTouchPushArmed = false;
+  try {
+    if (target?.hasPointerCapture?.(pointerId)) target.releasePointerCapture(pointerId);
+  } catch {
+    // Pointer capture may already be released by the browser.
+  }
+  pointerTarget.value = null;
+
+  if (pointerInteractionMode !== 'relative') return;
+  if (cancelReason) {
+    emit('cancel', cancelReason, detail);
+    return;
+  }
+  if (gesture === 'press' && pointerPushable) emit('press', detail);
+  emit('release', detail);
+};
+
+const cancelPointerGesture = (reason: EncoderCancelReason) => finishPointerGesture(reason);
+
+const onPointerUp = (e: PointerEvent) => {
+  if (activePointerId.value === null || e.pointerId !== activePointerId.value) return;
+  finishPointerGesture();
+};
+
+const onPointerCancel = (e: PointerEvent) => {
+  if (activePointerId.value === null || e.pointerId !== activePointerId.value) return;
+  cancelPointerGesture('pointercancel');
+};
+
+const handleLostPointerCapture = (e: PointerEvent) => {
+  if (activePointerId.value === null || e.pointerId !== activePointerId.value) return;
+  cancelPointerGesture('lostpointercapture');
 };
 
 const setKeyboardValue = (value: number) => {
@@ -209,6 +404,60 @@ const setKeyboardValue = (value: number) => {
 
 const handleKeyDown = (event: KeyboardEvent) => {
   if (props.disabled) return;
+  if (props.interactionMode === 'relative') {
+    if (activePointerId.value !== null) return;
+    if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+      if (!props.pushable) return;
+      event.preventDefault();
+      if (event.repeat || keyboardPushHeld) return;
+      keyboardPushHeld = true;
+      keyboardPushRotated = false;
+      keyboardInteractionMode = props.interactionMode;
+      keyboardGesturePushable = props.pushable;
+      keyboardGestureStartedKey = props.interactionContextKey;
+      interactionStartKey.value = keyboardGestureStartedKey;
+      isPushHeld.value = true;
+      return;
+    }
+
+    const arrowDelta: Record<string, number> = {
+      ArrowUp: 1,
+      ArrowRight: 1,
+      ArrowDown: -1,
+      ArrowLeft: -1,
+    };
+    if (event.key in arrowDelta) {
+      const delta = arrowDelta[event.key];
+      if (delta === undefined) return;
+      event.preventDefault();
+      if (keyboardPushHeld && keyboardGestureStartedKey !== props.interactionContextKey) {
+        cancelKeyboardGesture('context-change');
+        return;
+      }
+      emitKeyboardSteps(delta, keyboardPushHeld ? 'pressRotate' : 'rotate');
+      if (keyboardPushHeld) keyboardPushRotated = true;
+      return;
+    }
+
+    const step = props.step > 0 ? props.step : (Math.max(0, props.max - props.min) / 100 || 1);
+    if (event.key === 'PageUp' || event.key === 'PageDown') {
+      event.preventDefault();
+      const delta = event.key === 'PageUp' ? 10 : -10;
+      emitKeyboardSteps(delta, keyboardPushHeld ? 'pressRotate' : 'rotate');
+      if (keyboardPushHeld) keyboardPushRotated = true;
+      return;
+    }
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      const target = event.key === 'Home' ? props.min : props.max;
+      const delta = Math.round((target - liveValue.value) / step);
+      emitKeyboardSteps(delta, keyboardPushHeld ? 'pressRotate' : 'rotate');
+      if (keyboardPushHeld && delta !== 0) keyboardPushRotated = true;
+      return;
+    }
+    return;
+  }
+
   const range = Math.max(0, props.max - props.min);
   const step = props.step > 0 ? props.step : range / 100 || 1;
   const largeStep = step * 10;
@@ -241,11 +490,79 @@ const handleKeyDown = (event: KeyboardEvent) => {
   setKeyboardValue(nextValue);
 };
 
+const emitKeyboardSteps = (delta: number, gesture: 'rotate' | 'pressRotate') => {
+  if (delta === 0) return;
+  const detail = interactionDetail('keyboard', gesture, undefined, keyboardPushHeld ? keyboardGestureStartedKey : props.interactionContextKey);
+  const step = props.step > 0 ? props.step : (Math.max(0, props.max - props.min) / 100 || 1);
+  liveValue.value = Math.max(props.min, Math.min(props.max, liveValue.value + delta * step));
+  if (gesture === 'pressRotate') emit('pressRotate', delta, detail);
+  else emit('rotate', delta, detail);
+};
+
+const finishKeyboardGesture = (cancelReason?: EncoderCancelReason) => {
+  if (!keyboardPushHeld) return;
+  const detail = interactionDetail(
+    'keyboard',
+    keyboardPushRotated ? 'pressRotate' : 'press',
+    undefined,
+    keyboardGestureStartedKey,
+  );
+  keyboardPushHeld = false;
+  keyboardPushRotated = false;
+  keyboardGestureStartedKey = undefined;
+  isPushHeld.value = false;
+  if (keyboardInteractionMode !== 'relative') return;
+  if (cancelReason) {
+    emit('cancel', cancelReason, detail);
+    return;
+  }
+  if (detail.gesture === 'press' && keyboardGesturePushable) emit('press', detail);
+  emit('release', detail);
+};
+
+const cancelKeyboardGesture = (reason: EncoderCancelReason) => finishKeyboardGesture(reason);
+
+const handleKeyUp = (event: KeyboardEvent) => {
+  if ((event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') && keyboardPushHeld) {
+    event.preventDefault();
+    finishKeyboardGesture();
+  }
+};
+
+const handleBlur = () => {
+  if (activePointerId.value !== null) cancelPointerGesture('blur');
+  if (keyboardPushHeld) cancelKeyboardGesture('blur');
+};
+
+const handleWindowBlur = () => handleBlur();
+
 watch(() => props.disabled, (disabled) => {
-  if (disabled) stopDrag();
+  if (disabled) {
+    if (activePointerId.value !== null) cancelPointerGesture('disabled');
+    if (keyboardPushHeld) cancelKeyboardGesture('disabled');
+  }
 });
 
-onUnmounted(() => stopDrag());
+watch(() => props.interactionContextKey, (next, previous) => {
+  if (next === previous) return;
+  if (activePointerId.value !== null) cancelPointerGesture('context-change');
+  if (keyboardPushHeld) cancelKeyboardGesture('context-change');
+});
+
+watch(() => [props.interactionMode, props.pushable] as const, () => {
+  if (activePointerId.value !== null) cancelPointerGesture('context-change');
+  if (keyboardPushHeld) cancelKeyboardGesture('context-change');
+});
+
+onMounted(() => window.addEventListener('blur', handleWindowBlur));
+
+onUnmounted(() => {
+  if (activePointerId.value !== null) cancelPointerGesture('unmount');
+  if (keyboardPushHeld) cancelKeyboardGesture('unmount');
+  window.removeEventListener('blur', handleWindowBlur);
+  clearPointerTimer();
+  removePointerListeners();
+});
 
 </script>
 

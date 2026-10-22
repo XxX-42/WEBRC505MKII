@@ -1165,6 +1165,10 @@ export class BrowserAudioEngine implements IAudioEngine {
         return (this.perTrackFxChains ?? []).map((bank, index) => bank.getStatus(index + 1));
     }
 
+    public getSharedFxSnapshot(location: 'input' | 'track'): readonly BrowserRecoveryFxSlot[] {
+        return this.getSharedFxRecoverySnapshot(location);
+    }
+
     private getSharedFxRecoverySnapshot(location: 'input' | 'track'): readonly BrowserRecoveryFxSlot[] {
         const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
         const types = location === 'input' ? this.inputFxTypes : this.trackFxTypes;

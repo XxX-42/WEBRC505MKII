@@ -1,11 +1,21 @@
 <template>
-  <div class="loop-halo-container">
+  <div
+    class="loop-halo-container"
+    :class="[`appearance-${appearance}`, `mode-${effectiveMode.toLowerCase().replace('_', '-')}`]"
+    :data-appearance="appearance"
+    :data-indicator-mode="effectiveMode"
+    :data-state="currentState ?? 'unavailable'"
+    :data-availability="isAvailable ? 'available' : 'unavailable'"
+    role="img"
+    :aria-label="computedAriaLabel"
+  >
     <canvas 
       ref="canvas" 
       width="128" 
       height="128" 
       class="halo-canvas"
       :class="animationClass"
+      aria-hidden="true"
     ></canvas>
   </div>
 </template>
@@ -15,20 +25,70 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { TrackState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
 
-const props = defineProps<{
-  trackId: number;
-}>();
+type Appearance = 'enhanced' | 'classic';
+type IndicatorMode = 'STATUS' | 'LOOP_POSITION' | 'LEVEL' | 'LEGACY';
+type LedColor = 'off' | 'red' | 'green' | 'yellow' | 'pink' | 'blue' | 'white' | 'purple' | 'cyan';
+
+const props = withDefaults(defineProps<{
+  trackId?: number;
+  appearance?: Appearance;
+  indicatorMode?: Exclude<IndicatorMode, 'LEGACY'>;
+  status?: TrackState | null;
+  /** Explicit status LED color from the shared control resolver. */
+  statusColor?: LedColor | null;
+  position?: number | null;
+  /** Normalized level from 0 to 1; no engine level meter is inferred. */
+  level?: number | null;
+  ariaLabel?: string;
+}>(), {
+  appearance: 'enhanced',
+  indicatorMode: undefined,
+  status: undefined,
+  statusColor: undefined,
+  position: undefined,
+  level: undefined,
+  ariaLabel: '',
+});
 
 const canvas = ref<HTMLCanvasElement | null>(null);
 let ctx: CanvasRenderingContext2D | null = null;
-let animationFrame: number;
+let animationFrame: number | null = null;
 
-// Local state for rendering
-const currentState = ref<TrackState>(TrackState.EMPTY);
-const currentProgress = ref(0);
+const currentState = ref<TrackState | null>(props.status ?? null);
+const currentProgress = ref<number | null>(normalize(props.position));
+const currentLevel = computed(() => normalize(props.level));
+const effectiveMode = computed<IndicatorMode>(() => props.indicatorMode
+  ?? (props.appearance === 'classic' ? 'STATUS' : 'LEGACY'));
+const isAvailable = computed(() => {
+  if (effectiveMode.value === 'LEVEL') return currentLevel.value !== null;
+  if (effectiveMode.value === 'LOOP_POSITION') return currentProgress.value !== null;
+  return currentState.value !== null;
+});
 
-// Dynamic animation class based on state
+function normalize(value: number | null | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(1, value));
+}
+
+const computedAriaLabel = computed(() => {
+  if (props.ariaLabel) return props.ariaLabel;
+  const trackLabel = props.trackId ? `Track ${props.trackId}` : 'Track';
+  if (effectiveMode.value === 'LEVEL') {
+    return currentLevel.value === null
+      ? `${trackLabel} level unavailable`
+      : `${trackLabel} level ${Math.round(currentLevel.value * 100)} percent`;
+  }
+  if (effectiveMode.value === 'LOOP_POSITION') {
+    return currentProgress.value === null
+      ? `${trackLabel} loop position unavailable`
+      : `${trackLabel} loop position ${Math.round(currentProgress.value * 100)} percent`;
+  }
+  return `${trackLabel} status ${currentState.value ?? 'unavailable'}`;
+});
+
 const animationClass = computed(() => {
+  if (props.appearance === 'classic') return '';
+  if (effectiveMode.value === 'LEVEL' || effectiveMode.value === 'LOOP_POSITION') return '';
   switch (currentState.value) {
     case TrackState.RECORDING: return 'state-recording';
     case TrackState.REC_STANDBY: return 'state-rec-standby';
@@ -43,17 +103,7 @@ const animationClass = computed(() => {
 const draw = () => {
   if (!ctx || !canvas.value) return;
 
-  // Read from Shared Buffer
-  const engine = AudioEngine.getInstance();
-  const trackIndex = props.trackId - 1;
-  
-  if (engine.trackStates && engine.trackPositions) {
-      const stateIdx = Atomics.load(engine.trackStates, trackIndex);
-      const stateValues = Object.values(TrackState);
-      currentState.value = stateValues[stateIdx] as TrackState;
-      
-      currentProgress.value = engine.trackPositions[trackIndex] ?? 0;
-  }
+  readTrackSignals();
   
   const w = canvas.value.width;
   const h = canvas.value.height;
@@ -63,7 +113,13 @@ const draw = () => {
   
   ctx.clearRect(0, 0, w, h);
   
-  // Background Ring (darker, thinner)
+  if (props.appearance === 'classic' || effectiveMode.value !== 'LEGACY') {
+    drawExplicitIndicator(cx, cy, r);
+    animationFrame = requestAnimationFrame(draw);
+    return;
+  }
+
+  // Enhanced legacy mode intentionally preserves the existing combined ring and animations.
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.strokeStyle = '#1a1a1a';
@@ -71,14 +127,16 @@ const draw = () => {
   ctx.stroke();
   
   // Active Ring
-  if (currentState.value !== TrackState.EMPTY && currentState.value !== TrackState.STOPPED) {
+  const state = currentState.value ?? TrackState.EMPTY;
+  const progress = currentProgress.value ?? 0;
+  if (state !== TrackState.EMPTY && state !== TrackState.STOPPED) {
     let color = '#4b5563';
     let glowIntensity = 15;
     
-    if (currentState.value === TrackState.RECORDING) {
+    if (state === TrackState.RECORDING) {
       color = '#ff0033'; // var(--led-red-recording)
       glowIntensity = 20;
-    } else if (currentState.value === TrackState.REC_STANDBY) {
+    } else if (state === TrackState.REC_STANDBY) {
       // REC_STANDBY: Blinking red (waiting for measure boundary to start)
       const blinkSpeed = 500; // ms per blink cycle
       const blinkPhase = (Date.now() % blinkSpeed) / blinkSpeed;
@@ -86,7 +144,7 @@ const draw = () => {
       
       color = `rgba(255, 0, 51, ${blinkOpacity})`;
       glowIntensity = 15 * blinkOpacity;
-    } else if (currentState.value === TrackState.REC_FINISHING) {
+    } else if (state === TrackState.REC_FINISHING) {
       // REC_FINISHING: Red/Green alternating blink (finishing recording at measure boundary)
       const blinkSpeed = 300; // ms per blink cycle (faster than standby)
       const blinkPhase = (Date.now() % blinkSpeed) / blinkSpeed;
@@ -99,16 +157,16 @@ const draw = () => {
         color = '#00ff66'; // Green
         glowIntensity = 16;
       }
-    } else if (currentState.value === TrackState.PLAYING) {
+    } else if (state === TrackState.PLAYING) {
       color = '#00ff66'; // var(--led-green-playing)
       glowIntensity = 18;
-    } else if (currentState.value === TrackState.OVERDUBBING) {
+    } else if (state === TrackState.OVERDUBBING) {
       color = '#ffcc00'; // var(--led-yellow-overdub)
       glowIntensity = 18;
     }
     
     const startAngle = -Math.PI / 2;
-    const endAngle = startAngle + (Math.PI * 2 * currentProgress.value);
+    const endAngle = startAngle + (Math.PI * 2 * progress);
     
     // Draw progress arc with glow
     ctx.beginPath();
@@ -127,7 +185,7 @@ const draw = () => {
     ctx.stroke();
     
     ctx.shadowBlur = 0;
-  } else if (currentState.value === TrackState.STOPPED) {
+  } else if (state === TrackState.STOPPED) {
     // Stopped state: dim white ring
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -139,6 +197,95 @@ const draw = () => {
   animationFrame = requestAnimationFrame(draw);
 };
 
+const readTrackSignals = () => {
+  const trackIndex = props.trackId === undefined ? -1 : props.trackId - 1;
+  const validIndex = Number.isInteger(trackIndex) && trackIndex >= 0;
+  const needsStatus = effectiveMode.value === 'LEGACY' || effectiveMode.value === 'STATUS';
+  const needsPosition = effectiveMode.value === 'LEGACY' || effectiveMode.value === 'LOOP_POSITION';
+
+  if (props.status !== undefined) {
+    currentState.value = props.status;
+  } else if (needsStatus && validIndex) {
+    const states = AudioEngine.getInstance().trackStates;
+    if (!states || trackIndex >= states.length) {
+      currentState.value = null;
+    } else {
+    const stateValues = Object.values(TrackState) as TrackState[];
+      const stateIndex = Atomics.load(states, trackIndex);
+    currentState.value = stateValues[stateIndex] ?? null;
+    }
+  } else {
+    currentState.value = null;
+  }
+
+  if (props.position !== undefined) {
+    currentProgress.value = normalize(props.position);
+  } else if (needsPosition && validIndex) {
+    const positions = AudioEngine.getInstance().trackPositions;
+    currentProgress.value = positions && trackIndex < positions.length
+      ? normalize(positions[trackIndex])
+      : null;
+  } else {
+    currentProgress.value = null;
+  }
+};
+
+const drawRing = (cx: number, cy: number, radius: number, color: string, width: number) => {
+  if (!ctx) return;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke();
+};
+
+const drawArc = (cx: number, cy: number, radius: number, fraction: number, color: string, width: number) => {
+  if (!ctx || fraction <= 0) return;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * fraction);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+};
+
+const LED_PALETTE: Record<Exclude<LedColor, 'off'>, string> = {
+  red: '#ff0033',
+  green: '#00ff66',
+  yellow: '#ffcc00',
+  pink: '#ec4899',
+  blue: '#3b82f6',
+  white: '#f0f0f0',
+  purple: '#a855f7',
+  cyan: '#22d3ee',
+};
+
+const drawExplicitIndicator = (cx: number, cy: number, radius: number) => {
+  if (!ctx) return;
+  drawRing(cx, cy, radius, '#1a1a1a', 3);
+
+  if (effectiveMode.value === 'STATUS') {
+    // Status meaning is resolved by the shared control resolver. Unknown/off
+    // remains dark; this component only maps the resolved color to app RGB.
+    const statusColor = props.statusColor && props.statusColor !== 'off'
+      ? LED_PALETTE[props.statusColor]
+      : null;
+    if (statusColor) drawRing(cx, cy, radius, statusColor, 4);
+    return;
+  }
+
+  if (effectiveMode.value === 'LOOP_POSITION') {
+    if (currentProgress.value !== null) {
+      drawArc(cx, cy, radius, currentProgress.value, '#aeb6c2', 5);
+    }
+    return;
+  }
+
+  if (effectiveMode.value === 'LEVEL' && currentLevel.value !== null) {
+    drawArc(cx, cy, radius, currentLevel.value, '#aeb6c2', 5);
+  }
+};
+
 onMounted(() => {
   if (canvas.value) {
     ctx = canvas.value.getContext('2d');
@@ -147,7 +294,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  cancelAnimationFrame(animationFrame);
+  if (animationFrame !== null) cancelAnimationFrame(animationFrame);
 });
 </script>
 

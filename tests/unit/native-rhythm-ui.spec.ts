@@ -120,16 +120,16 @@ describe('Native ACK-backed shared rhythm panels', () => {
     await Promise.resolve();
     expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').attributes('disabled')).toBeDefined();
     expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('disabled')).toBeDefined();
-    expect(center.get('button[aria-label="Toggle rhythm playback"]').classes()).not.toContain('active');
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('data-active')).toBe('false');
     expect(rhythm.isRunning).toBe(false);
     acknowledge(nativeRhythmStatus({ ...rhythm.settings!, enabled: true }));
     await flushPromises();
     expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').text()).toContain('STOP RHYTHM');
-    expect(center.get('button[aria-label="Toggle rhythm playback"]').classes()).toContain('active');
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('data-active')).toBe('true');
     await lcdGet(center, '[data-testid="lcd-field-play-stop"]').trigger('click');
     await flushPromises();
     expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').text()).toContain('START RHYTHM');
-    expect(center.get('button[aria-label="Toggle rhythm playback"]').classes()).not.toContain('active');
+    expect(center.get('button[aria-label="Toggle rhythm playback"]').attributes('data-active')).toBe('false');
     expect(setRhythm).toHaveBeenCalledTimes(2);
   });
 
@@ -137,10 +137,15 @@ describe('Native ACK-backed shared rhythm panels', () => {
     const incomplete = nativeRhythmStatus();
     delete (incomplete.nativeRhythm as Partial<NativeRhythmConfig>).swingPercent;
     const { center, setStatus, setRhythm } = await mountNativeControls(incomplete);
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    useRc505Controls().reportError('FX BANK ERROR', 'Unrelated input FX readback differs.', 'input-fx');
+    await nextTick();
     expect(lcdGet(center, '[data-testid="lcd-field-pattern"]').attributes('disabled')).toBeDefined();
     await lcdPage(center, 2);
     expect(lcdGet(center, '[data-testid="lcd-field-play-stop"]').attributes('disabled')).toBeDefined();
     expect(center.get('.lcd-status').text()).toContain('does not report');
+    expect(center.get('.lcd-status').attributes('title')).toContain('does not report the supported rhythm settings');
+    expect(center.get('.lcd-status').text()).not.toContain('FX BANK ERROR');
     const unavailable = nativeRhythmStatus();
     unavailable.nativeRhythm!.available = false;
     unavailable.nativeRhythm!.statusNote = 'Rhythm DSP unavailable on this bridge';

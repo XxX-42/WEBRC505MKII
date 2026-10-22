@@ -1,5 +1,7 @@
-import { computed, reactive, readonly } from 'vue';
+import { computed, reactive, readonly, shallowRef } from 'vue';
 import { usePanelFocus } from './usePanelFocus';
+import { createRc505DisplayState, reduceRc505DisplayState } from '../ui/rc505/Rc505DisplayStateMachine';
+import type { Rc505DisplayAction } from '../ui/rc505/rc505DisplayTypes';
 
 export type DevicePanelPage = 'home' | 'mixer' | 'menu' | 'memory' | 'input-fx' | 'track-fx' | 'rhythm' | 'settings' | 'track';
 
@@ -24,6 +26,7 @@ const devicePanelState = reactive<DevicePanelState>({
   editorPageCount: 1,
 });
 const pageActionStatus = reactive<PageActionStatus>({ trackId: null, pending: '', error: '' });
+const classicDisplayState = shallowRef(createRc505DisplayState());
 
 const drawerPages = new Set<DevicePanelPage>(['menu', 'memory', 'input-fx', 'track-fx', 'rhythm', 'settings', 'track']);
 
@@ -113,10 +116,22 @@ export function useDevicePanel() {
     const safeCount = Number.isInteger(count) ? Math.max(1, count) : 1;
     devicePanelState.editorPageCount = safeCount;
     if (devicePanelState.editorPageIndex >= safeCount) devicePanelState.editorPageIndex = safeCount - 1;
+    classicDisplayState.value = reduceRc505DisplayState(classicDisplayState.value, { type: 'EDITOR_PAGE_COUNT', count: safeCount });
+  }
+
+  function classicDispatch(action: Rc505DisplayAction) {
+    classicDisplayState.value = reduceRc505DisplayState(classicDisplayState.value, action);
+    return classicDisplayState.value;
+  }
+
+  function setEditorPageIndex(index: number): void {
+    if (!Number.isInteger(index)) return;
+    devicePanelState.editorPageIndex = Math.max(0, Math.min(devicePanelState.editorPageCount - 1, index));
   }
 
   return {
     state: readonly(devicePanelState),
+    classicState: readonly(classicDisplayState),
     actionStatus: readonly(pageActionStatus),
     currentTrackId,
     openPage,
@@ -127,5 +142,7 @@ export function useDevicePanel() {
     setPageActionStatus,
     clearPageStatus,
     setEditorPageCount,
+    setEditorPageIndex,
+    classicDispatch,
   };
 }

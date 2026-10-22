@@ -14,6 +14,7 @@
       <button class="tool-btn" type="button" @click="openSettings">
         AUDIO SETTINGS
       </button>
+      <button class="tool-btn" type="button" @click="showEnhanced = true">ENHANCED</button>
       <p v-if="monitoringError" class="thru-error" role="alert">{{ monitoringError }}</p>
     </div>
 
@@ -21,6 +22,7 @@
 
     <AudioSettings v-if="audioMode === 'native'" v-model="showSettings" />
     <BrowserAudioSettings v-else v-model="showSettings" />
+    <EnhancedTools v-if="showEnhanced" @close="showEnhanced = false" />
   </aside>
 </template>
 
@@ -30,13 +32,11 @@ import { AudioEngine } from '../audio/AudioEngine';
 import AudioSettings from './AudioSettings.vue';
 import BrowserAudioSettings from './BrowserAudioSettings.vue';
 import LatencyTuner from './LatencyTuner.vue';
+import EnhancedTools from './EnhancedTools.vue';
 import { useMonitoringControls } from '../composables/useMonitoringControls';
-import { useUiStyle } from '../composables/useUiStyle';
-import { useDevicePanel } from '../composables/useDevicePanel';
 
 const engine = AudioEngine.getInstance();
-const { currentStyle } = useUiStyle();
-const device = useDevicePanel();
+const showEnhanced = ref(false);
 const showSettings = ref(false);
 const audioMode = ref(engine.getMode());
 const monitoring = useMonitoringControls(engine);
@@ -53,6 +53,7 @@ const thruAriaLabel = computed(() => monitoringPending.value
     : isThruActive.value ? 'Disable direct monitoring' : 'Enable direct monitoring');
 let unsubscribeStatus: (() => void) | null = null;
 const AUDIO_SETTINGS_EVENT = 'rc505-open-audio-settings';
+const handleEnhancedRequested = () => { showEnhanced.value = true; };
 
 const openSettings = () => {
   window.dispatchEvent(new Event(AUDIO_SETTINGS_EVENT));
@@ -60,12 +61,12 @@ const openSettings = () => {
 
 const toggleThru = () => monitoring.toggle();
 const handleSettingsRequested = () => {
-  if (currentStyle.value === 'classic') { device.openPage('settings'); return; }
   showSettings.value = true;
 };
 
 onMounted(() => {
   window.addEventListener(AUDIO_SETTINGS_EVENT, handleSettingsRequested);
+  window.addEventListener('rc505-open-enhanced', handleEnhancedRequested);
   unsubscribeStatus = engine.onStatusChange((status) => {
     audioMode.value = status.mode;
   });
@@ -73,6 +74,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener(AUDIO_SETTINGS_EVENT, handleSettingsRequested);
+  window.removeEventListener('rc505-open-enhanced', handleEnhancedRequested);
   unsubscribeStatus?.();
 });
 </script>

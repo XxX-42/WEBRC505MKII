@@ -26,29 +26,32 @@
         <HardwareButton
           shape="rect"
           size="sm"
-          :color="trackFxButtonActive ? 'red' : 'neutral'"
-          :active="trackFxButtonActive"
-          :disabled="!trackFxButtonEnabled"
-          :disabled-reason="trackFxDisabledReason"
+          :led-color="resolvedControls.fx.ledColor"
+          :led-on="resolvedControls.fx.ledOn"
+          :disabled="!resolvedControls.fx.enabled"
+          :disabled-reason="resolvedControls.fx.unavailableReason"
           label="FX"
           class="track-function-button"
           appearance="classic"
           data-track-control="fx"
-          :aria-label="trackFxButtonAriaLabel"
+          :aria-label="`Track ${trackId} ${resolvedControls.fx.hardwareRole}: ${resolvedControls.fx.unavailableReason}`"
           data-hardware-control="button"
-          @press="openTrackFxEditor"
+          :data-hardware-role="resolvedControls.fx.hardwareRole"
         />
         <HardwareButton
           shape="rect"
           size="sm"
-          :color="isCurrentTrack ? 'green' : 'neutral'"
-          :active="isCurrentTrack"
-          :disabled="!trackAvailable"
-          :disabled-reason="disabledReason"
+          :led-color="resolvedControls.track.ledColor"
+          :led-on="resolvedControls.track.ledOn"
+          :selected="resolvedControls.track.selected"
+          :disabled="!resolvedControls.track.enabled"
+          :disabled-reason="resolvedControls.track.unavailableReason"
           label="TRACK"
           class="track-function-button"
           appearance="classic"
           data-track-control="select"
+          :data-phrase-status="audioEngine.getTrackHasPhrase?.(trackId) === null ? 'unknown' : audioEngine.getTrackHasPhrase?.(trackId) ? 'present' : 'empty'"
+          :data-hardware-role="resolvedControls.track.hardwareRole"
           :aria-label="trackButtonAriaLabel"
           data-hardware-control="button"
           @press="openTrackEditor"
@@ -58,7 +61,8 @@
           class="stop-disc"
           :class="{ 'is-pressed': stopPressActive }"
           type="button"
-          :disabled="!trackTransportReady"
+          :disabled="!resolvedControls.stop.enabled"
+          :data-hardware-role="resolvedControls.stop.hardwareRole"
           :title="trackInteractionDisabledReason || 'Hold to clear this track'"
           aria-label="Stop track (hold to clear)"
           data-hardware-control="button"
@@ -94,15 +98,16 @@
 
     <div class="main-button-column">
       <div class="halo-wrapper">
-        <LoopHalo :track-id="trackId" class="halo-layer" />
+        <LoopHalo :track-id="trackId" appearance="classic" indicator-mode="STATUS" :status-color="resolvedControls.record.ledColor" class="halo-layer" />
         <HardwareButton
           shape="circle"
           size="lg"
-          :color="buttonLedColor"
-          :active="isRecordingOrPlaying"
-          :disabled="!recordActionReady"
-          :disabled-reason="recordActionDisabledReason"
-          aria-label="Record or play track"
+          :led-color="resolvedControls.record.ledColor"
+          :led-on="resolvedControls.record.ledOn"
+          :disabled="!resolvedControls.record.enabled"
+          :disabled-reason="resolvedControls.record.unavailableReason || recordActionDisabledReason"
+          :aria-label="undoLayer ? `Track ${trackId} ${resolvedControls.record.hardwareRole}` : 'Record or play track'"
+          :data-hardware-role="resolvedControls.record.hardwareRole"
           appearance="classic"
           label="▶ / ●"
           data-panel-control="record-play"
@@ -127,10 +132,9 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { registerDeviceTrackController } from '../../composables/deviceTrackControllers';
 import { AudioEngine } from '../../audio/AudioEngine';
 import { TrackState } from '../../core/types';
-import { useBrowserTrackFxState } from '../../composables/useBrowserTrackFxState';
 import { useDevicePanel } from '../../composables/useDevicePanel';
-import { useNativeTrackFxState } from '../../composables/useNativeTrackFxState';
-import { usePanelFocus } from '../../composables/usePanelFocus';
+import { useRc505Controls } from '../../composables/useRc505Controls';
+import { resolveRc505TrackControls } from '../../ui/rc505/Rc505ControlStateResolver';
 import { useTrackStripState } from '../../composables/useTrackStripState';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareFader from '../ui/HardwareFader.vue';
@@ -141,9 +145,8 @@ const props = defineProps<{
 }>();
 
 const device = useDevicePanel();
-const panelFocus = usePanelFocus();
-const browserTrackFx = useBrowserTrackFxState();
-const nativeTrackFx = useNativeTrackFxState();
+const controls = useRc505Controls();
+const undoLayer = computed(() => controls.state.controlLayer === 'UNDO_REDO');
 const audioEngine = AudioEngine.getInstance();
 const audioStatusRevision = ref(0);
 const audioReady = computed(() => {
@@ -151,16 +154,11 @@ const audioReady = computed(() => {
   return audioEngine.getUiStatus().ready;
 });
 const trackDrawerOpen = computed(() => device.state.page === 'track' && device.currentTrackId.value === props.trackId);
-const nativeTrackFxOptions = computed(() => {
-  audioStatusRevision.value;
-  if (audioEngine.getMode() !== 'native') return [];
-  return audioEngine.getNativeCatalogFxOptions('track', props.trackId)
-    .filter((type) => type !== 'VINYL FLICK' && type !== 'VINYL FLICK (EXPERIMENTAL)' && type !== 'BEAT SHIFT');
-});
 
 const trackController = useTrackStripState(props.trackId);
 const {
   trackState,
+  runtimeRevision,
   playLevel,
   trackTransportEnabled,
   trackAvailable,
@@ -171,13 +169,9 @@ const {
   hqExportError,
   livePitchError,
   isCurrentTrack,
-  trackFxControlEnabled,
-  isRecordingOrPlaying,
-  buttonLedColor,
   faderLedColor,
   levelControlEnabled,
   levelControlAriaLabel,
-  trackFxUnavailableReason,
   trackLevelUnavailableReason,
   trackButtonAriaLabel,
   handleRecPlay,
@@ -208,47 +202,37 @@ const recordActionDisabledReason = computed(() => captureWarmupBlocksAction.valu
   ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
   : trackInteractionDisabledReason.value);
 
-function handleTrackRecPlay(): void {
-  if (!recordActionReady.value) return;
-  handleRecPlay();
-}
-
-const trackFxButtonEnabled = computed(() => audioEngine.getMode() === 'native'
-  ? audioReady.value && trackAvailable.value && nativeTrackFxOptions.value.length > 0
-  : trackAvailable.value && trackFxControlEnabled.value);
-const trackFxDisabledReason = computed(() => {
-  if (trackFxButtonEnabled.value) return '';
-  if (audioEngine.getMode() === 'native') {
-    if (!audioReady.value) return audioEngine.getUiStatus().message || 'Start audio before using Native track FX.';
-    if (!trackAvailable.value) return disabledReason.value || 'This track is not available.';
-    return 'Native per-track FX are not exposed for this track.';
-  }
-  return trackFxUnavailableReason.value || disabledReason.value || 'Track FX are unavailable.';
+const resolvedControls = computed(() => {
+  audioStatusRevision.value;
+  runtimeRevision.value;
+  trackState.value;
+  const history = audioEngine.getTrackHistoryStatus?.(props.trackId) ?? { canUndo: false, canRedo: false, busy: false };
+  return resolveRc505TrackControls({
+    state: trackState.value,
+    hasPhrase: audioEngine.getTrackHasPhrase?.(props.trackId) ?? null,
+    selected: isCurrentTrack.value, available: trackAvailable.value,
+    ready: trackTransportReady.value, recordReady: recordActionReady.value,
+    recordUnavailableReason: recordActionDisabledReason.value,
+    layer: controls.state.controlLayer, history,
+    fxApplySupported: false, fxApplied: null,
+  });
 });
-const trackFxButtonAriaLabel = computed(() => trackFxButtonEnabled.value
-  ? `Open ${audioEngine.getMode() === 'native' ? 'Native ' : ''}track FX editor for track ${props.trackId}`
-  : `Track ${props.trackId} FX unavailable: ${trackFxDisabledReason.value}`);
-const trackFxButtonActive = computed(() => {
-  if (device.state.page === 'track-fx' && panelFocus.state.currentTrackId === props.trackId) return true;
-  const trackBank = audioEngine.getMode() === 'native'
-    ? nativeTrackFx.state.tracks[props.trackId - 1]
-    : browserTrackFx.state.tracks[props.trackId - 1];
-  return trackBank?.slots.some((slot) => slot.active) ?? false;
-});
-
-function openTrackFxEditor(): void {
-  if (!trackFxButtonEnabled.value) return;
-  const selected = audioEngine.getMode() === 'native'
-    ? nativeTrackFx.selectTarget(props.trackId as 1 | 2 | 3 | 4 | 5)
-    : browserTrackFx.selectTarget(props.trackId as 1 | 2 | 3 | 4 | 5);
-  if (!selected) return;
-  panelFocus.setCurrentTrack(props.trackId);
-  panelFocus.setActiveFxSlot('track', panelFocus.state.activeTrackFxSlot);
-  device.openPage('track-fx');
+const trackFxDisabledReason = computed(() => resolvedControls.value.fx.unavailableReason);
+async function handleTrackRecPlay(): Promise<void> {
+  if (!resolvedControls.value.record.enabled) return;
+  if (!undoLayer.value) { handleRecPlay(); return; }
+  try {
+    const history = audioEngine.getTrackHistoryStatus(props.trackId);
+    const success = history.canUndo ? await audioEngine.undoTrack(props.trackId) : await audioEngine.redoTrack(props.trackId);
+    if (!success) controls.reportError('HISTORY UNAVAILABLE');
+  } catch (error) { controls.reportError(error instanceof Error ? error.message : 'HISTORY FAILED'); }
+  audioStatusRevision.value += 1;
 }
 
 function openTrackEditor(): void {
+  if (!resolvedControls.value.track.enabled) return;
   handleTrackSelect();
+  device.classicDispatch({ type: 'OPEN_EDITOR', target: 'track', category: 'track' });
   device.openSelectedTrack();
 }
 
@@ -753,43 +737,16 @@ const stateLabel = computed(() => {
   font-size: 12px;
   letter-spacing: 0.12em;
 }
-.track-strip .track-button-stack > :deep([data-track-control="fx"].active:not(.is-disabled)) {
-  background: linear-gradient(145deg, #ffc1df 0%, #ff72b4 42%, #a52d68 100%) !important;
-  border: 1px solid rgba(255, 231, 243, 0.96);
-  box-shadow: 0 0 8px rgba(255, 101, 176, 0.95), 0 0 20px rgba(255, 72, 163, 0.72), inset 0 0 11px rgba(255, 247, 252, 0.48), inset 0 -5px 12px rgba(80, 10, 43, 0.5) !important;
-}
-.track-strip .track-button-stack > :deep([data-track-control="fx"].active:not(.is-disabled) .button-label) {
-  color: #25101b;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
-}
-.track-strip .track-button-stack > :deep([data-track-control="fx"]:active:not(.is-disabled)) {
-  background: linear-gradient(145deg, #ffc1df 0%, #ff72b4 42%, #a52d68 100%) !important;
-}
-.track-strip .track-button-stack > :deep([data-track-control="select"].active:not(.is-disabled)),
-.track-strip .track-button-stack > :deep([data-track-control="select"]:active:not(.is-disabled)) {
-  background: linear-gradient(145deg, #baffd2 0%, #55e88e 42%, #177c45 100%) !important;
-  border: 1px solid rgba(226, 255, 237, 0.96);
-  box-shadow: 0 0 8px rgba(76, 255, 145, 0.94), 0 0 20px rgba(49, 230, 119, 0.68), inset 0 0 11px rgba(247, 255, 250, 0.46), inset 0 -5px 12px rgba(0, 67, 32, 0.52) !important;
-}
-.track-strip .track-button-stack > :deep([data-track-control="select"].active:not(.is-disabled) .button-label),
-.track-strip .track-button-stack > :deep([data-track-control="select"]:active:not(.is-disabled) .button-label) {
-  color: #0d2115;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
-}
-.track-strip .track-button-stack > :deep([data-track-control="fx"].appearance-classic.active:not(.is-disabled)) {
-  background: linear-gradient(155deg, #ffb5ba 0%, #ff4d5d 45%, #9e162b 100%) !important;
-  box-shadow: 0 0 7px rgba(255,57,77,.95), 0 0 18px rgba(255,35,61,.62), inset 0 1px rgba(255,255,255,.66), inset 0 -4px 9px rgba(75,0,8,.55) !important;
+.track-button-stack > :deep(.appearance-classic.is-pressed:not(.is-disabled)) {
+  transform: translateY(1px);
+  box-shadow: inset 0 3px 6px rgba(0,0,0,.65), 0 1px 2px rgba(0,0,0,.6) !important;
 }
 .clear-note { position: absolute; top: 183px; left: 35px; width: 80px; color: #e3e6eb; font-size: 11px; line-height: 1; letter-spacing: 0.03em; text-align: center; }
 .track-button-stack > .stop-disc { position: absolute; top: 212px; left: 51px; width: 48px; height: 48px; }
 .track-button-stack > .stop-disc.is-pressed:not(:disabled) {
-  border-color: #ffffff;
-  background: radial-gradient(circle at 34% 28%, #ffffff 0%, #eaf4ff 48%, #9fb3c8 100%);
-  box-shadow: 0 0 9px rgba(226, 241, 255, 0.98), 0 0 22px rgba(200, 228, 255, 0.8), inset 0 0 12px rgba(255, 255, 255, 0.96), inset 0 -5px 9px rgba(43, 63, 84, 0.45);
-}
-.track-button-stack > .stop-disc.is-pressed:not(:disabled) .stop-square {
-  background: #15202d;
-  box-shadow: 0 0 5px rgba(12, 25, 41, 0.38);
+  transform: translateY(1px);
+  background: radial-gradient(circle at 34% 28%, #23262c, #101217 75%);
+  box-shadow: inset 0 3px 7px rgba(0,0,0,.8), 0 1px 2px #000;
 }
 .slider-column {
   position: absolute;
@@ -851,11 +808,6 @@ const stateLabel = computed(() => {
   letter-spacing: 0.05em;
   text-shadow: 0 1px 2px #050609;
   pointer-events: none;
-}
-.halo-wrapper > :deep([data-panel-control="record-play"].active:not(.is-disabled) .button-label),
-.halo-wrapper > :deep([data-panel-control="record-play"]:active:not(.is-disabled) .button-label) {
-  color: #171014;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
 }
 .loop-indicator-row { position: absolute; top: 267px; left: 44px; display: flex; gap: 7px; width: 170px; justify-content: center; }
 .loop-indicator-row { width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; clip-path: inset(50%); white-space: nowrap; }

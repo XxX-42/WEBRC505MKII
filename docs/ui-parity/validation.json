@@ -1,0 +1,241 @@
+{
+  "generatedAt": "2026-10-22T14:31:39.6893933Z",
+  "overallParity": "PARTIAL",
+  "branch": "codex/rc505-classic-ui-parity-20261022",
+  "baseSha": "2dae0145e0645038a21d5196dfc782d5e9bd8a04",
+  "remoteMainSha": "c4adc8970375873f28c6f137ea1369131d92aef4",
+  "unit": {
+    "status": "PASS",
+    "passed": 2397,
+    "total": 2397,
+    "failed": 0,
+    "skipped": 0,
+    "files": 191,
+    "workers": 6,
+    "runnerTestTimeoutMs": 15000,
+    "command": "npx vitest run --maxWorkers=6 --testTimeout=15000 --silent --reporter=json",
+    "rawReport": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-unit-delivery-final.json",
+    "rawReportSha256": "57BBF58D1D8B849B0606A48D851B1482DA43572D00F907B6788932879CAB39B3"
+  },
+  "focusedAfterFinalBankAccessibilityChange": {
+    "status": "PASS",
+    "passed": 32,
+    "total": 32,
+    "files": 4
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build",
+    "includes": [
+      "vue-tsc -b",
+      "worklet bundle",
+      "Vite build",
+      "third-party notices"
+    ],
+    "existingWarning": "large application chunk",
+    "rawLog": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-build-delivery.log",
+    "rawLogSha256": "6230D20B3051117E55556533F805ED7FA94D477B1734EAA65843F9D0C9E67D2E"
+  },
+  "e2e": {
+    "status": "PASS_LATEST_UNIQUE_MULTI_RUN",
+    "expectedTests": 108,
+    "workers": 1,
+    "nativeHost": "explicit no-audio HQ simulation",
+    "browserInput": "virtual",
+    "noRetries": true,
+    "firstCompleteRun": {
+      "passed": 91,
+      "failed": 17,
+      "skipped": 0,
+      "total": 108,
+      "rawReport": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-e2e-prefx.json"
+    },
+    "secondCompleteRun": {
+      "passed": 103,
+      "failed": 5,
+      "skipped": 0,
+      "total": 108,
+      "rawReport": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-e2e-postfx.json",
+      "note": "Corrective runs fixed obsolete UI assertions and a real Native Bank ACK recovery defect. The final Native LED regression additionally covers empty slots and applied bypass. Latest unique outcomes are accumulated, not one final-source full green run."
+    },
+    "targetedCorrectionRun": {
+      "passed": 21,
+      "failed": 2,
+      "skipped": 0,
+      "total": 23,
+      "rawReport": "rc505-classic-e2e-release.json",
+      "note": "One cold initial navigation timeout passed unchanged on isolated rerun; one real Native bank ACK recovery defect fixed and passed final run."
+    },
+    "initialNavigationRerun": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "total": 1,
+      "rawReport": "rc505-classic-e2e-release-app-retry.json"
+    },
+    "finalFocusedRun": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "total": 8,
+      "rawReport": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-e2e-final.json",
+      "rawReportSha256": "8FFA12D580610B82A4D0978FAFE692C363337AA66D8F59A9C7ACEE037B6C9975",
+      "coverage": "Native Play readback, eight-slot ACK, persisted parameters, Bank error recovery; seven Browser Classic parity scenarios."
+    },
+    "latestUniqueOutcomes": {
+      "passed": 108,
+      "failed": 0,
+      "skipped": 0,
+      "total": 108,
+      "receipt": "e2e-latest-outcomes.json",
+      "note": "Latest outcome for each unique case across full and corrective runs. This is not a single 108/108 run against final source."
+    },
+    "finalNativeLedRun": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "total": 1,
+      "rawReport": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-e2e-native-led-delivery60.json",
+      "rawReportSha256": "BE1947239199CD60FD50CF5E6CAD06A424C94D00A9BBDCA2E6FFE3AE260641CA",
+      "testBudgetMs": 60000,
+      "note": "Expanded two-bank journey; empty LEDs off, explicitly enabled/ACKed effects pink, original parameter/readback/storage checks retained. Individual operation/ACK timeouts unchanged."
+    }
+  },
+  "localDeploy": {
+    "status": "PASS",
+    "worktree": "C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC",
+    "browserUrl": "http://127.0.0.1:5173/?audio=browser&ui=classic",
+    "nativeUrl": "http://127.0.0.1:5173/?audio=native&ui=classic",
+    "bridge": "127.0.0.1:17755",
+    "regularHostReceipt": "local-native-smoke.json",
+    "browserPageSmoke": [
+      "seven named Play screens forward and wrap",
+      "ENTER to MIXER",
+      "EXIT restores prior Play",
+      "FX editor target header"
+    ],
+    "nativeCompiler": "MSVC 14.50.35717 + Ninja",
+    "physicalLoopbackTested": false,
+    "physicalRecordedAudioContentTested": false,
+    "verifiedAt": "2026-10-22T14:31:42.1501615Z",
+    "nativeProcessId": 24440,
+    "viteProcessId": 23908,
+    "sourceVerified": true,
+    "coop": "same-origin",
+    "coep": "require-corp",
+    "nativeInputDevice": "麦克风阵列 (Realtek(R) Audio)",
+    "nativeOutputDevice": "VoiceMeeter Aux Input (VB-Audio VoiceMeeter AUX VAIO)",
+    "note": "Local deployment and regular WASAPI command/status checks passed. Current Realtek input and VoiceMeeter output are not RC-505 physical loopback validation."
+  },
+  "screenshots": [
+    {
+      "path": "screenshots/classic-1366.png",
+      "bytes": 320795,
+      "sha256": "08F8A4D11279EA848DB99CE5F5EC305636245D28AF08F991595C21CB27CE37DF"
+    },
+    {
+      "path": "screenshots/classic-1920.png",
+      "bytes": 518032,
+      "sha256": "2A547616281762AB8608D2C7D76FC56A6F374E97CF494FC5D69F1B721CE61A2E"
+    },
+    {
+      "path": "screenshots/classic-scrolled-1366.png",
+      "bytes": 304147,
+      "sha256": "4371DF1C725D04C6939F322414E121A5C2561F97378306606B310AD8D95D6C3E"
+    },
+    {
+      "path": "screenshots/classic-scrolled-1920.png",
+      "bytes": 518032,
+      "sha256": "2A547616281762AB8608D2C7D76FC56A6F374E97CF494FC5D69F1B721CE61A2E"
+    },
+    {
+      "path": "screenshots/fx-bank-blue.png",
+      "bytes": 476665,
+      "sha256": "9CBEFF88328B440757A8EE438787DE1027423404194559B1B7185655F0132B69"
+    },
+    {
+      "path": "screenshots/fx-red-pink.png",
+      "bytes": 464112,
+      "sha256": "5A9DF420566F1F3B522FCB6F491B0E87C353F74AAA01880D9FD2C48F05837A0A"
+    },
+    {
+      "path": "screenshots/lcd-1366.png",
+      "bytes": 9775,
+      "sha256": "0EC680321D863D6AAD75CE422A20A8452DD8F6FEBEB67CAE4283E6D9B1B9C44F"
+    },
+    {
+      "path": "screenshots/lcd-1920.png",
+      "bytes": 12555,
+      "sha256": "D2635A59593CF3F62FEA630071CE836B7FB658B970AD61215BDD6D77BCFDA2CD"
+    },
+    {
+      "path": "screenshots/local-browser-final.png",
+      "bytes": 70022,
+      "sha256": "0650318036B8157A61270727643CD21289D8DF33D8B04AE896196649122A2165"
+    },
+    {
+      "path": "screenshots/local-native-final.png",
+      "bytes": 79605,
+      "sha256": "AE7F229F04A336B562AC2899B2C93103F1EDDB6C3D6369DF282802FD168A11C2"
+    },
+    {
+      "path": "screenshots/overdub-yellow.png",
+      "bytes": 488409,
+      "sha256": "96CD17D1CC487DAE19ACB582EBEE3B1123B5D9BEFC8167BB3B7A003B8602B1FD"
+    },
+    {
+      "path": "screenshots/play-green.png",
+      "bytes": 487725,
+      "sha256": "AB6EF3053497E32E5A1A2443E35F49140B18A6C5CF2503901165FA42C44EB54B"
+    },
+    {
+      "path": "screenshots/record-red.png",
+      "bytes": 484748,
+      "sha256": "6E17548CD893AA4B971C2AD672B8028D56813B8ECCBE2C63985071C14F73FB4A"
+    },
+    {
+      "path": "screenshots/undo-layer-redo.png",
+      "bytes": 485627,
+      "sha256": "CA4C531E532579AB04DA1188DA0155E11CF85BCD9E604E8095767F7D10750BFE"
+    }
+  ],
+  "limits": [
+    "Mark unavailable",
+    "Shared per-track FX application gate unavailable",
+    "Hardware Memory partial",
+    "True track meters unavailable",
+    "FX MOMENT not modeled",
+    "Loop Indicator STATUS only",
+    "LED photometry unmeasured"
+  ],
+  "numericDraftProbe": {
+    "status": "PASS",
+    "browser": "independent Chromium on local 5173",
+    "audioStarted": false,
+    "field": "WAV PITCH",
+    "input": 7,
+    "waitBeforeTabMs": 350,
+    "beforeTab": 7,
+    "focusPreserved": true,
+    "waitAfterTabMs": 200,
+    "afterTab": 7,
+    "focusedUnitPassed": 10,
+    "focusedUnitTotal": 10
+  },
+  "focusedBankAckRecovery": {
+    "status": "PASS",
+    "passed": 13,
+    "total": 13,
+    "file": "tests/unit/rc505-fx-bank.spec.ts",
+    "includedInFinalUnit": true
+  },
+  "focusedAfterFinalNativeLedBinding": {
+    "status": "PASS",
+    "passed": 34,
+    "total": 34,
+    "files": 3,
+    "rawReport": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-led-unit-final.json",
+    "rawReportSha256": "126A7FFFD4E81A98E5D0525D17F81D1D5DD930FF5CAB57B88122BA1154ED2DF3",
+    "note": "The complete 2397-unit run precedes the final two-line Native LED readback binding; the affected selector, resolver and Bank suites were rerun after it."
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "recordedAt": "2026-10-22T14:22:03.3612392Z",
+  "sourceBase": "2dae0145e0645038a21d5196dfc782d5e9bd8a04",
+  "runtime": "regular WASAPI host",
+  "simulation": false,
+  "executable": "native-mvp/build/native_bridge_host.exe",
+  "executableSha256": "609389dc2c2c62f8e9fce1b2466c02540940a5d18400c3f06f2c30f47e26377b",
+  "backend": "WASAPI",
+  "sampleRate": 48000,
+  "bufferFrames": 128,
+  "engineRunning": true,
+  "uiChecks": [
+    "NATIVE AUDIO READY; five loop tracks",
+    "All seven named Play screens and wrap; ENTER to MIXER; EXIT returns to Play",
+    "RHYTHM volume 50 -> 49 via keyboard; HTTP state confirmed 49; restored 50",
+    "Undo secondary layer entered; unavailable MARK controls disabled; returned to NORMAL",
+    "FX EDIT Space held 1700ms enters BANK_SELECT; empty Bank B then A confirmed blue; returned to NORMAL"
+  ],
+  "rhythmVolumeRestored": 50,
+  "nativeHqAvailable": false,
+  "physicalLoopbackTested": false,
+  "nativeRecordedAudioContentTested": false,
+  "processId": 24440,
+  "executableAbsolutePath": "C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/native-mvp/build/native_bridge_host.exe",
+  "inputDevice": "麦克风阵列 (Realtek(R) Audio)",
+  "outputDevice": "VoiceMeeter Aux Input (VB-Audio VoiceMeeter AUX VAIO)",
+  "rc505PhysicalDeviceValidated": false,
+  "priorControlSmokeProcessId": 42492,
+  "finalSession": {
+    "verifiedAt": "2026-10-22T14:31:42.1632696Z",
+    "processId": 24440,
+    "backend": "WASAPI",
+    "engineRunning": true,
+    "sampleRate": 48000,
+    "bufferFrames": 128,
+    "trackCount": 5,
+    "uiStatus": "NATIVE AUDIO READY",
+    "emptyFxLeds": "Eight slots data-led-on=false and data-led-color=off, observed in final IAB DOM",
+    "note": "Earlier uiChecks remain prior control-smoke evidence; this final session verifies source, readiness and corrected empty-slot LEDs."
+  }
+}

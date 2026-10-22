@@ -1,13 +1,13 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
-import { activateLcdAction, findLcdField, openTrackLcd, selectLcdEnum, setLcdRange } from './uiHelpers';
+import { activateEnhancedAction, findEnhancedControl, openEnhancedTools, openTrackLcd, selectEnhancedEnum, setEnhancedNumber } from './uiHelpers';
 
 const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
 
 test.skip(!simulationHost, 'Set NATIVE_BRIDGE_SIMULATION_EXECUTABLE to the explicit no-hardware bridge simulation target.');
 
-test('Native browser bridge captures and exports a synthetic loop through the LCD HQ_RENDER editor', async ({ page }) => {
+test('Native browser bridge captures and exports a synthetic loop through Enhanced HQ_RENDER tools', async ({ page }) => {
   if (!simulationHost) return;
 
   let host: ChildProcess | undefined;
@@ -46,18 +46,21 @@ test('Native browser bridge captures and exports a synthetic loop through the LC
     await recordButton.evaluate((button: HTMLElement) => button.click());
     await expect(strip.locator('.track-state')).toHaveText('STOP', { timeout: 10_000 });
 
-    const historyButton = page.locator('[data-panel-control="undo-redo"]');
-    await expect(historyButton).toBeEnabled();
-    await expect(historyButton).toHaveAttribute('aria-label', 'Undo last PCM edit on track 1');
-    await historyButton.click();
-    await expect(historyButton).toHaveAttribute('aria-label', 'Redo PCM edit on track 1');
+    const historyLayerButton = page.locator('[data-panel-control="undo-redo"]');
+    await expect(historyLayerButton).toBeEnabled();
+    await historyLayerButton.click();
+    const recordPlayButton = page.locator('[data-track-id="1"] [data-panel-control="record-play"]');
+    await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'UNDO');
+    await recordPlayButton.click();
+    await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'REDO');
     await expect.poll(async () => {
       const response = await fetch('http://127.0.0.1:17755/v1/status');
       const status = await response.json() as { nativeTracks?: Array<{ trackId: number; state: string }> };
       return status.nativeTracks?.find((track) => track.trackId === 1)?.state;
     }).toBe('Empty');
-    await historyButton.click();
-    await expect(historyButton).toHaveAttribute('aria-label', 'Undo last PCM edit on track 1');
+    await recordPlayButton.click();
+    await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'UNDO');
+    await historyLayerButton.click();
     await expect.poll(async () => {
       const response = await fetch('http://127.0.0.1:17755/v1/status');
       const status = await response.json() as { nativeTracks?: Array<{ trackId: number; state: string }> };
@@ -75,21 +78,20 @@ test('Native browser bridge captures and exports a synthetic loop through the LC
     expect(metadata.channels).toBe(2);
 
     const trackScreen = await openTrackLcd(page, 1);
-    const rendererField = await findLcdField(page, 'wav-engine');
-    const renderer = rendererField.getByTestId('lcd-field-wav-engine');
+    await openEnhancedTools(page, 'PITCH / HQ WAV');
+    const renderer = await findEnhancedControl(page, 'wav-engine');
     await expect(renderer.locator('option')).toHaveCount(2);
     const r2Option = renderer.locator('option').filter({ hasText: 'R2' });
     await expect(r2Option).toHaveCount(1);
     await renderer.selectOption(await r2Option.getAttribute('value') ?? '');
-    await setLcdRange(page, 'wav-pitch', 7);
-    await setLcdRange(page, 'wav-rate', 1);
-    await selectLcdEnum(page, 'wav-format', 'PCM 16-BIT');
-    const exportField = await findLcdField(page, 'wav-export');
-    await expect(exportField.getByTestId('lcd-field-wav-export')).toBeEnabled();
-    await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+    await setEnhancedNumber(page, 'wav-pitch', 7);
+    await setEnhancedNumber(page, 'wav-rate', 1);
+    await selectEnhancedEnum(page, 'wav-format', 'PCM 16-BIT');
+    const exportAction = await findEnhancedControl(page, 'wav-export');
+    await expect(exportAction).toBeEnabled();
 
     const downloadPromise = page.waitForEvent('download', { timeout: 60_000 });
-    await activateLcdAction(page, 'wav-export');
+    await activateEnhancedAction(page, 'wav-export');
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('webrc505-track-01-hq-render.wav');
     const downloadPath = await download.path();

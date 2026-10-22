@@ -300,7 +300,7 @@ let stopPressTimer: number | null = null;
 let clearVisualTimer: number | null = null;
 let stopPressActive = false;
 let stopPressTriggered = false;
-const LONG_PRESS_DURATION = 1500;
+const LONG_PRESS_DURATION = 2000;
 
 const startStopPress = () => {
   if (!trackTransportEnabled.value || stopPressActive) return;

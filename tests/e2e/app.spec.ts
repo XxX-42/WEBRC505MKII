@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { closeDeviceDrawer, findLcdField, lcdField, lcdScreen, openAppSettingsMenu, openFxEditor, openLcdPage, startBrowserAudio } from './uiHelpers';
+import { closeDeviceDrawer, findLcdField, lcdField, lcdScreen, openAppSettingsMenu, openClassicFxEditor, openFxEditor, openLcdPage, startBrowserAudio } from './uiHelpers';
 
 const initScriptPath = path.join(process.cwd(), 'tests', 'e2e', 'initMocks.js');
 
@@ -17,10 +17,10 @@ test('defaults to classic shell and persists UI style toggling', async ({ page }
   await expect(page.locator('[data-panel="track-bay"]')).toBeVisible();
   await expect(page.getByTestId('rc505-physical-face')).toBeVisible();
 
-  const lcd = await openLcdPage(page, 'input-fx-edit-button');
+  const lcd = await openClassicFxEditor(page, 'input');
   await expect(lcd).toContainText(/INPUT FX/i);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
-  await page.getByTestId('track-fx-edit-button').click();
+  await openClassicFxEditor(page, 'track');
   await expect(lcd).toContainText(/TRACK FX/i);
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 
@@ -588,12 +588,12 @@ test('exposes the full clean-room rhythm catalog and shared kit, variation, sect
   await expect(page.locator('#app > [data-ui-style="classic"]')).toBeVisible();
   const lcd = await openLcdPage(page, 'rhythm-edit-button');
   await expect(lcd).toContainText(/RHYTHM/i);
-  await expect(lcdField(page, 'pattern')).toHaveValue('240');
-  await expect(lcdField(page, 'kit')).toHaveValue('16');
+  await expect(lcdField(page, 'pattern')).toHaveAttribute('aria-valuetext', /^240 ·/);
+  await expect(lcdField(page, 'kit')).toHaveAttribute('aria-valuetext', '16 · 808+909');
   await findLcdField(page, 'variation');
-  await expect(lcdField(page, 'variation').locator('option:checked')).toHaveText('D');
-  await expect(lcdField(page, 'section').locator('option:checked')).toHaveText('FILL');
-  await expect(lcdField(page, 'quantize').locator('option:checked')).toHaveText('1/8');
+  await expect(lcdField(page, 'variation')).toHaveAttribute('aria-valuetext', 'D');
+  await expect(lcdField(page, 'section')).toHaveAttribute('aria-valuetext', 'FILL');
+  await expect(lcdField(page, 'quantize')).toHaveAttribute('aria-valuetext', '1/8');
   await expect(lcdField(page, 'swing')).toHaveValue('67');
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 });

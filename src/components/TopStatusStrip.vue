@@ -32,8 +32,9 @@
       </button>
       <details class="app-menu">
         <summary class="status-action">SETTINGS</summary>
-        <div class="menu-items">
+        <div class="menu-items" @click="closeActionMenu">
           <button class="status-action" type="button" @click="$emit('open-settings')">AUDIO SETTINGS</button>
+          <button class="status-action" type="button" @click="openEnhanced">ENHANCED TOOLS</button>
           <button class="status-action" type="button" @click="$emit('toggle-tools')">MONITOR / DIAGNOSTICS</button>
           <button v-if="audioModeLabel === 'NATIVE'" class="status-action" type="button" :disabled="initInFlight" @click="$emit('restart-native')">RESTART NATIVE / APPLY FX</button>
           <button class="status-action primary" type="button" data-testid="ui-style-toggle" @click="$emit('toggle-ui-style')">UI {{ uiStyleLabel }}</button>
@@ -45,6 +46,11 @@
 
 <script setup lang="ts">
 import type { AudioUiStatus } from '../audio/AudioEngine';
+
+function closeActionMenu(event: MouseEvent): void {
+  if ((event.target as HTMLElement).closest('button')) (event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');
+}
+function openEnhanced(): void { window.dispatchEvent(new Event('rc505-open-enhanced')); }
 
 defineProps<{
   isInitialized: boolean;

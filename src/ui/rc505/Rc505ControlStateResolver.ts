@@ -1,0 +1,54 @@
+import type { Rc505ControlLayer, Rc505LedColor, Rc505ResolvedControlState } from './rc505ControlTypes';
+
+export interface Rc505TrackControlInput {
+  state: string;
+  hasPhrase: boolean | null;
+  selected: boolean;
+  available: boolean;
+  ready: boolean;
+  recordReady?: boolean;
+  recordUnavailableReason?: string;
+  layer: Rc505ControlLayer;
+  history: { canUndo: boolean; canRedo: boolean; busy: boolean; unavailableReason?: string };
+  /** Shared post-mix FX currently has no per-track apply gate. */
+  fxApplied?: boolean | null;
+  fxApplySupported?: boolean;
+}
+
+function resolved(role: string, enabled: boolean, color: Rc505LedColor = 'off', selected = false, reason = ''): Rc505ResolvedControlState {
+  return { enabled, selected, ledOn: color !== 'off', ledColor: color, hardwareRole: role, unavailableReason: enabled ? '' : reason };
+}
+
+export function resolveRc505TrackControls(input: Rc505TrackControlInput) {
+  const ready = input.available && input.ready;
+  if (input.layer === 'UNDO_REDO') {
+    const historyReady = ready && !input.history.busy && (input.history.canUndo || input.history.canRedo);
+    const markReason = 'MARK is not supported by this audio runtime.';
+    return {
+      record: resolved(input.history.canUndo ? 'UNDO' : input.history.canRedo ? 'REDO' : 'UNDO_REDO', historyReady,
+        historyReady ? input.history.canUndo ? 'green' : 'red' : 'off', false,
+        input.history.unavailableReason || 'No confirmed history step.'),
+      track: resolved('MARK_SET', false, 'off', input.selected, markReason),
+      fx: resolved('MARK_CLEAR', false, 'off', false, markReason),
+      stop: resolved('MARK_BACK', false, 'off', false, markReason),
+    };
+  }
+  const colors: Record<string, Rc505LedColor> = { RECORDING: 'red', PLAYING: 'green', OVERDUBBING: 'yellow' };
+  const record = resolved('REC_PLAY', ready && input.recordReady !== false, colors[input.state] ?? 'off', false,
+    input.recordUnavailableReason || 'Audio input or transport is not ready.');
+  if (input.state === 'REC_STANDBY' || input.state === 'REC_FINISHING') record.blink = 'UNVERIFIED';
+  return {
+    record,
+    track: resolved('TRACK_EDIT', input.available, input.hasPhrase === true ? 'green' : 'off', input.selected, 'Track unavailable.'),
+    fx: resolved('TRACK_FX_APPLY', ready && input.fxApplySupported === true,
+      input.fxApplied === true ? 'red' : 'off', false, 'Per-track application of the shared Track FX is unavailable.'),
+    stop: resolved('STOP_CLEAR', ready, 'off', false, 'Audio transport is not ready.'),
+  };
+}
+
+export function resolveRc505FxSlot(input: { enabled: boolean; active: boolean; selected: boolean; layer: 'NORMAL' | 'EDIT' | 'BANK_SELECT'; appliedBank?: boolean; reason?: string }): Rc505ResolvedControlState {
+  const bank = input.layer === 'BANK_SELECT';
+  return resolved(bank ? 'FX_BANK_SELECT' : 'FX_TOGGLE', input.enabled,
+    bank ? input.appliedBank ? 'blue' : 'off' : input.active ? input.selected ? 'pink' : 'red' : 'off',
+    input.selected, input.reason ?? 'FX is unavailable.');
+}

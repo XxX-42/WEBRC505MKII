@@ -1,11 +1,8 @@
 import path from 'node:path';
 import { expect, test, type Locator } from '@playwright/test';
 import {
-  findLcdField,
+  openEnhancedTools,
   openFxEditor,
-  openLcdPage,
-  selectLcdEnum,
-  setLcdBoolean,
   startBrowserAudio,
 } from './uiHelpers';
 
@@ -139,7 +136,7 @@ test('LCD per-track OSC VOC editor sends MIDI connect for its exact track and sl
   await expect(panel.locator('[data-midi-status]')).toContainText('MIDI input connected');
 });
 
-test('Classic LCD FX fields and four screen knobs preserve the selected target in Browser DSP and Native mock bridge', async ({ page }) => {
+test('Enhanced Tools keeps private Track FX targets isolated from the shared bank in Browser DSP and Native mock bridge', async ({ page }) => {
   await page.addInitScript({ path: path.join(process.cwd(), 'tests/e2e/initMocks.js') });
 
   const setKnob = async (knob: Locator, value: number) => {
@@ -148,11 +145,13 @@ test('Classic LCD FX fields and four screen knobs preserve the selected target i
     for (let step = 0; step < value / 10; step += 1) await knob.press('PageUp');
     await expect(knob).toHaveAttribute('aria-valuenow', String(value));
   };
-  const setScreenKnobIndex = async (knob: Locator, value: number) => {
-    await knob.focus();
-    await knob.press('Home');
-    for (let step = 0; step < value; step += 1) await knob.press('ArrowRight');
-    await expect(knob).toHaveAttribute('aria-valuenow', String(value));
+  const setRange = async (control: Locator, value: number) => {
+    await control.evaluate((element, nextValue) => {
+      const input = element as HTMLInputElement;
+      input.value = String(nextValue);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, value);
+    await expect(control).toHaveValue(String(value));
   };
 
   const runMode = async (mode: 'browser' | 'native') => {
@@ -181,45 +180,36 @@ test('Classic LCD FX fields and four screen knobs preserve the selected target i
     await page.goto(url);
     if (!native) await startBrowserAudio(page);
 
-    const screen = await openLcdPage(page, 'track-fx-edit-button');
-    await expect(screen).toContainText(/TRACK FX/i);
+    const tools = await openEnhancedTools(page, 'PRIVATE / SHARED FX');
+    const panel = tools.locator('[data-panel="track-fx"]');
+    await expect(panel).toBeVisible();
     await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
+    const targetLabel = native ? 'Native Track FX target' : 'Track FX target';
+    const typeLabel = native ? 'Native per-track FX type' : 'Per-track FX type';
+    const amountLabel = native ? 'Native per-track FX amount' : 'Per-track FX amount';
+    const activeLabel = native ? 'Toggle Native per-track FX slot' : 'Toggle per-track FX slot';
+    const slotLabel = native ? 'Select Native Track 2 FX slot B' : 'Select Track 2 FX slot B';
+    const targetSelect = panel.getByLabel(targetLabel, { exact: true });
+    const typeSelect = panel.getByLabel(typeLabel, { exact: true });
+    const amountControl = panel.getByLabel(amountLabel, { exact: true });
+    const activeControl = panel.getByLabel(activeLabel, { exact: true });
+    const sharedKnob = panel.getByRole('slider', { name: 'TRACK FX', exact: true });
+    const sharedType = panel.locator('select.fx-select').first();
 
-    const targetField = await findLcdField(page, 'target');
-    const targetSelect = targetField.getByTestId('lcd-field-target');
-    await expect(targetSelect).toHaveValue('0');
+    await expect(targetSelect).toHaveValue('shared');
+    await expect(sharedKnob).toHaveAttribute('aria-disabled', 'false');
+    await setKnob(sharedKnob, 90);
+    await expect(sharedKnob).toHaveAttribute('aria-valuenow', '90');
+    const sharedEffect = await sharedType.inputValue();
 
-    const physicalKnob = page.getByRole('slider', { name: 'TRACK FX selected effect value', exact: true });
-    await expect(physicalKnob).toHaveAttribute('aria-disabled', 'false');
-    await setKnob(physicalKnob, 90);
-    let amountField = await findLcdField(page, 'amount');
-    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('90');
-
-    const targetKnob = page.getByRole('slider', { name: 'FX TARGET screen control', exact: true });
-    await setScreenKnobIndex(targetKnob, 2);
-    await expect(targetSelect).toHaveValue('2');
-
-    const slotKnob = page.getByRole('slider', { name: 'SLOT screen control', exact: true });
-    await setScreenKnobIndex(slotKnob, 1);
-    const slotField = await findLcdField(page, 'slot');
-    await expect(slotField.getByTestId('lcd-field-slot').locator('option:checked')).toHaveText('B');
-
+    await targetSelect.selectOption('2');
+    await panel.getByLabel(slotLabel, { exact: true }).click();
     const effectType = native ? 'PHASER' : 'DELAY';
-    const typeField = await findLcdField(page, 'type');
-    const typeSelect = typeField.getByTestId('lcd-field-type');
-    const typeOptions = await typeSelect.locator('option').allTextContents();
-    const typeIndex = typeOptions.findIndex((label) => label.trim() === effectType);
-    expect(typeIndex, `${effectType} must be offered by the ${mode} Track FX editor`).toBeGreaterThanOrEqual(0);
-    const typeKnob = page.getByRole('slider', { name: 'EFFECT TYPE screen control', exact: true });
-    await setScreenKnobIndex(typeKnob, typeIndex);
-    await expect(typeSelect.locator('option:checked')).toHaveText(effectType);
-    await expect(physicalKnob).toHaveAttribute('aria-disabled', 'false');
-
-    const amountKnob = page.getByRole('slider', { name: 'AMOUNT screen control', exact: true });
-    await setKnob(amountKnob, 60);
-    amountField = await findLcdField(page, 'amount');
-    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('60');
-    await setLcdBoolean(page, 'active', true);
+    await typeSelect.selectOption(effectType);
+    await expect(typeSelect).toHaveValue(effectType);
+    await setRange(amountControl, 60);
+    await activeControl.click();
+    await expect(activeControl).toHaveAttribute('aria-pressed', 'true');
 
     if (native) {
       await expect.poll(() => page.evaluate(() => {
@@ -229,22 +219,18 @@ test('Classic LCD FX fields and four screen knobs preserve the selected target i
       })).toBe(true);
     }
 
-    await selectLcdEnum(page, 'target', 'SHARED BANK');
-    amountField = await findLcdField(page, 'amount');
-    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('90');
-    await selectLcdEnum(page, 'target', 'TRACK 2');
-    amountField = await findLcdField(page, 'amount');
-    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('60');
-
-    const activeField = await findLcdField(page, 'active');
-    await expect(activeField.getByTestId('lcd-field-active')).toHaveAttribute('aria-pressed', 'true');
-    amountField = await findLcdField(page, 'amount');
-    const screenAmountKnob = page.getByRole('slider', { name: 'AMOUNT screen control', exact: true });
-    await setKnob(screenAmountKnob, 0);
-    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('0');
-    await selectLcdEnum(page, 'target', 'SHARED BANK');
-    amountField = await findLcdField(page, 'amount');
-    await expect(amountField.getByTestId('lcd-field-amount')).toHaveValue('90');
+    await expect(targetSelect).toHaveValue('2');
+    await expect(amountControl).toHaveValue('60');
+    await targetSelect.selectOption('shared');
+    await expect(sharedKnob).toHaveAttribute('aria-valuenow', '90');
+    await expect(sharedType).toHaveValue(sharedEffect);
+    await targetSelect.selectOption('2');
+    await panel.getByLabel(slotLabel, { exact: true }).click();
+    await expect(amountControl).toHaveValue('60');
+    await expect(activeControl).toHaveAttribute('aria-pressed', 'true');
+    await setRange(amountControl, 0);
+    await targetSelect.selectOption('shared');
+    await expect(sharedKnob).toHaveAttribute('aria-valuenow', '90');
     await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
 
     if (native) {

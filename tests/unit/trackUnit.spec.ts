@@ -243,7 +243,7 @@ describe('TrackUnit', () => {
     wrapper.unmount();
   });
 
-  it('stops on a short release, cancels interrupted holds, and clears only after 1500ms', async () => {
+  it('stops on a short release, cancels interrupted holds, and clears only after 2000ms', async () => {
     const trackAudio = {
       state: 'EMPTY',
       track: { playLevel: 100, filterValue: 0.5, filterResonance: 1, filterEnabled: false },
@@ -278,12 +278,14 @@ describe('TrackUnit', () => {
 
     stopButton!.vm.$emit('press');
     stopButton!.vm.$emit('cancel');
-    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2000);
     expect(trackAudio.clear).not.toHaveBeenCalled();
     expect(trackAudio.triggerStop).toHaveBeenCalledTimes(1);
 
     stopButton!.vm.$emit('press');
-    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(trackAudio.clear).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
     expect(trackAudio.clear).toHaveBeenCalledTimes(1);
     stopButton!.vm.$emit('release');
     expect(trackAudio.triggerStop).toHaveBeenCalledTimes(1);

@@ -50,6 +50,75 @@ export function lcdField(page: Page, key: string): Locator {
   return lcdScreen(page).getByTestId(`lcd-field-${key}`);
 }
 
+export function enhancedTools(page: Page): Locator {
+  return page.getByTestId('enhanced-tools');
+}
+
+export async function selectEnhancedTrack(dialog: Locator, trackId: number): Promise<void> {
+  const selector = dialog.getByLabel('Enhanced track', { exact: true });
+  await expect(selector).toBeVisible();
+  await selector.selectOption(String(trackId));
+  await expect(selector).toHaveValue(String(trackId));
+}
+
+/** Opens a software-only tool page through the user's Enhanced tools surface. */
+export async function openEnhancedTools(page: Page, pageLabel?: string): Promise<Locator> {
+  const dialog = enhancedTools(page);
+  if (!(await dialog.count())) {
+    await openAppSettingsMenu(page);
+    await page.getByRole('button', { name: 'ENHANCED TOOLS', exact: true }).click();
+  }
+  await expect(dialog).toBeVisible();
+  if (pageLabel) {
+    const pageButton = dialog.getByRole('button', { name: pageLabel, exact: true });
+    await pageButton.click();
+    await expect(pageButton).toHaveAttribute('aria-pressed', 'true');
+  }
+  return dialog;
+}
+
+/** Finds a labeled Enhanced field, advancing the tool's own pages when needed. */
+export async function findEnhancedControl(page: Page, key: string): Promise<Locator> {
+  const dialog = enhancedTools(page);
+  await expect(dialog).toBeVisible();
+  const field = dialog.getByTestId(`enhanced-field-${key}`);
+  const pageIndicator = dialog.locator('footer span');
+  const pageText = await pageIndicator.innerText();
+  const match = pageText.match(/(\d+)\s*\/\s*(\d+)/);
+  const pageCount = Math.max(1, match ? Number(match[2]) : 1);
+  for (let index = 0; index < pageCount; index += 1) {
+    if (await field.count() && await field.isVisible()) return field;
+    // Pages cycle. Start from the current page, inspect every page once, and
+    // return to the starting page if this field does not exist in the dialog.
+    await dialog.getByRole('button', { name: 'NEXT', exact: true }).click();
+  }
+  throw new Error(`Enhanced field "${key}" was not present on any of its displayed pages.`);
+}
+
+export async function setEnhancedNumber(page: Page, key: string, value: number): Promise<Locator> {
+  const control = await findEnhancedControl(page, key);
+  await expect(control).toBeEnabled();
+  await control.fill(String(value));
+  await control.press('Tab');
+  await expect(control).toHaveValue(String(value));
+  return control;
+}
+
+export async function selectEnhancedEnum(page: Page, key: string, optionLabel: string): Promise<Locator> {
+  const control = await findEnhancedControl(page, key);
+  await expect(control).toBeEnabled();
+  await control.selectOption({ label: optionLabel });
+  await expect(control.locator('option:checked')).toHaveText(optionLabel);
+  return control;
+}
+
+export async function activateEnhancedAction(page: Page, key: string): Promise<Locator> {
+  const control = await findEnhancedControl(page, key);
+  await expect(control).toBeEnabled();
+  await control.click();
+  return control;
+}
+
 /** Finds an LCD field on the active screen page, advancing through subpages if needed. */
 export async function findLcdField(page: Page, keyOrLabel: string): Promise<Locator> {
   const screen = lcdScreen(page);
@@ -145,6 +214,13 @@ export async function openLcdPage(page: Page, controlTestId: string): Promise<Lo
   return screen;
 }
 
+/** Selects the bank slot, then invokes the dedicated physical FX EDIT control. */
+export async function openClassicFxEditor(page: Page, location: 'input' | 'track'): Promise<Locator> {
+  await ensureClassicStyle(page);
+  await page.getByTestId(`${location}-fx-slot-a`).click();
+  return openLcdPage(page, `${location}-fx-edit-button`);
+}
+
 /** Returns the existing detailed FX panel in Tech compatibility view. */
 export async function openFxEditor(page: Page, bank: 'input' | 'track'): Promise<Locator> {
   await ensureTechStyle(page);
@@ -166,7 +242,8 @@ export async function openTrackLcd(page: Page, trackId: number): Promise<Locator
   if (!(await alreadySelected.count())) {
     await strip.getByRole('button', { name: `Select track ${trackId}`, exact: true }).click();
   }
-  await openLcdPage(page, 'physical-loop-button');
+  await strip.locator('[data-track-control="select"]').click();
+  await expect(screen).toHaveAttribute('data-classic-screen', 'editor-track');
   await expect(screen).toContainText(new RegExp(`(?:TRACK|TR)\\s*${trackId}`, 'i'));
   await expect(page.locator('.device-drawer-layer[data-open="true"]')).toHaveCount(0);
   return screen;
