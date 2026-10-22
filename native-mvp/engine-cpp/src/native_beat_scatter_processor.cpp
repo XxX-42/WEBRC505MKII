@@ -33,6 +33,7 @@ bool NativeBeatScatterProcessor::validConfig(const NativeBeatScatterConfig& conf
         return false;
     }
 
+    if (config.allowThirtySecond && config.sliceBeats == 0.125f) return true;
     for (const float option : kSliceBeatOptions) {
         if (std::fabs(config.sliceBeats - option) <= kSliceTolerance) return true;
     }

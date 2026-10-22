@@ -1,0 +1,58 @@
+diff --git a/public/worklets/fx-processor.js b/public/worklets/fx-processor.js
+index 6644c8c..2b227a0 100644
+--- a/public/worklets/fx-processor.js
++++ b/public/worklets/fx-processor.js
+@@ -9335,6 +9335,7 @@
+     phaserFeedbackStates;
+     phaserToneAlpha = 1;
+     phaserStageCount = PHASER_DEFAULT_STAGES;
++    phaserMaximumFrequency;
+     phaserPhase = 0;
+     phaserPhaseStep = 0;
+     tremoloPhase = 0;
+@@ -9414,6 +9415,7 @@
+       if (algorithm === "osc-voc") validateBrowserOscVocParameters(parameters);
+       this.algorithm = algorithm;
+       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
++      this.phaserMaximumFrequency = Math.min(PHASER_MAX_FREQUENCY_HZ, this.sampleRate * 0.45);
+       this.currentAudioFrame = Number.isSafeInteger(initialFrame) && initialFrame >= 0 ? Math.floor(initialFrame) : 0;
+       const nyquist = this.sampleRate * 0.499;
+       const initialCutoff = clamp22(parameters.cutoffHz ?? 1200, 20, nyquist);
+@@ -11324,7 +11326,7 @@
+       const feedback = clamp22(this.currentControls[28] ?? PHASER_DEFAULT_FEEDBACK, 0, PHASER_FEEDBACK_MAX);
+       const phase = this.phaserPhase + (channel === 0 ? 0 : Math.PI * 0.5);
+       const sweepPosition = 0.5 + 0.5 * depth * Math.sin(phase);
+-      const maximumFrequency = Math.min(PHASER_MAX_FREQUENCY_HZ, this.sampleRate * 0.45);
++      const maximumFrequency = this.phaserMaximumFrequency;
+       const baseFrequency = PHASER_MIN_FREQUENCY_HZ * Math.pow(maximumFrequency / PHASER_MIN_FREQUENCY_HZ, sweepPosition);
+       const channelOffset = channel * PHASER_MAX_STAGES;
+       const feedbackSource = this.phaserFeedbackStates[channel] ?? 0;
+diff --git a/src/audio/fx/dsp/BrowserFxDspCore.ts b/src/audio/fx/dsp/BrowserFxDspCore.ts
+index 578f53b..7c28ceb 100644
+--- a/src/audio/fx/dsp/BrowserFxDspCore.ts
++++ b/src/audio/fx/dsp/BrowserFxDspCore.ts
+@@ -1190,6 +1190,7 @@ export class BrowserFxDspCore {
+   private readonly phaserFeedbackStates: Float64Array;
+   private phaserToneAlpha = 1;
+   private phaserStageCount = PHASER_DEFAULT_STAGES;
++  private readonly phaserMaximumFrequency: number;
+   private phaserPhase = 0;
+   private phaserPhaseStep = 0;
+   private tremoloPhase = 0;
+@@ -1270,6 +1271,7 @@ export class BrowserFxDspCore {
+     if (algorithm === 'osc-voc') validateBrowserOscVocParameters(parameters);
+     this.algorithm = algorithm;
+     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8000 ? sampleRate : 48000;
++    this.phaserMaximumFrequency = Math.min(PHASER_MAX_FREQUENCY_HZ, this.sampleRate * 0.45);
+     this.currentAudioFrame = Number.isSafeInteger(initialFrame) && initialFrame >= 0 ? Math.floor(initialFrame) : 0;
+ 
+     const nyquist = this.sampleRate * 0.499;
+@@ -3435,7 +3437,7 @@ export class BrowserFxDspCore {
+     const feedback = clamp(this.currentControls[28] ?? PHASER_DEFAULT_FEEDBACK, 0, PHASER_FEEDBACK_MAX);
+     const phase = this.phaserPhase + (channel === 0 ? 0 : Math.PI * 0.5);
+     const sweepPosition = 0.5 + 0.5 * depth * Math.sin(phase);
+-    const maximumFrequency = Math.min(PHASER_MAX_FREQUENCY_HZ, this.sampleRate * 0.45);
++    const maximumFrequency = this.phaserMaximumFrequency;
+     const baseFrequency = PHASER_MIN_FREQUENCY_HZ
+       * Math.pow(maximumFrequency / PHASER_MIN_FREQUENCY_HZ, sweepPosition);
+     const channelOffset = channel * PHASER_MAX_STAGES;

@@ -1,0 +1,27 @@
+started=2026-10-19T14:12:23Z
+head=0ffe10c2f6a2c387a5a60f8f84e19b9922fa908b
+binary_sha256=63e1629b4ed83d1adadbdc327a5c98ae76e7e637af83b51826cc1e3b06fa399a
+compiler=g++ 14.2
+flags=-pg -fno-omit-frame-pointer -DNATIVE_BENCH_GPROF_CALLBACK_ONLY -O3 -DNDEBUG
+profile=enabled only across measured loop; includes callback and benchmark timing/hash bookkeeping
+ended=2026-10-19T14:14:00Z
+6e24d9b79004d294d03de89e5ef34b8dd7fc7b557fd3fadb9fef4a4d8d63f022  gmon.out
+340891cf5c93719ddf878067e3d07baabde1b174081f829405d10ee49a941f2f  profile.json
+gmon_bytes=341478
+profile_build_dir=/tmp/rc505-native-gprof-scope-0ffe10c
+profile_cmake_configure=/tmp/rc505-cmake-tools/cmake/data/bin/cmake -S native-mvp/engine-cpp -B /tmp/rc505-native-gprof-scope-0ffe10c -DCMAKE_BUILD_TYPE=Release -DNATIVE_PORTABLE_TESTS_ONLY=ON -DCMAKE_CXX_FLAGS='-pg -fno-omit-frame-pointer -DNATIVE_BENCH_GPROF_CALLBACK_ONLY' -DCMAKE_EXE_LINKER_FLAGS=-pg
+profile_compile_flags=-pg -fno-omit-frame-pointer -DNATIVE_BENCH_GPROF_CALLBACK_ONLY -O3 -DNDEBUG -std=c++17 -Wall -Wextra -Wpedantic -Werror
+profile_link_flags=-pg -fno-omit-frame-pointer -DNATIVE_BENCH_GPROF_CALLBACK_ONLY -O3 -DNDEBUG -pg
+profile_binary_sha256=63e1629b4ed83d1adadbdc327a5c98ae76e7e637af83b51826cc1e3b06fa399a
+unprofiled_build_dir=/tmp/rc505-native-profiler-uninstrumented-0ffe10c
+unprofiled_cmake_configure=/tmp/rc505-cmake-tools/cmake/data/bin/cmake -S native-mvp/engine-cpp -B /tmp/rc505-native-profiler-uninstrumented-0ffe10c -DCMAKE_BUILD_TYPE=Release -DNATIVE_PORTABLE_TESTS_ONLY=ON
+unprofiled_compile_flags=-O3 -DNDEBUG -std=c++17 -Wall -Wextra -Wpedantic -Werror
+unprofiled_binary_sha256=24bbf679d676f248950b3a242e4eaba85648872a1e1db64a7842bbb41f917205
+unprofiled_run_started=2026-10-19T14:19:15Z
+unprofiled_run_ended=2026-10-19T14:20:39Z
+unprofiled_output_hash=0x4098664398b58278
+unprofiled_callbackMeanNs=512604.181
+unprofiled_callbackP99Ns=1359585
+unprofiled_callbackP999Ns=3141626
+unprofiled_callbackMaxNs=15683863
+unprofiled_callbacksOverHardDeadline=1032

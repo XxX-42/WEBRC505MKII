@@ -1,0 +1,56 @@
+{
+  "runStartedUtc": "2026-10-21T13:23:43.900997+00:00",
+  "runFinishedUtc": "2026-10-21T13:53:43.911419+00:00",
+  "wallSeconds": 1800,
+  "callbacks": 675001,
+  "commands": 18000,
+  "fxChanges": 2250,
+  "queueRejected": 0,
+  "stateErrors": 0,
+  "nonfiniteFrames": 0,
+  "stereoDistinctFrames": 47345957,
+  "callbackAllocations": 0,
+  "processCpuSeconds": 421.971,
+  "processCpuPercent": 23.4428,
+  "cpuBudgetExceedances": 5336,
+  "rssInitialBytes": 7315456,
+  "rssSettledBytes": 7585792,
+  "rssFinalBytes": 7688192,
+  "rssMaxBytes": 7757824,
+  "functionalGate": "PASS",
+  "performanceGate": "NOT_APPLICABLE_COLOADED_STABILITY_RUN",
+  "binarySha256": "8433c2e8117b75fa5e4224f3c41995f9503d3b5b27d9f336a32e3b41f841985a",
+  "settledToFinalRssDeltaBytes": 102400,
+  "memorySampleCount": 180,
+  "finalMinuteRssSamples": [
+    [
+      1740,
+      7688192
+    ],
+    [
+      1750,
+      7688192
+    ],
+    [
+      1760,
+      7688192
+    ],
+    [
+      1770,
+      7688192
+    ],
+    [
+      1780,
+      7696384
+    ],
+    [
+      1790,
+      7688192
+    ]
+  ],
+  "buildBindingVerified": true,
+  "buildBindingEvidence": "native-verified-build-manifest.json and native-build-binding-verification.json",
+  "allocationScope": "C++ operator new/new[] only; malloc/aligned allocations and frees uninstrumented",
+  "heapBytes": null,
+  "heapUnavailableReason": "No heap allocator telemetry; RSS includes non-heap mappings"
+}

@@ -6,6 +6,7 @@ export class CompressorFX implements FXBase {
     input: GainNode;
     output: GainNode;
     private compressor: DynamicsCompressorNode;
+    private amount = 0;
 
 
     constructor(context: AudioContext) {
@@ -31,9 +32,14 @@ export class CompressorFX implements FXBase {
             // Map 0-1 to Threshold (-60 to 0) and Ratio (1 to 20)
             const threshold = -60 * value;
             const ratio = 1 + (19 * value);
+            this.amount = value;
             this.compressor.threshold.setTargetAtTime(threshold, this.context.currentTime, 0.1);
             this.compressor.ratio.setTargetAtTime(ratio, this.context.currentTime, 0.1);
         }
+    }
+
+    getParameterSnapshot(): Readonly<Record<string, number>> {
+        return Object.freeze({ amount: this.amount });
     }
 
     setBypass(bypass: boolean) {

@@ -1,0 +1,83 @@
+{
+  "rows": [
+    {
+      "meanNs": 145228,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:49:30.219857+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:31.099361+00:00",
+      "binarySha256": "5cba084f5b1e34738df7d810f8dec0a7f14f8dabfa2557ccf34338d7834f8cab"
+    },
+    {
+      "meanNs": 140837,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:49:31.099541+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:31.960440+00:00",
+      "binarySha256": "cc06278f742623882f08998a53e80dddac83006f64de2c877ed864034dd54330"
+    },
+    {
+      "meanNs": 145170,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:49:31.960623+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:32.841009+00:00",
+      "binarySha256": "cc06278f742623882f08998a53e80dddac83006f64de2c877ed864034dd54330"
+    },
+    {
+      "meanNs": 144107,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:49:32.841157+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:33.724959+00:00",
+      "binarySha256": "5cba084f5b1e34738df7d810f8dec0a7f14f8dabfa2557ccf34338d7834f8cab"
+    },
+    {
+      "meanNs": 61677.2,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:49:33.725099+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:34.091054+00:00",
+      "binarySha256": "5cba084f5b1e34738df7d810f8dec0a7f14f8dabfa2557ccf34338d7834f8cab"
+    },
+    {
+      "meanNs": 49215.7,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:49:34.091188+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:34.383455+00:00",
+      "binarySha256": "cc06278f742623882f08998a53e80dddac83006f64de2c877ed864034dd54330"
+    },
+    {
+      "meanNs": 47813.5,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:49:34.383587+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:34.669616+00:00",
+      "binarySha256": "cc06278f742623882f08998a53e80dddac83006f64de2c877ed864034dd54330"
+    },
+    {
+      "meanNs": 58154.4,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:49:34.669755+00:00",
+      "runFinishedUtc": "2026-10-21T12:49:35.018388+00:00",
+      "binarySha256": "5cba084f5b1e34738df7d810f8dec0a7f14f8dabfa2557ccf34338d7834f8cab"
+    }
+  ],
+  "gainPercent": {
+    "sine": 1.1502237890334777,
+    "silence": 19.028703614071752
+  },
+  "scope": "Exclusive task-team CPU slot; PREAMP-only, 48k/64 stereo; separate silence and changing sine",
+  "hashesEqual": true,
+  "aggregation": "Gain is ratio of arithmetic means of per-run statistics; p99 means mean(run p99), NOT pooled callback quantile. Raw callback timing arrays were not retained."
+}

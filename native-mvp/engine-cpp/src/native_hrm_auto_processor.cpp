@@ -19,7 +19,11 @@ bool NativeHrmAutoProcessor::onPrepare() noexcept {
 bool NativeHrmAutoProcessor::onSetParameter(std::string_view parameterId, float value,
                                             std::uint64_t rampFrames) noexcept {
     (void)rampFrames;
-    if (parameterId == "mix_percent") return true; // handled by NativeEffectProcessor
+    if (parameterId.substr(0U, 9U) == "official_") return core_.setOfficialParameter(parameterId, value);
+    if (parameterId == "mix_percent") {
+        core_.disableOfficialControls();
+        return setParameter(parameterId, value, rampFrames);
+    }
 
     NativeHrmAutoCore::Config next = config_;
     if (parameterId == "key") {
@@ -41,6 +45,7 @@ bool NativeHrmAutoProcessor::onSetParameter(std::string_view parameterId, float 
         next.mixPercent = 100.0f;
         if (!core_.configure(next)) return false;
     }
+    core_.disableOfficialControls();
     config_ = next;
     return true;
 }
@@ -83,7 +88,9 @@ bool NativeHrmAutoProcessor::processEffectBlock(float* interleaved, unsigned int
     }
     if (!core_.processInterleaved(monoScratch_.data(), frames, 2U)) return false;
     for (unsigned int frame = 0U; frame < frames; ++frame) {
-        interleaved[frame] = monoScratch_[static_cast<std::size_t>(frame) * 2U];
+        const std::size_t offset = static_cast<std::size_t>(frame) * 2U;
+        interleaved[frame] = core_.officialControlsActive()
+            ? 0.5f * (monoScratch_[offset] + monoScratch_[offset + 1U]) : monoScratch_[offset];
     }
     return true;
 }

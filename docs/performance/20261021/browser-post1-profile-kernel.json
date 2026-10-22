@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_worklet_node_vm_relative_kernel_microbenchmark",
+  "generatedAtUtc": "2026-10-21T11:27:17.392Z",
+  "repositoryHead": null,
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sourcePath": "/tmp/rc505-browser-perf/post1.js",
+  "sourceSha256": "9a86f9023b86bfcc2908c4d1542f16dd398658ef355ee68c4eb2e1f0161ae4a3",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 64,
+  "measuredBlocksPerPass": 128,
+  "passes": 3,
+  "timingSource": "Node process.hrtime.bigint() around synchronous worklet process() calls in a Node VM; this is a relative kernel diagnostic only.",
+  "exclusions": [
+    "No browser AudioWorklet scheduler, AudioContext, cross-thread scheduling, or device endpoint.",
+    "No 20-slot graph or five Signalsmith LIVE_POLY processors.",
+    "One synthetic stereo signal and one processor instance per algorithm; not a representative audio-quality suite.",
+    "Results rank relative JavaScript DSP cost in this Node VM and do not pass or replace browser/native realtime acceptance."
+  ],
+  "results": [
+    {
+      "catalogName": "FDN8 REVERB",
+      "algorithm": "reverb",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 242.961281,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6539668269104004,
+          "nanosecondsPerInputFrame": 14829.179748535156
+        },
+        {
+          "elapsedMilliseconds": 261.606165,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.7041523362121581,
+          "nanosecondsPerInputFrame": 15967.173156738281
+        },
+        {
+          "elapsedMilliseconds": 320.429334,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.8624837420288085,
+          "nanosecondsPerInputFrame": 19557.454467773438
+        }
+      ],
+      "medianRealtimeRatio": 0.7041523362121581,
+      "finiteOutput": true,
+      "outputRms": 0.02781673282588517
+    }
+  ]
+}

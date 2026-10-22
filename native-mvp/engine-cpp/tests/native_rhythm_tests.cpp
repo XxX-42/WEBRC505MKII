@@ -193,6 +193,99 @@ void processUntil(NativeRhythmEngine& engine, std::uint64_t& cursor, std::uint64
     }
 }
 
+struct RhythmTraceEvent {
+    std::uint64_t frame = 0U;
+    std::uint8_t instrument = 0U;
+    float velocity = 0.0f;
+    std::uint32_t seed = 0U;
+};
+
+struct RhythmTraceBuffer {
+    std::array<RhythmTraceEvent, 64U> events{};
+    std::size_t count = 0U;
+    bool overflow = false;
+};
+
+void captureRhythmEvent(void* context, std::uint64_t frame, std::uint8_t instrument,
+    float velocity, std::uint32_t seed) noexcept {
+    auto& trace = *static_cast<RhythmTraceBuffer*>(context);
+    if (trace.count == trace.events.size()) {
+        trace.overflow = true;
+        return;
+    }
+    trace.events[trace.count++] = {frame, instrument, velocity, seed};
+}
+
+RhythmTraceBuffer renderOneBarTrace(std::uint8_t kitIndex) {
+    constexpr unsigned int sampleRate = 8000U;
+    constexpr std::uint64_t barFrames = 6400U; // 4/4 at 300 BPM, sample-frame grid.
+    NativeRhythmEngine engine;
+    assert(engine.prepare(sampleRate));
+    NativeRhythmConfig config;
+    config.enabled = true;
+    config.bpm = 300.0;
+    config.patternIndex = 155U;
+    config.kitIndex = kitIndex;
+    config.variation = NativeRhythmVariation::A;
+    config.section = NativeRhythmSection::Main;
+    config.swingPercent = 50U;
+    config.quantizeGrid = NativeRhythmQuantizeGrid::Sixteenth;
+    assert(engine.setConfig(config, 0U));
+    RhythmTraceBuffer trace;
+    engine.setEventTraceCallbackForTesting(captureRhythmEvent, &trace);
+    std::uint64_t cursor = 0U;
+    processUntil(engine, cursor, barFrames);
+    assert(!trace.overflow);
+    return trace;
+}
+
+void testMetalEventsAndSeedsMatchTheBrowserCleanRoomTemplate() {
+    auto studio = renderOneBarTrace(1U);
+    const auto metal = renderOneBarTrace(6U);
+    assert(studio.count == 12U && metal.count == 12U);
+    for (std::size_t index = 0U; index < studio.count; ++index) {
+        assert(studio.events[index].frame == metal.events[index].frame);
+        assert(studio.events[index].instrument == metal.events[index].instrument);
+        assert(studio.events[index].velocity == metal.events[index].velocity);
+        assert(studio.events[index].seed == metal.events[index].seed);
+    }
+
+    // Row 155 is the first METAL clean-room pattern. Its fixed A/main template
+    // matches Browser's kick/ride/closed-hat/snare event positions, velocities,
+    // and worklet-salted seeds. This is event-plan parity, not factory MIDI.
+    constexpr std::array<std::uint64_t, 12U> frames{{
+        0U, 0U, 800U, 1600U, 1600U, 2400U, 3200U, 3200U, 4000U, 4800U, 4800U, 5600U,
+    }};
+    constexpr std::array<std::uint8_t, 12U> instruments{{
+        0U, 5U, 2U, 2U, 1U, 2U, 0U, 5U, 2U, 2U, 1U, 2U,
+    }};
+    constexpr std::array<float, 12U> velocities{{
+        90.0f, 49.0f, 35.0f, 54.0f, 73.0f, 36.0f, 63.0f, 54.0f, 38.0f, 52.0f, 71.0f, 33.0f,
+    }};
+    constexpr std::array<std::uint32_t, 12U> seeds{{
+        4151351748U, 1416782739U, 3627109161U, 1844465452U, 3172365118U, 161238623U,
+        3559059407U, 1875873158U, 1464211603U, 2318657179U, 3073645340U, 4060337768U,
+    }};
+
+    // Normalize simultaneous events using the same stable frame/instrument
+    // order as the Browser template before checking the explicit golden.
+    auto ordered = metal;
+    constexpr std::array<const char*, 8U> instrumentNames{{
+        "kick", "snare", "closedHat", "openHat", "tom", "ride", "clap", "brush",
+    }};
+    std::sort(ordered.events.begin(), ordered.events.begin() + static_cast<std::ptrdiff_t>(ordered.count),
+        [&instrumentNames](const RhythmTraceEvent& left, const RhythmTraceEvent& right) {
+            if (left.frame != right.frame) return left.frame < right.frame;
+            return std::string_view(instrumentNames[left.instrument]) < std::string_view(instrumentNames[right.instrument]);
+        });
+    for (std::size_t index = 0U; index < ordered.count; ++index) {
+        assert(ordered.events[index].frame == frames[index]);
+        assert(ordered.events[index].instrument == instruments[index]);
+        assert(ordered.events[index].velocity == velocities[index]);
+        assert(ordered.events[index].seed == seeds[index]);
+    }
+}
+
 std::uint64_t expectedSixteenthFrame(
     std::uint64_t startFrame,
     std::uint64_t stepOrdinal,
@@ -544,7 +637,7 @@ void testQuantizeGridAndVolumeAreAppliedWithoutRealtimeAllocation() {
     assert(liveVolume.activeVoiceCount() == voicesBeforeVolumeChange);
 }
 
-void testLegacyMetronomeCatalogIndexUsesCleanRoomKickSnareClicks() {
+void testGuide210CatalogIndexUsesCleanRoomKickSnareClicksAtQuarterNoteFrames() {
     NativeRhythmEngine metronome;
     NativeRhythmEngine ordinaryGuide;
     assert(metronome.prepare(48000U));
@@ -552,6 +645,8 @@ void testLegacyMetronomeCatalogIndexUsesCleanRoomKickSnareClicks() {
     NativeRhythmConfig config;
     config.enabled = true;
     config.patternIndex = 210U;
+    config.variation = NativeRhythmVariation::D;
+    config.section = NativeRhythmSection::Fill;
     assert(metronome.setConfig(config, 0U));
     config.patternIndex = 1U;
     assert(ordinaryGuide.setConfig(config, 0U));
@@ -561,6 +656,35 @@ void testLegacyMetronomeCatalogIndexUsesCleanRoomKickSnareClicks() {
     ordinaryGuide.processAdditive(ordinaryOnset.data(), 1U, 2U, 0U);
     assert(metronome.activeVoiceCount() == 1U);
     assert(ordinaryGuide.activeVoiceCount() == 2U);
+
+    // Row 210 is a click pattern regardless of the selected A-D variation or
+    // section. At 48 kHz / 120 BPM, its quarter-note events are exactly 24,000
+    // frames apart; halfway through each beat there must be no new voice.
+    std::uint64_t cursor = 1U;
+    std::array<float, 128U> scratch{};
+    auto renderThrough = [&](std::uint64_t inclusiveFrame) {
+        const std::uint64_t endFrame = inclusiveFrame + 1U;
+        while (cursor < endFrame) {
+            const auto frames = static_cast<unsigned int>(std::min<std::uint64_t>(
+                64U, endFrame - cursor));
+            std::fill_n(scratch.begin(), static_cast<std::size_t>(frames) * 2U, 0.0f);
+            metronome.processAdditive(scratch.data(), frames, 2U, cursor);
+            cursor += frames;
+        }
+    };
+    assert(metronome.nextScheduledStepFrame() == 6000U);
+    renderThrough(12000U);
+    assert(metronome.activeVoiceCount() == 0U);
+    renderThrough(24000U);
+    assert(metronome.activeVoiceCount() == 1U);
+    renderThrough(36000U);
+    assert(metronome.activeVoiceCount() == 0U);
+    renderThrough(48000U);
+    assert(metronome.activeVoiceCount() == 1U);
+    renderThrough(60000U);
+    assert(metronome.activeVoiceCount() == 0U);
+    renderThrough(72000U);
+    assert(metronome.activeVoiceCount() == 1U);
 }
 
 } // namespace
@@ -568,6 +692,7 @@ void testLegacyMetronomeCatalogIndexUsesCleanRoomKickSnareClicks() {
 int main() {
     testConfigValidationAndRoundTripNames();
     testMetadataOnlyPatternCatalogIsStableAndComplete();
+    testMetalEventsAndSeedsMatchTheBrowserCleanRoomTemplate();
     testEmptyDisabledRendererPassesThrough();
     testMeterAwareSampleFrameScheduling();
     testRhythmCallbackDoesNotAllocate();
@@ -575,6 +700,6 @@ int main() {
     testSixteenKitProfilesRenderDeterministicallyInSixtyFourFrameBlocks();
     testSwingUsesAbsoluteSampleFramesAndDelaysOffbeatOnsets();
     testQuantizeGridAndVolumeAreAppliedWithoutRealtimeAllocation();
-    testLegacyMetronomeCatalogIndexUsesCleanRoomKickSnareClicks();
+    testGuide210CatalogIndexUsesCleanRoomKickSnareClicksAtQuarterNoteFrames();
     return 0;
 }

@@ -1,0 +1,934 @@
+{
+  "generatedAt": "2026-10-21T18:45:24.145Z",
+  "node": "v24.19.0",
+  "blocks": 1024,
+  "rounds": 10,
+  "ordering": "ABBA then BAAB in same process",
+  "warmupBlocksPerInstance": 1024,
+  "environment": {
+    "pid": 9,
+    "platform": "linux",
+    "arch": "x64",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "logicalCpuCount": 9,
+    "loadAverage": [
+      1.01,
+      0.84,
+      0.66
+    ],
+    "affinity": "not pinned; process allowed CPU set follows host"
+  },
+  "timingSignal": "tone-and-impulse",
+  "sourceHashes": {
+    "baseline": "a639965805e13daa6ee93d1d8ef2a5beaaa59b9c1c2ccf658707674683a6c0c8",
+    "candidate": "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab"
+  },
+  "scope": "Synchronous exact-source Node VM kernel only; no browser AudioContext, scheduler, hardware, xrun, or production five-loop acceptance. Tracks are independent FX instances. Reverse-reverb is an effect, not reverse loop playback; KeepPitch not exercised.",
+  "correctness": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+  "scenarios": [
+    {
+      "order": "ABBA",
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "tremolo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 1591.502089,
+      "candidateMs": 1370.269077,
+      "improvementPercent": 13.900893597884567,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "accf105aca1d71b5edb8b1c5876ac66117e71b610a204d4e5224a139738987c3",
+        "candidate": "accf105aca1d71b5edb8b1c5876ac66117e71b610a204d4e5224a139738987c3"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1689.299507
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1367.185146
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1454.441671
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1625.434547
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 1591.502089
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1306.024833
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1343.781413
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 1629.98856
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 1576.709102
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1370.269077
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1378.073652
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 1525.564869
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 1591.180815
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1287.319151
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1350.880723
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 1715.560301
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 1845.724577
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1478.536534
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1401.166674
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 1602.318161
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 1647.442768
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1381.105605
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1364.723419
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 1601.949954
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 1507.557843
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1269.849405
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1312.836609
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 1520.939937
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 1550.369548
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1516.271501
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1437.946439
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 1519.346778
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1613.704407
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 1332.560903
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 1436.796986
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1577.258047
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 1564.426593
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 1336.394977
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 1374.888715
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 1545.680659
+        }
+      ]
+    },
+    {
+      "order": "ABBA",
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "auto-pan",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 1966.404268,
+      "candidateMs": 1877.209024,
+      "improvementPercent": 4.535956590997392,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "058a75b6d272095e4a869fd341c710981f0f12eaf62ad0f818867d66d78187e7",
+        "candidate": "058a75b6d272095e4a869fd341c710981f0f12eaf62ad0f818867d66d78187e7"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1916.373322
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1876.216393
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1826.020984
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1919.099242
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 1959.435738
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1890.3949
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1877.209024
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 1967.974023
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 2026.940629
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1934.76919
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1922.799649
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 2015.342568
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 2149.303549
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1910.542828
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1895.908847
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 1940.921573
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 1966.404268
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1891.614225
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1826.422566
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 1998.450007
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 2160.599354
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1805.455095
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1780.409369
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 1908.752775
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 1943.703787
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1867.54071
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1950.986757
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 1942.172205
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 1887.990016
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1813.349244
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1828.367931
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 1967.256124
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1949.925333
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 1805.820231
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 1769.869643
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1889.64529
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 2178.986821
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 1969.881703
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 2011.449862
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 2137.875749
+        }
+      ]
+    },
+    {
+      "order": "BAAB",
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "tremolo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 1593.052049,
+      "candidateMs": 1375.899335,
+      "improvementPercent": 13.631237857941446,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "accf105aca1d71b5edb8b1c5876ac66117e71b610a204d4e5224a139738987c3",
+        "candidate": "accf105aca1d71b5edb8b1c5876ac66117e71b610a204d4e5224a139738987c3"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1339.031697
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1564.550425
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1527.13168
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1340.902825
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1329.675224
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 1575.779386
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 1558.804712
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1271.338236
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1279.094871
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 1603.480184
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 1622.607041
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1324.482589
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1375.899335
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 1485.720252
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 1543.873927
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1268.490014
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1324.235403
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 1487.500082
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 1545.88654
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1385.274905
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1379.701937
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 1633.952895
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 1593.052049
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1384.143513
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1338.156546
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 1602.898211
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 1607.149967
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1399.187953
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1429.547687
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 1671.289242
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 1539.451352
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1454.385667
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 1623.658369
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1602.414237
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1688.285428
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 1454.72473
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 1396.35505
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 1783.262254
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 1565.355545
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 1301.00661
+        }
+      ]
+    },
+    {
+      "order": "BAAB",
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "auto-pan",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 1969.328609,
+      "candidateMs": 1894.779268,
+      "improvementPercent": 3.7855206418727194,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "058a75b6d272095e4a869fd341c710981f0f12eaf62ad0f818867d66d78187e7",
+        "candidate": "058a75b6d272095e4a869fd341c710981f0f12eaf62ad0f818867d66d78187e7"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1866.318688
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1979.131365
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 1878.505288
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 1817.725639
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1783.664822
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 1885.655155
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 2014.568487
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 1894.779268
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1818.141955
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 1952.802704
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 1939.287567
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 1855.712379
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1812.640139
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 1971.153034
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 1898.68591
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 1816.310538
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1920.13305
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 2005.438779
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "elapsedMs": 1952.739838
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "elapsedMs": 1887.747131
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1871.154132
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 1911.839143
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "elapsedMs": 1969.328609
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "elapsedMs": 1886.65536
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1953.954329
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 1885.791313
+        },
+        {
+          "round": 6,
+          "version": "baseline",
+          "elapsedMs": 2018.946361
+        },
+        {
+          "round": 6,
+          "version": "candidate",
+          "elapsedMs": 1936.41997
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1982.779681
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 2050.815381
+        },
+        {
+          "round": 7,
+          "version": "baseline",
+          "elapsedMs": 1920.766315
+        },
+        {
+          "round": 7,
+          "version": "candidate",
+          "elapsedMs": 1948.502006
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 2040.159511
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1977.698731
+        },
+        {
+          "round": 8,
+          "version": "baseline",
+          "elapsedMs": 1909.934174
+        },
+        {
+          "round": 8,
+          "version": "candidate",
+          "elapsedMs": 1962.556845
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 1934.251787
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 2089.285871
+        },
+        {
+          "round": 9,
+          "version": "baseline",
+          "elapsedMs": 2123.482429
+        },
+        {
+          "round": 9,
+          "version": "candidate",
+          "elapsedMs": 2007.486693
+        }
+      ]
+    }
+  ]
+}

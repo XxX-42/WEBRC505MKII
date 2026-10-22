@@ -39,6 +39,7 @@ function createEngine(): BrowserAudioEngine {
     inputFxInstances: [null, null, null, null],
     trackFxInstances: [null, null, null, null],
     inputFxTypes: [null, null, null, null],
+    inputFxActive: [false, false, false, false],
     trackFxTypes: [null, null, null, null],
     fxWorkletModuleReady: null,
     fxWorkletGeneration: 0,

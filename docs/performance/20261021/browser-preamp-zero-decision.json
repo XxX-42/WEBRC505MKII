@@ -1,0 +1,46 @@
+{
+  "decision": "rejected",
+  "productionChanged": false,
+  "reason": "No repeatable >=3% benefit in silence or tone; no production change warranted.",
+  "rounds": [
+    {
+      "signal": "silence",
+      "order": "ABBA",
+      "gainPercent": 0.675057642851562,
+      "bitExact": true,
+      "evidence": "browser-preamp-zero-silence-ABBA.json"
+    },
+    {
+      "signal": "silence",
+      "order": "BAAB",
+      "gainPercent": -1.028559235493498,
+      "bitExact": true,
+      "evidence": "browser-preamp-zero-silence-BAAB.json"
+    },
+    {
+      "signal": "tone",
+      "order": "ABBA",
+      "gainPercent": -3.159049866221464,
+      "bitExact": true,
+      "evidence": "browser-preamp-zero-tone-ABBA.json"
+    },
+    {
+      "signal": "tone",
+      "order": "BAAB",
+      "gainPercent": 0.31409536157627205,
+      "bitExact": true,
+      "evidence": "browser-preamp-zero-tone-BAAB.json"
+    }
+  ],
+  "correctness": {
+    "doublePrecisionStereoFrames": 120000,
+    "models": 5,
+    "rates": [
+      44100,
+      48000
+    ],
+    "fullStreamCases": 20,
+    "shapeTransitionBlocks": 768
+  },
+  "scope": "Exact +0 identity only inside tiny-delta path; all history/filter/state retained; no whole-silence skipping."
+}

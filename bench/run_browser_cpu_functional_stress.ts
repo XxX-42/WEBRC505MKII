@@ -45,12 +45,29 @@ interface PortMessage {
   readonly samples?: Float32Array;
   readonly indices?: Uint32Array;
   readonly values?: Float32Array;
+  readonly oldValues?: Float32Array;
+  readonly overflowFrames?: number;
+}
+
+const simulatedPortTraffic: Record<string, { messages: number; typedArrayPayloadBytes: number }> = {};
+function typedArrayBytes(value: unknown): number {
+  if (ArrayBuffer.isView(value)) return value.byteLength;
+  if (value instanceof ArrayBuffer) return value.byteLength;
+  if (Array.isArray(value)) return value.reduce((sum, item) => sum + typedArrayBytes(item), 0);
+  if (value && typeof value === 'object') return Object.values(value).reduce<number>((sum, item) => sum + typedArrayBytes(item), 0);
+  return 0;
 }
 
 class SimPort {
   onmessage: ((event: { data: unknown }) => void) | null = null;
   onPost: ((message: PortMessage) => void) | null = null;
-  postMessage(message: PortMessage): void { this.onPost?.(message); }
+  postMessage(message: PortMessage): void {
+    const key = message.type ?? 'untyped';
+    const traffic = simulatedPortTraffic[key] ??= { messages: 0, typedArrayPayloadBytes: 0 };
+    traffic.messages += 1;
+    traffic.typedArrayPayloadBytes += typedArrayBytes(message);
+    this.onPost?.(message);
+  }
 }
 
 class SimAudioWorkletProcessor {
@@ -203,10 +220,12 @@ const makeOverdubBuffers = () => Array.from({ length: overdubPoolSize }, (_, slo
   slotIndex,
   indices: new Uint32Array(overdubChunkFrames),
   values: new Float32Array(overdubChunkFrames),
+  oldValues: new Float32Array(overdubChunkFrames),
 }));
 let overdubPatches = 0;
 let overdubPatchFrames = 0;
-let overdubOverflowFrames = 0;
+let overdubOverflowFrames: number | null = null;
+let overdubStopAcknowledged = false;
 let overdubSequenceError = false;
 overdub.port.onPost = (message) => {
   if (message.type === 'OVERDUB_PATCH') {
@@ -214,10 +233,11 @@ overdub.port.onPost = (message) => {
     overdubPatches += 1;
     overdubPatchFrames += message.validFrames ?? 0;
     const slotIndex = message.slotIndex;
-    if (slotIndex === undefined || !message.indices || !message.values) throw new Error('Malformed overdub patch in worklet simulation');
-    overdub.port.onmessage?.({ data: { type: 'RECYCLE_OVERDUB_BUFFER', slotIndex, indices: message.indices, values: message.values } });
+    if (slotIndex === undefined || !message.indices || !message.values || !message.oldValues) throw new Error('Malformed overdub patch in worklet simulation');
+    overdub.port.onmessage?.({ data: { type: 'RECYCLE_OVERDUB_BUFFER', slotIndex, indices: message.indices, values: message.values, oldValues: message.oldValues } });
   } else if (message.type === 'OVERDUB_STOPPED') {
-    overdubOverflowFrames = message.overflowFrames ?? 0;
+    overdubStopAcknowledged = true;
+    overdubOverflowFrames = message.overflowFrames ?? null;
   } else if (message.type === 'OVERDUB_ERROR') {
     throw new Error(`Overdub worklet error: ${String((message as PortMessage & { message?: string }).message)}`);
   }
@@ -244,8 +264,13 @@ let checksum = 0;
 let lastCheckpointFrame = 0;
 let parameterEpoch = 0;
 let progressEvents = 0;
+const resourceCheckpoints: Array<{ simulatedSeconds: number; wallTimeMs: number; rss: number; heapUsed: number; cpuUserMicros: number; cpuSystemMicros: number }> = [];
+const resourceStart = performance.now();
 const lastLog = () => {
   const simulated = frame / sampleRate;
+  const memory = process.memoryUsage();
+  const usage = process.cpuUsage();
+  resourceCheckpoints.push({ simulatedSeconds: simulated, wallTimeMs: performance.now() - resourceStart, rss: memory.rss, heapUsed: memory.heapUsed, cpuUserMicros: usage.user, cpuSystemMicros: usage.system });
   process.stdout.write(`CPU functional simulation ${simulated.toFixed(0)}/${simulatedSeconds}s, ${blocks} blocks\n`);
 };
 
@@ -348,14 +373,19 @@ while (frame < targetFrames) {
   }
 }
 recorder.port.onmessage?.({ data: { type: 'STOP_RECORD' } });
-overdub.port.onmessage?.({ data: { type: 'OVERDUB_STOP' } });
+overdub.port.onmessage?.({ data: { type: 'OVERDUB_STOP', stopFrame: targetFrames } });
+vmState.currentFrame = targetFrames;
+overdub.process(overdubInputs, overdubOutputs);
+const internalNonFinite = [...inputFx, ...trackFx].map((fx) => ({ algorithm: fx.algorithm, input: fx.nonFiniteInputSamples, output: fx.nonFiniteOutputSamples }));
+const internalFiniteGate = internalNonFinite.every((item) => item.input === 0 && item.output === 0);
+const activePathGate = recordingFrames === targetFrames && recordingChunks > 0 && overdubPatches > 0 && overdubPatchFrames === targetFrames && overdubStopAcknowledged && overdub.overflowFrames === 0;
 
 const durationMs = performance.now() - startTime;
 const cpu = process.cpuUsage(cpuStart);
 const memoryEnd = process.memoryUsage();
 const result = {
   schema: 'rc505-browser-cpu-functional-simulation-v1',
-  status: outputNonFinite === 0 && !recordingSequenceError && !overdubSequenceError && recordingDroppedFrames === 0 && overdubOverflowFrames === 0 ? 'passed-functional-simulation' : 'failed',
+  status: activePathGate && internalFiniteGate && outputNonFinite === 0 && !recordingSequenceError && !overdubSequenceError && recordingDroppedFrames === 0 && overdubOverflowFrames === 0 ? 'passed-functional-simulation' : 'failed',
   explicitlyNotEvidenceFor: ['browser AudioWorklet execution', 'physical device audio', 'XRUN/dropout acceptance', 'P99/P99.9/deadline compliance', 'acoustic latency', 'whole-app CPU admission', '30-minute hardware acceptance'],
   environment: { platform: process.platform, arch: process.arch, node: process.version, sampleRate, channels: 2, blockPatternFrames: [...blockPattern], actualElapsedSeconds: durationMs / 1000 },
   workload: {
@@ -368,12 +398,15 @@ const result = {
     pitch: { mode: 'LIVE_MONO clean-room YIN/PSOLA', semitones: liveMono.semitones, minimumFrequencyHz: liveMono.minimumFrequencyHz, maximumFrequencyHz: liveMono.maximumFrequencyHz, latencySamples: liveMono.latencySamples },
     rhythm: { patternId: pattern.id, patternName: pattern.pattern, kitIndex: 1, voicesPeak: rhythm.peakVoiceCount, voicesStolen: rhythm.stolenVoiceCount },
     recording: { framesCaptured: recordingFrames, chunks: recordingChunks, droppedFrames: recordingDroppedFrames, sequenceError: recordingSequenceError },
-    overdub: { patches: overdubPatches, patchFrames: overdubPatchFrames, overflowFrames: overdubOverflowFrames, sequenceError: overdubSequenceError },
+    overdub: { stopAcknowledged: overdubStopAcknowledged, processorOverflowFrames: overdub.overflowFrames ?? null, patches: overdubPatches, patchFrames: overdubPatchFrames, overflowFrames: overdubOverflowFrames, sequenceError: overdubSequenceError },
     parameterAutomationUpdates: parameterEpoch,
   },
-  functionalChecks: { nonFiniteOutputSamples: outputNonFinite, outputPeak: outputAbsMax, checksum, rhythmProgressCheckpoints: progressEvents },
+  functionalChecks: { activePathGate, internalFiniteGate, internalNonFinite, nonFiniteOutputSamples: outputNonFinite, outputPeak: outputAbsMax, checksum, rhythmProgressCheckpoints: progressEvents },
   cpuUsageMicros: cpu,
-  memoryBytes: { startRss: memoryStart.rss, endRss: memoryEnd.rss, startHeapUsed: memoryStart.heapUsed, endHeapUsed: memoryEnd.heapUsed },
+  simulatedPortTraffic: { byMessageType: simulatedPortTraffic, scope: 'Production source postMessage calls into same-process mock port; typed-array payload bytes, not actual browser IPC/structured-clone wire bytes.' },
+  resourceCheckpoints,
+  unavailableMetrics: { browserCallbackPercentiles: null, hardwareXruns: null, mainThreadLongTasks: null, workletAllocations: null, actualIpcBytes: null, gcPauseMs: null, reason: 'Node-hosted synchronous simulation; not browser/driver instrumentation. Resource checkpoints are host process snapshots only.' },
+  memoryBytes: { startRss: memoryStart.rss, endRss: memoryEnd.rss, startHeapUsed: memoryStart.heapUsed, endHeapUsed: memoryEnd.heapUsed, processLifetimePeakRss: process.resourceUsage().maxRSS * 1024, peakScope: 'OS process lifetime high-water RSS, including harness/startup; not audio-worklet-only memory' },
   notes: [
     'Loop data, input, rhythm, and kit timbres are synthetic and clean-room; this is a software simulation only.',
     'The workload executes production BrowserFxDspCore, LiveMonoPitchProcessor, RhythmWorkletCore, and source recording/overdub AudioWorklet processor code in a Node VM with a same-process simulated MessagePort.',

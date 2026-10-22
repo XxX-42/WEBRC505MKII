@@ -1,0 +1,107 @@
+[  1%] Built target native_project_archive_codec
+[  2%] Built target project_archive_codec_tests
+[  3%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/looper_core.cpp.o
+[  3%] Linking CXX static library libnative_dsp_portable.a
+[ 21%] Built target native_dsp_portable
+[ 21%] Linking CXX executable dsp_primitives_tests
+[ 21%] Linking CXX executable native_official_vocoder_controls_tests
+[ 21%] Linking CXX executable native_official_fx_parameters_tests
+[ 21%] Linking CXX executable looper_core_tests
+[ 21%] Built target dsp_primitives_tests
+[ 23%] Linking CXX executable native_official_amp_dynamics_tests
+[ 24%] Built target looper_core_tests
+[ 25%] Built target native_official_vocoder_controls_tests
+[ 25%] Linking CXX executable native_official_slicer_controls_tests
+[ 26%] Linking CXX executable native_official_tape_roll_tests
+[ 27%] Built target native_official_fx_parameters_tests
+[ 28%] Linking CXX executable native_official_pitch_controls_tests
+[ 30%] Built target native_official_slicer_controls_tests
+[ 30%] Built target native_official_amp_dynamics_tests
+[ 30%] Linking CXX executable native_audio_pipeline_tests
+[ 31%] Linking CXX executable native_fx_catalog_tests
+[ 32%] Built target native_official_tape_roll_tests
+[ 34%] Linking CXX executable native_vocoder_core_tests
+[ 35%] Built target native_official_pitch_controls_tests
+[ 36%] Linking CXX executable native_auto_riff_core_tests
+[ 37%] Built target native_fx_catalog_tests
+[ 38%] Built target native_audio_pipeline_tests
+[ 39%] Linking CXX executable native_osc_voc_core_tests
+[ 39%] Linking CXX executable native_osc_voc_processor_tests
+[ 40%] Built target native_vocoder_core_tests
+[ 40%] Linking CXX executable native_hrm_auto_processor_tests
+[ 41%] Built target native_auto_riff_core_tests
+[ 42%] Linking CXX executable native_hrm_auto_core_tests
+[ 43%] Built target native_osc_voc_processor_tests
+[ 45%] Built target native_osc_voc_core_tests
+[ 45%] Linking CXX executable native_robot_core_tests
+[ 46%] Linking CXX executable native_osc_bot_core_tests
+[ 47%] Built target native_hrm_auto_processor_tests
+[ 48%] Built target native_hrm_auto_core_tests
+[ 48%] Linking CXX executable native_osc_bot_processor_tests
+[ 48%] Linking CXX executable native_g2b_processor_tests
+[ 49%] Built target native_robot_core_tests
+[ 50%] Linking CXX executable native_synth_processor_tests
+[ 51%] Built target native_osc_bot_core_tests
+[ 51%] Linking CXX executable native_manual_pan_processor_tests
+[ 52%] Built target native_g2b_processor_tests
+[ 53%] Built target native_osc_bot_processor_tests
+[ 54%] Linking CXX executable native_isolator_processor_tests
+[ 54%] Linking CXX executable native_slow_gear_processor_tests
+[ 56%] Built target native_synth_processor_tests
+[ 57%] Built target native_audio_core_test_support
+[ 57%] Linking CXX executable native_freeze_processor_tests
+[ 58%] Built target native_manual_pan_processor_tests
+[ 59%] Built target native_isolator_processor_tests
+[ 60%] Built target native_slow_gear_processor_tests
+[ 60%] Linking CXX executable native_pitch_processor_tests
+[ 61%] Building CXX object CMakeFiles/native_catalog_route_tests.dir/tests/native_catalog_route_tests.cpp.o
+[ 62%] Linking CXX executable native_poly_pitch_processor_tests
+[ 63%] Built target native_freeze_processor_tests
+[ 63%] Linking CXX executable native_chorus_processor_tests
+[ 64%] Built target native_pitch_processor_tests
+[ 65%] Built target native_poly_pitch_processor_tests
+[ 67%] Linking CXX executable native_phaser_processor_tests
+[ 67%] Linking CXX executable native_autopan_processor_tests
+[ 68%] Built target native_chorus_processor_tests
+[ 69%] Built target native_phaser_processor_tests
+[ 69%] Linking CXX executable native_vinyl_flick_processor_tests
+[ 70%] Linking CXX executable native_flanger_processor_tests
+[ 71%] Built target native_autopan_processor_tests
+[ 72%] Linking CXX executable native_dynamics_processor_tests
+[ 74%] Built target native_vinyl_flick_processor_tests
+[ 74%] Built target native_flanger_processor_tests
+[ 74%] Linking CXX executable native_fdn16_reverb_processor_tests
+[ 74%] Linking CXX executable native_distortion_processor_tests
+[ 75%] Built target native_dynamics_processor_tests
+[ 75%] Linking CXX executable native_preamp_processor_tests
+[ 76%] Built target native_distortion_processor_tests
+[ 78%] Linking CXX executable native_beat_repeat_processor_tests
+[ 79%] Built target native_fdn16_reverb_processor_tests
+[ 80%] Built target native_preamp_processor_tests
+[ 80%] Linking CXX executable native_beat_scatter_processor_tests
+[ 81%] Linking CXX executable native_roll_processor_tests
+[ 82%] Built target native_beat_repeat_processor_tests
+[ 82%] Linking CXX executable native_tape_echo_processor_tests
+[ 83%] Built target native_roll_processor_tests
+[ 84%] Built target native_beat_scatter_processor_tests
+[ 84%] Linking CXX executable native_reverse_delay_processor_tests
+[ 84%] Linking CXX executable native_panning_delay_processor_tests
+[ 85%] Built target native_tape_echo_processor_tests
+[ 85%] Linking CXX executable native_mod_delay_processor_tests
+[ 86%] Built target native_panning_delay_processor_tests
+[ 87%] Linking CXX executable native_stereo_enhance_processor_tests
+[ 89%] Built target native_reverse_delay_processor_tests
+[ 90%] Linking CXX executable native_radio_processor_tests
+[ 92%] Built target native_mod_delay_processor_tests
+[ 92%] Built target native_stereo_enhance_processor_tests
+[ 93%] Linking CXX executable native_vibrato_processor_tests
+[ 93%] Linking CXX executable native_sustainer_processor_tests
+[ 94%] Built target native_radio_processor_tests
+[ 95%] Linking CXX executable native_rhythm_tests
+[ 96%] Built target native_sustainer_processor_tests
+[ 97%] Built target native_vibrato_processor_tests
+[ 97%] Linking CXX executable native_audio_callback_tests
+[ 97%] Built target native_rhythm_tests
+[ 98%] Built target native_audio_callback_tests
+[100%] Linking CXX executable native_catalog_route_tests
+[100%] Built target native_catalog_route_tests

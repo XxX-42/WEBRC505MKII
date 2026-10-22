@@ -43,6 +43,8 @@ public:
     [[nodiscard]] bool prepare(std::uint32_t sampleRate,
                                std::uint64_t firstFrame = 0U) noexcept;
     [[nodiscard]] bool setConfig(const NativeOscBotConfig& config) noexcept;
+    // Additive manual IDs: official_osc/tone/attack/note/mod_sens/balance.
+    // In manual mode NOTE is a fixed carrier pitch, not a legacy pattern step.
     // IDs: bands (8..24), waveform (0..2), pattern (0..7), tone (100..16000 Hz),
     // tempo/bpm (30..300 BPM), and mix (0..100 percent). Only mix is ramped.
     [[nodiscard]] bool setParameter(std::string_view parameterId, float value,
@@ -100,6 +102,10 @@ private:
 
     std::uint32_t sampleRate_ = 0U;
     NativeOscBotConfig config_{};
+    NativeVocoderOfficialShaping official_{};
+    NativeOfficialVocoderOscillator officialOscillator_{};
+    unsigned int officialWaveform_ = 0U;
+    unsigned int officialNote_ = 36U; // C2, MIDI numbering with C4 = 60.
     NativeVocoderFilterBank filterBank_{};
     std::array<NativeVocoderOscillator, kNativeOscBotMaxBands> oscillators_{};
     std::array<bool, kNativeOscBotMaxBands> oscillatorPrepared_{};

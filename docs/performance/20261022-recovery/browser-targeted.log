@@ -1,0 +1,33 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> webrc505mkii-v2@0.0.0 test:unit
+> vitest run tests/unit/browser-yin-exact-optimization.spec.ts tests/unit/live-mono-pitch.spec.ts tests/unit/browser-robot-dsp.spec.ts tests/unit/browser-robot-worklet.spec.ts tests/unit/live-mono-worklet.spec.ts
+
+
+ RUN  v3.2.4 /workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ tests/unit/browser-robot-dsp.spec.ts (6 tests) 154ms
+ ✓ tests/unit/live-mono-pitch.spec.ts (11 tests) 189ms
+ ✓ tests/unit/live-mono-worklet.spec.ts (3 tests) 212ms
+ ✓ tests/unit/browser-robot-worklet.spec.ts (1 test) 357ms
+   ✓ Browser ROBOT worklet integration > renders PSOLA-lite voiced output, reports its gate, and is block-segmentation invariant  356ms
+ ✓ tests/unit/browser-yin-exact-optimization.spec.ts (22 tests) 4233ms
+   ✓ exact YIN frame-copy and prefix termination > keeps PCM and recursive state through mixed input, reset and poisoned scratch at 12000  406ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 24000 Hz / threshold 0.03  331ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 24000 Hz / threshold 0.4  327ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 48000 Hz / threshold 0.03  616ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 48000 Hz / threshold 0.4  639ms
+
+ Test Files  5 passed (5)
+      Tests  43 passed (43)
+   Start at  21:15:10
+   Duration  5.09s (transform 694ms, setup 152ms, collect 1.01s, tests 5.15s, environment 1.73s, prepare 517ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+
+EXIT_CODE=0

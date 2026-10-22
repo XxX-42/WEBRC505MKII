@@ -1,0 +1,13 @@
+{
+  "scope": "Instrumented hit frequency only, no accepted timings; 48 kHz, 5000 stereo blocks of 64 frames; initial/default PREAMP model",
+  "waveform": {
+    "total": 10240000,
+    "smallDelta": 1073599,
+    "repeatHits": 317
+  },
+  "silence": {
+    "total": 10240000,
+    "smallDelta": 10240000,
+    "repeatHits": 10239992
+  }
+}

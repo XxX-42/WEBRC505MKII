@@ -1,0 +1,100 @@
+9:17:58 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v7.2.4  ready in 176 ms
+
+  ➜  Local:   http://127.0.0.1:5198/
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+(!) Failed to run dependency scan. Skipping dependency pre-bundling. Error:   Failed to scan for dependencies from entries:
+  /workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/index.html
+/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/src/audio/pitch/liveMonoNode.ts
+
+  [31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mThe server is being restarted or closed. Request is outdated[0m [1m[35m[plugin vite:dep-scan][0m
+
+    node_modules/esbuild/lib/main.js:1217:27:
+[37m      1217 │         let result = await [32m[37mcallback({
+           ╵                            [32m^[0m
+
+    at throwClosedServerError (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:29207:32)
+    at EnvironmentPluginContainer.resolveId (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:29339:65)
+    at resolveId (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32148:38)
+    at resolve$4 (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32153:22)
+    at file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32306:28
+    at requestCallbacks.on-resolve (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1217:28)
+    at handleRequest (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:628:17)
+    at handleIncomingPacket (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:653:7)
+    at Socket.readFromStdout (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:509:28)
+
+  This error came from the "onResolve" callback registered here:
+
+    node_modules/esbuild/lib/main.js:1141:20:
+[37m      1141 │       let promise = [32m[37msetup({
+           ╵                     [32m^[0m
+
+    at setup (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32305:12)
+    at handlePlugins (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1141:21)
+    at buildOrContextImpl (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:854:5)
+    at Object.buildOrContext (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:680:5)
+    at /workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:2035:68
+    at new Promise (<anonymous>)
+    at Object.context (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:2035:27)
+    at Object.context (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1877:58)
+    at prepareEsbuildScanner (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32102:23)
+
+  The plugin "vite:dep-scan" was triggered by this import
+
+    index.html:1:7:
+[37m      1 │ import [32m"/src/main.ts"[37m
+        ╵        [32m~~~~~~~~~~~~~~[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mThe server is being restarted or closed. Request is outdated[0m [1m[35m[plugin vite:dep-scan][0m
+
+    node_modules/esbuild/lib/main.js:1217:27:
+[37m      1217 │         let result = await [32m[37mcallback({
+           ╵                            [32m^[0m
+
+    at throwClosedServerError (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:29207:32)
+    at EnvironmentPluginContainer.resolveId (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:29339:65)
+    at resolveId (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32148:38)
+    at resolve$4 (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32153:22)
+    at file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32306:28
+    at requestCallbacks.on-resolve (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1217:28)
+    at handleRequest (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:628:17)
+    at handleIncomingPacket (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:653:7)
+    at Socket.readFromStdout (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:509:28)
+
+  This error came from the "onResolve" callback registered here:
+
+    node_modules/esbuild/lib/main.js:1141:20:
+[37m      1141 │       let promise = [32m[37msetup({
+           ╵                     [32m^[0m
+
+    at setup (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32305:12)
+    at handlePlugins (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1141:21)
+    at buildOrContextImpl (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:854:5)
+    at Object.buildOrContext (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:680:5)
+    at /workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:2035:68
+    at new Promise (<anonymous>)
+    at Object.context (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:2035:27)
+    at Object.context (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1877:58)
+    at prepareEsbuildScanner (file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/vite/dist/node/chunks/config.js:32102:23)
+
+  The plugin "vite:dep-scan" was triggered by this import
+
+    src/audio/pitch/liveMonoNode.ts:2:83:
+[37m      2 │ ...ncySamples, type LiveMonoPitchProcessorOptions } from [32m'./liveMono'[37m;
+        ╵                                                          [32m~~~~~~~~~~~~[0m
+
+
+    at failureErrorWithLog (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1467:15)
+    at /workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:926:25
+    at runOnEndCallbacks (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:1307:45)
+    at buildResponseToResult (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:924:7)
+    at /workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:936:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:935:54)
+    at handleRequest (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:628:17)
+    at handleIncomingPacket (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:653:7)
+    at Socket.readFromStdout (/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/esbuild/lib/main.js:581:7)

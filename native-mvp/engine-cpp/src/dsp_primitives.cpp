@@ -44,18 +44,6 @@ void ParameterSmoother::setTarget(float value, std::uint64_t rampFrames) noexcep
             static_cast<double>(remainingFrames_);
 }
 
-float ParameterSmoother::next() noexcept {
-    if (remainingFrames_ != 0) {
-        current_ = static_cast<float>(static_cast<double>(current_) + step_);
-        --remainingFrames_;
-        if (remainingFrames_ == 0) {
-            current_ = target_;
-            step_ = 0.0;
-        }
-    }
-    return current_;
-}
-
 void ParameterSmoother::skip(std::uint64_t frames) noexcept {
     if (frames == 0 || remainingFrames_ == 0) {
         return;

@@ -48,12 +48,13 @@
           size="sm"
           appearance="classic"
           color="yellow"
-          label="UNDO/REDO"
-          aria-label="Undo and redo are unavailable"
-          :disabled="true"
-          disabled-reason="Undo and redo require an audio history backend, which this runtime does not provide."
+          :label="historyButtonLabel"
+          :aria-label="historyButtonAriaLabel"
+          :disabled="historyButtonDisabled"
+          :disabled-reason="historyButtonDisabledReason"
           data-panel-control="undo-redo"
           data-hardware-control="button"
+          @press="activateHistoryAction"
         />
       </div>
     </div>
@@ -264,6 +265,9 @@ const isPlaying = ref(false);
 const outputLevel = ref(engine.getOutputLevel());
 const trackLevel = ref(engine.tracks[focusState.currentTrackId - 1]?.track.playLevel ?? 100);
 const selectedTrackState = ref(engine.tracks[focusState.currentTrackId - 1]?.state ?? TrackState.EMPTY);
+const selectedTrackHistory = ref(engine.getTrackHistoryStatus(focusState.currentTrackId));
+const historyActionPending = ref(false);
+const historyActionHint = ref('');
 const pageActionHint = ref('');
 const capabilityRevision = ref(0);
 const { isPlaying: isRhythmPlaying, volume: rhythmVolume, disabled: rhythmDisabled, pending: rhythmPending, message: rhythmMessage, toggleRhythm, updateVolume, updateSelection } = useRhythmUiControls({ initializeOnMount: false });
@@ -274,6 +278,22 @@ const tapTimes: number[] = [];
 
 const bpmDisplay = computed(() => String(Math.round(bpm.value)).padStart(3, '0'));
 const currentTrackId = computed(() => focusState.currentTrackId);
+const historyButtonLabel = computed(() => historyActionPending.value
+  ? 'WAIT'
+  : selectedTrackHistory.value.canUndo ? 'UNDO' : selectedTrackHistory.value.canRedo ? 'REDO' : 'UNDO/REDO');
+const historyButtonAriaLabel = computed(() => selectedTrackHistory.value.canUndo
+  ? `Undo last PCM edit on track ${currentTrackId.value}`
+  : selectedTrackHistory.value.canRedo
+    ? `Redo PCM edit on track ${currentTrackId.value}`
+    : `No PCM undo or redo available for track ${currentTrackId.value}`);
+const historyButtonDisabled = computed(() => !audioReady.value || historyActionPending.value || selectedTrackHistory.value.busy
+  || (!selectedTrackHistory.value.canUndo && !selectedTrackHistory.value.canRedo));
+const historyButtonDisabledReason = computed(() => !audioReady.value
+  ? transportDisabledReason.value
+  : historyActionPending.value ? 'PCM history restore is pending.'
+    : selectedTrackHistory.value.busy ? selectedTrackHistory.value.unavailableReason
+      : !selectedTrackHistory.value.canUndo && !selectedTrackHistory.value.canRedo
+        ? selectedTrackHistory.value.unavailableReason : '');
 let screenOpener: HTMLElement | null = null;
 watch(() => device.state.page, async (page, previous) => {
   pageActionHint.value = '';
@@ -315,7 +335,7 @@ const rhythmControlDisabledReason = computed(() => rhythmPending.value
   : !audioReady.value
     ? transportDisabledReason.value
     : rhythmReason.value);
-const statusHint = computed(() => screenEditor.status.value || device.actionStatus.error || device.actionStatus.pending || pageActionHint.value || (rhythmPending.value
+const statusHint = computed(() => screenEditor.status.value || device.actionStatus.error || device.actionStatus.pending || historyActionHint.value || pageActionHint.value || (rhythmPending.value
   ? 'RHYTHM COMMAND PENDING'
   : !audioReady.value
     ? uiStatus.value.message || 'AUDIO ENGINE NOT READY'
@@ -552,6 +572,26 @@ function handleTap(): void {
 function syncTrackLevel(): void {
   trackLevel.value = engine.tracks[currentTrackId.value - 1]?.track.playLevel ?? 100;
   selectedTrackState.value = engine.tracks[currentTrackId.value - 1]?.state ?? TrackState.EMPTY;
+  selectedTrackHistory.value = engine.getTrackHistoryStatus(currentTrackId.value);
+}
+
+async function activateHistoryAction(): Promise<void> {
+  const trackId = currentTrackId.value;
+  const history = engine.getTrackHistoryStatus(trackId);
+  if (historyActionPending.value || history.busy || (!history.canUndo && !history.canRedo)) return;
+  const isUndo = history.canUndo;
+  historyActionPending.value = true;
+  historyActionHint.value = `TRACK ${trackId}: ${isUndo ? 'UNDOING' : 'REDOING'} PCM`;
+  try {
+    const changed = isUndo ? await engine.undoTrack(trackId) : await engine.redoTrack(trackId);
+    if (!changed) throw new Error('PCM history state changed before the action could be applied.');
+    historyActionHint.value = `TRACK ${trackId}: ${isUndo ? 'UNDO' : 'REDO'} COMPLETE`;
+  } catch (error) {
+    historyActionHint.value = `TRACK ${trackId}: ${error instanceof Error ? error.message : String(error)}`;
+  } finally {
+    historyActionPending.value = false;
+    syncTrackLevel();
+  }
 }
 
 let trackLevelTimer: number | null = null;

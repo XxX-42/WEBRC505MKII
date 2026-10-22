@@ -303,6 +303,85 @@ bool NativeHrmAutoCore::configure(const Config& config) noexcept {
     return true;
 }
 
+void NativeHrmAutoCore::disableOfficialControls() noexcept {
+    officialActive_ = false;
+    if (prepared_) {
+        (void)voiceA_.setFormantSemitones(0.0f, false);
+        (void)voiceA_.setFormantBaseHz(0.0f);
+    }
+}
+
+bool NativeHrmAutoCore::setOfficialParameter(std::string_view id, float value, bool manual) noexcept {
+    if (!std::isfinite(value)) return false;
+    const bool discrete = id == "official_voice" || id == "official_key" || id == "official_hrm_mode";
+    if (discrete && std::floor(value) != value) return false;
+    if (id == "official_voice") { if (value < 0.0f || value > (manual ? 10.0f : 6.0f)) return false; }
+    else if (id == "official_formant" || id == "official_pan") { if (value < -50.0f || value > 50.0f) return false; }
+    else if (id == "official_key") { if (value < 0.0f || value > 11.0f) return false; }
+    else if (id == "official_hrm_mode" && !manual) { if (value < 0.0f || value > 1.0f) return false; }
+    else if (id == "official_d_level" || id == "official_hrm_level") { if (value < 0.0f || value > 100.0f) return false; }
+    else return false;
+    if (!officialActive_ || officialManual_ != manual) {
+        officialVoice_ = manual ? 6U : 4U;
+        officialManual_ = manual;
+    }
+    officialActive_ = true;
+    if (id == "official_voice") officialVoice_ = static_cast<unsigned int>(value);
+    else if (id == "official_key") officialKey_ = static_cast<unsigned int>(value);
+    else if (id == "official_hrm_mode") officialMode_ = static_cast<unsigned int>(value);
+    else if (id == "official_formant") officialFormant_ = value * 12.0f / 50.0f;
+    else if (id == "official_pan") officialPan_.setTarget(value / 50.0f, 64U);
+    else if (id == "official_d_level") officialDirect_.setTarget(value * 0.01f, 64U);
+    else if (id == "official_hrm_level") officialHarmony_.setTarget(value * 0.01f, 64U);
+    if (prepared_) updateVoiceTargets();
+    return true;
+}
+
+float NativeHrmAutoCore::officialShift(float sourceMidi) const noexcept {
+    if (officialVoice_ == 0U) return -12.0f;
+    if (officialVoice_ == 1U) return 12.0f;
+    if (officialVoice_ == (officialManual_ ? 10U : 6U)) return 0.08f;
+    constexpr std::array<int, 7U> major{{0, 2, 4, 5, 7, 9, 11}};
+    if (officialManual_) {
+        // Snap the source to the selected major scale, then move by diatonic
+        // degrees. Relative-minor key labels share these pitch classes.
+        int nearest = 0;
+        float best = 1.0e9f;
+        for (int degree = -21; degree < 98; ++degree) {
+            const int octave = static_cast<int>(std::floor(static_cast<double>(degree) / 7.0));
+            const int index = degree - octave * 7;
+            const int note = static_cast<int>(officialKey_) + octave * 12 + major[static_cast<std::size_t>(index)];
+            const float distance = std::fabs(static_cast<float>(note) - sourceMidi);
+            if (distance < best) { best = distance; nearest = degree; }
+        }
+        constexpr std::array<int, 11U> degrees{{-7, 7, -5, -4, -3, -2, 2, 3, 4, 5, 0}};
+        const int targetDegree = nearest + degrees[officialVoice_];
+        const int octave = static_cast<int>(std::floor(static_cast<double>(targetDegree) / 7.0));
+        const int index = targetDegree - octave * 7;
+        const int note = static_cast<int>(officialKey_) + octave * 12 + major[static_cast<std::size_t>(index)];
+        return std::clamp(static_cast<float>(note) - sourceMidi, -24.0f, 24.0f);
+    }
+    std::array<bool, 12U> allowed{};
+    std::array<bool, 12U> keyAllowed{};
+    for (int interval : major) keyAllowed[(officialKey_ + static_cast<unsigned int>(interval)) % 12U] = true;
+    bool any = false;
+    for (unsigned int note = 0U; note < kMidiNoteCount; ++note) {
+        if (heldNoteRefs_[note] == 0U) continue;
+        const unsigned int pc = note % 12U;
+        if (officialMode_ == 1U || keyAllowed[pc]) { allowed[pc] = true; any = true; }
+    }
+    if (!any && officialMode_ == 0U) allowed = keyAllowed;
+    const int direction = officialVoice_ <= 3U ? -1 : 1;
+    unsigned int remaining = (officialVoice_ == 2U || officialVoice_ == 5U) ? 2U : 1U;
+    int note = direction < 0 ? static_cast<int>(std::ceil(sourceMidi - 0.03f)) - 1
+                             : static_cast<int>(std::floor(sourceMidi + 0.03f)) + 1;
+    for (int step = 0; step < 36; ++step, note += direction) {
+        if (!allowed[static_cast<std::size_t>(pitchClass(note))]) continue;
+        if (--remaining == 0U) return std::clamp(static_cast<float>(note) - sourceMidi, -24.0f, 24.0f);
+    }
+    return 0.0f;
+}
+
 bool NativeHrmAutoCore::enqueueMidi(const MidiEvent& event) noexcept {
     const auto reject = [this]() noexcept {
         rejectedEventCount_.fetch_add(1U, std::memory_order_relaxed);
@@ -422,6 +501,16 @@ void NativeHrmAutoCore::handleMidi(const MidiEvent& event) noexcept {
 void NativeHrmAutoCore::updateVoiceTargets() noexcept {
     std::array<int, 2U> targets{{-1, -1}};
     const float sourceMidi = sourceMidiNote();
+    if (officialActive_) {
+        voiceCount_ = tracker_.voiced && sourceMidi >= 0.0f && (officialManual_ || heldNoteCount_ > 0U) ? 1U : 0U;
+        const float shift = voiceCount_ > 0U ? officialShift(sourceMidi) : 0.0f;
+        targetMidiNotes_ = {{voiceCount_ > 0U ? static_cast<int>(std::lround(sourceMidi + shift)) : -1, -1}};
+        targetSemitones_ = {{shift, 0.0f}};
+        if (std::fabs(voiceA_.semitones() - shift) > 0.0001f) (void)voiceA_.setSemitones(shift);
+        (void)voiceA_.setFormantSemitones(officialFormant_, true);
+        if (tracker_.voiced) (void)voiceA_.setFormantBaseHz(tracker_.frequencyHz);
+        return;
+    }
     unsigned int candidateCount = 0U;
     if (tracker_.voiced && heldNoteCount_ > 0U && sourceMidi >= 0.0f) {
         candidateCount = collectTargets(targets);
@@ -488,8 +577,22 @@ bool NativeHrmAutoCore::processSegment(float* interleaved, unsigned int frames,
         const std::size_t delayedRingOffset = absoluteFrame >= latency
             ? static_cast<std::size_t>((absoluteFrame - latency) & kDryRingMask) * channels
             : 0U;
+        const float direct = officialActive_ ? officialDirect_.next() : 1.0f;
+        const float harmony = officialActive_ ? officialHarmony_.next() : 1.0f;
+        const float pan = officialActive_ ? officialPan_.next() : 0.0f;
+        const float angle = (pan + 1.0f) * 0.7853981633974483f;
+        const float wetMono = channels == 2U
+            ? (voiceAScratch_[destinationOffset] + voiceAScratch_[destinationOffset + 1U]) * 0.5f
+            : voiceAScratch_[destinationOffset];
         for (unsigned int channel = 0U; channel < channels; ++channel) {
             const float dry = absoluteFrame >= latency ? dryRing_[delayedRingOffset + channel] : 0.0f;
+            if (officialActive_) {
+                const float gain = channels == 1U ? 1.0f
+                    : 1.4142135623730951f * (channel == 0U ? std::cos(angle) : std::sin(angle));
+                const float output = dry * direct + (voiceCount_ > 0U ? wetMono * harmony * gain : 0.0f);
+                interleaved[destinationOffset + channel] = std::isfinite(output) ? output : 0.0f;
+                continue;
+            }
             float output = dry;
             if (wetActive) {
                 const float voiceA = std::isfinite(voiceAScratch_[destinationOffset + channel])

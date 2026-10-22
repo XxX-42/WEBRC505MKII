@@ -1,0 +1,17 @@
+--- /tmp/rc505-browser-perf/core-baseline.ts	2026-10-21 04:16:19.187050601 -0700
++++ /tmp/rc505-browser-perf/core-round1.ts	2026-10-21 04:18:04.114321217 -0700
+@@ -1048,6 +1048,14 @@
+   // positive modulo without a floating/integer remainder in the sample loop.
+   let index = writeIndex - wholeDelay;
+   if (index < 0) index += length;
++  // Most reads do not straddle the ring boundary. Keep the exact polynomial
++  // and summation order, but avoid three wrap branches on that common path.
++  if (index >= 3) {
++    return coefficient0 * (buffer[index] ?? 0)
++      + coefficient1 * (buffer[index - 1] ?? 0)
++      + coefficient2 * (buffer[index - 2] ?? 0)
++      + coefficient3 * (buffer[index - 3] ?? 0);
++  }
+   const sample0 = buffer[index] ?? 0;
+   index = index > 0 ? index - 1 : length - 1;
+   const sample1 = buffer[index] ?? 0;

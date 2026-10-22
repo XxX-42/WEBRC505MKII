@@ -1,0 +1,31 @@
+{
+  "utc": "2026-10-21T11:35:50.888358+00:00",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "hardware": "HARDWARE_BLOCKED: no physical device/driver callback",
+  "isolation": "Other task-team builds and timings paused; shared cloud host is not a real-time controlled device",
+  "buildFlags": "CMAKE_BUILD_TYPE=Release; GNU C++ -O3 -DNDEBUG; no fast-math, reduced oversampling or experimental ADAA",
+  "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+  "productionSourceSha256": {
+    "native-mvp/engine-cpp/src/native_preamp_processor.cpp": "126a1b1ab27d8811459c019f075d41494a118ebaeeb9d14d26a2d6e2bae61261",
+    "native-mvp/engine-cpp/include/native_preamp_processor.hpp": "be141a6ae5c95447f90199a35909e476a02f4dddde65846be02f16d2ef427b24"
+  },
+  "binaries": {
+    "baseline": {
+      "path": "/tmp/native-matrix-baseline",
+      "sha256": "11683481336e1bc97032f0b893fa9252975c0dd23fe95e2dd82e92939ca48140"
+    },
+    "round1": {
+      "path": "/tmp/native-matrix-round1",
+      "sha256": "f797b189e741aae466bb569fd2f239c982b96cd633beb4065f3b326a9279f6b2"
+    },
+    "candidate": {
+      "path": "/tmp/native-matrix-final",
+      "sha256": "f0f3b754f0f53d0616253d54c675b3e756fbb43fba11f3a64369570674915cfb"
+    },
+    "matrix": {
+      "path": "/tmp/native-matrix-coverage",
+      "sha256": "35e1e50b9a41217b065f91de86e92d5d38d2071240b7ce908a601b149e8d0cd1"
+    }
+  },
+  "cpuModel": "AMD EPYC 9V74 80-Core Processor"
+}

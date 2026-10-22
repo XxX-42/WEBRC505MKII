@@ -19,7 +19,17 @@ public:
 
     void reset(float value) noexcept;
     void setTarget(float value, std::uint64_t rampFrames) noexcept;
-    [[nodiscard]] float next() noexcept;
+    [[nodiscard]] float next() noexcept {
+        if (remainingFrames_ != 0) {
+            current_ = static_cast<float>(static_cast<double>(current_) + step_);
+            --remainingFrames_;
+            if (remainingFrames_ == 0) {
+                current_ = target_;
+                step_ = 0.0;
+            }
+        }
+        return current_;
+    }
     void skip(std::uint64_t frames) noexcept;
 
     [[nodiscard]] float current() const noexcept { return current_; }

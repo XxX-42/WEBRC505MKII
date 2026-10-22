@@ -20,7 +20,7 @@ test('replica keeps the physical control inventory and warns below readable view
     await expect(face.locator('button:visible')).toHaveCount(41);
     await expect(face.locator('.hardware-knob-wrapper:visible')).toHaveCount(7);
     await expect(face.locator('.hardware-fader')).toHaveCount(5);
-    await expect(face.getByRole('button', { name: 'Undo and redo are unavailable' })).toBeDisabled();
+    await expect(face.getByRole('button', { name: 'No PCM undo or redo available for track 1' })).toBeDisabled();
     await expect(face.getByRole('button', { name: 'Record or play track', exact: true }).first()).toBeDisabled();
     const disabledRecord = face.locator('.track-strip[data-track-id="1"] [data-panel-control="record-play"]');
     await expect(disabledRecord).toHaveCSS('opacity', '0.64');
@@ -185,9 +185,9 @@ test('real Browser UI starts on a gesture and records, plays, overdubs and stops
     return { frames: samples.length, sampleRate: track.audioBuffer?.sampleRate ?? 0, channels: track.audioBuffer?.numberOfChannels ?? 0, peak, ready: engine.getUiStatus().ready };
   });
   expect(result.frames).toBeGreaterThan(0);
-  // This checkout's Browser recorder stores a mono loop. Stereo DSP is outside
-  // this UI integration change; do not imply Native's two-channel capability.
-  expect(result.channels).toBe(1);
+  // Chromium's virtual capture device exposes two input channels here, and the
+  // Browser path must preserve that channel layout through record and overdub.
+  expect(result.channels).toBe(2);
   expect(result.peak).toBeGreaterThan(0.0001);
   expect(result.ready).toBe(true);
   await fs.writeFile(testInfo.outputPath('browser-runtime.json'), JSON.stringify({

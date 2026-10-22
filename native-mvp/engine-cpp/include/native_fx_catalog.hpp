@@ -10,6 +10,11 @@
 #include <vector>
 
 namespace webrc::native {
+struct LoopTransportConfig;
+enum class NativeVocoderCarrierStatus : std::uint8_t {
+    NotRequested, Ready, Empty, Stopped, UnsupportedRecording,
+    UnsupportedOverdubbing, UnsupportedPitchProcessing, HistoryPinned, BufferUnavailable
+};
 
 // Stable parameter semantics for the incrementally assembled Native FX graph.
 // IDs are serialized/control-plane names: keep them stable when adding UI or
@@ -49,6 +54,27 @@ struct NativeEffectDescriptor {
     std::string_view stableEffectId,
     std::string_view parameterId
 ) noexcept;
+// Backward-compatible parameter names accepted by the Native bridge but not
+// part of the canonical control set. Keep these listed in status so clients
+// can preserve old projects without presenting duplicate controls.
+[[nodiscard]] const NativeEffectParameterDescriptor* nativeEffectLegacyParameterAliases(
+    std::string_view stableEffectId,
+    std::size_t& count
+) noexcept;
+[[nodiscard]] const NativeEffectParameterDescriptor* findNativeEffectLegacyParameter(
+    std::string_view stableEffectId,
+    std::string_view parameterId
+) noexcept;
+
+// Verified manual-interface controls are additional to the immutable legacy catalog.
+// Only audibly implemented clean-room controls are returned here. Unsupported
+// hardware controls must not be advertised as working Native parameters.
+[[nodiscard]] const NativeEffectParameterDescriptor* nativeEffectOfficialParameters(
+    std::string_view stableEffectId, std::size_t& count) noexcept;
+[[nodiscard]] const NativeEffectParameterDescriptor* findNativeEffectOfficialParameter(
+    std::string_view stableEffectId, std::string_view parameterId) noexcept;
+
+[[nodiscard]] std::string_view nativeEffectOfficialDomainId(std::string_view stableEffectId, unsigned int variant = 0U) noexcept;
 
 class NativeEffectProcessor {
 public:
@@ -58,7 +84,16 @@ public:
     [[nodiscard]] unsigned int sampleRate() const noexcept { return sampleRate_; }
     [[nodiscard]] unsigned int reportedLatencySamples() const noexcept { return algorithmicLatencySamples(); }
     [[nodiscard]] bool isBypassed() const noexcept { return bypassed_; }
+    [[nodiscard]] unsigned int officialVariant() const noexcept { return officialVariant_; }
+    [[nodiscard]] bool officialParametersActive() const noexcept { return officialDefaultsInitialized_; }
     [[nodiscard]] bool processingFaulted() const noexcept { return processingFaulted_; }
+    // Source-only official controls require an engine-owned stored-loop route.
+    // Bare streaming DSP cannot synthesize future samples or sustained >1x.
+    void attachSourceTransport() noexcept { sourceTransportAttached_ = true; }
+    void attachVocoderCarriers() noexcept { vocoderCarriersAttached_ = true; }
+    [[nodiscard]] virtual unsigned int vocoderCarrierTrack() const noexcept { return 0U; }
+    virtual void bindVocoderCarrierBlock(const float*, unsigned int, bool = true) noexcept {}
+    [[nodiscard]] virtual bool officialSourceTransport(LoopTransportConfig&) const noexcept { return false; }
 
     // prepare() is a control-thread operation. Any memory required by an
     // effect is allocated here, never from processInPlace().
@@ -66,6 +101,8 @@ public:
     [[nodiscard]] bool setParameter(std::string_view parameterId, float value, std::uint64_t rampFrames = 0U) noexcept;
     void setBypassed(bool bypassed, std::uint64_t rampFrames = 0U) noexcept;
     void resetState() noexcept;
+    [[nodiscard]] bool setTempoBpm(float bpm) noexcept;
+    [[nodiscard]] bool setQuarterNotesPerMeasure(float beats) noexcept;
 
     // Processes the first two channels in-place. Additional channels pass
     // through unchanged. The processor is single-owner and lock-free; callers
@@ -74,6 +111,10 @@ public:
 
 protected:
     explicit NativeEffectProcessor(const NativeEffectDescriptor& descriptor) noexcept;
+    [[nodiscard]] bool sourceTransportAttached() const noexcept { return sourceTransportAttached_; }
+    [[nodiscard]] float tempoBpm() const noexcept { return tempoBpm_; }
+    [[nodiscard]] float quarterNotesPerMeasure() const noexcept { return quarterNotesPerMeasure_; }
+    virtual void onTempoChanged() noexcept {}
     [[nodiscard]] std::uint64_t defaultRampFrames(unsigned int smoothingMs) const noexcept;
     [[nodiscard]] virtual bool onPrepare() noexcept = 0;
     [[nodiscard]] virtual bool onSetParameter(
@@ -82,6 +123,7 @@ protected:
         std::uint64_t rampFrames
     ) noexcept = 0;
     virtual void onBypassChanged(bool bypassed) noexcept { (void)bypassed; }
+    [[nodiscard]] virtual std::uint64_t bypassRampFrames(bool, std::uint64_t requested) const noexcept { return requested; }
     virtual void onResetState() noexcept = 0;
     virtual void processEffectFrame(float* frame, unsigned int channels) noexcept = 0;
     [[nodiscard]] virtual bool processEffectBlock(
@@ -93,8 +135,22 @@ protected:
     [[nodiscard]] virtual bool usesBaseWetMix() const noexcept { return false; }
 
 private:
+    friend class NativeEffectBank;
+    [[nodiscard]] float processInPlaceInternal(
+        float* interleaved,
+        unsigned int frames,
+        unsigned int channels,
+        bool measurePeak
+    ) noexcept;
+
     const NativeEffectDescriptor* descriptor_;
     unsigned int sampleRate_ = 0U;
+    float tempoBpm_ = 120.0f;
+    float quarterNotesPerMeasure_ = 4.0f;
+    bool sourceTransportAttached_ = false;
+    bool vocoderCarriersAttached_ = false;
+    bool officialDefaultsInitialized_ = false;
+    unsigned int officialVariant_ = 0U;
     bool bypassed_ = false;
     dsp::ParameterSmoother bypassMix_{0.0f};
     dsp::ParameterSmoother wetMix_{1.0f};
@@ -143,6 +199,10 @@ public:
     [[nodiscard]] const NativeEffectProcessor* processor(NativeEffectSlot slot) const noexcept;
 
     [[nodiscard]] float processInPlace(float* interleaved, unsigned int frames, unsigned int channels) noexcept;
+    // Callback-only fast path for callers that do not consume a peak meter.
+    // This preserves all processor state and audio samples but omits the
+    // redundant per-slot and final-bank absolute-peak scans.
+    void processInPlaceNoPeak(float* interleaved, unsigned int frames, unsigned int channels) noexcept;
     [[nodiscard]] unsigned int sampleRate() const noexcept { return sampleRate_; }
 
 private:

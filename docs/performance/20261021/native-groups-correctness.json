@@ -1,0 +1,7 @@
+{
+  "fullPcmSha256": "0335262669f2b74ef2e240627d3467b30fd4eb553d32c26647dd1cb4c03ade70",
+  "continuousAutomationPcmSha256": "1f5445a1e3cbb3427102c885a57ec9810b669c6ffe42045c5b3f64e4f44bfdf1",
+  "edgePcmSha256": "373b8eff4f1762620ab51e7a9d40328b8ae5c7d7c2bfe25379ca34409b91c617",
+  "originalBaseline": "dd7dbea original PREAMP source",
+  "allByteExact": true
+}

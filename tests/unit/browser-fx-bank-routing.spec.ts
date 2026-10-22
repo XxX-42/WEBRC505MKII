@@ -56,6 +56,7 @@ function makeEngine(): {
     inputFxInstances: [null, null, null, null],
     trackFxInstances: [null, null, null, null],
     inputFxTypes: [null, null, null, null],
+    inputFxActive: [false, false, false, false],
     trackFxTypes: [null, null, null, null],
     fxWorkletModuleReady: null,
     fxWorkletGeneration: 0,
@@ -583,7 +584,7 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const node = MockWorkletNode.instances[0]!;
     expect(node.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { cutoffHz: 20 * (1000 ** 0.75) },
+      parameters: { bpm: expect.any(Number), cutoffHz: 20 * (1000 ** 0.75) },
     });
     expect(node.port.postMessage).toHaveBeenCalledWith({ type: 'set-bypass', value: false, rampFrames: 0 });
   });
@@ -603,11 +604,11 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     ]);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { driveDb: 18, outputDb: 0, mix: 0.5 },
+      parameters: { bpm: expect.any(Number), driveDb: 18, outputDb: 0, mix: 0.5 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { flangerDepth: 0.5, mix: 0.5 },
+      parameters: { bpm: expect.any(Number), flangerDepth: 0.5, mix: 0.5 },
     });
   });
 
@@ -627,7 +628,7 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     for (const node of MockWorkletNode.instances) {
       expect(node.port.postMessage).toHaveBeenCalledWith({
         type: 'configure',
-        parameters: { thresholdDb: -18, ratio: 10.5, kneeDb: 6, attackMs: 10, releaseMs: 120, mix: 1 },
+        parameters: { thresholdDb: -18, ratio: 10.5, kneeDb: 6, attackMs: 10, releaseMs: 120, mix: 1, bpm: 120 },
       });
     }
   });
@@ -674,11 +675,11 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     ]);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { stereoWidth: 1.5 },
+      parameters: { bpm: expect.any(Number), stereoWidth: 1.5 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { stereoWidth: 0.5 },
+      parameters: { bpm: expect.any(Number), stereoWidth: 0.5 },
     });
 
     const trackFx = (engine as unknown as { trackFxInstances: { setParam(key: string, value: number): void }[] }).trackFxInstances[3]!;
@@ -711,7 +712,7 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     expect(MockWorkletNode.instances[0]!.options.processorOptions?.algorithm).toBe('delay');
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { mix: 0.5 },
+      parameters: { bpm: expect.any(Number), mix: 0.5 },
     });
   });
 
@@ -726,7 +727,7 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     expect(MockWorkletNode.instances[0]!.options.processorOptions?.algorithm).toBe('chorus');
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { mix: 0.5 },
+      parameters: { bpm: expect.any(Number), mix: 0.5 },
     });
   });
 
@@ -746,7 +747,7 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     for (const node of MockWorkletNode.instances) {
       expect(node.port.postMessage).toHaveBeenCalledWith({
         type: 'configure',
-        parameters: { phaserDepth: 0.5, mix: 0.5 },
+        parameters: { bpm: expect.any(Number), phaserDepth: 0.5, mix: 0.5 },
       });
     }
   });
@@ -766,11 +767,11 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     ]);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { tremoloDepth: 0.75, mix: 1 },
+      parameters: { bpm: expect.any(Number), tremoloDepth: 0.75, mix: 1 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { tremoloDepth: 0.25, mix: 1 },
+      parameters: { bpm: expect.any(Number), tremoloDepth: 0.25, mix: 1 },
     });
   });
 
@@ -789,11 +790,11 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     ]);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { autoPanDepth: 0.4, mix: 1 },
+      parameters: { bpm: expect.any(Number), autoPanDepth: 0.4, mix: 1 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
       type: 'configure',
-      parameters: { autoPanDepth: 0.8, mix: 1 },
+      parameters: { bpm: expect.any(Number), autoPanDepth: 0.8, mix: 1 },
     });
   });
 
@@ -809,10 +810,10 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
 
     expect(MockWorkletNode.instances.map((node) => node.options.processorOptions?.algorithm)).toEqual(['lo-fi', 'lo-fi']);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.75 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.75 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.25 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.25 },
     });
   });
 
@@ -828,10 +829,10 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
 
     expect(MockWorkletNode.instances.map((node) => node.options.processorOptions?.algorithm)).toEqual(['eq', 'eq']);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { eqLowGainDb: 9, eqHighGainDb: -9, mix: 1 },
+      type: 'configure', parameters: { bpm: expect.any(Number), eqLowGainDb: 9, eqHighGainDb: -9, mix: 1 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { eqLowGainDb: 3, eqHighGainDb: -3, mix: 1 },
+      type: 'configure', parameters: { bpm: expect.any(Number), eqLowGainDb: 3, eqHighGainDb: -3, mix: 1 },
     });
   });
 
@@ -939,10 +940,10 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
 
     expect(MockWorkletNode.instances.map((node) => node.options.processorOptions?.algorithm)).toEqual(['manual-pan', 'manual-pan']);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { manualPanPosition: 0.5, mix: 1 },
+      type: 'configure', parameters: { bpm: expect.any(Number), manualPanPosition: 0.5, mix: 1 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { manualPanPosition: -0.5, mix: 1 },
+      type: 'configure', parameters: { bpm: expect.any(Number), manualPanPosition: -0.5, mix: 1 },
     });
   });
 
@@ -960,10 +961,10 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
       'tape-echo', 'tape-echo',
     ]);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.6 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.6 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.2 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.2 },
     });
 
     const inputFx = (engine as unknown as { inputFxInstances: { setParam(key: string, value: number): void }[] }).inputFxInstances[1]!;
@@ -1003,10 +1004,10 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
       'panning-delay', 'panning-delay',
     ]);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.6 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.6 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.3 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.3 },
     });
 
     const inputFx = (engine as unknown as { inputFxInstances: { setParam(key: string, value: number): void }[] }).inputFxInstances[0]!;
@@ -1042,10 +1043,10 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
       'granular-delay', 'granular-delay',
     ]);
     expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.45 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.45 },
     });
     expect(MockWorkletNode.instances[1]!.port.postMessage).toHaveBeenCalledWith({
-      type: 'configure', parameters: { mix: 0.7 },
+      type: 'configure', parameters: { bpm: expect.any(Number), mix: 0.7 },
     });
 
     const inputFx = (engine as unknown as { inputFxInstances: { setParam(key: string, value: number): void }[] }).inputFxInstances[1]!;

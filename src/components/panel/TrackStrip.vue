@@ -1,17 +1,23 @@
 <template>
   <section
     class="track-strip"
-    :class="{ selected: isCurrentTrack, disabled: !trackInteractionReady }"
+    :class="{ selected: isCurrentTrack, disabled: !trackTransportReady }"
     :data-track-id="trackId"
   >
     <header class="track-strip-header">
       <span class="track-label">{{ trackId }}</span>
       <span class="track-state">{{ stateLabel }}</span>
       <span v-if="disabledReason" class="track-note">{{ disabledReason }}</span>
+      <span v-if="captureWarmupBlocksAction" class="track-note" data-testid="track-capture-warming" role="status">
+        Shared input pre-roll is warming; record and overdub are temporarily unavailable.
+      </span>
       <span v-if="trackFxDisabledReason" class="track-note" data-testid="track-fx-unavailable">{{ trackFxDisabledReason }}</span>
       <span v-if="trackLevelUnavailableReason" class="track-note" data-testid="track-level-unavailable">{{ trackLevelUnavailableReason }}</span>
       <span v-if="overdubDiagnostic" class="track-note track-warning" role="status" aria-live="polite">
         {{ overdubDiagnostic }}
+      </span>
+      <span v-if="recordingDiagnostic" class="track-note track-warning" data-testid="track-recording-diagnostic" role="status" aria-live="polite">
+        {{ recordingDiagnostic }}
       </span>
     </header>
 
@@ -52,7 +58,7 @@
           class="stop-disc"
           :class="{ 'is-pressed': stopPressActive }"
           type="button"
-          :disabled="!trackInteractionReady"
+          :disabled="!trackTransportReady"
           :title="trackInteractionDisabledReason || 'Hold to clear this track'"
           aria-label="Stop track (hold to clear)"
           data-hardware-control="button"
@@ -94,14 +100,14 @@
           size="lg"
           :color="buttonLedColor"
           :active="isRecordingOrPlaying"
-          :disabled="!trackInteractionReady"
-          :disabled-reason="trackInteractionDisabledReason"
+          :disabled="!recordActionReady"
+          :disabled-reason="recordActionDisabledReason"
           aria-label="Record or play track"
           appearance="classic"
           label="▶ / ●"
           data-panel-control="record-play"
           data-hardware-control="button"
-          @press="handleRecPlay"
+          @press="handleTrackRecPlay"
         />
       </div>
       <div class="loop-indicator-row">
@@ -144,10 +150,6 @@ const audioReady = computed(() => {
   audioStatusRevision.value;
   return audioEngine.getUiStatus().ready;
 });
-const trackInteractionReady = computed(() => trackTransportEnabled.value && audioReady.value);
-const trackInteractionDisabledReason = computed(() => audioReady.value
-  ? disabledReason.value
-  : audioEngine.getUiStatus().message || 'Start audio before using track transport.');
 const trackDrawerOpen = computed(() => device.state.page === 'track' && device.currentTrackId.value === props.trackId);
 const nativeTrackFxOptions = computed(() => {
   audioStatusRevision.value;
@@ -164,6 +166,7 @@ const {
   trackAvailable,
   disabledReason,
   overdubDiagnostic,
+  recordingDiagnostic,
   isHqExporting,
   hqExportError,
   livePitchError,
@@ -189,6 +192,26 @@ const {
   handleStopKeyDown,
   handleStopKeyUp,
 } = trackController;
+
+const trackTransportReady = computed(() => trackTransportEnabled.value && audioReady.value);
+const captureWarmupBlocksAction = computed(() => {
+  audioStatusRevision.value;
+  const status = audioEngine.getUiStatus();
+  return audioEngine.getMode() === 'browser' && status.inputCaptureWarming === true
+    && (trackState.value === TrackState.EMPTY || trackState.value === TrackState.PLAYING);
+});
+const recordActionReady = computed(() => trackTransportReady.value && !captureWarmupBlocksAction.value);
+const trackInteractionDisabledReason = computed(() => audioReady.value
+  ? disabledReason.value
+  : audioEngine.getUiStatus().message || 'Start audio before using track transport.');
+const recordActionDisabledReason = computed(() => captureWarmupBlocksAction.value
+  ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
+  : trackInteractionDisabledReason.value);
+
+function handleTrackRecPlay(): void {
+  if (!recordActionReady.value) return;
+  handleRecPlay();
+}
 
 const trackFxButtonEnabled = computed(() => audioEngine.getMode() === 'native'
   ? audioReady.value && trackAvailable.value && nativeTrackFxOptions.value.length > 0

@@ -1,0 +1,1411 @@
+{
+  "generatedAtUtc": "2026-10-19T12:25:16.095Z",
+  "state": "failed",
+  "elapsedWallSeconds": 61.04115500000119,
+  "actualSampleRateHz": 44100,
+  "audioContextCurrentTimeSeconds": 62.23528344671202,
+  "audioContextAdvanceDuringMeasurementSeconds": 56.17197278911564,
+  "instrumentedNodeCount": 38,
+  "readySlotCount": 38,
+  "nodeCounts": {
+    "rc505-browser-block-meter": 1,
+    "rc505-fx-processor": 28,
+    "rc505-input-capture": 1,
+    "signalsmith-stretch": 6,
+    "rc505-rhythm-processor": 1,
+    "rc505-overdub-processor": 1
+  },
+  "nodeLifecycle": {
+    "createdNodeCount": 38,
+    "lifecycleCountByState": {
+      "persistent-graph": 31,
+      "retired-from-track": 2,
+      "active": 5
+    },
+    "lifecycleCountByProcessorAndState": {
+      "rc505-browser-block-meter:persistent-graph": 1,
+      "rc505-fx-processor:persistent-graph": 28,
+      "rc505-input-capture:persistent-graph": 1,
+      "signalsmith-stretch:retired-from-track": 1,
+      "signalsmith-stretch:active": 5,
+      "rc505-rhythm-processor:persistent-graph": 1,
+      "rc505-overdub-processor:retired-from-track": 1
+    },
+    "classificationNotes": {
+      "persistentGraph": "Created during graph setup and retained as shared FX/Rhythm/meter infrastructure.",
+      "active": "Currently referenced by a TrackAudio live route or recording/overdub field.",
+      "retainedIdle": "Still referenced by TrackAudio but currently not routed as active.",
+      "retiredFromTrack": "Dynamic TrackAudio processor no longer referenced by its track; worklet callback history remains in the cumulative descriptor list.",
+      "callbacksAdvancedWithinRecentWindow": "At least one callback advanced within 3 seconds; this is activity evidence, not a hardware liveness guarantee."
+    },
+    "signalsmithWasmLeases": {
+      "budgetBytes": 134217728,
+      "reservedBytes": 20971520,
+      "measuredBytes": 5898240,
+      "processorCount": 5,
+      "liveFxProcessorCount": 0,
+      "livePolyProcessorCount": 5,
+      "pendingCount": 0,
+      "releaseUnconfirmedCount": 0
+    }
+  },
+  "nodeConstructionFailures": [],
+  "callbackExceptionDetails": [],
+  "sharedMemoryProbeBytes": 89009992,
+  "sharedMemoryProbeMiB": 84.88654327392578,
+  "callbackErrors": 0,
+  "estimatedMissingCallbacks": 0,
+  "nodes": [
+    {
+      "slot": 0,
+      "label": "rc505-browser-block-meter#1",
+      "processorName": "rc505-browser-block-meter",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 1,
+      "label": "track-1-private-A-dsp-lpf",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 2,
+      "label": "rc505-fx-processor#3",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 3,
+      "label": "rc505-fx-processor#4",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 4,
+      "label": "rc505-fx-processor#5",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 5,
+      "label": "rc505-fx-processor#6",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 6,
+      "label": "rc505-fx-processor#7",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 7,
+      "label": "rc505-fx-processor#8",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 8,
+      "label": "rc505-fx-processor#9",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 9,
+      "label": "rc505-fx-processor#10",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19352,
+      "outputFrames": 2477056,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 10,
+      "label": "track-1-private-B-dist",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19352,
+      "outputFrames": 2477056,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 11,
+      "label": "track-1-private-C-chorus",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19352,
+      "outputFrames": 2477056,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 12,
+      "label": "track-1-private-D-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19352,
+      "outputFrames": 2477056,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 13,
+      "label": "track-2-private-A-phaser",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 14,
+      "label": "track-2-private-B-tremolo",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 15,
+      "label": "track-2-private-C-auto-pan",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 16,
+      "label": "track-2-private-D-fdn8-reverb",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 17,
+      "label": "track-3-private-A-flanger",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 18,
+      "label": "track-3-private-B-ring-mod",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 19,
+      "label": "track-3-private-C-mod-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 20,
+      "label": "track-3-private-D-panning-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 21,
+      "label": "track-4-private-A-dynamics",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 22,
+      "label": "track-4-private-B-sustainer",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 23,
+      "label": "track-4-private-C-tape-echo",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 24,
+      "label": "track-4-private-D-granular-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19352,
+      "outputFrames": 2477056,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 25,
+      "label": "track-5-private-A-preamp",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 26,
+      "label": "track-5-private-B-gate-reverb",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 27,
+      "label": "track-5-private-C-vibrato",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 28,
+      "label": "track-5-private-D-stereo-enhance",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 29,
+      "label": "engine-shared-input-capture",
+      "processorName": "rc505-input-capture",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 30,
+      "label": "signalsmith-stretch#31",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 9123,
+      "outputFrames": 1167744,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": false
+    },
+    {
+      "slot": 31,
+      "label": "signalsmith-stretch#32",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 32,
+      "label": "signalsmith-stretch#33",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 33,
+      "label": "signalsmith-stretch#34",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 34,
+      "label": "signalsmith-stretch#35",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 19352,
+      "outputFrames": 2477056,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 35,
+      "label": "rc505-rhythm-processor#36",
+      "processorName": "rc505-rhythm-processor",
+      "callbacks": 19353,
+      "outputFrames": 2477184,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 36,
+      "label": "signalsmith-stretch#37",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 9976,
+      "outputFrames": 1276928,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 37,
+      "label": "rc505-overdub-processor#38",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 128,
+      "outputFrames": 16384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    }
+  ],
+  "workload": {
+    "profile": "browser-application-full-private-track-fx",
+    "appEngine": "production BrowserAudioEngine + TrackAudio + BrowserTrackFxChain + RhythmEngine",
+    "sampleRateHz": 44100,
+    "activeTrackCount": 5,
+    "activePrivateTrackFxCount": 20,
+    "privateTrackFxMatrix": [
+      {
+        "trackId": 1,
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "trackId": 1,
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "trackId": 1,
+        "slot": "C",
+        "type": "CHORUS"
+      },
+      {
+        "trackId": 1,
+        "slot": "D",
+        "type": "DELAY"
+      },
+      {
+        "trackId": 2,
+        "slot": "A",
+        "type": "PHASER"
+      },
+      {
+        "trackId": 2,
+        "slot": "B",
+        "type": "TREMOLO"
+      },
+      {
+        "trackId": 2,
+        "slot": "C",
+        "type": "AUTO PAN"
+      },
+      {
+        "trackId": 2,
+        "slot": "D",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "trackId": 3,
+        "slot": "A",
+        "type": "FLANGER"
+      },
+      {
+        "trackId": 3,
+        "slot": "B",
+        "type": "RING.MOD"
+      },
+      {
+        "trackId": 3,
+        "slot": "C",
+        "type": "MOD DELAY"
+      },
+      {
+        "trackId": 3,
+        "slot": "D",
+        "type": "PANNING DELAY"
+      },
+      {
+        "trackId": 4,
+        "slot": "A",
+        "type": "DYNAMICS"
+      },
+      {
+        "trackId": 4,
+        "slot": "B",
+        "type": "SUSTAINER"
+      },
+      {
+        "trackId": 4,
+        "slot": "C",
+        "type": "TAPE ECHO"
+      },
+      {
+        "trackId": 4,
+        "slot": "D",
+        "type": "GRANULAR DELAY"
+      },
+      {
+        "trackId": 5,
+        "slot": "A",
+        "type": "PREAMP"
+      },
+      {
+        "trackId": 5,
+        "slot": "B",
+        "type": "GATE REVERB"
+      },
+      {
+        "trackId": 5,
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "trackId": 5,
+        "slot": "D",
+        "type": "STEREO ENHANCE"
+      }
+    ],
+    "activeInputFx": [
+      {
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "slot": "D",
+        "type": "SUSTAINER"
+      }
+    ],
+    "activeSharedTrackFx": [
+      {
+        "slot": "A",
+        "type": "CHORUS"
+      },
+      {
+        "slot": "B",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "slot": "C",
+        "type": "DELAY"
+      },
+      {
+        "slot": "D",
+        "type": "AUTO PAN"
+      }
+    ],
+    "activeLivePolyTracks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "diagnosticIsolation": null,
+    "rhythm": {
+      "adapter": "production Browser RhythmEngine + rc505-rhythm-processor",
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "provenance": "clean-room-generated"
+    },
+    "pcmSeed": "deterministic stereo PCM installed through TrackAudio.restoreProjectBuffersAtomically before measurement; real Browser recording/overdub operations execute during measurement",
+    "initialInstrumentedWorkletCount": 36,
+    "topologyDeclaration": "36 initial instrumented nodes = the unchanged 35-node full-runtime topology plus one persistent engine-owned Browser input capture tap",
+    "sharedInputCapture": {
+      "enabled": true,
+      "processorName": "rc505-input-capture",
+      "label": "engine-shared-input-capture",
+      "instrumentedSlot": 29,
+      "route": "synthetic stereo oscillator -> BrowserAudioEngine Input A-D FX -> engine-owned rc505-input-capture -> muted destination; no microphone/device permission requested",
+      "persistent": true
+    },
+    "instrumentationNodeSlotCapacity": 112,
+    "instrumentationSharedMemoryBytes": 89009992,
+    "instrumentationSharedMemoryMiB": 84.88654327392578,
+    "instrumentationMemoryNote": "Test-only callback instrumentation SharedArrayBuffer; this is added to the browser process memory footprint and can affect scheduling. It is not application audio memory.",
+    "dynamicOperationsDuringMeasurement": [
+      {
+        "index": 1,
+        "operation": "clear-record-stereo-live-poly-restore",
+        "trackId": 1,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T12:24:45.104Z",
+        "scheduledAtElapsedSeconds": 30,
+        "recordedFrames": 31743,
+        "recordedChannels": 2,
+        "recordedPcmSha256": "a17ab520b374da33aa57246b20d16d39c65a4e3f9e99ad6623d545ebf675a5d7",
+        "recordingOverflowEvents": 0,
+        "recordingDroppedFrames": 0,
+        "processorStartRequest": {
+          "requestedStartFrame": 1435137,
+          "commandFrame": 1435136,
+          "requestToCommandFrames": -1,
+          "startMessageType": "START_CAPTURE",
+          "firstActiveFrame": 1435520,
+          "lifetimeClassification": "persistent input tap; callback coverage is measured from graph setup"
+        },
+        "processorStopAck": {
+          "ackType": "RECORD_COMPLETE",
+          "ackCount": 1,
+          "processorRemainsActive": true,
+          "message": {
+            "sessionId": 1,
+            "inputGeneration": 1,
+            "requestedStartFrame": 1435137,
+            "stopFrame": 1466880,
+            "framesCaptured": 31743,
+            "droppedFrames": 0,
+            "overflowEvents": 0,
+            "channelCount": 2,
+            "status": "complete",
+            "chunksSent": 2
+          }
+        },
+        "sharedInputCapture": {
+          "sessionId": 1,
+          "inputGeneration": 1,
+          "requestFrameR": 1435137,
+          "captureStartReceivedFrameF": 1435520,
+          "captureAgeFrames": 383,
+          "preRollCapacityFrames": 8192,
+          "preRollValidFramesAtStart": 8192,
+          "requestedStartFrame": 1435137,
+          "requestedStopFrame": 1466880,
+          "framesCaptured": 31743,
+          "exactHalfOpenRange": true,
+          "stereoChannelsCaptured": 2,
+          "droppedFrames": 0,
+          "overflowEvents": 0,
+          "completionStatus": "complete",
+          "persistentTapProcessor": "engine-shared-input-capture",
+          "transaction": {
+            "requestFrameR": 1435137,
+            "captureStartReceivedFrameF": 1435520,
+            "stopFrameS": 1466880,
+            "captureAgeFrames": 383,
+            "preRollCapacityFrames": 8192,
+            "preRollValidFramesAtStart": 8192,
+            "framesCaptured": 31743,
+            "exactHalfOpenRange": true,
+            "droppedFrames": 0,
+            "overflowEvents": 0
+          }
+        },
+        "livePolyRestored": true,
+        "privateTrackCoverageDuringOperation": {
+          "audioContextExpectedFrames": 35840,
+          "boundarySource": "max(independent block-meter AudioWorklet frame, target last completed process frame)",
+          "tracks": [
+            {
+              "trackId": 1,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 1,
+                  "slot": "A",
+                  "type": "DSP LPF",
+                  "label": "track-1-private-A-dsp-lpf",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35840,
+                  "observedFrames": 35840,
+                  "callbacks": 280,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434112,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434112,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35840,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "B",
+                  "type": "DIST",
+                  "label": "track-1-private-B-dist",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "C",
+                  "type": "CHORUS",
+                  "label": "track-1-private-C-chorus",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "D",
+                  "type": "DELAY",
+                  "label": "track-1-private-D-delay",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 2,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 2,
+                  "slot": "A",
+                  "type": "PHASER",
+                  "label": "track-2-private-A-phaser",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35840,
+                  "observedFrames": 35840,
+                  "callbacks": 280,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1470080,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1470080,
+                  "processorFrameAdvance": 35840,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "B",
+                  "type": "TREMOLO",
+                  "label": "track-2-private-B-tremolo",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35840,
+                  "observedFrames": 35840,
+                  "callbacks": 280,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1470080,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1470080,
+                  "processorFrameAdvance": 35840,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "C",
+                  "type": "AUTO PAN",
+                  "label": "track-2-private-C-auto-pan",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35840,
+                  "observedFrames": 35840,
+                  "callbacks": 280,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1470080,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1470080,
+                  "processorFrameAdvance": 35840,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "D",
+                  "type": "FDN8 REVERB",
+                  "label": "track-2-private-D-fdn8-reverb",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35840,
+                  "observedFrames": 35840,
+                  "callbacks": 280,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1470080,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1470080,
+                  "processorFrameAdvance": 35840,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 3,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 3,
+                  "slot": "A",
+                  "type": "FLANGER",
+                  "label": "track-3-private-A-flanger",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "B",
+                  "type": "RING.MOD",
+                  "label": "track-3-private-B-ring-mod",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "C",
+                  "type": "MOD DELAY",
+                  "label": "track-3-private-C-mod-delay",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "D",
+                  "type": "PANNING DELAY",
+                  "label": "track-3-private-D-panning-delay",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 4,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 4,
+                  "slot": "A",
+                  "type": "DYNAMICS",
+                  "label": "track-4-private-A-dynamics",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "B",
+                  "type": "SUSTAINER",
+                  "label": "track-4-private-B-sustainer",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "C",
+                  "type": "TAPE ECHO",
+                  "label": "track-4-private-C-tape-echo",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "D",
+                  "type": "GRANULAR DELAY",
+                  "label": "track-4-private-D-granular-delay",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 5,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 5,
+                  "slot": "A",
+                  "type": "PREAMP",
+                  "label": "track-5-private-A-preamp",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "B",
+                  "type": "GATE REVERB",
+                  "label": "track-5-private-B-gate-reverb",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "C",
+                  "type": "VIBRATO",
+                  "label": "track-5-private-C-vibrato",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "D",
+                  "type": "STEREO ENHANCE",
+                  "label": "track-5-private-D-stereo-enhance",
+                  "audioContextExpectedFrames": 35840,
+                  "expectedFrames": 35712,
+                  "observedFrames": 35712,
+                  "callbacks": 279,
+                  "callbackErrors": 0,
+                  "snapshotStable": true,
+                  "snapshotAttempts": 2,
+                  "startTimelineFrame": 1434240,
+                  "endTimelineFrame": 1469952,
+                  "timelineSnapshotAttempts": 4,
+                  "processorFrameEndAtStart": 1434240,
+                  "processorFrameEndAtStop": 1469952,
+                  "processorFrameAdvance": 35712,
+                  "processorFrameAdvanceDeltaFromExpected": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "endedAtUtc": "2026-10-19T12:24:45.920Z"
+      },
+      {
+        "index": 2,
+        "operation": "overdub-undo-redo",
+        "trackId": 1,
+        "state": "failed",
+        "startedAtUtc": "2026-10-19T12:25:15.104Z",
+        "scheduledAtElapsedSeconds": 60,
+        "endedAtUtc": "2026-10-19T12:25:15.579Z",
+        "error": "Error: Track 1 overdub did not satisfy its exact R/S PCM, rollback, and terminal-ACK contract: {\"requestedStartFrame\":2701824,\"S\":2718080,\"stopRequestAtTrigger\":{\"requestedStopFrame\":2718080,\"requestedAtProcessorFrame\":2718080,\"postedAtWallMs\":67872.29999999702},\"stop\":{\"type\":\"OVERDUB_STOPPED\",\"overflowFrames\":2560,\"overflowEvents\":16,\"patchesSent\":86,\"startupCancelled\":false,\"requestFrame\":2701824,\"firstInputFrame\":2702464,\"stopFrame\":2718464,\"requestedStopFrame\":2718080,\"appliedExclusiveEnd\":2718080,\"processorStopFrame\":2718464,\"channelCount\":2,\"backfillFrames\":640,\"replayBudgetFramesPerProcess\":256,\"replayedFrames\":3072,\"maxReplayedFramesPerProcess\":256,\"liveQueueCapacityFrames\":8192,\"liveQueueFrames\":2432,\"liveQueuePeakFrames\":2432,\"ackReceivedAtProcessorFrame\":2718336,\"ackReceivedAtWallMs\":67876.23000000417},\"patchMessages\":[{\"sequence\":0,\"startInputFrame\":2701824,\"endInputFrame\":2704896,\"validFrames\":3072,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2704768,\"receivedAtWallMs\":67569.98999999464},{\"sequence\":1,\"startInputFrame\":2704896,\"endInputFrame\":2705024,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2704896,\"receivedAtWallMs\":67573.67000000179},{\"sequence\":2,\"startInputFrame\":2705024,\"endInputFrame\":2705152,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2705024,\"receivedAtWallMs\":67576.46500000358},{\"sequence\":3,\"startInputFrame\":2705152,\"endInputFrame\":2705280,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2705152,\"receivedAtWallMs\":67579.48000000417},{\"sequence\":4,\"startInputFrame\":2705536,\"endInputFrame\":2705664,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2705536,\"receivedAtWallMs\":67587.57999999821},{\"sequence\":5,\"startInputFrame\":2705664,\"endInputFrame\":2705792,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2705664,\"receivedAtWallMs\":67590.3900000006},{\"sequence\":6,\"startInputFrame\":2705792,\"endInputFrame\":2705920,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2705792,\"receivedAtWallMs\":67593.21500000358},{\"sequence\":7,\"startInputFrame\":2706048,\"endInputFrame\":2706176,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2706048,\"receivedAtWallMs\":67600.40999999642},{\"sequence\":8,\"startInputFrame\":2706432,\"endInputFrame\":2706560,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2706432,\"receivedAtWallMs\":67608.34999999404},{\"sequence\":9,\"startInputFrame\":2706560,\"endInputFrame\":2706688,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2706560,\"receivedAtWallMs\":67611.1400000006},{\"sequence\":10,\"startInputFrame\":2706688,\"endInputFrame\":2706816,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2706688,\"receivedAtWallMs\":67613.84499999881},{\"sequence\":11,\"startInputFrame\":2706944,\"endInputFrame\":2707072,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2706944,\"receivedAtWallMs\":67619.44500000775},{\"sequence\":12,\"startInputFrame\":2707072,\"endInputFrame\":2707200,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2707072,\"receivedAtWallMs\":67622.30500000715},{\"sequence\":13,\"startInputFrame\":2707200,\"endInputFrame\":2707328,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2707200,\"receivedAtWallMs\":67625.43500000238},{\"sequence\":14,\"startInputFrame\":2707328,\"endInputFrame\":2707456,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2707328,\"receivedAtWallMs\":67628.36499999464},{\"sequence\":15,\"startInputFrame\":2707456,\"endInputFrame\":2707584,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2707456,\"receivedAtWallMs\":67631.03499999642},{\"sequence\":16,\"startInputFrame\":2707584,\"endInputFrame\":2707712,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2707584,\"receivedAtWallMs\":67633.79500000179},{\"sequence\":17,\"startInputFrame\":2707840,\"endInputFrame\":2707968,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2707840,\"receivedAtWallMs\":67639.18500000238},{\"sequence\":18,\"startInputFrame\":2707968,\"endInputFrame\":2708096,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2707968,\"receivedAtWallMs\":67641.70499999821},{\"sequence\":19,\"startInputFrame\":2708096,\"endInputFrame\":2708224,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2708096,\"receivedAtWallMs\":67644.25499999523},{\"sequence\":20,\"startInputFrame\":2708224,\"endInputFrame\":2708352,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2708224,\"receivedAtWallMs\":67647.38500000536},{\"sequence\":21,\"startInputFrame\":2708352,\"endInputFrame\":2708480,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2708352,\"receivedAtWallMs\":67649.94500000775},{\"sequence\":22,\"startInputFrame\":2708480,\"endInputFrame\":2708608,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2708480,\"receivedAtWallMs\":67652.48999999464},{\"sequence\":23,\"startInputFrame\":2708736,\"endInputFrame\":2708864,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2708736,\"receivedAtWallMs\":67657.89499999583},{\"sequence\":24,\"startInputFrame\":2708864,\"endInputFrame\":2708992,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2708864,\"receivedAtWallMs\":67660.72499999404},{\"sequence\":25,\"startInputFrame\":2708992,\"endInputFrame\":2709120,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2708992,\"receivedAtWallMs\":67663.29500000179},{\"sequence\":26,\"startInputFrame\":2709120,\"endInputFrame\":2709248,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2709120,\"receivedAtWallMs\":67666.11499999464},{\"sequence\":27,\"startInputFrame\":2709248,\"endInputFrame\":2709376,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2709248,\"receivedAtWallMs\":67668.94500000775},{\"sequence\":28,\"startInputFrame\":2709376,\"endInputFrame\":2709504,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2709376,\"receivedAtWallMs\":67671.61499999464},{\"sequence\":29,\"startInputFrame\":2709504,\"endInputFrame\":2709632,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2709504,\"receivedAtWallMs\":67674.52500000596},{\"sequence\":30,\"startInputFrame\":2709632,\"endInputFrame\":2709760,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2709632,\"receivedAtWallMs\":67677.51999999583},{\"sequence\":31,\"startInputFrame\":2709760,\"endInputFrame\":2709888,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2709760,\"receivedAtWallMs\":67680.18999999762},{\"sequence\":32,\"startInputFrame\":2710016,\"endInputFrame\":2710144,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2710016,\"receivedAtWallMs\":67685.70499999821},{\"sequence\":33,\"startInputFrame\":2710144,\"endInputFrame\":2710272,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2710144,\"receivedAtWallMs\":67688.40999999642},{\"sequence\":34,\"startInputFrame\":2710272,\"endInputFrame\":2710400,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2710272,\"receivedAtWallMs\":67690.90000000596},{\"sequence\":35,\"startInputFrame\":2710400,\"endInputFrame\":2710528,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2710400,\"receivedAtWallMs\":67693.73000000417},{\"sequence\":36,\"startInputFrame\":2710528,\"endInputFrame\":2710656,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2710528,\"receivedAtWallMs\":67696.51000000536},{\"sequence\":37,\"startInputFrame\":2710656,\"endInputFrame\":2710784,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2710656,\"receivedAtWallMs\":67699.41500000656},{\"sequence\":38,\"startInputFrame\":2710912,\"endInputFrame\":2711040,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2710912,\"receivedAtWallMs\":67705.00499999523},{\"sequence\":39,\"startInputFrame\":2711040,\"endInputFrame\":2711168,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2711040,\"receivedAtWallMs\":67707.63500000536},{\"sequence\":40,\"startInputFrame\":2711168,\"endInputFrame\":2711296,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2711168,\"receivedAtWallMs\":67710.25499999523},{\"sequence\":41,\"startInputFrame\":2711296,\"endInputFrame\":2711424,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2711296,\"receivedAtWallMs\":67712.8900000006},{\"sequence\":42,\"startInputFrame\":2711424,\"endInputFrame\":2711552,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2711424,\"receivedAtWallMs\":67715.57000000775},{\"sequence\":43,\"startInputFrame\":2711552,\"endInputFrame\":2711680,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2711552,\"receivedAtWallMs\":67718.40999999642},{\"sequence\":44,\"startInputFrame\":2711808,\"endInputFrame\":2711936,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2711808,\"receivedAtWallMs\":67724.32000000775},{\"sequence\":45,\"startInputFrame\":2711936,\"endInputFrame\":2712064,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2711936,\"receivedAtWallMs\":67727.10500000417},{\"sequence\":46,\"startInputFrame\":2712064,\"endInputFrame\":2712192,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2712064,\"receivedAtWallMs\":67730.44500000775},{\"sequence\":47,\"startInputFrame\":2712192,\"endInputFrame\":2712320,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2712192,\"receivedAtWallMs\":67733.76000000536},{\"sequence\":48,\"startInputFrame\":2712320,\"endInputFrame\":2712448,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2712320,\"receivedAtWallMs\":67736.25},{\"sequence\":49,\"startInputFrame\":2712448,\"endInputFrame\":2712576,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2712448,\"receivedAtWallMs\":67738.78000000119},{\"sequence\":50,\"startInputFrame\":2712704,\"endInputFrame\":2712832,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2712704,\"receivedAtWallMs\":67744.27500000596},{\"sequence\":51,\"startInputFrame\":2712832,\"endInputFrame\":2712960,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2712832,\"receivedAtWallMs\":67746.95499999821},{\"sequence\":52,\"startInputFrame\":2712960,\"endInputFrame\":2713088,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2712960,\"receivedAtWallMs\":67749.78499999642},{\"sequence\":53,\"startInputFrame\":2713088,\"endInputFrame\":2713216,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2713088,\"receivedAtWallMs\":67753.375},{\"sequence\":54,\"startInputFrame\":2713216,\"endInputFrame\":2713344,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2713216,\"receivedAtWallMs\":67756.54000000656},{\"sequence\":55,\"startInputFrame\":2713344,\"endInputFrame\":2713472,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2713344,\"receivedAtWallMs\":67759.1099999994},{\"sequence\":56,\"startInputFrame\":2713600,\"endInputFrame\":2713728,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2713600,\"receivedAtWallMs\":67764.99500000477},{\"sequence\":57,\"startInputFrame\":2713728,\"endInputFrame\":2713856,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2713728,\"receivedAtWallMs\":67768.09000000358},{\"sequence\":58,\"startInputFrame\":2713856,\"endInputFrame\":2713984,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2713856,\"receivedAtWallMs\":67770.95000000298},{\"sequence\":59,\"startInputFrame\":2713984,\"endInputFrame\":2714112,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2713984,\"receivedAtWallMs\":67773.88500000536},{\"sequence\":60,\"startInputFrame\":2714112,\"endInputFrame\":2714240,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2714112,\"receivedAtWallMs\":67777.91500000656},{\"sequence\":61,\"startInputFrame\":2714240,\"endInputFrame\":2714368,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2714240,\"receivedAtWallMs\":67780.78000000119},{\"sequence\":62,\"startInputFrame\":2714368,\"endInputFrame\":2714496,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2714368,\"receivedAtWallMs\":67783.92000000179},{\"sequence\":63,\"startInputFrame\":2714496,\"endInputFrame\":2714624,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2714496,\"receivedAtWallMs\":67786.62999999523},{\"sequence\":64,\"startInputFrame\":2714624,\"endInputFrame\":2714752,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2714624,\"receivedAtWallMs\":67789.55500000715},{\"sequence\":65,\"startInputFrame\":2714880,\"endInputFrame\":2715008,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2714880,\"receivedAtWallMs\":67795.44500000775},{\"sequence\":66,\"startInputFrame\":2715008,\"endInputFrame\":2715136,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2715008,\"receivedAtWallMs\":67798.64499999583},{\"sequence\":67,\"startInputFrame\":2715136,\"endInputFrame\":2715264,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2715136,\"receivedAtWallMs\":67801.56499999762},{\"sequence\":68,\"startInputFrame\":2715264,\"endInputFrame\":2715392,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2715264,\"receivedAtWallMs\":67805.09999999404},{\"sequence\":69,\"startInputFrame\":2715392,\"endInputFrame\":2715520,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2715392,\"receivedAtWallMs\":67808.38500000536},{\"sequence\":70,\"startInputFrame\":2715520,\"endInputFrame\":2715648,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2715520,\"receivedAtWallMs\":67811.25},{\"sequence\":71,\"startInputFrame\":2715776,\"endInputFrame\":2715904,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2715776,\"receivedAtWallMs\":67816.93000000715},{\"sequence\":72,\"startInputFrame\":2715904,\"endInputFrame\":2716032,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2715904,\"receivedAtWallMs\":67819.57000000775},{\"sequence\":73,\"startInputFrame\":2716032,\"endInputFrame\":2716160,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2716032,\"receivedAtWallMs\":67822.47499999404},{\"sequence\":74,\"startInputFrame\":2716160,\"endInputFrame\":2716288,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2716160,\"receivedAtWallMs\":67825.2349999994},{\"sequence\":75,\"startInputFrame\":2716288,\"endInputFrame\":2716416,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2716288,\"receivedAtWallMs\":67828.09499999881},{\"sequence\":76,\"startInputFrame\":2716416,\"endInputFrame\":2716544,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2716416,\"receivedAtWallMs\":67830.84999999404},{\"sequence\":77,\"startInputFrame\":2716672,\"endInputFrame\":2716800,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2716672,\"receivedAtWallMs\":67836.95499999821},{\"sequence\":78,\"startInputFrame\":2716800,\"endInputFrame\":2716928,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2716800,\"receivedAtWallMs\":67840.01000000536},{\"sequence\":79,\"startInputFrame\":2716928,\"endInputFrame\":2717056,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2716928,\"receivedAtWallMs\":67843.0150000006},{\"sequence\":80,\"startInputFrame\":2717056,\"endInputFrame\":2717184,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2717056,\"receivedAtWallMs\":67846.63500000536},{\"sequence\":81,\"startInputFrame\":2717568,\"endInputFrame\":2717696,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2717568,\"receivedAtWallMs\":67859.13500000536},{\"sequence\":82,\"startInputFrame\":2717696,\"endInputFrame\":2717824,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2717696,\"receivedAtWallMs\":67861.65000000596},{\"sequence\":83,\"startInputFrame\":2717952,\"endInputFrame\":2718080,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2717952,\"receivedAtWallMs\":67867.67499999702},{\"sequence\":84,\"startInputFrame\":2718080,\"endInputFrame\":2718208,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2718080,\"receivedAtWallMs\":67870.23999999464},{\"sequence\":85,\"startInputFrame\":2718208,\"endInputFrame\":2718336,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2718208,\"receivedAtWallMs\":67873.01000000536}],\"patchRangesContiguous\":false,\"patchRangesWithinRequestedStop\":false,\"patchRangeFrames\":13952,\"patchCursor\":2718336,\"postStopPatchRangeFrames\":256,\"exactPatchRange\":false,\"rollbackBefore\":{\"retainedJournalFrames\":8192,\"appliedFrameCount\":13824,\"lastAppliedInputFrameExclusive\":2718208},\"rollbackAfter\":{\"retainedJournalFrames\":8064,\"appliedFrameCount\":13696,\"lastAppliedInputFrameExclusive\":2718080,\"targetFrame\":2718080},\"rollbackObservedFrames\":128}"
+      }
+    ],
+    "persistentWorkletSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      35
+    ],
+    "privateTrackFxWorklets": [
+      {
+        "trackId": 1,
+        "effectSlot": "A",
+        "type": "DSP LPF",
+        "label": "track-1-private-A-dsp-lpf",
+        "instrumentedSlot": 1
+      },
+      {
+        "trackId": 1,
+        "effectSlot": "B",
+        "type": "DIST",
+        "label": "track-1-private-B-dist",
+        "instrumentedSlot": 10
+      },
+      {
+        "trackId": 1,
+        "effectSlot": "C",
+        "type": "CHORUS",
+        "label": "track-1-private-C-chorus",
+        "instrumentedSlot": 11
+      },
+      {
+        "trackId": 1,
+        "effectSlot": "D",
+        "type": "DELAY",
+        "label": "track-1-private-D-delay",
+        "instrumentedSlot": 12
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "A",
+        "type": "PHASER",
+        "label": "track-2-private-A-phaser",
+        "instrumentedSlot": 13
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "B",
+        "type": "TREMOLO",
+        "label": "track-2-private-B-tremolo",
+        "instrumentedSlot": 14
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "C",
+        "type": "AUTO PAN",
+        "label": "track-2-private-C-auto-pan",
+        "instrumentedSlot": 15
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "D",
+        "type": "FDN8 REVERB",
+        "label": "track-2-private-D-fdn8-reverb",
+        "instrumentedSlot": 16
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "A",
+        "type": "FLANGER",
+        "label": "track-3-private-A-flanger",
+        "instrumentedSlot": 17
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "B",
+        "type": "RING.MOD",
+        "label": "track-3-private-B-ring-mod",
+        "instrumentedSlot": 18
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "C",
+        "type": "MOD DELAY",
+        "label": "track-3-private-C-mod-delay",
+        "instrumentedSlot": 19
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "D",
+        "type": "PANNING DELAY",
+        "label": "track-3-private-D-panning-delay",
+        "instrumentedSlot": 20
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "A",
+        "type": "DYNAMICS",
+        "label": "track-4-private-A-dynamics",
+        "instrumentedSlot": 21
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "B",
+        "type": "SUSTAINER",
+        "label": "track-4-private-B-sustainer",
+        "instrumentedSlot": 22
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "C",
+        "type": "TAPE ECHO",
+        "label": "track-4-private-C-tape-echo",
+        "instrumentedSlot": 23
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "D",
+        "type": "GRANULAR DELAY",
+        "label": "track-4-private-D-granular-delay",
+        "instrumentedSlot": 24
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "A",
+        "type": "PREAMP",
+        "label": "track-5-private-A-preamp",
+        "instrumentedSlot": 25
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "B",
+        "type": "GATE REVERB",
+        "label": "track-5-private-B-gate-reverb",
+        "instrumentedSlot": 26
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "C",
+        "type": "VIBRATO",
+        "label": "track-5-private-C-vibrato",
+        "instrumentedSlot": 27
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "D",
+        "type": "STEREO ENHANCE",
+        "label": "track-5-private-D-stereo-enhance",
+        "instrumentedSlot": 28
+      }
+    ],
+    "measurementStartUtc": "2026-10-19T12:24:15.055Z"
+  },
+  "outputSampler": {
+    "inspectedValues": 9994240,
+    "nonSilentValues": 9979552,
+    "nonFiniteValues": 0,
+    "peakLinear": 2.5813982486724854,
+    "pollCount": 1220,
+    "nonSilentPolls": 1220,
+    "changedWindowPolls": 1219,
+    "changedValues": 9977975,
+    "audioTimeAdvancePolls": 1220
+  },
+  "processorErrors": [],
+  "error": "Error: Track 1 overdub did not satisfy its exact R/S PCM, rollback, and terminal-ACK contract: {\"requestedStartFrame\":2701824,\"S\":2718080,\"stopRequestAtTrigger\":{\"requestedStopFrame\":2718080,\"requestedAtProcessorFrame\":2718080,\"postedAtWallMs\":67872.29999999702},\"stop\":{\"type\":\"OVERDUB_STOPPED\",\"overflowFrames\":2560,\"overflowEvents\":16,\"patchesSent\":86,\"startupCancelled\":false,\"requestFrame\":2701824,\"firstInputFrame\":2702464,\"stopFrame\":2718464,\"requestedStopFrame\":2718080,\"appliedExclusiveEnd\":2718080,\"processorStopFrame\":2718464,\"channelCount\":2,\"backfillFrames\":640,\"replayBudgetFramesPerProcess\":256,\"replayedFrames\":3072,\"maxReplayedFramesPerProcess\":256,\"liveQueueCapacityFrames\":8192,\"liveQueueFrames\":2432,\"liveQueuePeakFrames\":2432,\"ackReceivedAtProcessorFrame\":2718336,\"ackReceivedAtWallMs\":67876.23000000417},\"patchMessages\":[{\"sequence\":0,\"startInputFrame\":2701824,\"endInputFrame\":2704896,\"validFrames\":3072,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2704768,\"receivedAtWallMs\":67569.98999999464},{\"sequence\":1,\"startInputFrame\":2704896,\"endInputFrame\":2705024,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2704896,\"receivedAtWallMs\":67573.67000000179},{\"sequence\":2,\"startInputFrame\":2705024,\"endInputFrame\":2705152,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2705024,\"receivedAtWallMs\":67576.46500000358},{\"sequence\":3,\"startInputFrame\":2705152,\"endInputFrame\":2705280,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2705152,\"receivedAtWallMs\":67579.48000000417},{\"sequence\":4,\"startInputFrame\":2705536,\"endInputFrame\":2705664,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2705536,\"receivedAtWallMs\":67587.57999999821},{\"sequence\":5,\"startInputFrame\":2705664,\"endInputFrame\":2705792,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2705664,\"receivedAtWallMs\":67590.3900000006},{\"sequence\":6,\"startInputFrame\":2705792,\"endInputFrame\":2705920,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2705792,\"receivedAtWallMs\":67593.21500000358},{\"sequence\":7,\"startInputFrame\":2706048,\"endInputFrame\":2706176,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2706048,\"receivedAtWallMs\":67600.40999999642},{\"sequence\":8,\"startInputFrame\":2706432,\"endInputFrame\":2706560,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2706432,\"receivedAtWallMs\":67608.34999999404},{\"sequence\":9,\"startInputFrame\":2706560,\"endInputFrame\":2706688,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2706560,\"receivedAtWallMs\":67611.1400000006},{\"sequence\":10,\"startInputFrame\":2706688,\"endInputFrame\":2706816,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2706688,\"receivedAtWallMs\":67613.84499999881},{\"sequence\":11,\"startInputFrame\":2706944,\"endInputFrame\":2707072,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2706944,\"receivedAtWallMs\":67619.44500000775},{\"sequence\":12,\"startInputFrame\":2707072,\"endInputFrame\":2707200,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2707072,\"receivedAtWallMs\":67622.30500000715},{\"sequence\":13,\"startInputFrame\":2707200,\"endInputFrame\":2707328,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2707200,\"receivedAtWallMs\":67625.43500000238},{\"sequence\":14,\"startInputFrame\":2707328,\"endInputFrame\":2707456,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2707328,\"receivedAtWallMs\":67628.36499999464},{\"sequence\":15,\"startInputFrame\":2707456,\"endInputFrame\":2707584,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2707456,\"receivedAtWallMs\":67631.03499999642},{\"sequence\":16,\"startInputFrame\":2707584,\"endInputFrame\":2707712,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2707584,\"receivedAtWallMs\":67633.79500000179},{\"sequence\":17,\"startInputFrame\":2707840,\"endInputFrame\":2707968,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2707840,\"receivedAtWallMs\":67639.18500000238},{\"sequence\":18,\"startInputFrame\":2707968,\"endInputFrame\":2708096,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2707968,\"receivedAtWallMs\":67641.70499999821},{\"sequence\":19,\"startInputFrame\":2708096,\"endInputFrame\":2708224,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2708096,\"receivedAtWallMs\":67644.25499999523},{\"sequence\":20,\"startInputFrame\":2708224,\"endInputFrame\":2708352,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2708224,\"receivedAtWallMs\":67647.38500000536},{\"sequence\":21,\"startInputFrame\":2708352,\"endInputFrame\":2708480,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2708352,\"receivedAtWallMs\":67649.94500000775},{\"sequence\":22,\"startInputFrame\":2708480,\"endInputFrame\":2708608,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2708480,\"receivedAtWallMs\":67652.48999999464},{\"sequence\":23,\"startInputFrame\":2708736,\"endInputFrame\":2708864,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2708736,\"receivedAtWallMs\":67657.89499999583},{\"sequence\":24,\"startInputFrame\":2708864,\"endInputFrame\":2708992,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2708864,\"receivedAtWallMs\":67660.72499999404},{\"sequence\":25,\"startInputFrame\":2708992,\"endInputFrame\":2709120,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2708992,\"receivedAtWallMs\":67663.29500000179},{\"sequence\":26,\"startInputFrame\":2709120,\"endInputFrame\":2709248,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2709120,\"receivedAtWallMs\":67666.11499999464},{\"sequence\":27,\"startInputFrame\":2709248,\"endInputFrame\":2709376,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2709248,\"receivedAtWallMs\":67668.94500000775},{\"sequence\":28,\"startInputFrame\":2709376,\"endInputFrame\":2709504,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2709376,\"receivedAtWallMs\":67671.61499999464},{\"sequence\":29,\"startInputFrame\":2709504,\"endInputFrame\":2709632,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2709504,\"receivedAtWallMs\":67674.52500000596},{\"sequence\":30,\"startInputFrame\":2709632,\"endInputFrame\":2709760,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2709632,\"receivedAtWallMs\":67677.51999999583},{\"sequence\":31,\"startInputFrame\":2709760,\"endInputFrame\":2709888,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2709760,\"receivedAtWallMs\":67680.18999999762},{\"sequence\":32,\"startInputFrame\":2710016,\"endInputFrame\":2710144,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2710016,\"receivedAtWallMs\":67685.70499999821},{\"sequence\":33,\"startInputFrame\":2710144,\"endInputFrame\":2710272,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2710144,\"receivedAtWallMs\":67688.40999999642},{\"sequence\":34,\"startInputFrame\":2710272,\"endInputFrame\":2710400,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2710272,\"receivedAtWallMs\":67690.90000000596},{\"sequence\":35,\"startInputFrame\":2710400,\"endInputFrame\":2710528,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2710400,\"receivedAtWallMs\":67693.73000000417},{\"sequence\":36,\"startInputFrame\":2710528,\"endInputFrame\":2710656,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2710528,\"receivedAtWallMs\":67696.51000000536},{\"sequence\":37,\"startInputFrame\":2710656,\"endInputFrame\":2710784,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2710656,\"receivedAtWallMs\":67699.41500000656},{\"sequence\":38,\"startInputFrame\":2710912,\"endInputFrame\":2711040,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2710912,\"receivedAtWallMs\":67705.00499999523},{\"sequence\":39,\"startInputFrame\":2711040,\"endInputFrame\":2711168,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2711040,\"receivedAtWallMs\":67707.63500000536},{\"sequence\":40,\"startInputFrame\":2711168,\"endInputFrame\":2711296,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2711168,\"receivedAtWallMs\":67710.25499999523},{\"sequence\":41,\"startInputFrame\":2711296,\"endInputFrame\":2711424,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2711296,\"receivedAtWallMs\":67712.8900000006},{\"sequence\":42,\"startInputFrame\":2711424,\"endInputFrame\":2711552,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2711424,\"receivedAtWallMs\":67715.57000000775},{\"sequence\":43,\"startInputFrame\":2711552,\"endInputFrame\":2711680,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2711552,\"receivedAtWallMs\":67718.40999999642},{\"sequence\":44,\"startInputFrame\":2711808,\"endInputFrame\":2711936,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2711808,\"receivedAtWallMs\":67724.32000000775},{\"sequence\":45,\"startInputFrame\":2711936,\"endInputFrame\":2712064,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2711936,\"receivedAtWallMs\":67727.10500000417},{\"sequence\":46,\"startInputFrame\":2712064,\"endInputFrame\":2712192,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2712064,\"receivedAtWallMs\":67730.44500000775},{\"sequence\":47,\"startInputFrame\":2712192,\"endInputFrame\":2712320,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2712192,\"receivedAtWallMs\":67733.76000000536},{\"sequence\":48,\"startInputFrame\":2712320,\"endInputFrame\":2712448,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2712320,\"receivedAtWallMs\":67736.25},{\"sequence\":49,\"startInputFrame\":2712448,\"endInputFrame\":2712576,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2712448,\"receivedAtWallMs\":67738.78000000119},{\"sequence\":50,\"startInputFrame\":2712704,\"endInputFrame\":2712832,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2712704,\"receivedAtWallMs\":67744.27500000596},{\"sequence\":51,\"startInputFrame\":2712832,\"endInputFrame\":2712960,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2712832,\"receivedAtWallMs\":67746.95499999821},{\"sequence\":52,\"startInputFrame\":2712960,\"endInputFrame\":2713088,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2712960,\"receivedAtWallMs\":67749.78499999642},{\"sequence\":53,\"startInputFrame\":2713088,\"endInputFrame\":2713216,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2713088,\"receivedAtWallMs\":67753.375},{\"sequence\":54,\"startInputFrame\":2713216,\"endInputFrame\":2713344,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2713216,\"receivedAtWallMs\":67756.54000000656},{\"sequence\":55,\"startInputFrame\":2713344,\"endInputFrame\":2713472,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2713344,\"receivedAtWallMs\":67759.1099999994},{\"sequence\":56,\"startInputFrame\":2713600,\"endInputFrame\":2713728,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2713600,\"receivedAtWallMs\":67764.99500000477},{\"sequence\":57,\"startInputFrame\":2713728,\"endInputFrame\":2713856,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2713728,\"receivedAtWallMs\":67768.09000000358},{\"sequence\":58,\"startInputFrame\":2713856,\"endInputFrame\":2713984,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2713856,\"receivedAtWallMs\":67770.95000000298},{\"sequence\":59,\"startInputFrame\":2713984,\"endInputFrame\":2714112,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2713984,\"receivedAtWallMs\":67773.88500000536},{\"sequence\":60,\"startInputFrame\":2714112,\"endInputFrame\":2714240,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2714112,\"receivedAtWallMs\":67777.91500000656},{\"sequence\":61,\"startInputFrame\":2714240,\"endInputFrame\":2714368,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2714240,\"receivedAtWallMs\":67780.78000000119},{\"sequence\":62,\"startInputFrame\":2714368,\"endInputFrame\":2714496,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2714368,\"receivedAtWallMs\":67783.92000000179},{\"sequence\":63,\"startInputFrame\":2714496,\"endInputFrame\":2714624,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2714496,\"receivedAtWallMs\":67786.62999999523},{\"sequence\":64,\"startInputFrame\":2714624,\"endInputFrame\":2714752,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2714624,\"receivedAtWallMs\":67789.55500000715},{\"sequence\":65,\"startInputFrame\":2714880,\"endInputFrame\":2715008,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2714880,\"receivedAtWallMs\":67795.44500000775},{\"sequence\":66,\"startInputFrame\":2715008,\"endInputFrame\":2715136,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2715008,\"receivedAtWallMs\":67798.64499999583},{\"sequence\":67,\"startInputFrame\":2715136,\"endInputFrame\":2715264,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2715136,\"receivedAtWallMs\":67801.56499999762},{\"sequence\":68,\"startInputFrame\":2715264,\"endInputFrame\":2715392,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2715264,\"receivedAtWallMs\":67805.09999999404},{\"sequence\":69,\"startInputFrame\":2715392,\"endInputFrame\":2715520,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2715392,\"receivedAtWallMs\":67808.38500000536},{\"sequence\":70,\"startInputFrame\":2715520,\"endInputFrame\":2715648,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2715520,\"receivedAtWallMs\":67811.25},{\"sequence\":71,\"startInputFrame\":2715776,\"endInputFrame\":2715904,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2715776,\"receivedAtWallMs\":67816.93000000715},{\"sequence\":72,\"startInputFrame\":2715904,\"endInputFrame\":2716032,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2715904,\"receivedAtWallMs\":67819.57000000775},{\"sequence\":73,\"startInputFrame\":2716032,\"endInputFrame\":2716160,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2716032,\"receivedAtWallMs\":67822.47499999404},{\"sequence\":74,\"startInputFrame\":2716160,\"endInputFrame\":2716288,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2716160,\"receivedAtWallMs\":67825.2349999994},{\"sequence\":75,\"startInputFrame\":2716288,\"endInputFrame\":2716416,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2716288,\"receivedAtWallMs\":67828.09499999881},{\"sequence\":76,\"startInputFrame\":2716416,\"endInputFrame\":2716544,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2716416,\"receivedAtWallMs\":67830.84999999404},{\"sequence\":77,\"startInputFrame\":2716672,\"endInputFrame\":2716800,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2716672,\"receivedAtWallMs\":67836.95499999821},{\"sequence\":78,\"startInputFrame\":2716800,\"endInputFrame\":2716928,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2716800,\"receivedAtWallMs\":67840.01000000536},{\"sequence\":79,\"startInputFrame\":2716928,\"endInputFrame\":2717056,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2716928,\"receivedAtWallMs\":67843.0150000006},{\"sequence\":80,\"startInputFrame\":2717056,\"endInputFrame\":2717184,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2717056,\"receivedAtWallMs\":67846.63500000536},{\"sequence\":81,\"startInputFrame\":2717568,\"endInputFrame\":2717696,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2717568,\"receivedAtWallMs\":67859.13500000536},{\"sequence\":82,\"startInputFrame\":2717696,\"endInputFrame\":2717824,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2717696,\"receivedAtWallMs\":67861.65000000596},{\"sequence\":83,\"startInputFrame\":2717952,\"endInputFrame\":2718080,\"validFrames\":128,\"slotIndex\":0,\"channelCount\":2,\"receivedAtProcessorFrame\":2717952,\"receivedAtWallMs\":67867.67499999702},{\"sequence\":84,\"startInputFrame\":2718080,\"endInputFrame\":2718208,\"validFrames\":128,\"slotIndex\":1,\"channelCount\":2,\"receivedAtProcessorFrame\":2718080,\"receivedAtWallMs\":67870.23999999464},{\"sequence\":85,\"startInputFrame\":2718208,\"endInputFrame\":2718336,\"validFrames\":128,\"slotIndex\":2,\"channelCount\":2,\"receivedAtProcessorFrame\":2718208,\"receivedAtWallMs\":67873.01000000536}],\"patchRangesContiguous\":false,\"patchRangesWithinRequestedStop\":false,\"patchRangeFrames\":13952,\"patchCursor\":2718336,\"postStopPatchRangeFrames\":256,\"exactPatchRange\":false,\"rollbackBefore\":{\"retainedJournalFrames\":8192,\"appliedFrameCount\":13824,\"lastAppliedInputFrameExclusive\":2718208},\"rollbackAfter\":{\"retainedJournalFrames\":8064,\"appliedFrameCount\":13696,\"lastAppliedInputFrameExclusive\":2718080,\"targetFrame\":2718080},\"rollbackObservedFrames\":128}"
+}

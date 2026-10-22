@@ -1,0 +1,15 @@
+--- a/src/audio/fx/dsp/BrowserPreampDsp.ts
++++ b/src/audio/fx/dsp/BrowserPreampDsp.ts
+@@ -296,7 +296,11 @@
+       const difference = driven - previous;
+       let shaped: number;
+       if (Math.abs(difference) < 1e-8) {
+-        shaped = (Math.tanh(shape * (0.5 * (driven + previous) + bias)) - biasValue) / slopeAtZero;
++        const midpoint = 0.5 * (driven + previous);
++        // Only exact positive zero uses the identity. Preserve all histories,
++        // invalidation and FIR/EQ/cabinet work, including on silence.
++        shaped = Object.is(midpoint, 0) ? 0
++          : (Math.tanh(shape * (midpoint + bias)) - biasValue) / slopeAtZero;
+         // This branch does not compute the current primitive. Never reuse a
+         // stale value when the next oversample returns to the ADAA branch.
+         this.antiderivativeValid[channel] = 0;

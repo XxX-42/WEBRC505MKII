@@ -1,0 +1,17 @@
+--- a/src/audio/fx/dsp/BrowserFxDspCore.ts
++++ b/src/audio/fx/dsp/BrowserFxDspCore.ts
+@@ -1054,6 +1054,14 @@
+   // positive modulo without a floating/integer remainder in the sample loop.
+   let index = writeIndex - wholeDelay;
+   if (index < 0) index += length;
++  // Most reads do not straddle the ring boundary. Keep the exact polynomial
++  // and summation order, but avoid three wrap branches on that common path.
++  if (index >= 3) {
++    return coefficient0 * (buffer[index] ?? 0)
++      + coefficient1 * (buffer[index - 1] ?? 0)
++      + coefficient2 * (buffer[index - 2] ?? 0)
++      + coefficient3 * (buffer[index - 3] ?? 0);
++  }
+   const sample0 = buffer[index] ?? 0;
+   index = index > 0 ? index - 1 : length - 1;
+   const sample1 = buffer[index] ?? 0;

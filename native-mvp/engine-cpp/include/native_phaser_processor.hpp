@@ -15,6 +15,13 @@ struct PhaserProcessorConfig {
     float depth = 0.65f;
     float feedback = 0.0f;
     float wetMix = 0.5f;
+    // Additional hardware-facing controls; false preserves legacy sound/laws.
+    bool officialControls = false;
+    float manual = 0.5f;
+    float stepRateHz = 0.0f;
+    bool biPhase = false;
+    float directLevel = 1.0f;
+    float effectLevel = 0.5f;
 };
 
 // Clean-room phaser built from cascaded first-order all-pass sections. It has
@@ -51,9 +58,16 @@ private:
     dsp::ParameterSmoother feedback_{0.0f};
     dsp::ParameterSmoother wetMix_{0.0f};
     dsp::ParameterSmoother stageCount_{8.0f};
+    dsp::ParameterSmoother manual_{0.5f};
+    dsp::ParameterSmoother stepRateHz_{0.0f};
+    dsp::ParameterSmoother directLevel_{1.0f};
+    dsp::ParameterSmoother effectLevel_{0.5f};
     PhaserProcessorConfig config_{};
     unsigned int sampleRate_ = 0U;
     double phase_ = 0.0;
+    double stepPhase_ = 1.0;
+    float heldWave_ = 0.0f;
+    float heldBiWave_ = 1.0f;
 
     [[nodiscard]] float processAllpass(float input, float coefficient, AllpassState& state) noexcept;
     [[nodiscard]] float coefficientForSweep(float normalizedSweep) const noexcept;

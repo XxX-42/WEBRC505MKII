@@ -8,7 +8,7 @@
     throw new Error('The AudioWorklet scope does not expose registerProcessor');
   }
 
-  const META_STRIDE = 17;
+  const META_STRIDE = 26;
   const META = Object.freeze({
     callbacks: 0,
     totalFrames: 1,
@@ -27,6 +27,15 @@
     maxProcessDurationUs: 14,
     maxWrapperDurationUs: 15,
     preflightCallbacks: 16,
+    snapshotVersion: 17,
+    lastProcessorFrameEnd: 18,
+    stopAuthorization: 19,
+    processorStopFrame: 20,
+    unexpectedTerminationCount: 21,
+    coverageCallbacks: 22,
+    coverageFrames: 23,
+    coverageMissingFrames: 24,
+    firstCoverageActiveFrame: 25,
   });
 
   const CLOCK_PROBE_DELTA_SAMPLES = 4_096;
@@ -201,9 +210,9 @@
       && timingClockResolutionUs <= MAX_TIMING_CLOCK_STEP_US;
     const processUs = timingReliable ? Math.max(0, Math.round((processEndMs - startMs) * 1000)) : 0;
     const quantumUs = frames > 0 ? (frames / sampleRate) * 1e6 : 0;
+    let frameGap = 0;
 
     try {
-      Atomics.add(meta, base + META.totalFrames, frames);
       if (frames > 0 && frames <= layout.maxBlockFrames) {
         Atomics.add(blockHistogram, slot * layout.blockBins + frames, 1);
       }
@@ -216,8 +225,6 @@
         Atomics.max(meta, base + META.maxProcessDurationUs, processUs);
         if (processUs > quantumUs) Atomics.add(meta, base + META.deadlineMisses, 1);
       }
-      if (threw) Atomics.add(meta, base + META.callbackErrors, 1);
-
       if (state.previousFrame >= 0) {
         const frameDelta = frame - state.previousFrame;
         const frameDifference = frameDelta - state.previousFrames;
@@ -225,6 +232,7 @@
           Atomics.add(meta, base + META.frameDiscontinuities, 1);
           if (frameDifference > 0) {
             const missingFrames = frameDifference;
+            frameGap = missingFrames;
             const missingCallbacks = state.previousFrames > 0
               ? Math.max(1, Math.floor((frameDelta - 1) / state.previousFrames))
               : 1;
@@ -270,6 +278,7 @@
       // Metrics must never turn a test probe failure into a processor failure.
       try { Atomics.add(meta, base + META.instrumentationErrors, 1); } catch { /* ignored */ }
     }
+    return { frameGap };
   }
 
   scope.registerProcessor = function registerProcessorWithBenchMetrics(name, ProcessorConstructor) {
@@ -291,6 +300,7 @@
           const { layout } = config;
           this.__rc505BenchState = {
             slot: config.slot,
+            processorName: name,
             sampleRate: config.sampleRate,
             layout,
             meta: new Int32Array(config.buffer, layout.metaByteOffset, layout.metaLength),
@@ -302,6 +312,7 @@
             previousFrames: 0,
             previousStartMs: 0,
             clockSource: timingClockSource,
+            callbackExceptionDetailPosted: false,
           };
           // One ready notification per node, never one message per render quantum.
           this.port.postMessage({
@@ -318,12 +329,16 @@
         }
         if (Atomics.load(state.meta, state.layout.measurementActiveIndex) !== 1) {
           Atomics.add(state.meta, state.slot * META_STRIDE + META.preflightCallbacks, 1);
+          if (state.processorName === 'rc505-browser-block-meter') {
+            const frames = getLongestChannelLength(outputs) || getLongestChannelLength(inputs);
+            const frame = Number.isSafeInteger(scope.currentFrame) ? scope.currentFrame : -1;
+            const frameEnd = frame >= 0 && frames >= 0 ? frame + frames : -1;
+            Atomics.store(state.meta, state.slot * META_STRIDE + META.lastProcessorFrameEnd,
+              frameEnd <= 0x7fff_ffff ? frameEnd : -1);
+          }
           return originalProcess.call(this, inputs, outputs, parameters);
         }
 
-        // Count entry before calling production code, so even a processor that
-        // throws or terminates is visible in the measurement delta.
-        Atomics.add(state.meta, state.slot * META_STRIDE + META.callbacks, 1);
         const frames = getLongestChannelLength(outputs) || getLongestChannelLength(inputs);
         const frame = Number.isSafeInteger(scope.currentFrame) ? scope.currentFrame : 0;
         const startMs = readClockMilliseconds();
@@ -337,11 +352,34 @@
         let processEndMs = startMs;
         let result = true;
         let threw = false;
+        let coverageActive = false;
         try {
           result = originalProcess.call(this, inputs, outputs, parameters);
+          const hasInputFrames = getLongestChannelLength(inputs) > 0;
+          coverageActive = result !== false && (state.processorName === 'looper-processor'
+            ? this.isRecording === true && hasInputFrames
+            : state.processorName === 'rc505-overdub-processor'
+              ? this.active === true && hasInputFrames
+              : true);
           return result;
         } catch (error) {
           threw = true;
+          if (!state.callbackExceptionDetailPosted) {
+            state.callbackExceptionDetailPosted = true;
+            const errorObject = error && typeof error === 'object' ? error : null;
+            try {
+              this.port.postMessage({
+                type: 'rc505-bench-callback-exception',
+                slot: state.slot,
+                processorName: state.processorName,
+                callbackIndex: Atomics.load(state.meta, state.slot * META_STRIDE + META.callbacks) + 1,
+                currentFrame: frame,
+                name: typeof errorObject?.name === 'string' ? errorObject.name : 'Error',
+                message: typeof errorObject?.message === 'string' ? errorObject.message : String(error),
+                stack: typeof errorObject?.stack === 'string' ? errorObject.stack.slice(0, 8_000) : null,
+              });
+            } catch { /* diagnostic reporting must never alter the production throw path */ }
+          }
           throw error;
         } finally {
           processEndMs = readClockMilliseconds();
@@ -352,7 +390,43 @@
               timingClock: getTimingClockReport(),
             });
           }
-          recordCallback(state, startMs, processEndMs, frame, frames, threw);
+          const callbackDiagnostics = recordCallback(state, startMs, processEndMs, frame, frames, threw);
+          // Publish only the four counters used for interval coverage under a
+          // short sequence version. Timing/histogram diagnostics are deliberately
+          // outside this window so readers never spin through expensive work.
+          const base = state.slot * META_STRIDE;
+          Atomics.add(state.meta, base + META.snapshotVersion, 1);
+          try {
+            Atomics.add(state.meta, base + META.callbacks, 1);
+            Atomics.add(state.meta, base + META.totalFrames, frames);
+            if (coverageActive) {
+              Atomics.add(state.meta, base + META.coverageCallbacks, 1);
+              Atomics.add(state.meta, base + META.coverageFrames, frames);
+              const firstActiveFrameIndex = base + META.firstCoverageActiveFrame;
+              if (Atomics.load(state.meta, firstActiveFrameIndex) < 0
+                && Number.isSafeInteger(frame) && frame >= 0 && frame <= 0x7fff_ffff) {
+                Atomics.store(state.meta, firstActiveFrameIndex, frame);
+              }
+            }
+            if (callbackDiagnostics.frameGap > 0) {
+              Atomics.add(state.meta, base + META.coverageMissingFrames, callbackDiagnostics.frameGap);
+            }
+            if (threw) Atomics.add(state.meta, base + META.callbackErrors, 1);
+            const processorFrameEnd = Number.isSafeInteger(frame) && frame >= 0
+              && Number.isSafeInteger(frames) && frames >= 0 ? frame + frames : -1;
+            Atomics.store(state.meta, base + META.lastProcessorFrameEnd,
+              processorFrameEnd >= 0 && processorFrameEnd <= 0x7fff_ffff ? processorFrameEnd : -1);
+            if (result === false) {
+              if (Number.isSafeInteger(frame) && frame >= 0 && frame <= 0x7fff_ffff) {
+                Atomics.store(state.meta, base + META.processorStopFrame, frame);
+              }
+              if (Atomics.load(state.meta, base + META.stopAuthorization) !== 1) {
+                Atomics.add(state.meta, base + META.unexpectedTerminationCount, 1);
+              }
+            }
+          } finally {
+            Atomics.add(state.meta, base + META.snapshotVersion, 1);
+          }
         }
       }
     }

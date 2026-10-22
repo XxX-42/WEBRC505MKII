@@ -8,7 +8,146 @@
 
 using namespace webrc::native;
 
+namespace {
+
+void testOptionalOutputPeakKeepsLooperAudioAndState(unsigned int storedChannels) {
+    constexpr unsigned int kSampleRate = 8000U;
+    LooperCore metered(kSampleRate, 1U, storedChannels);
+    LooperCore unmetered(kSampleRate, 1U, storedChannels);
+    std::array<float, 16U> input{};
+    std::array<float, 16U> meteredOutput{};
+    std::array<float, 16U> unmeteredOutput{};
+    std::array<float, 16U> meteredPlayback{};
+    std::array<float, 16U> unmeteredPlayback{};
+    for (std::size_t frame = 0U; frame < 8U; ++frame) {
+        input[frame * 2U] = (frame % 2U == 0U ? 1.0f : -1.0f) * (0.08f + 0.025f * static_cast<float>(frame));
+        input[(frame * 2U) + 1U] = (frame % 2U == 0U ? -1.0f : 1.0f) * (0.11f + 0.02f * static_cast<float>(frame));
+    }
+
+    const auto applyBoth = [&](CommandType type, bool value = false) {
+        metered.applyCommand({type, value});
+        unmetered.applyCommand({type, value});
+    };
+    const auto processAndCompare = [&](const float* source, unsigned int frames, unsigned int inputChannels) {
+        meteredOutput.fill(0.0f);
+        unmeteredOutput.fill(0.0f);
+        meteredPlayback.fill(0.0f);
+        unmeteredPlayback.fill(0.0f);
+        const auto expected = metered.process(
+            source, meteredOutput.data(), frames, inputChannels, 2U, meteredPlayback.data()
+        );
+        const auto actual = unmetered.process(
+            source, unmeteredOutput.data(), frames, inputChannels, 2U, unmeteredPlayback.data(), false
+        );
+        assert(meteredOutput == unmeteredOutput);
+        assert(meteredPlayback == unmeteredPlayback);
+        assert(expected.inputPeak == actual.inputPeak);
+        assert(expected.state == actual.state);
+        assert(expected.loopProgress == actual.loopProgress);
+        assert(expected.loopTransportStatus == actual.loopTransportStatus);
+        assert(actual.outputPeak == 0.0f);
+
+        float measuredPeak = 0.0f;
+        for (std::size_t sample = 0U; sample < static_cast<std::size_t>(frames) * 2U; ++sample) {
+            measuredPeak = std::max(measuredPeak, std::fabs(meteredOutput[sample]));
+        }
+        assert(expected.outputPeak == measuredPeak);
+        const auto expectedMetadata = metered.metadata();
+        const auto actualMetadata = unmetered.metadata();
+        assert(expectedMetadata.state == actualMetadata.state);
+        assert(expectedMetadata.recordedFrames == actualMetadata.recordedFrames);
+        assert(expectedMetadata.finalizedFrames == actualMetadata.finalizedFrames);
+        assert(expectedMetadata.playhead == actualMetadata.playhead);
+    };
+
+    applyBoth(CommandType::SetMonitoring, true);
+    applyBoth(CommandType::Record);
+    // Deliberately irregular blocks cover chunk boundaries in both mono and
+    // stereo loop storage, while preserving the legacy public meter by default.
+    processAndCompare(input.data(), 3U, 2U);
+    processAndCompare(input.data() + 6U, 1U, 2U);
+    processAndCompare(input.data() + 8U, 4U, 2U);
+    applyBoth(CommandType::StopRecordOrPlayback);
+    processAndCompare(nullptr, 1U, 0U);
+
+    std::array<float, 16U> meteredSnapshot{};
+    std::array<float, 16U> unmeteredSnapshot{};
+    std::size_t meteredFrames = 0U;
+    std::size_t unmeteredFrames = 0U;
+    assert(metered.copyFinalizedStereoLoopSnapshot(meteredSnapshot.data(), 8U, meteredFrames));
+    assert(unmetered.copyFinalizedStereoLoopSnapshot(unmeteredSnapshot.data(), 8U, unmeteredFrames));
+    assert(meteredFrames == unmeteredFrames && meteredSnapshot == unmeteredSnapshot);
+
+    applyBoth(CommandType::Play);
+    processAndCompare(input.data(), 5U, 2U);
+    processAndCompare(input.data() + 10U, 3U, 2U);
+    applyBoth(CommandType::ToggleOverdub);
+    processAndCompare(input.data(), 2U, 2U);
+    processAndCompare(input.data() + 4U, 3U, 2U);
+    processAndCompare(input.data() + 10U, 3U, 2U);
+    applyBoth(CommandType::StopRecordOrPlayback);
+    processAndCompare(nullptr, 1U, 0U);
+    assert(metered.copyFinalizedStereoLoopSnapshot(meteredSnapshot.data(), 8U, meteredFrames));
+    assert(unmetered.copyFinalizedStereoLoopSnapshot(unmeteredSnapshot.data(), 8U, unmeteredFrames));
+    assert(meteredFrames == unmeteredFrames && meteredSnapshot == unmeteredSnapshot);
+}
+
+void testReadOnlyPlaybackPreview() {
+    for (const auto rate : {8000U, 48000U, 192000U}) for (const auto channels : {1U, 2U}) {
+        LooperCore previewed(rate, 1U, channels), reference(rate, 1U, channels);
+        std::vector<float> source(514U);
+        for (std::size_t f = 0U; f < 257U; ++f) { source[f * 2U] = 0.1f + static_cast<float>(f) * 0.0007f; source[f * 2U + 1U] = -0.5f * source[f * 2U]; }
+        for (auto* core : {&previewed, &reference}) {
+            core->applyCommand({CommandType::SetMonitoring, false});
+            core->applyCommand({CommandType::Record});
+            (void)core->process(source.data(), nullptr, 257U, 2U, 2U);
+            core->applyCommand({CommandType::StopRecordOrPlayback});
+            core->applyCommand({CommandType::Play});
+        }
+        std::array<float, 8192U> expected{}, repeated{}, actual{}, untouched{};
+        for (unsigned int phase = 0U; phase < 5U; ++phase) {
+            LoopTransportConfig config;
+            if (phase == 1U) { config.mode = LoopTransportMode::BeatShift; config.beatOffsetBeats = -0.375f; config.bpm = 87.0f; }
+            if (phase == 2U || phase == 3U) { config.mode = LoopTransportMode::VinylFlick; config.vinylSpeedPercent = phase == 2U ? 100.0f : -100.0f; config.motorReturnSeconds = 0.05f; config.brakePercent = 37.0f; }
+            config.crossfadeMs = 7.0f;
+            assert(previewed.setLoopTransportConfig(config)); assert(reference.setLoopTransportConfig(config));
+            for (const auto frames : {1U, 13U, 127U, 4096U, 47U}) {
+                const auto before = previewed.metadata();
+                assert(previewed.previewPlayback(expected.data(), frames, 2U, 4096U));
+                assert(previewed.previewPlayback(repeated.data(), frames, 2U, 4096U));
+                assert(before.playhead == previewed.metadata().playhead && before.state == previewed.state());
+                (void)previewed.process(nullptr, actual.data(), frames, 0U, 2U);
+                (void)reference.process(nullptr, untouched.data(), frames, 0U, 2U);
+                for (unsigned int i = 0U; i < frames * 2U; ++i) {
+                    assert(expected[i] == repeated[i]); assert(expected[i] == actual[i]); assert(actual[i] == untouched[i]);
+                }
+                assert(previewed.metadata().playhead == reference.metadata().playhead);
+            }
+        }
+        for (const auto command : {CommandType::ToggleOverdub, CommandType::StopRecordOrPlayback, CommandType::Clear, CommandType::Record}) {
+            previewed.applyCommand({command}); expected.fill(9.0f);
+            const auto before = previewed.metadata();
+            assert(!previewed.previewPlayback(expected.data(), 128U, 2U, 4096U));
+            assert(std::all_of(expected.begin(), expected.begin() + 256U, [](float x) { return x == 0.0f; }));
+            const auto after = previewed.metadata();
+            assert(before.state == after.state && before.playhead == after.playhead && before.recordedFrames == after.recordedFrames);
+        }
+        expected.fill(9.0f);
+        assert(!previewed.previewPlayback(expected.data(), 5U, 2U, 4U));
+        assert(!previewed.previewPlayback(expected.data(), 4097U, 2U, 5000U));
+        assert(!previewed.previewPlayback(expected.data(), 2U, 3U, 4096U));
+        assert(!previewed.previewPlayback(nullptr, 2U, 2U, 4096U));
+        assert(std::all_of(expected.begin(), expected.end(), [](float x) { return x == 9.0f; }));
+    }
+}
+
+} // namespace
+
 int main() {
+    testReadOnlyPlaybackPreview();
+    testOptionalOutputPeakKeepsLooperAudioAndState(1U);
+    testOptionalOutputPeakKeepsLooperAudioAndState(2U);
+
     assert(LooperCore::maximumDurationSecondsForBudget(48000U, 2U, 5U) == 300U);
     assert(LooperCore::maximumDurationSecondsForBudget(96000U, 2U, 5U) == 209U);
     assert(LooperCore::maximumDurationSecondsForBudget(192000U, 2U, 5U) == 104U);
@@ -281,6 +420,81 @@ int main() {
     }
     assert(positiveCrossings >= 7U && positiveCrossings <= 9U);
     assert(maximumWrappedStep < 0.03f);
+
+    // History exchanges only finalized stereo frames and metadata; prepared
+    // storage remains full-capacity so restoring a short take never shrinks
+    // the next recording's safe write range.
+    LooperCore historyLooper(8U, 2U, 2U);
+    const std::array<float, 4> shortTake{{0.1f, -0.1f, 0.2f, -0.2f}};
+    std::array<float, 16> historyScratch{};
+    historyLooper.applyCommand({CommandType::Record, false});
+    (void)historyLooper.process(shortTake.data(), historyScratch.data(), 2U, 2U, 2U);
+    historyLooper.applyCommand({CommandType::StopRecordOrPlayback, false});
+    const auto shortMetadata = historyLooper.metadata();
+    assert(shortMetadata.state == LooperState::Stopped && shortMetadata.finalizedFrames == 2U);
+    std::array<float, 4> alternate{{0.7f, -0.7f, 0.8f, -0.8f}};
+    assert(historyLooper.exchangeFinalizedStereoSamples(alternate.data(), 2U));
+    std::array<float, 4> exactAfterSwap{};
+    std::size_t exactFrames = 0U;
+    assert(historyLooper.copyFinalizedStereoLoopSnapshot(exactAfterSwap.data(), 2U, exactFrames));
+    assert((exactAfterSwap == std::array<float, 4>{{0.7f, -0.7f, 0.8f, -0.8f}}));
+    assert((alternate == shortTake));
+    assert(historyLooper.exchangeFinalizedStereoSamples(alternate.data(), 2U));
+    assert((alternate == std::array<float, 4>{{0.7f, -0.7f, 0.8f, -0.8f}}));
+    historyLooper.applyCommand({CommandType::Clear, false});
+    const auto emptyMetadata = historyLooper.metadata();
+    assert(emptyMetadata.state == LooperState::Empty && historyLooper.storageBytes() == 16U * 2U * sizeof(float));
+    historyLooper.restoreMetadata(shortMetadata);
+    assert(historyLooper.capacityFrames() == 16U && historyLooper.storageBytes() == 16U * 2U * sizeof(float));
+    std::array<float, 4> restoredShort{};
+    assert(historyLooper.copyFinalizedStereoLoopSnapshot(restoredShort.data(), 2U, exactFrames));
+    assert(restoredShort == shortTake);
+    historyLooper.restoreMetadata(emptyMetadata);
+    std::array<float, 16> longTake{};
+    for (std::size_t sample = 0U; sample < longTake.size(); ++sample) longTake[sample] = static_cast<float>(sample) * 0.01f;
+    historyLooper.applyCommand({CommandType::Record, false});
+    (void)historyLooper.process(longTake.data(), historyScratch.data(), 8U, 2U, 2U);
+    historyLooper.applyCommand({CommandType::StopRecordOrPlayback, false});
+    assert(historyLooper.loopLengthSamples() == 8U && historyLooper.capacityFrames() == 16U);
+    std::array<float, 16> exactLong{};
+    assert(historyLooper.copyFinalizedStereoLoopSnapshot(exactLong.data(), 8U, exactFrames));
+    assert(exactLong == longTake);
+
+    // Project import swaps a prepared full-capacity candidate in O(1), stops
+    // the track, resets its playhead, and keeps the primary maximum write
+    // capacity so a later longer recording cannot overflow the short import.
+    LooperCore imported(8U, 2U, 2U);
+    std::vector<float> importedCandidate(32U, 0.0f);
+    importedCandidate[0] = 0.91f;
+    importedCandidate[1] = -0.91f;
+    importedCandidate[2] = 0.42f;
+    importedCandidate[3] = -0.42f;
+    const auto importedStorageBytes = imported.storageBytes();
+    assert(imported.swapImportedStereoStorage(importedCandidate, 2U));
+    assert(imported.storageBytes() == importedStorageBytes && importedCandidate.size() == 32U);
+    assert(std::all_of(importedCandidate.begin(), importedCandidate.end(), [](float sample) { return sample == 0.0f; }));
+    assert(imported.state() == LooperState::Stopped && imported.loopLengthSamples() == 2U);
+    assert(imported.metadata().playhead == 0U);
+    std::array<float, 4> importedSnapshot{};
+    std::size_t importedFrames = 0U;
+    assert(imported.copyFinalizedStereoLoopSnapshot(importedSnapshot.data(), 2U, importedFrames));
+    assert((importedSnapshot == std::array<float, 4>{{0.91f, -0.91f, 0.42f, -0.42f}}));
+    assert(!imported.swapImportedStereoStorage(importedCandidate, 17U));
+    std::vector<float> emptyCandidate(32U, 0.0f);
+    assert(imported.swapImportedStereoStorage(emptyCandidate, 0U));
+    assert(imported.state() == LooperState::Empty && imported.loopLengthSamples() == 0U);
+    std::array<float, 16> afterImportLongTake{};
+    for (std::size_t sample = 0U; sample < afterImportLongTake.size(); ++sample) {
+        afterImportLongTake[sample] = static_cast<float>(sample) * 0.02f;
+    }
+    std::array<float, 16> afterImportOutput{};
+    imported.applyCommand({CommandType::Record, false});
+    (void)imported.process(afterImportLongTake.data(), afterImportOutput.data(), 8U, 2U, 2U);
+    imported.applyCommand({CommandType::StopRecordOrPlayback, false});
+    std::array<float, 16> afterImportSnapshot{};
+    assert(imported.capacityFrames() == 16U && imported.loopLengthSamples() == 8U);
+    assert(imported.copyFinalizedStereoLoopSnapshot(afterImportSnapshot.data(), 8U, importedFrames));
+    assert(afterImportSnapshot == afterImportLongTake);
 
     return 0;
 }

@@ -1,0 +1,17 @@
+[
+  {
+    "case": "header",
+    "status": "PASS",
+    "rejection": "Build manifest header SHA mismatch"
+  },
+  {
+    "case": "unverified",
+    "status": "PASS",
+    "rejection": "Build manifest is not verified"
+  },
+  {
+    "case": "unverified round1 remains false; verified candidate true",
+    "status": "PASS",
+    "scope": "Stub callback payload for metadata only, not performance evidence"
+  }
+]

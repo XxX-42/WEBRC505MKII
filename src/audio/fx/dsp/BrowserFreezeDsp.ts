@@ -22,6 +22,16 @@ export interface BrowserFreezeParameters {
   frozen?: boolean;
 }
 
+/** RC-505mkII panel values. BALANCE belongs to the outer dry/wet mixer. */
+export interface BrowserFreezeOfficialParameters {
+  attack?: number;
+  release?: number;
+  decay?: number;
+  sustain?: number;
+}
+
+type FreezeEnvelopeStage = 'idle' | 'attack' | 'decay' | 'sustain' | 'release';
+
 const MIN_CAPTURE_MS = 2;
 const MAX_CAPTURE_MS = 2000;
 const MIN_PITCH_SEMITONES = -24;
@@ -34,6 +44,7 @@ const RELEASE_FADE_MS = 5;
 const MAX_LOOP_SEAM_MS = 5;
 const PITCH_SMOOTHING_MS = 15;
 const MAX_ABS_SAMPLE = 8;
+const DEFAULT_OFFICIAL_ENVELOPE_VALUE = 30;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
@@ -77,6 +88,16 @@ export class BrowserFreezeDsp {
   private loopLength = 0;
   private loopCrossfadeFrames = 0;
   private loopPhase = 0;
+  private officialMode = false;
+  private attackFrames: number;
+  private decayFrames: number;
+  private releaseFrames: number;
+  private sustainGain = DEFAULT_OFFICIAL_ENVELOPE_VALUE / 100;
+  private envelopeStage: FreezeEnvelopeStage = 'idle';
+  private envelopeElapsed = 0;
+  private envelopeDuration = 1;
+  private envelopeStartGain = 0;
+  private envelopeTargetGain = 0;
 
   constructor(sampleRate: number, parameters: BrowserFreezeParameters = {}) {
     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= MIN_SAMPLE_RATE
@@ -90,10 +111,13 @@ export class BrowserFreezeDsp {
     this.captureLengthFrames = this.framesForCapture(DEFAULT_CAPTURE_MS);
     this.fadeStep = 1 / Math.max(1, Math.round(this.sampleRate * RELEASE_FADE_MS / 1000));
     this.pitchSmoothingAlpha = onePoleAlpha(PITCH_SMOOTHING_MS, this.sampleRate);
+    this.attackFrames = this.framesForOfficialTime(DEFAULT_OFFICIAL_ENVELOPE_VALUE, 2, 2000);
+    this.decayFrames = this.framesForOfficialTime(DEFAULT_OFFICIAL_ENVELOPE_VALUE, 10, 2000);
+    this.releaseFrames = this.framesForOfficialTime(DEFAULT_OFFICIAL_ENVELOPE_VALUE, 2, 5000);
     this.setParameters(parameters);
   }
 
-  /** Target capture state; when false, a short release fade may still be active. */
+  /** Target capture state; when false, its release fade may still be active. */
   get isFrozen(): boolean {
     return this.targetFrozen;
   }
@@ -101,6 +125,67 @@ export class BrowserFreezeDsp {
   /** True while the captured audio remains held, including its release fade. */
   get hasFrozenBuffer(): boolean {
     return this.frozenBufferActive;
+  }
+
+  /** Maximum tail length for the outer activation/bypass lifecycle. */
+  get officialReleaseFrames(): number {
+    return this.releaseFrames;
+  }
+
+  /**
+   * Enables a wet-only, amplitude-ADSR path with the official 0..100 controls.
+   * The manual specifies the controls, not their millisecond transfer curves:
+   * these exponential mappings (A: 2..2000 ms, D: 10..2000 ms, R: 2..5000 ms)
+   * are authored clean-room behavior, not a claim of Roland factory DSP.
+   * Stage amplitudes use linear ramps; SUSTAIN maps directly to 0..100% gain.
+   * Calling this method with an empty object enables the official defaults (30).
+   * Never calling it preserves the original mixed-output micro-loop behavior.
+   */
+  setOfficialParameters(parameters: BrowserFreezeOfficialParameters): void {
+    const previousAttackFrames = this.attackFrames;
+    const previousDecayFrames = this.decayFrames;
+    const previousReleaseFrames = this.releaseFrames;
+    const previousSustainGain = this.sustainGain;
+    if (Number.isFinite(parameters.attack)) {
+      this.attackFrames = this.framesForOfficialTime(parameters.attack as number, 2, 2000);
+    }
+    if (Number.isFinite(parameters.decay)) {
+      this.decayFrames = this.framesForOfficialTime(parameters.decay as number, 10, 2000);
+    }
+    if (Number.isFinite(parameters.release)) {
+      this.releaseFrames = this.framesForOfficialTime(parameters.release as number, 2, 5000);
+    }
+    if (Number.isFinite(parameters.sustain)) {
+      this.sustainGain = clamp(parameters.sustain as number, 0, 100) / 100;
+    }
+
+    if (!this.officialMode) {
+      this.officialMode = true;
+      // If enabled during a legacy hold, preserve its current wet amplitude.
+      this.activationGain = Math.sin(this.activationGain * Math.PI / 2);
+      if (this.frozenBufferActive) {
+        if (this.targetFrozen && !this.capturePending) {
+          this.startEnvelopeStage('attack', 1, this.attackFrames);
+        } else {
+          this.startEnvelopeStage('release', 0, this.releaseFrames);
+        }
+      }
+      return;
+    }
+
+    // Parameter edits cannot restart the envelope when values are unchanged.
+    // A changed active ramp starts from the current gain, avoiding a jump.
+    if (this.envelopeStage === 'attack' && this.attackFrames !== previousAttackFrames) {
+      this.startEnvelopeStage('attack', 1, this.attackFrames);
+    } else if (this.envelopeStage === 'decay') {
+      if (this.decayFrames !== previousDecayFrames) {
+        this.startEnvelopeStage('decay', this.sustainGain, this.decayFrames);
+      } else if (this.sustainGain !== previousSustainGain) {
+        this.startEnvelopeStage('decay', this.sustainGain, this.envelopeDuration - this.envelopeElapsed);
+      }
+    } else if (this.envelopeStage === 'release' && this.releaseFrames !== previousReleaseFrames) {
+      this.startEnvelopeStage('release', 0, this.releaseFrames);
+    }
   }
 
   /** Controls and capture length latch at the next freeze activation. */
@@ -138,8 +223,12 @@ export class BrowserFreezeDsp {
     // If a fresh capture is pending while an old loop is fading out, finish
     // that release before swapping rings. This avoids replacing the samples
     // under an active reader and causing a discontinuity on a fast retrigger.
-    const fadeTarget = this.targetFrozen && this.frozenBufferActive && !this.capturePending ? 1 : 0;
-    this.activationGain = this.moveToward(this.activationGain, fadeTarget, this.fadeStep);
+    if (this.officialMode) {
+      this.advanceOfficialEnvelope();
+    } else {
+      const fadeTarget = this.targetFrozen && this.frozenBufferActive && !this.capturePending ? 1 : 0;
+      this.activationGain = this.moveToward(this.activationGain, fadeTarget, this.fadeStep);
+    }
 
     let frozenLeft = 0;
     let frozenRight = 0;
@@ -148,10 +237,16 @@ export class BrowserFreezeDsp {
       frozenRight = this.readFrozenChannel(this.loopRight);
     }
 
-    const dryGain = Math.cos(this.activationGain * Math.PI / 2);
-    const frozenGain = Math.sin(this.activationGain * Math.PI / 2);
-    this.outputLeft = finiteSample((left * dryGain) + (frozenLeft * frozenGain));
-    this.outputRight = finiteSample((right * dryGain) + (frozenRight * frozenGain));
+    if (this.officialMode) {
+      // The outer core owns BALANCE; adding dry here would count it twice.
+      this.outputLeft = this.activationGain > 0 ? finiteSample(frozenLeft * this.activationGain) : 0;
+      this.outputRight = this.activationGain > 0 ? finiteSample(frozenRight * this.activationGain) : 0;
+    } else {
+      const dryGain = Math.cos(this.activationGain * Math.PI / 2);
+      const frozenGain = Math.sin(this.activationGain * Math.PI / 2);
+      this.outputLeft = finiteSample((left * dryGain) + (frozenLeft * frozenGain));
+      this.outputRight = finiteSample((right * dryGain) + (frozenRight * frozenGain));
+    }
 
     if (this.frozenBufferActive) this.advanceLoop();
     if (this.frozenBufferActive && !this.targetFrozen && this.activationGain === 0) {
@@ -196,6 +291,11 @@ export class BrowserFreezeDsp {
     this.capturePending = false;
     this.frozenBufferActive = false;
     this.activationGain = 0;
+    this.envelopeStage = 'idle';
+    this.envelopeElapsed = 0;
+    this.envelopeDuration = 1;
+    this.envelopeStartGain = 0;
+    this.envelopeTargetGain = 0;
     this.playbackRate = this.targetPlaybackRate;
     this.outputLeft = 0;
     this.outputRight = 0;
@@ -250,18 +350,24 @@ export class BrowserFreezeDsp {
         // Keep the active loop intact through its release ramp; the other ring
         // continues to collect the new generation until it is ready to swap.
         this.capturePending = true;
+        if (this.officialMode && this.envelopeStage !== 'release') {
+          this.startEnvelopeStage('release', 0, this.releaseFrames);
+        }
       } else if (this.historyFrames >= this.captureLengthFrames) {
         this.captureHistory();
         this.capturePending = false;
       } else {
-        // Keep passing live input until enough pre-roll exists. This avoids
-        // presenting zero-filled startup history as a successful freeze.
+        // Wait until enough pre-roll exists rather than capturing zero-filled
+        // startup history. Legacy mode passes dry input; official mode is wet-only.
         this.capturePending = true;
       }
       return;
     }
     this.targetFrozen = false;
     this.capturePending = false;
+    if (this.officialMode && this.frozenBufferActive && this.envelopeStage !== 'release') {
+      this.startEnvelopeStage('release', 0, this.releaseFrames);
+    }
   }
 
   private captureHistory(): void {
@@ -286,6 +392,48 @@ export class BrowserFreezeDsp {
     );
     this.loopPhase = this.loopCrossfadeFrames;
     this.frozenBufferActive = true;
+    if (this.officialMode) {
+      this.activationGain = 0;
+      this.startEnvelopeStage('attack', 1, this.attackFrames);
+    }
+  }
+
+  private startEnvelopeStage(stage: FreezeEnvelopeStage, target: number, duration: number): void {
+    this.envelopeStage = stage;
+    this.envelopeElapsed = 0;
+    this.envelopeDuration = Math.max(1, duration);
+    this.envelopeStartGain = this.activationGain;
+    this.envelopeTargetGain = target;
+  }
+
+  private advanceOfficialEnvelope(): void {
+    if (!this.frozenBufferActive) {
+      this.activationGain = 0;
+      this.envelopeStage = 'idle';
+      return;
+    }
+    if (this.envelopeStage === 'idle') return;
+    if (this.envelopeStage === 'sustain') {
+      this.activationGain = this.sustainGain;
+      return;
+    }
+
+    this.envelopeElapsed += 1;
+    if (this.envelopeElapsed < this.envelopeDuration) {
+      this.activationGain = this.envelopeStartGain
+        + ((this.envelopeTargetGain - this.envelopeStartGain) * this.envelopeElapsed / this.envelopeDuration);
+      return;
+    }
+
+    // Exact endpoints avoid an asymptotic release that never frees the loop.
+    this.activationGain = this.envelopeTargetGain;
+    if (this.envelopeStage === 'attack') {
+      this.startEnvelopeStage('decay', this.sustainGain, this.decayFrames);
+    } else if (this.envelopeStage === 'decay') {
+      this.envelopeStage = 'sustain';
+    } else {
+      this.envelopeStage = 'idle';
+    }
   }
 
   private writeHistory(left: number, right: number): void {
@@ -337,6 +485,11 @@ export class BrowserFreezeDsp {
 
   private framesForCapture(milliseconds: number): number {
     return clamp(Math.round(this.sampleRate * milliseconds / 1000), 1, this.maxCaptureFrames);
+  }
+
+  private framesForOfficialTime(value: number, minimumMs: number, maximumMs: number): number {
+    const milliseconds = minimumMs * Math.pow(maximumMs / minimumMs, clamp(value, 0, 100) / 100);
+    return Math.max(1, Math.round(this.sampleRate * milliseconds / 1000));
   }
 
   private wrapHistoryIndex(index: number): number {

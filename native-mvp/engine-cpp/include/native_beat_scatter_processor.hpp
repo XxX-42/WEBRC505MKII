@@ -18,6 +18,7 @@ struct NativeBeatScatterConfig {
     float pitchSemitones = 0.0f;
     unsigned int repeats = 4U;
     float wetMix = 0.5f;
+    bool allowThirtySecond = false; // Official-only length domain; legacy options remain unchanged.
 };
 
 struct NativeBeatScatterStatus {

@@ -1,0 +1,47 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+CPU functional simulation 60/1800s, 19566 blocks
+CPU functional simulation 120/1800s, 39132 blocks
+CPU functional simulation 180/1800s, 58698 blocks
+CPU functional simulation 240/1800s, 78264 blocks
+CPU functional simulation 300/1800s, 97830 blocks
+CPU functional simulation 360/1800s, 117396 blocks
+CPU functional simulation 420/1800s, 136962 blocks
+CPU functional simulation 480/1800s, 156528 blocks
+CPU functional simulation 540/1800s, 176094 blocks
+CPU functional simulation 600/1800s, 195660 blocks
+CPU functional simulation 660/1800s, 215226 blocks
+CPU functional simulation 720/1800s, 234792 blocks
+CPU functional simulation 780/1800s, 254358 blocks
+CPU functional simulation 840/1800s, 273924 blocks
+CPU functional simulation 900/1800s, 293490 blocks
+CPU functional simulation 960/1800s, 313056 blocks
+CPU functional simulation 1020/1800s, 332622 blocks
+CPU functional simulation 1080/1800s, 352188 blocks
+CPU functional simulation 1140/1800s, 371754 blocks
+CPU functional simulation 1200/1800s, 391320 blocks
+CPU functional simulation 1260/1800s, 410886 blocks
+CPU functional simulation 1320/1800s, 430452 blocks
+CPU functional simulation 1380/1800s, 450018 blocks
+CPU functional simulation 1440/1800s, 469584 blocks
+CPU functional simulation 1500/1800s, 489150 blocks
+CPU functional simulation 1560/1800s, 508716 blocks
+CPU functional simulation 1620/1800s, 528282 blocks
+CPU functional simulation 1680/1800s, 547848 blocks
+CPU functional simulation 1740/1800s, 567414 blocks
+Wrote /workspace/scratch/2230ee2a4571/rc505-gain-recovery/docs/performance/20261021/browser-functional-30min.json
+{
+  "status": "passed-functional-simulation",
+  "actualElapsedSeconds": 317.385783636,
+  "simulatedAudioSeconds": 1800,
+  "blocks": 586958,
+  "recordingChunks": 5274,
+  "overdubPatches": 586958,
+  "nonFinite": 0,
+  "checksum": 9108046.708897654
+}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -21,6 +21,8 @@ import { LiveMonoPitchProcessor } from '../../pitch/liveMono';
 export interface BrowserRobotParameters {
   /** Fixed semitone offset applied before equal-tempered target rounding. */
   pitch?: number;
+  /** Official fixed target pitch class; -1 restores the legacy chromatic quantizer. */
+  note?: number;
   /** Nonzero independent shift keeps ROBOT on the Signalsmith path. */
   formant?: number;
 }
@@ -99,6 +101,7 @@ export class BrowserRobotDsp {
   private readonly maxLag: number;
   private readonly yinWindow: number;
   private readonly yinRing = new Float32Array(YIN_RING_LENGTH);
+  private readonly yinAnalysisFrame: Float32Array;
   private readonly yinCmnd = new Float32Array(YIN_CMND_LENGTH);
   private readonly queueFrames = new Float64Array(QUEUE_CAPACITY);
   private readonly queueSemitones = new Float32Array(QUEUE_CAPACITY);
@@ -121,6 +124,7 @@ export class BrowserRobotDsp {
   private invalidAnalyses = 0;
   private targetOffsetSemitones: number;
   private targetFormantSemitones = 0;
+  private targetNote = -1;
   private targetMidiInitialized = false;
   private lastFrame = 0;
   private lastQueuedVoiced = false;
@@ -134,9 +138,11 @@ export class BrowserRobotDsp {
     this.maxLag = Math.max(2, Math.min(YIN_CMND_LENGTH - 2, Math.floor(this.decimatedRate / YIN_MIN_F0_HZ)));
     this.minLag = Math.max(2, Math.floor(this.decimatedRate / YIN_MAX_F0_HZ));
     this.yinWindow = Math.min(256, Math.max(64, this.maxLag * 2));
+    this.yinAnalysisFrame = new Float32Array(this.yinWindow + this.maxLag);
     this.latencyFrames = (this.yinWindow + this.maxLag + YIN_HOP_DECIMATED) * DECIMATION_FACTOR;
     this.targetOffsetSemitones = this.clampPitch(parameters.pitch ?? 0);
     this.psolaProcessor = this.createPsolaProcessor();
+    this.setParameters(parameters);
   }
 
   get queueDepth(): number { return this.queueCount; }
@@ -160,6 +166,12 @@ export class BrowserRobotDsp {
 
   setParameters(parameters: BrowserRobotParameters): void {
     let changed = false;
+    if (parameters.note !== undefined) {
+      if (!Number.isInteger(parameters.note) || parameters.note < -1 || parameters.note > 11) throw new RangeError('ROBOT note must be -1 (legacy) or a pitch class from 0 to 11.');
+      this.targetNote = parameters.note;
+      this.targetMidiInitialized = false;
+      changed = true;
+    }
     if (parameters.pitch !== undefined) {
       if (!Number.isFinite(parameters.pitch)) throw new RangeError('ROBOT pitch must be finite.');
       if (parameters.pitch < -24 || parameters.pitch > 24) throw new RangeError('ROBOT pitch must be between -24 and +24 semitones.');
@@ -289,6 +301,10 @@ export class BrowserRobotDsp {
       return;
     }
 
+    for (let i = 0; i < this.yinAnalysisFrame.length; i += 1) {
+      this.yinAnalysisFrame[i] = this.yinRing[(newest - i) & YIN_RING_MASK]!;
+    }
+
     let cumulative = 0;
     let bestLag = -1;
     let bestCmnd = 1;
@@ -296,8 +312,8 @@ export class BrowserRobotDsp {
     for (let lag = 1; lag <= this.maxLag; lag += 1) {
       let difference = 0;
       for (let i = 0; i < this.yinWindow; i += 1) {
-        const a = this.yinRing[(newest - i) & YIN_RING_MASK]!;
-        const b = this.yinRing[(newest - i - lag) & YIN_RING_MASK]!;
+        const a = this.yinAnalysisFrame[i]!;
+        const b = this.yinAnalysisFrame[i + lag]!;
         const delta = a - b;
         difference += delta * delta;
       }
@@ -313,6 +329,10 @@ export class BrowserRobotDsp {
       if (lag >= this.minLag && firstThresholdLag < 0 && normalized < YIN_THRESHOLD) {
         firstThresholdLag = lag;
       }
+      // Threshold detection still uses the original double normalized value;
+      // the trough comparison still uses Float32 CMND, as the selection loop does.
+      if (firstThresholdLag >= 0 && lag > firstThresholdLag
+        && this.yinCmnd[lag]! >= this.yinCmnd[lag - 1]!) break;
     }
 
     if (firstThresholdLag >= 0) {
@@ -378,8 +398,8 @@ export class BrowserRobotDsp {
   private updateTarget(frame: number, force: boolean): void {
     if (!this.hasPitch) return;
     const shiftedMidi = this.pitchEstimateMidi + this.targetOffsetSemitones;
-    let targetMidi = Math.round(shiftedMidi);
-    if (this.targetMidiInitialized) {
+    let targetMidi = this.targetNote >= 0 ? 60 + this.targetNote : Math.round(shiftedMidi);
+    if (this.targetNote < 0 && this.targetMidiInitialized) {
       if (targetMidi > this.targetMidi && shiftedMidi < this.targetMidi + 0.5 + NOTE_CHANGE_HYSTERESIS) {
         targetMidi = this.targetMidi;
       } else if (targetMidi < this.targetMidi && shiftedMidi > this.targetMidi - 0.5 - NOTE_CHANGE_HYSTERESIS) {
@@ -387,7 +407,9 @@ export class BrowserRobotDsp {
       }
     }
     this.targetMidiInitialized = true;
-    const semitones = Math.max(-24, Math.min(24, targetMidi - this.pitchEstimateMidi));
+    const semitones = this.targetNote >= 0
+      ? Math.max(-36, Math.min(48, targetMidi - this.pitchEstimateMidi))
+      : Math.max(-24, Math.min(24, targetMidi - this.pitchEstimateMidi));
     this.targetMidi = targetMidi;
     this.targetSemitones = semitones;
     this.updateProcessingMode(frame);

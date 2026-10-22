@@ -1,0 +1,178 @@
+[  1%] Building CXX object CMakeFiles/native_project_archive_codec.dir/src/project_archive_codec.cpp.o
+[ 23%] Built target native_dsp_portable
+[ 23%] Building CXX object CMakeFiles/looper_core_tests.dir/tests/looper_core_tests.cpp.o
+[ 24%] Linking CXX executable looper_core_tests
+[ 24%] Built target looper_core_tests
+[ 24%] Building CXX object CMakeFiles/dsp_primitives_tests.dir/tests/dsp_primitives_tests.cpp.o
+[ 25%] Linking CXX executable dsp_primitives_tests
+[ 25%] Built target dsp_primitives_tests
+[ 25%] Building CXX object CMakeFiles/native_audio_pipeline_tests.dir/tests/native_audio_pipeline_tests.cpp.o
+[ 26%] Linking CXX executable native_audio_pipeline_tests
+[ 26%] Built target native_audio_pipeline_tests
+[ 26%] Building CXX object CMakeFiles/native_fx_catalog_tests.dir/tests/native_fx_catalog_tests.cpp.o
+[ 26%] Linking CXX static library libnative_project_archive_codec.a
+[ 26%] Built target native_project_archive_codec
+[ 26%] Building CXX object CMakeFiles/native_vocoder_core_tests.dir/tests/native_vocoder_core_tests.cpp.o
+[ 27%] Building CXX object CMakeFiles/native_vocoder_core_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 27%] Linking CXX executable native_vocoder_core_tests
+[ 27%] Built target native_vocoder_core_tests
+[ 27%] Building CXX object CMakeFiles/native_auto_riff_core_tests.dir/tests/native_auto_riff_core_tests.cpp.o
+[ 28%] Building CXX object CMakeFiles/native_auto_riff_core_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 30%] Linking CXX executable native_auto_riff_core_tests
+[ 30%] Built target native_auto_riff_core_tests
+[ 31%] Building CXX object CMakeFiles/native_osc_voc_core_tests.dir/tests/native_osc_voc_core_tests.cpp.o
+[ 31%] Building CXX object CMakeFiles/native_osc_voc_core_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 32%] Linking CXX executable native_osc_voc_core_tests
+[ 32%] Built target native_osc_voc_core_tests
+[ 33%] Building CXX object CMakeFiles/native_osc_voc_processor_tests.dir/tests/native_osc_voc_processor_tests.cpp.o
+[ 34%] Building CXX object CMakeFiles/native_fx_catalog_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 35%] Linking CXX executable native_fx_catalog_tests
+[ 35%] Built target native_fx_catalog_tests
+[ 35%] Building CXX object CMakeFiles/native_hrm_auto_processor_tests.dir/tests/native_hrm_auto_processor_tests.cpp.o
+[ 35%] Building CXX object CMakeFiles/native_osc_voc_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 36%] Linking CXX executable native_osc_voc_processor_tests
+[ 36%] Built target native_osc_voc_processor_tests
+[ 37%] Building CXX object CMakeFiles/native_hrm_auto_core_tests.dir/tests/native_hrm_auto_core_tests.cpp.o
+[ 38%] Building CXX object CMakeFiles/native_hrm_auto_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 38%] Linking CXX executable native_hrm_auto_processor_tests
+[ 38%] Built target native_hrm_auto_processor_tests
+[ 38%] Building CXX object CMakeFiles/native_hrm_auto_core_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 40%] Building CXX object CMakeFiles/native_robot_core_tests.dir/tests/native_robot_core_tests.cpp.o
+[ 41%] Linking CXX executable native_hrm_auto_core_tests
+[ 41%] Built target native_hrm_auto_core_tests
+[ 42%] Building CXX object CMakeFiles/native_osc_bot_core_tests.dir/tests/native_osc_bot_core_tests.cpp.o
+[ 42%] Building CXX object CMakeFiles/native_osc_bot_core_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 43%] Linking CXX executable native_osc_bot_core_tests
+[ 43%] Built target native_osc_bot_core_tests
+[ 43%] Building CXX object CMakeFiles/native_osc_bot_processor_tests.dir/tests/native_osc_bot_processor_tests.cpp.o
+[ 44%] Building CXX object CMakeFiles/native_osc_bot_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 44%] Linking CXX executable native_osc_bot_processor_tests
+[ 44%] Built target native_osc_bot_processor_tests
+[ 44%] Building CXX object CMakeFiles/native_g2b_processor_tests.dir/tests/native_g2b_processor_tests.cpp.o
+[ 44%] Building CXX object CMakeFiles/native_robot_core_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 45%] Linking CXX executable native_robot_core_tests
+[ 45%] Built target native_robot_core_tests
+[ 46%] Building CXX object CMakeFiles/native_synth_processor_tests.dir/tests/native_synth_processor_tests.cpp.o
+[ 47%] Building CXX object CMakeFiles/native_g2b_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 47%] Linking CXX executable native_g2b_processor_tests
+[ 47%] Built target native_g2b_processor_tests
+[ 48%] Building CXX object CMakeFiles/native_manual_pan_processor_tests.dir/tests/native_manual_pan_processor_tests.cpp.o
+[ 48%] Building CXX object CMakeFiles/native_synth_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 50%] Linking CXX executable native_synth_processor_tests
+[ 50%] Built target native_synth_processor_tests
+[ 51%] Building CXX object CMakeFiles/native_isolator_processor_tests.dir/tests/native_isolator_processor_tests.cpp.o
+[ 51%] Building CXX object CMakeFiles/native_manual_pan_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 52%] Linking CXX executable native_manual_pan_processor_tests
+[ 52%] Built target native_manual_pan_processor_tests
+[ 52%] Building CXX object CMakeFiles/native_slow_gear_processor_tests.dir/tests/native_slow_gear_processor_tests.cpp.o
+[ 52%] Building CXX object CMakeFiles/native_isolator_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 53%] Linking CXX executable native_isolator_processor_tests
+[ 53%] Built target native_isolator_processor_tests
+[ 54%] Built target native_audio_core_test_support
+[ 55%] Building CXX object CMakeFiles/native_freeze_processor_tests.dir/tests/native_freeze_processor_tests.cpp.o
+[ 56%] Building CXX object CMakeFiles/native_slow_gear_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 56%] Linking CXX executable native_slow_gear_processor_tests
+[ 56%] Built target native_slow_gear_processor_tests
+[ 57%] Building CXX object CMakeFiles/native_catalog_route_tests.dir/tests/native_catalog_route_tests.cpp.o
+[ 57%] Building CXX object CMakeFiles/native_freeze_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 58%] Linking CXX executable native_freeze_processor_tests
+[ 58%] Built target native_freeze_processor_tests
+[ 60%] Building CXX object CMakeFiles/native_pitch_processor_tests.dir/tests/native_pitch_processor_tests.cpp.o
+[ 60%] Building CXX object CMakeFiles/native_pitch_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 61%] Linking CXX executable native_pitch_processor_tests
+[ 61%] Built target native_pitch_processor_tests
+[ 61%] Building CXX object CMakeFiles/native_poly_pitch_processor_tests.dir/tests/native_poly_pitch_processor_tests.cpp.o
+[ 62%] Building CXX object CMakeFiles/native_poly_pitch_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 62%] Linking CXX executable native_poly_pitch_processor_tests
+[ 62%] Built target native_poly_pitch_processor_tests
+[ 62%] Building CXX object CMakeFiles/native_chorus_processor_tests.dir/tests/native_chorus_processor_tests.cpp.o
+[ 63%] Building CXX object CMakeFiles/native_chorus_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 63%] Linking CXX executable native_chorus_processor_tests
+[ 63%] Built target native_chorus_processor_tests
+[ 64%] Building CXX object CMakeFiles/native_phaser_processor_tests.dir/tests/native_phaser_processor_tests.cpp.o
+[ 65%] Building CXX object CMakeFiles/native_phaser_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 65%] Linking CXX executable native_phaser_processor_tests
+[ 65%] Built target native_phaser_processor_tests
+[ 65%] Building CXX object CMakeFiles/native_autopan_processor_tests.dir/tests/native_autopan_processor_tests.cpp.o
+[ 66%] Building CXX object CMakeFiles/native_autopan_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 66%] Linking CXX executable native_autopan_processor_tests
+[ 66%] Linking CXX executable native_catalog_route_tests
+[ 66%] Built target native_autopan_processor_tests
+[ 67%] Building CXX object CMakeFiles/native_vinyl_flick_processor_tests.dir/tests/native_vinyl_flick_processor_tests.cpp.o
+[ 67%] Built target native_catalog_route_tests
+[ 67%] Building CXX object CMakeFiles/native_flanger_processor_tests.dir/tests/native_flanger_processor_tests.cpp.o
+[ 67%] Building CXX object CMakeFiles/native_vinyl_flick_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 68%] Linking CXX executable native_vinyl_flick_processor_tests
+[ 70%] Building CXX object CMakeFiles/native_flanger_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 70%] Linking CXX executable native_flanger_processor_tests
+[ 70%] Built target native_vinyl_flick_processor_tests
+[ 70%] Building CXX object CMakeFiles/native_dynamics_processor_tests.dir/tests/native_dynamics_processor_tests.cpp.o
+[ 70%] Built target native_flanger_processor_tests
+[ 71%] Building CXX object CMakeFiles/native_fdn16_reverb_processor_tests.dir/tests/native_fdn16_reverb_processor_tests.cpp.o
+[ 72%] Building CXX object CMakeFiles/native_dynamics_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 72%] Linking CXX executable native_dynamics_processor_tests
+[ 72%] Built target native_dynamics_processor_tests
+[ 73%] Building CXX object CMakeFiles/native_distortion_processor_tests.dir/tests/native_distortion_processor_tests.cpp.o
+[ 73%] Building CXX object CMakeFiles/native_fdn16_reverb_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 74%] Linking CXX executable native_fdn16_reverb_processor_tests
+[ 74%] Built target native_fdn16_reverb_processor_tests
+[ 75%] Building CXX object CMakeFiles/native_preamp_processor_tests.dir/tests/native_preamp_processor_tests.cpp.o
+[ 75%] Building CXX object CMakeFiles/native_distortion_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 76%] Linking CXX executable native_distortion_processor_tests
+[ 76%] Built target native_distortion_processor_tests
+[ 77%] Building CXX object CMakeFiles/native_beat_repeat_processor_tests.dir/tests/native_beat_repeat_processor_tests.cpp.o
+[ 77%] Building CXX object CMakeFiles/native_preamp_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 78%] Linking CXX executable native_preamp_processor_tests
+[ 78%] Built target native_preamp_processor_tests
+[ 78%] Building CXX object CMakeFiles/native_beat_scatter_processor_tests.dir/tests/native_beat_scatter_processor_tests.cpp.o
+[ 78%] Building CXX object CMakeFiles/native_beat_repeat_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 80%] Linking CXX executable native_beat_repeat_processor_tests
+[ 80%] Built target native_beat_repeat_processor_tests
+[ 81%] Building CXX object CMakeFiles/native_roll_processor_tests.dir/tests/native_roll_processor_tests.cpp.o
+[ 82%] Building CXX object CMakeFiles/native_beat_scatter_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 82%] Linking CXX executable native_beat_scatter_processor_tests
+[ 82%] Built target native_beat_scatter_processor_tests
+[ 83%] Building CXX object CMakeFiles/native_tape_echo_processor_tests.dir/tests/native_tape_echo_processor_tests.cpp.o
+[ 83%] Building CXX object CMakeFiles/native_roll_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 84%] Linking CXX executable native_roll_processor_tests
+[ 84%] Built target native_roll_processor_tests
+[ 84%] Building CXX object CMakeFiles/native_reverse_delay_processor_tests.dir/tests/native_reverse_delay_processor_tests.cpp.o
+[ 84%] Building CXX object CMakeFiles/native_tape_echo_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 85%] Linking CXX executable native_tape_echo_processor_tests
+[ 85%] Built target native_tape_echo_processor_tests
+[ 85%] Building CXX object CMakeFiles/native_panning_delay_processor_tests.dir/tests/native_panning_delay_processor_tests.cpp.o
+[ 86%] Building CXX object CMakeFiles/native_reverse_delay_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 86%] Linking CXX executable native_reverse_delay_processor_tests
+[ 86%] Built target native_reverse_delay_processor_tests
+[ 86%] Building CXX object CMakeFiles/native_mod_delay_processor_tests.dir/tests/native_mod_delay_processor_tests.cpp.o
+[ 87%] Building CXX object CMakeFiles/native_panning_delay_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 87%] Linking CXX executable native_panning_delay_processor_tests
+[ 87%] Built target native_panning_delay_processor_tests
+[ 88%] Building CXX object CMakeFiles/native_stereo_enhance_processor_tests.dir/tests/native_stereo_enhance_processor_tests.cpp.o
+[ 90%] Building CXX object CMakeFiles/native_mod_delay_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 90%] Linking CXX executable native_mod_delay_processor_tests
+[ 90%] Built target native_mod_delay_processor_tests
+[ 91%] Building CXX object CMakeFiles/native_radio_processor_tests.dir/tests/native_radio_processor_tests.cpp.o
+[ 91%] Building CXX object CMakeFiles/native_stereo_enhance_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 92%] Linking CXX executable native_stereo_enhance_processor_tests
+[ 92%] Built target native_stereo_enhance_processor_tests
+[ 92%] Building CXX object CMakeFiles/native_sustainer_processor_tests.dir/tests/native_sustainer_processor_tests.cpp.o
+[ 92%] Building CXX object CMakeFiles/native_radio_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 93%] Linking CXX executable native_radio_processor_tests
+[ 93%] Built target native_radio_processor_tests
+[ 93%] Building CXX object CMakeFiles/native_vibrato_processor_tests.dir/tests/native_vibrato_processor_tests.cpp.o
+[ 94%] Building CXX object CMakeFiles/native_sustainer_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 94%] Linking CXX executable native_sustainer_processor_tests
+[ 94%] Built target native_sustainer_processor_tests
+[ 95%] Building CXX object CMakeFiles/native_rhythm_tests.dir/tests/native_rhythm_tests.cpp.o
+[ 96%] Building CXX object CMakeFiles/native_vibrato_processor_tests.dir/tests/native_alloc_tracker.cpp.o
+[ 96%] Linking CXX executable native_vibrato_processor_tests
+[ 96%] Built target native_vibrato_processor_tests
+[ 97%] Building CXX object CMakeFiles/project_archive_codec_tests.dir/tests/project_archive_codec_tests.cpp.o
+[ 97%] Linking CXX executable native_rhythm_tests
+[ 97%] Built target native_rhythm_tests
+[ 97%] Building CXX object CMakeFiles/native_audio_callback_tests.dir/tests/native_audio_callback_tests.cpp.o
+[ 98%] Linking CXX executable project_archive_codec_tests
+[ 98%] Built target project_archive_codec_tests
+[100%] Linking CXX executable native_audio_callback_tests
+[100%] Built target native_audio_callback_tests

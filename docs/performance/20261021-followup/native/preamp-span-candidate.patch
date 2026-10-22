@@ -1,0 +1,58 @@
+--- /tmp/rc505-native-followup/base.cpp	2026-10-21 11:18:23.996760857 -0700
++++ /tmp/rc505-native-followup/candidate.cpp	2026-10-21 11:18:24.018663037 -0700
+@@ -300,12 +300,11 @@
+     const float cabinetHighPassed = toneOutput - state.cabinetHighPassState;
+     state.cabinetHistory[state.cabinetWrite] = cabinetHighPassed;
+     float cabinetOutput = 0.0f;
+-    unsigned int historyIndex = state.cabinetWrite;
+-    for (unsigned int tap = 0U; tap < kCabinetIrTaps; ++tap) {
+-        cabinetOutput += parameters.cabinetCoefficients[tap] * state.cabinetHistory[historyIndex];
+-        if (historyIndex == 0U) historyIndex = kCabinetIrTaps - 1U;
+-        else --historyIndex;
+-    }
++    const unsigned int firstCount = state.cabinetWrite + 1U;
++    for (unsigned int tap = 0U; tap < firstCount; ++tap)
++        cabinetOutput += parameters.cabinetCoefficients[tap] * state.cabinetHistory[state.cabinetWrite - tap];
++    for (unsigned int tap = firstCount; tap < kCabinetIrTaps; ++tap)
++        cabinetOutput += parameters.cabinetCoefficients[tap] * state.cabinetHistory[kCabinetIrTaps + state.cabinetWrite - tap];
+     ++state.cabinetWrite;
+     if (state.cabinetWrite == kCabinetIrTaps) state.cabinetWrite = 0U;
+ 
+@@ -315,13 +314,13 @@
+ 
+ float NativePreampProcessor::interpolate(unsigned int channel, unsigned int phase) const noexcept {
+     const auto& state = channels_[channel];
+-    unsigned int historyIndex = state.inputWrite;
+     float sum = 0.0f;
+-    for (unsigned int tap = phase; tap < kFirTaps; tap += kOversampling) {
+-        sum += interpolationTaps_[tap] * state.inputHistory[historyIndex];
+-        if (historyIndex == 0U) historyIndex = kPolyphaseTaps - 1U;
+-        else --historyIndex;
+-    }
++    const unsigned int count = (kFirTaps - phase + kOversampling - 1U) / kOversampling;
++    const unsigned int firstCount = std::min(state.inputWrite + 1U, count);
++    for (unsigned int index = 0U; index < firstCount; ++index)
++        sum += interpolationTaps_[phase + index * kOversampling] * state.inputHistory[state.inputWrite - index];
++    for (unsigned int index = firstCount; index < count; ++index)
++        sum += interpolationTaps_[phase + index * kOversampling] * state.inputHistory[kPolyphaseTaps + state.inputWrite - index];
+     return std::isfinite(sum) ? std::clamp(sum, -kMaxFiniteInput, kMaxFiniteInput) : 0.0f;
+ }
+ 
+@@ -330,12 +329,11 @@
+     state.reconstructionHistory[state.reconstructionWrite] = sample;
+     float sum = 0.0f;
+     if (computeOutput) {
+-        unsigned int historyIndex = state.reconstructionWrite;
+-        for (unsigned int tap = 0U; tap < kFirTaps; ++tap) {
+-            sum += reconstructionTaps_[tap] * state.reconstructionHistory[historyIndex];
+-            if (historyIndex == 0U) historyIndex = kFirTaps - 1U;
+-            else --historyIndex;
+-        }
++        const unsigned int firstCount = state.reconstructionWrite + 1U;
++        for (unsigned int tap = 0U; tap < firstCount; ++tap)
++            sum += reconstructionTaps_[tap] * state.reconstructionHistory[state.reconstructionWrite - tap];
++        for (unsigned int tap = firstCount; tap < kFirTaps; ++tap)
++            sum += reconstructionTaps_[tap] * state.reconstructionHistory[kFirTaps + state.reconstructionWrite - tap];
+     }
+     ++state.reconstructionWrite;
+     if (state.reconstructionWrite == kFirTaps) state.reconstructionWrite = 0U;

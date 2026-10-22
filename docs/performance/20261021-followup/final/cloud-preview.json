@@ -1,0 +1,50 @@
+{
+  "startedAt": "2026-10-21T18:48:17.942Z",
+  "command": "node bench/verify_cloud_preview.mjs",
+  "head": "eb60b801e3842e72d5584d191b00e68d6fc3caed",
+  "scope": "cloud executor production Vite preview; not user Windows deployment or browser UI validation",
+  "localDeploymentStatus": "LOCAL_DEPLOY_BLOCKED",
+  "localDeploymentReason": "No user device is used under the approved cloud-only scope.",
+  "browserUiVerified": false,
+  "requests": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 544
+    },
+    {
+      "path": "/rc-loop.svg",
+      "status": 200,
+      "bytes": 423,
+      "sha256": "231bae38289f72fc2fa18607dbda3fb6c6016869cc5956bca1de0fa4ada0d782"
+    },
+    {
+      "path": "/assets/app-DvAApMkb.js",
+      "status": 200,
+      "bytes": 1158799,
+      "sha256": "1b1cdab31fdbba136a0e0e545628570c7ba2f8379007118d2762ae48b6f1c6e7"
+    },
+    {
+      "path": "/assets/liveMonoNode-CuPDpK_M.js",
+      "status": 200,
+      "bytes": 2929,
+      "sha256": "198df7a378fc38aa07f2d8864a1fa845f8a8f26c622a21fe7e972375d7dbf0aa"
+    },
+    {
+      "path": "/assets/app-9cdsb99p.css",
+      "status": 200,
+      "bytes": 115856,
+      "sha256": "b2fff8e331292ea9428848082cfcf9061052f5ce89689b8003f0466f41fa72b5"
+    }
+  ],
+  "errors": [],
+  "worktreeDirty": true,
+  "candidateWorkletSourceSha256": "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab",
+  "url": "http://127.0.0.1:4177",
+  "distIndexSha256": "bd0e2771850b44bc69e076a7f20a298e6d7a19b5ee69f65195c95d93ad9a78a9",
+  "httpSmokeStatus": "PASS",
+  "cloudStartupAndAssetFetchMs": 342.997949,
+  "startupMetricScope": "Vite preview listen through entry and asset HTTP retrieval, not browser UI/audio startup",
+  "serverClosed": true,
+  "finishedAt": "2026-10-21T18:48:18.299Z"
+}

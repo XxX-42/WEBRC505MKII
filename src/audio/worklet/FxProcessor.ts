@@ -48,6 +48,7 @@ export type FxProcessorMessage =
   | { type: 'set-bypass'; value: boolean; rampFrames?: number }
   | { type: 'midi-note-on'; channel: number; note: number; velocity: number; frame: number }
   | { type: 'midi-note-off'; channel: number; note: number; frame: number }
+  | { type: 'midi-all-notes-off'; frame: number }
   | { type: 'reset' };
 
 function isAlgorithm(value: unknown): value is BrowserFxAlgorithm {
@@ -71,6 +72,9 @@ function isAlgorithm(value: unknown): value is BrowserFxAlgorithm {
  *   hrmAutoMidiChannel (1..16), and hrmAutoMixPercent (0..100).
  *   VOCODER additionally accepts vocoderBands (integer 8..24), vocoderCarrier
  *   (0=input, 1=polyBLEP saw, 2=polyBLEP square), and shared mix (0..1).
+ *   Official VOCODER controls opt into real TRACK1–5 carrier routing on
+ *   input port 1 (mono or stereo downmix). Disconnected carrier is silence;
+ *   no oscillator is substituted. MIC/INST buses and CARRIER THRU are unavailable.
  *   VOCODER formant shifting is unsupported and rejected by the DSP core.
  *   { type: 'set-bypass', value: boolean, rampFrames?: number }
  *   { type: 'reset' }
@@ -139,6 +143,14 @@ export class FxProcessor extends FxProcessorBase {
         } catch (error) {
           this.port.postMessage?.({ type: 'error', message: error instanceof Error ? error.message : String(error) });
         }
+      } else if (message?.type === 'midi-all-notes-off') {
+        const noteMessage = message as Extract<FxProcessorMessage, { type: 'midi-all-notes-off' }>;
+        try {
+          this.core.scheduleMidiAllNotesOff(noteMessage.frame);
+          this.port.postMessage?.({ type: 'midi-event-queued', frame: noteMessage.frame, panic: true });
+        } catch (error) {
+          this.port.postMessage?.({ type: 'error', message: error instanceof Error ? error.message : String(error) });
+        }
       } else if (message?.type === 'reset') {
         this.core.reset();
       }
@@ -171,7 +183,7 @@ export class FxProcessor extends FxProcessorBase {
 
     if (leftOutput || rightOutput) {
       const inputIsMono = !inputChannels || inputChannels.length < 2;
-      this.core.processBlock(leftInput, rightInput, leftOutput, rightOutput, frames, inputIsMono);
+      this.core.processBlock(leftInput, rightInput, leftOutput, rightOutput, frames, inputIsMono, inputs[1]?.[0] ?? null, inputs[1]?.[1] ?? null);
     }
 
     // AUTO RIFF's analyzer queue is fixed-capacity. Drain it after processing

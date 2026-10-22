@@ -1,4 +1,5 @@
 #include "native_dynamics_processor.hpp"
+#include "native_official_domains.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -9,6 +10,38 @@ namespace {
 
 constexpr double kDbPerOctaveScale = 20.0;
 constexpr double kMillisecondsToSeconds = 0.001;
+
+// Same independently authored profiles as OfficialDynamicsProfiles.ts.
+// The hardware's preset internals are unpublished; these are functional
+// interpretations of its names, not measurements or recovered factory data.
+struct OfficialDynamicsProfile {
+    float threshold, ratio, knee, attack, release, makeup;
+    float low, high, lowCut, highCut;
+    NativeDynamicsDetector detector;
+};
+constexpr auto kPeak = NativeDynamicsDetector::Peak;
+constexpr auto kRms = NativeDynamicsDetector::Rms;
+constexpr std::array<OfficialDynamicsProfile, 19U> kOfficialProfiles{{
+    {-18, 2.5f, 12, 20, 180, 2, 0, 0, 0, 0, kRms}, // NATURALCOMP
+    {-20, 3, 6, 10, 100, 3, 0, 0, 0, 0, kRms}, // MIXER COMP
+    {-16, 4, 4, 5, 80, 3, -1, 1, 0, 0, kPeak}, // LIVE COMP
+    {-6, 10, 6, 2, 120, 0, 0, 0, 0, 0, kPeak}, // NATURAL LIM
+    {-3, 20, 0, 0.1f, 60, 0, 0, 0, 0, 0, kPeak}, // HARD LIM
+    {-26, 8, 3, 1, 50, 6, 2, 3, 0, 0, kRms}, // JINGL COMP
+    {-22, 10, 0, 2, 100, 5, 0, 0, 0, 0, kPeak}, // HARD COMP
+    {-24, 2, 18, 30, 240, 3, 0, 0, 0, 0, kRms}, // SOFT COMP
+    {-15, 1.8f, 12, 15, 150, 1, 0, 1, 0, 0, kRms}, // CLEAN COMP
+    {-20, 5, 6, 20, 75, 4, 4, 2, 0, 0, kPeak}, // DANCE COMP
+    {-18, 2, 14, 50, 400, 1, 0, 0, 0, 0, kRms}, // ORCH COMP
+    {-24, 4, 8, 6, 160, 4, -2, 2, 80, 0, kRms}, // VOCAL COMP
+    {-18, 2.5f, 10, 35, 200, 2, -1, 3, 0, 0, kRms}, // ACOUSTIC
+    {-20, 6, 4, 10, 120, 4, 2, 1, 0, 0, kPeak}, // ROCK BAND
+    {-12, 1.5f, 16, 80, 600, 1, 1, -1, 0, 0, kRms}, // ORCHESTRA
+    {-18, 2.5f, 10, 20, 200, 2, 6, 0, 0, 0, kRms}, // LOW BOOST
+    {-18, 2, 8, 10, 180, 2, 0, 6, 0, 0, kRms}, // BRIGHTEN
+    {-28, 6, 4, 2, 100, 5, 4, 2, 80, 8500, kPeak}, // DJs VOICE
+    {-24, 5, 2, 2, 100, 3, -6, -3, 300, 3400, kPeak}, // PHONE VOX
+}};
 
 [[nodiscard]] double dbToLinear(double db) noexcept {
     return std::pow(10.0, db / kDbPerOctaveScale);
@@ -38,6 +71,7 @@ bool NativeDynamicsProcessor::prepare(unsigned int sampleRate) noexcept {
     }
 
     sampleRate_ = sampleRate;
+    if (officialActive_) updateOfficialParameters();
     updateDerivedParameters();
     reset();
     return true;
@@ -60,13 +94,66 @@ bool NativeDynamicsProcessor::setConfig(const NativeDynamicsConfig& config) noex
     return true;
 }
 
+bool NativeDynamicsProcessor::setOfficialParameter(std::string_view key, float value) noexcept {
+    if (!official::validParameter("dynamics", key, value)) return false;
+    if (!officialActive_) {
+        officialType_ = 0U;
+        officialDynamics_ = 0.0f;
+        officialActive_ = true;
+    }
+    if (key == "official_type") {
+        officialType_ = static_cast<unsigned int>(value);
+        officialTypeSpecified_ = true;
+    } else if (key == "official_dynamics") officialDynamics_ = value;
+    else return false;
+    updateOfficialParameters();
+    updateDerivedParameters();
+    return true;
+}
+
+void NativeDynamicsProcessor::updateOfficialParameters() noexcept {
+    const auto& profile = kOfficialProfiles[officialType_];
+    officialConfig_.thresholdDb = std::clamp(profile.threshold + 0.18f * officialDynamics_, -60.0f, 0.0f);
+    officialConfig_.ratio = std::clamp(std::pow(profile.ratio, 1.0f - officialDynamics_ / 30.0f), 1.0f, 20.0f);
+    officialConfig_.kneeDb = profile.knee;
+    officialConfig_.attackMs = profile.attack;
+    officialConfig_.releaseMs = profile.release;
+    officialConfig_.outputGainDb = profile.makeup;
+    officialConfig_.detector = profile.detector;
+    officialLowCutActive_ = profile.lowCut > 0.0f;
+    officialHighCutActive_ = profile.highCut > 0.0f;
+    if (sampleRate_ == 0U) return;
+    const auto frequency = [this](float hz) noexcept {
+        return std::min(static_cast<double>(hz), static_cast<double>(sampleRate_) * 0.45);
+    };
+    for (auto& tone : officialTone_) {
+        (void)tone[0].setParameters(dsp::BiquadType::LowShelf, sampleRate_, frequency(100.0f), 0.70710678, profile.low);
+        (void)tone[1].setParameters(dsp::BiquadType::HighShelf, sampleRate_, frequency(8000.0f), 0.70710678, profile.high);
+        (void)tone[2].setParameters(dsp::BiquadType::HighPass, sampleRate_, frequency(std::max(20.0f, profile.lowCut)));
+        (void)tone[3].setParameters(dsp::BiquadType::LowPass, sampleRate_, frequency(profile.highCut > 0.0f ? profile.highCut : 20000.0f));
+    }
+}
+
+double NativeDynamicsProcessor::processOfficialTone(unsigned int channel, double sample) noexcept {
+    auto& tone = officialTone_[channel];
+    float value = boundedOutput(sample);
+    value = tone[1].process(tone[0].process(value));
+    const float highPassed = tone[2].process(value);
+    if (officialLowCutActive_) value = highPassed;
+    const float lowPassed = tone[3].process(value);
+    if (officialHighCutActive_) value = lowPassed;
+    return value;
+}
+
 void NativeDynamicsProcessor::reset() noexcept {
+    for (auto& tone : officialTone_) for (auto& filter : tone) filter.reset();
     peakEnvelope_ = 0.0;
     rmsMeanSquare_ = 0.0;
 }
 
 void NativeDynamicsProcessor::updateDerivedParameters() noexcept {
-    outputGainLinear_ = dbToLinear(static_cast<double>(config_.outputGainDb));
+    const auto& config = officialActive_ ? officialConfig_ : config_;
+    outputGainLinear_ = dbToLinear(static_cast<double>(config.outputGainDb));
     if (sampleRate_ == 0U) {
         attackCoefficient_ = 0.0;
         releaseCoefficient_ = 0.0;
@@ -75,14 +162,15 @@ void NativeDynamicsProcessor::updateDerivedParameters() noexcept {
 
     const double rate = static_cast<double>(sampleRate_);
     attackCoefficient_ = std::exp(-1.0 /
-        (static_cast<double>(config_.attackMs) * kMillisecondsToSeconds * rate));
+        (static_cast<double>(config.attackMs) * kMillisecondsToSeconds * rate));
     releaseCoefficient_ = std::exp(-1.0 /
-        (static_cast<double>(config_.releaseMs) * kMillisecondsToSeconds * rate));
+        (static_cast<double>(config.releaseMs) * kMillisecondsToSeconds * rate));
 }
 
 double NativeDynamicsProcessor::updateDetector(double linkedMagnitude) noexcept {
+    const auto& config = officialActive_ ? officialConfig_ : config_;
     double envelope = 0.0;
-    if (config_.detector == NativeDynamicsDetector::Rms) {
+    if (config.detector == NativeDynamicsDetector::Rms) {
         const double power = linkedMagnitude * linkedMagnitude;
         const double coefficient = power > rmsMeanSquare_ ? attackCoefficient_ : releaseCoefficient_;
         rmsMeanSquare_ = coefficient * rmsMeanSquare_ + (1.0 - coefficient) * power;
@@ -96,9 +184,9 @@ double NativeDynamicsProcessor::updateDetector(double linkedMagnitude) noexcept 
     }
 
     const double levelDb = kDbPerOctaveScale * std::log10(std::max(kEnvelopeFloor, envelope));
-    const double thresholdDb = static_cast<double>(config_.thresholdDb);
-    const double ratio = static_cast<double>(config_.ratio);
-    const double kneeDb = static_cast<double>(config_.kneeDb);
+    const double thresholdDb = static_cast<double>(config.thresholdDb);
+    const double ratio = static_cast<double>(config.ratio);
+    const double kneeDb = static_cast<double>(config.kneeDb);
     const double slope = (1.0 / ratio) - 1.0;
     double gainReductionDb = 0.0;
 
@@ -137,8 +225,13 @@ float NativeDynamicsProcessor::processInPlace(
         const double linkedMagnitude = std::max(std::fabs(inputLeft), std::fabs(inputRight));
         const double gain = canProcess ? updateDetector(linkedMagnitude) : 1.0;
 
-        interleaved[offset] = boundedOutput(inputLeft * gain);
-        if (channels >= 2U) interleaved[offset + 1U] = boundedOutput(inputRight * gain);
+        if (officialActive_ && canProcess) {
+            interleaved[offset] = boundedOutput(processOfficialTone(0U, inputLeft * gain));
+            if (channels >= 2U) interleaved[offset + 1U] = boundedOutput(processOfficialTone(1U, inputRight * gain));
+        } else {
+            interleaved[offset] = boundedOutput(inputLeft * gain);
+            if (channels >= 2U) interleaved[offset + 1U] = boundedOutput(inputRight * gain);
+        }
 
         for (unsigned int channel = 0U; channel < channels; ++channel) {
             const auto sampleIndex = offset + channel;

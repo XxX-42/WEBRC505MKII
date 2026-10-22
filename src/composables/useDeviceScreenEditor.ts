@@ -1,5 +1,10 @@
+import { mergeOfficialParameterEdit } from '../audio/fx/official/parameters';
 import { computed, onScopeDispose, reactive, ref, watch } from 'vue';
 import { AudioEngine, type AudioDeviceInfo, type AudioDeviceSelection } from '../audio/AudioEngine';
+import { NativeProjectImportIndeterminateError, NativeProjectImportOutcomeUnknownError } from '../audio/NativeBridgeClient';
+import { ProjectMemory } from '../audio/projectMemory';
+import { PROJECT_ARCHIVE_LIMITS } from '../audio/projectArchive';
+import type { ProjectMemoryMetadata } from '../audio/projectMemoryStore';
 import { nativeCatalogMacroParameters } from '../audio/nativeFxCatalog';
 import { PREAMP_MODELS } from '../audio/preampParameters';
 import { SYNTH_WAVEFORMS } from '../audio/synthParameters';
@@ -107,6 +112,17 @@ const enumSpec = (options: readonly DeviceScreenOption[]): ParameterSpec => ({
   step: 1,
   options,
 });
+
+function nativeParameterStep(minimum: number, maximum: number, defaultValue: number): number {
+  const range = maximum - minimum;
+  const decimals = Math.min(4, Math.max(
+    (String(minimum).split('.')[1] ?? '').length,
+    (String(maximum).split('.')[1] ?? '').length,
+    (String(Number(defaultValue.toFixed(4))).split('.')[1] ?? '').length,
+    range > 0 && range <= 1 ? 2 : 0,
+  ));
+  return decimals ? 10 ** -decimals : 1;
+}
 
 function sequentialOptions(labels: readonly string[]): DeviceScreenOption[] {
   return labels.map((label, value) => ({ label, value }));
@@ -219,6 +235,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const device = useDevicePanel();
   const focus = usePanelFocus();
   const engine = AudioEngine.getInstance();
+  const projectMemory = new ProjectMemory(engine);
   const input = useFxPanelState('input');
   const trackFx = useTrackFxTargetState();
   const browserTrack = useBrowserTrackFxState();
@@ -228,6 +245,13 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const selectedFieldIndex = ref(0);
   const statusText = ref('');
   const editPending = ref(false);
+  const memorySlot = ref(1);
+  const memoryName = ref('MEMORY 01');
+  const memoryNotice = ref('V1 PCM + BPM + LOOP/SIGNATURE · FX/KIT/PATTERN SETTINGS NOT SAVED');
+  const pendingNativeImportGeneration = ref<number | null>(null);
+  const memorySlots = ref<readonly ProjectMemoryMetadata[]>([]);
+  const memoryStorageReady = ref(typeof indexedDB !== 'undefined');
+  let memoryMetadataRevision = 0;
   let editRevision = 0;
   const settings = reactive({
     selection: null as AudioDeviceSelection | null,
@@ -421,6 +445,78 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     return output;
   }
 
+  function nativeCatalogParameterFields(
+    location: 'input' | 'track',
+    slot: FxSlotState,
+    slotIndex: number,
+    applyOverrides: (parameters: Record<string, number>) => boolean,
+    pending: boolean,
+  ): DeviceScreenField[] {
+    const schema = engine.getNativeCatalogFxParameterSchema(slot.type, location, 0, slot.namedParametersByType?.[slot.type] ?? {}, slotIndex);
+    if (!schema) {
+      return [makeActionField(`native-${location}-schema-unavailable`, 'NAMED CONTROLS UNAVAILABLE', () => false, {
+        disabled: true,
+        reason: 'This Native host does not advertise a valid parameter schema. Ranges are not guessed.',
+      })];
+    }
+    if (schema.parameters.length === 0) {
+      return [makeActionField(`native-${location}-parameters-unavailable`, 'NO NAMED CONTROLS', () => false, {
+        disabled: true,
+        reason: `The Native host advertises no named controls for ${slot.type}.`,
+      })];
+    }
+    const overrides = slot.namedParametersByType?.[slot.type] ?? {};
+    const macro = nativeCatalogMacroParameters(slot.type, slot.value);
+    const runtime = location === 'input' ? input.runtimeStatus.value : trackFx.runtimeStatus.value;
+    const needsRestart = runtime?.pendingRestart === true;
+    const waitForAck = pending || runtime?.pendingApply === true || runtime?.outcomeUnknown === true;
+    const disabled = needsRestart || waitForAck;
+    const reason = needsRestart
+      ? 'Restart Native audio to apply the selected effect before editing named controls.'
+      : waitForAck ? 'Wait for the current Native ACK or status reconciliation before editing again.' : '';
+    const fields: DeviceScreenField[] = [];
+    for (const descriptor of schema.parameters) {
+      const currentValue = overrides[descriptor.id] ?? macro[descriptor.id] ?? descriptor.defaultValue;
+      if (!Number.isFinite(currentValue)) continue;
+      const setParameter = (next: number) => {
+        if (next < descriptor.minimum || next > descriptor.maximum ||
+            (descriptor.discrete && !descriptor.discreteValues?.includes(next))) return false;
+        return applyOverrides(mergeOfficialParameterEdit(overrides, descriptor.id, next));
+      };
+      if (descriptor.discrete && descriptor.discreteValues?.length) {
+        fields.push(makeEnumField(
+          `native-${location}-${slotIndex}-${descriptor.id}`,
+          descriptor.label,
+          currentValue,
+          descriptor.discreteValues.map((choice) => ({ label: descriptor.options?.find(option => option.value === choice)?.label ?? String(choice), value: choice })),
+          setParameter,
+          { min: descriptor.minimum, max: descriptor.maximum, step: 1, disabled, reason },
+        ));
+      } else {
+        fields.push(makeNumberField(
+          `native-${location}-${slotIndex}-${descriptor.id}`,
+          descriptor.label,
+          currentValue,
+          setParameter,
+          {
+            min: descriptor.minimum,
+            max: descriptor.maximum,
+            step: descriptor.step ?? nativeParameterStep(descriptor.minimum, descriptor.maximum, descriptor.defaultValue),
+            disabled,
+            reason,
+          },
+        ));
+      }
+    }
+    if (Object.keys(overrides).length > 0) {
+      fields.push(makeActionField(`native-${location}-${slotIndex}-reset-named`, 'RESET NAMED OVERRIDES', () => applyOverrides({}), {
+        disabled,
+        reason,
+      }));
+    }
+    return fields;
+  }
+
   function inputFxFields(): DeviceScreenField[][] {
     const slot = currentInputSlot.value;
     const base = fxBaseFields('input');
@@ -428,7 +524,14 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     if (slot && slot.type && slot.type !== 'NONE') {
       const paramName = inputParameterObjectKey(slot);
       const params = paramName ? slot[paramName] as Record<string, unknown> | undefined : undefined;
-      if (params) details.push(...sharedParameterFields('input', slot, params));
+      if (engine.getMode() === 'native' && !params) {
+        const slotIndex = input.slots.value.findIndex((candidate) => candidate.id === slot.id);
+        if (slotIndex >= 0) details.push(...nativeCatalogParameterFields(
+          'input', slot, slotIndex,
+          (parameters) => input.setNativeNamedParameters(slotIndex, parameters),
+          input.nativeNamedParametersPending.value,
+        ));
+      } else if (params) details.push(...sharedParameterFields('input', slot, params));
     }
     return [base, ...chunks(details)].filter((page, index) => index === 0 || page.length > 0);
   }
@@ -454,18 +557,48 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         const nativeFx = nativeTrack.activeFx.value;
         const parameters = nativeFx?.namedParameters ?? {};
         const defaults = nativeCatalogMacroParameters(fx.type, fx.value);
-        const allParameters = { ...defaults, ...parameters };
-        for (const [key, value] of Object.entries(allParameters)) {
+        const schema = engine.getNativeCatalogFxParameterSchema(fx.type, 'track', trackFx.target.value, parameters, nativeTrack.activeSlotIndex.value);
+        if (!schema) {
+          details.push(makeActionField('native-parameter-schema-unavailable', 'NAMED CONTROLS UNAVAILABLE', () => {}, {
+            disabled: true,
+            reason: 'This Native host does not advertise a valid parameter schema. Generic ranges are not guessed; use a schema-aware host or the advanced JSON editor, which is still validated by Native.',
+          }));
+          return [...chunks(base), ...chunks(details)].filter((page, index) => index < chunks(base).length || page.length > 0);
+        }
+        for (const descriptor of schema.parameters) {
+          const key = descriptor.id;
+          const value = parameters[key] ?? defaults[key] ?? descriptor.defaultValue;
           if (!Number.isFinite(value)) continue;
-          details.push(makeNumberField(`native-${key}`, friendlyKey(key), value, (next) => {
-            nativeTrack.setNamedParameters(trackFx.target.value as number, trackFx.activeSlotIndex.value, { ...parameters, [key]: next });
-          }, { step: key.includes('percent') ? 1 : 0.1 }));
+          const setParameter = (next: number) => {
+            if (next < descriptor.minimum || next > descriptor.maximum ||
+                (descriptor.discrete && !descriptor.discreteValues?.includes(next))) return false;
+            return nativeTrack.setNamedParameters(trackFx.target.value as number, trackFx.activeSlotIndex.value, mergeOfficialParameterEdit(parameters, key, next));
+          };
+          if (descriptor.discrete && descriptor.discreteValues?.length) {
+            details.push(makeEnumField(`native-${key}`, descriptor.label, value,
+              descriptor.discreteValues.map((choice) => ({ label: descriptor.options?.find(option => option.value === choice)?.label ?? String(choice), value: choice })), setParameter, {
+                min: descriptor.minimum, max: descriptor.maximum, step: 1,
+              }));
+          } else {
+            details.push(makeNumberField(`native-${key}`, descriptor.label, value, setParameter, {
+              min: descriptor.minimum, max: descriptor.maximum,
+              step: descriptor.step ?? nativeParameterStep(descriptor.minimum, descriptor.maximum, descriptor.defaultValue),
+            }));
+          }
         }
       }
     } else {
       const paramName = trackParameterObjectKey(fx);
       const params = paramName ? (fx as unknown as FxSlotState)[paramName] as Record<string, unknown> | undefined : undefined;
       if (params) details.push(...sharedParameterFields('track', fx as FxSlotState, params));
+      else if (engine.getMode() === 'native') {
+        const slotIndex = trackFx.activeSlotIndex.value;
+        if (slotIndex >= 0) details.push(...nativeCatalogParameterFields(
+          'track', fx as FxSlotState, slotIndex,
+          (parameters) => trackFx.setSharedNativeNamedParameters(parameters),
+          trackFx.nativeNamedParametersPending.value,
+        ));
+      }
     }
     return [...chunks(base), ...chunks(details)].filter((page, index) => index < chunks(base).length || page.length > 0);
   }
@@ -562,14 +695,216 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       makeActionField('switch-ui', 'TECH COMPATIBILITY', () => {
         if (typeof window !== 'undefined') window.dispatchEvent(new Event('rc505-toggle-ui-style'));
       }),
-      makeActionField('memory-save', 'MEMORY SAVE', () => {}, {
-        disabled: true,
-        reason: 'Memory save is unavailable because this engine has no Memory API.',
+      makeActionField('memory-save', 'MEMORY SAVE', () => device.openPage('memory'), {
+        disabled: !memoryStorageReady.value,
+        reason: !memoryStorageReady.value ? 'IndexedDB is unavailable in this browser context.' : '',
       }),
-      makeActionField('memory-load', 'MEMORY LOAD', () => {}, {
-        disabled: true,
-        reason: 'Memory load is unavailable because this engine has no Memory API.',
+      makeActionField('memory-load', 'MEMORY LOAD', () => device.openPage('memory'), {
+        disabled: !memoryStorageReady.value,
+        reason: !memoryStorageReady.value ? 'IndexedDB is unavailable in this browser context.' : '',
       }),
+    ]);
+  }
+
+  async function refreshMemoryMetadata(slot = memorySlot.value): Promise<void> {
+    const revision = ++memoryMetadataRevision;
+    if (!memoryStorageReady.value) return;
+    try {
+      const saved = await projectMemory.list();
+      if (revision !== memoryMetadataRevision) return;
+      memorySlots.value = saved;
+      const metadata = saved.find((entry) => entry.slot === slot) ?? null;
+      memoryName.value = metadata?.name ?? `MEMORY ${String(slot).padStart(2, '0')}`;
+      memoryNotice.value = metadata
+        ? `SAVED · ${metadata.name} · ${Math.round(metadata.archiveBytes / (1024 * 1024))} MIB · PCM/TEMPO`
+        : 'EMPTY SLOT · V1 PCM + BPM + LOOP/SIGNATURE · NO FX/KIT/PATTERN SETTINGS';
+    } catch (error) {
+      if (revision === memoryMetadataRevision) {
+        memoryStorageReady.value = false;
+        memoryNotice.value = error instanceof Error ? error.message : String(error);
+      }
+    }
+  }
+
+  function validateMemoryName(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed || new TextEncoder().encode(trimmed).byteLength > PROJECT_ARCHIVE_LIMITS.maxProjectNameUtf8Bytes) {
+      throw new RangeError(`Project name must contain 1–${PROJECT_ARCHIVE_LIMITS.maxProjectNameUtf8Bytes} UTF-8 bytes`);
+    }
+    return trimmed;
+  }
+
+  function promptMemoryName(): string | null {
+    if (typeof window === 'undefined') return null;
+    const value = window.prompt('Project name', memoryName.value);
+    if (value === null) return null;
+    return validateMemoryName(value);
+  }
+
+  async function saveMemorySlot(): Promise<void> {
+    try {
+      const existing = memorySlots.value.find((entry) => entry.slot === memorySlot.value);
+      if (existing && !(await (options.confirm ?? eventConfirmation)(`Replace saved project memory slot ${memorySlot.value} (${existing.name})?`))) return;
+      // The name is edited by the separate PROJECT NAME action. Asking again
+      // here caused a second browser prompt on every save and silently
+      // cancelled when clients only acknowledged the first prompt.
+      const name = validateMemoryName(memoryName.value);
+      const saved = await projectMemory.save(memorySlot.value, name);
+      memoryName.value = saved.name;
+      memoryMetadataRevision += 1;
+      memorySlots.value = [...memorySlots.value.filter((entry) => entry.slot !== saved.slot), saved]
+        .sort((left, right) => left.slot - right.slot);
+      memoryNotice.value = `SAVED SLOT ${String(saved.slot).padStart(2, '0')} · ${saved.name} · PCM/TEMPO`;
+    } catch (error) {
+      memoryNotice.value = `SAVE FAILED · ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  async function loadMemorySlot(): Promise<void> {
+    memoryNotice.value = `LOADING SLOT ${String(memorySlot.value).padStart(2, '0')} · WAITING FOR NATIVE AUDIO COMMIT`;
+    try {
+      const loaded = await projectMemory.load(memorySlot.value);
+      pendingNativeImportGeneration.value = null;
+      memoryName.value = loaded.name;
+      memoryNotice.value = `LOADED ${loaded.name} · ${loaded.tracksWithAudio}/5 LOOPS · FX/KIT/PATTERNS UNCHANGED`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const archiveCommitted = typeof error === 'object' && error !== null && 'archiveCommitted' in error && error.archiveCommitted === true;
+      const generation = typeof error === 'object' && error !== null && 'generation' in error &&
+        Number.isSafeInteger(error.generation) && Number(error.generation) > 0 ? Number(error.generation) : null;
+      if (generation !== null) pendingNativeImportGeneration.value = generation;
+      memoryNotice.value = archiveCommitted
+        ? `PCM IMPORT COMMITTED · UI SYNC FAILED · ${message}`
+        : error instanceof NativeProjectImportIndeterminateError
+          ? `IMPORT STATUS UNKNOWN · GEN ${generation ?? error.generation} · CHECK STATUS BEFORE RETRY`
+          : error instanceof NativeProjectImportOutcomeUnknownError
+            ? `IMPORT OUTCOME UNKNOWN · NO GENERATION ACK · DO NOT RETRY YET`
+            : `LOAD FAILED · ${message}`;
+    }
+  }
+
+  async function checkNativeProjectImportStatus(): Promise<void> {
+    const generation = pendingNativeImportGeneration.value;
+    if (generation === null) return;
+    memoryNotice.value = `CHECKING NATIVE IMPORT GENERATION ${generation}`;
+    try {
+      const status = await engine.getNativeProjectArchiveImportStatus(generation);
+      if (status.state === 'committed') {
+        pendingNativeImportGeneration.value = null;
+        await refreshMemoryMetadata(memorySlot.value);
+        memoryNotice.value = `NATIVE IMPORT COMMITTED · GEN ${generation} · CHECK AUDIO AND TRANSPORT STATUS`;
+      } else if (status.state === 'cancelled') {
+        pendingNativeImportGeneration.value = null;
+        memoryNotice.value = `IMPORT CANCELLED · GEN ${generation} · EXISTING AUDIO PRESERVED`;
+      } else {
+        memoryNotice.value = `IMPORT ${status.state.toUpperCase()} · GEN ${generation} · CHECK AGAIN, DO NOT REUPLOAD`;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const archiveCommitted = typeof error === 'object' && error !== null && 'archiveCommitted' in error && error.archiveCommitted === true;
+      memoryNotice.value = archiveCommitted
+        ? `PCM IMPORT COMMITTED · UI SYNC FAILED · GEN ${generation} · ${message}`
+        : `IMPORT STATUS UNKNOWN · GEN ${generation} · CHECK AGAIN BEFORE RETRY`;
+    }
+  }
+
+  async function exportMemoryFile(): Promise<void> {
+    const name = promptMemoryName();
+    if (!name) return;
+    const archive = await projectMemory.exportFile(name);
+    const archiveBuffer = archive.buffer instanceof ArrayBuffer && archive.byteOffset === 0 && archive.byteLength === archive.buffer.byteLength
+      ? archive.buffer
+      : archive.slice().buffer as ArrayBuffer;
+    const blob = new Blob([archiveBuffer], { type: 'application/x-rc505-project' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName = name.normalize('NFKD').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'RC505-project';
+    link.href = url;
+    link.download = `${safeName}.rc505proj`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    memoryNotice.value = `EXPORTED ${name} · PCM/TEMPO`;
+  }
+
+  async function importMemoryFile(): Promise<void> {
+    memoryNotice.value = 'IMPORTING PROJECT FILE · VALIDATING PCM AND PREPARING AUDIO';
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = '.rc505proj,application/x-rc505-project,application/octet-stream';
+    picker.hidden = true;
+    document.body.append(picker);
+    try {
+      const file = await new Promise<File | null>((resolve) => {
+        picker.addEventListener('change', () => resolve(picker.files?.[0] ?? null), { once: true });
+        picker.addEventListener('cancel', () => resolve(null), { once: true });
+        picker.click();
+      });
+      if (!file) {
+        memoryNotice.value = 'IMPORT CANCELLED · NO CHANGES MADE';
+        return;
+      }
+      try {
+        const loaded = await projectMemory.importFile(file);
+        pendingNativeImportGeneration.value = null;
+        memoryName.value = loaded.name;
+        memoryNotice.value = `IMPORTED ${loaded.name} · ${loaded.tracksWithAudio}/5 LOOPS · FX/KIT/PATTERNS UNCHANGED`;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const archiveCommitted = typeof error === 'object' && error !== null && 'archiveCommitted' in error && error.archiveCommitted === true;
+        const generation = typeof error === 'object' && error !== null && 'generation' in error &&
+          Number.isSafeInteger(error.generation) && Number(error.generation) > 0 ? Number(error.generation) : null;
+        if (generation !== null) pendingNativeImportGeneration.value = generation;
+        memoryNotice.value = archiveCommitted
+          ? `PCM IMPORT COMMITTED · UI SYNC FAILED · ${message}`
+          : error instanceof NativeProjectImportIndeterminateError
+            ? `IMPORT STATUS UNKNOWN · GEN ${generation ?? error.generation} · CHECK STATUS BEFORE RETRY`
+            : error instanceof NativeProjectImportOutcomeUnknownError
+              ? `IMPORT OUTCOME UNKNOWN · NO GENERATION ACK · DO NOT RETRY YET`
+              : `IMPORT FAILED · ${message}`;
+      }
+    } finally {
+      picker.remove();
+    }
+  }
+
+  function memoryFields(): DeviceScreenField[][] {
+    const storageAvailable = memoryStorageReady.value;
+    const reason = !storageAvailable ? 'IndexedDB is unavailable in this browser context.' : '';
+    const saved = memorySlots.value.find((entry) => entry.slot === memorySlot.value);
+    const disabled = editPending.value || pendingNativeImportGeneration.value !== null;
+    const audioReady = engine.getUiStatus().ready;
+    const browserLoopsCanBeExportedWithoutAudio = engine.getMode() === 'browser' && engine.hasUnsavedLoops();
+    const exportAllowed = audioReady || browserLoopsCanBeExportedWithoutAudio;
+    const audioUnavailableReason = engine.getMode() === 'browser'
+      ? 'Browser audio is unavailable. Export current loops before reloading; project import is available after audio starts.'
+      : 'Audio engine is not running and ready.';
+    const exportUnavailableReason = exportAllowed ? '' : engine.getMode() === 'browser'
+      ? 'Audio is unavailable and no Browser loops are available to export.'
+      : 'Audio engine is not running and ready.';
+    return chunks([
+      makeNumberField('memory-slot', 'MEMORY SLOT', memorySlot.value, (value) => {
+        memorySlot.value = Math.max(1, Math.min(99, Math.round(value)));
+        void refreshMemoryMetadata(memorySlot.value);
+      }, { min: 1, max: 99, step: 1, disabled: !storageAvailable || disabled, reason }),
+      makeActionField('memory-name', 'PROJECT NAME', () => {
+        const name = promptMemoryName();
+        if (name) memoryName.value = name;
+      }, { disabled: !storageAvailable || disabled, reason: saved ? `Saved name: ${saved.name}` : reason, format: () => memoryName.value }),
+      makeActionField('memory-save-slot', 'SAVE TO SLOT', saveMemorySlot, { disabled: !storageAvailable || disabled, reason }),
+      makeActionField('memory-check-import-status', 'CHECK IMPORT STATUS', checkNativeProjectImportStatus, {
+        disabled: editPending.value || pendingNativeImportGeneration.value === null,
+        reason: pendingNativeImportGeneration.value === null ? 'No acknowledged Native import generation is pending status recovery.' : 'Checks the accepted generation without uploading or changing PCM again.',
+      }),
+      makeActionField('memory-load-slot', 'LOAD SLOT', loadMemorySlot, { disabled: !storageAvailable || disabled || !saved || !audioReady, reason: !storageAvailable ? reason : !saved ? 'Selected memory slot is empty.' : !audioReady ? audioUnavailableReason : 'Loads PCM, BPM, master loop, and time signature; FX, kits, and patterns remain unchanged.' }),
+      makeActionField('memory-import-file', 'IMPORT PROJECT FILE', importMemoryFile, { disabled: disabled || !audioReady, reason: !audioReady ? audioUnavailableReason : '' }),
+      makeActionField('memory-export-file', 'EXPORT PROJECT FILE', exportMemoryFile, { disabled: disabled || !exportAllowed, reason: exportUnavailableReason }),
+      makeActionField('memory-delete-slot', 'ERASE SLOT', async () => {
+        if (!(await (options.confirm ?? eventConfirmation)(`Erase saved project memory slot ${memorySlot.value}? This permanently removes its PCM archive from this browser.`))) return;
+        await projectMemory.delete(memorySlot.value);
+        await refreshMemoryMetadata(memorySlot.value);
+      }, { disabled: !storageAvailable || disabled || !saved, reason: saved ? 'Erases only the selected saved slot.' : 'Selected memory slot is empty.' }),
     ]);
   }
 
@@ -642,6 +977,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       case 'rhythm': return rhythmFields();
       case 'track': return trackFields();
       case 'menu': return menuFields();
+      case 'memory': return memoryFields();
       case 'settings': return settingsFields();
       default: return [[]];
     }
@@ -653,7 +989,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   })));
   const pageTitle = computed(() => {
     const titles: Record<DevicePanelPage, string> = {
-      home: 'HOME', mixer: 'MIXER', menu: 'MENU', 'input-fx': `INPUT FX · ${currentInputSlot.value?.type || 'EMPTY'}`,
+      home: 'HOME', mixer: 'MIXER', menu: 'MENU', memory: 'MEMORY · PCM/TEMPO', 'input-fx': `INPUT FX · ${currentInputSlot.value?.type || 'EMPTY'}`,
       'track-fx': `TRACK FX · ${trackFx.target.value === 'shared' ? 'SHARED' : `TRACK ${trackFx.target.value}`}`,
       rhythm: 'RHYTHM', settings: 'AUDIO SETTINGS', track: `TRACK ${currentTrackId.value}`,
     };
@@ -666,16 +1002,23 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const runtime = device.state.page === 'input-fx'
       ? input.runtimeStatus.value as (typeof input.runtimeStatus.value & { pendingRestart?: boolean; pendingApply?: boolean; acknowledged?: boolean })
       : device.state.page === 'track-fx' ? trackFx.runtimeStatus.value : null;
+    if (runtime?.outcomeUnknown) return 'FX OUTCOME UNKNOWN · CHECK NATIVE STATUS';
+    // Native deliberately rejects a live effect-type replacement and marks
+    // the saved choice pending restart. That actionable state is more useful
+    // than the accompanying rejection text until the user restarts Native.
+    if (runtime?.pendingRestart) return 'SAVED · MENU → APPLY FX';
     if (runtime?.error) return runtime.error;
+    if (device.state.page === 'input-fx' && input.nativeNamedParametersPending.value) return 'NAMED PARAMETERS PENDING · WAIT FOR NATIVE ACK';
+    if (device.state.page === 'track-fx' && trackFx.nativeNamedParametersPending.value) return 'NAMED PARAMETERS PENDING · WAIT FOR NATIVE ACK';
     if (runtime?.pendingApply) return 'WAIT FOR ACK';
     if (editPending.value) return 'WAIT FOR ACK';
-    if (runtime?.pendingRestart) return 'SAVED · MENU → APPLY FX';
     if (runtime?.acknowledged === true) return 'FX APPLIED · RUNTIME ACKNOWLEDGED';
     if (device.state.page === 'track-fx' && trackFx.warning.value) return trackFx.warning.value;
     if (device.state.page === 'input-fx') return input.fxUnavailableReason.value || '';
     if (device.state.page === 'track-fx') return trackFx.fxUnavailableReason.value || '';
     if (device.state.page === 'rhythm') return rhythm.message.value;
     if (device.state.page === 'track') return currentTrackController.value?.hqExportError.value || currentTrackController.value?.livePitchError.value || currentTrackController.value?.livePitchStatus.value || '';
+    if (device.state.page === 'memory') return memoryNotice.value;
     if (device.actionStatus.error || device.actionStatus.pending) return '';
     const selected = fields.value[selectedFieldIndex.value];
     if (selected?.disabled && selected.reason) return selected.reason;
@@ -690,6 +1033,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   watch(() => device.state.page, (page) => {
     selectedFieldIndex.value = 0;
     if (page === 'settings' && !settings.loaded && !settings.loading) void refreshDevices();
+    if (page === 'memory') void refreshMemoryMetadata();
   }, { immediate: true });
   watch(fields, (nextFields) => {
     if (selectedFieldIndex.value >= nextFields.length) selectedFieldIndex.value = Math.max(0, nextFields.length - 1);

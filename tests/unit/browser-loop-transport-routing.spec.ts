@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BrowserAudioEngine } from '../../src/audio/BrowserAudioEngine';
 import type { TrackAudio } from '../../src/audio/TrackAudio';
+import { TrackState } from '../../src/core/types';
 
 class MockAudioNode {
   readonly connect = vi.fn();
@@ -67,6 +68,7 @@ function makeEngine() {
     inputFxInstances: [null, null, null, null],
     trackFxInstances: [null, null, null, null],
     inputFxTypes: [null, null, null, null],
+    inputFxActive: [false, false, false, false],
     trackFxTypes: [null, null, null, null],
     trackFxActive: [false, false, false, false],
     fxWorkletModuleReady: null,
@@ -161,6 +163,62 @@ describe('Browser Track source-aware BEAT SHIFT and VINYL FLICK routing', () => 
     expect(inputHead.connect).not.toHaveBeenCalled();
     expect(inputTail.connect).not.toHaveBeenCalled();
     expect(MockWorkletNode.instances).toHaveLength(0);
+  });
+
+  it('routes dedicated BEAT SHIFT and VINYL source transport to one loop with separate speed/mix controls', () => {
+    const { engine, tracks } = makeEngine();
+    const beatShift = {
+      mode: 'beatShift' as const,
+      beatOffsetBeats: -1.25,
+      bpm: 96,
+      crossfadeMs: 7,
+      vinylSpeedPercent: 0,
+      motorReturnSeconds: 1,
+      brakePercent: 0,
+      vinylMixPercent: 100,
+    };
+
+    expect(engine.setLoopTransport(3, beatShift)).toBe(true);
+    expect(tracks[2]!.configurations).toEqual([
+      { type: 'BEAT SHIFT', parameters: { offset: -1.25, crossfade: 7 } }, null, null, null,
+    ]);
+    expect(tracks.filter((_, index) => index !== 2).every((track) => track.configurations.every((slot) => slot === null))).toBe(true);
+
+    const vinylFlick = { ...beatShift, mode: 'vinylFlick' as const };
+    expect(engine.setLoopTransport(3, vinylFlick)).toBe(true);
+    expect(tracks[2]!.configurations).toEqual([
+      { type: 'VINYL FLICK', parameters: { speed: 0, mixPercent: 100, 'return-time': 1, brake: 0 } }, null, null, null,
+    ]);
+    expect(engine.setLoopTransport(0, beatShift)).toBe(false);
+    expect(engine.setLoopTransport(3, { ...beatShift, beatOffsetBeats: 4.1 })).toBe(false);
+    expect(tracks[2]!.configurations[0]).toEqual({ type: 'VINYL FLICK', parameters: { speed: 0, mixPercent: 100, 'return-time': 1, brake: 0 } });
+  });
+
+  it('clears a per-loop override without changing other tracks and blocks legacy shared sync from overwriting it', async () => {
+    vi.stubGlobal('AudioWorkletNode', MockWorkletNode);
+    const { engine, tracks } = makeEngine();
+    const config = {
+      mode: 'beatShift' as const, beatOffsetBeats: 0.5, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100,
+    };
+    expect(engine.setLoopTransport(2, config)).toBe(true);
+
+    engine.setFxType('track', 0, 'BEAT SHIFT');
+    engine.setFxNamedParameters('track', 0, { offset: -2, crossfade: 8 });
+    engine.setFxActive('track', 0, true);
+    await vi.waitFor(() => expect(MockWorkletNode.instances).toHaveLength(1));
+    expect(tracks[1]!.configurations[0]).toEqual({ type: 'BEAT SHIFT', parameters: { offset: 0.5, crossfade: 5 } });
+
+    (tracks[1] as unknown as { state: TrackState }).state = TrackState.OVERDUBBING;
+    expect(engine.clearLoopTransportOverride(2)).toBe(false);
+    expect(engine.setLoopTransport(2, { ...config, mode: 'off' })).toBe(false);
+    expect(tracks[1]!.configurations[0]).toEqual({ type: 'BEAT SHIFT', parameters: { offset: 0.5, crossfade: 5 } });
+    (tracks[1] as unknown as { state: TrackState }).state = TrackState.STOPPED;
+    expect(engine.setLoopTransport(2, { ...config, mode: 'off' })).toBe(true);
+    expect(tracks[1]!.configurations.every((slot) => slot === null)).toBe(true);
+    expect(tracks[0]!.configurations[0]).toMatchObject({ type: 'BEAT SHIFT', parameters: { beatShiftOffsetBeats: -2 } });
+    expect(engine.clearLoopTransportOverride(2)).toBe(true);
+    expect(tracks[1]!.configurations[0]).toMatchObject({ type: 'BEAT SHIFT', parameters: { beatShiftOffsetBeats: -2 } });
   });
 
   it('keeps the shared postmix adapters dry, gates wrong placements, clears bypass/removal, and reports conflicts per track', async () => {

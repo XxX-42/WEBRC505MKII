@@ -1,3 +1,5 @@
+import { LinearParameterSmoother } from '../../dsp/LinearParameterSmoother';
+
 /**
  * Clean-room TWIST kernel (catalog source #43).
  *
@@ -69,6 +71,44 @@ export class BrowserTwistDsp {
   private lastWetRight = 0;
   private lastDelayMs = CENTER_DELAY_MS;
   private lastFeedback = 0.16;
+  private officialEnabled = false;
+  private officialActive = false;
+  private officialRise = 50;
+  private officialFall = 50;
+  private officialRelease = 0;
+  private officialPhase = 0;
+  private officialFadeRemaining = 0;
+  private readonly officialRotation = new LinearParameterSmoother(0);
+
+  /** Authored continuous rotation, unlike the legacy manually positioned macro. */
+  setOfficialParameters(parameters: { rise?: number; fall?: number; release?: number }): void {
+    const first = !this.officialEnabled;
+    this.officialEnabled = true;
+    if (Number.isFinite(parameters.rise)) this.officialRise = clamp(parameters.rise!, 0, 100);
+    if (Number.isFinite(parameters.fall)) this.officialFall = clamp(parameters.fall!, 0, 100);
+    if (Number.isFinite(parameters.release)) this.officialRelease = parameters.release === 1 ? 1 : 0;
+    if (first) this.setOfficialActive(true);
+  }
+
+  get officialReleaseFrames(): number {
+    return this.officialRelease === 1 ? Math.max(1, Math.round(this.sampleRate * 0.002 * 2500 ** (this.officialFall / 100))) : 16;
+  }
+
+  setOfficialActive(active: boolean): void {
+    if (!this.officialEnabled || active === this.officialActive) return;
+    this.officialActive = active;
+    if (active) {
+      this.officialPhase = 0;
+      this.officialRotation.reset(0);
+      this.officialRotation.setTarget(1, Math.round(this.sampleRate * 0.002 * 1000 ** (this.officialRise / 100)));
+      this.officialFadeRemaining = 0;
+    } else if (this.officialRelease === 1) {
+      this.officialFadeRemaining = this.officialReleaseFrames;
+    } else {
+      this.officialRotation.reset(0);
+      this.officialFadeRemaining = 0;
+    }
+  }
 
   constructor(sampleRate = 48_000, parameters: BrowserTwistParameters = {}) {
     this.sampleRate = Number.isFinite(sampleRate)
@@ -120,13 +160,21 @@ export class BrowserTwistDsp {
   processSample(inputLeft: number, inputRight: number): void {
     this.amountCurrent += this.smoothingCoefficient * (this.amountTarget - this.amountCurrent);
     this.trajectoryCurrent += this.smoothingCoefficient * (this.trajectoryTarget - this.trajectoryCurrent);
-    const signedMacro = clamp(this.amountCurrent / 100, -1, 1);
+    let signedMacro = clamp(this.amountCurrent / 100, -1, 1);
+    if (this.officialEnabled) {
+      const rotation = this.officialRotation.next();
+      if (this.officialActive || this.officialFadeRemaining > 0) {
+        this.officialPhase = (this.officialPhase + TWO_PI * (0.4 + 7.6 * rotation * rotation) / this.sampleRate) % TWO_PI;
+        if (!this.officialActive) this.officialFadeRemaining -= 1;
+      }
+      signedMacro = rotation * Math.sin(this.officialPhase);
+    }
     const tablePosition = Math.abs(signedMacro) * TABLE_POINTS;
     const point = Math.min(TABLE_POINTS - 1, Math.floor(tablePosition));
     const fraction = tablePosition - point;
-    const modeA = Math.floor(this.trajectoryCurrent);
+    const modeA = this.officialEnabled ? 0 : Math.floor(this.trajectoryCurrent);
     const modeB = Math.min(3, modeA + 1);
-    const modeBlend = this.trajectoryCurrent - modeA;
+    const modeBlend = this.officialEnabled ? 0 : this.trajectoryCurrent - modeA;
     const tableA = this.trajectories[modeA as 0 | 1 | 2 | 3]!;
     const tableB = this.trajectories[modeB as 0 | 1 | 2 | 3]!;
     const offset0 = point * TABLE_STRIDE;
@@ -216,6 +264,10 @@ export class BrowserTwistDsp {
     this.trajectoryCurrent = this.trajectoryTarget;
     this.lastDelayMs = CENTER_DELAY_MS;
     this.lastFeedback = 0.16;
+    this.officialPhase = 0;
+    this.officialFadeRemaining = 0;
+    this.officialRotation.reset(0);
+    if (this.officialActive) this.officialRotation.setTarget(1, Math.round(this.sampleRate * 0.002 * 1000 ** (this.officialRise / 100)));
   }
 }
 

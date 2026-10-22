@@ -1,0 +1,23 @@
+
+> webrc505mkii-v2@0.0.0 build
+> vue-tsc -b && npm run build:worklet && vite build && node scripts/verify-third-party-notices.mjs --built
+
+
+> webrc505mkii-v2@0.0.0 build:worklet
+> esbuild src/audio/worklet/FxProcessor.ts --bundle --format=iife --target=es2022 --outfile=public/worklets/fx-processor.js
+
+vite v7.2.4 building client environment for production...
+transforming...
+✓ 280 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                   0.54 kB │ gzip:   0.34 kB
+dist/assets/liveMonoWorklet-jjY3xklw.js          13.06 kB
+dist/assets/hq-wav-export.worker-B7xN09rx.js    100.18 kB
+dist/assets/app-BhWgkjLZ.css                    107.80 kB │ gzip:  18.70 kB
+dist/assets/liveMonoPitch-DXbmf9OH.js             0.08 kB │ gzip:   0.09 kB
+dist/assets/liveMonoNode-CuPDpK_M.js              2.93 kB │ gzip:   1.29 kB
+dist/assets/SignalsmithStretch-D0hIqxZV.js      101.54 kB │ gzip:  44.55 kB
+dist/assets/app-B7gw-a0n.js                   1,157.24 kB │ gzip: 306.95 kB
+✓ built in 3.45s
+Verified 6 exact project and third-party license files in dist

@@ -1,0 +1,1527 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_audio_worklet_stress",
+  "measurementMode": "actual AudioContext + production AudioWorklet adapters with callback instrumentation active, pulled by a test-only AnalyserNode read pump",
+  "generatedAtUtc": "2026-10-18T16:47:58.142Z",
+  "browser": {
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.8037.57 Safari/537.36",
+    "language": "en-US",
+    "crossOriginIsolated": true,
+    "requestedSampleRateHz": 48000,
+    "actualSampleRateHz": 48000,
+    "baseLatencySeconds": 0.010020833333333333,
+    "outputLatencySeconds": 0.032
+  },
+  "graph": {
+    "diagnosticStage": "production",
+    "syntheticLoopTracks": 5,
+    "track1Source": "production Signalsmith createLivePolyPitchNode (LIVE_POLY), 3-second stereo synthetic loop",
+    "track2Through5Source": "four looping stereo AudioBufferSourceNode clean-room synthetic tone buffers",
+    "diagnosticDirectSource": null,
+    "inputEffects": [
+      "DSP LPF",
+      "DIST",
+      "VIBRATO",
+      "SUSTAINER"
+    ],
+    "inputEffectRouting": "separate synthetic input loop -> four serial production BrowserWorkletFX nodes -> final mix",
+    "trackEffectBank": [
+      "CHORUS",
+      "FDN8 REVERB",
+      "DELAY",
+      "AUTO PAN"
+    ],
+    "trackEffectRouting": "five track sources -> summed track bus -> four serial production BrowserWorkletFX nodes -> final mix",
+    "rhythm": {
+      "adapter": "production RhythmEngine + public /worklets/rhythm-processor.js",
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "provenance": "clean-room-generated"
+    },
+    "finalOutput": "production graph master -> AnalyserNode -> AudioContext.destination; main-thread sampling does not establish a physical endpoint",
+    "workletNodes": [
+      {
+        "slot": 0,
+        "label": "input-slot-A-lpf",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 1,
+        "label": "input-slot-B-distortion",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 2,
+        "label": "input-slot-C-vibrato",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 3,
+        "label": "input-slot-D-sustainer",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 4,
+        "label": "postmix-slot-A-chorus",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 5,
+        "label": "postmix-slot-B-reverb",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 6,
+        "label": "postmix-slot-C-delay",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 7,
+        "label": "postmix-slot-D-auto-pan",
+        "processorName": "rc505-fx-processor"
+      },
+      {
+        "slot": 8,
+        "label": "track-1-live-poly-signalsmith",
+        "processorName": "signalsmith-stretch"
+      },
+      {
+        "slot": 9,
+        "label": "production-rhythm-engine",
+        "processorName": "rc505-rhythm-processor"
+      }
+    ]
+  },
+  "duration": {
+    "seconds": 10.000424999999813,
+    "startedAt": "2026-10-18T16:47:48.140Z",
+    "endedAt": "2026-10-18T16:47:58.141Z",
+    "audioContextStartSeconds": 1.4133333333333333,
+    "audioContextEndSeconds": 11.416,
+    "audioContextAdvanceSeconds": 10.002666666666666,
+    "audioContextAdvanceRatio": 1.0002241571400068,
+    "stateBeforeSuspend": "running"
+  },
+  "contextProgression": {
+    "passed": true,
+    "minimumAdvanceRatio": 0.95,
+    "minimumAdvanceSeconds": 9.500403749999823,
+    "measuredAdvanceSeconds": 10.002666666666666,
+    "limitation": "AudioContext clock progression is a software-side guard; this is not endpoint continuity or hardware XRUN instrumentation."
+  },
+  "metrics": {
+    "measuredWallDurationSeconds": 10.000424999999813,
+    "measuredWallStartUtc": "2026-10-18T16:47:48.140Z",
+    "measuredWallEndUtc": "2026-10-18T16:47:58.141Z",
+    "callbackMetrics": [
+      {
+        "slot": 0,
+        "label": "input-slot-A-lpf",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 489,
+        "callbacks": 3750,
+        "totalOutputFramesObserved": 480000,
+        "callbackBlockFrames": {
+          "128": 3750
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 1,
+        "label": "input-slot-B-distortion",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 489,
+        "callbacks": 3750,
+        "totalOutputFramesObserved": 480000,
+        "callbackBlockFrames": {
+          "128": 3750
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 2,
+        "label": "input-slot-C-vibrato",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 488,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 3,
+        "label": "input-slot-D-sustainer",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 488,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 4,
+        "label": "postmix-slot-A-chorus",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 488,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 5,
+        "label": "postmix-slot-B-reverb",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 488,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 6,
+        "label": "postmix-slot-C-delay",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 488,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 7,
+        "label": "postmix-slot-D-auto-pan",
+        "processorName": "rc505-fx-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 488,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 8,
+        "label": "track-1-live-poly-signalsmith",
+        "processorName": "signalsmith-stretch",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 466,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      },
+      {
+        "slot": 9,
+        "label": "production-rhythm-engine",
+        "processorName": "rc505-rhythm-processor",
+        "timingClock": {
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        "timingBudgetEligible": false,
+        "preflightCallbacks": 390,
+        "callbacks": 3751,
+        "totalOutputFramesObserved": 480128,
+        "callbackBlockFrames": {
+          "128": 3751
+        },
+        "callbackCpuDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "callbackCpuDurationHistogramUs": null,
+        "instrumentedWrapperDuration": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "instrumentedWrapperDurationHistogramUs": null,
+        "startGapExcess": {
+          "sampleCount": null,
+          "quantileSampleCount": 0,
+          "binWidth": 1,
+          "unit": "microseconds",
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "p999": null,
+          "overflowCount": null,
+          "timingEligible": false
+        },
+        "startGapExcessHistogramUs": null,
+        "deadlineMisses": null,
+        "wrapperDeadlineMisses": null,
+        "missingCallbackEstimate": 0,
+        "missingFrames": 0,
+        "frameDiscontinuities": 0,
+        "frameRewinds": 0,
+        "callbackStartGapsOverOneQuantum": null,
+        "callbackErrors": 0,
+        "instrumentationErrors": 0,
+        "maxCallbackCpuDurationUs": null,
+        "maxInstrumentedWrapperDurationUs": null
+      }
+    ],
+    "timingAccuracy": {
+      "eligibleForRealtimeCpuBudget": false,
+      "timingClockByProcessor": [
+        {
+          "label": "input-slot-A-lpf",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "input-slot-B-distortion",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "input-slot-C-vibrato",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "input-slot-D-sustainer",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "postmix-slot-A-chorus",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "postmix-slot-B-reverb",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "postmix-slot-C-delay",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "postmix-slot-D-auto-pan",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "track-1-live-poly-signalsmith",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        },
+        {
+          "label": "production-rhythm-engine",
+          "source": "Date.now() fallback",
+          "monotonic": false,
+          "performanceObjectAvailable": false,
+          "performanceNowAvailable": false,
+          "performanceFailureReason": "performance.now() is unavailable in this AudioWorkletGlobalScope",
+          "probeReadCount": 4097,
+          "deltaSampleCount": 4096,
+          "positiveStepCount": 1,
+          "zeroStepCount": 4095,
+          "negativeStepCount": 0,
+          "observedMinPositiveStepUs": 1000,
+          "observedMedianPositiveStepUs": 1000,
+          "observedP95PositiveStepUs": 1000,
+          "resolutionFloorUs": 1000,
+          "positiveStepHistogramUs": [
+            [
+              1000,
+              1
+            ]
+          ],
+          "sourceChangedDuringProbe": false,
+          "passed": false
+        }
+      ],
+      "exclusionReason": "The AudioWorklet monotonic-clock probe was unavailable, lacked enough positive-step samples, or observed a 95th-percentile step above 100 microseconds; callback CPU quantiles/deadline metrics are suppressed and cannot pass a performance budget."
+    },
+    "callbackCounts": {
+      "totalInstrumentedCallbacks": 37508,
+      "estimatedMissingCallbacks": 0,
+      "estimatedMissingFrames": 0,
+      "directDroppedCallbackCount": null,
+      "directDroppedFrameCount": null,
+      "directDroppedCountUnavailableReason": "The Web Audio AudioWorklet API exposes no direct browser XRUN or dropped-callback counter; positive currentFrame gaps are reported as software-side estimates.",
+      "deadlineMisses": null,
+      "wrapperDeadlineMisses": null,
+      "callbackErrors": 0,
+      "instrumentationErrors": 0,
+      "nonFiniteOutputSamples": 0
+    },
+    "callbackMetricsByProcessor": {
+      "rc505-fx-processor": {
+        "nodes": 8,
+        "callbacks": 30006,
+        "estimatedMissingCallbacks": 0,
+        "deadlineMisses": null,
+        "timingBudgetEligible": false
+      },
+      "signalsmith-stretch": {
+        "nodes": 1,
+        "callbacks": 3751,
+        "estimatedMissingCallbacks": 0,
+        "deadlineMisses": null,
+        "timingBudgetEligible": false
+      },
+      "rc505-rhythm-processor": {
+        "nodes": 1,
+        "callbacks": 3751,
+        "estimatedMissingCallbacks": 0,
+        "deadlineMisses": null,
+        "timingBudgetEligible": false
+      }
+    },
+    "preflightCallbacksDuringMeasurement": [
+      {
+        "label": "input-slot-A-lpf",
+        "start": 489,
+        "end": 489,
+        "delta": 0
+      },
+      {
+        "label": "input-slot-B-distortion",
+        "start": 489,
+        "end": 489,
+        "delta": 0
+      },
+      {
+        "label": "input-slot-C-vibrato",
+        "start": 488,
+        "end": 488,
+        "delta": 0
+      },
+      {
+        "label": "input-slot-D-sustainer",
+        "start": 488,
+        "end": 488,
+        "delta": 0
+      },
+      {
+        "label": "postmix-slot-A-chorus",
+        "start": 488,
+        "end": 488,
+        "delta": 0
+      },
+      {
+        "label": "postmix-slot-B-reverb",
+        "start": 488,
+        "end": 488,
+        "delta": 0
+      },
+      {
+        "label": "postmix-slot-C-delay",
+        "start": 488,
+        "end": 488,
+        "delta": 0
+      },
+      {
+        "label": "postmix-slot-D-auto-pan",
+        "start": 488,
+        "end": 488,
+        "delta": 0
+      },
+      {
+        "label": "track-1-live-poly-signalsmith",
+        "start": 466,
+        "end": 466,
+        "delta": 0
+      },
+      {
+        "label": "production-rhythm-engine",
+        "start": 390,
+        "end": 390,
+        "delta": 0
+      }
+    ],
+    "uninstrumentedOutputProbe": {
+      "available": false,
+      "reason": "optional diagnosticOutputProbe=1 was not enabled"
+    },
+    "callbackCoverage": [
+      {
+        "label": "input-slot-A-lpf",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480000,
+        "ratio": 0.9997334044254865,
+        "passed": true
+      },
+      {
+        "label": "input-slot-B-distortion",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480000,
+        "ratio": 0.9997334044254865,
+        "passed": true
+      },
+      {
+        "label": "input-slot-C-vibrato",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      },
+      {
+        "label": "input-slot-D-sustainer",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      },
+      {
+        "label": "postmix-slot-A-chorus",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      },
+      {
+        "label": "postmix-slot-B-reverb",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      },
+      {
+        "label": "postmix-slot-C-delay",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      },
+      {
+        "label": "postmix-slot-D-auto-pan",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      },
+      {
+        "label": "track-1-live-poly-signalsmith",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      },
+      {
+        "label": "production-rhythm-engine",
+        "expectedAudioFrames": 480128,
+        "observedFrames": 480128,
+        "ratio": 1,
+        "passed": true
+      }
+    ],
+    "callbackCoveragePassed": true,
+    "preflightCallbacksPassed": false
+  },
+  "outputSignalSentinel": {
+    "inspectedValues": 1646592,
+    "nonSilentValues": 1646442,
+    "nonFiniteValues": 0,
+    "peakLinear": 0.34673064947128296,
+    "pollCount": 201,
+    "nonSilentPolls": 201,
+    "changedWindowPolls": 199,
+    "changedValues": 1630196,
+    "audioTimeAdvancePolls": 200,
+    "nonSilentRatio": 0.9999089027518657,
+    "nonSilentPollRatio": 1,
+    "changedWindowPollRatio": 0.995,
+    "nonSilentThresholdLinear": 0.00001,
+    "minimumPeakForSignalLinear": 0.0001,
+    "minimumNonSilentPollRatio": 0.95,
+    "minimumChangedWindowPollRatio": 0.95,
+    "pumpIntervalMs": 50,
+    "passed": true,
+    "limitation": "A test-only AnalyserNode read pump forces software graph rendering in headless mode; inspected windows overlap and do not establish physical output, acoustic quality, or device callback timing."
+  },
+  "browserJsMemory": {
+    "available": true,
+    "source": "performance.memory",
+    "startUsedJSHeapSize": 13400000,
+    "endUsedJSHeapSize": 13400000,
+    "deltaUsedJSHeapSize": 0,
+    "startTotalJSHeapSize": 17100000,
+    "endTotalJSHeapSize": 17100000,
+    "jsHeapSizeLimit": 3760000000
+  },
+  "instrumentation": {
+    "timingSource": "AudioWorklet performance.now() when available; Date.now() fallback is marked coarse and ineligible for CPU-budget conclusions",
+    "processCpuMetric": "synchronous per-callback JavaScript wall duration; not OS thread CPU time",
+    "callbackStartGaps": "positive excess between observed process start times and currentFrame-derived expected sample-time intervals",
+    "deadlineDefinition": "process callback duration greater than its actual output/input block duration at the AudioContext sample rate",
+    "missingCallbackDefinition": "estimated from positive currentFrame discontinuities relative to the prior callback block; not a browser XRUN counter",
+    "sharedMemory": "fixed SharedArrayBuffer histograms and counters; no per-callback postMessage or dynamic allocations in the probe hot path",
+    "processorRegistration": "test-only registerProcessor wrapper loaded before production worklets; production process implementations are invoked unchanged",
+    "outputFiniteProbe": "test-only final-bus pass-through with a 5ms AnalyserNode read pump; main-thread inspected windows overlap and add scheduling overhead",
+    "outputSignalSentinel": "AnalyserNode windows require finite, non-silent samples, fresh window changes, and peak level; windows overlap and are not unique output-frame counts",
+    "contextProgression": "context must remain running and its sample clock must advance at least 95% of real measurement time, with a 1s absolute minimum",
+    "durationQuantization": "integer microsecond histogram bins; values above 65.535 ms counted as overflow",
+    "measuredWrapperOverhead": "wrapper histogram includes most shared-memory metric writes; it excludes its final histogram/max stores and does not estimate the total effect on browser scheduling"
+  },
+  "strictExclusions": [
+    "Not a hardware test and not evidence about a physical audio interface, microphone, speakers, headphones, device drivers, or hardware buffer behavior.",
+    "The final-output sentinel proves only that the generated final bus has finite, non-silent electrical samples above the recorded threshold; it is not an acoustic or sound-quality acceptance test.",
+    "Not the complete application/runtime path: no Vue UI, device setup, recording/overdub, app transport integration, per-track production TrackAudio lifecycle, or full master/monitor topology.",
+    "Not a whole-app CPU, whole-system CPU, thermal, power, or acoustic-latency benchmark.",
+    "Not direct XRUN/dropout instrumentation. Deadline misses and frame-gap-derived missing callback estimates are software-side proxies only.",
+    "All loop and input signals are generated synthetic tones; rhythm events and kit are clean-room generated, not user audio or factory samples/MIDI.",
+    "Any result applies only to the exact headless-shell version, host, OS, graph, sample rate, duration, and instrumentation recorded in the JSON."
+  ],
+  "cleanup": {
+    "contextSuspended": true,
+    "contextClosed": true
+  },
+  "runner": {
+    "browserExecutablePath": "/tmp/rc505-cft154/chrome-headless-shell-linux64/chrome-headless-shell",
+    "browserBinaryVersion": "Google Chrome for Testing 154.0.8037.57",
+    "playwrightBrowserVersion": "154.0.8037.57",
+    "sandboxRequested": true,
+    "chromiumSandboxFlagEnabled": true,
+    "launchFlags": [
+      "--disable-field-trial-config",
+      "--disable-background-networking",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-back-forward-cache",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-extensions-with-background-pages",
+      "--disable-component-update",
+      "--no-default-browser-check",
+      "--disable-default-apps",
+      "--disable-dev-shm-usage",
+      "--disable-extensions",
+      "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints",
+      "--enable-features=CDPScreenshotNewSurface",
+      "--allow-pre-commit-input",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-popup-blocking",
+      "--disable-prompt-on-repost",
+      "--disable-renderer-backgrounding",
+      "--force-color-profile=srgb",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--password-store=basic",
+      "--use-mock-keychain",
+      "--no-service-autorun",
+      "--export-tagged-pdf",
+      "--disable-search-engine-choice-screen",
+      "--unsafely-disable-devtools-self-xss-warnings",
+      "--edge-skip-compat-layer-relaunch",
+      "--enable-automation",
+      "--disable-infobars",
+      "--disable-search-engine-choice-screen",
+      "--disable-sync",
+      "--enable-unsafe-swiftshader",
+      "--headless",
+      "--hide-scrollbars",
+      "--mute-audio",
+      "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+      "--user-data-dir=/tmp/playwright_chromiumdev_profile-0L7hpK",
+      "--remote-debugging-pipe",
+      "--no-startup-window"
+    ],
+    "runnerNodeVersion": "v24.19.0",
+    "requestedDurationSeconds": 10,
+    "requestedSampleRateHz": 48000,
+    "localServerOrigin": "http://127.0.0.1:5173",
+    "browserPageUrl": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress.html?seconds=10&sampleRate=48000"
+  }
+}

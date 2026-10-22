@@ -1,0 +1,32 @@
+run=native_per_track_fx_current_14256fc_20261019T131329Z
+head=14256fcf2ad540a9aacea215c31c632fd4b395a2
+binary_sha256=16172924820d71fde86a0b20b1e6a40412aa8cdd72bc604cee69f3e9463d2d19
+binary=/tmp/rc505-native-current-be1a/native_per_track_fx_bench
+start_utc=2026-10-19T13:13:29+00:00
+
+--- compiler ---
+c++ (Debian 14.2.0-19) 14.2.0
+
+--- cmake/build config ---
+CMAKE_BUILD_TYPE:STRING=Release
+NATIVE_ENABLE_RUBBERBAND_HQ:BOOL=OFF
+NATIVE_PORTABLE_TESTS_ONLY:BOOL=ON
+NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA:BOOL=OFF
+
+--- benchmark compile command ---
+
+--- CPU / quota / load before ---
+model name	: AMD EPYC 9V74 80-Core Processor
+online_processors=9
+cpu_max=cpu_stat=
+loadavg=0.33 0.78 0.81 1/394 19
+top_processes_before:
+    PID COMMAND         %CPU %MEM     ELAPSED
+      1 codex            0.0  0.1       00:00
+      2 bash             0.0  0.0       00:00
+     20 ps               0.0  0.0       00:00
+     21 head             0.0  0.0       00:00
+end_utc=2026-10-19T13:14:54+00:00
+loadavg_after=0.84 0.84 0.83 1/391 25
+cpu_stat_after=
+peak_rss_kib="rssAfterFxAndCallbacksKiB":608080

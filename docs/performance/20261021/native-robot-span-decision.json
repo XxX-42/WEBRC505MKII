@@ -1,0 +1,14 @@
+{
+  "candidate": "exact-order ROBOT spans",
+  "decision": "REJECTED",
+  "pooledGainPercent": {
+    "meanNs": 1.56132184543617,
+    "p50Ns": 2.105744579430824,
+    "p95Ns": 3.9204654508798953,
+    "p99Ns": -4.621079186956312,
+    "maxNs": -105.32635885831185
+  },
+  "hashesEqual": true,
+  "reason": "Pooled central gain below 3%; p99/max regressed; preserve all samples",
+  "aggregation": "Gain is ratio of arithmetic means of per-run statistics; p99 means mean(run p99), NOT pooled callback quantile. Raw callback timing arrays were not retained."
+}

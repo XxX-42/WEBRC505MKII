@@ -1,0 +1,43 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> webrc505mkii-v2@0.0.0 build
+> vue-tsc -b && npm run build:worklet && vite build && node scripts/verify-third-party-notices.mjs --built
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> webrc505mkii-v2@0.0.0 build:worklet
+> esbuild src/audio/worklet/FxProcessor.ts --bundle --format=iife --target=es2022 --outfile=public/worklets/fx-processor.js
+
+
+  public/worklets/fx-processor.js  770.7kb
+
+⚡ Done in 28ms
+vite v7.2.4 building client environment for production...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+transforming...
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ 297 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                   0.54 kB │ gzip:   0.34 kB
+dist/assets/liveMonoWorklet-DJFrXIP9.js          13.16 kB
+dist/assets/hq-wav-export.worker-B7xN09rx.js    100.18 kB
+dist/assets/app-KUpQyEjg.css                    116.76 kB │ gzip:  20.48 kB
+dist/assets/liveMonoPitch-KjClEjJt.js             0.08 kB │ gzip:   0.09 kB
+dist/assets/liveMonoNode-CuDQAAE4.js              2.93 kB │ gzip:   1.29 kB
+dist/assets/SignalsmithStretch-D0hIqxZV.js      101.54 kB │ gzip:  44.55 kB
+dist/assets/app-D75edUHT.js                   1,272.12 kB │ gzip: 326.93 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.93s
+Verified 6 exact project and third-party license files in dist
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

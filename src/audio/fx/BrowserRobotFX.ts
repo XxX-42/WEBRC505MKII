@@ -1,3 +1,4 @@
+import { officialFormantSemitones, officialPitchDefaults } from './dsp/OfficialPitchParameters';
 import { createLiveInputTransposeNode, type LiveInputTransposeNode } from '../pitch/signalsmith';
 import { getLiveMonoPitchLatencySamples } from '../pitch/liveMono';
 import type { BrowserRobotModeReason, BrowserRobotProcessingMode } from './dsp/BrowserRobotDsp';
@@ -41,6 +42,7 @@ const MAX_ALIGNMENT_DELAY_SECONDS = 0.1;
  */
 export class BrowserRobotFX implements FXBase {
   readonly name = 'ROBOT';
+  readonly algorithm = 'robot';
   readonly input: GainNode;
   readonly output: GainNode;
   readonly ready: Promise<void>;
@@ -63,15 +65,21 @@ export class BrowserRobotFX implements FXBase {
   private trackerLatencyFramesValue = 0;
   private alignmentLatencySamplesValue = 0;
   private lastModeFrame = -1;
-  private parameters = { robotPitch: 0, robotFormantSemitones: 0 };
+  private parameters: { robotPitch: number; robotFormantSemitones: number; robotNote?: number } = { robotPitch: 0, robotFormantSemitones: 0 };
   private mix = 1;
   private bypassed = true;
   private disposed = false;
   private failed = false;
+  private unsupportedOfficialMode = false;
   private failureKind: FailureKind = null;
   private failedParameterKey = '';
   private lastFrame = -1;
+  private readonly officialParameters: Record<string, number> = {};
+  private officialInitialized = false;
   public error = '';
+
+  /** The private A–D chain acknowledges ROBOT only after both host processors exist. */
+  get processorReady(): boolean { return this.analyzerNode !== null && this.pitchNode !== null && !this.disposed && !this.error; }
 
   constructor(context: AudioContext, ensureModule: () => Promise<void>, onFailure?: FailureHandler) {
     this.context = context;
@@ -110,10 +118,50 @@ export class BrowserRobotFX implements FXBase {
   get processingMode(): BrowserRobotProcessingMode { return this.processingModeValue; }
   get processingModeReason(): BrowserRobotModeReason { return this.modeReasonValue; }
 
+  /** The shared Browser amount macro is ROBOT mix, matching the input/legacy bank. */
+  setAmount(value: number): void {
+    if (!Number.isFinite(value)) return;
+    const official = { ...this.officialParameters };
+    this.setParam('mix', Math.max(0, Math.min(1, value)) * 100);
+    for (const [key, selected] of Object.entries(official)) this.setParam(key, selected);
+  }
+
   setParam(key: string, value: number): void {
     if (this.disposed) return;
     if (!Number.isFinite(value)) {
       this.failClosed(`ROBOT ${key} must be finite.`, key);
+      return;
+    }
+
+    if (key === 'official_mode') {
+      this.unsupportedOfficialMode = true;
+      this.failClosed('ROBOT official MODE 1/2 algorithms are unsupported; this is a clean-room YIN/PSOLA/Signalsmith implementation.', key);
+      return;
+    }
+    if (key === 'official_note') {
+      if (!Number.isInteger(value) || value < 0 || value > 11) {
+        this.failClosed('ROBOT official NOTE must be a pitch-class integer from 0 (C) to 11 (B).', key);
+        return;
+      }
+      this.initializeOfficialParameters(key);
+      this.officialParameters[key] = value;
+      this.parameters.robotNote = value;
+      this.analyzerNode?.port.postMessage({ type: 'configure', parameters: { robotNote: value } });
+      this.clearParameterFailure(key);
+      this.applyRouting();
+      return;
+    }
+    if (key === 'official_formant') {
+      if (!Number.isInteger(value) || value < -50 || value > 50) {
+        this.failClosed('ROBOT official FORMANT must be an integer from -50 to +50.', key);
+        return;
+      }
+      this.initializeOfficialParameters(key);
+      this.officialParameters[key] = value;
+      this.parameters.robotFormantSemitones = officialFormantSemitones(value);
+      this.analyzerNode?.port.postMessage({ type: 'configure', parameters: { robotFormantSemitones: this.parameters.robotFormantSemitones } });
+      this.clearParameterFailure(key);
+      this.applyRouting();
       return;
     }
 
@@ -135,6 +183,8 @@ export class BrowserRobotFX implements FXBase {
         this.failClosed('ROBOT pitch must be between -24 and +24 semitones.', key);
         return;
       }
+      this.parameters.robotNote = -1;
+      this.analyzerNode?.port.postMessage({ type: 'configure', parameters: { robotNote: -1 } });
       parameterKey = 'robotPitch';
     } else if (key === 'formant' || key === 'formant_semitones' || key === 'robot.formant' || key === 'robotFormantSemitones') {
       if (value < -12 || value > 12) {
@@ -151,6 +201,14 @@ export class BrowserRobotFX implements FXBase {
     this.analyzerNode?.port.postMessage({ type: 'configure', parameters: { [parameterKey]: bounded } });
     this.clearParameterFailure(key);
     this.applyRouting();
+  }
+
+  private initializeOfficialParameters(exceptKey: string): void {
+    if (this.officialInitialized) return;
+    this.officialInitialized = true;
+    for (const [key, value] of Object.entries(officialPitchDefaults(this.name, this.algorithm))) {
+      if (key !== exceptKey) this.setParam(key, value);
+    }
   }
 
   setBypass(bypass: boolean): void {
@@ -172,6 +230,10 @@ export class BrowserRobotFX implements FXBase {
     }
     this.analyzerNode?.port.postMessage({ type: 'set-bypass', value: bypass, rampFrames: 0 });
     this.applyRouting();
+  }
+
+  getParameterSnapshot(): Readonly<Record<string, number>> {
+    return Object.freeze({ pitch: this.parameters.robotPitch, formant: this.parameters.robotFormantSemitones, mix: this.mix * 100, ...this.officialParameters });
   }
 
   dispose(): void {
@@ -202,6 +264,7 @@ export class BrowserRobotFX implements FXBase {
       if (this.disposed) return;
       pitchNode = await createLiveInputTransposeNode(this.context, {
         mode: 'LIVE_FX',
+        pitchRange: 'official-bend',
         channels: 2,
         semitones: 0,
       });
@@ -253,9 +316,7 @@ export class BrowserRobotFX implements FXBase {
       };
       analyzerNode.port.postMessage({ type: 'configure', parameters: this.parameters });
       analyzerNode.port.postMessage({ type: 'set-bypass', value: this.bypassed, rampFrames: 0 });
-      this.failed = false;
-      this.failureKind = null;
-      this.error = '';
+      if (this.failureKind !== 'parameter' && !this.unsupportedOfficialMode) { this.failed = false; this.failureKind = null; this.error = ''; }
       this.applyRouting();
     } catch (cause) {
       pitchNode?.disconnect();
@@ -290,7 +351,7 @@ export class BrowserRobotFX implements FXBase {
     const targetMidi = message.targetMidi as number;
     const confidence = message.confidence as number;
     const voiced = message.voiced;
-    if (frame < this.lastFrame || semitones < -24 || semitones > 24 || confidence < 0 || confidence > 1 ||
+    if (frame < this.lastFrame || semitones < -36 || semitones > 48 || confidence < 0 || confidence > 1 ||
         (voiced && (sourceHz < 80 || sourceHz > 1000 || Math.abs((sourceMidi + semitones) - targetMidi) > 0.02))) {
       this.failRuntime('Browser ROBOT emitted an out-of-range or unordered pitch target.');
       return;

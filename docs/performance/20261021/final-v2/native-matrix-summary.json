@@ -1,0 +1,40 @@
+{
+  "cells": 216,
+  "functionalGates": {
+    "PASS": 216
+  },
+  "performanceGates": {
+    "PASS": 170,
+    "FAIL": 46
+  },
+  "cpuDeadlineExceedances": 1628,
+  "callbackNewAllocations": 0,
+  "worstP99BudgetPercent": 628.7641688199827,
+  "perFx": {
+    "0": {
+      "performanceGates": {
+        "PASS": 71,
+        "FAIL": 1
+      },
+      "cpuDeadlineExceedances": 1,
+      "meanAtLeast50Percent": 0
+    },
+    "1": {
+      "performanceGates": {
+        "PASS": 32,
+        "FAIL": 40
+      },
+      "cpuDeadlineExceedances": 1624,
+      "meanAtLeast50Percent": 30
+    },
+    "2": {
+      "performanceGates": {
+        "PASS": 67,
+        "FAIL": 5
+      },
+      "cpuDeadlineExceedances": 3,
+      "meanAtLeast50Percent": 0
+    }
+  },
+  "environment": "CPU0, shared cloud host; no physical device; all samples retained"
+}

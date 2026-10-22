@@ -115,6 +115,30 @@ test('Tech compatibility FX editor: selects target track/slot and restores state
   await expect(restoredPanel.locator('select.fx-select').first()).toHaveValue('FILTER');
 });
 
+test('LCD per-track OSC VOC editor sends MIDI connect for its exact track and slot', async ({ page }) => {
+  await page.addInitScript({ path: path.join(process.cwd(), 'tests/e2e/initMocks.js') });
+  await page.goto('/?audio=browser&ui=tech');
+  await startBrowserAudio(page);
+  const panel = await openFxEditor(page, 'track');
+  await panel.getByLabel('Track FX target', { exact: true }).selectOption('4');
+  await panel.getByLabel('Select Track 4 FX slot C', { exact: true }).click();
+  await panel.getByLabel('Per-track FX type', { exact: true }).selectOption('OSC VOC (M)');
+  await expect(panel.locator('[data-osc-voc-editor]')).toHaveCount(1);
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const engine = AudioEngine.getInstance();
+    const global = window as unknown as { __capturedBrowserMidiTarget?: Record<string, unknown> };
+    engine.connectMidiInput = (target) => {
+      global.__capturedBrowserMidiTarget = target ? { ...target } : {};
+      return Promise.resolve('connected');
+    };
+  });
+  await panel.locator('[data-osc-voc-editor] button').click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __capturedBrowserMidiTarget?: Record<string, unknown> }).__capturedBrowserMidiTarget ?? null))
+    .toEqual({ path: 'track', trackId: 4, slot: 'C', effectId: 'osc_voc_m' });
+  await expect(panel.locator('[data-midi-status]')).toContainText('MIDI input connected');
+});
+
 test('Classic LCD FX fields and four screen knobs preserve the selected target in Browser DSP and Native mock bridge', async ({ page }) => {
   await page.addInitScript({ path: path.join(process.cwd(), 'tests/e2e/initMocks.js') });
 

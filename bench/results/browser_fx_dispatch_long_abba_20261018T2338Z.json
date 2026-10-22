@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_dispatch_same_process_abba",
+  "generatedAtUtc": "2026-10-18T23:38:44.346Z",
+  "repositoryHead": "b78c55d6bcbe95974cbf21afa86ef18f8761381a",
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 64,
+  "measuredBlocks": 1024,
+  "baselineSourcePath": "/tmp/rc505_fx_processor_b78c55d_9f44d47a.js",
+  "baselineSourceSha256": "9f44d47aa7a2989abd4c9d460c3255408e16278185ecae2a29e1df5b58b3d267",
+  "candidateSourcePath": "/workspace/shared/rc505-recovery-20261018/WEBRC505MKII/public/worklets/fx-processor.js",
+  "candidateSourceSha256": "e29d9088430a65638e9ebfcc4d59f6f3370c326b6090e83cc321da5213f90eb0",
+  "timingSource": "process.hrtime.bigint() around synchronous worklet process() in a Node VM; per-algorithm A/B/B/A run order.",
+  "exclusions": [
+    "No AudioWorklet scheduler, AudioContext, cross-thread scheduling, or physical endpoint.",
+    "One FX processor at a time; no 20-slot graph, LIVE_POLY nodes, rhythm engine, recording, or host scheduling.",
+    "Output exact-equivalence is asserted by tests/unit/browser-fx-scalar-dispatch.spec.ts, not inferred from benchmark RMS.",
+    "Results are diagnostic and cannot pass the Browser/native realtime, XRUN, quality, or hardware gates."
+  ],
+  "results": [
+    {
+      "algorithm": "phaser",
+      "order": [
+        "A1",
+        "B1",
+        "B2",
+        "A2"
+      ],
+      "baselineA1": {
+        "elapsedMilliseconds": 2826.753473,
+        "realtimeRatio": 0.9510790112251282,
+        "nanosecondsPerInputFrame": 21566.417488098145,
+        "finite": true,
+        "outputRms": 0.15843163201190769
+      },
+      "candidateB1": {
+        "elapsedMilliseconds": 2855.566994,
+        "realtimeRatio": 0.9607735018569946,
+        "nanosecondsPerInputFrame": 21786.2472076416,
+        "finite": true,
+        "outputRms": 0.15843163201190769
+      },
+      "candidateB2": {
+        "elapsedMilliseconds": 3040.097085,
+        "realtimeRatio": 1.0228598132972717,
+        "nanosecondsPerInputFrame": 23194.100074768066,
+        "finite": true,
+        "outputRms": 0.15843163201190769
+      },
+      "baselineA2": {
+        "elapsedMilliseconds": 2920.668236,
+        "realtimeRatio": 0.9826772247894288,
+        "nanosecondsPerInputFrame": 22282.930267333984,
+        "finite": true,
+        "outputRms": 0.15843163201190769
+      },
+      "baselineMeanRealtimeRatio": 0.9668781180072785,
+      "candidateMeanRealtimeRatio": 0.9918166575771332,
+      "relativeKernelTimeReductionPercent": -2.5792847211448597,
+      "allRunsFinite": true
+    },
+    {
+      "algorithm": "distortion",
+      "order": [
+        "A1",
+        "B1",
+        "B2",
+        "A2"
+      ],
+      "baselineA1": {
+        "elapsedMilliseconds": 2666.829242,
+        "realtimeRatio": 0.8972714963699341,
+        "nanosecondsPerInputFrame": 20346.292434692383,
+        "finite": true,
+        "outputRms": 0.7515036969275048
+      },
+      "candidateB1": {
+        "elapsedMilliseconds": 2862.41126,
+        "realtimeRatio": 0.9630762982635498,
+        "nanosecondsPerInputFrame": 21838.464813232422,
+        "finite": true,
+        "outputRms": 0.7515036969275048
+      },
+      "candidateB2": {
+        "elapsedMilliseconds": 2613.19506,
+        "realtimeRatio": 0.8792259380035401,
+        "nanosecondsPerInputFrame": 19937.096099853516,
+        "finite": true,
+        "outputRms": 0.7515036969275048
+      },
+      "baselineA2": {
+        "elapsedMilliseconds": 2692.343142,
+        "realtimeRatio": 0.905855808732605,
+        "nanosecondsPerInputFrame": 20540.948043823242,
+        "finite": true,
+        "outputRms": 0.7515036969275048
+      },
+      "baselineMeanRealtimeRatio": 0.9015636525512696,
+      "candidateMeanRealtimeRatio": 0.921151118133545,
+      "relativeKernelTimeReductionPercent": -2.1726103893880673,
+      "allRunsFinite": true
+    },
+    {
+      "algorithm": "gate-reverb",
+      "order": [
+        "A1",
+        "B1",
+        "B2",
+        "A2"
+      ],
+      "baselineA1": {
+        "elapsedMilliseconds": 2858.070828,
+        "realtimeRatio": 0.9616159325775147,
+        "nanosecondsPerInputFrame": 21805.34994506836,
+        "finite": true,
+        "outputRms": 0.1327010122318682
+      },
+      "candidateB1": {
+        "elapsedMilliseconds": 2505.21033,
+        "realtimeRatio": 0.8428937954177856,
+        "nanosecondsPerInputFrame": 19113.237991333008,
+        "finite": true,
+        "outputRms": 0.1327010122318682
+      },
+      "candidateB2": {
+        "elapsedMilliseconds": 2594.601477,
+        "realtimeRatio": 0.8729700098854065,
+        "nanosecondsPerInputFrame": 19795.238319396973,
+        "finite": true,
+        "outputRms": 0.1327010122318682
+      },
+      "baselineA2": {
+        "elapsedMilliseconds": 2498.071105,
+        "realtimeRatio": 0.8404917581977844,
+        "nanosecondsPerInputFrame": 19058.770027160645,
+        "finite": true,
+        "outputRms": 0.1327010122318682
+      },
+      "baselineMeanRealtimeRatio": 0.9010538453876495,
+      "candidateMeanRealtimeRatio": 0.8579319026515961,
+      "relativeKernelTimeReductionPercent": 4.78572317922927,
+      "allRunsFinite": true
+    },
+    {
+      "algorithm": "reverb",
+      "order": [
+        "A1",
+        "B1",
+        "B2",
+        "A2"
+      ],
+      "baselineA1": {
+        "elapsedMilliseconds": 2352.967813,
+        "realtimeRatio": 0.7916708416236877,
+        "nanosecondsPerInputFrame": 17951.719764709473,
+        "finite": true,
+        "outputRms": 0.03024706336978018
+      },
+      "candidateB1": {
+        "elapsedMilliseconds": 2279.620001,
+        "realtimeRatio": 0.7669925082710266,
+        "nanosecondsPerInputFrame": 17392.12036895752,
+        "finite": true,
+        "outputRms": 0.03024706336978018
+      },
+      "candidateB2": {
+        "elapsedMilliseconds": 2256.544061,
+        "realtimeRatio": 0.7592284629066468,
+        "nanosecondsPerInputFrame": 17216.064918518066,
+        "finite": true,
+        "outputRms": 0.03024706336978018
+      },
+      "baselineA2": {
+        "elapsedMilliseconds": 2515.406512,
+        "realtimeRatio": 0.8463243650756836,
+        "nanosecondsPerInputFrame": 19191.028686523438,
+        "finite": true,
+        "outputRms": 0.03024706336978018
+      },
+      "baselineMeanRealtimeRatio": 0.8189976033496857,
+      "candidateMeanRealtimeRatio": 0.7631104855888367,
+      "relativeKernelTimeReductionPercent": 6.823843871126334,
+      "allRunsFinite": true
+    },
+    {
+      "algorithm": "chorus",
+      "order": [
+        "A1",
+        "B1",
+        "B2",
+        "A2"
+      ],
+      "baselineA1": {
+        "elapsedMilliseconds": 1850.793846,
+        "realtimeRatio": 0.6227112473190308,
+        "nanosecondsPerInputFrame": 14120.436447143555,
+        "finite": true,
+        "outputRms": 0.1289726789229121
+      },
+      "candidateB1": {
+        "elapsedMilliseconds": 1654.287223,
+        "realtimeRatio": 0.5565953562492371,
+        "nanosecondsPerInputFrame": 12621.20989227295,
+        "finite": true,
+        "outputRms": 0.1289726789229121
+      },
+      "candidateB2": {
+        "elapsedMilliseconds": 1726.155244,
+        "realtimeRatio": 0.580775804598999,
+        "nanosecondsPerInputFrame": 13169.51937866211,
+        "finite": true,
+        "outputRms": 0.1289726789229121
+      },
+      "baselineA2": {
+        "elapsedMilliseconds": 1598.207513,
+        "realtimeRatio": 0.5377269845832825,
+        "nanosecondsPerInputFrame": 12193.355659484863,
+        "finite": true,
+        "outputRms": 0.1289726789229121
+      },
+      "baselineMeanRealtimeRatio": 0.5802191159511567,
+      "candidateMeanRealtimeRatio": 0.568685580424118,
+      "relativeKernelTimeReductionPercent": 1.9877896487660072,
+      "allRunsFinite": true
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"run":"A2","startedUtc":"2026-10-19T15:32:20Z","binarySha256":"7485d31ace4e97c4d9259ff58e4d82ee6240c7e629800b2b5b13f655d9a72f61","command":"/tmp/rc505-native-distortion-abba-dfb3476/native_per_track_fx_bench.baseline --topology=all-banks --pitch=off --warmup-callbacks=5000 --measured-callbacks=100000"}

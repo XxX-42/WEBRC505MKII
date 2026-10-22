@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <cstring>
 #include <cstddef>
 #include <limits>
 #include <vector>
@@ -381,7 +382,73 @@ void testControlSmoothingAndReset() {
 
 } // namespace
 
+// Exact channel independence, including cache invalidation during smoothing.
+void testStereoIsolationWithAutomatedControls() {
+    for (const unsigned int rate : {44100U, 48000U}) {
+        NativePreampProcessor stereo, leftOnly, rightOnly;
+        assert(stereo.prepare(rate) && leftOnly.prepare(rate) && rightOnly.prepare(rate));
+        for (unsigned int block = 0; block < 80; ++block) {
+            if (block % 7 == 0) {
+                NativePreampConfig config;
+                config.model = static_cast<float>((block / 7) % 5);
+                config.gainPercent = static_cast<float>((block * 13) % 101);
+                assert(stereo.setConfig(config, 113));
+                assert(leftOnly.setConfig(config, 113));
+                assert(rightOnly.setConfig(config, 113));
+            }
+            std::array<float, 128> both{}, left{}, right{};
+            for (unsigned int frame = 0; frame < 64; ++frame) {
+                both[frame * 2] = 0.2f * std::sin((block * 64 + frame) * 0.071f);
+                both[frame * 2 + 1] = 0.17f * std::cos((block * 64 + frame) * 0.123f);
+                left[frame * 2] = both[frame * 2];
+                right[frame * 2 + 1] = both[frame * 2 + 1];
+            }
+            (void)stereo.processInPlace(both.data(), 64, 2);
+            (void)leftOnly.processInPlace(left.data(), 64, 2);
+            (void)rightOnly.processInPlace(right.data(), 64, 2);
+            for (unsigned int frame = 0; frame < 64; ++frame) {
+                assert(both[frame * 2] == left[frame * 2]);
+                assert(both[frame * 2 + 1] == right[frame * 2 + 1]);
+            }
+        }
+    }
+}
+
+// The always-processed left channel is a scalar reference for the pristine
+// right-channel shortcut, including hidden right tails during mono blocks.
+void testPristineRightChannelTransitions() {
+    for (unsigned int rate : {44100U, 48000U}) {
+        NativePreampProcessor actual, reference;
+        assert(actual.prepare(rate) && reference.prepare(rate));
+        for (unsigned int block = 0; block < 160; ++block) {
+            if (block == 90) { actual.reset(); reference.reset(); }
+            NativePreampConfig config;
+            config.model = static_cast<float>((block / 19) % 5);
+            config.gainPercent = static_cast<float>((block * 13) % 101);
+            assert(actual.setConfig(config, 113) && reference.setConfig(config, 113));
+            const unsigned int frames = 1 + (block * 31) % 127;
+            const unsigned int channels = block < 20 || (block >= 55 && block < 75) ? 1 : 2;
+            std::array<float, 256> both{}, right{};
+            for (unsigned int frame = 0; frame < frames; ++frame) {
+                both[frame * channels] = 0.2f * std::sin((block * 127 + frame) * 0.071f);
+                float input = 0.0f;
+                if (block == 32 || block == 112) input = frame == 0 ? 0.25f : 0.0f;
+                if (block == 99) input = -0.0f;
+                if (block > 120) input = 0.13f * std::cos((block * 127 + frame) * 0.123f);
+                right[frame] = channels == 2 ? input : 0.0f;
+                if (channels == 2) both[frame * 2 + 1] = input;
+            }
+            (void)actual.processInPlace(both.data(), frames, channels);
+            (void)reference.processInPlace(right.data(), frames, 1);
+            if (channels == 2) for (unsigned int frame = 0; frame < frames; ++frame)
+                assert(std::memcmp(&both[frame * 2 + 1], &right[frame], sizeof(float)) == 0);
+        }
+    }
+}
+
 int main() {
+    testPristineRightChannelTransitions();
+    testStereoIsolationWithAutomatedControls();
     testSupportedRatesAndConfigBounds();
     testProcessingAtSupportedSampleRates();
     testModelsAndToneControlsChangeTheSound();

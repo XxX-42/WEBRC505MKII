@@ -1,0 +1,348 @@
+{
+  "requestedBlocks": null,
+  "generatedAt": "2026-10-21T18:37:29.845Z",
+  "scope": "Exact bundled worklet synchronous Node VM parity, not browser callback or hardware acceptance",
+  "sourceHashes": [
+    "a639965805e13daa6ee93d1d8ef2a5beaaa59b9c1c2ccf658707674683a6c0c8",
+    "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab"
+  ],
+  "cases": [
+    {
+      "algorithm": "tremolo",
+      "rate": 44100,
+      "channels": 1,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "2b5c68c8eb03b33939925659f62d21749a9995794fbad7725c5cb949eafe221b",
+        "2b5c68c8eb03b33939925659f62d21749a9995794fbad7725c5cb949eafe221b"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 44100,
+      "channels": 1,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "2b5c68c8eb03b33939925659f62d21749a9995794fbad7725c5cb949eafe221b",
+        "2b5c68c8eb03b33939925659f62d21749a9995794fbad7725c5cb949eafe221b"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 44100,
+      "channels": 1,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "2b5c68c8eb03b33939925659f62d21749a9995794fbad7725c5cb949eafe221b",
+        "2b5c68c8eb03b33939925659f62d21749a9995794fbad7725c5cb949eafe221b"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 44100,
+      "channels": 2,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "3ea9ddddf5e00df61cc90102da486ce9adbc6192c9a57c7424b6e2c05235c0fb",
+        "3ea9ddddf5e00df61cc90102da486ce9adbc6192c9a57c7424b6e2c05235c0fb"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 44100,
+      "channels": 2,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "3ea9ddddf5e00df61cc90102da486ce9adbc6192c9a57c7424b6e2c05235c0fb",
+        "3ea9ddddf5e00df61cc90102da486ce9adbc6192c9a57c7424b6e2c05235c0fb"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 44100,
+      "channels": 2,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "3ea9ddddf5e00df61cc90102da486ce9adbc6192c9a57c7424b6e2c05235c0fb",
+        "3ea9ddddf5e00df61cc90102da486ce9adbc6192c9a57c7424b6e2c05235c0fb"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 48000,
+      "channels": 1,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "522858115d43eed36f3e856586f98260c27ba1a6d49a7d2d29f1436cb03c3fa8",
+        "522858115d43eed36f3e856586f98260c27ba1a6d49a7d2d29f1436cb03c3fa8"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 48000,
+      "channels": 1,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "522858115d43eed36f3e856586f98260c27ba1a6d49a7d2d29f1436cb03c3fa8",
+        "522858115d43eed36f3e856586f98260c27ba1a6d49a7d2d29f1436cb03c3fa8"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 48000,
+      "channels": 1,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "522858115d43eed36f3e856586f98260c27ba1a6d49a7d2d29f1436cb03c3fa8",
+        "522858115d43eed36f3e856586f98260c27ba1a6d49a7d2d29f1436cb03c3fa8"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 48000,
+      "channels": 2,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "dd3e23f83f1a06a35cb513b1c2ededf0f6706c23f7b17931160c55759261d311",
+        "dd3e23f83f1a06a35cb513b1c2ededf0f6706c23f7b17931160c55759261d311"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 48000,
+      "channels": 2,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "dd3e23f83f1a06a35cb513b1c2ededf0f6706c23f7b17931160c55759261d311",
+        "dd3e23f83f1a06a35cb513b1c2ededf0f6706c23f7b17931160c55759261d311"
+      ]
+    },
+    {
+      "algorithm": "tremolo",
+      "rate": 48000,
+      "channels": 2,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "dd3e23f83f1a06a35cb513b1c2ededf0f6706c23f7b17931160c55759261d311",
+        "dd3e23f83f1a06a35cb513b1c2ededf0f6706c23f7b17931160c55759261d311"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 44100,
+      "channels": 1,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "cb9a69cb2fbfb7cf44d78b686fb65986cd63a20008db6cf84907da53eeb905d6",
+        "cb9a69cb2fbfb7cf44d78b686fb65986cd63a20008db6cf84907da53eeb905d6"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 44100,
+      "channels": 1,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "cb9a69cb2fbfb7cf44d78b686fb65986cd63a20008db6cf84907da53eeb905d6",
+        "cb9a69cb2fbfb7cf44d78b686fb65986cd63a20008db6cf84907da53eeb905d6"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 44100,
+      "channels": 1,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "cb9a69cb2fbfb7cf44d78b686fb65986cd63a20008db6cf84907da53eeb905d6",
+        "cb9a69cb2fbfb7cf44d78b686fb65986cd63a20008db6cf84907da53eeb905d6"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 44100,
+      "channels": 2,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "cbf62092b73b84df36110064a9bcb3fdb5146175f5944812df23b88ca7044a92",
+        "cbf62092b73b84df36110064a9bcb3fdb5146175f5944812df23b88ca7044a92"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 44100,
+      "channels": 2,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "cbf62092b73b84df36110064a9bcb3fdb5146175f5944812df23b88ca7044a92",
+        "cbf62092b73b84df36110064a9bcb3fdb5146175f5944812df23b88ca7044a92"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 44100,
+      "channels": 2,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "cbf62092b73b84df36110064a9bcb3fdb5146175f5944812df23b88ca7044a92",
+        "cbf62092b73b84df36110064a9bcb3fdb5146175f5944812df23b88ca7044a92"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 48000,
+      "channels": 1,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "c2a69026868bd8997f48f57320a90f85b24e5288705dfdc220c0284a9fba03da",
+        "c2a69026868bd8997f48f57320a90f85b24e5288705dfdc220c0284a9fba03da"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 48000,
+      "channels": 1,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "c2a69026868bd8997f48f57320a90f85b24e5288705dfdc220c0284a9fba03da",
+        "c2a69026868bd8997f48f57320a90f85b24e5288705dfdc220c0284a9fba03da"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 48000,
+      "channels": 1,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "c2a69026868bd8997f48f57320a90f85b24e5288705dfdc220c0284a9fba03da",
+        "c2a69026868bd8997f48f57320a90f85b24e5288705dfdc220c0284a9fba03da"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 48000,
+      "channels": 2,
+      "mode": "sine",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "5d4b8652276edb5828c3f446fd26f75b405393ffc54203a24cced6bbe3726c4c",
+        "5d4b8652276edb5828c3f446fd26f75b405393ffc54203a24cced6bbe3726c4c"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 48000,
+      "channels": 2,
+      "mode": "triangle",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "5d4b8652276edb5828c3f446fd26f75b405393ffc54203a24cced6bbe3726c4c",
+        "5d4b8652276edb5828c3f446fd26f75b405393ffc54203a24cced6bbe3726c4c"
+      ]
+    },
+    {
+      "algorithm": "auto-pan",
+      "rate": 48000,
+      "channels": 2,
+      "mode": "square",
+      "frames": 49152,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "5d4b8652276edb5828c3f446fd26f75b405393ffc54203a24cced6bbe3726c4c",
+        "5d4b8652276edb5828c3f446fd26f75b405393ffc54203a24cced6bbe3726c4c"
+      ]
+    }
+  ],
+  "pass": true
+}

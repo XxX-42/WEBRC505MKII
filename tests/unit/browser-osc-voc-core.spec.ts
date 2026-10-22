@@ -73,6 +73,26 @@ function renderBlocks(
 }
 
 describe('Browser OSC VOC (M) sample-frame core', () => {
+  it('schedules a frame-aligned all-notes-off even when the bounded queue is full', () => {
+    const core = new BrowserOscVocCore(48_000);
+    core.noteOn(1, 60, 100, 0);
+    core.processSample(0);
+    expect(core.activeNote).toBe(60);
+    for (let index = 0; index < core.eventCapacity; index += 1) {
+      core.noteOn(1, index % 128, 100, core.currentFrame + 10 + index);
+    }
+    expect(core.pendingEventCount).toBe(core.eventCapacity);
+    const releaseFrame = core.currentFrame + 20;
+    core.allNotesOff(releaseFrame);
+    expect(core.pendingEventCount).toBe(1);
+    const left = new Float32Array(32);
+    const right = new Float32Array(32);
+    core.processBlock(new Float32Array(32), new Float32Array(32), left, right, 32);
+    expect(core.activeNote).toBeNull();
+    expect(core.currentFrame).toBe(releaseFrame + 12);
+    expect(core.pendingEventCount).toBe(0);
+  });
+
   it('tracks MIDI pitch with the independent spectral oracle and applies octave transpose', () => {
     const sampleRate = 48_000;
     const input = deterministicNoise(sampleRate);

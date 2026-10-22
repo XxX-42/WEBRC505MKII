@@ -1,7 +1,7 @@
 import { computed, reactive, readonly } from 'vue';
 import { usePanelFocus } from './usePanelFocus';
 
-export type DevicePanelPage = 'home' | 'mixer' | 'menu' | 'input-fx' | 'track-fx' | 'rhythm' | 'settings' | 'track';
+export type DevicePanelPage = 'home' | 'mixer' | 'menu' | 'memory' | 'input-fx' | 'track-fx' | 'rhythm' | 'settings' | 'track';
 
 interface DevicePanelState {
   page: DevicePanelPage;
@@ -25,7 +25,7 @@ const devicePanelState = reactive<DevicePanelState>({
 });
 const pageActionStatus = reactive<PageActionStatus>({ trackId: null, pending: '', error: '' });
 
-const drawerPages = new Set<DevicePanelPage>(['menu', 'input-fx', 'track-fx', 'rhythm', 'settings', 'track']);
+const drawerPages = new Set<DevicePanelPage>(['menu', 'memory', 'input-fx', 'track-fx', 'rhythm', 'settings', 'track']);
 
 function clearPageActionStatus(): void {
   pageActionStatus.trackId = null;

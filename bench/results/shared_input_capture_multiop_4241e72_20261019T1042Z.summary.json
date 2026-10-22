@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "runId": "shared_input_capture_multiop_4241e72_20261019T1042Z",
+  "result": "FAIL",
+  "runStartedAtUtc": "2026-10-19T10:42:21.782Z",
+  "runFinishedAtUtc": "2026-10-19T10:43:30.879Z",
+  "measuredWallSeconds": 60.018765,
+  "audioContextAdvanceSeconds": 58.0585941043084,
+  "actualSampleRateHz": 44100,
+  "profile": "full-runtime",
+  "graph": {
+    "activeTracks": 5,
+    "privateTrackFx": 20,
+    "inputFx": 4,
+    "sharedTrackFx": 4,
+    "activeLivePolyTracks": 5,
+    "initialInstrumentedNodes": 36,
+    "initialTopology": "unchanged 35-node full-runtime topology plus one persistent engine-owned input capture tap",
+    "cumulativeNodesAtEnd": 53,
+    "rhythm": "clean-room rhythm-001 SIDE STICK, kit 1",
+    "inputSource": "synthetic stereo oscillator through Browser input FX and shared capture tap; no microphone/device permission"
+  },
+  "operations": {
+    "planned": 17,
+    "completed": 17,
+    "stereoRecordings": 3,
+    "overdubUndoRedo": 14,
+    "recordingFramesEach": 25984,
+    "recordingChannels": 2,
+    "recordingDroppedFrames": 0,
+    "recordingOverflowEvents": 0,
+    "overdubExactPcmUndoRedoHashes": 14,
+    "backfillFramesMin": 511,
+    "backfillFramesMax": 896,
+    "replayBudgetFramesPerProcess": 256,
+    "maxReplayedFramesInOneProcess": 256,
+    "maxObservedLiveQueueFrames": 2688
+  },
+  "coverage": {
+    "threshold": 0.95,
+    "passed": false,
+    "overdubProcessorsFailed": 14,
+    "overdubProcessorCoverageRatioMin": 0.9285714285714286,
+    "overdubProcessorCoverageRatioMax": 0.9696969696969697,
+    "overdubActivationDelayFramesMin": 511,
+    "overdubActivationDelayFramesMax": 896,
+    "overdubMissingProcessorFramesTotal": 9341,
+    "signalsmithProcessorsFailed": 6,
+    "signalsmithMissingProcessorFramesTotal": 1024,
+    "estimatedMissingCallbacks": 72,
+    "callbackErrors": 0,
+    "processorErrors": 0,
+    "interpretation": "The FAIL is callback-coverage from each overdub processor's requested start frame R. Shared-tap capture/backfill records [R,F), then bounded replay and live capture through S; this supplies captured PCM but does not make the processor active before it was created. Keep requested-PCM coverage and processor-start latency as separate measures."
+  },
+  "scopeLimitations": [
+    "This was a simulated Browser AudioContext run using a synthetic oscillator, not an external audio device or hardware/XRUN test.",
+    "This result was captured before the current terminal ACK ordering and drain-timeout changes; it does not validate those later changes.",
+    "The run used a modified worktree based on commit 4241e72; no exact source-tree fingerprint was recorded for this run, so do not present it as a clean-commit reproducible binary result.",
+    "No production-quality or complete real-time acceptance is implied."
+  ],
+  "rawEvidence": [
+    {
+      "path": "bench/results/shared_input_capture_multiop_4241e72_20261019T1042Z.failure.json",
+      "bytes": 1440482,
+      "sha256": "60c017e9b3beb2b91ab5f070ec259ed69c5629d90968a73dfc0e22147b3c772b"
+    },
+    {
+      "path": "bench/results/shared_input_capture_multiop_4241e72_20261019T1042Z.progress.json",
+      "bytes": 469225,
+      "sha256": "99c9667fd734919b253ec3fd2d310b55a53f74ea99bc6a5d26d0b829bd0b0249"
+    },
+    {
+      "path": "bench/results/shared_input_capture_multiop_4241e72_20261019T1042Z.status.json",
+      "bytes": 68772,
+      "sha256": "c448c7cf00ac910e0c636155838e1ba6935b698c4ecb86851748dd562fbc5047"
+    }
+  ],
+  "currentTreeValidation": {
+    "worktreeBaselineCommit": "4241e72d5fb6dd50c23842592a679fc2a9c3df15",
+    "npmRunBuild": "PASS; vue-tsc, esbuild worklet, Vite build, and third-party notice verification",
+    "npmRunTestUnit": "PASS; 998/998 tests across 139 files",
+    "strictRubberBandE2E": "PASS; 93/93 using CfT Chrome headless shell and explicit Native simulation host, one worker",
+    "focusedStopAndPcmHistoryTests": "PASS; 44/44"
+  }
+}

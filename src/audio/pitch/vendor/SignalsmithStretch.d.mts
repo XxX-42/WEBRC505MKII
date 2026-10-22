@@ -21,6 +21,8 @@ interface SignalsmithStretchNode extends AudioWorkletNode {
   schedule(change: SignalsmithStretchSchedule): Promise<unknown>;
   configure(config: { preset?: 'default' | 'cheaper'; blockMs?: number; intervalMs?: number; splitComputation?: boolean }): Promise<unknown>;
   latency(): Promise<number>;
+	wasmHeapBytes(): Promise<number>;
+	disposeWasmMemory(): Promise<number>;
 	addBuffers(buffers: Float32Array[], transfer?: Transferable[]): Promise<number>;
   dropBuffers(toSeconds?: number): Promise<unknown>;
 }

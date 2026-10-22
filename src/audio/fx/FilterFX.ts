@@ -6,6 +6,8 @@ export class FilterFX implements FXBase {
     input: GainNode;
     output: GainNode;
     private filter: BiquadFilterNode;
+    private frequency = 1;
+    private resonance = 0.05;
 
 
     constructor(context: AudioContext) {
@@ -34,11 +36,17 @@ export class FilterFX implements FXBase {
             const v = Math.pow(clampedValue, 2) * (maxValue - minValue) + minValue;
 
             if (isFinite(v) && !isNaN(v)) {
+                this.frequency = clampedValue;
                 this.filter.frequency.setTargetAtTime(v, this.context.currentTime, 0.1);
             }
         } else if (key === 'resonance') {
+            this.resonance = value;
             this.filter.Q.setTargetAtTime(value * 20, this.context.currentTime, 0.1);
         }
+    }
+
+    getParameterSnapshot(): Readonly<Record<string, number>> {
+        return Object.freeze({ frequency: this.frequency, resonance: this.resonance });
     }
 
     setBypass(bypass: boolean) {

@@ -1,0 +1,11 @@
+{
+  "node": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "logicalCpuCount": 9,
+  "totalMemoryBytes": 10451439616,
+  "date": "2026-10-21T11:21:41.039Z",
+  "baselineRef": "dd7dbea",
+  "timingInterpretation": "Cross-container scheduling and VM clock noise remain uncontrolled; coordinated no compiler/test workloads for named isolated rounds."
+}

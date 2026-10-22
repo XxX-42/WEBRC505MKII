@@ -1,0 +1,272 @@
+{
+  "rows": [
+    {
+      "meanNs": 159989,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "ABBA",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:04.102629+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:05.085529+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 166912,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "ABBA",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:05.085739+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:06.095771+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 148943,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "ABBA",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:06.095954+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:07.006440+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 164576,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "ABBA",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:07.006614+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:08.008016+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 161750,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "BAAB",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:08.008192+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:08.992434+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 149011,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "BAAB",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:08.992602+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:09.907917+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 151565,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "BAAB",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:09.908222+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:10.823669+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 148227,
+      "hash": "15548219828941103207",
+      "signal": "automation",
+      "order": "BAAB",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:10.824011+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:11.751842+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 169178,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "ABBA",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:11.752053+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:12.762080+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 145216,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "ABBA",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:12.762255+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:13.670436+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 155968,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "ABBA",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:13.670607+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:14.626481+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 149471,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "ABBA",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:14.626673+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:15.560126+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 149527,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "BAAB",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:15.560302+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:16.483072+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 149182,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "BAAB",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:16.483241+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:17.394138+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 158002,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "BAAB",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:17.394445+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:18.360552+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 148560,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "order": "BAAB",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:18.360733+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:19.298919+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 44730.7,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "ABBA",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:19.299137+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:19.582436+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 48380.3,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "ABBA",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:19.582738+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:19.871398+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 47702.9,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "ABBA",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:19.871580+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:20.164808+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 48105,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "ABBA",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:20.165009+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:20.457455+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 47109.8,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "BAAB",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:20.457629+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:20.751690+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    },
+    {
+      "meanNs": 45726.8,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "BAAB",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:20.751862+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:21.025694+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 47276.6,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "BAAB",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T13:13:21.025869+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:21.313244+00:00",
+      "binarySha256": "89cd33be2d61db60aef0d273dad498796d981abd1d73e0a2a40339941ab5ac1c"
+    },
+    {
+      "meanNs": 47187.4,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "order": "BAAB",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T13:13:21.313419+00:00",
+      "runFinishedUtc": "2026-10-21T13:13:21.597365+00:00",
+      "binarySha256": "69375484e9aea61e10af047594551f11bb732a240095f2a067041b5c508edbcc"
+    }
+  ],
+  "gainPercent": {
+    "automation": -0.11053506328972951,
+    "sine": 4.244263245945801,
+    "silence": -2.4436730483520464
+  },
+  "allowedAffinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "requestedChildCpu": 0,
+  "scope": "Task-team exclusive CPU slot, not physical driver acceptance",
+  "hashesEqual": true,
+  "aggregation": "Ratio of arithmetic means of per-run statistics, not pooled callback samples",
+  "decision": "REJECT: target automation gain -0.11% with sign reversal; silence regresses in both orders. Sine binary/layout win is not evidence of the intended automation cache benefit.",
+  "correctness": {
+    "fullPcmSha256": "0335262669f2b74ef2e240627d3467b30fd4eb553d32c26647dd1cb4c03ade70",
+    "edgePcmSha256": "373b8eff4f1762620ab51e7a9d40328b8ae5c7d7c2bfe25379ca34409b91c617",
+    "automationPcmSha256": "1f5445a1e3cbb3427102c885a57ec9810b669c6ffe42045c5b3f64e4f44bfdf1",
+    "allExactlyMatchOriginalBaseline": true,
+    "preampUnitTests": "PASS"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-10-21T11:23:32.745039+00:00",
+  "baselineCommit": "dd7dbea3502993d9167c4af16aef5dce98577c9e",
+  "githubMain": "c4adc8970375873f28c6f137ea1369131d92aef4",
+  "initialLocal": "f1d0ea72e4a2109db253f68c6b2b477c8ea7ed11",
+  "branch": "perf/rc505-20261021",
+  "merge": "No conflicts; 2 remote UI commits incorporated alongside 92 local commits. Remote main preserved.",
+  "initialWorktree": "clean",
+  "build": {
+    "exit": 0,
+    "status": "PASS"
+  },
+  "unit": {
+    "files": 145,
+    "passed": 1087,
+    "durationSeconds": 27.46,
+    "status": "PASS"
+  },
+  "e2e": {
+    "status": "ENVIRONMENT_BLOCKED",
+    "command": "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium NATIVE_BRIDGE_SIMULATION_EXECUTABLE=/tmp/rc505-native-host/native_bridge_host_simulation npm run test:e2e:rubberband",
+    "testCasesAttempted": 101,
+    "launchFailures": 101,
+    "assertionsExecuted": 0,
+    "reason": "Chromium process_singleton_posix.cc socket() Operation not permitted. Standard E2E retained existing Playwright launch parameters; independent retry explicitly enabled sandbox and failed at environment setup. No security setting was changed to bypass the restriction."
+  },
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "node": "v24.19.0",
+  "stopCondition": "Not reached at baseline; tests alone never suffice."
+}

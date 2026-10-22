@@ -11,6 +11,7 @@ set(ASIOSDK_DIR "" CACHE PATH "Path to the Steinberg ASIO SDK root")
 option(NATIVE_PORTABLE_TESTS_ONLY "Build the device-free Native DSP/rhythm tests without fetching Windows audio or bridge dependencies" OFF)
 option(NATIVE_BRIDGE_SIMULATION_ONLY "Build a test-only HTTP host with a fake no-audio RtAudio endpoint" OFF)
 option(NATIVE_ENABLE_RUBBERBAND_HQ "Enable Native offline HQ_RENDER with Rubber Band R2/R3 (GPL-2.0-or-later dependency)" OFF)
+option(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA "Enable the experimental constant-cancelled PREAMP ADAA arithmetic candidate (not quality accepted; default OFF)" OFF)
 set(RUBBERBAND_INCLUDE_DIR "" CACHE PATH "Directory containing rubberband/RubberBandStretcher.h")
 set(RUBBERBAND_LIBRARY "" CACHE FILEPATH "Rubber Band library to link when NATIVE_ENABLE_RUBBERBAND_HQ is ON")
 
@@ -128,6 +129,48 @@ function(enable_strict_warnings target)
     endif()
 endfunction()
 
+function(enable_native_preamp_experimental_adaa target)
+  if(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA)
+    target_compile_definitions(${target} PRIVATE NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA=1)
+  endif()
+endfunction()
+
+# Native tests use assert() for their checks. Release configurations define
+# NDEBUG globally, which would otherwise compile those checks out (and can
+# hide test-only unused-variable diagnostics). Apply the undefinition only to
+# test executables, after each build mode has declared its targets.
+function(enable_assertions_for_test_executables)
+  get_property(test_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+  foreach(test_target IN LISTS test_targets)
+    get_target_property(target_type ${test_target} TYPE)
+    if(target_type STREQUAL "EXECUTABLE" AND test_target MATCHES "_tests$")
+      if(MSVC)
+        target_compile_options(${test_target} PRIVATE /UNDEBUG)
+      else()
+        target_compile_options(${test_target} PRIVATE -UNDEBUG)
+      endif()
+    endif()
+  endforeach()
+endfunction()
+
+# The archive codec is built in portable test mode too, so fetch its one
+# header-only dependency before that mode's early return. Keep the same official
+# upstream version pin used by the Native host build.
+include(FetchContent)
+FetchContent_Declare(
+  json_src
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(json_src)
+
+# Keep the binary archive decoder independent of the host and DSP libraries so
+# it can be validated in portable test builds and linked by either Native host.
+add_library(native_project_archive_codec STATIC src/project_archive_codec.cpp)
+target_include_directories(native_project_archive_codec PUBLIC include)
+target_link_libraries(native_project_archive_codec PUBLIC nlohmann_json::nlohmann_json)
+enable_strict_warnings(native_project_archive_codec)
+
 if(NATIVE_PORTABLE_TESTS_ONLY)
 
   add_library(native_dsp_portable STATIC
@@ -169,6 +212,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
     src/native_osc_bot_processor.cpp
   )
   target_include_directories(native_dsp_portable PUBLIC include third_party/signalsmith/include)
+  enable_native_preamp_experimental_adaa(native_dsp_portable)
   enable_rubberband_hq(native_dsp_portable)
   enable_strict_warnings(native_dsp_portable)
 
@@ -180,9 +224,60 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(dsp_primitives_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(dsp_primitives_tests)
 
+  add_executable(native_official_fx_parameters_tests
+    tests/native_official_fx_parameters_tests.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_official_fx_parameters_tests PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_official_fx_parameters_tests)
+  if(NOT MSVC)
+    target_compile_options(native_official_fx_parameters_tests PRIVATE -Wno-mismatched-new-delete)
+  endif()
+  add_test(NAME native_official_fx_parameters_tests COMMAND native_official_fx_parameters_tests)
+  add_executable(native_official_vocoder_controls_tests
+    tests/native_official_vocoder_controls_tests.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_official_vocoder_controls_tests PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_official_vocoder_controls_tests)
+  if(NOT MSVC)
+    target_compile_options(native_official_vocoder_controls_tests PRIVATE -Wno-mismatched-new-delete)
+  endif()
+  add_test(NAME native_official_vocoder_controls_tests COMMAND native_official_vocoder_controls_tests)
+  add_executable(native_official_amp_dynamics_tests
+    tests/native_official_amp_dynamics_tests.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_official_amp_dynamics_tests PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_official_amp_dynamics_tests)
+  if(NOT MSVC)
+    target_compile_options(native_official_amp_dynamics_tests PRIVATE -Wno-mismatched-new-delete)
+  endif()
+  add_test(NAME native_official_amp_dynamics_tests COMMAND native_official_amp_dynamics_tests)
+  add_executable(native_official_slicer_controls_tests tests/native_official_slicer_controls_tests.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_official_slicer_controls_tests PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_official_slicer_controls_tests)
+  if(NOT MSVC)
+    target_compile_options(native_official_slicer_controls_tests PRIVATE -Wno-mismatched-new-delete)
+  endif()
+  add_test(NAME native_official_slicer_controls_tests COMMAND native_official_slicer_controls_tests)
+  add_executable(native_official_tape_roll_tests tests/native_official_tape_roll_tests.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_official_tape_roll_tests PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_official_tape_roll_tests)
+  if(NOT MSVC)
+    target_compile_options(native_official_tape_roll_tests PRIVATE -Wno-mismatched-new-delete)
+  endif()
+  add_test(NAME native_official_tape_roll_tests COMMAND native_official_tape_roll_tests)
+  add_executable(native_official_pitch_controls_tests
+    tests/native_official_pitch_controls_tests.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_official_pitch_controls_tests PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_official_pitch_controls_tests)
+  if(NOT MSVC)
+    target_compile_options(native_official_pitch_controls_tests PRIVATE -Wno-mismatched-new-delete)
+  endif()
+  add_test(NAME native_official_pitch_controls_tests COMMAND native_official_pitch_controls_tests)
+
   add_executable(native_audio_pipeline_tests tests/native_audio_pipeline_tests.cpp)
   target_link_libraries(native_audio_pipeline_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_audio_pipeline_tests)
+
+  add_executable(project_archive_codec_tests tests/project_archive_codec_tests.cpp)
+  target_link_libraries(project_archive_codec_tests PRIVATE native_project_archive_codec)
+  enable_strict_warnings(project_archive_codec_tests)
 
   add_executable(native_fx_catalog_tests
     tests/native_fx_catalog_tests.cpp
@@ -392,7 +487,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
     target_compile_options(native_freeze_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
-  add_executable(native_catalog_route_tests tests/native_catalog_route_tests.cpp)
+  add_executable(native_catalog_route_tests tests/native_catalog_route_tests.cpp tests/native_alloc_tracker.cpp)
   target_link_libraries(native_catalog_route_tests PRIVATE native_audio_core_test_support)
   enable_strict_warnings(native_catalog_route_tests)
   if(MSVC)
@@ -604,6 +699,10 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_rhythm_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_rhythm_tests)
 
+  add_executable(native_rhythm_event_dump EXCLUDE_FROM_ALL tests/native_rhythm_event_dump.cpp)
+  target_link_libraries(native_rhythm_event_dump PRIVATE native_dsp_portable)
+  enable_strict_warnings(native_rhythm_event_dump)
+
   if(NATIVE_ENABLE_RUBBERBAND_HQ)
     add_executable(native_rubberband_renderer_tests tests/native_rubberband_renderer_tests.cpp)
     target_link_libraries(native_rubberband_renderer_tests PRIVATE native_dsp_portable)
@@ -619,6 +718,16 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_audio_bench PRIVATE native_dsp_portable)
   enable_strict_warnings(native_audio_bench)
 
+  add_executable(native_performance_soak EXCLUDE_FROM_ALL tests/native_performance_soak.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_performance_soak PRIVATE native_audio_core_test_support)
+  add_executable(native_catalog_sanity_sweep EXCLUDE_FROM_ALL tests/native_catalog_sanity_sweep.cpp)
+  target_link_libraries(native_catalog_sanity_sweep PRIVATE native_dsp_portable)
+  add_executable(native_catalog_ab_probe EXCLUDE_FROM_ALL tests/native_catalog_ab_probe.cpp)
+  target_link_libraries(native_catalog_ab_probe PRIVATE native_dsp_portable)
+  add_executable(native_preamp_ab_probe EXCLUDE_FROM_ALL tests/native_preamp_ab_probe.cpp)
+  target_link_libraries(native_preamp_ab_probe PRIVATE native_dsp_portable)
+  add_executable(native_performance_matrix EXCLUDE_FROM_ALL tests/native_performance_matrix.cpp tests/native_alloc_tracker.cpp)
+  target_link_libraries(native_performance_matrix PRIVATE native_audio_core_test_support)
   add_executable(native_per_track_fx_bench EXCLUDE_FROM_ALL tests/native_per_track_fx_bench.cpp)
   target_link_libraries(native_per_track_fx_bench PRIVATE native_audio_core_test_support)
   enable_strict_warnings(native_per_track_fx_bench)
@@ -627,6 +736,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   add_test(NAME looper_core_tests COMMAND looper_core_tests)
   add_test(NAME dsp_primitives_tests COMMAND dsp_primitives_tests)
   add_test(NAME native_audio_pipeline_tests COMMAND native_audio_pipeline_tests)
+  add_test(NAME project_archive_codec_tests COMMAND project_archive_codec_tests)
   add_test(NAME native_fx_catalog_tests COMMAND native_fx_catalog_tests)
   add_test(NAME native_auto_riff_core_tests COMMAND native_auto_riff_core_tests)
   add_test(NAME native_vocoder_core_tests COMMAND native_vocoder_core_tests)
@@ -679,10 +789,9 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/verify_exact_copy.cmake"
     )
   endif()
+  enable_assertions_for_test_executables()
   return()
 endif()
-
-include(FetchContent)
 
 FetchContent_Declare(
   rtaudio_src
@@ -696,16 +805,10 @@ FetchContent_Declare(
   GIT_TAG v0.16.3
 )
 
-FetchContent_Declare(
-  json_src
-  GIT_REPOSITORY https://github.com/nlohmann/json.git
-  GIT_TAG v3.11.3
-)
-
 set(RTAUDIO_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
 set(RTAUDIO_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(rtaudio_src httplib_src json_src)
+FetchContent_MakeAvailable(rtaudio_src httplib_src)
 
 # Copy the exact upstream license files used by this configure into a single
 # build-tree bundle. Executable post-build rules place this bundle next to the
@@ -765,7 +868,13 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     src/native_audio_core.cpp
   )
   target_include_directories(native_audio_core_simulation BEFORE PUBLIC tests/simulation_support include third_party/signalsmith/include)
+  target_link_libraries(native_audio_core_simulation PUBLIC native_project_archive_codec)
+  enable_native_preamp_experimental_adaa(native_audio_core_simulation)
   enable_rubberband_hq(native_audio_core_simulation)
+
+  add_executable(project_archive_codec_tests tests/project_archive_codec_tests.cpp)
+  target_link_libraries(project_archive_codec_tests PRIVATE native_project_archive_codec)
+  enable_strict_warnings(project_archive_codec_tests)
 
   add_executable(native_bridge_host_simulation src/native_bridge_host.cpp)
   target_link_libraries(native_bridge_host_simulation PRIVATE
@@ -777,11 +886,16 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
 
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   enable_testing()
+  add_test(NAME project_archive_codec_tests COMMAND project_archive_codec_tests)
   add_test(
     NAME native_bridge_http_simulation
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_bridge_http_simulation_test.py
       $<TARGET_FILE:native_bridge_host_simulation>
   )
+  add_test(NAME native_official_fx_http_simulation
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_official_fx_http_simulation_test.py
+      $<TARGET_FILE:native_bridge_host_simulation>)
+  set_tests_properties(native_bridge_http_simulation native_official_fx_http_simulation PROPERTIES RUN_SERIAL TRUE)
   add_test(NAME native_third_party_notices
     COMMAND ${CMAKE_COMMAND}
       "-DSIGNALSMITH_SOURCE_DIR=${SIGNALSMITH_THIRD_PARTY_SOURCE}"
@@ -800,6 +914,7 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/verify_exact_copy.cmake"
     )
   endif()
+  enable_assertions_for_test_executables()
   return()
 endif()
 
@@ -865,7 +980,8 @@ add_library(native_audio_core STATIC
   src/native_audio_core.cpp
 )
 target_include_directories(native_audio_core PUBLIC include third_party/signalsmith/include)
-target_link_libraries(native_audio_core PUBLIC rtaudio nlohmann_json::nlohmann_json)
+target_link_libraries(native_audio_core PUBLIC rtaudio nlohmann_json::nlohmann_json native_project_archive_codec)
+enable_native_preamp_experimental_adaa(native_audio_core)
 enable_rubberband_hq(native_audio_core)
 
 add_executable(native_bridge_host src/native_bridge_host.cpp)
@@ -875,11 +991,48 @@ if(WIN32)
   target_link_libraries(native_bridge_host PRIVATE ws2_32)
 endif()
 
-add_executable(looper_core_tests tests/looper_core_tests.cpp src/looper_core.cpp)
+add_executable(looper_core_tests
+  tests/looper_core_tests.cpp
+  src/looper_core.cpp
+  src/dsp_primitives.cpp
+)
 target_include_directories(looper_core_tests PRIVATE include)
 
 add_executable(dsp_primitives_tests tests/dsp_primitives_tests.cpp src/dsp_primitives.cpp)
 target_include_directories(dsp_primitives_tests PRIVATE include)
+
+add_executable(native_official_fx_parameters_tests
+  tests/native_official_fx_parameters_tests.cpp tests/native_alloc_tracker.cpp)
+target_link_libraries(native_official_fx_parameters_tests PRIVATE native_audio_core)
+enable_strict_warnings(native_official_fx_parameters_tests)
+if(NOT MSVC)
+  target_compile_options(native_official_fx_parameters_tests PRIVATE -Wno-mismatched-new-delete)
+endif()
+add_test(NAME native_official_fx_parameters_tests COMMAND native_official_fx_parameters_tests)
+add_executable(native_official_vocoder_controls_tests
+  tests/native_official_vocoder_controls_tests.cpp tests/native_alloc_tracker.cpp)
+target_link_libraries(native_official_vocoder_controls_tests PRIVATE native_audio_core)
+enable_strict_warnings(native_official_vocoder_controls_tests)
+if(NOT MSVC)
+  target_compile_options(native_official_vocoder_controls_tests PRIVATE -Wno-mismatched-new-delete)
+endif()
+add_test(NAME native_official_vocoder_controls_tests COMMAND native_official_vocoder_controls_tests)
+add_executable(native_official_amp_dynamics_tests
+  tests/native_official_amp_dynamics_tests.cpp tests/native_alloc_tracker.cpp)
+target_link_libraries(native_official_amp_dynamics_tests PRIVATE native_audio_core)
+enable_strict_warnings(native_official_amp_dynamics_tests)
+if(NOT MSVC)
+  target_compile_options(native_official_amp_dynamics_tests PRIVATE -Wno-mismatched-new-delete)
+endif()
+add_test(NAME native_official_amp_dynamics_tests COMMAND native_official_amp_dynamics_tests)
+add_executable(native_official_pitch_controls_tests
+  tests/native_official_pitch_controls_tests.cpp tests/native_alloc_tracker.cpp)
+target_link_libraries(native_official_pitch_controls_tests PRIVATE native_audio_core)
+enable_strict_warnings(native_official_pitch_controls_tests)
+if(NOT MSVC)
+  target_compile_options(native_official_pitch_controls_tests PRIVATE -Wno-mismatched-new-delete)
+endif()
+add_test(NAME native_official_pitch_controls_tests COMMAND native_official_pitch_controls_tests)
 
 add_executable(native_audio_pipeline_tests
   tests/native_audio_pipeline_tests.cpp
@@ -921,9 +1074,14 @@ add_executable(native_audio_pipeline_tests
   src/native_osc_bot_processor.cpp
 )
 target_include_directories(native_audio_pipeline_tests PRIVATE include third_party/signalsmith/include)
+enable_native_preamp_experimental_adaa(native_audio_pipeline_tests)
 
 add_executable(native_rhythm_tests tests/native_rhythm_tests.cpp src/native_rhythm_engine.cpp)
 target_include_directories(native_rhythm_tests PRIVATE include)
+
+add_executable(native_rhythm_event_dump EXCLUDE_FROM_ALL tests/native_rhythm_event_dump.cpp src/native_rhythm_engine.cpp)
+target_include_directories(native_rhythm_event_dump PRIVATE include)
+enable_strict_warnings(native_rhythm_event_dump)
 
 add_executable(native_pitch_processor_tests
   tests/native_pitch_processor_tests.cpp
@@ -1028,6 +1186,10 @@ enable_testing()
 add_test(NAME looper_core_tests COMMAND looper_core_tests)
 add_test(NAME dsp_primitives_tests COMMAND dsp_primitives_tests)
 add_test(NAME native_audio_pipeline_tests COMMAND native_audio_pipeline_tests)
+add_executable(project_archive_codec_tests tests/project_archive_codec_tests.cpp)
+target_link_libraries(project_archive_codec_tests PRIVATE native_project_archive_codec)
+enable_strict_warnings(project_archive_codec_tests)
+add_test(NAME project_archive_codec_tests COMMAND project_archive_codec_tests)
 add_test(NAME native_audio_callback_tests COMMAND native_audio_callback_tests)
 add_executable(native_chorus_processor_tests
   tests/native_chorus_processor_tests.cpp
@@ -1277,3 +1439,5 @@ if(NATIVE_ENABLE_RUBBERBAND_HQ)
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/verify_exact_copy.cmake"
   )
 endif()
+
+enable_assertions_for_test_executables()

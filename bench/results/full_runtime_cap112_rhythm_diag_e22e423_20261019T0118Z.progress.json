@@ -1,0 +1,972 @@
+{
+  "generatedAtUtc": "2026-10-19T01:24:58.093Z",
+  "state": "failed",
+  "elapsedWallSeconds": 360.05004000000656,
+  "actualSampleRateHz": 44100,
+  "audioContextCurrentTimeSeconds": 346.1021315192744,
+  "audioContextAdvanceDuringMeasurementSeconds": 339.9807709750567,
+  "instrumentedNodeCount": 48,
+  "readySlotCount": 48,
+  "nodeCounts": {
+    "rc505-browser-block-meter": 1,
+    "rc505-fx-processor": 28,
+    "signalsmith-stretch": 7,
+    "rc505-rhythm-processor": 1,
+    "looper-processor": 2,
+    "rc505-overdub-processor": 9
+  },
+  "nodeLifecycle": {
+    "createdNodeCount": 48,
+    "lifecycleCountByState": {
+      "persistent-graph": 30,
+      "retired-from-track": 13,
+      "active": 5
+    },
+    "lifecycleCountByProcessorAndState": {
+      "rc505-browser-block-meter:persistent-graph": 1,
+      "rc505-fx-processor:persistent-graph": 28,
+      "signalsmith-stretch:retired-from-track": 2,
+      "signalsmith-stretch:active": 5,
+      "rc505-rhythm-processor:persistent-graph": 1,
+      "looper-processor:retired-from-track": 2,
+      "rc505-overdub-processor:retired-from-track": 9
+    },
+    "classificationNotes": {
+      "persistentGraph": "Created during graph setup and retained as shared FX/Rhythm/meter infrastructure.",
+      "active": "Currently referenced by a TrackAudio live route or recording/overdub field.",
+      "retainedIdle": "Still referenced by TrackAudio but currently not routed as active.",
+      "retiredFromTrack": "Dynamic TrackAudio processor no longer referenced by its track; worklet callback history remains in the cumulative descriptor list.",
+      "callbacksAdvancedWithinRecentWindow": "At least one callback advanced within 3 seconds; this is activity evidence, not a hardware liveness guarantee."
+    },
+    "signalsmithWasmLeases": {
+      "budgetBytes": 134217728,
+      "reservedBytes": 20971520,
+      "measuredBytes": 5898240,
+      "processorCount": 5,
+      "liveFxProcessorCount": 0,
+      "livePolyProcessorCount": 5,
+      "pendingCount": 0,
+      "releaseUnconfirmedCount": 0
+    }
+  },
+  "nodeConstructionFailures": [],
+  "callbackExceptionDetails": [],
+  "sharedMemoryProbeBytes": 89005960,
+  "sharedMemoryProbeMiB": 84.88269805908203,
+  "callbackErrors": 0,
+  "estimatedMissingCallbacks": 0,
+  "nodes": [
+    {
+      "slot": 0,
+      "label": "rc505-browser-block-meter#1",
+      "processorName": "rc505-browser-block-meter",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 1,
+      "label": "rc505-fx-processor#2",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 2,
+      "label": "rc505-fx-processor#3",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 3,
+      "label": "rc505-fx-processor#4",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 4,
+      "label": "rc505-fx-processor#5",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 5,
+      "label": "rc505-fx-processor#6",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 6,
+      "label": "rc505-fx-processor#7",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 7,
+      "label": "rc505-fx-processor#8",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 8,
+      "label": "rc505-fx-processor#9",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 9,
+      "label": "rc505-fx-processor#10",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 10,
+      "label": "rc505-fx-processor#11",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 11,
+      "label": "rc505-fx-processor#12",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 12,
+      "label": "rc505-fx-processor#13",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 13,
+      "label": "rc505-fx-processor#14",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 14,
+      "label": "rc505-fx-processor#15",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 15,
+      "label": "rc505-fx-processor#16",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 16,
+      "label": "rc505-fx-processor#17",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 17,
+      "label": "rc505-fx-processor#18",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 18,
+      "label": "rc505-fx-processor#19",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 19,
+      "label": "rc505-fx-processor#20",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 20,
+      "label": "rc505-fx-processor#21",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 21,
+      "label": "rc505-fx-processor#22",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 22,
+      "label": "rc505-fx-processor#23",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 23,
+      "label": "rc505-fx-processor#24",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 24,
+      "label": "rc505-fx-processor#25",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 25,
+      "label": "rc505-fx-processor#26",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 26,
+      "label": "rc505-fx-processor#27",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 27,
+      "label": "rc505-fx-processor#28",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 28,
+      "label": "rc505-fx-processor#29",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 29,
+      "label": "signalsmith-stretch#30",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 9819,
+      "outputFrames": 1256832,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": false
+    },
+    {
+      "slot": 30,
+      "label": "signalsmith-stretch#31",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 69113,
+      "outputFrames": 8846464,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": false
+    },
+    {
+      "slot": 31,
+      "label": "signalsmith-stretch#32",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 32,
+      "label": "signalsmith-stretch#33",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 33,
+      "label": "signalsmith-stretch#34",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 117127,
+      "outputFrames": 14992256,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 34,
+      "label": "rc505-rhythm-processor#35",
+      "processorName": "rc505-rhythm-processor",
+      "callbacks": 117128,
+      "outputFrames": 14992384,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 35,
+      "label": "looper-processor#36",
+      "processorName": "looper-processor",
+      "callbacks": 107305,
+      "outputFrames": 13735040,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 36,
+      "label": "signalsmith-stretch#37",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 107069,
+      "outputFrames": 13704832,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 37,
+      "label": "rc505-overdub-processor#38",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 97435,
+      "outputFrames": 12471680,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 38,
+      "label": "rc505-overdub-processor#39",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 87929,
+      "outputFrames": 11254912,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 39,
+      "label": "rc505-overdub-processor#40",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 77724,
+      "outputFrames": 9948672,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 40,
+      "label": "rc505-overdub-processor#41",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 67588,
+      "outputFrames": 8651264,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 41,
+      "label": "rc505-overdub-processor#42",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 58113,
+      "outputFrames": 7438464,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 42,
+      "label": "looper-processor#43",
+      "processorName": "looper-processor",
+      "callbacks": 48012,
+      "outputFrames": 6145536,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 43,
+      "label": "signalsmith-stretch#44",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 47726,
+      "outputFrames": 6108928,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 44,
+      "label": "rc505-overdub-processor#45",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 38558,
+      "outputFrames": 4935424,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 45,
+      "label": "rc505-overdub-processor#46",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 28887,
+      "outputFrames": 3697536,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 46,
+      "label": "rc505-overdub-processor#47",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 19167,
+      "outputFrames": 2453376,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 47,
+      "label": "rc505-overdub-processor#48",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 9600,
+      "outputFrames": 1228800,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    }
+  ],
+  "workload": {
+    "profile": "browser-application-full-private-track-fx",
+    "appEngine": "production BrowserAudioEngine + TrackAudio + BrowserTrackFxChain + RhythmEngine",
+    "sampleRateHz": 44100,
+    "activeTrackCount": 5,
+    "activePrivateTrackFxCount": 20,
+    "privateTrackFxMatrix": [
+      {
+        "trackId": 1,
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "trackId": 1,
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "trackId": 1,
+        "slot": "C",
+        "type": "CHORUS"
+      },
+      {
+        "trackId": 1,
+        "slot": "D",
+        "type": "DELAY"
+      },
+      {
+        "trackId": 2,
+        "slot": "A",
+        "type": "PHASER"
+      },
+      {
+        "trackId": 2,
+        "slot": "B",
+        "type": "TREMOLO"
+      },
+      {
+        "trackId": 2,
+        "slot": "C",
+        "type": "AUTO PAN"
+      },
+      {
+        "trackId": 2,
+        "slot": "D",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "trackId": 3,
+        "slot": "A",
+        "type": "FLANGER"
+      },
+      {
+        "trackId": 3,
+        "slot": "B",
+        "type": "RING.MOD"
+      },
+      {
+        "trackId": 3,
+        "slot": "C",
+        "type": "MOD DELAY"
+      },
+      {
+        "trackId": 3,
+        "slot": "D",
+        "type": "PANNING DELAY"
+      },
+      {
+        "trackId": 4,
+        "slot": "A",
+        "type": "DYNAMICS"
+      },
+      {
+        "trackId": 4,
+        "slot": "B",
+        "type": "SUSTAINER"
+      },
+      {
+        "trackId": 4,
+        "slot": "C",
+        "type": "TAPE ECHO"
+      },
+      {
+        "trackId": 4,
+        "slot": "D",
+        "type": "GRANULAR DELAY"
+      },
+      {
+        "trackId": 5,
+        "slot": "A",
+        "type": "PREAMP"
+      },
+      {
+        "trackId": 5,
+        "slot": "B",
+        "type": "GATE REVERB"
+      },
+      {
+        "trackId": 5,
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "trackId": 5,
+        "slot": "D",
+        "type": "STEREO ENHANCE"
+      }
+    ],
+    "activeInputFx": [
+      {
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "slot": "D",
+        "type": "SUSTAINER"
+      }
+    ],
+    "activeSharedTrackFx": [
+      {
+        "slot": "A",
+        "type": "CHORUS"
+      },
+      {
+        "slot": "B",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "slot": "C",
+        "type": "DELAY"
+      },
+      {
+        "slot": "D",
+        "type": "AUTO PAN"
+      }
+    ],
+    "activeLivePolyTracks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "diagnosticIsolation": null,
+    "rhythm": {
+      "adapter": "production Browser RhythmEngine + rc505-rhythm-processor",
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "provenance": "clean-room-generated"
+    },
+    "pcmSeed": "deterministic stereo PCM installed through TrackAudio.restoreProjectBuffersAtomically before measurement; real Browser recording/overdub operations execute during measurement",
+    "instrumentationNodeSlotCapacity": 112,
+    "instrumentationSharedMemoryBytes": 89005960,
+    "instrumentationSharedMemoryMiB": 84.88269805908203,
+    "instrumentationMemoryNote": "Test-only callback instrumentation SharedArrayBuffer; this is added to the browser process memory footprint and can affect scheduling. It is not application audio memory.",
+    "dynamicOperationsDuringMeasurement": [
+      {
+        "index": 1,
+        "operation": "clear-record-stereo-live-poly-restore",
+        "trackId": 1,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:19:25.219Z",
+        "scheduledAtElapsedSeconds": 30,
+        "recordedFrames": 29056,
+        "recordedChannels": 2,
+        "recordedPcmSha256": "cea1d3dd993b153c92ffb112c2a1f2834e095a34c9a352687daa5620d12d1e36",
+        "recordingOverflowEvents": 0,
+        "recordingDroppedFrames": 0,
+        "livePolyRestored": true,
+        "endedAtUtc": "2026-10-19T01:19:26.030Z"
+      },
+      {
+        "index": 2,
+        "operation": "overdub-undo-redo",
+        "trackId": 1,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:19:55.218Z",
+        "scheduledAtElapsedSeconds": 60,
+        "beforePcmSha256": "cea1d3dd993b153c92ffb112c2a1f2834e095a34c9a352687daa5620d12d1e36",
+        "afterOverdubPcmSha256": "f5f2cbd44e8aff09262eea081729892e1f61ac85d36acfdb46c9bdd61c7e908c",
+        "afterUndoPcmSha256": "cea1d3dd993b153c92ffb112c2a1f2834e095a34c9a352687daa5620d12d1e36",
+        "afterRedoPcmSha256": "f5f2cbd44e8aff09262eea081729892e1f61ac85d36acfdb46c9bdd61c7e908c",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 97,
+        "endedAtUtc": "2026-10-19T01:19:55.679Z"
+      },
+      {
+        "index": 3,
+        "operation": "overdub-undo-redo",
+        "trackId": 2,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:20:25.169Z",
+        "scheduledAtElapsedSeconds": 90,
+        "beforePcmSha256": "73fabb50ddee08ace95f4624b1fc53d23e22313532aeb7b22e222f6939afe202",
+        "afterOverdubPcmSha256": "e0913e41dfeb821d33595784c362d9b0cb40c23aa9cf16c1f4d7e00fbbebfac9",
+        "afterUndoPcmSha256": "73fabb50ddee08ace95f4624b1fc53d23e22313532aeb7b22e222f6939afe202",
+        "afterRedoPcmSha256": "e0913e41dfeb821d33595784c362d9b0cb40c23aa9cf16c1f4d7e00fbbebfac9",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 80,
+        "endedAtUtc": "2026-10-19T01:20:25.654Z"
+      },
+      {
+        "index": 4,
+        "operation": "overdub-undo-redo",
+        "trackId": 3,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:20:55.169Z",
+        "scheduledAtElapsedSeconds": 120,
+        "beforePcmSha256": "fa7e43e4aa4bb49ecbedcd98db143243d7613cd52c0d094c319f6a1d5ddfd430",
+        "afterOverdubPcmSha256": "7af5c7cfabe26dbf0e8446d0d662ba0d0b286dc44ad145ebd1fd9d39d6118b7b",
+        "afterUndoPcmSha256": "fa7e43e4aa4bb49ecbedcd98db143243d7613cd52c0d094c319f6a1d5ddfd430",
+        "afterRedoPcmSha256": "7af5c7cfabe26dbf0e8446d0d662ba0d0b286dc44ad145ebd1fd9d39d6118b7b",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 107,
+        "endedAtUtc": "2026-10-19T01:20:55.652Z"
+      },
+      {
+        "index": 5,
+        "operation": "overdub-undo-redo",
+        "trackId": 4,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:21:25.169Z",
+        "scheduledAtElapsedSeconds": 150,
+        "beforePcmSha256": "e70e7e8b69d48fb2b633a0b89cd509d38e80b7ff4fec31861cda730e0b95f62d",
+        "afterOverdubPcmSha256": "eb75781c3d23c8d33f67b62be15d188b09bc3f70ff7e6f023e2ba506ff77f6b3",
+        "afterUndoPcmSha256": "e70e7e8b69d48fb2b633a0b89cd509d38e80b7ff4fec31861cda730e0b95f62d",
+        "afterRedoPcmSha256": "eb75781c3d23c8d33f67b62be15d188b09bc3f70ff7e6f023e2ba506ff77f6b3",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 57,
+        "endedAtUtc": "2026-10-19T01:21:25.650Z"
+      },
+      {
+        "index": 6,
+        "operation": "overdub-undo-redo",
+        "trackId": 5,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:21:55.219Z",
+        "scheduledAtElapsedSeconds": 180,
+        "beforePcmSha256": "d040de213754e7e9328df3048d0cac9d0948511f774e43f2d9e5bf06f7efc17a",
+        "afterOverdubPcmSha256": "d16b63e49aa692f64e2ef99746f6332d7a4bff18ca260ca7e9f57bf7d64acd43",
+        "afterUndoPcmSha256": "d040de213754e7e9328df3048d0cac9d0948511f774e43f2d9e5bf06f7efc17a",
+        "afterRedoPcmSha256": "d16b63e49aa692f64e2ef99746f6332d7a4bff18ca260ca7e9f57bf7d64acd43",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 94,
+        "endedAtUtc": "2026-10-19T01:21:55.701Z"
+      },
+      {
+        "index": 7,
+        "operation": "clear-record-stereo-live-poly-restore",
+        "trackId": 2,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:22:25.218Z",
+        "scheduledAtElapsedSeconds": 210,
+        "recordedFrames": 29056,
+        "recordedChannels": 2,
+        "recordedPcmSha256": "7c47ec7a918d0d4925e5f724f1e4774a1d51620ff1afa9cb5e17424fad49e296",
+        "recordingOverflowEvents": 0,
+        "recordingDroppedFrames": 0,
+        "livePolyRestored": true,
+        "endedAtUtc": "2026-10-19T01:22:26.019Z"
+      },
+      {
+        "index": 8,
+        "operation": "overdub-undo-redo",
+        "trackId": 2,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:22:55.219Z",
+        "scheduledAtElapsedSeconds": 240,
+        "beforePcmSha256": "7c47ec7a918d0d4925e5f724f1e4774a1d51620ff1afa9cb5e17424fad49e296",
+        "afterOverdubPcmSha256": "7a78dc97e9179805c179a096387b9877f75c86bcddea0967b7df57308bed0e09",
+        "afterUndoPcmSha256": "7c47ec7a918d0d4925e5f724f1e4774a1d51620ff1afa9cb5e17424fad49e296",
+        "afterRedoPcmSha256": "7a78dc97e9179805c179a096387b9877f75c86bcddea0967b7df57308bed0e09",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 99,
+        "endedAtUtc": "2026-10-19T01:22:55.697Z"
+      },
+      {
+        "index": 9,
+        "operation": "overdub-undo-redo",
+        "trackId": 3,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:23:25.169Z",
+        "scheduledAtElapsedSeconds": 270,
+        "beforePcmSha256": "7af5c7cfabe26dbf0e8446d0d662ba0d0b286dc44ad145ebd1fd9d39d6118b7b",
+        "afterOverdubPcmSha256": "92bcc09d520872975daa772d02d8a557bd4ddf47bf8189472c6e68a6a816e37e",
+        "afterUndoPcmSha256": "7af5c7cfabe26dbf0e8446d0d662ba0d0b286dc44ad145ebd1fd9d39d6118b7b",
+        "afterRedoPcmSha256": "92bcc09d520872975daa772d02d8a557bd4ddf47bf8189472c6e68a6a816e37e",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 94,
+        "endedAtUtc": "2026-10-19T01:23:25.653Z"
+      },
+      {
+        "index": 10,
+        "operation": "overdub-undo-redo",
+        "trackId": 4,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:23:55.219Z",
+        "scheduledAtElapsedSeconds": 300,
+        "beforePcmSha256": "eb75781c3d23c8d33f67b62be15d188b09bc3f70ff7e6f023e2ba506ff77f6b3",
+        "afterOverdubPcmSha256": "5398d8b027f7eac2063f52bc3d999fd58ecff119e1d9aa2c0ae52fe2abce59b5",
+        "afterUndoPcmSha256": "eb75781c3d23c8d33f67b62be15d188b09bc3f70ff7e6f023e2ba506ff77f6b3",
+        "afterRedoPcmSha256": "5398d8b027f7eac2063f52bc3d999fd58ecff119e1d9aa2c0ae52fe2abce59b5",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 95,
+        "endedAtUtc": "2026-10-19T01:23:55.702Z"
+      },
+      {
+        "index": 11,
+        "operation": "overdub-undo-redo",
+        "trackId": 5,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T01:24:25.169Z",
+        "scheduledAtElapsedSeconds": 330,
+        "beforePcmSha256": "d16b63e49aa692f64e2ef99746f6332d7a4bff18ca260ca7e9f57bf7d64acd43",
+        "afterOverdubPcmSha256": "199442a05a61102088581fed9625bd2bc845554c7cb737199ca2d817b1b6d5e8",
+        "afterUndoPcmSha256": "d16b63e49aa692f64e2ef99746f6332d7a4bff18ca260ca7e9f57bf7d64acd43",
+        "afterRedoPcmSha256": "199442a05a61102088581fed9625bd2bc845554c7cb737199ca2d817b1b6d5e8",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 92,
+        "endedAtUtc": "2026-10-19T01:24:25.651Z"
+      }
+    ],
+    "persistentWorkletSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ],
+    "measurementStartUtc": "2026-10-19T01:18:55.169Z",
+    "measurementEndUtc": "2026-10-19T01:24:55.219Z"
+  },
+  "outputSampler": {
+    "inspectedValues": 58998784,
+    "nonSilentValues": 58986731,
+    "nonFiniteValues": 0,
+    "peakLinear": 2.491393804550171,
+    "pollCount": 7202,
+    "nonSilentPolls": 7202,
+    "changedWindowPolls": 7200,
+    "changedValues": 58977233,
+    "audioTimeAdvancePolls": 7201
+  },
+  "processorErrors": [],
+  "error": "Error: AudioContext did not remain live for measurement: state=running, audioAdvance=339.963s, wall=360.051s, minimum=342.048s"
+}

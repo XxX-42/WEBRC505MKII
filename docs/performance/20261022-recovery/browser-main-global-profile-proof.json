@@ -1,0 +1,354 @@
+{
+  "harnessSha256": "2d41807a33cf2fc8aac6b0d7dea1686dbc597083e2244c00839fa4ffd6da2499",
+  "generatedAt": "2026-10-22T04:23:44.076Z",
+  "fixture": "Node main-global, unmodified actual FxProcessor IIFE bundles",
+  "scope": "Five independent active/wet ROBOT worklet kernels; not Chrome, AudioContext, whole Browser mixer graph, external Signalsmith adapter or callback deadlines",
+  "recoveredRaw": false,
+  "sourceHashes": {
+    "baseline": "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab",
+    "candidate": "d438eb0dbcefd1eb6ba2f5052f598d66cc277139f9b5d45bab8831ae96e1c8d5"
+  },
+  "nodeVersion": "v24.19.0",
+  "configuration": {
+    "rate": 48000,
+    "blockFrames": 128,
+    "tracks": 5,
+    "channels": 2,
+    "bankBlocks": 256,
+    "frequencies": [
+      147,
+      196,
+      220,
+      330,
+      440
+    ],
+    "parameters": {
+      "mix": 1,
+      "robotPitch": 7,
+      "robotFormantSemitones": 0
+    },
+    "bypassed": false,
+    "timingBlocks": 512,
+    "warmupBlocks": 1024,
+    "parityBlocks": 1024,
+    "rounds": 6
+  },
+  "signal": "Precomputed harmonic stereo banks repeat every 32768 frames with phase discontinuities; not continuous pure tones",
+  "inputHash": "3474f4def1236a9df6f66769f95ea63ae065a520c472702be6ec50b06218c9ce",
+  "parity": {
+    "framesPerTrack": 131072,
+    "pcmBitExact": true,
+    "messagesExact": true,
+    "pcmHashes": [
+      "e6b9e8f453cefe3382e69a3a538c4ccaf1a19d3e7f9dc05337797490143aa209",
+      "9f77efcff03dc948d4550a5aded9b2466e8c268dc92dae3e2c26b9b7524c97f4",
+      "01a0d7f536fcfba92523bad84bfd8760e833d22ca8b2d74cf52f8562038be0a8",
+      "a3d2d6e1e6a6b449bbc30f270f19546f06a9cc4f445bc860b6140b82c0f4b770",
+      "b9a3d9fc2b1e418df7858420ed4524c9c899f2971373c68db53b6666a272302b"
+    ],
+    "energy": [
+      1782.160550681703,
+      1694.841937280233,
+      1661.5497001742744,
+      1682.9278198719821,
+      1643.203063929657
+    ],
+    "dryDifference": [
+      7318.594060847631,
+      7142.628005885524,
+      7658.787413586768,
+      7346.714030737671,
+      6856.8308346712165
+    ],
+    "modeCounters": [
+      {
+        "messages": 28,
+        "psola": 4,
+        "signalsmith": 11
+      },
+      {
+        "messages": 22,
+        "psola": 7,
+        "signalsmith": 8
+      },
+      {
+        "messages": 13,
+        "psola": 1,
+        "signalsmith": 2
+      },
+      {
+        "messages": 10,
+        "psola": 1,
+        "signalsmith": 2
+      },
+      {
+        "messages": 10,
+        "psola": 1,
+        "signalsmith": 2
+      }
+    ],
+    "messageCounts": [
+      28,
+      22,
+      13,
+      10,
+      10
+    ],
+    "framesProcessed": [
+      131072,
+      131072,
+      131072,
+      131072,
+      131072
+    ]
+  },
+  "results": [],
+  "profile": {
+    "candidateOnly": true,
+    "baselineProfiled": false,
+    "samplingIntervalMicroseconds": 1000,
+    "profileBlocks": 16384,
+    "framesPerTrack": 2097152,
+    "warmupBlocks": 1024,
+    "profilePath": "/workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/docs/performance/20261022-recovery/browser-main-global-profile-proof.cpuprofile",
+    "profileSha256": "68912a4b2dac3aa82a7bd10975e80aa7f2bca38e4e1da48bc978eaaccb82d5a2",
+    "samples": 2182,
+    "note": "Only warmed candidate execute is enclosed by Profiler.start/stop. Inspector callback bookends may contribute a few samples. Sample shares are not performance improvement measurements.",
+    "modeCountersAfterWarmupAndProfile": [
+      {
+        "messages": 540,
+        "psola": 68,
+        "signalsmith": 203
+      },
+      {
+        "messages": 406,
+        "psola": 135,
+        "signalsmith": 136
+      },
+      {
+        "messages": 205,
+        "psola": 1,
+        "signalsmith": 2
+      },
+      {
+        "messages": 138,
+        "psola": 1,
+        "signalsmith": 2
+      },
+      {
+        "messages": 138,
+        "psola": 1,
+        "signalsmith": 2
+      }
+    ],
+    "framesProcessed": [
+      2228224,
+      2228224,
+      2228224,
+      2228224,
+      2228224
+    ],
+    "topSelfSamples": [
+      {
+        "functionName": "analyzePitch",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 5120,
+        "columnNumberZeroBased": 16,
+        "selfSamples": 549,
+        "sharePercent": 25.160403299725022
+      },
+      {
+        "functionName": "processBlock",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 10487,
+        "columnNumberZeroBased": 16,
+        "selfSamples": 509,
+        "sharePercent": 23.327222731439047
+      },
+      {
+        "functionName": "analyzeFrame",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 4528,
+        "columnNumberZeroBased": 16,
+        "selfSamples": 439,
+        "sharePercent": 20.11915673693859
+      },
+      {
+        "functionName": "process",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 4745,
+        "columnNumberZeroBased": 11,
+        "selfSamples": 438,
+        "sharePercent": 20.07332722273144
+      },
+      {
+        "functionName": "synthesizePitchGrain",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 4838,
+        "columnNumberZeroBased": 24,
+        "selfSamples": 175,
+        "sharePercent": 8.020164986251146
+      },
+      {
+        "functionName": "(garbage collector)",
+        "url": "",
+        "lineNumberZeroBased": -1,
+        "columnNumberZeroBased": -1,
+        "selfSamples": 35,
+        "sharePercent": 1.6040329972502292
+      },
+      {
+        "functionName": "advanceControls",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 10880,
+        "columnNumberZeroBased": 19,
+        "selfSamples": 13,
+        "sharePercent": 0.5957836846929423
+      },
+      {
+        "functionName": "process",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 11665,
+        "columnNumberZeroBased": 11,
+        "selfSamples": 10,
+        "sharePercent": 0.458295142071494
+      },
+      {
+        "functionName": "execute",
+        "url": "file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/bench/experiments/benchmark_recovered_browser_yin.mjs",
+        "lineNumberZeroBased": 82,
+        "columnNumberZeroBased": 90,
+        "selfSamples": 5,
+        "sharePercent": 0.229147571035747
+      },
+      {
+        "functionName": "refreshControlDependentCoefficients",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 10955,
+        "columnNumberZeroBased": 39,
+        "selfSamples": 3,
+        "sharePercent": 0.13748854262144822
+      },
+      {
+        "functionName": "post",
+        "url": "node:inspector",
+        "lineNumberZeroBased": 114,
+        "columnNumberZeroBased": 6,
+        "selfSamples": 1,
+        "sharePercent": 0.045829514207149404
+      },
+      {
+        "functionName": "rejectPitch",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 5195,
+        "columnNumberZeroBased": 15,
+        "selfSamples": 1,
+        "sharePercent": 0.045829514207149404
+      },
+      {
+        "functionName": "setSemitones",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 4730,
+        "columnNumberZeroBased": 16,
+        "selfSamples": 1,
+        "sharePercent": 0.045829514207149404
+      },
+      {
+        "functionName": "advanceControls",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 10880,
+        "columnNumberZeroBased": 19,
+        "selfSamples": 1,
+        "sharePercent": 0.045829514207149404
+      },
+      {
+        "functionName": "process",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 4745,
+        "columnNumberZeroBased": 11,
+        "selfSamples": 1,
+        "sharePercent": 0.045829514207149404
+      },
+      {
+        "functionName": "(program)",
+        "url": "",
+        "lineNumberZeroBased": -1,
+        "columnNumberZeroBased": -1,
+        "selfSamples": 1,
+        "sharePercent": 0.045829514207149404
+      },
+      {
+        "functionName": "(root)",
+        "url": "",
+        "lineNumberZeroBased": -1,
+        "columnNumberZeroBased": -1,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "",
+        "url": "file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/bench/experiments/benchmark_recovered_browser_yin.mjs",
+        "lineNumberZeroBased": -1,
+        "columnNumberZeroBased": -1,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "post",
+        "url": "file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/bench/experiments/benchmark_recovered_browser_yin.mjs",
+        "lineNumberZeroBased": 146,
+        "columnNumberZeroBased": 15,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "",
+        "url": "file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/bench/experiments/benchmark_recovered_browser_yin.mjs",
+        "lineNumberZeroBased": 146,
+        "columnNumberZeroBased": 56,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "processStereoSample",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 5045,
+        "columnNumberZeroBased": 23,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "processSample",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 5028,
+        "columnNumberZeroBased": 17,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "pushDecimatedSample",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 5111,
+        "columnNumberZeroBased": 23,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "updateTarget",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 5210,
+        "columnNumberZeroBased": 16,
+        "selfSamples": 0,
+        "sharePercent": 0
+      },
+      {
+        "functionName": "updateProcessingMode",
+        "url": "recovered-candidate-worklet.js",
+        "lineNumberZeroBased": 5271,
+        "columnNumberZeroBased": 24,
+        "selfSamples": 0,
+        "sharePercent": 0
+      }
+    ]
+  }
+}

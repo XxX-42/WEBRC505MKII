@@ -1,0 +1,25 @@
+--- native-mvp/engine-cpp/src/native_robot_core.cpp	2026-10-21 04:32:55.023866421 -0700
++++ /tmp/rc505-next-candidates/robot-span/src/native_robot_core.cpp	2026-10-21 05:32:56.593742358 -0700
+@@ -87,10 +87,18 @@
+     differences[0] = 0.0;
+     for (unsigned int lag = 1U; lag <= maximumLag; ++lag) {
+         double sum = 0.0;
+-        for (unsigned int i = 0U; i < analysisWindowSamples; ++i) {
+-            const double delta = static_cast<double>(ring[(frameStart + i) & kDetectorRingMask]) -
+-                static_cast<double>(ring[(frameStart + i + lag) & kDetectorRingMask]);
+-            sum += delta * delta;
++        unsigned int left = frameStart;
++        unsigned int right = (frameStart + lag) & kDetectorRingMask;
++        unsigned int remaining = analysisWindowSamples;
++        while (remaining > 0U) {
++            const unsigned int length = std::min({remaining, kDetectorRingCapacity - left, kDetectorRingCapacity - right});
++            for (unsigned int i = 0U; i < length; ++i) {
++                const double delta = static_cast<double>(ring[left + i]) - static_cast<double>(ring[right + i]);
++                sum += delta * delta;
++            }
++            remaining -= length;
++            left = (left + length) & kDetectorRingMask;
++            right = (right + length) & kDetectorRingMask;
+         }
+         differences[lag] = sum;
+     }

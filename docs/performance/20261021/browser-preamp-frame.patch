@@ -1,0 +1,70 @@
+--- /tmp/rc505-browser-perf/preamp-accepted.ts	2026-10-21 04:44:27.762691359 -0700
++++ /tmp/rc505-browser-perf/preamp-frame.ts	2026-10-21 04:44:27.775342432 -0700
+@@ -157,6 +157,16 @@
+   private antiderivativeBias = Number.NaN;
+   private biasValue = 0;
+   private slopeAtZero = 1;
++  private cachedModelPosition = Number.NaN;
++  private cachedModelDrive = 1;
++  private cachedShape = 1;
++  private cachedBias = 0;
++  private cachedNonlinearBlend = 1;
++  private cachedGainPercent = Number.NaN;
++  private cachedDriveModel = Number.NaN;
++  private cachedStageDrive = 1;
++  private cachedLevelDb = Number.NaN;
++  private cachedLevelLinear = 1;
+   private readonly cabinetHistory: Float64Array[] = [new Float64Array(CABINET_TAPS), new Float64Array(CABINET_TAPS)];
+   private readonly cabinetWriteIndex = new Int32Array(2);
+ 
+@@ -199,13 +209,22 @@
+ 
+   processSample(inputLeft: number, inputRight: number): void {
+     const modelPosition = this.model.next();
+-    const lowerModel = Math.floor(modelPosition);
+-    const upperModel = Math.min(4, lowerModel + 1);
+-    const modelBlend = modelPosition - lowerModel;
+-    const modelDrive = lerpTable(MODEL_DRIVE, lowerModel, upperModel, modelBlend);
+-    const shape = lerpTable(MODEL_SHAPE, lowerModel, upperModel, modelBlend);
+-    const bias = lerpTable(MODEL_BIAS, lowerModel, upperModel, modelBlend);
+-    const nonlinearBlend = lerpTable(MODEL_WET, lowerModel, upperModel, modelBlend);
++    // Advance every smoother as before; only reuse pure derived values when
++    // their exact inputs are unchanged, including after a ramp has settled.
++    if (modelPosition !== this.cachedModelPosition) {
++      const lowerModel = Math.floor(modelPosition);
++      const upperModel = Math.min(4, lowerModel + 1);
++      const modelBlend = modelPosition - lowerModel;
++      this.cachedModelDrive = lerpTable(MODEL_DRIVE, lowerModel, upperModel, modelBlend);
++      this.cachedShape = lerpTable(MODEL_SHAPE, lowerModel, upperModel, modelBlend);
++      this.cachedBias = lerpTable(MODEL_BIAS, lowerModel, upperModel, modelBlend);
++      this.cachedNonlinearBlend = lerpTable(MODEL_WET, lowerModel, upperModel, modelBlend);
++      this.cachedModelPosition = modelPosition;
++    }
++    const modelDrive = this.cachedModelDrive;
++    const shape = this.cachedShape;
++    const bias = this.cachedBias;
++    const nonlinearBlend = this.cachedNonlinearBlend;
+     // The prior primitive is reusable only for exactly the same transfer
+     // function. Model ramps change shape/bias and invalidate both channels.
+     if (shape !== this.antiderivativeShape || bias !== this.antiderivativeBias) {
+@@ -216,8 +235,18 @@
+       this.slopeAtZero = Math.max(0.2, shape * (1 - (this.biasValue * this.biasValue)));
+     }
+     const gainPercent = this.gain.next() / 100;
+-    const stageDrive = modelDrive * (1 + (gainPercent * gainPercent * 28));
+-    const levelLinear = 10 ** (this.level.next() / 20);
++    if (modelDrive !== this.cachedDriveModel || gainPercent !== this.cachedGainPercent) {
++      this.cachedStageDrive = modelDrive * (1 + (gainPercent * gainPercent * 28));
++      this.cachedDriveModel = modelDrive;
++      this.cachedGainPercent = gainPercent;
++    }
++    const stageDrive = this.cachedStageDrive;
++    const levelDb = this.level.next();
++    if (levelDb !== this.cachedLevelDb) {
++      this.cachedLevelLinear = 10 ** (levelDb / 20);
++      this.cachedLevelDb = levelDb;
++    }
++    const levelLinear = this.cachedLevelLinear;
+ 
+     const preEqLeft = this.processOversampledChannel(Number.isFinite(inputLeft) ? inputLeft : 0, 0, stageDrive, shape, bias, nonlinearBlend);
+     const preEqRight = this.processOversampledChannel(Number.isFinite(inputRight) ? inputRight : 0, 1, stageDrive, shape, bias, nonlinearBlend);

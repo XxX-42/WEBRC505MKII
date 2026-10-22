@@ -5,6 +5,7 @@ import {
   RHYTHM_VARIATIONS,
   DrumVoicePool,
   createCleanRoomPatternEvents,
+  createRhythmRuntimeEventTemplate,
   getDrumKitByIndex,
 } from "../../src/audio/rhythm";
 
@@ -34,6 +35,20 @@ describe("rhythm clean-room catalog and renderer", () => {
     expect(events.every((event) => event.provenance === "clean-room-generated")).toBe(true);
     expect(events.every((event) => event.patternId === "rhythm-001")).toBe(true);
     expect(events.every((event) => event.velocity >= 1 && event.velocity <= 127)).toBe(true);
+  });
+
+  it("uses METAL's electronic clean-room rhythm rules and normalizes GUIDE 210", () => {
+    const metal = createRhythmRuntimeEventTemplate(155, {
+      sampleRate: 8000, bpm: 300, bars: 1, variation: "A", section: "main",
+    });
+    expect(metal.some((event) => event.instrument === "ride" && event.step === 0)).toBe(true);
+
+    const guide = createRhythmRuntimeEventTemplate(210, {
+      sampleRate: 48_000, bpm: 120, bars: 1, variation: "D", section: "fill",
+    });
+    expect(guide.map((event) => event.step)).toEqual([0, 4, 8, 12]);
+    expect(guide.map((event) => event.instrument)).toEqual(["kick", "snare", "snare", "snare"]);
+    expect(guide.every((event) => event.variation === "A" && event.section === "main")).toBe(true);
   });
 
   it("provides 16 differentiated named kit profiles with clean-room timbre controls", () => {

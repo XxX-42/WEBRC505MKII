@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "runId": "shared_input_capture_current_78bd5e6_20261019T1104Z",
+  "sourceCommit": "78bd5e6465295a2d7fe00e61676c883fac59315e",
+  "result": "FAIL",
+  "startedAtUtc": "2026-10-19T11:03:49.180Z",
+  "finishedAtUtc": "2026-10-19T11:04:58.041Z",
+  "requestedWallSeconds": 60,
+  "elapsedWallSeconds": 60.000045,
+  "audioContextAdvanceSeconds": 56.271,
+  "minimumAudioContextAdvanceSeconds": 57.001,
+  "profile": "full-runtime",
+  "activeTrackCount": 5,
+  "activePrivateTrackFxCount": 20,
+  "persistentSharedCaptureTap": true,
+  "sampleRateHz": 44100,
+  "initialInstrumentedNodes": 36,
+  "plannedOperations": 1,
+  "completedOperations": 1,
+  "operation": {
+    "type": "stereo-record",
+    "requestFrameR": 1530752,
+    "firstTapFrameF": 1531264,
+    "stopFrameS": 1561216,
+    "framesCaptured": 30464,
+    "exactHalfOpenRange": true,
+    "channels": 2,
+    "droppedFrames": 0,
+    "overflowEvents": 0,
+    "pcmSha256": "b5f8c2e4e8472ae70181e91d4c55d6e4ffbdbd31cb4e8fb274d0b232228963fb"
+  },
+  "interpretation": "The single stereo capture completed with exact [R,S) sample coverage. The run as a whole failed because the AudioContext advanced 56.271 seconds, below the required 57.001-second minimum for a 60-second measurement. No overdub or stop-ACK path was exercised.",
+  "rawEvidence": [
+    {"path":"bench/results/shared_input_capture_current_78bd5e6_20261019T1104Z.failure.json","bytes":298262,"sha256":"7598197028613134982d2eb9fb210943faefd99965f60475389f378ec086a2f4"},
+    {"path":"bench/results/shared_input_capture_current_78bd5e6_20261019T1104Z.progress.json","bytes":45321,"sha256":"4a22a763c39b2c57f6f765aac0efd51ca0948f3a6446fee82f9cb64cd5609b8e"},
+    {"path":"bench/results/shared_input_capture_current_78bd5e6_20261019T1104Z.status.json","bytes":2907,"sha256":"ff9bb781fe5a9f7797db38c101317b32616e402393e4c7cb2fba0c2130ef6fc9"}
+  ]
+}

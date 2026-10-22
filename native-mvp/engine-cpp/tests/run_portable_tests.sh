@@ -10,6 +10,9 @@ FLAGS=(-std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror -I"$ROOT/include" -I"$ROO
 "$CXX" "${FLAGS[@]}" "$ROOT/tests/looper_core_tests.cpp" "$ROOT/src/looper_core.cpp" "$ROOT/src/dsp_primitives.cpp" -o "$BUILD_DIR/looper_core_tests"
 "$BUILD_DIR/looper_core_tests"
 
+"$CXX" "${FLAGS[@]}" "$ROOT/tests/project_archive_codec_tests.cpp" "$ROOT/src/project_archive_codec.cpp" -o "$BUILD_DIR/project_archive_codec_tests"
+"$BUILD_DIR/project_archive_codec_tests"
+
 "$CXX" "${FLAGS[@]}" "$ROOT/tests/dsp_primitives_tests.cpp" "$ROOT/src/dsp_primitives.cpp" -o "$BUILD_DIR/dsp_primitives_tests"
 "$BUILD_DIR/dsp_primitives_tests"
 

@@ -1,0 +1,6 @@
+{
+  "status": "PASS",
+  "expectedRejection": "Stale opt-in executable older than DSP library: native_performance_matrix",
+  "exitCode": 1,
+  "scope": "Temporary build-tree fixture linking current source/object/library and preserved old baseline executables; no executable run, no production build modified"
+}

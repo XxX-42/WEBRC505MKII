@@ -50,7 +50,7 @@ bool NativeChorusProcessor::prepare(unsigned int sampleRate) noexcept {
 bool NativeChorusProcessor::setConfig(const ChorusProcessorConfig& config, std::uint64_t rampFrames) noexcept {
     if (!std::isfinite(config.rateHz) || !std::isfinite(config.depthMs) ||
         !std::isfinite(config.feedback) || !std::isfinite(config.wetMix) ||
-        config.rateHz < 0.1f || config.rateHz > 8.0f ||
+        config.rateHz < (config.officialControls ? 0.001f : 0.1f) || config.rateHz > (config.officialControls ? 100.0f : 8.0f) ||
         config.depthMs < 0.0f || config.depthMs > kMaximumDepthMs ||
         config.feedback < 0.0f || config.feedback > 0.95f ||
         config.wetMix < 0.0f || config.wetMix > 1.0f) {

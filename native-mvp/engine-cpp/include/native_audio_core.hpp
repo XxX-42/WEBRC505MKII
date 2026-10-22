@@ -6,6 +6,7 @@
 #include "native_output_stage.hpp"
 #include "native_pitch_processor.hpp"
 #include "native_poly_pitch_processor.hpp"
+#include "project_archive_codec.hpp"
 
 #include <array>
 #include <atomic>
@@ -24,6 +25,26 @@
 namespace webrc::native {
 
 inline constexpr std::size_t kNativeTrackCount = 5U;
+inline constexpr std::uint64_t kNativeHistoryBudgetBytes = 512ULL * 1024ULL * 1024ULL;
+inline constexpr std::uint64_t kNativeProjectImportPeakBudgetBytes = 3ULL * 1024ULL * 1024ULL * 1024ULL;
+
+enum class NativeProjectImportState : std::uint8_t { Idle = 0U, Pending, Claimed, Committed, Cancelled };
+
+struct NativeProjectImportStatus {
+    bool found = false;
+    std::uint64_t generation = 0U;
+    NativeProjectImportState state = NativeProjectImportState::Idle;
+    std::string error;
+};
+
+enum class NativeHistoryFailure : std::uint8_t { None = 0U, BudgetExceeded, SnapshotUnavailable, NoUndo, NoRedo, TrackMustBeStopped };
+
+struct NativeTrackHistoryStatus {
+    bool canUndo = false;
+    bool canRedo = false;
+    std::uint64_t retainedPcmBytes = 0U;
+    NativeHistoryFailure unavailableReason = NativeHistoryFailure::None;
+};
 
 enum class NativePitchMode : std::uint8_t { LiveMonoKeepPitch = 0, LivePolyPhaseVocoder };
 
@@ -198,8 +219,17 @@ struct EngineStatus {
     std::string lastError;
     float loopProgress = 0.0f;
     std::array<LooperState, kNativeTrackCount> nativeTrackStates{};
+    std::array<NativeVocoderCarrierStatus, kNativeTrackCount> nativeVocoderCarrierStatuses{};
     std::array<float, kNativeTrackCount> nativeTrackProgress{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeTrackContentRevision{};
+    /** Host epoch for loop PCM/history and import-overwritten track-state changes. */
+    std::uint64_t projectContentRevision = 0U;
+    /** True only when project-relevant status fields were sampled without an epoch change. */
+    bool projectContentRevisionSnapshotStable = false;
     std::array<LoopTransportStatus, kNativeTrackCount> nativeTrackLoopTransportStatus{};
+    std::array<NativeTrackHistoryStatus, kNativeTrackCount> nativeTrackHistory{};
+    std::uint64_t nativeHistoryBudgetBytes = kNativeHistoryBudgetBytes;
+    std::uint64_t nativeHistoryRetainedBytes = 0U;
     double streamTimeSeconds = 0.0;
     unsigned long long callbackTicks = 0;
     std::uint64_t nativeSampleFrame = 0U;
@@ -339,6 +369,10 @@ private:
 
 class NativeAudioCore {
 public:
+    // Revisions cross a JSON/JavaScript boundary, so stop before Number loses
+    // integer precision. Imports fail closed at this sentinel.
+    static constexpr std::uint64_t kMaximumSafeProjectContentRevision = 9007199254740991ULL;
+
     NativeAudioCore();
     ~NativeAudioCore();
 
@@ -360,6 +394,8 @@ public:
     bool playTrack(std::size_t trackIndex, std::string& error);
     bool toggleTrackOverdub(std::size_t trackIndex, std::string& error);
     bool clearTrack(std::size_t trackIndex, std::string& error);
+    bool undoTrack(std::size_t trackIndex, std::string& error);
+    bool redoTrack(std::size_t trackIndex, std::string& error);
     bool setMonitoring(bool enabled, std::string& error);
     bool setOutputLowPassEnabled(bool enabled, std::string& error);
     bool setOutputHighPassEnabled(bool enabled, std::string& error);
@@ -390,7 +426,8 @@ public:
         bool bypassed,
         std::string& error,
         NativeCatalogFxPath path = NativeCatalogFxPath::Track,
-        std::uint8_t trackId = 0U
+        std::uint8_t trackId = 0U,
+        bool replaceParameters = false
     );
     // MIDI channels at the bridge boundary are one-based (1..16). Events are
     // inserted into the selected slot's bounded SPSC queue under the control
@@ -436,7 +473,8 @@ public:
         std::vector<float>& interleavedStereo,
         unsigned int& sampleRate,
         std::string& error,
-        std::size_t maximumFrameCount = std::numeric_limits<std::size_t>::max()
+        std::size_t maximumFrameCount = std::numeric_limits<std::size_t>::max(),
+        std::uint64_t* contentRevision = nullptr
     );
 
     // Reads callback-pinned loop dimensions without copying PCM. This lets a
@@ -446,6 +484,26 @@ public:
         std::size_t trackIndex,
         std::size_t& frameCount,
         unsigned int& sampleRate,
+        std::string& error,
+        std::uint64_t* contentRevision = nullptr
+    );
+
+    // Stages a validated archive on the control thread and publishes it as a
+    // generation-tagged full-bank swap at the next audio callback boundary.
+    // The callback performs no allocation, PCM copy, or destruction. A caller
+    // must poll status and may cancel only while the callback has not claimed
+    // the generation.
+    bool beginProjectArchiveImport(
+        DecodedProjectArchive&& archive,
+        std::uint64_t encodedBytes,
+        std::uint64_t expectedProjectContentRevision,
+        std::uint64_t& generation,
+        std::string& error
+    );
+    [[nodiscard]] NativeProjectImportStatus getProjectArchiveImportStatus(std::uint64_t generation);
+    bool cancelProjectArchiveImport(
+        std::uint64_t generation,
+        NativeProjectImportStatus& status,
         std::string& error
     );
 
@@ -459,12 +517,22 @@ private:
         std::array<float, kMaxCallbackFrames * 2> samples{};
     };
 
+    struct ProjectImportTransaction {
+        std::uint64_t generation = 0U;
+        std::uint64_t expectedProjectContentRevision = 0U;
+        std::array<std::vector<float>, kNativeTrackCount> candidateStereoStorage{};
+        std::array<std::size_t, kNativeTrackCount> frameCounts{};
+        std::array<LoopMetadata, kNativeTrackCount> previousMetadata{};
+    };
+
     DeviceCatalog buildCatalog() const;
     std::vector<RtAudio::Api> compiledApis() const;
     bool ensureAudioInstanceLocked(std::unique_ptr<RtAudio>& instance, Backend backend, std::string& error);
     bool validateConfigLocked(EngineConfig& config, std::string& error) const;
     bool validateLoopStorageBudgetLocked(unsigned int sampleRate, std::uint64_t budgetBytes, std::string& error) const;
     bool prepareLoopStorageLocked(unsigned int sampleRate, std::uint64_t budgetBytes, std::string& error);
+    // Caller holds commandProducerMutex_; reclamation is control-thread-only.
+    void reclaimInactiveHistoryPcmLocked() noexcept;
     bool hasNonEmptyTrackLocked() const noexcept;
     bool openStreamLocked(std::string& error);
     void closeStreamLocked() noexcept;
@@ -478,11 +546,17 @@ private:
     void applyNativeCatalogFxCommands() noexcept;
     [[nodiscard]] const float* processInputFxForCallback(
         const float* inputInterleaved,
-        unsigned int frames
+        unsigned int frames,
+        unsigned int* processedChannels = nullptr
     ) noexcept;
     void applyNativePitchCommands() noexcept;
     void applyNativeLoopTransportCommands() noexcept;
+    void applyOfficialSourceTransports() noexcept;
+    void prepareVocoderCarriers(unsigned int frames) noexcept;
     [[nodiscard]] bool processLoopSnapshotRequestAtCallback() noexcept;
+    [[nodiscard]] std::size_t processHistoryPinAtCallback() noexcept;
+    [[nodiscard]] bool applyProjectImportAtCallback() noexcept;
+    void finalizeProjectImportLocked();
     bool configureNativeCatalogSlotLocked(
         NativeEffectSlot slot,
         const std::string& effectId,
@@ -490,16 +564,20 @@ private:
         bool bypassed,
         std::string& error,
         NativeCatalogFxPath path,
-        std::uint8_t trackId = 0U
+        std::uint8_t trackId = 0U,
+        bool replaceParameters = false
     );
     void applyNativeRhythmCommands() noexcept;
     [[nodiscard]] LooperCore& looperForTrack(std::size_t trackIndex) noexcept;
     [[nodiscard]] const LooperCore& looperForTrack(std::size_t trackIndex) const noexcept;
     [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error);
+    void applyTrackCommandAtCallback(const Command& command) noexcept;
+    [[nodiscard]] bool restoreTrackHistory(std::size_t trackIndex, bool redo, std::string& error);
     [[nodiscard]] ProcessStats processNativeTracksForCallback(
         const float* inputInterleaved,
         float* outputInterleaved,
         unsigned int frames,
+        unsigned int inputChannels,
         NativePitchRouteDecision* pitchRouteDecision
     ) noexcept;
     bool setOutputEffectEnabled(NativeOutputEffect effect, bool enabled, std::string& error);
@@ -554,6 +632,7 @@ private:
 
     mutable std::mutex controlMutex_;
     std::mutex loopSnapshotMutex_;
+    std::mutex commandProducerMutex_;
     mutable std::string lastError_;
     std::unique_ptr<RtAudio> audio_;
     std::unique_ptr<RtAudio> captureAudio_;
@@ -563,7 +642,18 @@ private:
     std::array<LooperCore, kNativeTrackCount - 1U> additionalLoopers_;
     std::size_t nativeLooperMaxRecordSeconds_ = 0U;
     std::uint64_t nativeLooperPreallocatedBytes_ = 0U;
+    std::unique_ptr<ProjectImportTransaction> projectImportTransaction_;
+    std::atomic<ProjectImportTransaction*> projectImportTransactionPointer_{nullptr};
+    std::atomic<NativeProjectImportState> projectImportState_{NativeProjectImportState::Idle};
+    std::atomic<std::uint64_t> projectImportActiveGeneration_{0U};
+    std::uint64_t projectImportNextGeneration_ = 0U;
+    std::uint64_t projectImportLastGeneration_ = 0U;
+    NativeProjectImportState projectImportLastState_ = NativeProjectImportState::Idle;
+    std::string projectImportLastError_;
+    std::atomic<bool> projectImportCancelledByCallback_{false};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackMixScratch_{};
+    std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeVocoderCarrierScratch_{};
+    std::array<std::atomic<NativeVocoderCarrierStatus>, kNativeTrackCount> nativeVocoderCarrierStatuses_{};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackPlaybackScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetDryScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetProcessedScratch_{};
@@ -571,6 +661,37 @@ private:
     unsigned int outputChannels_ = 2;
 
     SpscRingQueue<Command, 64> commandQueue_;
+    enum class HistoryKind : std::uint8_t { None = 0U, Metadata, Pcm };
+    struct TrackHistoryRecord {
+        LoopMetadata before{};
+        LoopMetadata after{};
+        HistoryKind kind = HistoryKind::None;
+        bool valid = false;
+        bool applied = false;
+        std::size_t pcmFrames = 0U;
+    };
+    std::array<TrackHistoryRecord, kNativeTrackCount> historyRecords_{};
+    std::array<std::vector<float>, kNativeTrackCount> historyPcm_{};
+    std::array<bool, kNativeTrackCount> recordingHistoryPending_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> historyCanUndo_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> historyCanRedo_{};
+    std::array<std::atomic<NativeHistoryFailure>, kNativeTrackCount> historyFailure_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> overdubSnapshotReady_{};
+    std::array<std::atomic<std::size_t>, kNativeTrackCount> overdubSnapshotFrames_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> historyPcmActive_{};
+    std::array<LoopMetadata, kNativeTrackCount> pendingOverdubBefore_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> historyPcmBytes_{};
+    std::atomic<std::uint64_t> historyRetainedBytes_{0U};
+    std::atomic<std::uint64_t> historyPinNextGeneration_{0U};
+    std::atomic<std::uint64_t> historyPinRequestGeneration_{0U};
+    std::atomic<std::uint64_t> historyPinAcknowledgedGeneration_{0U};
+    std::atomic<std::uint64_t> historyPinCancelledGeneration_{0U};
+    std::atomic<std::uint64_t> historyPinReleaseGeneration_{0U};
+    std::atomic<std::uint64_t> historyPinReleasedGeneration_{0U};
+    std::atomic<std::size_t> historyPinTrackIndex_{kNativeTrackCount};
+    std::atomic<std::size_t> historyPinAcknowledgedTrackIndex_{kNativeTrackCount};
+    std::uint64_t historyPinnedGeneration_ = 0U;
+    std::size_t historyPinnedTrackIndex_ = kNativeTrackCount;
     SpscRingQueue<NativeOutputEffectCommand, 32> outputStageCommandQueue_;
     SpscRingQueue<NativeReverbCommand, 16> nativeReverbCommandQueue_;
     SpscRingQueue<NativeFractionalDelayCommand, 16> nativeFractionalDelayCommandQueue_;
@@ -580,6 +701,10 @@ private:
     SpscRingQueue<NativeCatalogFxCommand, 64> nativeCatalogFxCommandQueue_;
     SpscRingQueue<NativePitchCommand, 16> nativePitchCommandQueue_;
     SpscRingQueue<NativeLoopTransportCommand, 16> nativeLoopTransportCommandQueue_;
+    // Callback-owned underlying routes. Official shared Track A is an overlay;
+    // bypass/removal restores each independently authored route, not generic OFF.
+    std::array<LoopTransportConfig, kNativeTrackCount> nativeBaseLoopTransportConfigs_{};
+    std::array<bool, kNativeTrackCount> nativeOfficialSourcePitchConflict_{};
     SpscRingQueue<NativeRhythmConfig, 16> nativeRhythmCommandQueue_;
     SpscRingQueue<AudioBlock, 8> outputQueue_;
     NativeOutputStage outputStage_;
@@ -615,6 +740,16 @@ private:
     NativePitchMode nativePitchRuntimeMode_ = NativePitchMode::LiveMonoKeepPitch;
     bool nativePitchRuntimeReverse_ = false;
     std::array<bool, NativeEffectBank::kSlotCount> nativeCatalogSlotBypassed_{};
+    // Control-thread shadows include accepted-but-not-yet-consumed variant edits.
+    // Reading the callback's processor here would race and could validate against
+    // an obsolete branch while an earlier selector command is still queued.
+    // Authored-key bookkeeping belongs exclusively to the control thread.
+    // Full replacement with removals is rejected live rather than falsely
+    // acknowledging a reset while old DSP state remains latched.
+    std::array<std::array<std::map<std::string, float>, NativeEffectBank::kSlotCount>, kNativeTrackCount + 2U> nativeCatalogAuthoredParameters_{};
+    std::array<unsigned int, NativeEffectBank::kSlotCount> nativeInputOfficialVariants_{};
+    std::array<unsigned int, NativeEffectBank::kSlotCount> nativeTrackOfficialVariants_{};
+    std::array<std::array<unsigned int, NativeEffectBank::kSlotCount>, kNativeTrackCount> nativePerTrackOfficialVariants_{};
     std::array<bool, NativeEffectBank::kSlotCount> nativeInputCatalogSlotBypassed_{};
     NativeRhythmConfig nativeRhythmConfig_{};
     std::uint64_t callbackFrameCursor_ = 0;
@@ -634,6 +769,10 @@ private:
         static_cast<int>(LooperState::Empty), static_cast<int>(LooperState::Empty),
         static_cast<int>(LooperState::Empty)
     }};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> trackContentRevision_{};
+    // The global epoch also changes for Play/Stop transitions because project
+    // import replaces those states; per-track content revisions remain PCM/history-only.
+    std::atomic<std::uint64_t> projectContentRevision_{0U};
     std::array<std::atomic<float>, kNativeTrackCount> trackProgress_{{0.0f, 0.0f, 0.0f, 0.0f, 0.0f}};
     std::array<std::atomic<LoopTransportStatus>, kNativeTrackCount> trackLoopTransportStatus_{{
         LoopTransportStatus::Disabled, LoopTransportStatus::Disabled, LoopTransportStatus::Disabled,
@@ -650,7 +789,14 @@ private:
     std::atomic<bool> loopSnapshotReleaseAcknowledged_{true};
     std::atomic<bool> loopSnapshotEligible_{false};
     std::atomic<LooperState> loopSnapshotState_{LooperState::Empty};
+    std::atomic<std::uint64_t> loopSnapshotContentRevision_{0U};
     std::atomic<std::size_t> loopSnapshotTrackIndex_{0U};
+    std::atomic<std::uint64_t> loopSnapshotNextGeneration_{0U};
+    std::atomic<std::uint64_t> loopSnapshotRequestGeneration_{0U};
+    std::atomic<std::uint64_t> loopSnapshotAcknowledgedGeneration_{0U};
+    std::atomic<std::uint64_t> loopSnapshotCancelledGeneration_{0U};
+    std::atomic<std::uint64_t> loopSnapshotReleaseGeneration_{0U};
+    std::atomic<std::uint64_t> loopSnapshotReleasedGeneration_{0U};
     // Only the single active loop-processing callback reads/writes this flag.
     bool loopSnapshotPinned_ = false;
 };

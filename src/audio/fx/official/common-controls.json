@@ -1,0 +1,27 @@
+{
+ "source_pages":[5,6,34],
+ "bank_controls":[
+  {"name":"FX A–D","values_raw":"OFF, ON","default":"OFF","count":4,"condition":"SINGLE allows only one enabled effect"},
+  {"name":"BANK","values_raw":"A, B, C, D","default":"A"},
+  {"name":"SW","values_raw":"OFF, ON","default":"OFF"},
+  {"name":"MODE","values_raw":"SINGLE, MULTI","default":"MULTI"},
+  {"name":"FX TARGET","values_raw":"A, B, C, D","default":"A"}
+ ],
+ "slot_controls":[
+  {"name":"SW","values_raw":"OFF, ON","default":"OFF"},
+  {"name":"SW MODE","values_raw":"TOGGLE, MOMENT","default":"MOMENT"},
+  {"name":"INSERT","scope":"input","values_raw":"ALL, MIC1, MIC2, INST1-L, INST1-R, INST2-L, INST2-R","default":"ALL","notes":"Honor stereo-link and track/input/output routing constraints; ALL is not unconditional routing bypass."},
+  {"name":"INSERT","scope":"track","values_raw":"ALL, TRACK1, TRACK2, TRACK3, TRACK4, TRACK5","default":"ALL","notes":"Honor track/output routing constraints."},
+  {"name":"FX TYPE","values_raw":"effect family and documented variant","default":null}
+ ],
+ "fx_sequence_controls":[
+  {"name":"SW","values_raw":"OFF, ON","default":"OFF"},
+  {"name":"SYNC","values_raw":"OFF, ON","default":"OFF"},
+  {"name":"RETRIG","values_raw":"OFF, ON","default":"OFF"},
+  {"name":"TARGET","values_raw":"per-effect parameters marked with star","default":"per-effect blue-star parameter"},
+  {"name":"RATE","values_raw":"0–100, 4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note","default":"quarter_note","notes":"All intermediate note values are not enumerated by guide."},
+  {"name":"MAX","values_raw":"1–16","default":16},
+  {"name":"VAL1–16","values_raw":"1–16","default":null,"notes":"16 step-value controls; interpretation depends on selected TARGET."}
+ ],
+ "verification":"Printed pages 5,6,34 inspected as rendered images; defaults follow blue/bold marks."
+}

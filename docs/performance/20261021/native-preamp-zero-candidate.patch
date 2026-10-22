@@ -1,0 +1,16 @@
+--- native-mvp/engine-cpp/src/native_preamp_processor.cpp	2026-10-21 04:31:45.006238379 -0700
++++ /tmp/rc505-next-candidates/preamp-zero/src/native_preamp_processor.cpp	2026-10-21 05:46:34.059206373 -0700
+@@ -80,7 +80,12 @@
+ #endif
+     if (std::fabs(delta) < 1.0e-4f) {
+         antiderivativeValid = false;
+-        return triodeTransfer(0.5f * (input + previousInput), slope, bias, biasTanh);
++        const float midpoint = 0.5f * (input + previousInput);
++        // For positive zero, the transfer's tanh argument is exactly the
++        // control-cached bias argument. Preserve negative-zero handling and
++        // every other sample/state update on the original path.
++        if (midpoint == 0.0f && !std::signbit(midpoint)) return 0.0f;
++        return triodeTransfer(midpoint, slope, bias, biasTanh);
+     }
+ #if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+     const float shiftedInput = std::clamp(slope * (input + bias), -16.0f, 16.0f);

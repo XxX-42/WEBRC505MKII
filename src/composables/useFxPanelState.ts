@@ -1,7 +1,8 @@
+import { sameNativeControlSnapshot } from '../audio/nativeFxParameterSnapshots';
 import { computed, effectScope, reactive, ref, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { FX_CATALOG } from '../audio/fx/catalog';
-import { NATIVE_CATALOG_EMPTY_LABEL } from '../audio/nativeFxCatalog';
+import { nativeCatalogEffectId, nativeCatalogMacroParameters, NATIVE_CATALOG_EMPTY_LABEL } from '../audio/nativeFxCatalog';
 import { createDefaultPreampParameters, sanitizePreampParameters, type PreampParameters } from '../audio/preampParameters';
 import { createDefaultSynthParameters, sanitizeSynthParameters, type SynthParameters } from '../audio/synthParameters';
 import { createDefaultG2bParameters, sanitizeG2bParameters, toCatalogG2bParameters, type G2bParameters } from '../audio/g2bParameters';
@@ -17,6 +18,7 @@ import { createDefaultAutoRiffParameters, sanitizeAutoRiffParameters, toCatalogA
 import { createDefaultRobotFxParameters, sanitizeRobotFxParameters, toCatalogRobotParameters, type RobotFxParameters } from '../audio/robotFxParameters';
 import { createDefaultHrmAutoParameters, sanitizeHrmAutoParameters, toCatalogHrmAutoParameters, type HrmAutoParameters } from '../audio/hrmAutoParameters';
 import { createDefaultElectricParameters, sanitizeElectricParameters, toBrowserElectricParameters, toNativeElectricParameters, type ElectricParameters } from '../audio/electricParameters';
+import { getBrowserInputFxControls, getBrowserTrackFxControls, sanitizeBrowserTrackFxParameters } from './browserTrackFxParameters';
 import { type FxLocation, type FxSlotId, usePanelFocus } from './usePanelFocus';
 import { ensureBrowserTrackFxStateInitialized } from './useBrowserTrackFxState';
 
@@ -40,6 +42,8 @@ export interface FxSlotState {
   robotParameters?: RobotFxParameters;
   hrmAutoParameters?: HrmAutoParameters;
   electricParameters?: ElectricParameters;
+  /** Named overrides, kept separately for each slot and effect type. */
+  namedParametersByType?: Record<string, Record<string, number>>;
 }
 
 const STORAGE_KEY = 'webrc505_top_panel';
@@ -61,7 +65,7 @@ const browserCatalogFxName = (displayName: string) => {
 // REVERSE REVERB has an executable, end-to-end-routed prototype in both
 // Browser banks. Keep the other experimental prototypes hidden while this
 // one is explicitly identified to users as experimental.
-const browserSelectableExperimentalIds = new Set(['reverse-reverb', 'auto-riff', 'robot', 'warp']);
+const browserSelectableExperimentalIds = new Set(['reverse-reverb', 'auto-riff', 'hrm-auto-m', 'robot', 'warp']);
 const browserFxOptionsFor = (location: FxLocation) => {
   const runtimeTarget = location === 'input' ? 'input-bank-slot' : 'track-bank-slot';
   const wiredCatalogOptions = FX_CATALOG
@@ -77,6 +81,13 @@ const browserFxOptionsFor = (location: FxLocation) => {
 };
 const robotTypeNames = ['ROBOT', 'ROBOT (EXPERIMENTAL)'];
 const isRobotFxType = (type: string) => robotTypeNames.includes(type);
+const isHrmAutoFxType = (type: string) => type === 'HRM AUTO (M)' || type === 'HRM AUTO (M) (EXPERIMENTAL)';
+const dedicatedInputEditorTypes = new Set([
+  'PREAMP', 'SYNTH', 'G2B', 'ROLL', 'FREEZE', 'PITCH BEND', 'HRM MANUAL',
+  'OCTAVE', 'VOCODER', 'OSC VOC (M)', 'AUTO RIFF', 'AUTO RIFF (EXPERIMENTAL)',
+  'ROBOT', 'ROBOT (EXPERIMENTAL)', 'HRM AUTO (M)', 'HRM AUTO (M) (EXPERIMENTAL)',
+  'ELECTRIC', 'STEP SLICER',
+]);
 function hasRobotRuntimeRoute(location: FxLocation, type: string): boolean {
   if (!isRobotFxType(type)) return false;
   const options = engine.getMode() === 'browser'
@@ -118,7 +129,51 @@ const nativeFxState = reactive<{ inputSlots: FxSlotState[]; trackSlots: FxSlotSt
   })),
 });
 const nativeStatusRevision = ref(0);
-engine.onStatusChange(() => { nativeStatusRevision.value += 1; });
+interface PendingNativeNamedParameters {
+  location: FxLocation;
+  slotIndex: number;
+  effectId: string;
+  overrides: Record<string, number>;
+  expectedParameters: Record<string, number>;
+  previousRevision: number | null;
+}
+const pendingNativeNamedParameters = new Map<string, PendingNativeNamedParameters>();
+const nativeNamedParameterKey = (location: FxLocation, slotIndex: number) => `${location}:${slotIndex}`;
+function reconcileNativeNamedParameters() {
+  if (engine.getMode() !== 'native' || pendingNativeNamedParameters.size === 0) return;
+  let changed = false;
+  for (const [key, pending] of pendingNativeNamedParameters) {
+    const runtime = engine.getNativeCatalogFxSlotStatus(pending.location, pending.slotIndex);
+    if (!runtime || runtime.outcomeUnknown || runtime.pendingApply) continue;
+    const requestedNewRevision = runtime.trackId === 0 || (runtime.requestedRevision !== null &&
+      runtime.requestedRevision !== pending.previousRevision);
+    if (runtime.acknowledged && requestedNewRevision &&
+        runtime.acknowledgedEffectId === pending.effectId &&
+        sameNativeControlSnapshot(runtime.acknowledgedParameters, pending.expectedParameters, pending.effectId, pending.overrides)) {
+      const slot = (pending.location === 'input' ? nativeFxState.inputSlots : nativeFxState.trackSlots)[pending.slotIndex];
+      if (slot && nativeCatalogEffectId(slot.type) === pending.effectId) {
+        slot.namedParametersByType ??= {};
+        if (Object.keys(pending.overrides).length) slot.namedParametersByType[slot.type] = { ...pending.overrides };
+        else delete slot.namedParametersByType[slot.type];
+        if (slot.namedParametersByType && Object.keys(slot.namedParametersByType).length === 0) {
+          slot.namedParametersByType = undefined;
+        }
+        changed = true;
+      }
+      pendingNativeNamedParameters.delete(key);
+      continue;
+    }
+    if (requestedNewRevision && runtime.error && !runtime.acknowledged && !runtime.pendingRestart) {
+      // Keep the last acknowledged override map on definite host rejection.
+      pendingNativeNamedParameters.delete(key);
+    }
+  }
+  if (changed) persistNativeFxSlots();
+}
+engine.onStatusChange(() => {
+  reconcileNativeNamedParameters();
+  nativeStatusRevision.value += 1;
+});
 
 let initialized = false;
 
@@ -130,6 +185,14 @@ function sanitizeValue(rawValue: number) {
 }
 
 function syncSlotToEngine(location: FxLocation, index: number, slot: FxSlotState) {
+  if (engine.getMode() === 'native') {
+    const key = nativeNamedParameterKey(location, index);
+    const pending = pendingNativeNamedParameters.get(key);
+    if (pending && pending.effectId !== nativeCatalogEffectId(slot.type)) {
+      pendingNativeNamedParameters.delete(key);
+      nativeStatusRevision.value += 1;
+    }
+  }
   const isRobotSlot = isRobotFxType(slot.type);
   const isElectricSlot = slot.type === 'ELECTRIC';
   if (slot.type === 'PREAMP') {
@@ -212,7 +275,7 @@ function syncSlotToEngine(location: FxLocation, index: number, slot: FxSlotState
       engine.setCatalogFxParameters(location, index, toCatalogRobotParameters(slot.robotParameters));
     }
   }
-  if (slot.type === 'HRM AUTO (M)') {
+  if (isHrmAutoFxType(slot.type)) {
     slot.hrmAutoParameters = sanitizeHrmAutoParameters(slot.hrmAutoParameters ?? createDefaultHrmAutoParameters());
     slot.value = slot.hrmAutoParameters.mixPercent;
     engine.setCatalogFxParameters(location, index, toCatalogHrmAutoParameters(slot.hrmAutoParameters));
@@ -231,6 +294,28 @@ function syncSlotToEngine(location: FxLocation, index: number, slot: FxSlotState
   if (slot.type === 'STEP SLICER') {
     slot.stepSlicerParameters ??= createDefaultNativeStepSlicerParameters();
     engine.setNativeStepSlicerParameters(location, index, slot.stepSlicerParameters);
+  }
+  // Apply explicit Browser Input named overrides after the amount macro and
+  // typed editor values, matching the Track-bank rule that authored named
+  // controls win when both target the same DSP parameter.
+  if (engine.getMode() === 'browser' && slot.type) {
+    const named = slot.namedParametersByType?.[slot.type];
+    if (named && Object.keys(named).length) engine.setCatalogFxParameters(location, index, named);
+  }
+  if (engine.getMode() === 'native' && slot.type) {
+    const key = nativeNamedParameterKey(location, index);
+    const pending = pendingNativeNamedParameters.get(key);
+    if (pending && pending.effectId === nativeCatalogEffectId(slot.type)) {
+      // A normal amount/active edit must not replay the persisted old controls
+      // over a pending reset (including a host requiresRestart response).
+      pending.expectedParameters = engine.getNativeCatalogFxParameterSnapshot?.(location, index, 0, pending.overrides)
+        ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...pending.overrides };
+      engine.setCatalogFxParameters(location, index, { ...pending.overrides });
+    } else {
+      if (pending) pendingNativeNamedParameters.delete(key);
+      const named = nativeNamedOverridesForSync(location, slot.type, slot.namedParametersByType?.[slot.type], index);
+      if (named && Object.keys(named).length) engine.setCatalogFxParameters(location, index, named);
+    }
   }
   // Install all named controls before enabling a one-shot effect. For PITCH
   // BEND the activation transition is itself the retrigger event.
@@ -258,7 +343,8 @@ function loadSlots() {
     const parsed = JSON.parse(saved) as Partial<typeof state>;
     if (Array.isArray(parsed.inputSlots)) {
       state.inputSlots = parsed.inputSlots as FxSlotState[];
-      state.inputSlots.forEach((slot) => {
+      state.inputSlots.forEach((slot, index) => {
+        slot.namedParametersByType = sanitizeBrowserInputNamedPresets(slot.namedParametersByType, 'input', index);
         if (slot?.type === 'PREAMP') slot.preampParameters = sanitizePreampParameters(slot.preampParameters);
         if (slot?.type === 'SYNTH') slot.synthParameters = sanitizeSynthParameters(slot.synthParameters);
         if (slot?.type === 'G2B') slot.g2bParameters = sanitizeG2bParameters(slot.g2bParameters);
@@ -273,7 +359,7 @@ function loadSlots() {
           slot.autoRiffParameters = sanitizeAutoRiffParameters(slot.autoRiffParameters);
         }
         if (slot?.type && isRobotFxType(slot.type)) slot.robotParameters = sanitizeRobotFxParameters(slot.robotParameters);
-        if (slot?.type === 'HRM AUTO (M)') {
+        if (slot?.type && isHrmAutoFxType(slot.type)) {
           slot.hrmAutoParameters = sanitizeHrmAutoParameters(slot.hrmAutoParameters);
         }
         if (slot?.type === 'ELECTRIC') slot.electricParameters = sanitizeElectricParameters(slot.electricParameters);
@@ -281,7 +367,8 @@ function loadSlots() {
     }
     if (Array.isArray(parsed.trackSlots)) {
       state.trackSlots = parsed.trackSlots as FxSlotState[];
-      state.trackSlots.forEach((slot) => {
+      state.trackSlots.forEach((slot, index) => {
+        slot.namedParametersByType = sanitizeBrowserInputNamedPresets(slot.namedParametersByType, 'track', index);
         if (slot?.type === 'PREAMP') slot.preampParameters = sanitizePreampParameters(slot.preampParameters);
         if (slot?.type === 'SYNTH') slot.synthParameters = sanitizeSynthParameters(slot.synthParameters);
         if (slot?.type === 'G2B') slot.g2bParameters = sanitizeG2bParameters(slot.g2bParameters);
@@ -296,7 +383,7 @@ function loadSlots() {
           slot.autoRiffParameters = sanitizeAutoRiffParameters(slot.autoRiffParameters);
         }
         if (slot?.type && isRobotFxType(slot.type)) slot.robotParameters = sanitizeRobotFxParameters(slot.robotParameters);
-        if (slot?.type === 'HRM AUTO (M)') {
+        if (slot?.type && isHrmAutoFxType(slot.type)) {
           slot.hrmAutoParameters = sanitizeHrmAutoParameters(slot.hrmAutoParameters);
         }
         if (slot?.type === 'ELECTRIC') slot.electricParameters = sanitizeElectricParameters(slot.electricParameters);
@@ -366,6 +453,7 @@ function ensureInitialized() {
 
     watch(() => nativeFxState.inputSlots.map((slot) => slot.type), (newTypes, oldTypes) => {
       newTypes.forEach((type, index) => {
+        if (oldTypes[index] !== type && pendingNativeNamedParameters.delete(nativeNamedParameterKey('input', index))) nativeStatusRevision.value += 1;
         if ((type !== 'TRANSPOSE' && type !== 'PITCH BEND') || oldTypes[index] === type) return;
         const slot = nativeFxState.inputSlots[index];
         if (!slot) return;
@@ -379,6 +467,7 @@ function ensureInitialized() {
     });
     watch(() => nativeFxState.trackSlots.map((slot) => slot.type), (newTypes, oldTypes) => {
       newTypes.forEach((type, index) => {
+        if (oldTypes[index] !== type && pendingNativeNamedParameters.delete(nativeNamedParameterKey('track', index))) nativeStatusRevision.value += 1;
         if ((type !== 'TRANSPOSE' && type !== 'PITCH BEND') || oldTypes[index] === type) return;
         const slot = nativeFxState.trackSlots[index];
         if (!slot) return;
@@ -395,8 +484,9 @@ function ensureInitialized() {
     // the same object for oldValue/newValue after an in-place slot edit, so
     // comparing those object references misses type changes and leaves the
     // previous processor installed.
-    const slotControlSnapshot = (slot: FxSlotState) => [
+    const slotControlSnapshot = (slot: FxSlotState, includeNamedParameters = true) => [
       slot.type, slot.value, slot.active,
+      includeNamedParameters ? JSON.stringify(slot.namedParametersByType ?? {}) : '',
       slot.pitchBendParameters?.rangeSemitones ?? null,
       slot.pitchBendParameters?.timeMs ?? null,
       slot.pitchBendParameters?.direction ?? null,
@@ -432,7 +522,7 @@ function ensureInitialized() {
       slot.electricParameters?.toneHz ?? null,
       slot.electricParameters?.mixPercent ?? null,
     ] as const;
-    watch(() => state.inputSlots.map(slotControlSnapshot), (newValues, oldValues) => {
+    watch(() => state.inputSlots.map((slot) => slotControlSnapshot(slot)), (newValues, oldValues) => {
       if (engine.getMode() !== 'browser') return;
       state.inputSlots.forEach((slot, index) => {
         const previous = oldValues?.[index];
@@ -443,7 +533,7 @@ function ensureInitialized() {
     });
     watch(() => state.inputSlots, persistSlots, { deep: true });
 
-    watch(() => state.trackSlots.map(slotControlSnapshot), (newValues, oldValues) => {
+    watch(() => state.trackSlots.map((slot) => slotControlSnapshot(slot)), (newValues, oldValues) => {
       if (engine.getMode() !== 'browser') return;
       state.trackSlots.forEach((slot, index) => {
         const previous = oldValues?.[index];
@@ -454,7 +544,7 @@ function ensureInitialized() {
     });
     watch(() => state.trackSlots, persistSlots, { deep: true });
 
-    watch(() => nativeFxState.inputSlots.map(slotControlSnapshot), (newValues, oldValues) => {
+    watch(() => nativeFxState.inputSlots.map((slot) => slotControlSnapshot(slot, false)), (newValues, oldValues) => {
       if (engine.getMode() !== 'native') return;
       nativeFxState.inputSlots.forEach((slot, index) => {
         if (JSON.stringify(newValues[index]) === JSON.stringify(oldValues?.[index])) return;
@@ -463,7 +553,7 @@ function ensureInitialized() {
     });
     watch(() => nativeFxState.inputSlots, persistNativeFxSlots, { deep: true });
 
-    watch(() => nativeFxState.trackSlots.map(slotControlSnapshot), (newValues, oldValues) => {
+    watch(() => nativeFxState.trackSlots.map((slot) => slotControlSnapshot(slot, false)), (newValues, oldValues) => {
       if (engine.getMode() !== 'native') return;
       nativeFxState.trackSlots.forEach((slot, index) => {
         if (JSON.stringify(newValues[index]) === JSON.stringify(oldValues?.[index])) return;
@@ -472,6 +562,50 @@ function ensureInitialized() {
     });
     watch(() => nativeFxState.trackSlots, persistNativeFxSlots, { deep: true });
   });
+}
+
+function sanitizeBrowserInputNamedPresets(raw: unknown, location: FxLocation = 'input', slotIndex = 0): Record<string, Record<string, number>> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const presets: Record<string, Record<string, number>> = {};
+  for (const [type, parameters] of Object.entries(raw as Record<string, unknown>)) {
+    const controls = location === 'input' ? getBrowserInputFxControls(type, {}, slotIndex) : getBrowserTrackFxControls(type, {}, slotIndex, 'shared');
+    // Effects with purpose-built Input editors keep their typed, validated
+    // parameter models as the source of truth.
+    if (!controls.length) continue;
+    const sanitized = sanitizeBrowserTrackFxParameters(type, parameters);
+    if (dedicatedInputEditorTypes.has(type)) {
+      for (const key of Object.keys(sanitized)) if (!key.startsWith('official_')) delete sanitized[key];
+    }
+    if (Object.keys(sanitized).length) presets[type] = sanitized;
+  }
+  return Object.keys(presets).length ? presets : undefined;
+}
+
+function sanitizeNativeNamedPresets(raw: unknown): Record<string, Record<string, number>> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const presets: Record<string, Record<string, number>> = {};
+  for (const [type, rawParameters] of Object.entries(raw as Record<string, unknown>)) {
+    if (!type || !rawParameters || typeof rawParameters !== 'object' || Array.isArray(rawParameters)) continue;
+    const parameters: Record<string, number> = {};
+    for (const [key, value] of Object.entries(rawParameters as Record<string, unknown>)) {
+      if (key && typeof value === 'number' && Number.isFinite(value)) parameters[key] = value;
+    }
+    if (Object.keys(parameters).length) presets[type] = parameters;
+  }
+  return Object.keys(presets).length ? presets : undefined;
+}
+
+function nativeNamedOverridesForSync(location: FxLocation, type: string, raw?: Record<string, number>, slotIndex = 0) {
+  if (!raw || Object.keys(raw).length === 0) return null;
+  const schema = engine.getNativeCatalogFxParameterSchema(type, location, 0, raw, slotIndex);
+  if (!schema) return null;
+  const descriptors = new Map([...schema.parameters, ...schema.legacyAliases].map((descriptor) => [descriptor.id, descriptor]));
+  for (const [key, value] of Object.entries(raw)) {
+    const descriptor = descriptors.get(key);
+    if (!descriptor || !Number.isFinite(value) || value < descriptor.minimum || value > descriptor.maximum ||
+        (descriptor.discrete && !descriptor.discreteValues?.includes(value))) return null;
+  }
+  return raw;
 }
 
 function parseNativeSlots(raw: unknown, target: FxSlotState[]) {
@@ -483,6 +617,7 @@ function parseNativeSlots(raw: unknown, target: FxSlotState[]) {
     if (typeof source.type === 'string') slot.type = source.type;
     if (typeof source.value === 'number' && Number.isFinite(source.value)) slot.value = Math.max(0, Math.min(100, source.value));
     if (typeof source.active === 'boolean') slot.active = source.active;
+    slot.namedParametersByType = sanitizeNativeNamedPresets(source.namedParametersByType);
     if (source.stepSlicerParameters !== undefined) {
       slot.stepSlicerParameters = sanitizeNativeStepSlicerParameters(source.stepSlicerParameters);
     }
@@ -613,10 +748,49 @@ export function useFxPanelState(location: FxLocation) {
       ? engine.getNativeCatalogFxSlotStatus(location, slotIndex)
       : null;
   });
+  const nativeNamedParametersPending = computed(() => {
+    nativeStatusRevision.value;
+    const slotIndex = slots.value.findIndex((slot) => slot.id === activeSlot.value);
+    return slotIndex >= 0 && pendingNativeNamedParameters.has(nativeNamedParameterKey(location, slotIndex));
+  });
 
   const selectSlot = (slotId: FxSlotId) => {
     focus.setActiveFxSlot(location, slotId);
   };
+
+  function setNativeNamedParameters(slotIndex: number, parameters: Record<string, number>): boolean {
+    if (engine.getMode() !== 'native' || !Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= 4 ||
+        !parameters || typeof parameters !== 'object' || Array.isArray(parameters) ||
+        Object.entries(parameters).some(([key, value]) => !key || !Number.isFinite(value))) return false;
+    const slot = slots.value[slotIndex];
+    if (!slot || !slot.type) return false;
+    const effectId = nativeCatalogEffectId(slot.type);
+    const schema = engine.getNativeCatalogFxParameterSchema(slot.type, location, 0, parameters, slotIndex);
+    const pendingKey = nativeNamedParameterKey(location, slotIndex);
+    if (!effectId || !schema || pendingNativeNamedParameters.has(pendingKey)) return false;
+    const descriptors = new Map([...schema.parameters, ...schema.legacyAliases].map((descriptor) => [descriptor.id, descriptor]));
+    for (const [key, value] of Object.entries(parameters)) {
+      const descriptor = descriptors.get(key);
+      if (!descriptor || value < descriptor.minimum || value > descriptor.maximum ||
+          (descriptor.discrete && !descriptor.discreteValues?.includes(value))) return false;
+    }
+    const runtime = engine.getNativeCatalogFxSlotStatus(location, slotIndex);
+    if (!runtime) return false;
+    const expectedParameters = engine.getNativeCatalogFxParameterSnapshot?.(location, slotIndex, 0, parameters)
+      ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...parameters };
+    pendingNativeNamedParameters.set(pendingKey, {
+      location,
+      slotIndex,
+      effectId,
+      overrides: { ...parameters },
+      expectedParameters,
+      previousRevision: runtime.requestedRevision,
+    });
+    engine.setCatalogFxParameters(location, slotIndex, { ...parameters });
+    reconcileNativeNamedParameters();
+    nativeStatusRevision.value += 1;
+    return true;
+  }
 
   return {
     slots,
@@ -626,5 +800,7 @@ export function useFxPanelState(location: FxLocation) {
     runtimeStatus,
     activeSlot,
     selectSlot,
+    setNativeNamedParameters,
+    nativeNamedParametersPending,
   };
 }

@@ -1,6 +1,10 @@
 #pragma once
 
+#include "dsp_primitives.hpp"
+
+#include <array>
 #include <cstdint>
+#include <string_view>
 
 namespace webrc::native {
 
@@ -37,6 +41,14 @@ public:
     [[nodiscard]] bool setConfig(const NativeDynamicsConfig& config) noexcept;
     void reset() noexcept;
 
+    // Additive manual interface. The first valid official write opts in;
+    // legacy setConfig/defaults/rendering remain untouched until that point.
+    [[nodiscard]] bool setOfficialParameter(std::string_view key, float value) noexcept;
+    [[nodiscard]] bool officialControlsActive() const noexcept { return officialActive_; }
+    // The manual does not publish a TYPE default. An unspecified type uses
+    // our authored NATURALCOMP fallback, not a claimed hardware factory value.
+    [[nodiscard]] bool officialTypeSpecified() const noexcept { return officialTypeSpecified_; }
+
     // Processes the first one or two interleaved channels in place. Additional
     // channels bypass dynamics but still receive non-finite cleanup and the
     // safety ceiling. Non-finite samples are replaced with zero;
@@ -59,9 +71,19 @@ private:
     [[nodiscard]] static double finiteInput(float sample) noexcept;
     [[nodiscard]] static float boundedOutput(double sample) noexcept;
     void updateDerivedParameters() noexcept;
+    void updateOfficialParameters() noexcept;
+    [[nodiscard]] double processOfficialTone(unsigned int channel, double sample) noexcept;
     [[nodiscard]] double updateDetector(double linkedMagnitude) noexcept;
 
     NativeDynamicsConfig config_{};
+    NativeDynamicsConfig officialConfig_{};
+    std::array<std::array<dsp::Biquad, 4U>, 2U> officialTone_{};
+    bool officialActive_ = false;
+    bool officialTypeSpecified_ = false;
+    bool officialLowCutActive_ = false;
+    bool officialHighCutActive_ = false;
+    unsigned int officialType_ = 0U;
+    float officialDynamics_ = 0.0f;
     unsigned int sampleRate_ = 0U;
     double attackCoefficient_ = 0.0;
     double releaseCoefficient_ = 0.0;

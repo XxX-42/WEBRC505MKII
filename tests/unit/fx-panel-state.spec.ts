@@ -35,6 +35,15 @@ describe('FX panel runtime selection', () => {
     expect(track.fxOptions.value).toContain('WARP (EXPERIMENTAL)');
   });
 
+  it('exposes HRM AUTO (M) from its experimental Browser catalog route in both A-D banks', async () => {
+    const input = await loadPanel('/?audio=browser', 'input');
+    const track = await loadPanel('/?audio=browser', 'track', true);
+    expect(input.fxOptions.value).toContain('HRM AUTO (M) (EXPERIMENTAL)');
+    expect(track.fxOptions.value).toContain('HRM AUTO (M) (EXPERIMENTAL)');
+    expect(input.fxOptions.value).not.toContain('HRM AUTO (M)');
+    expect(track.fxOptions.value).not.toContain('HRM AUTO (M)');
+  });
+
   it('persists Native Input and Track A–D selector values independently', async () => {
     const panel = await loadPanel('/?audio=native');
     panel.slots.value[2]!.type = 'CHORUS';
@@ -296,7 +305,7 @@ describe('FX panel runtime selection', () => {
   it('persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters', async () => {
     localStorage.setItem('webrc505_top_panel', JSON.stringify({
       inputSlots: [{
-        id: 'A', type: 'HRM AUTO (M)', value: 70, active: true,
+        id: 'A', type: 'HRM AUTO (M) (EXPERIMENTAL)', value: 70, active: true,
         rollParameters: { sliceBeats: 1, decayPercent: 40, pitchSemitones: 2, direction: 0 },
         hrmAutoParameters: { key: 0, scale: 0, midiChannel: 1, mixPercent: 70 },
       }, {

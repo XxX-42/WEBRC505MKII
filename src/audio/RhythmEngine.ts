@@ -1,6 +1,6 @@
 import { Transport } from '../core/Transport';
 import {
-  createCleanRoomPatternEvents,
+  createRhythmRuntimeEventTemplate,
   getDrumKitByIndex,
   getDrumKitByName,
   getRhythmPatternByIndex,
@@ -13,6 +13,7 @@ import {
   type RhythmVariation,
 } from './rhythm';
 import type { RhythmWorkletConfiguration } from './worklet/RhythmProcessor';
+import type { BrowserRecoverySnapshot } from './BrowserRecoverySnapshot';
 
 /** The three selections retained by the existing RhythmControls UI. */
 export type RhythmPattern = 'ROCK' | 'TECHNO' | 'METRONOME';
@@ -40,6 +41,20 @@ const WORKLET_PROCESSOR_NAME = 'rc505-rhythm-processor';
 const START_LEAD_SECONDS = 0.05;
 const MAX_VOICE_COUNT = 16;
 
+type RhythmTimelineStatusMessage =
+  | {
+    readonly type: 'timeline-rewind';
+    readonly requestedStartFrame: number;
+    readonly expectedStartFrame: number;
+    readonly frameCount: number;
+  }
+  | {
+    readonly type: 'timeline-recovered';
+    readonly firstStaleStartFrame: number;
+    readonly expectedStartFrame: number;
+    readonly resumedStartFrame: number;
+  };
+
 export class RhythmEngine {
   private readonly context: AudioContext;
   private readonly transport: Transport;
@@ -55,16 +70,18 @@ export class RhythmEngine {
   private workletNode: AudioWorkletNode | null = null;
   private workletReady: Promise<AudioWorkletNode> | null = null;
   private lastError = '';
+  private readonly notifyStatus: () => void;
+  private transportListenerAttached = false;
   private readonly onBpmChange = (): void => {
     if (this.isPlaying && this.workletNode) this.configureWorklet(this.workletNode);
   };
 
-  constructor(context: AudioContext) {
+  constructor(context: AudioContext, notifyStatus: () => void = () => undefined) {
     this.context = context;
+    this.notifyStatus = notifyStatus;
     this.transport = Transport.getInstance();
     this.outputNode = context.createGain();
     this.outputNode.gain.value = 0.5;
-    this.transport.on('bpm-change', this.onBpmChange);
   }
 
   /** Current catalog metadata selected by either the legacy control or 240-row API. */
@@ -93,6 +110,21 @@ export class RhythmEngine {
 
   get quantizeGrid(): RhythmQuantizeGrid {
     return this.quantize;
+  }
+
+  /** Capture settings only. The live voice/worklet phase is intentionally not transferable. */
+  getRecoverySnapshot(): BrowserRecoverySnapshot['rhythm'] {
+    return Object.freeze({
+      patternIndex: this.patternMetadata.globalIndex,
+      kitIndex: this.kitIndex,
+      variation: this.variation,
+      section: this.section,
+      swingPercent: this.swing,
+      quantizeGrid: this.quantize,
+      volumePercent: Math.max(0, Math.min(100, this.outputNode.gain.value * 100)),
+      wasRunning: this.isPlaying,
+      error: this.lastError,
+    });
   }
 
   get isRunning(): boolean {
@@ -200,6 +232,10 @@ export class RhythmEngine {
   /** Loads one worklet processor and starts sample-frame playback; remains fire-and-forget. */
   start(): void {
     if (this.isPlaying) return;
+    if (!this.transportListenerAttached) {
+      this.transport.on('bpm-change', this.onBpmChange);
+      this.transportListenerAttached = true;
+    }
     this.isPlaying = true;
     this.lastError = '';
     if (this.context.state === 'suspended') {
@@ -209,6 +245,7 @@ export class RhythmEngine {
       if (this.isPlaying) this.configureWorklet(node);
     }).catch((error: unknown) => {
       this.isPlaying = false;
+      this.detachTransportListener();
       this.recordError(error);
     });
   }
@@ -216,12 +253,20 @@ export class RhythmEngine {
   stop(): void {
     this.isPlaying = false;
     this.workletNode?.port.postMessage({ type: 'stop' });
+    this.detachTransportListener();
+  }
+
+  private detachTransportListener(): void {
+    if (this.transportListenerAttached) {
+      this.transport.off('bpm-change', this.onBpmChange);
+      this.transportListenerAttached = false;
+    }
   }
 
   /** Release the module/node and transport listener if an owner tears the engine down. */
   dispose(): void {
     this.stop();
-    this.transport.off('bpm-change', this.onBpmChange);
+    if (this.workletNode) this.workletNode.port.onmessage = null;
     this.workletNode?.disconnect();
     this.workletNode = null;
     this.workletReady = null;
@@ -247,7 +292,9 @@ export class RhythmEngine {
       });
       node.onprocessorerror = (): void => {
         this.lastError = 'The rhythm AudioWorklet processor stopped unexpectedly';
+        this.notifyStatus();
       };
+      node.port.onmessage = (event: MessageEvent<unknown>): void => this.handleWorkletStatus(event.data);
       node.connect(this.outputNode);
       this.workletNode = node;
       return node;
@@ -278,27 +325,38 @@ export class RhythmEngine {
   }
 
   private createEventTemplate(metadata: RhythmPatternMetadata, bpm: number): CleanRoomDrumEvent[] {
-    const events = createCleanRoomPatternEvents(metadata, {
+    return createRhythmRuntimeEventTemplate(metadata, {
       sampleRate: this.context.sampleRate,
       bpm,
       bars: 1,
-      variation: this.selection.kind === 'legacy' && this.selection.value === 'METRONOME' ? 'A' : this.variation,
+      variation: this.variation,
       section: this.section,
     });
-    if (this.selection.kind !== 'legacy' || this.selection.value !== 'METRONOME') return events;
-
-    // Preserve the old click-track control as a four-beat clean-room click variation.
-    // Its source is still metadata + the clean-room event generator, not factory notes.
-    const beatTicks = events.filter((event) => event.instrument === 'closedHat' && event.step % 4 === 0);
-    return beatTicks.map((event, index) => ({
-      ...event,
-      instrument: index === 0 ? 'kick' : 'snare',
-      velocity: index === 0 ? 112 : 86,
-    }));
   }
 
   private recordError(error: unknown): void {
     this.lastError = error instanceof Error ? error.message : String(error);
+    this.notifyStatus();
+  }
+
+  private handleWorkletStatus(value: unknown): void {
+    if (!value || typeof value !== 'object') return;
+    const message = value as Partial<RhythmTimelineStatusMessage>;
+    if (message.type === 'timeline-rewind'
+      && Number.isSafeInteger(message.requestedStartFrame)
+      && Number.isSafeInteger(message.expectedStartFrame)
+      && Number.isSafeInteger(message.frameCount)) {
+      this.lastError = `Rhythm sample timeline moved backward at frame ${message.requestedStartFrame} (expected ${message.expectedStartFrame}). The overlapping ${message.frameCount}-frame block was muted; rhythm state was not rewound.`;
+      this.notifyStatus();
+      return;
+    }
+    if (message.type === 'timeline-recovered'
+      && Number.isSafeInteger(message.firstStaleStartFrame)
+      && Number.isSafeInteger(message.expectedStartFrame)
+      && Number.isSafeInteger(message.resumedStartFrame)) {
+      this.lastError = `Rhythm resumed on the absolute timeline at frame ${message.resumedStartFrame}. Timeline continuity was interrupted; muted or skipped audio was not buffered for replay.`;
+      this.notifyStatus();
+    }
   }
 }
 

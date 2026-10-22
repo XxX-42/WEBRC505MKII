@@ -102,8 +102,9 @@ describe('bounded recording worklet capture', () => {
       chunksSent: 3,
     });
     expect(processor.blocksProcessed).toBe(3);
-    expect(new Set(processor.port.posted.slice(0, -1).map((entry) => entry.source)).size).toBe(1);
-    expect(new Set(processor.port.posted.slice(0, -1).map((entry) => entry.transferList)).size).toBe(1);
+    const chunkPosts = processor.port.posted.filter((entry) => entry.message.type === 'RECORD_CHUNK');
+    expect(new Set(chunkPosts.map((entry) => entry.source)).size).toBe(1);
+    expect(new Set(chunkPosts.map((entry) => entry.transferList)).size).toBe(1);
   });
 
   it('reports bounded-pool overflow while keeping monitoring available', () => {
@@ -146,6 +147,35 @@ describe('bounded recording worklet capture', () => {
       limitReached: true,
       maxRecordingFrames: 3,
     });
+  });
+
+  it('retires the recorder worklet on the first callback after STOP_RECORD', () => {
+    const { Processor } = loadLooperProcessor();
+    const processor = new Processor({ processorOptions: { chunkSize: 4, chunkPoolSize: 1, maxRecordingFrames: 32 } });
+    const preStartInput = new Float32Array([9, 8]);
+    const preStartOutput = new Float32Array(2);
+    expect(processor.process([[preStartInput]], [[preStartOutput]])).toBe(true);
+    expect([...preStartOutput]).toEqual([...preStartInput]);
+    processor.port.receive({ type: 'START_RECORD' });
+    expect(processor.process([[new Float32Array([1, 2])]], [[]])).toBe(true);
+    processor.port.receive({ type: 'STOP_RECORD' });
+    processor.port.receive({ type: 'STOP_RECORD' });
+    expect(processor.port.posted.at(-1)?.message.type).toBe('RECORD_COMPLETE');
+    expect(processor.process([[new Float32Array([3, 4])]], [[]])).toBe(false);
+    expect(processor.port.posted.filter(({ message }) => message.type === 'RECORD_COMPLETE')).toHaveLength(1);
+
+    const nextRecording = new Processor({
+      processorOptions: { chunkSize: 4, chunkPoolSize: 1, maxRecordingFrames: 32 },
+    });
+    nextRecording.port.receive({ type: 'START_RECORD' });
+    expect(nextRecording.process([[new Float32Array([5, 6])]], [[]])).toBe(true);
+    nextRecording.port.receive({ type: 'STOP_RECORD' });
+    expect(nextRecording.port.posted.at(-1)?.message).toMatchObject({
+      type: 'RECORD_COMPLETE',
+      framesCaptured: 2,
+      chunksSent: 1,
+    });
+    expect(nextRecording.process([[]], [[]])).toBe(false);
   });
 });
 
@@ -203,8 +233,9 @@ describe('TrackAudio recording chunk assembly', () => {
     const worklet = instances[0];
     expect(worklet).toBeDefined();
     expect(worklet?.options?.processorOptions).toMatchObject({ chunkSize: 16_384, chunkPoolSize: 3 });
-    expect(worklet?.options?.processorOptions?.maxRecordingFrames).toBe(100_663_296);
-    expect(trackAudio.recordingMaximumDurationSeconds).toBeGreaterThan(30 * 60);
+    expect(worklet?.options?.processorOptions?.maxRecordingBytes).toBe(384 * 1024 * 1024);
+    expect(trackAudio.recordingMaximumFrames).toBe(50_331_648);
+    expect(trackAudio.recordingMaximumDurationSeconds).toBeGreaterThan(15 * 60);
     expect(worklet?.port.posted[0]?.message).toEqual({ type: 'START_RECORD' });
 
     const transferredSamples = new Float32Array(16_384);
@@ -254,6 +285,134 @@ describe('TrackAudio recording chunk assembly', () => {
     expect(trackAudio.recordingOverflowEvents).toBe(2);
     expect(trackAudio.recordingLimitReached).toBe(false);
     expect(worklet?.disconnected).toBe(true);
+  });
+
+  it('uses the engine-owned shared capture session, honors stopFrame, preserves stereo and does not dispose the tap', async () => {
+    vi.resetModules();
+    const [{ TrackAudio }, { Track }] = await Promise.all([
+      import('../../src/audio/TrackAudio'),
+      import('../../src/core/types'),
+    ]);
+    const context = createMockAudioContext();
+    const node = {
+      port: new FakeWorkletPort(),
+      disconnected: false,
+      disconnect() { this.disconnected = true; },
+    } as unknown as AudioWorkletNode & { disconnected: boolean };
+    const session = { node, trackIndex: 0, sessionId: 91, inputGeneration: 7, startFrame: 100 };
+    let listener: ((message: unknown) => void) | null = null;
+    const recycleInputCaptureChunk = vi.fn(() => true);
+    const engine = {
+      context,
+      trackMixNode: context.createGain(),
+      roundTripLatency: 0,
+      selectedInputDeviceId: null,
+      selectedOutputDeviceId: null,
+      selectedBufferFrames: 0,
+      getProcessedInputNode: async () => context.createGain(),
+      getInputCaptureRequestFrame: vi.fn().mockReturnValueOnce(100).mockReturnValueOnce(102),
+      beginInputCaptureSession: vi.fn((_track: number, _frame: number, receive: (message: unknown) => void) => {
+        listener = receive;
+        return session;
+      }),
+      stopInputCaptureSession: vi.fn(() => true),
+      abortInputCaptureSession: vi.fn(),
+      recycleInputCaptureChunk,
+      releaseInputCaptureSession: vi.fn(),
+      checkAndResetMaster: vi.fn(),
+      tracks: [] as unknown[],
+    };
+
+    const trackAudio = new TrackAudio(engine as never, new Track(1), 0, null, null);
+    const processRecordedBuffers = vi.fn();
+    (trackAudio as unknown as { processRecordedBuffers: (buffers: Float32Array[]) => void }).processRecordedBuffers = processRecordedBuffers;
+
+    await trackAudio.startRecording();
+    expect(engine.beginInputCaptureSession).toHaveBeenCalledWith(0, 100, expect.any(Function));
+    expect((trackAudio as unknown as { workletNode: AudioWorkletNode }).workletNode).toBe(node);
+    await trackAudio.stopRecording();
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 102);
+
+    listener?.({
+      type: 'RECORD_CONFIGURED', sessionId: 91, inputGeneration: 7,
+      channelCount: 2, maxRecordingFrames: 50_331_648, maxRecordingBytes: 384 * 1024 * 1024,
+    });
+    const left = new Float32Array(16_384);
+    const right = new Float32Array(16_384);
+    left.set([0.1, 0.2, 0.3, 0.4]);
+    right.set([-0.1, -0.2, -0.3, -0.4]);
+    listener?.({
+      type: 'RECORD_CHUNK', sessionId: 91, inputGeneration: 7,
+      chunkIndex: 1, sequence: 0, startFrame: 100, validFrames: 4, channelCount: 2,
+      channels: [left, right],
+    });
+    listener?.({
+      type: 'RECORD_COMPLETE', sessionId: 91, inputGeneration: 7,
+      requestedStartFrame: 100, stopFrame: 102, framesCaptured: 2, droppedFrames: 0,
+      overflowEvents: 0, maxRecordingFrames: 50_331_648, maxRecordingBytes: 384 * 1024 * 1024,
+      channelCount: 2, limitReached: false, chunksSent: 1, status: 'complete',
+      timelineOverlapEvents: 2, timelineOverlapFrames: 6,
+    });
+
+    expect(processRecordedBuffers).toHaveBeenCalledTimes(1);
+    const assembled = processRecordedBuffers.mock.calls[0]?.[0] ?? [];
+    expect(assembled).toHaveLength(2);
+    expect(Array.from(assembled[0] ?? [])).toEqual(Array.from(left.subarray(0, 2)));
+    expect(Array.from(assembled[1] ?? [])).toEqual(Array.from(right.subarray(0, 2)));
+    expect(recycleInputCaptureChunk).toHaveBeenCalledWith(session, 1, [left, right]);
+    expect(engine.releaseInputCaptureSession).toHaveBeenCalledWith(session);
+    expect(trackAudio.recordingDiagnostic).toContain('2 block(s), 6 frame(s) skipped');
+    expect(trackAudio.recordingDiagnostic).toContain('continuity cannot be verified');
+    expect(node.disconnected).toBe(false);
+  });
+
+  it('surfaces shared-capture failure and retains the incumbent track PCM', async () => {
+    vi.resetModules();
+    const [{ TrackAudio }, { Track, TrackState }] = await Promise.all([
+      import('../../src/audio/TrackAudio'),
+      import('../../src/core/types'),
+    ]);
+    const context = createMockAudioContext();
+    const node = {
+      port: new FakeWorkletPort(),
+      disconnected: false,
+      disconnect() { this.disconnected = true; },
+    } as unknown as AudioWorkletNode & { disconnected: boolean };
+    const session = { node, trackIndex: 0, sessionId: 92, inputGeneration: 8, startFrame: 200 };
+    let listener: ((message: unknown) => void) | null = null;
+    const engine = {
+      context,
+      trackMixNode: context.createGain(),
+      roundTripLatency: 0,
+      getProcessedInputNode: async () => context.createGain(),
+      getInputCaptureRequestFrame: vi.fn().mockReturnValue(200),
+      beginInputCaptureSession: vi.fn((_track: number, _frame: number, receive: (message: unknown) => void) => {
+        listener = receive;
+        return session;
+      }),
+      abortInputCaptureSession: vi.fn(),
+      recycleInputCaptureChunk: vi.fn(() => true),
+      releaseInputCaptureSession: vi.fn(),
+      checkAndResetMaster: vi.fn(),
+      tracks: [] as unknown[],
+    };
+
+    const trackAudio = new TrackAudio(engine as never, new Track(1), 0, null, null);
+    const original = context.createBuffer(1, 8, context.sampleRate);
+    (trackAudio as any).audioBuffer = original;
+    trackAudio.state = TrackState.STOPPED;
+    await trackAudio.startRecording();
+    listener?.({
+      type: 'CAPTURE_ERROR', sessionId: 92, inputGeneration: 8,
+      reason: 'request-frame-outside-preroll',
+    });
+
+    expect((trackAudio as any).audioBuffer).toBe(original);
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.recordingDiagnostic).toContain('request-frame-outside-preroll');
+    expect(engine.abortInputCaptureSession).toHaveBeenCalledWith(session);
+    expect(engine.releaseInputCaptureSession).toHaveBeenCalledWith(session);
+    expect(node.disconnected).toBe(false);
   });
 
   it('waits for pending chunks after completion and assembles them by sequence', async () => {

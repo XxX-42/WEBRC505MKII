@@ -22,6 +22,11 @@ struct NativeFlangerProcessorConfig {
     float depth = 0.6f;
     float feedback = 0.25f;
     float wetMix = 0.5f;
+    bool officialControls = false;
+    float stepRateHz = 0.0f;
+    float separation = 1.0f;
+    float directLevel = 1.0f;
+    float effectLevel = 0.5f;
 };
 
 // Standalone stereo flanger DSP. Delay storage is allocated only by
@@ -59,10 +64,16 @@ private:
     dsp::ParameterSmoother depth_{0.6f};
     dsp::ParameterSmoother feedback_{0.25f};
     dsp::ParameterSmoother wetMix_{0.0f};
+    dsp::ParameterSmoother stepRateHz_{0.0f};
+    dsp::ParameterSmoother separation_{1.0f};
+    dsp::ParameterSmoother directLevel_{1.0f};
+    dsp::ParameterSmoother effectLevel_{0.5f};
     NativeFlangerProcessorConfig config_{};
     unsigned int sampleRate_ = 0U;
     std::size_t maximumDelayFrames_ = 0U;
     double feedbackDampingAlpha_ = 0.0;
+    double stepPhase_ = 1.0;
+    std::array<double, kChannels> heldWaves_{};
     double leftPhase_ = 0.0;
     double rightPhase_ = 3.14159265358979323846;
 

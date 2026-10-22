@@ -3,9 +3,22 @@ import { BrowserAudioEngine } from '../../src/audio/BrowserAudioEngine';
 
 class MockWorkletNode {
   static instances: MockWorkletNode[] = [];
-  readonly port = { postMessage: vi.fn() };
+  static failNextConfigure = false;
+  readonly port = {
+    postMessage: vi.fn((message: any) => {
+      if (message?.type !== 'configure') return;
+      const fail = MockWorkletNode.failNextConfigure;
+      MockWorkletNode.failNextConfigure = false;
+      queueMicrotask(() => this.port.onmessage?.({
+        data: fail ? { type: 'error', message: 'injected output DSP config failure' }
+          : { type: 'configure-ack', parameterKeys: Object.keys(message.parameters ?? {}) },
+      } as MessageEvent));
+    }),
+    onmessage: null as ((event: MessageEvent) => void) | null,
+  };
   readonly connect = vi.fn();
   readonly disconnect = vi.fn();
+  onprocessorerror: (() => void) | null = null;
 
   constructor(
     readonly context: BaseAudioContext,
@@ -26,9 +39,12 @@ function mockBrowserEngine(): {
   const output = { connect: vi.fn(), disconnect: vi.fn() };
   const master = {};
   const addModule = vi.fn(async (_url: string) => undefined);
+  const destination = {};
   const context = {
     sampleRate: 48000,
     audioWorklet: { addModule },
+    destination,
+    createGain: () => ({ gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() }),
   } as unknown as AudioContext;
   Object.assign(engine, {
     context,
@@ -46,6 +62,7 @@ describe('Browser master output DSP routing', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     MockWorkletNode.instances = [];
+    MockWorkletNode.failNextConfigure = false;
   });
 
   it('loads the checked-in worklet and routes the selected algorithm between output FX and master', async () => {
@@ -73,9 +90,12 @@ describe('Browser master output DSP routing', () => {
     engine.setOutputDspFxEnabled(false, 31);
     engine.configureOutputDspFx({ mix: 0.12 });
     expect(node.port.postMessage).toHaveBeenNthCalledWith(1, {
-      type: 'set-bypass', value: true, rampFrames: 31,
+      type: 'configure', parameters: { mix: 0.32, decaySeconds: 3.5 },
     });
     expect(node.port.postMessage).toHaveBeenNthCalledWith(2, {
+      type: 'set-bypass', value: true, rampFrames: 31,
+    });
+    expect(node.port.postMessage).toHaveBeenNthCalledWith(3, {
       type: 'configure', parameters: { mix: 0.12 },
     });
   });
@@ -91,7 +111,7 @@ describe('Browser master output DSP routing', () => {
 
     expect(output.disconnect).toHaveBeenNthCalledWith(1, master);
     expect(output.disconnect).toHaveBeenNthCalledWith(2, previous);
-    expect(previous.disconnect).toHaveBeenCalledOnce();
+    expect(previous.disconnect).toHaveBeenCalledTimes(2); // temporary readiness sink, then replaced live route
     expect(output.connect).toHaveBeenNthCalledWith(2, next);
     expect(next.connect).toHaveBeenCalledWith(master);
     expect(engine.outputDspFxNode).toBe(next);
@@ -103,5 +123,23 @@ describe('Browser master output DSP routing', () => {
 
     await expect(engine.setOutputDspFx('hpf')).resolves.toBe(false);
     expect(addModule).not.toHaveBeenCalled();
+  });
+
+  it('keeps the old output route when a candidate processor rejects readiness', async () => {
+    vi.stubGlobal('AudioWorkletNode', MockWorkletNode);
+    const { engine, output } = mockBrowserEngine();
+    await engine.setOutputDspFx('lpf', { cutoffHz: 1_000 });
+    const previous = MockWorkletNode.instances[0]!;
+    MockWorkletNode.failNextConfigure = true;
+
+    const replacement = engine.setOutputDspFx('ring-mod', { ringModHz: 220 });
+    const rejected = expect(replacement).rejects.toThrow('injected output DSP config failure');
+    await vi.waitFor(() => expect(MockWorkletNode.instances).toHaveLength(2));
+    const candidate = MockWorkletNode.instances[1]!;
+    await rejected;
+    expect(engine.outputDspFxNode).toBe(previous);
+    expect(previous.disconnect).toHaveBeenCalledTimes(1); // only its original readiness sink was detached
+    expect(candidate.disconnect).toHaveBeenCalledOnce();
+    expect(output.disconnect).not.toHaveBeenCalledWith(previous);
   });
 });

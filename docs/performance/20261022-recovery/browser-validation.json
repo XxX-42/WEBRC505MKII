@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-10-22T04:16:48.068887+00:00",
+  "workspace": "rc505-quality-recovery-20261022",
+  "reexecutedAfterRecovery": true,
+  "sourceHashes": {
+    "src/audio/pitch/liveMono.ts": "1df6ded1abf6178334a22ea509dbd30a9029d02d4acd7da49fc6c5e084b2dd3e",
+    "src/audio/fx/dsp/BrowserRobotDsp.ts": "fd50949657d8f7eecae1b3ddd48427bd1354fad212839ee671792ae24b84aad0",
+    "public/worklets/fx-processor.js": "d438eb0dbcefd1eb6ba2f5052f598d66cc277139f9b5d45bab8831ae96e1c8d5",
+    "tests/unit/browser-yin-exact-optimization.spec.ts": "3c9d8205bc0ce2b1de86e3eea052f18c9ef552d3d92d9e07bf779341c4cc9339"
+  },
+  "commands": [
+    {
+      "command": "npm run test:unit -- tests/unit/browser-yin-exact-optimization.spec.ts tests/unit/live-mono-pitch.spec.ts tests/unit/browser-robot-dsp.spec.ts tests/unit/browser-robot-worklet.spec.ts tests/unit/live-mono-worklet.spec.ts",
+      "exitCode": 0,
+      "filesPassed": 5,
+      "testsPassed": 43,
+      "newCases": 22,
+      "log": "browser-targeted.log"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "licenseFilesVerified": 6,
+      "log": "browser-build.log"
+    },
+    {
+      "command": "npm run test:unit",
+      "afterNewBuild": true,
+      "exitCode": 0,
+      "filesPassed": 152,
+      "testsPassed": 1129,
+      "log": "browser-post-build-unit.log"
+    }
+  ],
+  "warnings": [
+    "npm unknown http-proxy environment configuration",
+    "baseline-browser-mapping/caniuse-lite databases are stale",
+    "Vite application chunk 1158.80 kB exceeds 500 kB warning threshold",
+    "npm major-update notice; no dependencies upgraded"
+  ],
+  "limitations": [
+    "Tests prove tested PCM and recursive-state equivalence, not complete scratch-array byte equivalence: unused YIN tails intentionally differ.",
+    "No Chrome/AudioContext timing, physical audio quality, XRUN or user-device validation."
+  ],
+  "updatedAt": "2026-10-22T04:25:41.745219+00:00",
+  "freshBenchmarkStatus": "passed; newly executed ABBA/BAAB, see browser-main-global-ab.json",
+  "postOptimizationProfile": "browser-main-global-profile-proof.json",
+  "cloudStartup": "cloud-startup.json",
+  "noiseBenchmark": "browser-main-global-ab-noise.json",
+  "currentReport": "REPORT.md"
+}

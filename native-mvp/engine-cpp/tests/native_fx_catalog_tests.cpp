@@ -64,7 +64,7 @@ double segmentRms(const std::vector<float>& signal, std::size_t begin, std::size
 void configureFilter(NativeEffectBank& bank, NativeEffectSlot slot, std::string_view id, float cutoff) {
     assert(bank.setEffect(slot, id));
     assert(bank.setParameter(slot, "cutoff_hz", cutoff, 1U));
-    assert(bank.setParameter(slot, "q", 0.8f, 1U));
+    assert(bank.setParameter(slot, "resonance_percent", 20.0f, 1U));
 }
 
 void configurePhaser(NativeEffectBank& bank, NativeEffectSlot slot) {
@@ -95,9 +95,9 @@ void testCatalogAndBounds() {
     std::size_t count = 0U;
     const auto* catalog = nativeEffectCatalog(count);
     assert(catalog != nullptr);
-    assert(count == 52U);
-    const std::array<std::string_view, 52U> ids{{
-        "filter.lpf", "filter.bpf", "filter.hpf", "phaser", "flanger", "dynamics", "dist", "reverb", "gate_reverb", "beat_repeat", "beat_scatter", "roll", "freeze", "warp", "tape_echo", "reverse_delay", "reverse_reverb", "fractional_delay", "mod_delay", "panning_delay", "twist", "granular_delay", "auto_pan", "manual_pan", "chorus", "tremolo", "ring_mod", "eq", "isolator", "stereo_enhance", "lo_fi", "radio", "sustainer", "vibrato", "slow_gear", "pattern_slicer", "step_slicer", "vinyl_flick", "preamp", "synth", "g2b", "transpose", "pitch_bend", "hrm_manual", "octave", "vocoder", "osc_voc_m", "osc_bot", "auto_riff", "hrm_auto_m", "robot", "electric"
+    assert(count == 53U);
+    const std::array<std::string_view, 53U> ids{{
+        "filter.lpf", "filter.bpf", "filter.hpf", "phaser", "flanger", "dynamics", "dist", "reverb", "gate_reverb", "beat_repeat", "beat_scatter", "roll", "freeze", "warp", "tape_echo", "reverse_delay", "reverse_reverb", "fractional_delay", "mod_delay", "panning_delay", "twist", "granular_delay", "auto_pan", "manual_pan", "chorus", "tremolo", "ring_mod", "eq", "isolator", "stereo_enhance", "lo_fi", "radio", "sustainer", "vibrato", "slow_gear", "pattern_slicer", "step_slicer", "vinyl_flick", "preamp", "synth", "g2b", "transpose", "pitch_bend", "hrm_manual", "octave", "vocoder", "osc_voc_m", "osc_bot", "auto_riff", "hrm_auto_m", "robot", "electric", "beat_shift"
     }};
     for (std::size_t index = 0U; index < ids.size(); ++index) {
         assert(catalog[index].id == ids[index]);
@@ -106,6 +106,17 @@ void testCatalogAndBounds() {
     }
     assert(findNativeEffectDescriptor("missing.reverb") == nullptr);
     assert(findNativeEffectParameter("filter.lpf", "cutoff_hz") != nullptr);
+    const auto* lpfResonance = findNativeEffectParameter("filter.lpf", "resonance_percent");
+    const auto* hpfResonance = findNativeEffectParameter("filter.hpf", "resonance_percent");
+    assert(lpfResonance != nullptr && lpfResonance->minimum == 0.0f && lpfResonance->maximum == 100.0f && lpfResonance->defaultValue == 15.0f);
+    assert(hpfResonance != nullptr && hpfResonance->minimum == 0.0f && hpfResonance->maximum == 100.0f && hpfResonance->defaultValue == 15.0f);
+    assert(findNativeEffectParameter("filter.lpf", "q") == nullptr);
+    const auto* legacyLpfQ = findNativeEffectLegacyParameter("filter.lpf", "q");
+    const auto* legacyHpfQ = findNativeEffectLegacyParameter("filter.hpf", "q");
+    assert(legacyLpfQ != nullptr && legacyLpfQ->minimum == 0.5f && legacyLpfQ->maximum == 12.0f);
+    assert(legacyHpfQ != nullptr && legacyHpfQ->minimum == legacyLpfQ->minimum && legacyHpfQ->maximum == legacyLpfQ->maximum);
+    assert(findNativeEffectLegacyParameter("filter.bpf", "q") == nullptr);
+    assert(findNativeEffectParameter("filter.bpf", "q") != nullptr);
     assert(findNativeEffectParameter("filter.lpf", "not_a_parameter") == nullptr);
     assert(createNativeEffectProcessor("missing.reverb") == nullptr);
     assert(!nativeEffectSupportsPerTrackInsert("missing.reverb"));
@@ -356,7 +367,7 @@ void testCatalogAndBounds() {
     assert(vinylFlick->setParameter("mix_percent", 50.0f, 1U));
     const auto* manualPanDescriptor = findNativeEffectDescriptor("manual_pan");
     assert(manualPanDescriptor != nullptr && manualPanDescriptor->sourceIndex == 30);
-    assert(!manualPanDescriptor->inputAvailable && manualPanDescriptor->trackAvailable);
+    assert(manualPanDescriptor->inputAvailable && manualPanDescriptor->trackAvailable);
     const auto* manualPanPosition = findNativeEffectParameter("manual_pan", "position");
     assert(manualPanPosition != nullptr && manualPanPosition->minimum == -100.0f &&
         manualPanPosition->maximum == 100.0f && manualPanPosition->defaultValue == 0.0f);
@@ -550,9 +561,15 @@ void testCatalogAndBounds() {
     assert(filter->prepare(48000U));
     assert(!filter->setParameter("cutoff_hz", 19.0f));
     assert(!filter->setParameter("cutoff_hz", 20001.0f));
-    assert(!filter->setParameter("q", std::nanf("")));
+    assert(!filter->setParameter("resonance_percent", std::nanf("")));
+    assert(!filter->setParameter("resonance_percent", -0.1f));
+    assert(!filter->setParameter("resonance_percent", 100.1f));
+    assert(filter->setParameter("q", 0.70710678f, 1U)); // legacy Q API remains a compatibility alias
+    assert(!filter->setParameter("q", 0.49f));
+    assert(!filter->setParameter("q", 12.01f));
     assert(!filter->setParameter("missing", 1.0f));
     assert(filter->setParameter("cutoff_hz", 20000.0f, 1U));
+    assert(filter->setParameter("resonance_percent", 15.0f, 1U));
 
     auto phaser = createNativeEffectProcessor("phaser");
     assert(phaser != nullptr);
@@ -895,28 +912,36 @@ void testCatalogAndBounds() {
     auto ringMod = createNativeEffectProcessor("ring_mod");
     assert(ringMod != nullptr && ringMod->stableId() == "ring_mod");
     const auto* carrier = findNativeEffectParameter("ring_mod", "carrier_hz");
-    assert(carrier != nullptr && carrier->minimum == 20.0f && carrier->maximum == 20000.0f &&
+    assert(carrier != nullptr && carrier->minimum == 20.0f && carrier->maximum == 8000.0f &&
            carrier->defaultValue == 440.0f && carrier->smoothingMs == 20U);
     const auto* ringDepth = findNativeEffectParameter("ring_mod", "depth");
+    const auto* ringWaveform = findNativeEffectParameter("ring_mod", "waveform");
     const auto* ringWet = findNativeEffectParameter("ring_mod", "wet_mix");
     assert(ringDepth != nullptr && ringDepth->smoothingMs == 20U);
+    assert(ringWaveform != nullptr && ringWaveform->discrete && ringWaveform->minimum == 0.0f &&
+           ringWaveform->maximum == 1.0f && ringWaveform->defaultValue == 0.0f &&
+           ringWaveform->smoothingMs == 20U && ringWaveform->discreteValueCount == 2U &&
+           ringWaveform->discreteValues[0] == 0.0f && ringWaveform->discreteValues[1] == 1.0f);
     assert(ringWet != nullptr && ringWet->smoothingMs == 10U);
     assert(ringMod->prepare(48000U));
     assert(!ringMod->setParameter("carrier_hz", 19.99f, 1U));
-    assert(!ringMod->setParameter("carrier_hz", 20000.1f, 1U));
+    assert(!ringMod->setParameter("carrier_hz", 8000.1f, 1U));
     assert(!ringMod->setParameter("depth", -0.01f, 1U));
     assert(!ringMod->setParameter("depth", 1.01f, 1U));
+    assert(!ringMod->setParameter("waveform", 0.5f, 1U));
+    assert(!ringMod->setParameter("waveform", 2.0f, 1U));
+    assert(ringMod->setParameter("waveform", 0.0f, 1U));
+    assert(ringMod->setParameter("waveform", 1.0f, 1U));
     assert(!ringMod->setParameter("wet_mix", -0.01f, 1U));
     assert(!ringMod->setParameter("wet_mix", 1.01f, 1U));
-    assert(ringMod->setParameter("carrier_hz", 20000.0f, 1U));
+    assert(ringMod->setParameter("carrier_hz", 8000.0f, 1U));
     assert(ringMod->setParameter("depth", 0.0f, 1U));
     assert(ringMod->setParameter("wet_mix", 0.0f, 1U));
 
     auto lateBoundRing = createNativeEffectProcessor("ring_mod");
     assert(lateBoundRing && lateBoundRing->prepare(24000U));
-    assert(!lateBoundRing->setParameter("carrier_hz", 10800.0f, 1U));
-    assert(!lateBoundRing->setParameter("carrier_hz", 11000.0f, 1U));
-    assert(lateBoundRing->setParameter("carrier_hz", 10799.0f, 1U));
+    assert(!lateBoundRing->setParameter("carrier_hz", 8000.1f, 1U));
+    assert(lateBoundRing->setParameter("carrier_hz", 7999.0f, 1U));
 
     auto earlyBoundRing = createNativeEffectProcessor("ring_mod");
     assert(earlyBoundRing && earlyBoundRing->setParameter("carrier_hz", 4000.0f, 1U));
@@ -1007,8 +1032,10 @@ void testEveryAdvertisedPerTrackInsertFactoryRuns64FrameBlockInAThroughD() {
 
         for (const auto slot : slots) {
             NativeEffectBank bank;
-            assert(bank.prepare(sampleRate));
+            NativeEffectBank noPeakBank;
+            assert(bank.prepare(sampleRate) && noPeakBank.prepare(sampleRate));
             assert(bank.setEffect(slot, descriptor.id));
+            assert(noPeakBank.setEffect(slot, descriptor.id));
             const auto* processor = bank.processor(slot);
             assert(processor != nullptr);
             assert(processor->stableId() == descriptor.id);
@@ -1020,9 +1047,51 @@ void testEveryAdvertisedPerTrackInsertFactoryRuns64FrameBlockInAThroughD() {
                 signal[static_cast<std::size_t>(frame) * channels] = sample;
                 signal[(static_cast<std::size_t>(frame) * channels) + 1U] = -sample;
             }
+            auto noPeakSignal = signal;
             const float peak = bank.processInPlace(signal.data(), frames, channels);
             assert(std::isfinite(peak));
-            for (const float sample : signal) assert(std::isfinite(sample));
+            const std::size_t allocationsBefore = test_alloc::count();
+            test_alloc::beginTracking();
+            noPeakBank.processInPlaceNoPeak(noPeakSignal.data(), frames, channels);
+            test_alloc::endTracking();
+            assert(test_alloc::count() == allocationsBefore);
+
+            float expectedPeak = 0.0f;
+            for (std::size_t sampleIndex = 0U; sampleIndex < signal.size(); ++sampleIndex) {
+                assert(std::isfinite(signal[sampleIndex]));
+                assert(signal[sampleIndex] == noPeakSignal[sampleIndex]);
+                expectedPeak = std::max(expectedPeak, std::fabs(signal[sampleIndex]));
+            }
+            assert(peak == expectedPeak);
+
+            // Exercise the stateful path over multiple blocks with changing
+            // material. Skipping the metering scans must not change any
+            // processor state or subsequent block output.
+            for (unsigned int block = 1U; block < 8U; ++block) {
+                for (unsigned int frame = 0U; frame < frames; ++frame) {
+                    const float left = 0.08f * std::sin(static_cast<float>(block * frames + frame) * 0.071f);
+                    const float right = 0.06f * std::cos(static_cast<float>(block * frames + frame) * 0.053f);
+                    signal[static_cast<std::size_t>(frame) * channels] = left;
+                    signal[(static_cast<std::size_t>(frame) * channels) + 1U] = right;
+                }
+                noPeakSignal = signal;
+                const float nextPeak = bank.processInPlace(signal.data(), frames, channels);
+                assert(std::isfinite(nextPeak));
+                const std::size_t nextAllocationsBefore = test_alloc::count();
+                test_alloc::beginTracking();
+                noPeakBank.processInPlaceNoPeak(noPeakSignal.data(), frames, channels);
+                test_alloc::endTracking();
+                assert(test_alloc::count() == nextAllocationsBefore);
+
+                float expectedNextPeak = 0.0f;
+                for (std::size_t sampleIndex = 0U; sampleIndex < signal.size(); ++sampleIndex) {
+                    assert(std::isfinite(signal[sampleIndex]));
+                    assert(signal[sampleIndex] == noPeakSignal[sampleIndex]);
+                    expectedNextPeak = std::max(expectedNextPeak, std::fabs(signal[sampleIndex]));
+                }
+                assert(nextPeak == expectedNextPeak);
+            }
+
             // processingFaulted is the same per-processor health state exposed
             // in Native's catalog-slot status payload.
             assert(!processor->processingFaulted());
@@ -2534,6 +2603,77 @@ void testRingModArbitraryBlockSegmentationAndResponse() {
     assert(changedVsFixed > 100.0);
 }
 
+void testRingModTriangleBandlimitAndWaveformRamp() {
+    constexpr unsigned int sampleRate = 48000U;
+    constexpr unsigned int frames = 12288U;
+    auto defaultSine = createNativeEffectProcessor("ring_mod");
+    auto explicitSine = createNativeEffectProcessor("ring_mod");
+    assert(defaultSine && explicitSine && defaultSine->prepare(sampleRate) && explicitSine->prepare(sampleRate));
+    assert(explicitSine->setParameter("waveform", 0.0f, 0U));
+    std::vector<float> defaultSineOutput(2048U, 1.0f);
+    std::vector<float> explicitSineOutput = defaultSineOutput;
+    (void)defaultSine->processInPlace(defaultSineOutput.data(), static_cast<unsigned int>(defaultSineOutput.size()), 1U);
+    (void)explicitSine->processInPlace(explicitSineOutput.data(), static_cast<unsigned int>(explicitSineOutput.size()), 1U);
+    for (std::size_t index = 0U; index < defaultSineOutput.size(); ++index) {
+        expectNear(explicitSineOutput[index], defaultSineOutput[index], 0.0f);
+    }
+
+    auto triangle = createNativeEffectProcessor("ring_mod");
+    assert(triangle && triangle->prepare(sampleRate));
+    assert(triangle->setParameter("carrier_hz", 6000.0f, 0U));
+    assert(triangle->setParameter("waveform", 1.0f, 0U));
+    assert(triangle->setParameter("depth", 1.0f, 0U));
+    assert(triangle->setParameter("wet_mix", 1.0f, 0U));
+    std::vector<float> triangleOutput(frames, 1.0f);
+    (void)triangle->processInPlace(triangleOutput.data(), frames, 1U);
+    for (const float sample : triangleOutput) assert(std::isfinite(sample));
+    const double fundamental = dftMagnitude(triangleOutput, 4096U, 8192U, sampleRate, 6000.0);
+    const double thirdHarmonic = dftMagnitude(triangleOutput, 4096U, 8192U, sampleRate, 18000.0);
+    assert(fundamental > 0.35);
+    // At 6 kHz and 48 kHz the 0.45*Fs budget admits the third harmonic but
+    // excludes the fifth. This is a functional table-tier check only.
+    assert(thirdHarmonic / fundamental > 0.08);
+    assert(thirdHarmonic / fundamental < 0.15);
+
+    constexpr unsigned int rampFrames = 960U;
+    constexpr unsigned int transitionFrames = 4096U;
+    constexpr unsigned int changedAt = 257U;
+    auto whole = createNativeEffectProcessor("ring_mod");
+    auto split = createNativeEffectProcessor("ring_mod");
+    assert(whole && split && whole->prepare(sampleRate) && split->prepare(sampleRate));
+    for (auto* effect : {whole.get(), split.get()}) {
+        assert(effect->setParameter("carrier_hz", 440.0f, 0U));
+        assert(effect->setParameter("depth", 1.0f, 0U));
+        assert(effect->setParameter("wet_mix", 1.0f, 0U));
+    }
+    std::vector<float> input(transitionFrames, 1.0f);
+    auto wholeOutput = input;
+    auto splitOutput = input;
+    (void)whole->processInPlace(wholeOutput.data(), changedAt, 1U);
+    (void)split->processInPlace(splitOutput.data(), changedAt, 1U);
+    assert(whole->setParameter("waveform", 1.0f, rampFrames));
+    assert(split->setParameter("waveform", 1.0f, rampFrames));
+    const unsigned int remaining = transitionFrames - changedAt;
+    (void)whole->processInPlace(wholeOutput.data() + changedAt, remaining, 1U);
+    constexpr std::array<unsigned int, 7U> chunks{{1U, 7U, 31U, 64U, 5U, 127U, 19U}};
+    unsigned int offset = 0U;
+    std::size_t chunkIndex = 0U;
+    while (offset < remaining) {
+        const unsigned int count = std::min(chunks[chunkIndex % chunks.size()], remaining - offset);
+        (void)split->processInPlace(splitOutput.data() + changedAt + offset, count, 1U);
+        offset += count;
+        ++chunkIndex;
+    }
+    double maximumStep = 0.0;
+    for (std::size_t index = 0U; index < wholeOutput.size(); ++index) {
+        assert(std::isfinite(wholeOutput[index]));
+        expectNear(splitOutput[index], wholeOutput[index], 1.0e-7f);
+        if (index > 0U) maximumStep = std::max(maximumStep,
+            std::fabs(static_cast<double>(wholeOutput[index]) - wholeOutput[index - 1U]));
+    }
+    assert(maximumStep < 0.1);
+}
+
 void testChorusEchoAndReset() {
     auto chorus = createNativeEffectProcessor("chorus");
     assert(chorus && chorus->prepare(48000U));
@@ -2623,7 +2763,8 @@ void testWorkingFiltersAndPhaser() {
         auto effect = createNativeEffectProcessor(ids[index]);
         assert(effect && effect->prepare(48000U));
         assert(effect->setParameter("cutoff_hz", 1000.0f, 1U));
-        assert(effect->setParameter("q", 0.70710678f, 1U));
+        if (ids[index] == "filter.bpf") assert(effect->setParameter("q", 0.70710678f, 1U));
+        else assert(effect->setParameter("resonance_percent", 15.0f, 1U));
         std::array<float, 8U> impulse{{1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}};
         const auto peak = effect->processInPlace(impulse.data(), 8U, 1U);
         assert(std::isfinite(peak) && peak > 0.0f);
@@ -2633,6 +2774,51 @@ void testWorkingFiltersAndPhaser() {
     assert(std::fabs(firstSamples[0][0] - firstSamples[1][0]) > 1.0e-3f);
     assert(std::fabs(firstSamples[1][0] - firstSamples[2][0]) > 1.0e-3f);
     assert(std::fabs(firstSamples[0][0] - firstSamples[2][0]) > 1.0e-3f);
+
+    for (const auto id : {std::string_view{"filter.lpf"}, std::string_view{"filter.hpf"}}) {
+        auto legacyQ = createNativeEffectProcessor(id);
+        auto percent = createNativeEffectProcessor(id);
+        assert(legacyQ && percent && legacyQ->prepare(48000U) && percent->prepare(48000U));
+        assert(legacyQ->setParameter("cutoff_hz", 1000.0f, 1U));
+        assert(percent->setParameter("cutoff_hz", 1000.0f, 1U));
+        assert(legacyQ->setParameter("q", 0.70710678f, 1U));
+        assert(percent->setParameter("resonance_percent", 15.0f, 1U));
+        std::array<float, 256U> legacySignal{};
+        std::array<float, 256U> percentSignal{};
+        for (std::size_t frame = 0U; frame < legacySignal.size(); ++frame) {
+            const float sample = 0.2f * std::sin(2.0f * static_cast<float>(kPi) * 1000.0f * static_cast<float>(frame) / 48000.0f);
+            legacySignal[frame] = sample;
+            percentSignal[frame] = sample;
+        }
+        (void)legacyQ->processInPlace(legacySignal.data(), 256U, 1U);
+        (void)percent->processInPlace(percentSignal.data(), 256U, 1U);
+        for (std::size_t frame = 0U; frame < legacySignal.size(); ++frame) {
+            assert(legacySignal[frame] == percentSignal[frame]);
+        }
+
+        for (const float percentValue : {0.0f, 15.0f, 50.0f, 100.0f}) {
+            float qValue = 0.5f + 11.5f * static_cast<float>(std::pow(
+                static_cast<double>(percentValue) / 100.0, 2.117350426267045));
+            if (percentValue == 15.0f) qValue = 0.70710678f;
+            auto mappedPercent = createNativeEffectProcessor(id);
+            auto mappedQ = createNativeEffectProcessor(id);
+            assert(mappedPercent && mappedQ && mappedPercent->prepare(48000U) && mappedQ->prepare(48000U));
+            assert(mappedPercent->setParameter("resonance_percent", percentValue, 1U));
+            assert(mappedQ->setParameter("q", qValue, 1U));
+            std::array<float, 256U> percentSignal{};
+            std::array<float, 256U> qSignal{};
+            for (std::size_t frame = 0U; frame < percentSignal.size(); ++frame) {
+                const float sample = 0.2f * std::sin(2.0f * static_cast<float>(kPi) * 1000.0f * static_cast<float>(frame) / 48000.0f);
+                percentSignal[frame] = sample;
+                qSignal[frame] = sample;
+            }
+            (void)mappedPercent->processInPlace(percentSignal.data(), 256U, 1U);
+            (void)mappedQ->processInPlace(qSignal.data(), 256U, 1U);
+            for (std::size_t frame = 0U; frame < percentSignal.size(); ++frame) {
+                assert(percentSignal[frame] == qSignal[frame]);
+            }
+        }
+    }
 
     auto phaser = createNativeEffectProcessor("phaser");
     assert(phaser && phaser->prepare(48000U));
@@ -2658,7 +2844,7 @@ void testFilterControlRateSegmentationAndResponse() {
     assert(unchangedReference->prepare(sampleRate));
     for (auto* filter : {oneBlock.get(), irregularBlocks.get(), unchangedReference.get()}) {
         assert(filter->setParameter("cutoff_hz", 500.0f, 1U));
-        assert(filter->setParameter("q", 0.70710678f, 1U));
+        assert(filter->setParameter("resonance_percent", 15.0f, 1U));
     }
 
     std::vector<float> input(totalFrames, 0.0f);
@@ -2998,7 +3184,7 @@ void testFourSlotSerialOrderAndBypass() {
     assert(manualLowPass && manualLowPass->prepare(sampleRate));
     assert(manualPhaser && manualPhaser->prepare(sampleRate));
     assert(manualLowPass->setParameter("cutoff_hz", 700.0f, 1U));
-    assert(manualLowPass->setParameter("q", 0.8f, 1U));
+    assert(manualLowPass->setParameter("resonance_percent", 20.0f, 1U));
     assert(manualPhaser->setParameter("stages", 8.0f, 1U));
     assert(manualPhaser->setParameter("rate_hz", 2.1f, 1U));
     assert(manualPhaser->setParameter("depth", 0.95f, 1U));
@@ -3533,6 +3719,7 @@ int main() {
     testEqualizerSmoothingChunkingResetBypassAndPlaybackChain();
     testRingModCarrierCoherenceResetAndBypass();
     testRingModArbitraryBlockSegmentationAndResponse();
+    testRingModTriangleBandlimitAndWaveformRamp();
     testWorkingFiltersAndPhaser();
     testFilterControlRateSegmentationAndResponse();
     testAutoPanCatalogWaveformsAndBypass();

@@ -1,6 +1,8 @@
+import { isOfficialFxSlotAllowed } from './fx/official/parameters';
+import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOfficialEffect, officialParameterDomain, encodeOfficialValue } from './fx/official/parameters';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -10,6 +12,7 @@ import {
 import { encodeWav } from './export/wavEncoder';
 import { NativeTrackProxy } from './NativeTrackProxy';
 import { NativeRhythmEngine } from './NativeRhythmEngine';
+import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectRestoreToken, type ProjectArchive, type ProjectArchiveTrackList } from './projectArchive';
 import { sanitizeNativeStepSlicerParameters, type NativeStepSlicerParameters } from './nativeStepSlicerParameters';
 import {
   NATIVE_CATALOG_EMPTY_LABEL,
@@ -53,6 +56,18 @@ export interface NativeUiStatus {
   lastError: string;
 }
 
+export class NativeProjectArchiveCommittedError extends Error {
+  public readonly generation: number;
+  public readonly archiveCommitted = true;
+
+  public constructor(generation: number, cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    super(`Project audio was imported successfully (generation ${generation}), but the user-interface transport state could not be synchronized: ${detail}`);
+    this.name = 'NativeProjectArchiveCommittedError';
+    this.generation = generation;
+  }
+}
+
 export interface NativeCatalogFxSlotRuntime {
   path: NativeFxPath;
   slot: NativeFxSlot;
@@ -63,6 +78,9 @@ export interface NativeCatalogFxSlotRuntime {
   processingFaulted: boolean;
   controlFaulted: boolean;
   pendingApply: boolean;
+  /** A timed-out write is never replayed; reconcile its revision before deciding whether it applied. */
+  outcomeUnknown?: boolean;
+  baselineRequestedRevision?: number | null;
   requestedRevision: number | null;
   appliedRevision: number | null;
   requestedEffectId: string | null;
@@ -155,6 +173,10 @@ export class NativeAudioEngine {
   private nativeFxSyncRunning = false;
   private nativeFxSyncScheduled = false;
   private syncingNativeRhythmBpm = false;
+  private readonly pendingProjectImportSync = new Map<number, Pick<ProjectArchive, 'bpm' | 'transport'> & {
+    operationStartTransport: NativeProjectRestoreToken['transport'];
+    operationStartTransportRevision: number;
+  }>();
   private readonly onTransportBpmChange = () => {
     this.scheduleNativeFxSync();
     const bpm = Transport.getInstance().bpm;
@@ -184,6 +206,7 @@ export class NativeAudioEngine {
     this.resetAllTrackTelemetry();
     this.loadPreferences();
     Transport.getInstance().on('bpm-change', this.onTransportBpmChange);
+    Transport.getInstance().on('time-signature-change', this.onTransportBpmChange);
   }
 
   public static getInstance(): NativeAudioEngine {
@@ -515,6 +538,12 @@ export class NativeAudioEngine {
     return trackId === 1 ? this.latestStatus?.state ?? 'Empty' : 'Empty';
   }
 
+  /** Latest callback-acknowledged Native PCM history for one loop track. */
+  public getNativeTrackHistoryStatus(trackId: number): NativeTrackHistoryStatus | null {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
+    return this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.history ?? null;
+  }
+
   public canExportHqWav(trackId = 1) {
     const state = this.nativeTrackState(trackId);
     return this.isNativeReady() && this.isNativeTrackAvailable(trackId) && this.getNativeHqRenderer().available &&
@@ -603,6 +632,274 @@ export class NativeAudioEngine {
     });
   }
 
+  /**
+   * Exports the same v1 PCM/transport archive as Browser. Native projects are
+   * read through callback-pinned snapshots; every track's monotonic content
+   * revision is checked before, during, and after capture so five sequential
+   * HTTP reads can never be persisted as a mixed-generation project.
+   */
+  public async exportProjectArchive(name: string): Promise<Uint8Array> {
+    const initial = await this.bridge.getStatus();
+    if (!initial.engineRunning || initial.nativeLooperMultiTrackImplemented !== true ||
+        initial.nativeLooperTrackCount !== 5 || !Array.isArray(initial.nativeTracks) || initial.nativeTracks.length !== 5) {
+      throw new Error('Native project export requires a running five-track Native host with content-revision support');
+    }
+    const initialTracks = [1, 2, 3, 4, 5].map((trackId) => {
+      const track = initial.nativeTracks!.find((entry) => entry.trackId === trackId);
+      if (!track || !Number.isSafeInteger(track.contentRevision) || track.contentRevision! < 0) {
+        throw new Error(`Native Track ${trackId} host does not report a valid content revision; update the Native host before saving project memory`);
+      }
+      if (track.state === 'Recording' || track.state === 'Overdubbing') {
+        throw new Error(`Stop recording or overdubbing on Native Track ${trackId} before saving project memory`);
+      }
+      return track;
+    });
+    if (initial.sampleRate < 8_000 || initial.sampleRate > 192_000) {
+      throw new Error('Native project sample rate is outside the archive-supported range');
+    }
+
+    const transport = Transport.getInstance();
+    const transportSnapshot = {
+      bpm: transport.bpm,
+      masterTrackId: transport.masterTrackId,
+      masterLoopLengthSamples: transport.masterLoopLengthSamples,
+      timeSignatureNumerator: transport.timeSignature[0],
+      timeSignatureDenominator: transport.timeSignature[1],
+      measureLengthSeconds: transport.masterTrackId === null ? 0 : transport.getMeasureDuration(),
+    };
+    const descriptors = new Array<null | { sampleRate: number; frameCount: number; channels: 2; contentRevision: number }>(5).fill(null);
+    let payloadBytes = 0;
+    for (let index = 0; index < 5; index += 1) {
+      const reported = initialTracks[index]!;
+      if (reported.state === 'Empty') continue;
+      const metadata = await this.bridge.getTrackMetadata(index + 1);
+      if (metadata.trackId !== index + 1 || metadata.channels !== 2 || metadata.sampleRate !== initial.sampleRate ||
+          !Number.isSafeInteger(metadata.contentRevision) || metadata.contentRevision !== reported.contentRevision) {
+        throw new Error(`Native Track ${index + 1} changed or returned inconsistent metadata while project export was being prepared`);
+      }
+      if (!Number.isSafeInteger(metadata.frameCount * 2 * Float32Array.BYTES_PER_ELEMENT)) {
+        throw new Error(`Native Track ${index + 1} PCM size is outside the supported integer range`);
+      }
+      payloadBytes += metadata.frameCount * 2 * Float32Array.BYTES_PER_ELEMENT;
+      if (!Number.isSafeInteger(payloadBytes) || payloadBytes > PROJECT_ARCHIVE_LIMITS.maxPayloadBytes) {
+        throw new Error(`Native project PCM exceeds the ${Math.floor(PROJECT_ARCHIVE_LIMITS.maxPayloadBytes / (1024 * 1024))} MiB archive payload limit`);
+      }
+      descriptors[index] = { sampleRate: metadata.sampleRate, frameCount: metadata.frameCount, channels: 2, contentRevision: metadata.contentRevision! };
+    }
+
+    if (transportSnapshot.masterTrackId !== null) {
+      const masterId = transportSnapshot.masterTrackId;
+      if (!Number.isInteger(masterId) || masterId < 1 || masterId > 5 || descriptors[masterId - 1] === null ||
+          descriptors[masterId - 1]!.frameCount !== transportSnapshot.masterLoopLengthSamples) {
+        throw new Error('Native project transport master does not match the referenced track PCM; project was not saved');
+      }
+    } else if (transportSnapshot.masterLoopLengthSamples !== 0) {
+      throw new Error('Native project has loop timing without a master track; project was not saved');
+    }
+
+    const tracks: Array<null | { sampleRate: number; frameCount: number; channels: 2; pcm: Float32Array }> = new Array(5).fill(null);
+    for (let index = 0; index < 5; index += 1) {
+      const descriptor = descriptors[index];
+      if (!descriptor) continue;
+      const snapshot = await this.bridge.getLoopSnapshot(index + 1);
+      if (snapshot.sampleRate !== descriptor.sampleRate || snapshot.frameCount !== descriptor.frameCount ||
+          snapshot.channels !== 2 || snapshot.contentRevision !== descriptor.contentRevision ||
+          snapshot.samples.length !== descriptor.frameCount * 2) {
+        throw new Error(`Native Track ${index + 1} changed between metadata and PCM snapshot; project save was canceled`);
+      }
+      // contentRevision is a host consistency token, not part of the shared
+      // archive schema. Keep the encoded track object restricted to v1 keys.
+      tracks[index] = {
+        sampleRate: descriptor.sampleRate,
+        frameCount: descriptor.frameCount,
+        channels: 2,
+        pcm: snapshot.samples,
+      };
+    }
+
+    const after = await this.bridge.getStatus();
+    if (!after.engineRunning || after.sampleRate !== initial.sampleRate || !Array.isArray(after.nativeTracks) || after.nativeTracks.length !== 5 ||
+        after.nativeTracks.some((track, index) => track.contentRevision !== initialTracks[index]!.contentRevision ||
+          track.state === 'Recording' || track.state === 'Overdubbing') ||
+        transport.bpm !== transportSnapshot.bpm || transport.masterTrackId !== transportSnapshot.masterTrackId ||
+        transport.masterLoopLengthSamples !== transportSnapshot.masterLoopLengthSamples ||
+        transport.timeSignature[0] !== transportSnapshot.timeSignatureNumerator ||
+        transport.timeSignature[1] !== transportSnapshot.timeSignatureDenominator) {
+      throw new Error('Native project export canceled because a track or transport changed during snapshot capture');
+    }
+
+    return encodeProjectArchive({
+      name,
+      bpm: transportSnapshot.bpm,
+      transport: {
+        masterTrackId: transportSnapshot.masterTrackId,
+        measureLengthSeconds: transportSnapshot.measureLengthSeconds,
+        masterLoopLengthSamples: transportSnapshot.masterLoopLengthSamples,
+        timeSignatureNumerator: transportSnapshot.timeSignatureNumerator,
+        timeSignatureDenominator: transportSnapshot.timeSignatureDenominator,
+      },
+      tracks: tracks as unknown as ProjectArchiveTrackList,
+    });
+  }
+
+  /**
+   * Restore Native PCM via the host's callback-boundary five-track transaction.
+   * The decoded archive bytes are sent intact so the host independently checks
+   * the manifest, hashes, sample values, rate, and all-track capacity.
+   */
+  public async captureProjectRestoreBaseline(): Promise<{ projectContentRevision: number; sampleRate: number }> {
+    // Read directly from the host, never from latestStatus: the latter is
+    // polled asynchronously and may predate edits made just before load.
+    const status = await this.bridge.getStatus();
+    if (!status.engineRunning || status.nativeLooperMultiTrackImplemented !== true ||
+        status.nativeLooperTrackCount !== 5 || !Array.isArray(status.nativeTracks) || status.nativeTracks.length !== 5) {
+      throw new Error('Native project load requires a running five-track host with operation-start revision support.');
+    }
+    if (status.projectContentRevisionSnapshotStable !== true) {
+      throw new Error('Native host could not capture a stable project revision/status snapshot; current loops were left unchanged. Retry project load.');
+    }
+    if (!Number.isSafeInteger(status.projectContentRevision) || (status.projectContentRevision ?? -1) < 0) {
+      throw new Error('Native host does not provide the operation-start project content revision required to protect loops during archive decoding; update the Native host before loading project memory.');
+    }
+    if (status.projectContentRevision! >= Number.MAX_SAFE_INTEGER) {
+      throw new Error('Native host project revision reached the safe integer limit; restart the Native host before loading project memory.');
+    }
+    if (!Number.isSafeInteger(status.sampleRate) || status.sampleRate < 8_000 || status.sampleRate > 192_000) {
+      throw new Error('Native host reported an unsupported sample rate while project load was starting.');
+    }
+    const busy = status.nativeTracks.find((track) => track.state === 'Recording' || track.state === 'Overdubbing');
+    if (busy) throw new Error(`Stop Native Track ${busy.trackId} recording or overdubbing before loading project memory.`);
+    return { projectContentRevision: status.projectContentRevision!, sampleRate: status.sampleRate };
+  }
+
+  public captureProjectTransportMutationRevision(): number {
+    const revision = Transport.getInstance().projectMutationRevision;
+    if (revision >= Number.MAX_SAFE_INTEGER) {
+      throw new Error('Native project load cannot safely track more transport changes in this session; restart the Native audio engine before loading project memory.');
+    }
+    return revision;
+  }
+
+  public async restoreProjectArchive(
+    project: ProjectArchive,
+    archive: ArrayBuffer | Uint8Array,
+    operationStart: NativeProjectRestoreToken,
+    operationStillCurrent: () => boolean,
+  ): Promise<void> {
+    const bytes = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
+    if (bytes.byteLength < 12 || bytes.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
+      throw new Error('Project archive is empty or exceeds the supported Native import size');
+    }
+    if (!this.latestStatus?.engineRunning) {
+      throw new Error('Start the Native audio engine before importing project memory');
+    }
+    if (!Number.isFinite(project.bpm) || project.bpm < 40 || project.bpm > 300) {
+      throw new Error('Project BPM must be between 40 and 300');
+    }
+    const saved = project.transport;
+    const master = saved.masterTrackId === null ? null : project.tracks[saved.masterTrackId - 1];
+    if (!Number.isInteger(saved.timeSignatureNumerator) || saved.timeSignatureNumerator < 1 || saved.timeSignatureNumerator > 32 ||
+        ![1, 2, 4, 8, 16, 32].includes(saved.timeSignatureDenominator) ||
+        !Number.isFinite(saved.measureLengthSeconds) || saved.measureLengthSeconds < 0 ||
+        !Number.isSafeInteger(saved.masterLoopLengthSamples) || saved.masterLoopLengthSamples < 0 ||
+        (saved.masterTrackId !== null && (!Number.isInteger(saved.masterTrackId) || saved.masterTrackId < 1 || saved.masterTrackId > 5 ||
+          !master || master.frameCount !== saved.masterLoopLengthSamples)) ||
+        (saved.masterTrackId === null && (saved.masterLoopLengthSamples !== 0 || saved.measureLengthSeconds !== 0))) {
+      throw new Error('Project transport metadata does not match its imported loops');
+    }
+    if (saved.masterTrackId !== null) {
+      const quarterNotesPerMeasure = saved.timeSignatureNumerator * 4 / saved.timeSignatureDenominator;
+      const expectedMeasureLength = quarterNotesPerMeasure * 60 / project.bpm;
+      if (Math.abs(saved.measureLengthSeconds - expectedMeasureLength) > Math.max(1e-9, expectedMeasureLength * 1e-9)) {
+        throw new Error('Project master measure timing is inconsistent with its BPM and time signature');
+      }
+    }
+
+    if (!operationStillCurrent()) {
+      throw new Error('Native project load was canceled because the user changed transport before the host import was submitted; the existing project remains loaded. Retry the load.');
+    }
+    const generation = await this.bridge.beginProjectArchiveImport(bytes, operationStart.projectContentRevision);
+    this.pendingProjectImportSync.set(generation, {
+      bpm: project.bpm,
+      transport: saved,
+      operationStartTransport: operationStart.transport,
+      operationStartTransportRevision: operationStart.projectTransportMutationRevision,
+    });
+    const status = await this.bridge.waitForProjectArchiveImport(generation, 10_000, operationStillCurrent);
+    if (status.state !== 'committed') {
+      this.pendingProjectImportSync.delete(generation);
+      throw new Error(status.error || `Native project import generation ${generation} was cancelled; the previous project remains loaded`);
+    }
+
+    await this.synchronizeCommittedProjectArchive(generation);
+  }
+
+  /** Reconcile a previously accepted generation without uploading/mutating again. */
+  public async getProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
+    const status = await this.bridge.getProjectArchiveImportStatus(generation);
+    if (status.state === 'committed') await this.synchronizeCommittedProjectArchive(generation);
+    else if (status.state === 'cancelled') this.pendingProjectImportSync.delete(generation);
+    return status;
+  }
+
+  private async synchronizeCommittedProjectArchive(generation: number): Promise<void> {
+    const savedProject = this.pendingProjectImportSync.get(generation);
+    if (!savedProject) return;
+    const { bpm, transport: saved, operationStartTransport, operationStartTransportRevision } = savedProject;
+    // The five PCM banks are already atomically committed at this point.
+    // Keep that fact explicit if a UI listener or transport sync rejects.
+    try {
+      const transport = Transport.getInstance();
+      if (!this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision)) {
+        // PCM has crossed the host callback commit point. Do not roll back or
+        // overwrite user transport edits made while the generation was
+        // pending; keep the generation's committed status explicit instead.
+        this.pendingProjectImportSync.delete(generation);
+        throw new Error('Transport changed while the Native import was pending. The new PCM is committed, and the user\'s newer transport values were preserved; the imported BPM and loop metadata were not applied.');
+      }
+      const syncFailures: string[] = [];
+      try { transport.stop(); } catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
+      transport.resetMasterTrack();
+      transport.timeSignature = [saved.timeSignatureNumerator, saved.timeSignatureDenominator];
+      transport.masterTrackId = saved.masterTrackId;
+      transport.measureLength = saved.measureLengthSeconds;
+      transport.masterLoopLengthSamples = saved.masterLoopLengthSamples;
+      this.syncingNativeRhythmBpm = true;
+      try { transport.setBpm(bpm); }
+      catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
+      finally { this.syncingNativeRhythmBpm = false; }
+
+      if (this.rhythmEngine.available && this.rhythmEngine.settings?.bpm !== bpm) {
+        if (!await this.rhythmEngine.setBpm(bpm)) {
+          syncFailures.push(this.rhythmEngine.error || 'Native rhythm did not acknowledge the imported project BPM');
+        }
+      }
+      try { this.applyStatus(await this.bridge.getStatus()); }
+      catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
+      if (syncFailures.length > 0) throw new Error(syncFailures.join('; '));
+      this.pendingProjectImportSync.delete(generation);
+    } catch (error) {
+      const preserveUserTransport = !this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision);
+      try { this.applyStatus(await this.bridge.getStatus(), !preserveUserTransport); } catch { /* The committed-generation error remains primary. */ }
+      throw new NativeProjectArchiveCommittedError(generation, error);
+    }
+  }
+
+  private matchesProjectRestoreTransport(
+    expected: NativeProjectRestoreToken['transport'],
+    expectedRevision?: number,
+  ): boolean {
+    const current = Transport.getInstance();
+    return (expectedRevision === undefined || current.projectMutationRevision === expectedRevision)
+      && current.bpm === expected.bpm
+      && current.state === expected.state
+      && current.masterTrackId === expected.masterTrackId
+      && current.measureLength === expected.measureLengthSeconds
+      && current.masterLoopLengthSamples === expected.masterLoopLengthSamples
+      && current.timeSignature[0] === expected.timeSignatureNumerator
+      && current.timeSignature[1] === expected.timeSignatureDenominator;
+  }
+
   public async recordTrack(trackId = 1) {
     await this.dispatchStatusRequest(() => this.bridge.recordTrack(trackId));
   }
@@ -621,6 +918,14 @@ export class NativeAudioEngine {
 
   public async clearTrack(trackId = 1) {
     await this.dispatchStatusRequest(() => this.bridge.clearTrack(trackId));
+  }
+
+  public async undoTrack(trackId = 1) {
+    await this.dispatchHistoryStatusRequest(() => this.bridge.undoTrack(trackId));
+  }
+
+  public async redoTrack(trackId = 1) {
+    await this.dispatchHistoryStatusRequest(() => this.bridge.redoTrack(trackId));
   }
 
   public stopAllTracks() {
@@ -676,6 +981,8 @@ export class NativeAudioEngine {
 
   public setTrackFxNamedParameters(trackId: number, slotIndex: number, parameters: Record<string, number>): boolean {
     if (!this.isValidTrackFxSlot(trackId, slotIndex) || !this.isValidCatalogParameters(parameters)) return false;
+    const state = this.nativeCatalogStates('track', trackId)[slotIndex]!;
+    if (!this.areOfficialCatalogParametersSupported(state.type, 'track', trackId, parameters, slotIndex)) return false;
     this.setCatalogFxParameters('track', slotIndex, parameters, trackId);
     return true;
   }
@@ -729,9 +1036,27 @@ export class NativeAudioEngine {
   /** Stores per-slot named controls; caller supplies a complete current parameter set. */
   public setCatalogFxParameters(path: NativeFxPath, slotIndex: number, parameters: Record<string, number>, trackId = 0) {
     const state = this.nativeCatalogStates(path, trackId)[slotIndex];
-    if (!state || !this.isValidCatalogParameters(parameters)) return;
+    if (!state || !this.isValidCatalogParameters(parameters) || !this.areOfficialCatalogParametersSupported(state.type, path, trackId, parameters, slotIndex)) return;
     state.parameters = { ...parameters };
     this.nativeCatalogSlotEdited(path, slotIndex, trackId);
+  }
+
+  private areOfficialCatalogParametersSupported(type: string, path: NativeFxPath, trackId: number, parameters: Record<string, number>, slotIndex = 0): boolean {
+    const entries = Object.entries(parameters).filter(([key]) => key.startsWith('official_'));
+    if (!entries.length) return true;
+    const schema = this.getCatalogFxParameterSchema(type, path, trackId, parameters, slotIndex);
+    const official = resolveOfficialEffect(type, parameters);
+    return entries.every(([key, value]) => {
+      if (key === 'official_variant') return (value === 1 || value === 2) && !!schema?.parameters.some(item => item.id === key && item.provenance === 'routing');
+      const parameter = findOfficialRuntimeParameter(official, key);
+      const descriptor = schema?.parameters.find(item => item.id === key && item.provenance === 'official-interface');
+      // A host may implement a strict subset of the documented domain, such as
+      // track carriers without physical inputs. Never accept the wider manual
+      // range merely because the parameter name is advertised.
+      return !!parameter && !!descriptor && isOfficialRuntimeValueValid(parameter, value) &&
+        value >= descriptor.minimum && value <= descriptor.maximum &&
+        (!descriptor.discrete || descriptor.discreteValues?.includes(value) === true);
+    });
   }
 
   public getCatalogFxOptions(path: NativeFxPath, trackId = 0) {
@@ -743,6 +1068,87 @@ export class NativeAudioEngine {
       return effectId !== 'vinyl_flick' && effectId !== 'beat_shift' &&
         this.latestStatus?.nativeFx?.catalogEffectAvailability?.find((entry) => entry.effectId === effectId)?.perTrackInsert !== false;
     }) : options;
+  }
+
+  /** Returns validated host-authored bounds/choices; null means an old/invalid schema. */
+  public getCatalogFxParameterSchema(type: string, path: NativeFxPath, trackId = 0, currentParameters: Record<string, number> = {}, slotIndex = 0): NativeFxParameterSchema | null {
+    assertNativeFxTarget(path, trackId);
+    const effectId = nativeCatalogEffectId(type);
+    const nativeFx = this.latestStatus?.nativeFx;
+    if (!effectId || nativeFx?.parameterSchemaVersion !== 1) return null;
+    const entry = nativeFx.catalogEffectAvailability?.find((item) => item.effectId === effectId);
+    if (!entry || entry[path] !== true || (trackId !== 0 && entry.perTrackInsert === false)) {
+      return { version: 1, parameters: [], legacyAliases: [] };
+    }
+    const readList = (items: NativeFxParameterDescriptor[] | undefined): NativeFxParameterDescriptor[] | null => {
+      if (!Array.isArray(items)) return null;
+      // Some Native adapters expose descriptors through float32 storage. Turn
+      // those exact float32 encodings back into their shortest practical
+      // decimal values so range controls do not submit e.g. 2.50000000074506
+      // for a user-selected 2.5 step. Preserve genuine JS/double precision.
+      const normalizeDescriptorNumber = (value: number) => {
+        const float32 = Math.fround(value);
+        return float32 === value ? Number(value.toPrecision(7)) : value;
+      };
+      const output: NativeFxParameterDescriptor[] = [];
+      const ids = new Set<string>();
+      for (const item of items) {
+        if (item?.id?.startsWith('official_') && !isOfficialFxSlotAllowed(type, path, slotIndex)) continue;
+        if (!item || typeof item.id !== 'string' || item.id.length === 0 || ids.has(item.id) ||
+            typeof item.label !== 'string' || !Number.isFinite(item.minimum) || !Number.isFinite(item.maximum) ||
+            item.minimum > item.maximum || !Number.isFinite(item.defaultValue) ||
+            item.defaultValue < item.minimum || item.defaultValue > item.maximum ||
+            !Number.isFinite(item.smoothingMs) || item.smoothingMs < 0 || typeof item.discrete !== 'boolean') return null;
+        const discreteValues = item.discreteValues;
+        if (item.discrete && (!Array.isArray(discreteValues) || discreteValues.length === 0 ||
+            discreteValues.some((value) => !Number.isFinite(value) || value < item.minimum || value > item.maximum) ||
+            !discreteValues.includes(item.defaultValue))) return null;
+        if (!item.discrete && discreteValues !== undefined) return null;
+        ids.add(item.id);
+        const minimum = normalizeDescriptorNumber(item.minimum);
+        const maximum = normalizeDescriptorNumber(item.maximum);
+        const defaultValue = normalizeDescriptorNumber(item.defaultValue);
+        const smoothingMs = normalizeDescriptorNumber(item.smoothingMs);
+        const normalizedDiscreteValues = item.discrete ? discreteValues!.map(normalizeDescriptorNumber) : undefined;
+        if (minimum > maximum || defaultValue < minimum || defaultValue > maximum ||
+            (item.discrete && (!normalizedDiscreteValues || !normalizedDiscreteValues.includes(defaultValue) ||
+              normalizedDiscreteValues.some((value) => value < minimum || value > maximum)))) return null;
+        output.push({
+          id: item.id, label: item.label, minimum, maximum,
+          defaultValue, smoothingMs, discrete: item.discrete,
+          ...(item.discrete ? { discreteValues: normalizedDiscreteValues } : {}),
+          ...(item.legacyAlias === true ? { legacyAlias: true } : {}),
+          ...((item.semanticSupport === 'partial_live_stream' || item.semanticSupport === 'partial_source_modes') ? { semanticSupport: item.semanticSupport, limitation: typeof item.limitation === 'string' ? item.limitation : (item.semanticSupport === 'partial_source_modes' ? 'Source-aware loop playback only; recording/overdub modes are not supported.' : 'Partial live-history implementation; not source-aware transport.') } : {}),
+        });
+      }
+      return output;
+    };
+    const parameters = readList(entry.parameters);
+    const legacyAliases = readList(entry.legacyParameterAliases);
+    if (!parameters || !legacyAliases) return null;
+    const officialParameters = entry.officialParameters === undefined ? [] : readList(entry.officialParameters);
+    if (!officialParameters) return null;
+    const officialEffect = resolveOfficialEffect(type, currentParameters);
+    for (const parameter of parameters) parameter.provenance = 'extension';
+    const enrichedOfficial = officialParameters.flatMap((descriptor): NativeFxParameterDescriptor[] => {
+      if (descriptor.id === 'official_variant' && ['TAPE ECHO', 'ROLL'].includes(type)) return [{ ...descriptor, label: 'Algorithm variant', provenance: 'routing', options: [{ value: 1, label: `${type} 1` }, { value: 2, label: `${type} 2` }] }];
+      const parameter = findOfficialRuntimeParameter(officialEffect, descriptor.id);
+      if (!parameter) return []; // never present private adapter state as a hardware control
+      const domain = officialParameterDomain(parameter);
+      const bounds = domain.options.map(option => option.runtime);
+      if (domain.range) bounds.push(domain.range.min, domain.range.max);
+      if (!bounds.length) return [];
+      const minimum = Math.max(descriptor.minimum, Math.min(...bounds));
+      const maximum = Math.min(descriptor.maximum, Math.max(...bounds));
+      if (minimum > maximum) return [];
+      const documentedDefault = parameter.default === null ? null : encodeOfficialValue(parameter, parameter.default);
+      return [{ ...descriptor, minimum, maximum, ...(descriptor.discrete ? { discreteValues: descriptor.discreteValues?.filter(value => value >= minimum && value <= maximum && isOfficialRuntimeValueValid(parameter, value)) } : {}), step: domain.range?.step ?? 1,
+        defaultValue: documentedDefault !== null && documentedDefault >= minimum && documentedDefault <= maximum ? documentedDefault : Math.min(maximum, Math.max(minimum, descriptor.defaultValue)), label: /^official_step_level_\d+$/.test(descriptor.id) ? `${parameter.name} ${descriptor.id.replace('official_step_level_', '')}` : parameter.name, provenance: 'official-interface', unit: domain.unit,
+        sourcePage: officialEffect!.page, officialEffectName: officialEffect!.name,
+        documentedDefault: parameter.default === null ? null : encodeOfficialValue(parameter, parameter.default),
+        options: domain.options.map(option => ({ value: option.runtime, label: option.label })) }];
+    });
+    return { version: 1, parameters: [...enrichedOfficial, ...parameters], legacyAliases };
   }
 
   public getCatalogFxSlotStatus(path: NativeFxPath, slotIndex: number, trackId = 0): NativeCatalogFxSlotRuntime {
@@ -801,11 +1207,28 @@ export class NativeAudioEngine {
     return trackId ? this.nativePerTrackFxStates[trackId - 1]! : this.nativeCatalogFxStates[path];
   }
 
-  private nativeCatalogParameters(path: NativeFxPath, slotIndex: number, trackId: number): Record<string, number> {
+  /** Canonical submission snapshot, including typed STEP SLICER state. Does not mutate or send. */
+  public getCatalogFxParameterSnapshot(path: NativeFxPath, slotIndex: number, trackId = 0, overrides?: Record<string, number>): Record<string, number> | null {
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= NATIVE_FX_SLOT_IDS.length) return null;
+    if (!this.nativeCatalogStates(path, trackId)[slotIndex]?.type) return null;
+    return { ...this.nativeCatalogParameters(path, slotIndex, trackId, overrides) };
+  }
+
+  private nativeCatalogParameters(path: NativeFxPath, slotIndex: number, trackId: number, overrides?: Record<string, number>): Record<string, number> {
     const state = this.nativeCatalogStates(path, trackId)[slotIndex]!;
-    return state.type === 'STEP SLICER'
-      ? { ...this.nativeStepSlicerBridgeParameters(path, slotIndex, trackId), ...state.parameters }
-      : state.type ? { ...nativeCatalogMacroParameters(state.type, state.value), ...state.parameters } : {};
+    const parameters = state.type === 'STEP SLICER'
+      ? { ...this.nativeStepSlicerBridgeParameters(path, slotIndex, trackId), ...(overrides ?? state.parameters) }
+      : state.type ? { ...nativeCatalogMacroParameters(state.type, state.value), ...(overrides ?? state.parameters) } : {};
+    if (Object.keys(parameters).some(key => key.startsWith('official_'))) {
+      const effectId = nativeCatalogEffectId(state.type);
+      const advertised = this.latestStatus?.nativeFx?.catalogEffectAvailability?.find(entry => entry.effectId === effectId)?.officialParameters;
+      if (advertised?.length) {
+        const tempo = Transport.getInstance().bpm;
+        parameters.official_bpm = Number.isFinite(tempo) ? Math.max(40, Math.min(300, tempo)) : 120;
+        parameters.official_quarter_notes_per_measure = Transport.getInstance().quarterNotesPerMeasure;
+      }
+    }
+    return parameters;
   }
 
   private nativeCatalogSlotEdited(path: NativeFxPath, slotIndex: number, trackId: number) {
@@ -936,6 +1359,21 @@ export class NativeAudioEngine {
     }
   }
 
+  private async dispatchHistoryStatusRequest(request: () => Promise<NativeStatus>) {
+    try {
+      const status = await request();
+      this.applyStatus(status);
+    } catch (error) {
+      // Undo/redo may be rejected because there is no history step, the track
+      // is active, or the retained-byte budget was exceeded. Keep the last
+      // acknowledged Native status and history controls while surfacing the
+      // error; a command rejection is not evidence that the bridge disappeared.
+      this.lastError = error instanceof Error ? error.message : String(error);
+      this.emitAll();
+      throw error;
+    }
+  }
+
   /** Coalesce rapid UI edits and keep desired states separate from Native ACKs. */
   private scheduleNativeFxSync() {
     this.nativeFxSyncRevision += 1;
@@ -974,6 +1412,7 @@ export class NativeAudioEngine {
         if (config) config = {
           ...config, ...(trackId ? { trackId } : {}),
           parameters: this.nativeCatalogParameters(path, slotIndex, trackId),
+          ...(this.latestStatus?.nativeFx?.catalogParameterReplacement === true ? { replaceParameters: true } : {}),
         };
         const requestedId = config?.effectId || null;
         const currentId = this.nativeCatalogEffectIdFromStatus(path, slot, trackId);
@@ -981,6 +1420,7 @@ export class NativeAudioEngine {
         const options = this.getCatalogFxOptions(path, trackId);
         const editRevision = this.nativeCatalogSlotEditRevisions.get(key) ?? 0;
         const previousRuntime = this.nativeCatalogFxRuntime.get(key);
+        let statusToApplyAfterSave: NativeStatus | null = null;
         if (trackId && !allowTypeChange && config && previousRuntime &&
             (previousRuntime.acknowledged || previousRuntime.pendingApply) &&
             previousRuntime.requestedEffectId === requestedId && previousRuntime.requestedBypassed === config.bypassed &&
@@ -1006,6 +1446,10 @@ export class NativeAudioEngine {
         runtime.error = '';
         runtime.pendingRestart = false;
         runtime.pendingApply = false;
+        runtime.outcomeUnknown = false;
+        runtime.baselineRequestedRevision = trackId
+          ? this.nativeCatalogSlotFromStatus(path, slot, trackId)?.requestedRevision ?? null
+          : null;
 
         if (trackId && !this.isPerTrackCatalogAvailable(trackId)) {
           runtime.acknowledged = false;
@@ -1015,6 +1459,13 @@ export class NativeAudioEngine {
             ? `Native ${path} catalog does not support ${state.type}.`
             : `Native catalog selection “${state.type}” has no implemented effect ID.`;
           await this.rejectUnsupportedCatalogSelection(path, slot, currentId, allowTypeChange, runtime, error, trackId);
+        } else if (this.latestStatus?.nativeFx?.catalogParameterReplacement !== true &&
+            [config.parameters, requestedId === currentId ? previousRuntime?.acknowledgedParameters : undefined].some(parameters =>
+              Object.keys(parameters ?? {}).some(key => key.startsWith('official_')))) {
+          // Old patch-only hosts cannot truthfully acknowledge removed official
+          // fields or leaving official mode. Keep their legacy-only path intact.
+          runtime.acknowledged = false;
+          runtime.error = 'Native host lacks safe official parameter replacement; update the Native host before applying these controls.';
         } else if (this.engineRunning && !allowTypeChange && requestedId !== currentId) {
           runtime.acknowledgedEffectId = currentId;
           runtime.acknowledged = false;
@@ -1051,7 +1502,25 @@ export class NativeAudioEngine {
             runtime.acknowledgedEffectId = currentId;
             runtime.acknowledged = false;
             runtime.pendingRestart = /stop native audio|live parameter edits require/i.test(message);
-            runtime.error = message;
+            if (error instanceof NativeBridgeRequestTimeoutError) {
+              // Never resend a possibly accepted Native write. Keep its
+              // outcome explicitly indeterminate until a later status read
+              // reports a revision beyond the pre-request baseline.
+              runtime.outcomeUnknown = true;
+              runtime.pendingApply = true;
+              runtime.error = `Native catalog FX write timed out; outcome unknown. Checking host revision. ${message}`;
+              if (error.reconciledStatus) {
+                const reported = trackId
+                  ? error.reconciledStatus.nativeFx?.perTrackCatalogBanks?.find((bank) => bank.trackId === trackId)?.slots.find((item) => item.slot === slot)
+                  : undefined;
+                runtime.requestedRevision = reported?.requestedRevision ?? null;
+                statusToApplyAfterSave = error.reconciledStatus;
+              } else {
+                void this.refreshStatus();
+              }
+            } else {
+              runtime.error = message;
+            }
             this.lastError = message;
           }
         }
@@ -1067,6 +1536,11 @@ export class NativeAudioEngine {
         }
         this.nativeCatalogFxRuntime.set(key, runtime);
         this.emitAll();
+        if (statusToApplyAfterSave) {
+          const status = statusToApplyAfterSave;
+          statusToApplyAfterSave = null;
+          this.applyStatus(status);
+        }
       }
     }
   }
@@ -1136,6 +1610,24 @@ export class NativeAudioEngine {
     const reported = this.updateNativeCatalogTelemetry(runtime);
     runtime.acknowledged = false;
     runtime.pendingApply = false;
+    if (runtime.outcomeUnknown) {
+      const baseline = runtime.baselineRequestedRevision;
+      const expectedRevision = baseline !== null && baseline !== undefined && Number.isSafeInteger(baseline)
+        ? baseline + 1
+        : null;
+      const uniquelyMatchesRequest = expectedRevision !== null && Number.isSafeInteger(expectedRevision) &&
+        reported?.requestedRevision === expectedRevision && reported.appliedRevision === expectedRevision &&
+        reported.effectId === runtime.requestedEffectId && reported.bypassed === runtime.requestedBypassed &&
+        reported.appliedBypassed === runtime.requestedBypassed &&
+        (!runtime.requestedEffectId || reported.prepared === true);
+      if (!uniquelyMatchesRequest) {
+        runtime.pendingApply = true;
+        runtime.error = 'Native catalog FX write outcome is still unknown; host status does not uniquely confirm this slot revision and selection.';
+        return;
+      }
+      runtime.requestedRevision = reported?.requestedRevision ?? null;
+      runtime.outcomeUnknown = false;
+    }
     if (!reported || !Number.isSafeInteger(runtime.requestedRevision) || runtime.requestedRevision! < 0) {
       runtime.error = 'Native returned no per-track slot application acknowledgement.';
     } else if (runtime.controlFaulted) {
@@ -1182,7 +1674,7 @@ export class NativeAudioEngine {
     finally { this.syncingNativeRhythmBpm = false; }
   }
 
-  private applyStatus(status: NativeStatus) {
+  private applyStatus(status: NativeStatus, synchronizeRhythmBpm = true) {
     this.latestStatus = status;
     this.nativeOscVocFrameObservedAtMs = performance.now();
     this.bridgeAvailable = true;
@@ -1195,7 +1687,7 @@ export class NativeAudioEngine {
     this.selectedBufferFrames = status.bufferFrames || this.selectedBufferFrames;
     this.nativeLooperStorageBudgetBytes = status.nativeLooperStorageBudgetBytes || this.nativeLooperStorageBudgetBytes;
     this.lastError = status.lastError || '';
-    this.syncNativeRhythmBpm();
+    if (synchronizeRhythmBpm) this.syncNativeRhythmBpm();
     for (const runtime of this.nativeCatalogFxRuntime.values()) {
       if (!runtime.trackId) continue;
       if (runtime.pendingApply || runtime.acknowledged) this.reconcileNativeCatalogRuntime(runtime);

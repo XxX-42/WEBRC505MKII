@@ -1,0 +1,16 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+{"completedEffect":"delay","casesSoFar":2}
+{"completedEffect":"reverse-delay","casesSoFar":4}
+{"completedEffect":"warp","casesSoFar":6}
+{"completedEffect":"roll","casesSoFar":8}
+{"completedEffect":"freeze","casesSoFar":10}
+{"completedEffect":"reverb","casesSoFar":12}
+{"completedEffect":"gate-reverb","casesSoFar":14}
+{"completedEffect":"reverse-reverb","casesSoFar":16}
+{"status":"PASS_SOFTWARE_FINITE_AND_BYPASS_ONLY","effects":8,"cases":16,"failures":0,"excluded":[]}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

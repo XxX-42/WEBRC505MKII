@@ -1,0 +1,6532 @@
+{
+  "parameterSchemaVersion": 1,
+  "catalogParameterReplacement": true,
+  "catalogEffectAvailability": [
+    {
+      "effectId": "filter.lpf",
+      "input": true,
+      "legacyParameterAliases": [
+        {
+          "defaultValue": 0.7071067690849304,
+          "discrete": false,
+          "id": "q",
+          "label": "Legacy Q compatibility alias",
+          "legacyAlias": true,
+          "maximum": 12.0,
+          "minimum": 0.5,
+          "smoothingMs": 15
+        }
+      ],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_resonance",
+          "implementation": "clean-room",
+          "label": "RESONANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_cutoff",
+          "implementation": "clean-room",
+          "label": "CUTOFF",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_rate",
+          "implementation": "clean-room",
+          "label": "STEP RATE",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 1000.0,
+          "discrete": false,
+          "id": "cutoff_hz",
+          "label": "Cutoff",
+          "maximum": 20000.0,
+          "minimum": 20.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 15.0,
+          "discrete": false,
+          "id": "resonance_percent",
+          "label": "Resonance (%)",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 15
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "filter.bpf",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_resonance",
+          "implementation": "clean-room",
+          "label": "RESONANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_cutoff",
+          "implementation": "clean-room",
+          "label": "CUTOFF",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_rate",
+          "implementation": "clean-room",
+          "label": "STEP RATE",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 1000.0,
+          "discrete": false,
+          "id": "cutoff_hz",
+          "label": "Cutoff",
+          "maximum": 20000.0,
+          "minimum": 20.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 0.7071067690849304,
+          "discrete": false,
+          "id": "q",
+          "label": "Resonance",
+          "maximum": 12.0,
+          "minimum": 0.5,
+          "smoothingMs": 15
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "filter.hpf",
+      "input": true,
+      "legacyParameterAliases": [
+        {
+          "defaultValue": 0.7071067690849304,
+          "discrete": false,
+          "id": "q",
+          "label": "Legacy Q compatibility alias",
+          "legacyAlias": true,
+          "maximum": 12.0,
+          "minimum": 0.5,
+          "smoothingMs": 15
+        }
+      ],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_resonance",
+          "implementation": "clean-room",
+          "label": "RESONANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_cutoff",
+          "implementation": "clean-room",
+          "label": "CUTOFF",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_rate",
+          "implementation": "clean-room",
+          "label": "STEP RATE",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 1000.0,
+          "discrete": false,
+          "id": "cutoff_hz",
+          "label": "Cutoff",
+          "maximum": 20000.0,
+          "minimum": 20.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 15.0,
+          "discrete": false,
+          "id": "resonance_percent",
+          "label": "Resonance (%)",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 15
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "phaser",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_resonance",
+          "implementation": "clean-room",
+          "label": "RESONANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_manual",
+          "implementation": "clean-room",
+          "label": "MANUAL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_rate",
+          "implementation": "clean-room",
+          "label": "STEP RATE",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 8.0,
+          "discrete": true,
+          "discreteValues": [
+            4.0,
+            8.0,
+            12.0,
+            -1.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_stage",
+          "implementation": "clean-room",
+          "label": "STAGE",
+          "maximum": 12.0,
+          "minimum": -1.0,
+          "smoothingMs": 40
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 8.0,
+          "discrete": true,
+          "discreteValues": [
+            4.0,
+            8.0,
+            12.0
+          ],
+          "id": "stages",
+          "label": "Stages",
+          "maximum": 12.0,
+          "minimum": 4.0,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": false,
+          "id": "rate_hz",
+          "label": "Rate",
+          "maximum": 10.0,
+          "minimum": 0.05000000074505806,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.6499999761581421,
+          "discrete": false,
+          "id": "depth",
+          "label": "Depth",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "feedback",
+          "label": "Feedback",
+          "maximum": 0.8999999761581421,
+          "minimum": -0.8999999761581421,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Wet",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "flanger",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_resonance",
+          "implementation": "clean-room",
+          "label": "RESONANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_manual",
+          "implementation": "clean-room",
+          "label": "MANUAL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_rate",
+          "implementation": "clean-room",
+          "label": "STEP RATE",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_separation",
+          "implementation": "clean-room",
+          "label": "SEPARATION",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 3.0,
+          "discrete": false,
+          "id": "delay_ms",
+          "label": "Delay time",
+          "maximum": 10.0,
+          "minimum": 0.20000000298023224,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.30000001192092896,
+          "discrete": false,
+          "id": "rate_hz",
+          "label": "Rate",
+          "maximum": 20.0,
+          "minimum": 0.05000000074505806,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.6000000238418579,
+          "discrete": false,
+          "id": "depth",
+          "label": "Depth",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": false,
+          "id": "feedback",
+          "label": "Feedback",
+          "maximum": 0.949999988079071,
+          "minimum": -0.949999988079071,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Effect mix",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "dynamics",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_type",
+          "implementation": "clean-room",
+          "label": "TYPE (software fallback)",
+          "maximum": 18.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_dynamics",
+          "implementation": "clean-room",
+          "label": "DYNAMICS",
+          "maximum": 20.0,
+          "minimum": -20.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": -18.0,
+          "discrete": false,
+          "id": "threshold_db",
+          "label": "Threshold",
+          "maximum": 0.0,
+          "minimum": -60.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 4.0,
+          "discrete": false,
+          "id": "ratio",
+          "label": "Compression ratio",
+          "maximum": 20.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 6.0,
+          "discrete": false,
+          "id": "knee_db",
+          "label": "Soft knee",
+          "maximum": 24.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 10.0,
+          "discrete": false,
+          "id": "attack_ms",
+          "label": "Attack",
+          "maximum": 100.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "release_ms",
+          "label": "Release",
+          "maximum": 1000.0,
+          "minimum": 5.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "output_gain_db",
+          "label": "Output level",
+          "maximum": 12.0,
+          "minimum": -24.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0
+          ],
+          "id": "detector",
+          "label": "Detector",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "dist",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_type",
+          "implementation": "clean-room",
+          "label": "TYPE",
+          "maximum": 5.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_tone",
+          "implementation": "clean-room",
+          "label": "TONE",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_dist",
+          "implementation": "clean-room",
+          "label": "DIST",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 12.0,
+          "discrete": false,
+          "id": "drive_db",
+          "label": "Drive",
+          "maximum": 36.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "reverb",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 3.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 10.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 500.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_pre_delay",
+          "implementation": "clean-room",
+          "label": "PRE DELAY",
+          "maximum": 500.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 5.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_density",
+          "implementation": "clean-room",
+          "label": "DENSITY",
+          "maximum": 10.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 2.5,
+          "discrete": false,
+          "id": "decay_seconds",
+          "label": "Decay time",
+          "maximum": 20.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 8000.0,
+          "discrete": false,
+          "id": "damping_cutoff_hz",
+          "label": "Damping cutoff",
+          "maximum": 16000.0,
+          "minimum": 500.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Effect mix",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "gate_reverb",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 3.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 10.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 500.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_pre_delay",
+          "implementation": "clean-room",
+          "label": "PRE DELAY",
+          "maximum": 500.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_threshold",
+          "implementation": "clean-room",
+          "label": "THRESHOLD",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 2.5,
+          "discrete": false,
+          "id": "decay_seconds",
+          "label": "Reverb decay",
+          "maximum": 20.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 8000.0,
+          "discrete": false,
+          "id": "damping_cutoff_hz",
+          "label": "Damping cutoff",
+          "maximum": 20000.0,
+          "minimum": 500.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.3499999940395355,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Reverb level",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -24.0,
+          "discrete": false,
+          "id": "threshold_db",
+          "label": "Gate threshold",
+          "maximum": 0.0,
+          "minimum": -60.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 6.0,
+          "discrete": false,
+          "id": "hysteresis_db",
+          "label": "Gate hysteresis",
+          "maximum": 24.0,
+          "minimum": 0.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "hold_ms",
+          "label": "Gate hold",
+          "maximum": 2000.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 250.0,
+          "discrete": false,
+          "id": "release_ms",
+          "label": "Gate release",
+          "maximum": 2000.0,
+          "minimum": 10.0,
+          "smoothingMs": 15
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 48,
+      "track": true
+    },
+    {
+      "effectId": "beat_repeat",
+      "input": false,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_type",
+          "implementation": "clean-room",
+          "label": "TYPE",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_length",
+          "implementation": "clean-room",
+          "label": "LENGTH",
+          "maximum": -0.25,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "division",
+          "label": "Beat division",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 15.0,
+          "discrete": false,
+          "id": "decay",
+          "label": "Repeat decay",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "direction",
+          "label": "Direction",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "beat_scatter",
+      "input": false,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_length",
+          "implementation": "clean-room",
+          "label": "LENGTH",
+          "maximum": -0.125,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 40.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "slice_beats",
+          "label": "Slice size",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "scatter_percent",
+          "label": "Scatter amount",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pitch_semitones",
+          "label": "Pitch range",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 4.0,
+          "discrete": false,
+          "id": "repeats",
+          "label": "Repeat count",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 50,
+      "track": true
+    },
+    {
+      "effectId": "roll",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            1.0,
+            2.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_variant",
+          "implementation": "clean-room",
+          "label": "Algorithm variant (routing)",
+          "maximum": 2.0,
+          "minimum": 1.0,
+          "provenance": "routing",
+          "smoothingMs": 0
+        },
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 1000.0,
+          "minimum": -2.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": -1.0,
+              "maximum": 1000.0,
+              "minimum": 1.0,
+              "step": 1.0,
+              "values": [
+                -2.0,
+                -1.0,
+                -0.125
+              ]
+            },
+            "2": {
+              "documentedDefault": -1.0,
+              "maximum": 1000.0,
+              "minimum": 1.0,
+              "step": 1.0,
+              "values": [
+                -2.0,
+                -1.0,
+                -0.125
+              ]
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1
+          ],
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_feedback",
+          "implementation": "clean-room",
+          "label": "FEEDBACK (repeat count)",
+          "maximum": 100.0,
+          "minimum": 1.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 50.0,
+              "maximum": 100.0,
+              "minimum": 1.0,
+              "step": 1.0,
+              "values": []
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            2
+          ],
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_repeat",
+          "implementation": "clean-room",
+          "label": "REPEAT",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "2": {
+              "documentedDefault": 50.0,
+              "maximum": 100.0,
+              "minimum": 1.0,
+              "step": 1.0,
+              "values": [
+                -1000.0
+              ]
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_roll",
+          "implementation": "clean-room",
+          "label": "ROLL (software fallback)",
+          "maximum": 4.0,
+          "minimum": 0.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": null,
+              "maximum": 0.0,
+              "minimum": 0.0,
+              "step": 0.0,
+              "values": [
+                0.0,
+                1.0,
+                2.0,
+                3.0,
+                4.0
+              ]
+            },
+            "2": {
+              "documentedDefault": null,
+              "maximum": 0.0,
+              "minimum": 0.0,
+              "step": 0.0,
+              "values": [
+                0.0,
+                1.0,
+                2.0,
+                3.0,
+                4.0
+              ]
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 50.0,
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            },
+            "2": {
+              "documentedDefault": 50.0,
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            }
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 40.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "slice_beats",
+          "label": "Slice size",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 20.0,
+          "discrete": false,
+          "id": "decay_percent",
+          "label": "Repeat decay",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pitch_semitones",
+          "label": "Playback pitch",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "direction",
+          "label": "Direction",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 44,
+      "track": true
+    },
+    {
+      "effectId": "freeze",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_attack",
+          "implementation": "clean-room",
+          "label": "ATTACK",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_release",
+          "implementation": "clean-room",
+          "label": "RELEASE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_decay",
+          "implementation": "clean-room",
+          "label": "DECAY",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_sustain",
+          "implementation": "clean-room",
+          "label": "SUSTAIN",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 250.0,
+          "discrete": false,
+          "id": "capture_ms",
+          "label": "Capture length",
+          "maximum": 2000.0,
+          "minimum": 2.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0
+          ],
+          "id": "mode",
+          "label": "Mode",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pitch_semitones",
+          "label": "Playback pitch",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0
+          ],
+          "id": "freeze",
+          "label": "Freeze",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 45,
+      "track": true
+    },
+    {
+      "effectId": "warp",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_level",
+          "implementation": "clean-room",
+          "label": "LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo (BPM)",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "capture_beats",
+          "label": "Capture length (beats)",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "id": "smear_percent",
+          "label": "Grain smear",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pitch_semitones",
+          "label": "Pitch shift",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 20.0,
+          "discrete": false,
+          "id": "feedback_percent",
+          "label": "Regeneration",
+          "maximum": 95.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0
+          ],
+          "id": "freeze",
+          "label": "Capture hold",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 40.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 42,
+      "track": true
+    },
+    {
+      "effectId": "tape_echo",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            1.0,
+            2.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_variant",
+          "implementation": "clean-room",
+          "label": "Algorithm variant (routing)",
+          "maximum": 2.0,
+          "minimum": 1.0,
+          "provenance": "routing",
+          "smoothingMs": 0
+        },
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_repeat_rate",
+          "implementation": "clean-room",
+          "label": "REPEAT RATE",
+          "maximum": 2000.0,
+          "minimum": -2.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 50.0,
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            },
+            "2": {
+              "documentedDefault": 200.0,
+              "maximum": 2000.0,
+              "minimum": 1.0,
+              "step": 1.0,
+              "values": [
+                -2.0,
+                -1.0,
+                -0.125
+              ]
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_intensity",
+          "implementation": "clean-room",
+          "label": "INTENSITY",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 50.0,
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            },
+            "2": {
+              "documentedDefault": 50.0,
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 100.0,
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            },
+            "2": {
+              "documentedDefault": 100.0,
+              "maximum": 100.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1
+          ],
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_bass",
+          "implementation": "clean-room",
+          "label": "BASS",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 0.0,
+              "maximum": 50.0,
+              "minimum": -50.0,
+              "step": 1.0,
+              "values": []
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1
+          ],
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_treble",
+          "implementation": "clean-room",
+          "label": "TREBLE",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 0.0,
+              "maximum": 50.0,
+              "minimum": -50.0,
+              "step": 1.0,
+              "values": []
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            2
+          ],
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "2": {
+              "documentedDefault": -1000.0,
+              "maximum": 12500.0,
+              "minimum": 20.0,
+              "step": 0.10000000149011612,
+              "values": [
+                -1000.0
+              ]
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            2
+          ],
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20,
+          "variantDomains": {
+            "2": {
+              "documentedDefault": -1000.0,
+              "maximum": 12500.0,
+              "minimum": 20.0,
+              "step": 0.10000000149011612,
+              "values": [
+                -1000.0
+              ]
+            }
+          }
+        },
+        {
+          "applicableVariants": [
+            1,
+            2
+          ],
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 120.0,
+          "minimum": 0.0,
+          "smoothingMs": 10,
+          "variantDomains": {
+            "1": {
+              "documentedDefault": 50.0,
+              "maximum": 120.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            },
+            "2": {
+              "documentedDefault": 50.0,
+              "maximum": 120.0,
+              "minimum": 0.0,
+              "step": 1.0,
+              "values": []
+            }
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 350.0,
+          "discrete": false,
+          "id": "time_ms",
+          "label": "Head delay",
+          "maximum": 2000.0,
+          "minimum": 20.0,
+          "smoothingMs": 30
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "id": "feedback_percent",
+          "label": "Feedback",
+          "maximum": 95.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 15.0,
+          "discrete": false,
+          "id": "wow_flutter_percent",
+          "label": "Wow/flutter",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 25.0,
+          "discrete": false,
+          "id": "saturation_percent",
+          "label": "Tape saturation",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 6000.0,
+          "discrete": false,
+          "id": "tone_hz",
+          "label": "Tape loss cutoff",
+          "maximum": 16000.0,
+          "minimum": 500.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "reverse_delay",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 200.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 2000.0,
+          "minimum": -2.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 16.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_feedback",
+          "implementation": "clean-room",
+          "label": "FEEDBACK (repeat count)",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 120.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "segment_beats",
+          "label": "Segment length",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 20.0,
+          "discrete": false,
+          "id": "feedback_percent",
+          "label": "Feedback",
+          "maximum": 95.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 20.0,
+          "discrete": false,
+          "id": "crossfade_ms",
+          "label": "Crossfade",
+          "maximum": 100.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 38,
+      "track": true
+    },
+    {
+      "effectId": "reverse_reverb",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 3.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 10.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 500.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_pre_delay",
+          "implementation": "clean-room",
+          "label": "PRE DELAY",
+          "maximum": 500.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_gate_time",
+          "implementation": "clean-room",
+          "label": "GATE TIME",
+          "maximum": 1.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "segment_beats",
+          "label": "Reverse segment",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "feedback_percent",
+          "label": "Segment feedback",
+          "maximum": 80.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 20.0,
+          "discrete": false,
+          "id": "crossfade_ms",
+          "label": "Segment crossfade",
+          "maximum": 100.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 2.0,
+          "discrete": false,
+          "id": "decay_seconds",
+          "label": "Diffuse tail",
+          "maximum": 10.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 8000.0,
+          "discrete": false,
+          "id": "damping_cutoff_hz",
+          "label": "Tail damping",
+          "maximum": 16000.0,
+          "minimum": 500.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 49,
+      "track": true
+    },
+    {
+      "effectId": "fractional_delay",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 200.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 2000.0,
+          "minimum": -2.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 16.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_feedback",
+          "implementation": "clean-room",
+          "label": "FEEDBACK (repeat count)",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 120.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 350.0,
+          "discrete": false,
+          "id": "delay_ms",
+          "label": "Delay",
+          "maximum": 2000.0,
+          "minimum": 10.0,
+          "smoothingMs": 30
+        },
+        {
+          "defaultValue": 0.3499999940395355,
+          "discrete": false,
+          "id": "feedback",
+          "label": "Feedback",
+          "maximum": 0.949999988079071,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.30000001192092896,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Wet",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "mod_delay",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 200.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 2000.0,
+          "minimum": -2.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 16.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_feedback",
+          "implementation": "clean-room",
+          "label": "FEEDBACK (repeat count)",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 120.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_mod_depth",
+          "implementation": "clean-room",
+          "label": "MOD DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.30000001192092896,
+          "discrete": false,
+          "id": "rate_hz",
+          "label": "Rate",
+          "maximum": 10.0,
+          "minimum": 0.05000000074505806,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 10.0,
+          "discrete": false,
+          "id": "depth_ms",
+          "label": "Modulation depth",
+          "maximum": 50.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 500.0,
+          "discrete": false,
+          "id": "delay_ms",
+          "label": "Delay time",
+          "maximum": 2000.0,
+          "minimum": 10.0,
+          "smoothingMs": 30
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": false,
+          "id": "feedback",
+          "label": "Feedback",
+          "maximum": 0.949999988079071,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Effect mix",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 39,
+      "track": true
+    },
+    {
+      "effectId": "panning_delay",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 200.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 2000.0,
+          "minimum": -2.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 16.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_feedback",
+          "implementation": "clean-room",
+          "label": "FEEDBACK (repeat count)",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 120.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 500.0,
+          "discrete": false,
+          "id": "time_ms",
+          "label": "Delay time",
+          "maximum": 2000.0,
+          "minimum": 1.0,
+          "smoothingMs": 30
+        },
+        {
+          "defaultValue": 30.0,
+          "discrete": false,
+          "id": "feedback_percent",
+          "label": "Feedback",
+          "maximum": 95.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "pan_percent",
+          "label": "Repeat pan",
+          "maximum": 100.0,
+          "minimum": -100.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 25.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 37,
+      "track": true
+    },
+    {
+      "effectId": "twist",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_release",
+          "implementation": "clean-room",
+          "label": "RELEASE (software fallback)",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rise",
+          "implementation": "clean-room",
+          "label": "RISE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_fall",
+          "implementation": "clean-room",
+          "label": "FALL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_level",
+          "implementation": "clean-room",
+          "label": "LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "amount_percent",
+          "label": "Macro amount",
+          "maximum": 100.0,
+          "minimum": -100.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0
+          ],
+          "id": "trajectory",
+          "label": "Trajectory",
+          "maximum": 3.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 43,
+      "track": true
+    },
+    {
+      "effectId": "granular_delay",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_time",
+          "implementation": "clean-room",
+          "label": "TIME",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_feedback",
+          "implementation": "clean-room",
+          "label": "FEEDBACK (grain length)",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "grain_size_ms",
+          "label": "Grain size",
+          "maximum": 1000.0,
+          "minimum": 10.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 12.0,
+          "discrete": false,
+          "id": "density_hz",
+          "label": "Grain density",
+          "maximum": 80.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pitch_semitones",
+          "label": "Grain pitch",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 15.0,
+          "discrete": false,
+          "id": "position_jitter_percent",
+          "label": "Position jitter",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 15.0,
+          "discrete": false,
+          "id": "feedback_percent",
+          "label": "Feedback",
+          "maximum": 95.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 41,
+      "track": true
+    },
+    {
+      "effectId": "auto_pan",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_waveform",
+          "implementation": "clean-room",
+          "label": "WAVEFORM",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_init_phase",
+          "implementation": "clean-room",
+          "label": "INIT PHASE",
+          "maximum": 180.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_rate",
+          "implementation": "clean-room",
+          "label": "STEP RATE",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.5,
+          "discrete": false,
+          "id": "rate_hz",
+          "label": "Rate",
+          "maximum": 20.0,
+          "minimum": 0.05000000074505806,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.699999988079071,
+          "discrete": false,
+          "id": "depth",
+          "label": "Depth",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "waveform",
+          "label": "Waveform",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Wet",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "manual_pan",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_position",
+          "implementation": "clean-room",
+          "label": "POSITION",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "position",
+          "label": "Pan position",
+          "maximum": 100.0,
+          "minimum": -100.0,
+          "smoothingMs": 15
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 30,
+      "track": true
+    },
+    {
+      "effectId": "chorus",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -2.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.800000011920929,
+          "discrete": false,
+          "id": "rate_hz",
+          "label": "Rate",
+          "maximum": 8.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 5.0,
+          "discrete": false,
+          "id": "depth_ms",
+          "label": "Depth",
+          "maximum": 25.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "feedback",
+          "label": "Feedback",
+          "maximum": 0.949999988079071,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Wet",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "tremolo",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 85.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_waveform",
+          "implementation": "clean-room",
+          "label": "WAVEFORM",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 4.0,
+          "discrete": false,
+          "id": "rate_hz",
+          "label": "Rate",
+          "maximum": 20.0,
+          "minimum": 0.05000000074505806,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": false,
+          "id": "depth",
+          "label": "Depth",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "waveform",
+          "label": "Waveform",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Wet",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "ring_mod",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_frequency",
+          "implementation": "clean-room",
+          "label": "FREQUENCY",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 440.0,
+          "discrete": false,
+          "id": "carrier_hz",
+          "label": "Carrier",
+          "maximum": 8000.0,
+          "minimum": 20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0
+          ],
+          "id": "waveform",
+          "label": "Waveform",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "id": "depth",
+          "label": "Depth",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Wet",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "eq",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_lo",
+          "implementation": "clean-room",
+          "label": "LO",
+          "maximum": 20.0,
+          "minimum": -20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_lo_mid",
+          "implementation": "clean-room",
+          "label": "LO-MID",
+          "maximum": 20.0,
+          "minimum": -20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 800.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_lo_mid_freq",
+          "implementation": "clean-room",
+          "label": "LO-MID FREQ",
+          "maximum": 10000.0,
+          "minimum": 20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            0.5,
+            1.0,
+            2.0,
+            4.0,
+            8.0,
+            16.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_lo_mid_q",
+          "implementation": "clean-room",
+          "label": "LO-MID Q",
+          "maximum": 16.0,
+          "minimum": 0.5,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_hi_mid",
+          "implementation": "clean-room",
+          "label": "HI-MID",
+          "maximum": 20.0,
+          "minimum": -20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 3150.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_hi_mid_freq",
+          "implementation": "clean-room",
+          "label": "HI-MID FREQ",
+          "maximum": 10000.0,
+          "minimum": 20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            0.5,
+            1.0,
+            2.0,
+            4.0,
+            8.0,
+            16.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_hi_mid_q",
+          "implementation": "clean-room",
+          "label": "HI-MID Q",
+          "maximum": 16.0,
+          "minimum": 0.5,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high",
+          "implementation": "clean-room",
+          "label": "HIGH",
+          "maximum": 20.0,
+          "minimum": -20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_level",
+          "implementation": "clean-room",
+          "label": "LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "low_frequency_hz",
+          "label": "Low shelf frequency",
+          "maximum": 500.0,
+          "minimum": 20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "low_gain_db",
+          "label": "Low shelf gain",
+          "maximum": 15.0,
+          "minimum": -15.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 500.0,
+          "discrete": false,
+          "id": "mid1_frequency_hz",
+          "label": "Mid 1 frequency",
+          "maximum": 8000.0,
+          "minimum": 80.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "id": "mid1_q",
+          "label": "Mid 1 Q",
+          "maximum": 12.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "mid1_gain_db",
+          "label": "Mid 1 gain",
+          "maximum": 15.0,
+          "minimum": -15.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 2500.0,
+          "discrete": false,
+          "id": "mid2_frequency_hz",
+          "label": "Mid 2 frequency",
+          "maximum": 12000.0,
+          "minimum": 80.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "id": "mid2_q",
+          "label": "Mid 2 Q",
+          "maximum": 12.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "mid2_gain_db",
+          "label": "Mid 2 gain",
+          "maximum": 15.0,
+          "minimum": -15.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 8000.0,
+          "discrete": false,
+          "id": "high_frequency_hz",
+          "label": "High shelf frequency",
+          "maximum": 20000.0,
+          "minimum": 1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "high_gain_db",
+          "label": "High shelf gain",
+          "maximum": 15.0,
+          "minimum": -15.0,
+          "smoothingMs": 20
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "isolator",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_band",
+          "implementation": "clean-room",
+          "label": "BAND",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_band_level",
+          "implementation": "clean-room",
+          "label": "BAND LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_rate",
+          "implementation": "clean-room",
+          "label": "STEP RATE",
+          "maximum": 100.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_waveform",
+          "implementation": "clean-room",
+          "label": "WAVEFORM",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 250.0,
+          "discrete": false,
+          "id": "low_crossover_hz",
+          "label": "Low crossover",
+          "maximum": 8000.0,
+          "minimum": 40.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 4000.0,
+          "discrete": false,
+          "id": "high_crossover_hz",
+          "label": "High crossover",
+          "maximum": 18000.0,
+          "minimum": 100.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "low_gain_db",
+          "label": "Low band level",
+          "maximum": 12.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "mid_gain_db",
+          "label": "Mid band level",
+          "maximum": 12.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "high_gain_db",
+          "label": "High band level",
+          "maximum": 12.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0
+          ],
+          "id": "gate_enabled",
+          "label": "Rhythmic gate",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "gate_bpm",
+          "label": "Gate tempo",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "gate_division_beats",
+          "label": "Gate period",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "gate_duty_percent",
+          "label": "Gate open time",
+          "maximum": 95.0,
+          "minimum": 5.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "id": "gate_attack_ms",
+          "label": "Gate attack",
+          "maximum": 50.0,
+          "minimum": 0.10000000149011612,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 25.0,
+          "discrete": false,
+          "id": "gate_release_ms",
+          "label": "Gate release",
+          "maximum": 250.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 27,
+      "track": true
+    },
+    {
+      "effectId": "stereo_enhance",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_cut",
+          "implementation": "clean-room",
+          "label": "LOW CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -1000.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_high_cut",
+          "implementation": "clean-room",
+          "label": "HIGH CUT",
+          "maximum": 12500.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_enhance",
+          "implementation": "clean-room",
+          "label": "ENHANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "width",
+          "label": "Stereo width",
+          "maximum": 200.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "low_mono_cutoff_hz",
+          "label": "Low mono cutoff",
+          "maximum": 1000.0,
+          "minimum": 20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 25.0,
+          "discrete": false,
+          "id": "decorrelation",
+          "label": "Decorrelation",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "wet_mix",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "lo_fi",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 8.0,
+          "discrete": true,
+          "discreteValues": [
+            -1000.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            16.0,
+            17.0,
+            18.0,
+            19.0,
+            20.0,
+            21.0,
+            22.0,
+            23.0,
+            24.0,
+            25.0,
+            26.0,
+            27.0,
+            28.0,
+            29.0,
+            30.0,
+            31.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_bitdepth",
+          "implementation": "clean-room",
+          "label": "BITDEPTH",
+          "maximum": 31.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 4.0,
+          "discrete": true,
+          "discreteValues": [
+            -1000.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            16.0,
+            17.0,
+            18.0,
+            19.0,
+            20.0,
+            21.0,
+            22.0,
+            23.0,
+            24.0,
+            25.0,
+            26.0,
+            27.0,
+            28.0,
+            29.0,
+            30.0,
+            31.0,
+            32.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_samplerate",
+          "implementation": "clean-room",
+          "label": "SAMPLERATE",
+          "maximum": 32.0,
+          "minimum": -1000.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 12.0,
+          "discrete": false,
+          "id": "bit_depth",
+          "label": "Bit depth",
+          "maximum": 24.0,
+          "minimum": 4.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 12000.0,
+          "discrete": false,
+          "id": "sample_rate_hz",
+          "label": "Sample rate",
+          "maximum": 48000.0,
+          "minimum": 500.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 12000.0,
+          "discrete": false,
+          "id": "filter_hz",
+          "label": "Post-filter cutoff",
+          "maximum": 20000.0,
+          "minimum": 20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": -1,
+      "track": true
+    },
+    {
+      "effectId": "radio",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 5.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_lo_fi",
+          "implementation": "clean-room",
+          "label": "LO-FI",
+          "maximum": 10.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_level",
+          "implementation": "clean-room",
+          "label": "LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "band",
+          "label": "Radio band",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "id": "drive",
+          "label": "Saturation drive",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 8.0,
+          "discrete": false,
+          "id": "noise",
+          "label": "Noise/dropout",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 8,
+      "track": true
+    },
+    {
+      "effectId": "sustainer",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_attack",
+          "implementation": "clean-room",
+          "label": "ATTACK",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_release",
+          "implementation": "clean-room",
+          "label": "RELEASE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_level",
+          "implementation": "clean-room",
+          "label": "LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_low_gain",
+          "implementation": "clean-room",
+          "label": "LOW GAIN",
+          "maximum": 20.0,
+          "minimum": -20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_hi_gain",
+          "implementation": "clean-room",
+          "label": "HI GAIN",
+          "maximum": 20.0,
+          "minimum": -20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_sustain",
+          "implementation": "clean-room",
+          "label": "SUSTAIN",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": -24.0,
+          "discrete": false,
+          "id": "threshold_db",
+          "label": "Threshold",
+          "maximum": 0.0,
+          "minimum": -60.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 4.0,
+          "discrete": false,
+          "id": "ratio",
+          "label": "Compression ratio",
+          "maximum": 20.0,
+          "minimum": 1.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 180.0,
+          "discrete": false,
+          "id": "release_ms",
+          "label": "Release",
+          "maximum": 1000.0,
+          "minimum": 10.0,
+          "smoothingMs": 15
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "output_db",
+          "label": "Output level",
+          "maximum": 12.0,
+          "minimum": -24.0,
+          "smoothingMs": 15
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 11,
+      "track": true
+    },
+    {
+      "effectId": "vibrato",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_color",
+          "implementation": "clean-room",
+          "label": "COLOR",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 5.0,
+          "discrete": false,
+          "id": "rate_hz",
+          "label": "Rate",
+          "maximum": 20.0,
+          "minimum": 0.05000000074505806,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "id": "depth",
+          "label": "Depth",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 2.0,
+          "discrete": false,
+          "id": "delay_ms",
+          "label": "Base delay",
+          "maximum": 10.0,
+          "minimum": 0.20000000298023224,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 33,
+      "track": true
+    },
+    {
+      "effectId": "slow_gear",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_sens",
+          "implementation": "clean-room",
+          "label": "SENS",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rise_time",
+          "implementation": "clean-room",
+          "label": "RISE TIME",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_level",
+          "implementation": "clean-room",
+          "label": "LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 250.0,
+          "discrete": false,
+          "id": "attack_ms",
+          "label": "Attack time",
+          "maximum": 2000.0,
+          "minimum": 5.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "sensitivity_percent",
+          "label": "Onset sensitivity",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 13,
+      "track": true
+    },
+    {
+      "effectId": "pattern_slicer",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_duty",
+          "implementation": "clean-room",
+          "label": "DUTY",
+          "maximum": 99.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_attack",
+          "implementation": "clean-room",
+          "label": "ATTACK",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -30.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_comp_threshold",
+          "implementation": "clean-room",
+          "label": "COMP THRESHOLD",
+          "maximum": 0.0,
+          "minimum": -30.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 2.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_comp_gain",
+          "implementation": "clean-room",
+          "label": "COMP GAIN",
+          "maximum": 20.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0
+          ],
+          "id": "pattern",
+          "label": "Pattern",
+          "maximum": 7.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "rate",
+          "label": "Step rate",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "depth",
+          "label": "Gate depth",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 2.0,
+          "discrete": false,
+          "id": "edge_ms",
+          "label": "Edge smoothing",
+          "maximum": 20.0,
+          "minimum": 0.5,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 20
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 34,
+      "track": true
+    },
+    {
+      "effectId": "step_slicer",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_rate",
+          "implementation": "clean-room",
+          "label": "RATE",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 16.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_max",
+          "implementation": "clean-room",
+          "label": "STEP MAX",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_length",
+          "implementation": "clean-room",
+          "label": "STEP LENGTH",
+          "maximum": 100.0,
+          "minimum": 1.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_depth",
+          "implementation": "clean-room",
+          "label": "DEPTH",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": -30.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_comp_threshold",
+          "implementation": "clean-room",
+          "label": "COMP THRESHOLD",
+          "maximum": 0.0,
+          "minimum": -30.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 6.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_comp_gain",
+          "implementation": "clean-room",
+          "label": "COMP GAIN",
+          "maximum": 20.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_1",
+          "implementation": "clean-room",
+          "label": "STEP 1 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_2",
+          "implementation": "clean-room",
+          "label": "STEP 2 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_3",
+          "implementation": "clean-room",
+          "label": "STEP 3 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_4",
+          "implementation": "clean-room",
+          "label": "STEP 4 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_5",
+          "implementation": "clean-room",
+          "label": "STEP 5 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_6",
+          "implementation": "clean-room",
+          "label": "STEP 6 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_7",
+          "implementation": "clean-room",
+          "label": "STEP 7 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_8",
+          "implementation": "clean-room",
+          "label": "STEP 8 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_9",
+          "implementation": "clean-room",
+          "label": "STEP 9 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_10",
+          "implementation": "clean-room",
+          "label": "STEP 10 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_11",
+          "implementation": "clean-room",
+          "label": "STEP 11 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_12",
+          "implementation": "clean-room",
+          "label": "STEP 12 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_13",
+          "implementation": "clean-room",
+          "label": "STEP 13 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_14",
+          "implementation": "clean-room",
+          "label": "STEP 14 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_15",
+          "implementation": "clean-room",
+          "label": "STEP 15 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_step_level_16",
+          "implementation": "clean-room",
+          "label": "STEP 16 LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 16.0,
+          "discrete": true,
+          "discreteValues": [
+            4.0,
+            8.0,
+            16.0
+          ],
+          "id": "step_count",
+          "label": "Active steps",
+          "maximum": 16.0,
+          "minimum": 4.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.25,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "rate_beats",
+          "label": "Step rate",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "depth_percent",
+          "label": "Gate depth",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pan_depth_percent",
+          "label": "Pan depth",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 20000.0,
+          "discrete": false,
+          "id": "filter_hz",
+          "label": "Low-pass cutoff",
+          "maximum": 20000.0,
+          "minimum": 20.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_01",
+          "label": "Step 1 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_02",
+          "label": "Step 2 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_03",
+          "label": "Step 3 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_04",
+          "label": "Step 4 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_05",
+          "label": "Step 5 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_06",
+          "label": "Step 6 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_07",
+          "label": "Step 7 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_08",
+          "label": "Step 8 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_09",
+          "label": "Step 9 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_10",
+          "label": "Step 10 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_11",
+          "label": "Step 11 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_12",
+          "label": "Step 12 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_13",
+          "label": "Step 13 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_14",
+          "label": "Step 14 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_15",
+          "label": "Step 15 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "step_16",
+          "label": "Step 16 amplitude",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 35,
+      "track": true
+    },
+    {
+      "effectId": "vinyl_flick",
+      "input": false,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_flick",
+          "implementation": "clean-room",
+          "label": "FLICK",
+          "limitation": "Source-aware finalized forward loop playback in shared Track FX A only; recording, overdubbing and LIVE pitch/reverse processing are not supported. Bare streaming DSP rejects these controls.",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "semanticSupport": "partial_source_modes",
+          "smoothingMs": 0
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": -100.0,
+          "discrete": false,
+          "id": "speed_percent",
+          "label": "Platter speed",
+          "maximum": 100.0,
+          "minimum": -100.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.5,
+          "discrete": false,
+          "id": "motor_return_seconds",
+          "label": "Motor return",
+          "maximum": 10.0,
+          "minimum": 0.05000000074505806,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "id": "brake_percent",
+          "label": "Brake",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": false,
+      "sourceIndex": 53,
+      "track": true
+    },
+    {
+      "effectId": "preamp",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 3.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_amp_type",
+          "implementation": "clean-room",
+          "label": "AMP TYPE",
+          "maximum": 8.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_spk_type",
+          "implementation": "clean-room",
+          "label": "SPK TYPE",
+          "maximum": 8.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_gain",
+          "implementation": "clean-room",
+          "label": "GAIN",
+          "maximum": 120.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_t_comp",
+          "implementation": "clean-room",
+          "label": "T-COMP",
+          "maximum": 10.0,
+          "minimum": -10.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_bass",
+          "implementation": "clean-room",
+          "label": "BASS",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_middle",
+          "implementation": "clean-room",
+          "label": "MIDDLE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_treble",
+          "implementation": "clean-room",
+          "label": "TREBLE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_presence",
+          "implementation": "clean-room",
+          "label": "PRESENCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_mic_type",
+          "implementation": "clean-room",
+          "label": "MIC TYPE",
+          "maximum": 4.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_mic_dis",
+          "implementation": "clean-room",
+          "label": "MIC DIS",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_mic_pos",
+          "implementation": "clean-room",
+          "label": "MIC POS",
+          "maximum": 10.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_e_level",
+          "implementation": "clean-room",
+          "label": "E.LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0
+          ],
+          "id": "model",
+          "label": "Preamp model",
+          "maximum": 4.0,
+          "minimum": 0.0,
+          "smoothingMs": 40
+        },
+        {
+          "defaultValue": 35.0,
+          "discrete": false,
+          "id": "gain",
+          "label": "Preamp gain",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "bass",
+          "label": "Bass",
+          "maximum": 12.0,
+          "minimum": -12.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "middle",
+          "label": "Middle",
+          "maximum": 12.0,
+          "minimum": -12.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "treble",
+          "label": "Treble",
+          "maximum": 12.0,
+          "minimum": -12.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "level",
+          "label": "Output level",
+          "maximum": 12.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 23,
+      "track": true
+    },
+    {
+      "effectId": "synth",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_frequency",
+          "implementation": "clean-room",
+          "label": "FREQUENCY",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_resonance",
+          "implementation": "clean-room",
+          "label": "RESONANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_decay",
+          "implementation": "clean-room",
+          "label": "DECAY",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 60.0,
+          "discrete": false,
+          "id": "sensitivity",
+          "label": "Tracking sensitivity",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "waveform",
+          "label": "Oscillator waveform",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "octave",
+          "label": "Oscillator semitones",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 4000.0,
+          "discrete": false,
+          "id": "tone",
+          "label": "Tone cutoff",
+          "maximum": 16000.0,
+          "minimum": 100.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "mix",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 6,
+      "track": true
+    },
+    {
+      "effectId": "g2b",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 65.0,
+          "discrete": false,
+          "id": "tracking_percent",
+          "label": "Tracking",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 65.0,
+          "discrete": false,
+          "id": "blend_percent",
+          "label": "Blend",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 180.0,
+          "discrete": false,
+          "id": "body_hz",
+          "label": "Body cutoff",
+          "maximum": 1200.0,
+          "minimum": 60.0,
+          "smoothingMs": 20
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 10,
+      "track": true
+    },
+    {
+      "effectId": "transpose",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_trans",
+          "implementation": "clean-room",
+          "label": "TRANS",
+          "maximum": 12.0,
+          "minimum": -12.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "shift_semitones",
+          "label": "Pitch shift",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 14,
+      "track": true
+    },
+    {
+      "effectId": "pitch_bend",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 4.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_pitch",
+          "implementation": "clean-room",
+          "label": "PITCH",
+          "maximum": 4.0,
+          "minimum": -3.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_bend",
+          "implementation": "clean-room",
+          "label": "BEND",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 12.0,
+          "discrete": false,
+          "id": "range",
+          "label": "Pitch range",
+          "maximum": 24.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 500.0,
+          "discrete": false,
+          "id": "time_ms",
+          "label": "Sweep time",
+          "maximum": 4000.0,
+          "minimum": 20.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0
+          ],
+          "id": "direction",
+          "label": "Direction",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 15,
+      "track": true
+    },
+    {
+      "effectId": "hrm_manual",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 6.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_voice",
+          "implementation": "clean-room",
+          "label": "VOICE",
+          "maximum": 10.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_formant",
+          "implementation": "clean-room",
+          "label": "FORMANT",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_pan",
+          "implementation": "clean-room",
+          "label": "PAN",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_key",
+          "implementation": "clean-room",
+          "label": "KEY",
+          "maximum": 11.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 80.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_hrm_level",
+          "implementation": "clean-room",
+          "label": "HRM LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 7.0,
+          "discrete": false,
+          "id": "voice_1_interval",
+          "label": "Voice 1 interval",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 12.0,
+          "discrete": false,
+          "id": "voice_2_interval",
+          "label": "Voice 2 interval",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pan_percent",
+          "label": "Harmony pan",
+          "maximum": 100.0,
+          "minimum": -100.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Harmony level",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 18,
+      "track": true
+    },
+    {
+      "effectId": "octave",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_octave",
+          "implementation": "clean-room",
+          "label": "OCTAVE",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_oct_level",
+          "implementation": "clean-room",
+          "label": "OCT LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "minus_24_level",
+          "label": "-24 semitone level",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 40.0,
+          "discrete": false,
+          "id": "minus_12_level",
+          "label": "-12 semitone level",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "plus_12_level",
+          "label": "+12 semitone level",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 28,
+      "track": true
+    },
+    {
+      "effectId": "vocoder",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 6.0,
+          "discrete": true,
+          "discreteValues": [
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0
+          ],
+          "hardwareEquivalent": false,
+          "id": "official_carrier",
+          "implementation": "clean-room",
+          "label": "CARRIER",
+          "limitation": "TRACK1-5 only, finalized Playing pre-FX/pre-LIVE-pitch source, same-block read-only tap. Empty/stopped/recording/overdub/pitch-conflicted/pinned sources are silent. Physical MIC/INST sources and CARRIER THRU are unsupported.",
+          "maximum": 10.0,
+          "minimum": 6.0,
+          "semanticSupport": "partial_source_modes",
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_tone",
+          "implementation": "clean-room",
+          "label": "TONE",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_attack",
+          "implementation": "clean-room",
+          "label": "ATTACK",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_mod_sens",
+          "implementation": "clean-room",
+          "label": "MOD SENS",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 16.0,
+          "discrete": true,
+          "discreteValues": [
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            16.0,
+            17.0,
+            18.0,
+            19.0,
+            20.0,
+            21.0,
+            22.0,
+            23.0,
+            24.0
+          ],
+          "id": "bands",
+          "label": "Filterbank bands",
+          "maximum": 24.0,
+          "minimum": 8.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "carrier",
+          "label": "Carrier",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 20,
+      "track": true
+    },
+    {
+      "effectId": "osc_voc_m",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_tone",
+          "implementation": "clean-room",
+          "label": "TONE",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_attack",
+          "implementation": "clean-room",
+          "label": "ATTACK",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_mod_sens",
+          "implementation": "clean-room",
+          "label": "MOD SENS",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_carrier",
+          "implementation": "clean-room",
+          "label": "CARRIER",
+          "maximum": 4.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 2.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_octave",
+          "implementation": "clean-room",
+          "label": "OCTAVE",
+          "maximum": 3.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_release",
+          "implementation": "clean-room",
+          "label": "RELEASE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "waveform",
+          "label": "Carrier waveform",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            16.0
+          ],
+          "id": "midi-channel",
+          "label": "MIDI channel",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "octave",
+          "label": "Carrier transpose",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 21,
+      "track": true
+    },
+    {
+      "effectId": "osc_bot",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_tone",
+          "implementation": "clean-room",
+          "label": "TONE",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_attack",
+          "implementation": "clean-room",
+          "label": "ATTACK",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_mod_sens",
+          "implementation": "clean-room",
+          "label": "MOD SENS",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_osc",
+          "implementation": "clean-room",
+          "label": "OSC",
+          "maximum": 4.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 36.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_note",
+          "implementation": "clean-room",
+          "label": "NOTE",
+          "maximum": 127.0,
+          "minimum": 24.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 16.0,
+          "discrete": true,
+          "discreteValues": [
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            16.0,
+            17.0,
+            18.0,
+            19.0,
+            20.0,
+            21.0,
+            22.0,
+            23.0,
+            24.0
+          ],
+          "id": "bands",
+          "label": "Filterbank bands",
+          "maximum": 24.0,
+          "minimum": 8.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0
+          ],
+          "id": "waveform",
+          "label": "Carrier waveform",
+          "maximum": 2.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0
+          ],
+          "id": "pattern",
+          "label": "Pattern",
+          "maximum": 7.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 3000.0,
+          "discrete": false,
+          "id": "tone",
+          "label": "Tone cutoff (Hz)",
+          "maximum": 16000.0,
+          "minimum": 100.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "tempo",
+          "label": "Tempo (BPM)",
+          "maximum": 300.0,
+          "minimum": 30.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 22,
+      "track": true
+    },
+    {
+      "effectId": "auto_riff",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_tempo",
+          "implementation": "clean-room",
+          "label": "TEMPO",
+          "maximum": 100.0,
+          "minimum": -16.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_hold",
+          "implementation": "clean-room",
+          "label": "HOLD",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_attack",
+          "implementation": "clean-room",
+          "label": "ATTACK",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_loop",
+          "implementation": "clean-room",
+          "label": "LOOP",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_key",
+          "implementation": "clean-room",
+          "label": "KEY",
+          "maximum": 11.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_balance",
+          "implementation": "clean-room",
+          "label": "BALANCE",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 120.0,
+          "discrete": false,
+          "id": "bpm",
+          "label": "Tempo",
+          "maximum": 300.0,
+          "minimum": 20.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0
+          ],
+          "id": "scale",
+          "label": "Scale",
+          "maximum": 4.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.5,
+          "discrete": true,
+          "discreteValues": [
+            0.25,
+            0.5,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "id": "rate_beats",
+          "label": "Step rate",
+          "maximum": 4.0,
+          "minimum": 0.25,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 55.0,
+          "discrete": false,
+          "id": "sensitivity_percent",
+          "label": "Onset sensitivity",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 65.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 12,
+      "track": true
+    },
+    {
+      "effectId": "hrm_auto_m",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 4.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_voice",
+          "implementation": "clean-room",
+          "label": "VOICE",
+          "maximum": 6.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_formant",
+          "implementation": "clean-room",
+          "label": "FORMANT",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_pan",
+          "implementation": "clean-room",
+          "label": "PAN",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_hrm_mode",
+          "implementation": "clean-room",
+          "label": "HRM MODE",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_key",
+          "implementation": "clean-room",
+          "label": "KEY",
+          "maximum": 11.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_d_level",
+          "implementation": "clean-room",
+          "label": "D LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 80.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_hrm_level",
+          "implementation": "clean-room",
+          "label": "HRM LEVEL",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0,
+            11.0
+          ],
+          "id": "key",
+          "label": "Key",
+          "maximum": 11.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0,
+            4.0
+          ],
+          "id": "scale",
+          "label": "Scale",
+          "maximum": 4.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 1.0,
+          "discrete": true,
+          "discreteValues": [
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            16.0
+          ],
+          "id": "midi-channel",
+          "label": "MIDI channel",
+          "maximum": 16.0,
+          "minimum": 1.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 19,
+      "track": true
+    },
+    {
+      "effectId": "robot",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_note",
+          "implementation": "clean-room",
+          "label": "NOTE",
+          "maximum": 11.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_formant",
+          "implementation": "clean-room",
+          "label": "FORMANT",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "pitch_semitones",
+          "label": "Target pitch",
+          "maximum": 24.0,
+          "minimum": -24.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "id": "formant_semitones",
+          "label": "Formant shift",
+          "maximum": 12.0,
+          "minimum": -12.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 100.0,
+          "discrete": false,
+          "id": "mix_percent",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 16,
+      "track": true
+    },
+    {
+      "effectId": "electric",
+      "input": true,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_shift",
+          "implementation": "clean-room",
+          "label": "SHIFT",
+          "maximum": 12.0,
+          "minimum": -12.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_formant",
+          "implementation": "clean-room",
+          "label": "FORMANT",
+          "maximum": 50.0,
+          "minimum": -50.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 5.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_speed",
+          "implementation": "clean-room",
+          "label": "SPEED",
+          "maximum": 10.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_stability",
+          "implementation": "clean-room",
+          "label": "STABILITY",
+          "maximum": 10.0,
+          "minimum": -10.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_scale",
+          "implementation": "clean-room",
+          "label": "SCALE",
+          "maximum": 12.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        }
+      ],
+      "parameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": true,
+          "discreteValues": [
+            0.0,
+            1.0,
+            2.0,
+            3.0
+          ],
+          "id": "character",
+          "label": "Character",
+          "maximum": 3.0,
+          "minimum": 0.0,
+          "smoothingMs": 0
+        },
+        {
+          "defaultValue": 50.0,
+          "discrete": false,
+          "id": "pitch-snap",
+          "label": "Pitch snap",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 5000.0,
+          "discrete": false,
+          "id": "tone",
+          "label": "Tone cutoff",
+          "maximum": 16000.0,
+          "minimum": 100.0,
+          "smoothingMs": 20
+        },
+        {
+          "defaultValue": 70.0,
+          "discrete": false,
+          "id": "mix",
+          "label": "Effect mix",
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "smoothingMs": 10
+        }
+      ],
+      "perTrackInsert": true,
+      "sourceIndex": 17,
+      "track": true
+    },
+    {
+      "effectId": "beat_shift",
+      "input": false,
+      "legacyParameterAliases": [],
+      "officialParameters": [
+        {
+          "defaultValue": 0.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_type",
+          "implementation": "clean-room",
+          "label": "TYPE",
+          "limitation": "Source-aware finalized forward loop playback in shared Track FX A only; recording, overdubbing and LIVE pitch/reverse processing are not supported. Bare streaming DSP rejects these controls.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "semanticSupport": "partial_source_modes",
+          "smoothingMs": 5
+        },
+        {
+          "defaultValue": -1.0,
+          "discrete": false,
+          "hardwareEquivalent": false,
+          "id": "official_shift",
+          "implementation": "clean-room",
+          "label": "SHIFT",
+          "limitation": "Source-aware finalized forward loop playback in shared Track FX A only; recording, overdubbing and LIVE pitch/reverse processing are not supported. Bare streaming DSP rejects these controls.",
+          "maximum": -0.25,
+          "minimum": -1000.0,
+          "semanticSupport": "partial_source_modes",
+          "smoothingMs": 5
+        }
+      ],
+      "parameters": [],
+      "perTrackInsert": false,
+      "sourceIndex": 52,
+      "track": true
+    }
+  ]
+}

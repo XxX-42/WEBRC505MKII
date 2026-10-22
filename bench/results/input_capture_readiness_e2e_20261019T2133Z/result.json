@@ -1,0 +1,10 @@
+{
+  "run": "strict RubberBand-enabled Playwright E2E",
+  "browser": "Google Chrome for Testing headless shell 154.0.8037.57",
+  "host": "Native no-audio simulation executable enabled",
+  "result": "PASS",
+  "tests": { "passed": 99, "failed": 0 },
+  "duration": "4.5 minutes",
+  "scope": "software/browser acceptance only; no physical audio hardware tested",
+  "log": "full-e2e.log"
+}

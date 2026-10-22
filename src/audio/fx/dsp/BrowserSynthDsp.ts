@@ -282,6 +282,10 @@ export class BrowserSynthDsp {
   private subOscillatorPhase = 0;
   private triangleState = 0;
   private controlsCountdown = 0;
+  private officialResonanceQ = FILTER_RESONANCE_Q;
+  private officialDecayAlpha: number | null = null;
+  private officialFilterEnvelope = 0;
+  private officialOnsetCooldown = 0;
 
   constructor(sampleRate: number, parameters: BrowserSynthParameters = {}) {
     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8_000 ? sampleRate : 48_000;
@@ -399,6 +403,13 @@ export class BrowserSynthDsp {
     }
   }
 
+  /** Official frequency/resonance/decay extend the filter, not the legacy oscillator controls. */
+  setOfficialParameters(parameters: { frequencyHz?: number; resonanceQ?: number; decayMs?: number }): void {
+    if (Number.isFinite(parameters.frequencyHz)) this.toneHz.setTarget(clamp(parameters.frequencyHz as number, 20, this.sampleRate * 0.45), Math.round(this.sampleRate * PARAMETER_RAMP_SECONDS));
+    if (Number.isFinite(parameters.resonanceQ)) this.officialResonanceQ = clamp(parameters.resonanceQ as number, 0.5, 20);
+    if (Number.isFinite(parameters.decayMs)) this.officialDecayAlpha = onePoleAlpha(clamp(parameters.decayMs as number, 10, 2000) / 1000, this.sampleRate);
+  }
+
   /** Advances one stereo frame; the processor has no block-size-dependent state. */
   processSample(inputLeft: number, inputRight: number): void {
     const left = Number.isFinite(inputLeft)
@@ -408,6 +419,14 @@ export class BrowserSynthDsp {
       ? clamp(inputRight, -MAX_INPUT_MAGNITUDE, MAX_INPUT_MAGNITUDE)
       : 0;
     const peak = Math.max(Math.abs(left), Math.abs(right));
+    if (this.officialDecayAlpha !== null) {
+      if (this.officialOnsetCooldown > 0) this.officialOnsetCooldown -= 1;
+      if (peak > Math.max(0.005, this.inputEnvelopeValue * 1.8) && this.officialOnsetCooldown === 0) {
+        this.officialFilterEnvelope = 1;
+        this.officialOnsetCooldown = Math.round(this.sampleRate * 0.04);
+      }
+      this.officialFilterEnvelope *= this.officialDecayAlpha;
+    }
     const envelopeAlpha = peak > this.inputEnvelopeValue
       ? this.envelopeAttackAlpha
       : this.envelopeReleaseAlpha;
@@ -457,7 +476,7 @@ export class BrowserSynthDsp {
           this.sampleRate * 0.45,
         );
       }
-      this.filter.setParameters(Math.min(tone, this.sampleRate * 0.45), FILTER_RESONANCE_Q);
+      this.filter.setParameters(Math.min(tone * (this.officialDecayAlpha === null ? 1 : 2 ** (2 * this.officialFilterEnvelope)), this.sampleRate * 0.45), this.officialResonanceQ);
       this.controlsCountdown = FILTER_CONTROL_INTERVAL - 1;
     } else {
       this.controlsCountdown -= 1;
@@ -514,6 +533,8 @@ export class BrowserSynthDsp {
     this.decimatorCount = 0;
     this.decimatorFiltered = 0;
     this.inputEnvelopeValue = 0;
+    this.officialFilterEnvelope = 0;
+    this.officialOnsetCooldown = 0;
     this.trackingBlend = 0;
     this.targetFrequencyHz = 0;
     this.oscillatorFrequencyHz = 0;

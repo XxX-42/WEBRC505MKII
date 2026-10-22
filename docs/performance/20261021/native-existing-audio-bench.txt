@@ -1,0 +1,1 @@
+Native looper/rhythm/FDN16/delay/chorus/compressor chain: 1.28e+06 frames in 751924 us (1.7023e+06 frames/s), sink=56.0888

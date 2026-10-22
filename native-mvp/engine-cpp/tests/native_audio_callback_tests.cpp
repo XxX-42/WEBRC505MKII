@@ -16,6 +16,7 @@
 namespace {
 bool trackAllocations = false;
 std::size_t trackedAllocations = 0;
+std::size_t trackedDeallocations = 0;
 }
 
 void* operator new(std::size_t size) {
@@ -38,10 +39,22 @@ void* operator new[](std::size_t size) {
     throw std::bad_alloc();
 }
 
-void operator delete(void* memory) noexcept { std::free(memory); }
-void operator delete[](void* memory) noexcept { std::free(memory); }
-void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
-void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
+void operator delete(void* memory) noexcept {
+    if (trackAllocations && memory != nullptr) ++trackedDeallocations;
+    std::free(memory);
+}
+void operator delete[](void* memory) noexcept {
+    if (trackAllocations && memory != nullptr) ++trackedDeallocations;
+    std::free(memory);
+}
+void operator delete(void* memory, std::size_t) noexcept {
+    if (trackAllocations && memory != nullptr) ++trackedDeallocations;
+    std::free(memory);
+}
+void operator delete[](void* memory, std::size_t) noexcept {
+    if (trackAllocations && memory != nullptr) ++trackedDeallocations;
+    std::free(memory);
+}
 
 namespace webrc::native {
 
@@ -88,6 +101,16 @@ struct NativeAudioCoreTestAccess {
     static void commandTrack(NativeAudioCore& core, CommandType type, std::size_t trackIndex, bool value = false) {
         assert(trackIndex < kNativeTrackCount);
         assert(core.commandQueue_.push({type, value, static_cast<std::uint8_t>(trackIndex)}));
+    }
+
+    static void changeProjectRevisionForTest(NativeAudioCore& core, std::size_t trackIndex) {
+        assert(trackIndex < kNativeTrackCount);
+        core.trackContentRevision_[trackIndex].fetch_add(1U, std::memory_order_release);
+        core.projectContentRevision_.fetch_add(1U, std::memory_order_release);
+    }
+
+    static void setProjectRevisionForTest(NativeAudioCore& core, std::uint64_t revision) {
+        core.projectContentRevision_.store(revision, std::memory_order_release);
     }
 
     static void recordLoop(
@@ -192,6 +215,54 @@ struct NativeAudioCoreTestAccess {
 
     static bool loopSnapshotRequested(const NativeAudioCore& core) {
         return core.loopSnapshotRequested_.load(std::memory_order_acquire);
+    }
+
+    static void setHistoryRetainedBytesForBudgetTest(NativeAudioCore& core, std::uint64_t bytes) {
+        core.historyRetainedBytes_.store(bytes, std::memory_order_release);
+    }
+
+    static std::uint64_t requestHistoryPinForTest(NativeAudioCore& core, std::size_t trackIndex) {
+        const auto generation = core.historyPinNextGeneration_.fetch_add(1U, std::memory_order_acq_rel) + 1U;
+        core.historyPinTrackIndex_.store(trackIndex, std::memory_order_relaxed);
+        core.historyPinCancelledGeneration_.store(0U, std::memory_order_relaxed);
+        core.historyPinRequestGeneration_.store(generation, std::memory_order_release);
+        return generation;
+    }
+
+    static void releaseHistoryPinForTest(NativeAudioCore& core, std::uint64_t generation) {
+        core.historyPinReleaseGeneration_.store(generation, std::memory_order_relaxed);
+        core.historyPinRequestGeneration_.store(0U, std::memory_order_release);
+    }
+
+    static std::uint64_t historyPinAcknowledged(const NativeAudioCore& core) {
+        return core.historyPinAcknowledgedGeneration_.load(std::memory_order_acquire);
+    }
+
+    static std::uint64_t historyPinReleased(const NativeAudioCore& core) {
+        return core.historyPinReleasedGeneration_.load(std::memory_order_acquire);
+    }
+
+    static std::uint64_t historyPinRequest(const NativeAudioCore& core) {
+        return core.historyPinRequestGeneration_.load(std::memory_order_acquire);
+    }
+
+    static std::uint64_t historyPinNextGeneration(const NativeAudioCore& core) {
+        return core.historyPinNextGeneration_.load(std::memory_order_acquire);
+    }
+
+    static std::size_t historyPinAcknowledgedTrack(const NativeAudioCore& core) {
+        return core.historyPinAcknowledgedTrackIndex_.load(std::memory_order_acquire);
+    }
+
+    static void cancelPinAndInjectLateAckForTest(NativeAudioCore& core, std::uint64_t generation) {
+        core.historyPinCancelledGeneration_.store(generation, std::memory_order_release);
+        core.historyPinRequestGeneration_.store(0U, std::memory_order_release);
+        core.historyPinAcknowledgedGeneration_.store(generation, std::memory_order_release);
+    }
+
+    static std::size_t commandQueueSize(const NativeAudioCore& core) { return core.commandQueue_.size(); }
+    static std::size_t loopTransportQueueSize(const NativeAudioCore& core) {
+        return core.nativeLoopTransportCommandQueue_.size();
     }
 };
 
@@ -575,7 +646,7 @@ void testNativeCatalogSlotsRunInsidePlaybackCallback() {
     std::string error;
     const std::map<std::string, float> lowPassParameters{
         {"cutoff_hz", 300.0f},
-        {"q", 0.70710678f},
+        {"resonance_percent", 15.0f},
     };
     assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf", lowPassParameters, false, error));
     assert(core.setNativeCatalogSlot(NativeEffectSlot::B, "filter.bpf", {}, true, error));
@@ -607,7 +678,8 @@ void testNativeCatalogSlotsRunInsidePlaybackCallback() {
     NativeAudioCoreTestAccess::command(core, CommandType::StopRecordOrPlayback);
     NativeAudioCoreTestAccess::command(core, CommandType::Play);
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
-    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf", {{"cutoff_hz", 600.0f}}, false, error));
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf",
+        {{"cutoff_hz", 600.0f}, {"q", 0.8f}}, false, error));
     assert(!core.setNativeCatalogSlot(NativeEffectSlot::A, "phaser", {}, false, error));
     assert(error.find("Stop Native audio") != std::string::npos);
 
@@ -627,7 +699,7 @@ void testNativeInputCatalogBankProcessesBeforeRecordAndMonitor() {
     std::string error;
     const std::map<std::string, float> parameters{
         {"cutoff_hz", 300.0f},
-        {"q", 0.70710678f},
+        {"resonance_percent", 15.0f},
     };
     assert(core.setNativeCatalogSlot(
         NativeEffectSlot::A,
@@ -1243,7 +1315,7 @@ void testNativeTwentySlotChainsMatchIndependentOrderedReferencesAt64Frames() {
         const std::array<std::string, 4U> ids{{"dist", "filter.lpf", "fractional_delay", "manual_pan"}};
         const std::array<std::map<std::string, float>, 4U> parameters{{
             {{"drive_db", 12.0f}, {"mix_percent", 20.0f}},
-            {{"cutoff_hz", 900.0f}, {"q", 0.70710678f}},
+            {{"cutoff_hz", 900.0f}, {"resonance_percent", 15.0f}},
             {{"delay_ms", 10.0f + static_cast<float>(track)}, {"feedback", 0.2f}, {"wet_mix", 0.4f}},
             {{"position", -70.0f + 35.0f * static_cast<float>(track)}}
         }};
@@ -1313,10 +1385,488 @@ void testNativeTwentySlotChainsMatchIndependentOrderedReferencesAt64Frames() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
+class CallbackPump {
+public:
+    explicit CallbackPump(NativeAudioCore& core) : core_(core), worker_([this] {
+        std::array<float, 128U> output{};
+        while (running_.load(std::memory_order_acquire)) {
+            (void)NativeAudioCoreTestAccess::callback(core_, nullptr, output.data(), 64U);
+            std::this_thread::yield();
+        }
+    }) {}
+    ~CallbackPump() {
+        running_.store(false, std::memory_order_release);
+        if (worker_.joinable()) worker_.join();
+    }
+    CallbackPump(const CallbackPump&) = delete;
+    CallbackPump& operator=(const CallbackPump&) = delete;
+private:
+    NativeAudioCore& core_;
+    std::atomic<bool> running_{true};
+    std::thread worker_;
+};
+
+void testNativePerTrackPcmHistoryAndPinnedRestore() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::array<float, 8U> input{{0.1f, -0.1f, 0.2f, -0.2f, 0.3f, -0.3f, 0.4f, -0.4f}};
+    std::array<float, 128U> output{};
+    std::string error;
+
+    assert(core.recordTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 4U) == 0);
+    assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    auto status = core.getStatus();
+    assert(status.nativeTrackHistory[0U].canUndo && !status.nativeTrackHistory[0U].canRedo);
+    assert(status.nativeTrackHistory[1U].canUndo == false);
+
+    {
+        CallbackPump pump(core);
+        assert(core.undoTrack(0U, error));
+        status = core.getStatus();
+        assert(status.nativeTrackStates[0U] == LooperState::Empty);
+        assert(!status.nativeTrackHistory[0U].canUndo && status.nativeTrackHistory[0U].canRedo);
+        assert(core.redoTrack(0U, error));
+    }
+    std::array<float, 8U> exact{};
+    std::size_t frames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, exact.data(), 4U, frames));
+    assert(frames == 4U && exact == input);
+
+    // Clear uses metadata-only history; its bytes stay untouched for undo.
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    assert(core.getStatus().nativeTrackHistory[0U].canUndo);
+    {
+        CallbackPump pump(core);
+        assert(core.undoTrack(0U, error));
+        assert(core.getStatus().nativeTrackStates[0U] == LooperState::Stopped);
+        assert(core.redoTrack(0U, error));
+    }
+    assert(core.getStatus().nativeTrackStates[0U] == LooperState::Empty);
+
+    for (std::size_t trackIndex = 2U; trackIndex < kNativeTrackCount; ++trackIndex) {
+        assert(core.recordTrack(trackIndex, error));
+        assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 4U) == 0);
+        assert(core.stopTrack(trackIndex, error));
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    }
+
+    // One track's restore never changes another track's history or PCM.
+    assert(core.recordTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 4U) == 0);
+    assert(core.stopTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    {
+        CallbackPump pump(core);
+        assert(core.undoTrack(1U, error));
+        assert(core.getStatus().nativeTrackStates[1U] == LooperState::Empty);
+        assert(core.redoTrack(1U, error));
+    }
+    status = core.getStatus();
+    assert(status.nativeTrackStates[1U] == LooperState::Stopped);
+    assert(status.nativeTrackStates[0U] == LooperState::Empty);
+    for (std::size_t trackIndex = 2U; trackIndex < kNativeTrackCount; ++trackIndex) {
+        assert(status.nativeTrackHistory[trackIndex].canUndo);
+        assert(status.nativeTrackStates[trackIndex] == LooperState::Stopped);
+    }
+
+    // A fresh record after undo replaces (and invalidates) redo history.
+    {
+        CallbackPump pump(core);
+        assert(core.undoTrack(1U, error));
+    }
+    assert(core.recordTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 4U) == 0);
+    assert(core.stopTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    status = core.getStatus();
+    assert(status.nativeTrackHistory[1U].canUndo && !status.nativeTrackHistory[1U].canRedo);
+    std::array<float, 8U> originalOverdub{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 1U, originalOverdub.data(), 4U, frames));
+
+    // Overdub must snapshot before entering destructive write mode, and undo
+    // and redo exchange exact interleaved PCM while the callback is pinned.
+    assert(core.playTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    {
+        CallbackPump pump(core);
+        assert(core.toggleTrackOverdub(1U, error));
+        bool enteredOverdub = false;
+        for (unsigned int wait = 0U; wait < 200U; ++wait) {
+            if (core.getStatus().nativeTrackStates[1U] == LooperState::Overdubbing) { enteredOverdub = true; break; }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        assert(enteredOverdub);
+    }
+    assert(core.getStatus().nativeTrackStates[1U] == LooperState::Overdubbing);
+    std::array<float, 8U> overdubInput{{0.05f, 0.02f, 0.05f, 0.02f, 0.05f, 0.02f, 0.05f, 0.02f}};
+    assert(NativeAudioCoreTestAccess::callback(core, overdubInput.data(), output.data(), 4U) == 0);
+    assert(core.stopTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    std::array<float, 8U> afterOverdub{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 1U, afterOverdub.data(), 4U, frames));
+    assert(afterOverdub != input);
+    assert(core.getStatus().nativeTrackHistory[1U].canUndo);
+    {
+        CallbackPump pump(core);
+        assert(core.undoTrack(1U, error));
+        std::array<float, 8U> undoneOverdub{};
+        assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 1U, undoneOverdub.data(), 4U, frames));
+        assert(undoneOverdub == originalOverdub);
+        assert(core.redoTrack(1U, error));
+    }
+    std::array<float, 8U> redoneOverdub{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 1U, redoneOverdub.data(), 4U, frames));
+    assert(redoneOverdub == afterOverdub);
+    assert(core.getStatus().nativeHistoryRetainedBytes == 4U * 2U * sizeof(float));
+    assert(core.clearTrack(1U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    auto clearedStatus = core.getStatus();
+    assert(clearedStatus.nativeTrackHistory[1U].canUndo);
+    assert(clearedStatus.nativeHistoryRetainedBytes == 0U);
+    {
+        CallbackPump pump(core);
+        assert(core.undoTrack(1U, error));
+        std::array<float, 8U> restoredAfterClear{};
+        assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 1U, restoredAfterClear.data(), 4U, frames));
+        assert(restoredAfterClear == afterOverdub);
+        assert(core.redoTrack(1U, error));
+    }
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testNativeHistoryBudgetRefusalAndGenerationAck() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::array<float, 64U> output{};
+    std::array<float, 8U> input{{0.1f, -0.1f, 0.2f, -0.2f, 0.3f, -0.3f, 0.4f, -0.4f}};
+    std::string error;
+    assert(core.recordTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 4U) == 0);
+    assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    assert(core.playTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    NativeAudioCoreTestAccess::setHistoryRetainedBytesForBudgetTest(core, kNativeHistoryBudgetBytes);
+    {
+        CallbackPump pump(core);
+        assert(!core.toggleTrackOverdub(0U, error));
+    }
+    assert(error.find("512 MiB") != std::string::npos);
+    assert(core.getStatus().nativeTrackStates[0U] == LooperState::Playing);
+    assert(core.getStatus().nativeTrackHistory[0U].unavailableReason == NativeHistoryFailure::BudgetExceeded);
+    NativeAudioCoreTestAccess::setHistoryRetainedBytesForBudgetTest(core, 0U);
+
+    // A timed-out generation's late ACK must never satisfy a later pin.
+    const auto stale = NativeAudioCoreTestAccess::requestHistoryPinForTest(core, 0U);
+    NativeAudioCoreTestAccess::cancelPinAndInjectLateAckForTest(core, stale);
+    const auto current = NativeAudioCoreTestAccess::requestHistoryPinForTest(core, 1U);
+    const auto allocationsBefore = trackedAllocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == allocationsBefore);
+    assert(NativeAudioCoreTestAccess::historyPinAcknowledged(core) == current);
+    assert(NativeAudioCoreTestAccess::historyPinAcknowledgedTrack(core) == 1U);
+    NativeAudioCoreTestAccess::releaseHistoryPinForTest(core, current);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    assert(NativeAudioCoreTestAccess::historyPinReleased(core) == current);
+
+    // Native transport commands share the pinned callback boundary. They must
+    // remain queued while history restoration owns the target LooperCore.
+    const auto transportPin = NativeAudioCoreTestAccess::requestHistoryPinForTest(core, 1U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    assert(NativeAudioCoreTestAccess::historyPinAcknowledged(core) == transportPin);
+    LoopTransportConfig transport;
+    transport.mode = LoopTransportMode::BeatShift;
+    transport.beatOffsetBeats = 0.25f;
+    transport.crossfadeMs = 1.0f;
+    assert(core.setNativeLoopTransport(1U, transport, error));
+    assert(NativeAudioCoreTestAccess::loopTransportQueueSize(core) == 1U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    assert(NativeAudioCoreTestAccess::loopTransportQueueSize(core) == 1U);
+    NativeAudioCoreTestAccess::releaseHistoryPinForTest(core, transportPin);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+    assert(NativeAudioCoreTestAccess::historyPinReleased(core) == transportPin);
+    assert(NativeAudioCoreTestAccess::loopTransportQueueSize(core) == 0U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testNativeHistoryRestoreSerializesRapidCommandProducer() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::array<float, 8U> input{{0.1f, -0.1f, 0.2f, -0.2f, 0.3f, -0.3f, 0.4f, -0.4f}};
+    std::array<float, 128U> output{};
+    std::string error;
+    assert(core.recordTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 4U) == 0);
+    assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 4U) == 0);
+
+    std::atomic<bool> attempted{false};
+    std::atomic<bool> accepted{false};
+    std::thread producer([&] {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+        while (NativeAudioCoreTestAccess::historyPinNextGeneration(core) == 0U &&
+               std::chrono::steady_clock::now() < deadline) std::this_thread::yield();
+        attempted.store(true, std::memory_order_release);
+        std::string producerError;
+        accepted.store(core.recordTrack(0U, producerError), std::memory_order_release);
+    });
+    {
+        CallbackPump pump(core);
+        assert(core.undoTrack(0U, error));
+        auto status = core.getStatus();
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+        while (std::chrono::steady_clock::now() < deadline &&
+               (!accepted.load(std::memory_order_acquire) || status.nativeTrackStates[0U] != LooperState::Recording)) {
+            std::this_thread::yield();
+            status = core.getStatus();
+        }
+        assert(attempted.load(std::memory_order_acquire));
+        assert(accepted.load(std::memory_order_acquire));
+        assert(status.nativeTrackStates[0U] == LooperState::Recording);
+        assert(!status.nativeTrackHistory[0U].canRedo);
+    }
+    producer.join();
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testNativeTrackCommandQueueSerializesConcurrentProducers() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    constexpr std::size_t kThreads = 6U;
+    constexpr std::size_t kAttemptsPerThread = 40U;
+    std::array<std::size_t, kThreads> accepted{};
+    std::array<std::thread, kThreads> workers;
+    for (std::size_t thread = 0U; thread < kThreads; ++thread) {
+        workers[thread] = std::thread([&, thread] {
+            std::string error;
+            for (std::size_t attempt = 0U; attempt < kAttemptsPerThread; ++attempt) {
+                if (core.recordTrack(thread % kNativeTrackCount, error)) ++accepted[thread];
+            }
+        });
+    }
+    for (auto& worker : workers) worker.join();
+    std::size_t totalAccepted = 0U;
+    for (const auto count : accepted) totalAccepted += count;
+    assert(totalAccepted == NativeAudioCoreTestAccess::commandQueueSize(core));
+    assert(totalAccepted <= 63U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    std::string error;
+    NativeReverbConfig reverb;
+    reverb.enabled = true;
+    reverb.wetMix = 0.27f;
+    reverb.rt60Seconds = 1.8f;
+    reverb.dampingCutoffHz = 6200.0f;
+    assert(core.setNativeReverbConfig(reverb, error));
+
+    constexpr unsigned int blockFrames = 64U;
+    std::vector<float> output(512U * 2U, 0.0f);
+    std::vector<float> oldTake(blockFrames * 2U);
+    for (std::size_t frame = 0U; frame < blockFrames; ++frame) {
+        oldTake[frame * 2U] = 0.2f;
+        oldTake[(frame * 2U) + 1U] = -0.2f;
+    }
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    const auto recordStereo = [&](std::size_t trackIndex, const std::vector<float>& samples, unsigned int frames) {
+        NativeAudioCoreTestAccess::commandTrack(core, CommandType::Record, trackIndex);
+        assert(NativeAudioCoreTestAccess::callback(core, samples.data(), output.data(), frames) == 0);
+        NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, trackIndex);
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+    };
+    recordStereo(0U, oldTake, blockFrames);
+    recordStereo(1U, oldTake, blockFrames);
+    const auto before = core.getStatus();
+    assert(before.nativeTrackHistory[0U].canUndo);
+    assert(before.nativeTrackHistory[1U].canUndo);
+    assert(before.nativeReverbEnabled);
+    assert(std::fabs(before.nativeReverbWetMix - reverb.wetMix) < 1.0e-6f);
+
+    const auto makeArchive = [] {
+        DecodedProjectArchive archive;
+        archive.version = 1U;
+        archive.name = "Native import fixture";
+        archive.bpm = 120.0;
+        ProjectArchiveTrackData stereo;
+        stereo.sampleRate = 48000U;
+        stereo.frameCount = 4U;
+        stereo.channels = 2U;
+        stereo.pcm = {0.9f, -0.9f, 0.7f, -0.7f, 0.5f, -0.5f, 0.3f, -0.3f};
+        archive.payloadByteLength += stereo.pcm.size() * sizeof(float);
+        archive.tracks[0U] = std::move(stereo);
+        ProjectArchiveTrackData mono;
+        mono.sampleRate = 48000U;
+        mono.frameCount = 2U;
+        mono.channels = 1U;
+        mono.pcm = {0.15f, -0.35f};
+        archive.payloadByteLength += mono.pcm.size() * sizeof(float);
+        archive.tracks[2U] = std::move(mono);
+        return archive;
+    };
+
+    auto wrongRate = makeArchive();
+    wrongRate.tracks[0U]->sampleRate = 44100U;
+    std::uint64_t generation = 0U;
+    assert(!core.beginProjectArchiveImport(std::move(wrongRate), 256U, before.projectContentRevision, generation, error));
+    assert(generation == 0U && error.find("running sample rate") != std::string::npos);
+    std::array<float, blockFrames * 2U> preserved{};
+    std::size_t copiedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, preserved.data(), blockFrames, copiedFrames));
+    assert(copiedFrames == blockFrames && std::equal(preserved.begin(), preserved.end(), oldTake.begin()));
+    const auto afterRejected = core.getStatus();
+    assert(afterRejected.nativeTrackHistory[0U].canUndo && afterRejected.nativeTrackHistory[1U].canUndo);
+    assert(afterRejected.nativeReverbEnabled && afterRejected.nativeReverbWetMix == before.nativeReverbWetMix);
+
+    // Reproduce a project load that began before a new recording. The host
+    // project epoch must reject the stale archive before staging any candidate.
+    const auto operationStartRevision = core.getStatus().projectContentRevision;
+    recordStereo(2U, oldTake, blockFrames);
+    const auto afterConcurrentRecording = core.getStatus();
+    assert(afterConcurrentRecording.projectContentRevision > operationStartRevision);
+    assert(afterConcurrentRecording.nativeTrackHistory[2U].canUndo);
+    auto stale = makeArchive();
+    assert(!core.beginProjectArchiveImport(std::move(stale), 256U, operationStartRevision, generation, error));
+    assert(generation == 0U && error.find("changed while the archive was being read") != std::string::npos);
+    std::array<float, blockFrames * 2U> concurrentTake{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 2U, concurrentTake.data(), blockFrames, copiedFrames));
+    assert(copiedFrames == blockFrames && std::equal(concurrentTake.begin(), concurrentTake.end(), oldTake.begin()));
+    const auto afterStaleImport = core.getStatus();
+    assert(afterStaleImport.nativeTrackHistory[0U].canUndo && afterStaleImport.nativeTrackHistory[1U].canUndo &&
+        afterStaleImport.nativeTrackHistory[2U].canUndo);
+
+    // Playback state is also overwritten by archive commit. A user Play or
+    // Stop accepted after load start must invalidate that stale operation,
+    // while natural playhead movement itself does not change the project epoch.
+    const auto beforeConcurrentPlayRevision = afterStaleImport.projectContentRevision;
+    assert(core.playTrack(2U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    const auto afterConcurrentPlay = core.getStatus();
+    assert(afterConcurrentPlay.nativeTrackStates[2U] == LooperState::Playing);
+    assert(afterConcurrentPlay.projectContentRevision > beforeConcurrentPlayRevision);
+    const auto afterNaturalPlaybackRevision = core.getStatus().projectContentRevision;
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    assert(core.getStatus().projectContentRevision == afterNaturalPlaybackRevision);
+    auto stalePlayback = makeArchive();
+    assert(!core.beginProjectArchiveImport(std::move(stalePlayback), 256U,
+        beforeConcurrentPlayRevision, generation, error));
+    assert(generation == 0U && error.find("changed while the archive was being read") != std::string::npos);
+    assert(core.stopTrack(2U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    const auto afterConcurrentStop = core.getStatus();
+    assert(afterConcurrentStop.nativeTrackStates[2U] == LooperState::Stopped);
+    assert(afterConcurrentStop.projectContentRevision > afterNaturalPlaybackRevision);
+
+    auto valid = makeArchive();
+    assert(core.beginProjectArchiveImport(std::move(valid), 256U, afterConcurrentStop.projectContentRevision, generation, error));
+    assert(generation != 0U && core.getProjectArchiveImportStatus(generation).state == NativeProjectImportState::Pending);
+    assert(!core.recordTrack(4U, error));
+    assert(error.find("project import is pending") != std::string::npos);
+    const auto allocationsBeforeImportCallback = trackedAllocations;
+    const auto deallocationsBeforeImportCallback = trackedDeallocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == allocationsBeforeImportCallback);
+    assert(trackedDeallocations == deallocationsBeforeImportCallback);
+
+    NativeProjectImportStatus status = core.getProjectArchiveImportStatus(generation);
+    assert(status.found && status.state == NativeProjectImportState::Committed && status.error.empty());
+    std::array<float, 8U> imported{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, imported.data(), 4U, copiedFrames));
+    assert(copiedFrames == 4U);
+    assert((imported == std::array<float, 8U>{{0.9f, -0.9f, 0.7f, -0.7f, 0.5f, -0.5f, 0.3f, -0.3f}}));
+    assert(!NativeAudioCoreTestAccess::copyStereoTrack(core, 1U, preserved.data(), blockFrames, copiedFrames));
+    std::array<float, 4U> duplicatedMono{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 2U, duplicatedMono.data(), 2U, copiedFrames));
+    assert(copiedFrames == 2U && (duplicatedMono == std::array<float, 4U>{{0.15f, 0.15f, -0.35f, -0.35f}}));
+    const auto afterImport = core.getStatus();
+    assert(!afterImport.nativeTrackHistory[0U].canUndo && !afterImport.nativeTrackHistory[1U].canUndo);
+    assert(afterImport.nativeReverbEnabled && afterImport.nativeReverbWetMix == before.nativeReverbWetMix);
+
+    // The callback repeats the expected-epoch comparison as a final guard
+    // against an edit that races after the control-thread candidate stage.
+    auto callbackStale = makeArchive();
+    std::uint64_t callbackStaleGeneration = 0U;
+    assert(core.beginProjectArchiveImport(std::move(callbackStale), 256U,
+        afterImport.projectContentRevision, callbackStaleGeneration, error));
+    NativeAudioCoreTestAccess::changeProjectRevisionForTest(core, 0U);
+    const auto deallocationsBeforeStaleCallback = trackedDeallocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    trackAllocations = false;
+    assert(trackedDeallocations == deallocationsBeforeStaleCallback);
+    const auto callbackStaleStatus = core.getProjectArchiveImportStatus(callbackStaleGeneration);
+    assert(callbackStaleStatus.state == NativeProjectImportState::Cancelled);
+    assert(callbackStaleStatus.error.find("callback boundary") != std::string::npos);
+    std::array<float, 8U> afterCallbackStale{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, afterCallbackStale.data(), 4U, copiedFrames));
+    assert(afterCallbackStale == imported);
+
+    // A second import cancelled before callback claim must preserve the
+    // successfully imported PCM and must never be freed by the audio thread.
+    auto cancelled = makeArchive();
+    cancelled.tracks[0U]->pcm[0U] = -0.88f;
+    std::uint64_t cancelledGeneration = 0U;
+    const auto afterCallbackStaleRevision = core.getStatus().projectContentRevision;
+    assert(core.beginProjectArchiveImport(std::move(cancelled), 256U, afterCallbackStaleRevision, cancelledGeneration, error));
+    NativeProjectImportStatus cancelStatus;
+    assert(core.cancelProjectArchiveImport(cancelledGeneration, cancelStatus, error));
+    assert(cancelStatus.state == NativeProjectImportState::Cancelled);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    std::array<float, 8U> afterCancel{};
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, afterCancel.data(), 4U, copiedFrames));
+    assert(afterCancel == imported);
+
+    // Imported short loops retain the full prepared primary capacity.
+    std::vector<float> longTake(512U * 2U);
+    for (std::size_t sample = 0U; sample < longTake.size(); ++sample) longTake[sample] = 0.01f * static_cast<float>(sample);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Clear, 0U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    recordStereo(0U, longTake, 512U);
+    std::vector<float> longSnapshot(longTake.size());
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, longSnapshot.data(), 512U, copiedFrames));
+    assert(copiedFrames == 512U && longSnapshot == longTake);
+
+    // JSON transports numbers exactly only through Number.MAX_SAFE_INTEGER.
+    // Saturate rather than wrap: no subsequent project import may reuse a
+    // revision and accidentally accept a stale baseline.
+    NativeAudioCoreTestAccess::setProjectRevisionForTest(
+        core, NativeAudioCore::kMaximumSafeProjectContentRevision - 1U);
+    assert(core.playTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    assert(core.getStatus().projectContentRevision == NativeAudioCore::kMaximumSafeProjectContentRevision);
+    assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), blockFrames) == 0);
+    assert(core.getStatus().projectContentRevision == NativeAudioCore::kMaximumSafeProjectContentRevision);
+    auto exhaustedRevision = makeArchive();
+    assert(!core.beginProjectArchiveImport(std::move(exhaustedRevision), 256U,
+        NativeAudioCore::kMaximumSafeProjectContentRevision, generation, error));
+    assert(generation == 0U && error.find("safe JSON integer limit") != std::string::npos);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
 int main() {
     testNativePerTrackCatalogControlsAndIndependentOutput();
     testEveryAdvertisedPerTrackCatalogTypeThroughNativeCoreAt64Frames();
     testNativePerTrackUnpreparedProcessorPublishesFault();
+    testNativePerTrackPcmHistoryAndPinnedRestore();
+    testNativeHistoryBudgetRefusalAndGenerationAck();
+    testNativeHistoryRestoreSerializesRapidCommandProducer();
+    testNativeTrackCommandQueueSerializesConcurrentProducers();
     testNativePerTrackFxLeavesRecordOverdubAndMonitoringCanonical();
     testNativeTwentySlotChainsMatchIndependentOrderedReferencesAt64Frames();
     testNativePitchTargetsOnlySelectedTrackAndFallsBackOnItsLoopLength();
@@ -1785,5 +2335,6 @@ int main() {
     assert(!finalStatus.nativePhaserEnabled);
     testNativeCatalogSlotsRunInsidePlaybackCallback();
     testNativeInputCatalogBankProcessesBeforeRecordAndMonitor();
+    testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread();
     return 0;
 }

@@ -1,0 +1,12 @@
+{
+  "runId": "native_fx_topology_smoke_20261019T1454Z",
+  "sourceCommit": "9c900304ddd4d206c920a05028b1b91c84651b91",
+  "harnessDiffSha256": "2bf78fe41d7fab5259b5de0c51e0ae17122b1c9d88b161bff9113dbf937286be",
+  "commands": [
+    "native_per_track_fx_bench --topology=baseline --warmup-callbacks=256 --measured-callbacks=256",
+    "native_per_track_fx_bench --topology=extended --warmup-callbacks=2000 --measured-callbacks=256",
+    "native_per_track_fx_bench --topology=all-banks --warmup-callbacks=2000 --measured-callbacks=256"
+  ],
+  "purpose": "bounded topology-route smoke, not a performance acceptance run",
+  "note": "Predates the final after-measure Input/shared processor-health fields; the final all-banks smoke is in native_fx_topology_all_banks_smoke_20261019T1503Z."
+}

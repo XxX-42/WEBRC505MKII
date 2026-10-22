@@ -46,6 +46,24 @@ test('Native browser bridge captures and exports a synthetic loop through the LC
     await recordButton.evaluate((button: HTMLElement) => button.click());
     await expect(strip.locator('.track-state')).toHaveText('STOP', { timeout: 10_000 });
 
+    const historyButton = page.locator('[data-panel-control="undo-redo"]');
+    await expect(historyButton).toBeEnabled();
+    await expect(historyButton).toHaveAttribute('aria-label', 'Undo last PCM edit on track 1');
+    await historyButton.click();
+    await expect(historyButton).toHaveAttribute('aria-label', 'Redo PCM edit on track 1');
+    await expect.poll(async () => {
+      const response = await fetch('http://127.0.0.1:17755/v1/status');
+      const status = await response.json() as { nativeTracks?: Array<{ trackId: number; state: string }> };
+      return status.nativeTracks?.find((track) => track.trackId === 1)?.state;
+    }).toBe('Empty');
+    await historyButton.click();
+    await expect(historyButton).toHaveAttribute('aria-label', 'Undo last PCM edit on track 1');
+    await expect.poll(async () => {
+      const response = await fetch('http://127.0.0.1:17755/v1/status');
+      const status = await response.json() as { nativeTracks?: Array<{ trackId: number; state: string }> };
+      return status.nativeTracks?.find((track) => track.trackId === 1)?.state;
+    }).toBe('Stopped');
+
     const metadata = await page.evaluate(async () => {
       const response = await fetch('http://127.0.0.1:17755/v1/export/track-metadata?trackId=1');
       if (!response.ok) throw new Error(`Native metadata endpoint returned HTTP ${response.status}`);

@@ -1,0 +1,9 @@
+{
+  "snapshots": {
+    "baseline.js": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "gate-cache-candidate.js": "a94ac0589bdf9496ae3f7d4c649e3657afba979bcf518cd8a46a86e7fa83f8f7",
+    "gate-cache-final.js": "a639965805e13daa6ee93d1d8ef2a5beaaa59b9c1c2ccf658707674683a6c0c8",
+    "lfo-candidate.js": "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab"
+  },
+  "scope": "Node VM exact production worklet only; timing uses gate-cache-candidate.js; final conditional constructor snapshot separately short parity tested. Real browser and hardware unverified."
+}

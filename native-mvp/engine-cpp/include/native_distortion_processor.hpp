@@ -20,6 +20,13 @@ struct NativeDistortionConfig {
     float driveDb = 12.0f;
     // Linear dry/wet blend, 0% = latency-aligned dry, 100% = saturated wet.
     float mixPercent = 100.0f;
+    // Independent official controls use six clean-room oversampled shapers.
+    // Type order: VOCAL, BOOST, OD, DS, METAL, FUZZ; not vendor emulation.
+    bool officialControls = false;
+    unsigned int type = 0U;
+    float tone = 0.0f;
+    float directLevel = 0.0f;
+    float effectLevel = 1.0f;
 };
 
 class NativeDistortionProcessor final {
@@ -46,8 +53,11 @@ private:
     static constexpr unsigned int kLatencyFrames = 2U * ((kFirTaps - 1U) / (2U * kOversampling));
 
     struct ChannelState {
-        std::array<float, kPolyphaseTaps> inputHistory{};
-        std::array<float, kFirTaps> reconstructionHistory{};
+        // Each history is duplicated so the FIR can walk backward across a
+        // ring wrap without a per-tap wrap branch. The write path stores the
+        // same sample at [write] and [write + historyLength].
+        std::array<float, 2U * kPolyphaseTaps> inputHistory{};
+        std::array<float, 2U * kFirTaps> reconstructionHistory{};
         std::array<float, kLatencyFrames> dryDelay{};
         unsigned int inputWrite = 0U;
         unsigned int reconstructionWrite = 0U;
@@ -59,6 +69,7 @@ private:
         float input,
         float driveGain,
         float makeupGain,
+        float type,
         float& delayedDry
     ) noexcept;
     [[nodiscard]] float interpolate(unsigned int channel, unsigned int phase) const noexcept;
@@ -74,6 +85,12 @@ private:
     dsp::ParameterSmoother driveGain_{3.9810717f};
     dsp::ParameterSmoother makeupGain_{1.0006971f};
     dsp::ParameterSmoother mix_{1.0f};
+    dsp::ParameterSmoother type_{0.0f};
+    dsp::ParameterSmoother tone_{0.0f};
+    dsp::ParameterSmoother directLevel_{0.0f};
+    dsp::ParameterSmoother effectLevel_{1.0f};
+    std::array<dsp::Biquad, 2U> toneFilters_{};
+    std::uint64_t processedFrames_ = 0U;
     unsigned int sampleRate_ = 0U;
 };
 

@@ -39,6 +39,11 @@ export interface BrowserHrmAutoParameters {
   mix?: number;
   /** Host may request one or two pitch-shifter voices. Defaults to two. */
   voices?: number;
+  /** Optional official control path; absence preserves legacy MIDI voicing. */
+  officialManualVoice?: number;
+  officialAutoVoice?: number;
+  /** 0 HYBRID: key + MIDI; 1 AUTO: MIDI pitch classes only. */
+  officialHrmMode?: number;
 }
 
 export type BrowserHrmAutoStateReason = 0 | 1 | 2;
@@ -56,6 +61,7 @@ const CONFIDENCE_THRESHOLD = 0.62;
 const INACTIVE_TARGET = -128;
 const STATE_TARGET_EPSILON = 0.25;
 const MAX_NOTE = 127;
+const MANUAL_VOICE_DEGREES = [-7, 7, -5, -4, -3, -2, 2, 3, 4, 5, 0] as const;
 const SCALE_INTERVALS: readonly (readonly number[])[] = [
   [0, 2, 4, 5, 7, 9, 11], // Major
   [0, 2, 3, 5, 7, 8, 10], // Natural minor
@@ -114,6 +120,9 @@ export class BrowserHrmAutoDsp {
   private midiChannelValue: number;
   private mixValue: number;
   private voicesValue: BrowserHrmAutoVoiceCount;
+  private officialManualVoice = -1;
+  private officialAutoVoice = -1;
+  private officialHrmMode = 1;
   private currentVoiceCount = 0;
   private currentTarget1 = INACTIVE_TARGET;
   private currentTarget2 = INACTIVE_TARGET;
@@ -153,6 +162,7 @@ export class BrowserHrmAutoDsp {
     this.midiChannelValue = this.clampChannel(options.midiChannel ?? 1);
     this.mixValue = this.clampMix(options.mix ?? 70);
     this.voicesValue = this.clampVoices(options.voices ?? 2);
+    this.setParameters(options);
   }
 
   get latencyFrames(): number {
@@ -209,6 +219,15 @@ export class BrowserHrmAutoDsp {
   /** Update control values. Changing channel clears held notes to avoid stuck voices. */
   setParameters(parameters: BrowserHrmAutoParameters): void {
     let changed = false;
+    for (const [name, maximum] of [['officialManualVoice', 10], ['officialAutoVoice', 6], ['officialHrmMode', 1]] as const) {
+      const value = parameters[name];
+      if (value === undefined) continue;
+      if (!Number.isInteger(value) || value < (name === 'officialHrmMode' ? 0 : -1) || value > maximum) {
+        throw new RangeError(`HRM ${name} is outside its admitted range.`);
+      }
+      changed ||= value !== this[name];
+      this[name] = value;
+    }
     if (Number.isFinite(parameters.key)) {
       const next = this.clampKey(parameters.key as number);
       changed ||= next !== this.keyValue;
@@ -442,7 +461,7 @@ export class BrowserHrmAutoDsp {
     }
     const previousHasPitch = this.hasPitch;
     this.hasPitch = true;
-    if (this.activeNoteCount > 0 && (previousHasPitch !== nextHasPitch || this.targetsNeedRefresh())) {
+    if ((this.activeNoteCount > 0 || this.officialManualVoice >= 0) && (previousHasPitch !== nextHasPitch || this.targetsNeedRefresh())) {
       this.recomputeTargets(frame, 0, -1, false, false);
     }
   }
@@ -454,7 +473,7 @@ export class BrowserHrmAutoDsp {
     this.pitchConfidence = 0;
     this.hasPitch = false;
     this.failedAnalyses = 0;
-    if (hadPitch && this.activeNoteCount > 0) this.recomputeTargets(frame, 0, -1, false, true);
+    if (hadPitch && (this.activeNoteCount > 0 || this.officialManualVoice >= 0)) this.recomputeTargets(frame, 0, -1, false, true);
   }
 
   private recomputeTargets(
@@ -471,7 +490,13 @@ export class BrowserHrmAutoDsp {
     this.currentTarget1 = INACTIVE_TARGET;
     this.currentTarget2 = INACTIVE_TARGET;
 
-    if (this.activeNoteCount > 0 && this.hasPitch) {
+    if (this.hasPitch && this.officialManualVoice >= 0) {
+      this.currentTarget1 = this.officialManualTarget();
+      this.currentVoiceCount = 1;
+    } else if (this.hasPitch && this.activeNoteCount > 0 && this.officialAutoVoice >= 0) {
+      this.currentTarget1 = this.officialAutoTarget();
+      this.currentVoiceCount = 1;
+    } else if (this.activeNoteCount > 0 && this.hasPitch) {
       let first = -1;
       let second = -1;
       for (let midi = 0; midi <= MAX_NOTE; midi += 1) {
@@ -504,7 +529,7 @@ export class BrowserHrmAutoDsp {
   }
 
   private targetsNeedRefresh(): boolean {
-    if (this.activeNoteCount === 0 || !this.hasPitch) return false;
+    if ((this.activeNoteCount === 0 && this.officialManualVoice < 0) || !this.hasPitch) return false;
     // Refresh only after a perceptible fraction of a semitone to bound output
     // traffic while still following typical vocal/instrument pitch movement.
     const previous = this.currentTarget1;
@@ -512,7 +537,52 @@ export class BrowserHrmAutoDsp {
     return Math.abs(candidate - previous) >= STATE_TARGET_EPSILON;
   }
 
+  /** One diatonic voice, with authored subtle UNISON detuning. */
+  private officialManualTarget(): number {
+    const voice = this.officialManualVoice;
+    if (voice === 0) return -12;
+    if (voice === 1) return 12;
+    if (voice === 10) return 0.08;
+    const degree = MANUAL_VOICE_DEGREES[voice]!;
+    const root = this.snapToScale(this.pitchEstimateMidi);
+    return Math.max(-24, Math.min(24, this.scaleDegreeAbove(root, degree) - this.pitchEstimateMidi));
+  }
+
+  /** Clean-room chord voicing: LOW/HIGH choose the nearest admitted chord tone
+   * in that direction; LOWER/HIGHER choose the next one. HYBRID additionally
+   * filters those tones through KEY, falling back to that key when disjoint.
+   * No Roland chord-recognition or voicing identity is claimed. */
+  private officialAutoTarget(): number {
+    const voice = this.officialAutoVoice;
+    if (voice === 0) return -12;
+    if (voice === 1) return 12;
+    if (voice === 6) return 0.08;
+    const source = this.pitchEstimateMidi;
+    const direction = voice === 2 || voice === 3 ? -1 : 1;
+    const ordinal = voice === 2 || voice === 5 ? 2 : 1;
+    let found = 0;
+    let target = Math.round(source);
+    for (let distance = 1; distance <= 24; distance += 1) {
+      const candidate = direction > 0 ? Math.floor(source) + distance : Math.ceil(source) - distance;
+      const pc = ((candidate % 12) + 12) % 12;
+      let chordTone = false;
+      for (let note = pc; note <= MAX_NOTE; note += 12) if (this.activeNoteCounts[note]! > 0) { chordTone = true; break; }
+      const relative = ((candidate - this.keyValue) % 12 + 12) % 12;
+      const inKey = SCALE_INTERVALS[this.scaleValue]!.includes(relative);
+      if (chordTone && (this.officialHrmMode === 1 || inKey)) {
+        target = candidate;
+        if (++found >= ordinal) return target - source;
+      }
+    }
+    if (this.officialHrmMode === 0) {
+      return this.scaleDegreeAbove(this.snapToScale(source), direction * (ordinal + 1)) - source;
+    }
+    return Math.max(-24, Math.min(24, target - source));
+  }
+
   private calculateTarget1(): number {
+    if (this.officialManualVoice >= 0) return this.officialManualTarget();
+    if (this.officialAutoVoice >= 0 && this.activeNoteCount > 0) return this.officialAutoTarget();
     let first = -1;
     let second = -1;
     for (let midi = 0; midi <= MAX_NOTE; midi += 1) {

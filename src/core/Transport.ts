@@ -3,16 +3,75 @@ import { TransportState } from './types';
 export class Transport {
     private static instance: Transport;
 
-    public bpm: number = 120;
-    public timeSignature: [number, number] = [4, 4]; // 4/4
-    public state: TransportState = TransportState.STOPPED;
+    private projectMutationRevisionValue = 0;
+    private bpmValue = 120;
+    private timeSignatureValue: readonly [number, number] = Object.freeze([4, 4]);
+    private stateValue: TransportState = TransportState.STOPPED;
+    private masterTrackIdValue: number | null = null;
+    private masterLoopLengthSamplesValue = 0;
+    private measureLengthValue = 0;
+
+    /** Monotonic epoch for values captured by project-load transactions. */
+    public get projectMutationRevision(): number { return this.projectMutationRevisionValue; }
+
+    private noteProjectMutation(): void {
+        // Once exhausted, callers can reject a new snapshot instead of risking
+        // an ABA match after the epoch stops being able to advance.
+        if (this.projectMutationRevisionValue < Number.MAX_SAFE_INTEGER) {
+            this.projectMutationRevisionValue += 1;
+        }
+    }
+
+    public get bpm(): number { return this.bpmValue; }
+    public set bpm(value: number) {
+        if (this.bpmValue === value) return;
+        this.bpmValue = value;
+        this.noteProjectMutation();
+    }
+
+    public get timeSignature(): readonly [number, number] { return this.timeSignatureValue; }
+    public set timeSignature(value: [number, number]) {
+        if (this.timeSignatureValue[0] === value[0] && this.timeSignatureValue[1] === value[1]) return;
+        this.timeSignatureValue = Object.freeze([value[0], value[1]]);
+        this.noteProjectMutation();
+        this.emit('time-signature-change');
+    }
+
+    public get quarterNotesPerMeasure(): number {
+        const value = this.timeSignatureValue[0] * 4 / this.timeSignatureValue[1];
+        return Number.isFinite(value) && value > 0 ? Math.max(0.125, Math.min(128, value)) : 4;
+    }
+
+    public get state(): TransportState { return this.stateValue; }
+    public set state(value: TransportState) {
+        if (this.stateValue === value) return;
+        this.stateValue = value;
+        this.noteProjectMutation();
+    }
 
     private listeners: Map<string, Function[]> = new Map();
     private clockInterval: number | null = null;
 
-    public masterTrackId: number | null = null;
-    public masterLoopLengthSamples: number = 0; // Loop length in samples
-    public measureLength: number = 0; // in seconds
+    public get masterTrackId(): number | null { return this.masterTrackIdValue; }
+    public set masterTrackId(value: number | null) {
+        if (this.masterTrackIdValue === value) return;
+        this.masterTrackIdValue = value;
+        this.noteProjectMutation();
+    }
+
+    public get masterLoopLengthSamples(): number { return this.masterLoopLengthSamplesValue; }
+    public set masterLoopLengthSamples(value: number) {
+        if (this.masterLoopLengthSamplesValue === value) return;
+        this.masterLoopLengthSamplesValue = value;
+        this.noteProjectMutation();
+    }
+
+    public get measureLength(): number { return this.measureLengthValue; }
+    public set measureLength(value: number) {
+        if (this.measureLengthValue === value) return;
+        this.measureLengthValue = value;
+        this.noteProjectMutation();
+    }
 
     private constructor() { }
 
@@ -103,9 +162,11 @@ export class Transport {
     }
 
     public getMeasureDuration(): number {
-        const beatsPerMeasure = this.timeSignature[0];
+        // BPM is quarter notes per minute, so e.g. 6/8 contains 3 quarter-note
+        // beats and 5/8 contains 2.5. This also keeps non-4/4 loop timing coherent.
+        const quarterNotesPerMeasure = this.timeSignature[0] * 4 / this.timeSignature[1];
         const secondsPerBeat = 60 / this.bpm;
-        return beatsPerMeasure * secondsPerBeat;
+        return quarterNotesPerMeasure * secondsPerBeat;
     }
 
     /**
@@ -141,7 +202,7 @@ export class Transport {
         const TARGET_MAX_BPM = 160;
         const IDEAL_BPM = 120; // Prefer BPM closest to this value
 
-        const beatsPerMeasure = this.timeSignature[0]; // 4 for 4/4 time
+        const quarterNotesPerMeasure = this.timeSignature[0] * 4 / this.timeSignature[1];
         let bestBpm = IDEAL_BPM;
         let bestMeasureCount = 4;
         let minDiff = Infinity;
@@ -154,7 +215,7 @@ export class Transport {
         console.log(`Time signature: ${this.timeSignature[0]}/${this.timeSignature[1]}`);
 
         possibleMeasureCounts.forEach(measureCount => {
-            const totalBeats = measureCount * beatsPerMeasure;
+            const totalBeats = measureCount * quarterNotesPerMeasure;
 
             // BPM = (Beats × 60) / Duration
             const calculatedBpm = (totalBeats * 60) / durationSeconds;

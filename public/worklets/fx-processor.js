@@ -112,6 +112,4333 @@
     }
   };
 
+  // src/audio/fx/dsp/BrowserOfficialReverseReverbDsp.ts
+  var FLAT = -1e3;
+  var TAP_COUNT = 128;
+  var LINE_COUNT = 16;
+  var MAX_MAGNITUDE = 8;
+  var DIFFUSER_RT60_SECONDS = 0.15;
+  var DIFFUSER_RT60_CALIBRATION = 1.14;
+  var REFERENCE_DELAY_FRAMES = [
+    1493,
+    1747,
+    2011,
+    2267,
+    2521,
+    2777,
+    3037,
+    3299,
+    3557,
+    3821,
+    4073,
+    4327,
+    4583,
+    4861,
+    5099,
+    5351
+  ];
+  function clamp(value, minimum, maximum) {
+    return Math.max(minimum, Math.min(maximum, value));
+  }
+  function bounded(value) {
+    return Number.isFinite(value) ? clamp(value, -MAX_MAGNITUDE, MAX_MAGNITUDE) : 0;
+  }
+  function nextPrime(value) {
+    if (value <= 2) return 2;
+    let candidate = value % 2 === 0 ? value + 1 : value;
+    for (; ; ) {
+      let prime = true;
+      for (let divisor = 3; divisor * divisor <= candidate; divisor += 2) {
+        if (candidate % divisor === 0) {
+          prime = false;
+          break;
+        }
+      }
+      if (prime) return candidate;
+      candidate += 2;
+    }
+  }
+  var BrowserOfficialReverseReverbDsp = class {
+    sampleRate;
+    maxBufferSamples;
+    wetLeft = 0;
+    wetRight = 0;
+    framesProcessed = 0;
+    historyLeft;
+    historyRight;
+    preDelayLeft;
+    preDelayRight;
+    lines;
+    lineIndices = new Int32Array(LINE_COUNT);
+    dampingStates = new Float64Array(LINE_COUNT);
+    feedbackGains = new Float64Array(LINE_COUNT);
+    feedbackScratch = new Float64Array(LINE_COUNT);
+    tapOffsets = new Float64Array(TAP_COUNT);
+    weightsLeft = new Float64Array(TAP_COUNT);
+    weightsRight = new Float64Array(TAP_COUNT);
+    lowCutLeft;
+    lowCutRight;
+    highCutLeft;
+    highCutRight;
+    time = new LinearParameterSmoother(3);
+    gate = new LinearParameterSmoother(0.5);
+    // 500 ms is the visually verified manual default, not an inferred zero.
+    preDelay = new LinearParameterSmoother(500);
+    lowCut = new LinearParameterSmoother(20);
+    highCut = new LinearParameterSmoother(12500);
+    rampFrames;
+    dampingAlpha;
+    lowCutFlat = true;
+    highCutFlat = true;
+    writeIndex = 0;
+    preDelayWriteIndex = 0;
+    diffuseLeft = 0;
+    diffuseRight = 0;
+    constructor(sampleRate, parameters = {}) {
+      this.sampleRate = Number.isFinite(sampleRate) ? Math.round(clamp(sampleRate, 8e3, 192e3)) : 48e3;
+      this.rampFrames = Math.max(1, Math.round(this.sampleRate * 0.015));
+      const historyCapacity = Math.ceil(11 * this.sampleRate) + 4;
+      this.historyLeft = new Float32Array(historyCapacity);
+      this.historyRight = new Float32Array(historyCapacity);
+      const preDelayCapacity = Math.ceil(this.sampleRate * 0.5) + 2;
+      this.preDelayLeft = new Float32Array(preDelayCapacity);
+      this.preDelayRight = new Float32Array(preDelayCapacity);
+      this.lines = REFERENCE_DELAY_FRAMES.map((frames) => new Float32Array(
+        nextPrime(Math.max(2, Math.round(frames * this.sampleRate / 48e3)))
+      ));
+      this.dampingAlpha = Math.exp(-2 * Math.PI * Math.min(8e3, this.sampleRate * 0.45) / this.sampleRate);
+      let lineSamples = 0;
+      for (let line = 0; line < LINE_COUNT; line += 1) {
+        const length = this.lines[line].length;
+        lineSamples += length;
+        this.feedbackGains[line] = Math.pow(
+          1e-3,
+          length / this.sampleRate / (DIFFUSER_RT60_SECONDS * DIFFUSER_RT60_CALIBRATION)
+        );
+      }
+      this.maxBufferSamples = 2 * (historyCapacity + preDelayCapacity) + lineSamples + 4 * LINE_COUNT + 3 * TAP_COUNT;
+      this.lowCutLeft = new TptStateVariableFilter(this.sampleRate, 20);
+      this.lowCutRight = new TptStateVariableFilter(this.sampleRate, 20);
+      this.highCutLeft = new TptStateVariableFilter(this.sampleRate, Math.min(12500, this.sampleRate * 0.45));
+      this.highCutRight = new TptStateVariableFilter(this.sampleRate, Math.min(12500, this.sampleRate * 0.45));
+      this.initializeWeights();
+      this.setParameters(parameters);
+      this.reset();
+    }
+    /** Earliest impulse onset once the configured timing controls have settled. */
+    get latencySamples() {
+      return Math.floor(this.preDelay.targetValue * this.sampleRate / 1e3) + Math.floor(this.gate.targetValue * this.sampleRate) + this.lines[0].length;
+    }
+    get bufferCapacitySamples() {
+      return this.historyLeft.length;
+    }
+    setParameters(parameters) {
+      this.setTarget(this.time, parameters.timeSeconds, 0.1, 10);
+      this.setTarget(this.gate, parameters.gateTimeSeconds, 0.1, 1);
+      this.setTarget(this.preDelay, parameters.preDelayMs, 0, 500);
+      if (Number.isFinite(parameters.lowCutHz)) {
+        this.lowCutFlat = parameters.lowCutHz === FLAT;
+        if (!this.lowCutFlat) this.setTarget(this.lowCut, parameters.lowCutHz, 20, 12500);
+      }
+      if (Number.isFinite(parameters.highCutHz)) {
+        this.highCutFlat = parameters.highCutHz === FLAT;
+        if (!this.highCutFlat) this.setTarget(this.highCut, parameters.highCutHz, 20, 12500);
+      }
+    }
+    /** Mutates and returns this reusable wet result; there are no render allocations. */
+    processSample(left, right) {
+      const duration = this.time.next();
+      const onset = this.gate.next();
+      const preDelayFrames = this.preDelay.next() * this.sampleRate / 1e3;
+      const lowHz = this.lowCut.next();
+      const highHz = this.highCut.next();
+      if (this.framesProcessed % 8 === 0) {
+        this.updateTapOffsets(duration, onset);
+        this.updateFilters(lowHz, highHz);
+      }
+      this.preDelayLeft[this.preDelayWriteIndex] = bounded(left);
+      this.preDelayRight[this.preDelayWriteIndex] = bounded(right);
+      const delayedLeft = this.readDelay(this.preDelayLeft, this.preDelayWriteIndex, preDelayFrames);
+      const delayedRight = this.readDelay(this.preDelayRight, this.preDelayWriteIndex, preDelayFrames);
+      this.processDiffuser(delayedLeft, delayedRight);
+      this.historyLeft[this.writeIndex] = this.diffuseLeft;
+      this.historyRight[this.writeIndex] = this.diffuseRight;
+      let wetLeft = 0;
+      let wetRight = 0;
+      for (let tap = 0; tap < TAP_COUNT; tap += 1) {
+        const offset = this.tapOffsets[tap];
+        const l = this.readDelay(this.historyLeft, this.writeIndex, offset);
+        const r = this.readDelay(this.historyRight, this.writeIndex, offset);
+        wetLeft += (0.85 * l + 0.15 * r) * this.weightsLeft[tap];
+        wetRight += (0.85 * r + 0.15 * l) * this.weightsRight[tap];
+      }
+      this.lowCutLeft.processSample(wetLeft);
+      this.lowCutRight.processSample(wetRight);
+      if (!this.lowCutFlat) {
+        wetLeft = this.lowCutLeft.highpass;
+        wetRight = this.lowCutRight.highpass;
+      }
+      this.highCutLeft.processSample(wetLeft);
+      this.highCutRight.processSample(wetRight);
+      if (!this.highCutFlat) {
+        wetLeft = this.highCutLeft.lowpass;
+        wetRight = this.highCutRight.lowpass;
+      }
+      this.wetLeft = bounded(wetLeft);
+      this.wetRight = bounded(wetRight);
+      this.writeIndex += 1;
+      if (this.writeIndex === this.historyLeft.length) this.writeIndex = 0;
+      this.preDelayWriteIndex += 1;
+      if (this.preDelayWriteIndex === this.preDelayLeft.length) this.preDelayWriteIndex = 0;
+      this.framesProcessed += 1;
+      return this;
+    }
+    reset() {
+      this.historyLeft.fill(0);
+      this.historyRight.fill(0);
+      this.preDelayLeft.fill(0);
+      this.preDelayRight.fill(0);
+      for (const line of this.lines) line.fill(0);
+      this.lineIndices.fill(0);
+      this.dampingStates.fill(0);
+      this.feedbackScratch.fill(0);
+      this.lowCutLeft.reset();
+      this.lowCutRight.reset();
+      this.highCutLeft.reset();
+      this.highCutRight.reset();
+      this.time.reset();
+      this.gate.reset();
+      this.preDelay.reset();
+      this.lowCut.reset();
+      this.highCut.reset();
+      this.updateTapOffsets(this.time.currentValue, this.gate.currentValue);
+      this.updateFilters(this.lowCut.currentValue, this.highCut.currentValue);
+      this.writeIndex = 0;
+      this.preDelayWriteIndex = 0;
+      this.diffuseLeft = 0;
+      this.diffuseRight = 0;
+      this.wetLeft = 0;
+      this.wetRight = 0;
+      this.framesProcessed = 0;
+    }
+    setTarget(smoother, value, minimum, maximum) {
+      if (value === void 0 || !Number.isFinite(value)) return;
+      const target = clamp(value, minimum, maximum);
+      if (target !== smoother.targetValue) smoother.setTarget(target, this.rampFrames);
+    }
+    initializeWeights() {
+      let energy = 0;
+      let random = 1381388866;
+      for (let tap = 0; tap < TAP_COUNT; tap += 1) {
+        const position = tap / (TAP_COUNT - 1);
+        const weight = 0.0125 + position * position;
+        energy += weight * weight;
+        random = Math.imul(random, 1664525) + 1013904223 >>> 0;
+        this.weightsLeft[tap] = (random & 65536) !== 0 ? weight : -weight;
+        random = Math.imul(random, 1664525) + 1013904223 >>> 0;
+        this.weightsRight[tap] = (random & 65536) !== 0 ? weight : -weight;
+      }
+      const normalization = 1 / Math.sqrt(energy);
+      for (let tap = 0; tap < TAP_COUNT; tap += 1) {
+        this.weightsLeft[tap] = this.weightsLeft[tap] * normalization;
+        this.weightsRight[tap] = this.weightsRight[tap] * normalization;
+      }
+    }
+    updateTapOffsets(duration, onset) {
+      for (let tap = 0; tap < TAP_COUNT; tap += 1) {
+        this.tapOffsets[tap] = (onset + duration * tap / (TAP_COUNT - 1)) * this.sampleRate;
+      }
+    }
+    updateFilters(lowHz, highHz) {
+      const low = Math.min(lowHz, this.sampleRate * 0.45);
+      const high = Math.min(highHz, this.sampleRate * 0.45);
+      this.lowCutLeft.setParameters(low);
+      this.lowCutRight.setParameters(low);
+      this.highCutLeft.setParameters(high);
+      this.highCutRight.setParameters(high);
+    }
+    readDelay(buffer, writeIndex, delay) {
+      const whole = Math.floor(delay);
+      const fraction = delay - whole;
+      let first = writeIndex - whole;
+      if (first < 0) first += buffer.length;
+      const second = first === 0 ? buffer.length - 1 : first - 1;
+      const a = buffer[first];
+      return a + (buffer[second] - a) * fraction;
+    }
+    processDiffuser(left, right) {
+      let wetLeft = 0;
+      let wetRight = 0;
+      for (let line = 0; line < LINE_COUNT; line += 1) {
+        const sample = this.lines[line][this.lineIndices[line]];
+        let damped = (1 - this.dampingAlpha) * sample + this.dampingAlpha * this.dampingStates[line];
+        if (Math.abs(damped) < 1e-20) damped = 0;
+        this.dampingStates[line] = damped;
+        this.feedbackScratch[line] = damped;
+        const outputLeftSign = (line & 2) === 0 ? 1 : -1;
+        const outputRightSign = (line & 1) !== 0 !== ((line & 2) !== 0) ? -1 : 1;
+        wetLeft += sample * outputLeftSign * 0.25;
+        wetRight += sample * outputRightSign * 0.25;
+      }
+      for (let width = 1; width < LINE_COUNT; width *= 2) {
+        for (let block = 0; block < LINE_COUNT; block += width * 2) {
+          for (let offset = 0; offset < width; offset += 1) {
+            const first = this.feedbackScratch[block + offset];
+            const second = this.feedbackScratch[block + offset + width];
+            this.feedbackScratch[block + offset] = first + second;
+            this.feedbackScratch[block + offset + width] = first - second;
+          }
+        }
+      }
+      for (let line = 0; line < LINE_COUNT; line += 1) {
+        const inputRightSign = (line & 1) === 0 ? 1 : -1;
+        const value = 0.25 * (left + inputRightSign * right) + this.feedbackGains[line] * this.feedbackScratch[line] * 0.25;
+        const buffer = this.lines[line];
+        const index = this.lineIndices[line];
+        buffer[index] = bounded(value);
+        this.lineIndices[line] = index + 1 === buffer.length ? 0 : index + 1;
+      }
+      this.diffuseLeft = bounded(wetLeft);
+      this.diffuseRight = bounded(wetRight);
+    }
+  };
+
+  // src/audio/fx/dsp/OfficialDynamicsProfiles.ts
+  var rows = [
+    ["NATURALCOMP", -18, 2.5, 12, 20, 180, 2, 0, 0, 0, 0, "rms"],
+    ["MIXER COMP", -20, 3, 6, 10, 100, 3, 0, 0, 0, 0, "rms"],
+    ["LIVE COMP", -16, 4, 4, 5, 80, 3, -1, 1, 0, 0, "peak"],
+    ["NATURAL LIM", -6, 10, 6, 2, 120, 0, 0, 0, 0, 0, "peak"],
+    ["HARD LIM", -3, 20, 0, 0.1, 60, 0, 0, 0, 0, 0, "peak"],
+    ["JINGL COMP", -26, 8, 3, 1, 50, 6, 2, 3, 0, 0, "rms"],
+    ["HARD COMP", -22, 10, 0, 2, 100, 5, 0, 0, 0, 0, "peak"],
+    ["SOFT COMP", -24, 2, 18, 30, 240, 3, 0, 0, 0, 0, "rms"],
+    ["CLEAN COMP", -15, 1.8, 12, 15, 150, 1, 0, 1, 0, 0, "rms"],
+    ["DANCE COMP", -20, 5, 6, 20, 75, 4, 4, 2, 0, 0, "peak"],
+    ["ORCH COMP", -18, 2, 14, 50, 400, 1, 0, 0, 0, 0, "rms"],
+    ["VOCAL COMP", -24, 4, 8, 6, 160, 4, -2, 2, 80, 0, "rms"],
+    ["ACOUSTIC", -18, 2.5, 10, 35, 200, 2, -1, 3, 0, 0, "rms"],
+    ["ROCK BAND", -20, 6, 4, 10, 120, 4, 2, 1, 0, 0, "peak"],
+    ["ORCHESTRA", -12, 1.5, 16, 80, 600, 1, 1, -1, 0, 0, "rms"],
+    ["LOW BOOST", -18, 2.5, 10, 20, 200, 2, 6, 0, 0, 0, "rms"],
+    ["BRIGHTEN", -18, 2, 8, 10, 180, 2, 0, 6, 0, 0, "rms"],
+    ["DJs VOICE", -28, 6, 4, 2, 100, 5, 4, 2, 80, 8500, "peak"],
+    ["PHONE VOX", -24, 5, 2, 2, 100, 3, -6, -3, 300, 3400, "peak"]
+  ];
+  var OFFICIAL_DYNAMICS_PROFILES = Object.freeze(rows.map(([name, threshold, ratio, knee, attack, release, makeup, low, high, lowCut, highCut, detector]) => Object.freeze({ name, threshold, ratio, knee, attack, release, makeup, low, high, lowCut, highCut, detector })));
+  function officialDynamicsProfile(type) {
+    return OFFICIAL_DYNAMICS_PROFILES[Math.max(0, Math.min(18, Math.round(Number.isFinite(type) ? type : 0)))];
+  }
+
+  // src/audio/fx/dsp/BrowserOfficialRollDsp.ts
+  var INFINITE = -1e3;
+  var MIN_BPM = 40;
+  var MAX_BPM = 300;
+  var MAX_SYNC_BEATS = 2;
+  var MIN_SYNC_BEATS = 0.125;
+  var MAX_CAPTURE_SECONDS = MAX_SYNC_BEATS * 60 / MIN_BPM;
+  var MAX_MAGNITUDE2 = 8;
+  function clamp2(value, minimum, maximum) {
+    return Math.max(minimum, Math.min(maximum, value));
+  }
+  function bounded2(value) {
+    return Number.isFinite(value) ? clamp2(value, -MAX_MAGNITUDE2, MAX_MAGNITUDE2) : 0;
+  }
+  var BrowserOfficialRollDsp = class {
+    sampleRate;
+    maxCaptureFrames;
+    wetLeft = 0;
+    wetRight = 0;
+    sourceLeft;
+    sourceRight;
+    capturedLeft;
+    capturedRight;
+    variant = 1;
+    time = -1;
+    bpm = 120;
+    repeats = 50;
+    finiteRepeats = 50;
+    roll = 0;
+    playbackDivision = 1;
+    sourceWriteIndex = 0;
+    sourceFrames = 0;
+    capturedFrames = 0;
+    baseFrames;
+    fragmentFrames = 0;
+    cycleFrames = 0;
+    cyclePosition = 0;
+    completedReleaseRepeats = 0;
+    pendingCapture = false;
+    playing = false;
+    constructor(sampleRate = 48e3, parameters = {}) {
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp2(sampleRate, 8e3, 192e3) : 48e3;
+      this.maxCaptureFrames = Math.ceil(this.sampleRate * MAX_CAPTURE_SECONDS);
+      this.sourceLeft = new Float32Array(this.maxCaptureFrames);
+      this.sourceRight = new Float32Array(this.maxCaptureFrames);
+      this.capturedLeft = new Float32Array(this.maxCaptureFrames);
+      this.capturedRight = new Float32Array(this.maxCaptureFrames);
+      this.baseFrames = Math.round(this.sampleRate * 0.5);
+      this.setParameters(parameters);
+    }
+    get hasCapturedSlice() {
+      return this.capturedFrames > 0;
+    }
+    get isCapturePending() {
+      return this.pendingCapture;
+    }
+    get isPlaying() {
+      return this.playing;
+    }
+    /** Undivided TIME duration, including synchronized values above 1000 ms. */
+    get timeFrames() {
+      return this.baseFrames;
+    }
+    get activeCycleFrames() {
+      return this.cycleFrames;
+    }
+    setParameters(parameters) {
+      const previousRoll = this.roll;
+      const previousFrames = this.baseFrames;
+      if (parameters.variant === 1 || parameters.variant === 2) this.variant = parameters.variant;
+      if (this.variant === 1 && this.repeats === INFINITE) this.repeats = this.finiteRepeats;
+      if (Number.isFinite(parameters.repeats)) {
+        const repeats = parameters.repeats;
+        if (repeats === INFINITE && this.variant === 2) this.repeats = INFINITE;
+        else if (repeats > 0) this.repeats = this.finiteRepeats = Math.round(clamp2(repeats, 1, 100));
+      }
+      if (Number.isFinite(parameters.time) && parameters.time !== 0 && parameters.time !== INFINITE) {
+        const time = parameters.time;
+        this.time = time > 0 ? clamp2(time, 1, 1e3) : -clamp2(Math.abs(time), MIN_SYNC_BEATS, MAX_SYNC_BEATS);
+      }
+      if (Number.isFinite(parameters.bpm)) this.bpm = clamp2(parameters.bpm, MIN_BPM, MAX_BPM);
+      if (Number.isFinite(parameters.roll)) this.roll = Math.round(clamp2(parameters.roll, 0, 4));
+      const seconds = this.time > 0 ? this.time / 1e3 : -this.time * 60 / this.bpm;
+      this.baseFrames = Math.max(1, Math.min(this.maxCaptureFrames, Math.round(seconds * this.sampleRate)));
+      if (previousRoll === 0 && this.roll !== 0) {
+        this.capturedFrames = 0;
+        this.playing = false;
+        this.pendingCapture = true;
+        this.completedReleaseRepeats = 0;
+        this.playbackDivision = 2 ** this.roll;
+        this.cyclePosition = 0;
+        this.updateCycle();
+        this.captureIfReady();
+      } else if (previousRoll !== 0 && this.roll === 0) {
+        this.pendingCapture = false;
+        this.completedReleaseRepeats = 0;
+        this.cyclePosition = 0;
+        this.updateCycle();
+      } else if (this.roll !== 0) {
+        this.playbackDivision = 2 ** this.roll;
+        if (previousRoll !== this.roll || previousFrames !== this.baseFrames) {
+          this.cyclePosition = 0;
+          this.updateCycle();
+        }
+        if (this.pendingCapture) this.captureIfReady();
+      } else if (previousFrames !== this.baseFrames) {
+        this.cyclePosition = 0;
+        this.updateCycle();
+      }
+      if (this.roll === 0 && this.repeats !== INFINITE && this.completedReleaseRepeats >= this.repeats) {
+        this.playing = false;
+      }
+    }
+    /** Returns the reusable instance; no allocation occurs in this audio path. */
+    processSample(left, right) {
+      this.wetLeft = 0;
+      this.wetRight = 0;
+      if (this.playing && this.fragmentFrames > 0 && this.cycleFrames > 0) {
+        const sourcePosition = this.cyclePosition * this.fragmentFrames / this.cycleFrames;
+        const first = Math.floor(sourcePosition);
+        const second = first + 1 < this.fragmentFrames ? first + 1 : 0;
+        const fraction = sourcePosition - first;
+        this.wetLeft = bounded2(this.capturedLeft[first] * (1 - fraction) + this.capturedLeft[second] * fraction);
+        this.wetRight = bounded2(this.capturedRight[first] * (1 - fraction) + this.capturedRight[second] * fraction);
+        this.cyclePosition += 1;
+        if (this.cyclePosition >= this.cycleFrames) {
+          this.cyclePosition = 0;
+          if (this.roll === 0) {
+            this.completedReleaseRepeats += 1;
+            if (this.repeats !== INFINITE && this.completedReleaseRepeats >= this.repeats) this.playing = false;
+          }
+        }
+      }
+      this.sourceLeft[this.sourceWriteIndex] = bounded2(left);
+      this.sourceRight[this.sourceWriteIndex] = bounded2(right);
+      this.sourceWriteIndex += 1;
+      if (this.sourceWriteIndex >= this.maxCaptureFrames) this.sourceWriteIndex = 0;
+      this.sourceFrames = Math.min(this.maxCaptureFrames, this.sourceFrames + 1);
+      if (this.pendingCapture) this.captureIfReady();
+      return this;
+    }
+    /** Retain controls and storage, discard all signal history and release counts. */
+    reset() {
+      this.sourceLeft.fill(0);
+      this.sourceRight.fill(0);
+      this.capturedLeft.fill(0);
+      this.capturedRight.fill(0);
+      this.sourceWriteIndex = 0;
+      this.sourceFrames = 0;
+      this.capturedFrames = 0;
+      this.cyclePosition = 0;
+      this.completedReleaseRepeats = 0;
+      this.pendingCapture = this.roll !== 0;
+      this.playing = false;
+      if (this.roll !== 0) this.playbackDivision = 2 ** this.roll;
+      this.updateCycle();
+      this.wetLeft = 0;
+      this.wetRight = 0;
+    }
+    updateCycle() {
+      this.cycleFrames = Math.max(1, Math.round(this.baseFrames / this.playbackDivision));
+      this.fragmentFrames = this.capturedFrames > 0 ? Math.max(1, Math.round(this.capturedFrames / this.playbackDivision)) : 0;
+    }
+    captureIfReady() {
+      if (!this.pendingCapture || this.sourceFrames < this.baseFrames) return;
+      let source = this.sourceWriteIndex - this.baseFrames;
+      if (source < 0) source += this.maxCaptureFrames;
+      for (let frame = 0; frame < this.baseFrames; frame += 1) {
+        this.capturedLeft[frame] = this.sourceLeft[source];
+        this.capturedRight[frame] = this.sourceRight[source];
+        source += 1;
+        if (source >= this.maxCaptureFrames) source = 0;
+      }
+      this.capturedFrames = this.baseFrames;
+      this.pendingCapture = false;
+      this.playing = true;
+      this.cyclePosition = 0;
+      this.updateCycle();
+    }
+  };
+
+  // src/audio/fx/dsp/BrowserOfficialStepSlicerDsp.ts
+  var clamp3 = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+  var BrowserOfficialStepSlicerDsp = class {
+    sampleRate;
+    wetLeft = 0;
+    wetRight = 0;
+    rateHz = 2;
+    stepMax = 16;
+    duty = 0.5;
+    depth = 1;
+    threshold = -30;
+    makeup = 10 ** (6 / 20);
+    levels = new Float64Array(16).fill(1);
+    phase = 0;
+    step = 0;
+    gate = 1;
+    envelope = 0;
+    gateAlpha;
+    attackAlpha;
+    releaseAlpha;
+    constructor(sampleRate = 48e3, parameters = {}) {
+      this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
+      this.gateAlpha = Math.exp(-1 / (this.sampleRate * 2e-3));
+      this.attackAlpha = Math.exp(-1 / (this.sampleRate * 5e-3));
+      this.releaseAlpha = Math.exp(-1 / (this.sampleRate * 0.08));
+      this.setParameters(parameters);
+    }
+    get stepIndex() {
+      return this.step;
+    }
+    setParameters(parameters) {
+      if (Number.isFinite(parameters.rateHz)) this.rateHz = clamp3(parameters.rateHz, 1e-4, 160);
+      if (Number.isFinite(parameters.stepMax)) {
+        this.stepMax = Math.round(clamp3(parameters.stepMax, 1, 16));
+        this.step %= this.stepMax;
+      }
+      if (Number.isFinite(parameters.stepLength)) this.duty = clamp3(parameters.stepLength, 1, 100) / 100;
+      if (Number.isFinite(parameters.depth)) this.depth = clamp3(parameters.depth, 0, 100) / 100;
+      if (Number.isFinite(parameters.compThreshold)) this.threshold = clamp3(parameters.compThreshold, -30, 0);
+      if (Number.isFinite(parameters.compGain)) this.makeup = 10 ** (clamp3(parameters.compGain, 0, 20) / 20);
+      if (parameters.levels) for (let i = 0; i < 16; i += 1) {
+        const value = parameters.levels[i];
+        if (Number.isFinite(value)) this.levels[i] = clamp3(value, 0, 100) / 100;
+      }
+    }
+    processSample(left, right) {
+      const l = Number.isFinite(left) ? clamp3(left, -8, 8) : 0;
+      const r = Number.isFinite(right) ? clamp3(right, -8, 8) : 0;
+      const amplitude = Math.max(Math.abs(l), Math.abs(r));
+      const alpha = amplitude > this.envelope ? this.attackAlpha : this.releaseAlpha;
+      this.envelope = alpha * this.envelope + (1 - alpha) * amplitude;
+      const above = Math.max(0, 20 * Math.log10(Math.max(1e-12, this.envelope)) - this.threshold);
+      const compressorGain = this.makeup * 10 ** (-0.75 * above / 20);
+      const target = this.phase < this.duty ? this.levels[this.step] : 0;
+      this.gate = this.gateAlpha * this.gate + (1 - this.gateAlpha) * target;
+      const gain = (1 - this.depth + this.depth * this.gate) * compressorGain;
+      this.wetLeft = clamp3(l * gain, -8, 8);
+      this.wetRight = clamp3(r * gain, -8, 8);
+      this.phase += this.rateHz / this.sampleRate;
+      if (this.phase >= 1) {
+        this.phase -= 1;
+        this.step = (this.step + 1) % this.stepMax;
+      }
+      return this;
+    }
+    reset() {
+      this.phase = 0;
+      this.step = 0;
+      this.gate = 1;
+      this.envelope = 0;
+      this.wetLeft = 0;
+      this.wetRight = 0;
+    }
+  };
+
+  // src/audio/fx/dsp/BrowserOfficialDelayDsp.ts
+  var MAX_REPEATS = 16;
+  var MAX_NUMERIC_TIME_SECONDS = 2;
+  var MAX_SYNC_BEATS2 = 2;
+  var MIN_BPM2 = 40;
+  var MAX_BPM2 = 300;
+  var MAX_SYNC_TIME_SECONDS = MAX_SYNC_BEATS2 * 60 / MIN_BPM2;
+  var REPEAT_DECAY = 0.65;
+  var MAX_MAGNITUDE3 = 8;
+  var MOD_RATE_HZ = 0.37;
+  var TWO_PI = Math.PI * 2;
+  var OFF = -1e3;
+  function clamp4(value, minimum, maximum) {
+    return Math.max(minimum, Math.min(maximum, value));
+  }
+  function bounded3(value) {
+    return Number.isFinite(value) ? clamp4(value, -MAX_MAGNITUDE3, MAX_MAGNITUDE3) : 0;
+  }
+  var BrowserOfficialDelayDsp = class {
+    algorithm;
+    sampleRate;
+    wetLeft = 0;
+    wetRight = 0;
+    sourceLeft;
+    sourceRight;
+    segmentStarts = new Int32Array(MAX_REPEATS);
+    segmentLengths = new Int32Array(MAX_REPEATS);
+    timeSamples;
+    depth;
+    rampFrames;
+    minimumTimeSamples;
+    maximumTimeSamples;
+    time = 200;
+    bpm = 120;
+    repeats = 16;
+    writeIndex = 0;
+    phase = 0;
+    activeSegmentFrames;
+    segmentPosition = 0;
+    captureStart = 0;
+    completedSegments = 0;
+    segmentHead = -1;
+    constructor(algorithm, sampleRate = 48e3, parameters = {}) {
+      this.algorithm = algorithm;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp4(sampleRate, 8e3, 192e3) : 48e3;
+      this.minimumTimeSamples = this.sampleRate / 1e3;
+      this.maximumTimeSamples = MAX_SYNC_TIME_SECONDS * this.sampleRate;
+      const capacity = Math.ceil((MAX_REPEATS + 1) * MAX_NUMERIC_TIME_SECONDS * this.sampleRate) + 4;
+      this.sourceLeft = new Float32Array(capacity);
+      this.sourceRight = new Float32Array(capacity);
+      this.rampFrames = Math.max(1, Math.round(this.sampleRate * 0.015));
+      this.timeSamples = new LinearParameterSmoother(0.2 * this.sampleRate);
+      this.depth = new LinearParameterSmoother(50);
+      this.activeSegmentFrames = Math.round(this.timeSamples.currentValue);
+      this.setParameters(parameters);
+      this.timeSamples.reset();
+      this.depth.reset();
+      this.activeSegmentFrames = Math.round(this.timeSamples.currentValue);
+    }
+    get latencySamples() {
+      return this.algorithm === "reverse-delay" ? this.activeSegmentFrames : 0;
+    }
+    get bufferCapacitySamples() {
+      return this.sourceLeft.length;
+    }
+    setParameters(parameters) {
+      if (Number.isFinite(parameters.time) && parameters.time !== 0 && parameters.time !== OFF) {
+        const requested = parameters.time;
+        this.time = requested > 0 ? clamp4(requested, 1, 2e3) : -Math.min(MAX_SYNC_BEATS2, Math.abs(requested));
+      }
+      if (Number.isFinite(parameters.bpm)) this.bpm = clamp4(parameters.bpm, MIN_BPM2, MAX_BPM2);
+      if (Number.isFinite(parameters.feedback)) {
+        this.repeats = Math.round(clamp4(parameters.feedback, 1, MAX_REPEATS));
+      }
+      if (Number.isFinite(parameters.modDepth)) {
+        const target = clamp4(parameters.modDepth, 0, 100);
+        if (target !== this.depth.targetValue) this.depth.setTarget(target, this.rampFrames);
+      }
+      const seconds = this.time > 0 ? this.time / 1e3 : Math.abs(this.time) * 60 / this.bpm;
+      const samples = clamp4(seconds * this.sampleRate, this.minimumTimeSamples, this.maximumTimeSamples);
+      this.ensureCapacity(Math.ceil((MAX_REPEATS + 1) * samples) + 4);
+      if (samples !== this.timeSamples.targetValue) this.timeSamples.setTarget(samples, this.rampFrames);
+    }
+    /** Returns this reusable result, also exposed as wetLeft/wetRight fields. */
+    processSample(left, right) {
+      this.sourceLeft[this.writeIndex] = bounded3(left);
+      this.sourceRight[this.writeIndex] = bounded3(right);
+      const time = this.timeSamples.next();
+      const depth = this.depth.next() / 100;
+      let wetLeft = 0;
+      let wetRight = 0;
+      let gain = 1;
+      if (this.algorithm === "reverse-delay") {
+        const position = this.segmentPosition / Math.max(1, this.activeSegmentFrames - 1);
+        const edgeFrames = Math.min(this.sampleRate * 3e-3, this.activeSegmentFrames * 0.125);
+        const edge = Math.min(
+          1,
+          (this.segmentPosition + 0.5) / edgeFrames,
+          (this.activeSegmentFrames - this.segmentPosition - 0.5) / edgeFrames
+        );
+        const window = Math.sin(Math.PI * 0.5 * edge);
+        const count = Math.min(this.repeats, this.completedSegments);
+        for (let repeat = 0; repeat < count; repeat += 1) {
+          const slot = (this.segmentHead - repeat + MAX_REPEATS) % MAX_REPEATS;
+          const offset = (this.segmentLengths[slot] - 1) * (1 - position);
+          const readPosition = this.segmentStarts[slot] + offset;
+          wetLeft += gain * this.readAt(this.sourceLeft, readPosition);
+          wetRight += gain * this.readAt(this.sourceRight, readPosition);
+          gain *= REPEAT_DECAY;
+        }
+        wetLeft *= window;
+        wetRight *= window;
+      } else {
+        const maximumTime = this.time > 0 ? MAX_NUMERIC_TIME_SECONDS * this.sampleRate : this.maximumTimeSamples;
+        const excursion = this.algorithm === "mod-delay" ? depth * Math.max(0, Math.min(
+          this.sampleRate * 0.012,
+          time * 0.25,
+          time - this.minimumTimeSamples,
+          maximumTime - time
+        )) : 0;
+        const leftTime = time + excursion * Math.sin(this.phase);
+        const rightTime = time + excursion * Math.cos(this.phase);
+        for (let repeat = 1; repeat <= this.repeats; repeat += 1) {
+          const delayedLeft = this.readAt(this.sourceLeft, this.writeIndex - repeat * leftTime);
+          const delayedRight = this.readAt(this.sourceRight, this.writeIndex - repeat * rightTime);
+          if (this.algorithm === "panning-delay") {
+            const mono = (delayedLeft + delayedRight) * 0.5;
+            if (repeat % 2 === 1) wetLeft += gain * mono;
+            else wetRight += gain * mono;
+          } else {
+            wetLeft += gain * delayedLeft;
+            wetRight += gain * delayedRight;
+          }
+          gain *= REPEAT_DECAY;
+        }
+      }
+      this.wetLeft = bounded3(wetLeft);
+      this.wetRight = bounded3(wetRight);
+      this.phase += TWO_PI * MOD_RATE_HZ / this.sampleRate;
+      if (this.phase >= TWO_PI) this.phase -= TWO_PI;
+      this.writeIndex += 1;
+      if (this.writeIndex >= this.sourceLeft.length) this.writeIndex = 0;
+      if (this.algorithm === "reverse-delay") {
+        this.segmentPosition += 1;
+        if (this.segmentPosition >= this.activeSegmentFrames) {
+          this.segmentHead = (this.segmentHead + 1) % MAX_REPEATS;
+          this.segmentStarts[this.segmentHead] = this.captureStart;
+          this.segmentLengths[this.segmentHead] = this.activeSegmentFrames;
+          this.completedSegments = Math.min(MAX_REPEATS, this.completedSegments + 1);
+          this.captureStart = this.writeIndex;
+          this.segmentPosition = 0;
+          this.activeSegmentFrames = Math.round(this.timeSamples.targetValue);
+        }
+      }
+      return this;
+    }
+    reset() {
+      this.sourceLeft.fill(0);
+      this.sourceRight.fill(0);
+      this.segmentStarts.fill(0);
+      this.segmentLengths.fill(0);
+      this.timeSamples.reset();
+      this.depth.reset();
+      this.writeIndex = 0;
+      this.phase = 0;
+      this.activeSegmentFrames = Math.round(this.timeSamples.currentValue);
+      this.segmentPosition = 0;
+      this.captureStart = 0;
+      this.completedSegments = 0;
+      this.segmentHead = -1;
+      this.wetLeft = 0;
+      this.wetRight = 0;
+    }
+    /** Grow only on the control path; moving history cannot alter its sample age. */
+    ensureCapacity(capacity) {
+      const oldLength = this.sourceLeft.length;
+      if (capacity <= oldLength) return;
+      const left = new Float32Array(capacity);
+      const right = new Float32Array(capacity);
+      const oldWrite = this.writeIndex;
+      left.set(this.sourceLeft.subarray(oldWrite));
+      left.set(this.sourceLeft.subarray(0, oldWrite), oldLength - oldWrite);
+      right.set(this.sourceRight.subarray(oldWrite));
+      right.set(this.sourceRight.subarray(0, oldWrite), oldLength - oldWrite);
+      for (let slot = 0; slot < MAX_REPEATS; slot += 1) {
+        this.segmentStarts[slot] = (this.segmentStarts[slot] - oldWrite + oldLength) % oldLength;
+      }
+      this.captureStart = this.segmentPosition === 0 ? oldLength : (this.captureStart - oldWrite + oldLength) % oldLength;
+      this.sourceLeft = left;
+      this.sourceRight = right;
+      this.writeIndex = oldLength;
+    }
+    /** Linear interpolation is convex: it cannot overshoot the bounded source. */
+    readAt(buffer, position) {
+      position %= buffer.length;
+      if (position < 0) position += buffer.length;
+      const index = Math.floor(position);
+      const next = index + 1 === buffer.length ? 0 : index + 1;
+      const fraction = position - index;
+      return buffer[index] * (1 - fraction) + buffer[next] * fraction;
+    }
+  };
+
+  // src/audio/fx/official/parameter-guide.json
+  var parameter_guide_default = {
+    source: {
+      pdf_url: "https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf",
+      official_manual_index: "https://www.boss.info/global/support/by_product/rc-505mk2/owners_manuals/",
+      official_specification: "https://www.boss.info/uk/products/rc-505mk2/specifications/",
+      retrieved_utc: "2026-10-22T04:32:20Z",
+      version: "1.3 and later",
+      revision: "04",
+      pages: 46,
+      fx_pages: [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      pdf_sha256: "6473e5d990849d3c083cd532764d2a17326c9db6d7068bbe54b1fee6397c289b"
+    },
+    effects: [
+      {
+        name: "LPF",
+        scope: "shared",
+        page: 34,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "RATE",
+            key: "rate",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: "quarter_note",
+            default_evidence: "blue Roland music-font quarter-note glyph verified from enlarged rendering",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            key: "depth",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RESONANCE",
+            key: "resonance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "CUTOFF",
+            key: "cutoff",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            sequence_target_default: true,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP RATE",
+            key: "step_rate",
+            values_raw: "OFF, 4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: null,
+            default_evidence: "not explicitly marked in table",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "lpf"
+      },
+      {
+        name: "BPF",
+        scope: "shared",
+        page: 34,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "RATE",
+            key: "rate",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: "quarter_note",
+            default_evidence: "blue Roland music-font quarter-note glyph verified from enlarged rendering",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            key: "depth",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RESONANCE",
+            key: "resonance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "CUTOFF",
+            key: "cutoff",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            sequence_target_default: true,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP RATE",
+            key: "step_rate",
+            values_raw: "OFF, 4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: null,
+            default_evidence: "not explicitly marked in table",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "bpf"
+      },
+      {
+        name: "HPF",
+        scope: "shared",
+        page: 34,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "RATE",
+            key: "rate",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: "quarter_note",
+            default_evidence: "blue Roland music-font quarter-note glyph verified from enlarged rendering",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            key: "depth",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RESONANCE",
+            key: "resonance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "CUTOFF",
+            key: "cutoff",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            sequence_target_default: true,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP RATE",
+            key: "step_rate",
+            values_raw: "OFF, 4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: null,
+            default_evidence: "not explicitly marked in table",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "hpf"
+      },
+      {
+        name: "PHASER",
+        scope: "shared",
+        page: 34,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "RATE",
+            key: "rate",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: "quarter_note",
+            default_evidence: "blue Roland music-font quarter-note glyph verified from enlarged rendering",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            key: "depth",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RESONANCE",
+            key: "resonance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MANUAL",
+            key: "manual",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP RATE",
+            key: "step_rate",
+            values_raw: "OFF, 4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: null,
+            default_evidence: "not explicitly marked in table",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            key: "d_level",
+            values_raw: "0\u2013100",
+            default: 100,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            key: "e_level",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STAGE",
+            key: "stage",
+            values_raw: "4, 8, 12, BI-PHASE",
+            default: 8,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "phaser"
+      },
+      {
+        name: "FLANGER",
+        scope: "shared",
+        page: 35,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "RATE",
+            key: "rate",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: "quarter_note",
+            default_evidence: "blue Roland music-font quarter-note glyph verified from enlarged rendering",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            key: "depth",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RESONANCE",
+            key: "resonance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MANUAL",
+            key: "manual",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP RATE",
+            key: "step_rate",
+            values_raw: "OFF, 4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: null,
+            default_evidence: "not explicitly marked in table",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            key: "d_level",
+            values_raw: "0\u2013100",
+            default: 100,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            key: "e_level",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SEPARATION",
+            key: "separation",
+            values_raw: "0\u2013100",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "flanger"
+      },
+      {
+        name: "SYNTH",
+        scope: "shared",
+        page: 35,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "FREQUENCY",
+            key: "frequency",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RESONANCE",
+            key: "resonance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DECAY",
+            key: "decay",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_default_target: null,
+        sequence_default_target_note: "All eligible stars are black in official table; no initial target blue mark.",
+        key: "synth"
+      },
+      {
+        name: "LO-FI",
+        scope: "shared",
+        page: 35,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "BITDEPTH",
+            key: "bitdepth",
+            values_raw: "OFF, 31\u20131",
+            default: 8,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SAMPLERATE",
+            key: "samplerate",
+            values_raw: "OFF, 1/2\u20131/32",
+            default: "1/4",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "lo_fi"
+      },
+      {
+        name: "RADIO",
+        scope: "shared",
+        page: 35,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "LO-FI",
+            key: "lo_fi",
+            values_raw: "1\u201310",
+            default: 5,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LEVEL",
+            key: "level",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "radio"
+      },
+      {
+        name: "RING.MOD",
+        scope: "shared",
+        page: 35,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "FREQUENCY",
+            key: "frequency",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            sequence_target_default: true,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MODE",
+            key: "mode",
+            values_raw: "1, 2",
+            default: 2,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "1: previous RC series algorithm; 2: new algorithm. Exposing enum alone does not establish DSP parity.",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "ring_mod"
+      },
+      {
+        name: "G2B",
+        scope: "shared",
+        page: 35,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MODE",
+            key: "mode",
+            values_raw: "1, 2",
+            default: 2,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "1: previous RC series algorithm; 2: new algorithm. Exposing enum alone does not establish DSP parity.",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "g2b"
+      },
+      {
+        name: "SUSTAINER",
+        scope: "shared",
+        page: 35,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "ATTACK",
+            key: "attack",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RELEASE",
+            key: "release",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LEVEL",
+            key: "level",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW GAIN",
+            key: "low_gain",
+            values_raw: "-20\u201320 dB",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HI GAIN",
+            key: "hi_gain",
+            values_raw: "-20\u201320 dB",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SUSTAIN",
+            key: "sustain",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "sustainer"
+      },
+      {
+        name: "AUTO RIFF",
+        scope: "shared",
+        page: 36,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "PHRASE",
+            key: "phrase",
+            values_raw: "P1\u2013P30",
+            default: "P1",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "TEMPO",
+            key: "tempo",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, half-note through 32nd-note, 0\u2013100",
+            default: "quarter_note",
+            default_evidence: "blue Roland music-font quarter-note glyph verified from enlarged rendering",
+            sequence_target: false,
+            tempo_sync: {
+              minimum_note: "1/32",
+              maximum_note: "1/2",
+              measures: [
+                1,
+                2,
+                4
+              ],
+              complete_intermediate_enum_documented: false
+            },
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HOLD",
+            key: "hold",
+            values_raw: "OFF, ON",
+            default: "OFF",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ATTACK",
+            key: "attack",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOOP",
+            key: "loop",
+            values_raw: "OFF, ON",
+            default: "OFF",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "KEY",
+            key: "key",
+            values_raw: "C (Am)\u2013B (G#m)",
+            default: "C (Am)",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "Guide gives endpoints only; do not infer enharmonic display spellings or discrete map from this alone.",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "auto_riff"
+      },
+      {
+        name: "SLOW GEAR",
+        scope: "shared",
+        page: 36,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "SENS",
+            key: "sens",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RISE TIME",
+            key: "rise_time",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LEVEL",
+            key: "level",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MODE",
+            key: "mode",
+            values_raw: "1, 2",
+            default: 2,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "1: previous RC series algorithm; 2: new algorithm. Exposing enum alone does not establish DSP parity.",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "slow_gear"
+      },
+      {
+        name: "TRANSPOSE",
+        scope: "shared",
+        page: 36,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "TRANS",
+            key: "trans",
+            values_raw: "-12\u2013+12",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            unit: "semitone",
+            knob: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MODE",
+            key: "mode",
+            values_raw: "1, 2",
+            default: 2,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "1: previous RC series algorithm; 2: new algorithm. Exposing enum alone does not establish DSP parity.",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "transpose"
+      },
+      {
+        name: "PITCH BEND",
+        scope: "shared",
+        page: 36,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "PITCH",
+            key: "pitch",
+            values_raw: "-3\u2013+4OCT",
+            default: "+4OCT",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            unit: "octave",
+            notes: "Octave steps per guide.",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BEND",
+            key: "bend",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MODE",
+            key: "mode",
+            values_raw: "1, 2",
+            default: 2,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "1: previous RC series algorithm; 2: new algorithm. Exposing enum alone does not establish DSP parity.",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_default_target: null,
+        sequence_default_target_note: "All eligible stars are black in official table; no initial target blue mark.",
+        key: "pitch_bend"
+      },
+      {
+        name: "ROBOT",
+        scope: "shared",
+        page: 36,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "NOTE",
+            key: "note",
+            values_raw: "C\u2013B",
+            default: "C",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FORMANT",
+            key: "formant",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MODE",
+            key: "mode",
+            values_raw: "1, 2",
+            default: 2,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "1: previous RC series algorithm; 2: new algorithm. Exposing enum alone does not establish DSP parity.",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "robot"
+      },
+      {
+        name: "ELECTRIC",
+        scope: "shared",
+        page: 36,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "SHIFT",
+            key: "shift",
+            values_raw: "-12\u2013+12",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FORMANT",
+            key: "formant",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SPEED",
+            key: "speed",
+            values_raw: "0\u201310",
+            default: 5,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STABILITY",
+            key: "stability",
+            values_raw: "-10\u2013+10",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SCALE",
+            key: "scale",
+            values_raw: "CHROMATIC, C (Am)\u2013B (G#m)",
+            default: "CHROMATIC",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "electric"
+      },
+      {
+        name: "HRM MANUAL",
+        scope: "shared",
+        page: 37,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "VOICE",
+            key: "voice",
+            values_raw: "OCT-, OCT+, -6TH, -5TH, -4TH, -3RD, +3RD, +4TH, +5TH, +6TH, UNISON",
+            default: "+3RD",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FORMANT",
+            key: "formant",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "PAN",
+            key: "pan",
+            values_raw: "L50\u2013CENTER\u2013R50",
+            default: "CENTER",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "KEY",
+            key: "key",
+            values_raw: "C (Am)\u2013B (G#m)",
+            default: "C (Am)",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "Guide gives endpoints only; do not infer enharmonic display spellings or discrete map from this alone.",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            key: "d_level",
+            values_raw: "0\u2013100",
+            default: 100,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HRM LEVEL",
+            key: "hrm_level",
+            values_raw: "0\u2013100",
+            default: 80,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "hrm_manual"
+      },
+      {
+        name: "HRM AUTO (M)",
+        scope: "shared",
+        page: 37,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "VOICE",
+            key: "voice",
+            values_raw: "OCT-, OCT+, LOWER, LOW, HIGH, HIGHER, UNISON",
+            default: "HIGH",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FORMANT",
+            key: "formant",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "PAN",
+            key: "pan",
+            values_raw: "L50\u2013CENTER\u2013R50",
+            default: "CENTER",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HRM MODE",
+            key: "hrm_mode",
+            values_raw: "HYBRID, AUTO",
+            default: "AUTO",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "KEY",
+            key: "key",
+            values_raw: "C (Am)\u2013B (G#m)",
+            default: "C (Am)",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "Guide gives endpoints only; do not infer enharmonic display spellings or discrete map from this alone.",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            key: "d_level",
+            values_raw: "0\u2013100",
+            default: 100,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HRM LEVEL",
+            key: "hrm_level",
+            values_raw: "0\u2013100",
+            default: 80,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "hrm_auto_m"
+      },
+      {
+        name: "VOCODER",
+        scope: "shared",
+        page: 37,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "CARRIER",
+            key: "carrier",
+            values_raw: "MIC1, MIC2, INST1-L, INST1-R, INST2-L, INST2-R, TRACK1, TRACK2, TRACK3, TRACK4, TRACK5",
+            default: "TRACK1",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            notes: "Selected empty track yields no vocoder sound.",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "TONE",
+            key: "tone",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ATTACK",
+            key: "attack",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MOD SENS",
+            key: "mod_sens",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "CARRIER THRU",
+            key: "carrier_thru",
+            values_raw: "OFF, ON",
+            default: "ON",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            condition: "CARRIER is an input MIC1 through INST2-R",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "vocoder"
+      },
+      {
+        name: "OSC VOC (M)",
+        scope: "shared",
+        page: 37,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "CARRIER",
+            key: "carrier",
+            values_raw: "SAW, VINTAGE SAW, DETUNE SAW, SQUARE, RECT",
+            default: "SAW",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "TONE",
+            key: "tone",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ATTACK",
+            key: "attack",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "OCTAVE",
+            key: "octave",
+            values_raw: "-2OCT, -1OCT, 0, +1OCT",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MOD SENS",
+            key: "mod_sens",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RELEASE",
+            key: "release",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "osc_voc_m"
+      },
+      {
+        name: "OSC BOT",
+        scope: "shared",
+        page: 38,
+        sequence_supported: true,
+        parameters: [
+          {
+            name: "OSC",
+            key: "osc",
+            values_raw: "SAW, VINTAGE SAW, DETUNE SAW, SQUARE, RECT",
+            default: "SAW",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "TONE",
+            key: "tone",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ATTACK",
+            key: "attack",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "NOTE",
+            key: "note",
+            values_raw: "C1\u2013G9",
+            default: "C2",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MOD SENS",
+            key: "mod_sens",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            key: "balance",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "osc_bot"
+      },
+      {
+        name: "PREAMP",
+        scope: "shared",
+        page: 38,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "AMP TYPE",
+            key: "amp_type",
+            values_raw: "JC-120, NATURAL CLEAN, FULL RANGE, COMBO CRUNCH, STACK CRUNCH, HIGAIN STACK, POWER DRIVE, EXTREM LEAD, CORE METAL",
+            default: "COMBO CRUNCH",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SPK TYPE",
+            key: "spk_type",
+            values_raw: "OFF, ORIGINAL, 1x8, 1x10, 1x12, 2x12, 4x10, 4x12, 8x12",
+            default: "ORIGINAL",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            unit: "speaker configuration; inch",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "GAIN",
+            key: "gain",
+            values_raw: "0\u2013120",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "T-COMP",
+            key: "t_comp",
+            values_raw: "-10\u2013+10",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BASS",
+            key: "bass",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MIDDLE",
+            key: "middle",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "TREBLE",
+            key: "treble",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "PRESENCE",
+            key: "presence",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MIC TYPE",
+            key: "mic_type",
+            values_raw: "DYN57, DYN421, CND451, CND87, FLAT",
+            default: "DYN57",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MIC DIS",
+            key: "mic_dis",
+            values_raw: "OFF MIC, ON MIC",
+            default: "OFF MIC",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MIC POS",
+            key: "mic_pos",
+            values_raw: "CENTER, 1\u201310 cm",
+            default: "CENTER",
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            key: "e_level",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "preamp"
+      },
+      {
+        name: "DIST",
+        scope: "shared",
+        page: 38,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "TYPE",
+            key: "type",
+            values_raw: "VOCAL, BOOST, OD, DS, METAL, FUZZ",
+            default: null,
+            default_evidence: "not explicitly marked in table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "TONE",
+            key: "tone",
+            values_raw: "-50\u2013+50",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DIST",
+            key: "dist",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            key: "d_level",
+            values_raw: "0\u2013100",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            key: "e_level",
+            values_raw: "0\u2013100",
+            default: 100,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "dist"
+      },
+      {
+        name: "DYNAMICS",
+        scope: "shared",
+        page: 38,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "TYPE",
+            key: "type",
+            values_raw: "NATURALCOMP, MIXER COMP, LIVE COMP, NATURAL LIM, HARD LIM, JINGL COMP, HARD COMP, SOFT COMP, CLEAN COMP, DANCE COMP, ORCH COMP, VOCAL COMP, ACOUSTIC, ROCK BAND, ORCHESTRA, LOW BOOST, BRIGHTEN, DJs VOICE, PHONE VOX",
+            default: null,
+            default_evidence: "not explicitly marked in table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DYNAMICS",
+            key: "dynamics",
+            values_raw: "-20\u2013+20",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "dynamics"
+      },
+      {
+        name: "EQ",
+        scope: "shared",
+        page: 38,
+        sequence_supported: false,
+        parameters: [
+          {
+            name: "LO",
+            key: "lo",
+            values_raw: "-20\u2013+20 dB",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LO-MID",
+            key: "lo_mid",
+            values_raw: "-20\u2013+20 dB",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LO-MID FREQ",
+            key: "lo_mid_freq",
+            values_raw: "20.0 Hz\u201310.0 kHz",
+            default: 800,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            unit: "Hz",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LO-MID Q",
+            key: "lo_mid_q",
+            values_raw: "0.5, 1, 2, 4, 8, 16",
+            default: 1,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HI-MID",
+            key: "hi_mid",
+            values_raw: "-20\u2013+20 dB",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HI-MID FREQ",
+            key: "hi_mid_freq",
+            values_raw: "20.0 Hz\u201310.0 kHz",
+            default: 3150,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            unit: "Hz",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HI-MID Q",
+            key: "hi_mid_q",
+            values_raw: "0.5, 1, 2, 4, 8, 16",
+            default: 1,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH",
+            key: "high",
+            values_raw: "-20\u2013+20 dB",
+            default: 0,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LEVEL",
+            key: "level",
+            values_raw: "0\u2013100",
+            default: 50,
+            default_evidence: "bold PDF font and rendered table",
+            sequence_target: false,
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "eq"
+      },
+      {
+        name: "ISOLATOR",
+        scope: "shared",
+        page: 39,
+        parameters: [
+          {
+            name: "BAND",
+            values_raw: "LOW, MIDDLE, HIGH",
+            default: "LOW",
+            notes: "Band to cut.",
+            enum_values: [
+              "LOW",
+              "MIDDLE",
+              "HIGH"
+            ],
+            key: "band",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RATE",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, \u02C7\u2013\xB8\u2013`, 0\u2013100",
+            default: "quarter_note",
+            notes: "Rate; supports tempo-synchronized note lengths or a numeric 0\u2013100 rate.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            default_raw: "\xB8",
+            key: "rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BAND LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Cut amount.",
+            key: "band_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Modulation depth.",
+            sequence_target: true,
+            key: "depth",
+            knob: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP RATE",
+            values_raw: "OFF, 4MEAS, 2MEAS, 1MEAS, \u02C7\u2013\xB8\u2013`, 0\u2013100",
+            default: null,
+            notes: "Stepped-change rate. No default is marked in the PDF; the middle quarter-note glyph is not blue.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "step_rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "WAVEFORM",
+            values_raw: "TRI, SQR",
+            default: "TRI",
+            notes: "Modulation curve.",
+            enum_values: [
+              "TRI",
+              "SQR"
+            ],
+            key: "waveform",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_supported: true,
+        key: "isolator"
+      },
+      {
+        name: "OCTAVE",
+        scope: "shared",
+        page: 39,
+        parameters: [
+          {
+            name: "OCTAVE",
+            values_raw: "-1OCT, -2OCT, -1OCT&-2OCT",
+            default: "-1OCT",
+            notes: "Octave selection.",
+            enum_values: [
+              "-1OCT",
+              "-2OCT",
+              "-1OCT&-2OCT"
+            ],
+            key: "octave",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "MODE",
+            values_raw: "1, 2",
+            default: 2,
+            notes: "1 = previous RC-series algorithm; 2 = new algorithm.",
+            enum_values: [
+              1,
+              2
+            ],
+            key: "mode",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "OCT.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Octave-signal level.",
+            sequence_target: true,
+            key: "oct_level",
+            knob: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_supported: true,
+        key: "octave"
+      },
+      {
+        name: "AUTO PAN",
+        scope: "shared",
+        page: 39,
+        parameters: [
+          {
+            name: "RATE",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, \u02C7\u2013\xB8\u2013`, 0\u2013100",
+            default: "quarter_note",
+            notes: "Rate; supports tempo-synchronized note lengths or a numeric 0\u2013100 rate.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            default_raw: "\xB8",
+            key: "rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "WAVEFORM",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Modulation curve; larger values produce a sharper transition.",
+            key: "waveform",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Pan modulation amount.",
+            key: "depth",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "INIT PHASE",
+            values_raw: "0\u2013180",
+            default: 0,
+            notes: "Initial phase rotation; 0 starts at center.",
+            unit: "degrees",
+            key: "init_phase",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP RATE",
+            values_raw: "OFF, 4MEAS, 2MEAS, 1MEAS, \u02C7\u2013\xB8\u2013`, 0\u2013100",
+            default: null,
+            notes: "Stepped-change rate. No default is marked in the PDF; the middle quarter-note glyph is not blue.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "step_rate",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_supported: false,
+        key: "auto_pan"
+      },
+      {
+        name: "MANUAL PAN",
+        scope: "shared",
+        page: 39,
+        parameters: [
+          {
+            name: "POSITION",
+            values_raw: "L50\u2013CENTER\u2013R50",
+            default: "CENTER",
+            notes: "Pan position from left to right.",
+            sequence_target: true,
+            key: "position",
+            knob: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_supported: true,
+        key: "manual_pan"
+      },
+      {
+        name: "STEREO ENHANCE",
+        scope: "shared",
+        page: 39,
+        parameters: [
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ENHANCE",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Stereo enhancement amount.",
+            key: "enhance",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_supported: false,
+        key: "stereo_enhance"
+      },
+      {
+        name: "TREMOLO",
+        scope: "shared",
+        page: 39,
+        parameters: [
+          {
+            name: "RATE",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, \u02C7\u2013`, 0\u201385\u2013100",
+            default: 85,
+            notes: "Rate; supports tempo-synchronized note lengths or a numeric 0\u2013100 rate.",
+            sequence_target: true,
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "rate",
+            sequence_target_default: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Amplitude modulation depth.",
+            sequence_target: true,
+            key: "depth",
+            knob: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "WAVEFORM",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Modulation curve; larger values produce a sharper transition.",
+            key: "waveform",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_supported: true,
+        key: "tremolo"
+      },
+      {
+        name: "VIBRATO",
+        scope: "shared",
+        page: 39,
+        parameters: [
+          {
+            name: "RATE",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, \u02C7\u2013`, 0\u201350\u2013100",
+            default: 50,
+            notes: "Rate; supports tempo-synchronized note lengths or a numeric 0\u2013100 rate.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Pitch modulation depth.",
+            sequence_target: true,
+            key: "depth",
+            knob: true,
+            sequence_target_default: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "COLOR",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Modulation complexity.",
+            key: "color",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Direct-signal level.",
+            sequence_target: true,
+            key: "d_level",
+            sequence_target_default: false,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect-signal level.",
+            sequence_target: true,
+            key: "e_level",
+            sequence_target_default: false,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        sequence_supported: true,
+        key: "vibrato"
+      },
+      {
+        name: "PATTERN SLICER",
+        scope: "shared",
+        page: 40,
+        parameters: [
+          {
+            name: "RATE",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, \u02C7\u2013\xB8\u2013`, 0\u2013100",
+            default: "quarter_note",
+            notes: "Rate; supports tempo-synchronized note lengths or a numeric 0\u2013100 rate.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            default_raw: "\xB8",
+            key: "rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DUTY",
+            values_raw: "1\u201350\u201399",
+            default: 50,
+            notes: "Slice-sound duration.",
+            key: "duty",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ATTACK",
+            values_raw: "0\u201335\u2013100",
+            default: 35,
+            notes: "Slice attack level.",
+            key: "attack",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "PATTERN",
+            values_raw: "P01\u201320",
+            default: "P01",
+            notes: "Slice pattern.",
+            enum_values: [
+              "P01",
+              "P02",
+              "P03",
+              "P04",
+              "P05",
+              "P06",
+              "P07",
+              "P08",
+              "P09",
+              "P10",
+              "P11",
+              "P12",
+              "P13",
+              "P14",
+              "P15",
+              "P16",
+              "P17",
+              "P18",
+              "P19",
+              "P20"
+            ],
+            key: "pattern",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Slice amount.",
+            key: "depth",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "COMP THRESHOLD",
+            values_raw: "-30\u20130 dB",
+            default: -30,
+            notes: "Compressor threshold.",
+            unit: "dB",
+            key: "comp_threshold",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "COMP GAIN",
+            values_raw: "0\u2013+2\u2013+20 dB",
+            default: 2,
+            notes: "Compressor output gain.",
+            unit: "dB",
+            key: "comp_gain",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "pattern_slicer"
+      },
+      {
+        name: "STEP SLICER",
+        scope: "shared",
+        page: 40,
+        parameters: [
+          {
+            name: "RATE",
+            values_raw: "4MEAS, 2MEAS, 1MEAS, \u02C7\u2013\xB8\u2013`, 0\u2013100",
+            default: "quarter_note",
+            notes: "Rate; supports tempo-synchronized note lengths or a numeric 0\u2013100 rate.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            default_raw: "\xB8",
+            key: "rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP MAX",
+            values_raw: "1\u201316",
+            default: 16,
+            notes: "Number of active steps.",
+            key: "step_max",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP LENGTH",
+            values_raw: "1\u201350\u2013100",
+            default: 50,
+            notes: "Length of one step.",
+            key: "step_length",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "STEP LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Level of one step.",
+            key: "step_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Slice amount.",
+            key: "depth",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "COMP THRESHOLD",
+            values_raw: "-30\u20130 dB",
+            default: -30,
+            notes: "Compressor threshold.",
+            unit: "dB",
+            key: "comp_threshold",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "COMP GAIN",
+            values_raw: "0\u2013+6\u2013+20 dB",
+            default: 6,
+            notes: "Compressor output gain.",
+            unit: "dB",
+            key: "comp_gain",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "step_slicer"
+      },
+      {
+        name: "DELAY",
+        scope: "shared",
+        page: 40,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "1\u2013200\u20132000 ms, \u02C7\u2013`",
+            default: 200,
+            notes: "Milliseconds or tempo-synchronized note length.",
+            unit: "ms",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FEEDBACK",
+            values_raw: "1\u201316",
+            default: 16,
+            notes: "Number of delay repeats, not a printed percentage.",
+            key: "feedback",
+            verification_status: "official_pdf_visual_verified",
+            semantic_warning: "Guide describes number of delay repeats. Not a documented linear feedback coefficient. Do not directly divide by100 or infer exact DSP gain."
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013120",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "delay"
+      },
+      {
+        name: "PANNING DELAY",
+        scope: "shared",
+        page: 40,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "1\u2013200\u20132000 ms, \u02C7\u2013`",
+            default: 200,
+            notes: "Milliseconds or tempo-synchronized note length.",
+            unit: "ms",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FEEDBACK",
+            values_raw: "1\u201316",
+            default: 16,
+            notes: "Number of delay repeats, not a printed percentage.",
+            key: "feedback",
+            verification_status: "official_pdf_visual_verified",
+            semantic_warning: "Guide describes number of delay repeats. Not a documented linear feedback coefficient. Do not directly divide by100 or infer exact DSP gain."
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013120",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "panning_delay"
+      },
+      {
+        name: "REVERSE DELAY",
+        scope: "shared",
+        page: 40,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "1\u2013200\u20132000 ms, \u02C7\u2013`",
+            default: 200,
+            notes: "Milliseconds or tempo-synchronized note length.",
+            unit: "ms",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FEEDBACK",
+            values_raw: "1\u201316",
+            default: 16,
+            notes: "Number of delay repeats, not a printed percentage.",
+            key: "feedback",
+            verification_status: "official_pdf_visual_verified",
+            semantic_warning: "Guide describes number of delay repeats. Not a documented linear feedback coefficient. Do not directly divide by100 or infer exact DSP gain."
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013120",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "reverse_delay"
+      },
+      {
+        name: "MOD DELAY",
+        scope: "shared",
+        page: 40,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "1\u2013200\u20132000 ms, \u02C7\u2013`",
+            default: 200,
+            notes: "Milliseconds or tempo-synchronized note length.",
+            unit: "ms",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FEEDBACK",
+            values_raw: "1\u201316",
+            default: 16,
+            notes: "Number of delay repeats, not a printed percentage.",
+            key: "feedback",
+            verification_status: "official_pdf_visual_verified",
+            semantic_warning: "Guide describes number of delay repeats. Not a documented linear feedback coefficient. Do not directly divide by100 or infer exact DSP gain."
+          },
+          {
+            name: "MOD DEPTH",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Modulation depth on delayed signal.",
+            key: "mod_depth",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013120",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "mod_delay"
+      },
+      {
+        name: "TAPE ECHO1",
+        scope: "shared",
+        page: 41,
+        parameters: [
+          {
+            name: "REPEAT RATE",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Tape-speed control; unitless, unlike TAPE ECHO2.",
+            key: "repeat_rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "INTENSITY",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Echo repetition amount.",
+            key: "intensity",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BASS",
+            values_raw: "-50\u20130\u2013+50",
+            default: 0,
+            notes: "Low-frequency tone.",
+            key: "bass",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "TREBLE",
+            values_raw: "-50\u20130\u2013+50",
+            default: 0,
+            notes: "High-frequency tone.",
+            key: "treble",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013120",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        notes: "Previous RC-series algorithm.",
+        key: "tape_echo1"
+      },
+      {
+        name: "TAPE ECHO2",
+        scope: "shared",
+        page: 41,
+        parameters: [
+          {
+            name: "REPEAT RATE",
+            values_raw: "1\u2013200\u20132000 ms, \u02C7\u2013`",
+            default: 200,
+            notes: "Milliseconds or tempo-synchronized note length.",
+            unit: "ms",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "repeat_rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "INTENSITY",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Echo repetition amount.",
+            key: "intensity",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013120",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        notes: "New algorithm. REPEAT RATE is printed in milliseconds or note lengths despite being described as tape speed.",
+        key: "tape_echo2"
+      },
+      {
+        name: "GRANULAR DELAY",
+        scope: "shared",
+        page: 41,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Spacing between repetitions.",
+            key: "time",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FEEDBACK",
+            values_raw: "0\u201370\u2013100",
+            default: 70,
+            notes: "Length of the repeated material.",
+            key: "feedback",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "granular_delay"
+      },
+      {
+        name: "WARP",
+        scope: "shared",
+        page: 41,
+        parameters: [
+          {
+            name: "LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect level.",
+            key: "level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "warp"
+      },
+      {
+        name: "TWIST",
+        scope: "shared",
+        page: 41,
+        parameters: [
+          {
+            name: "RELEASE",
+            values_raw: "FALL, FADE",
+            default: null,
+            notes: "FALL stops rotation on switch-off; FADE fades while rotation continues. Neither option is marked as the default.",
+            enum_values: [
+              "FALL",
+              "FADE"
+            ],
+            key: "release",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RISE",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Time to reach maximum effect.",
+            key: "rise",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FALL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Fade-out time when RELEASE is FADE.",
+            key: "fall",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect level.",
+            key: "level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "twist"
+      },
+      {
+        name: "ROLL1",
+        scope: "shared",
+        page: 41,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "1\u20131000 ms, \u02C7\u2013\xB8\u2013`",
+            default: "quarter_note",
+            notes: "Loop cycle in milliseconds or synchronized note length.",
+            default_raw: "\xB8",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "FEEDBACK",
+            values_raw: "1\u201350\u2013100",
+            default: 50,
+            notes: "Number of repetitions when ROLL is OFF.",
+            key: "feedback",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ROLL",
+            values_raw: "OFF, 1/2, 1/4, 1/8, 1/16",
+            default: null,
+            notes: "Divides the loop cycle specified by TIME. No default is marked.",
+            enum_values: [
+              "OFF",
+              "1/2",
+              "1/4",
+              "1/8",
+              "1/16"
+            ],
+            key: "roll",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Direct/effect balance.",
+            key: "balance",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        notes: "Previous RC-series algorithm.",
+        key: "roll1"
+      },
+      {
+        name: "ROLL2",
+        scope: "shared",
+        page: 41,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "1\u20131000 ms, \u02C7\u2013\xB8\u2013`",
+            default: "quarter_note",
+            notes: "Loop cycle in milliseconds or synchronized note length.",
+            default_raw: "\xB8",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "REPEAT",
+            values_raw: "1\u201350\u2013100, INF",
+            default: 50,
+            notes: "Number of repetitions when ROLL is OFF.",
+            key: "repeat",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "ROLL",
+            values_raw: "OFF, 1/2, 1/4, 1/8, 1/16",
+            default: null,
+            notes: "Divides the loop cycle specified by TIME. No default is marked.",
+            enum_values: [
+              "OFF",
+              "1/2",
+              "1/4",
+              "1/8",
+              "1/16"
+            ],
+            key: "roll",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Direct/effect balance.",
+            key: "balance",
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        notes: "New algorithm; REPEAT adds INF.",
+        key: "roll2"
+      },
+      {
+        name: "FREEZE",
+        scope: "shared",
+        page: 42,
+        parameters: [
+          {
+            name: "ATTACK",
+            values_raw: "0\u201330\u2013100",
+            default: 30,
+            notes: "Fade-in time.",
+            key: "attack",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "RELEASE",
+            values_raw: "0\u201330\u2013100",
+            default: 30,
+            notes: "Fade-out time.",
+            key: "release",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DECAY",
+            values_raw: "0\u201330\u2013100",
+            default: 30,
+            notes: "Decay amount.",
+            key: "decay",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SUSTAIN",
+            values_raw: "0\u201330\u2013100",
+            default: 30,
+            notes: "Sustain amount.",
+            key: "sustain",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "BALANCE",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Direct/effect balance.",
+            key: "balance",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "freeze"
+      },
+      {
+        name: "CHORUS",
+        scope: "shared",
+        page: 42,
+        parameters: [
+          {
+            name: "RATE",
+            values_raw: "0\u201350\u2013100, \u02C7\u2013`",
+            default: 50,
+            notes: "Numeric rate or tempo-synchronized note length.",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/32 note"
+            },
+            key: "rate",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "DEPTH",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Chorus depth.",
+            key: "depth",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "chorus"
+      },
+      {
+        name: "REVERB",
+        scope: "shared",
+        page: 42,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "0.1\u20133\u201310s",
+            default: 3,
+            notes: "Reverberation duration.",
+            unit: "s",
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "PRE DELAY",
+            values_raw: "0\u2013500 ms",
+            default: 500,
+            notes: "Time before reverberation begins. The PDF explicitly marks 500, not 0, as the default.",
+            unit: "ms",
+            key: "pre_delay",
+            verification_status: "official_pdf_visual_verified",
+            default_warning: "500ms is explicitly blue/bold in official PDF; hardware default not independently verified."
+          },
+          {
+            name: "DENSITY",
+            values_raw: "1\u20135\u201310",
+            default: 5,
+            notes: "Reverberation density.",
+            key: "density",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "reverb"
+      },
+      {
+        name: "GATE REVERB",
+        scope: "shared",
+        page: 42,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "0.1\u20133\u201310s",
+            default: 3,
+            notes: "Reverberation duration.",
+            unit: "s",
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "PRE DELAY",
+            values_raw: "0\u2013500 ms",
+            default: 500,
+            notes: "Time before reverberation begins. The PDF explicitly marks 500, not 0, as the default.",
+            unit: "ms",
+            key: "pre_delay",
+            verification_status: "official_pdf_visual_verified",
+            default_warning: "500ms is explicitly blue/bold in official PDF; hardware default not independently verified."
+          },
+          {
+            name: "THRESHOLD",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Reverb is cut when its level drops below this threshold.",
+            key: "threshold",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "gate_reverb"
+      },
+      {
+        name: "REVERSE REVERB",
+        scope: "shared",
+        page: 42,
+        parameters: [
+          {
+            name: "TIME",
+            values_raw: "0.1\u20133\u201310s",
+            default: 3,
+            notes: "Reverberation duration.",
+            unit: "s",
+            key: "time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "PRE DELAY",
+            values_raw: "0\u2013500 ms",
+            default: 500,
+            notes: "Time before reverberation begins. The PDF explicitly marks 500, not 0, as the default.",
+            unit: "ms",
+            key: "pre_delay",
+            verification_status: "official_pdf_visual_verified",
+            default_warning: "500ms is explicitly blue/bold in official PDF; hardware default not independently verified."
+          },
+          {
+            name: "GATE TIME",
+            values_raw: "0.1\u20130. 5\u20131s",
+            default: 0.5,
+            notes: "Time at which reverberation starts to swell.",
+            unit: "s",
+            key: "gate_time",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "D.LEVEL",
+            values_raw: "0\u2013100",
+            default: 100,
+            notes: "Direct-signal level.",
+            key: "d_level",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LOW CUT",
+            values_raw: "FLAT, 20.0 Hz\u201312.5 kHz",
+            default: "FLAT",
+            notes: "Low-cut frequency; FLAT bypasses the low-cut filter.",
+            key: "low_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "HIGH CUT",
+            values_raw: "20.0 Hz\u201312.5 kHz, FLAT",
+            default: "FLAT",
+            notes: "High-cut frequency; FLAT bypasses the high-cut filter.",
+            key: "high_cut",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "E.LEVEL",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Effect-signal level.",
+            key: "e_level",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        key: "reverse_reverb"
+      },
+      {
+        name: "BEAT SCATTER",
+        scope: "track",
+        page: 43,
+        parameters: [
+          {
+            name: "TYPE",
+            values_raw: "P1\u20134",
+            default: "P1",
+            notes: "Scrub pattern.",
+            enum_values: [
+              "P1",
+              "P2",
+              "P3",
+              "P4"
+            ],
+            key: "type",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LENGTH",
+            values_raw: "THRU, \xAA\u2013\xB8\u2013`",
+            default: "quarter_note",
+            notes: "Scrub length; THRU passes through.",
+            default_raw: "\xB8",
+            tempo_range: {
+              from: "whole note",
+              to: "1/32 note"
+            },
+            key: "length",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        availability_notes: "Track FX only. When TRACK FX MODE is MULTI, available only in FX A.",
+        key: "beat_scatter"
+      },
+      {
+        name: "BEAT REPEAT",
+        scope: "track",
+        page: 43,
+        parameters: [
+          {
+            name: "TYPE",
+            values_raw: "FORWARD, REWIND, MIX",
+            default: "FORWARD",
+            notes: "Forward, reverse, or alternating forward/reverse repetition.",
+            enum_values: [
+              "FORWARD",
+              "REWIND",
+              "MIX"
+            ],
+            key: "type",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "LENGTH",
+            values_raw: "THRU, \u02C7\u2013\xB8\u2013\u02DC",
+            default: "quarter_note",
+            notes: "Repeat length; THRU passes through.",
+            default_raw: "\xB8",
+            tempo_range: {
+              from: "1/2 note",
+              to: "1/16 note"
+            },
+            key: "length",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        availability_notes: "Track FX only. When TRACK FX MODE is MULTI, available only in FX A.",
+        key: "beat_repeat"
+      },
+      {
+        name: "BEAT SHIFT",
+        scope: "track",
+        page: 43,
+        parameters: [
+          {
+            name: "TYPE",
+            values_raw: "FUTURE, PAST",
+            default: "FUTURE",
+            notes: "Playback-shift direction.",
+            enum_values: [
+              "FUTURE",
+              "PAST"
+            ],
+            key: "type",
+            verification_status: "official_pdf_visual_verified"
+          },
+          {
+            name: "SHIFT",
+            values_raw: "THRU, \u02DC\u2013\xB8\u2013\xAA",
+            default: "quarter_note",
+            notes: "Playback shift length; THRU is unshifted.",
+            default_raw: "\xB8",
+            tempo_range: {
+              from: "1/16 note",
+              to: "whole note"
+            },
+            key: "shift",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        availability_notes: "Track FX only. When TRACK FX MODE is MULTI, available only in FX A.",
+        key: "beat_shift"
+      },
+      {
+        name: "VINYL FLICK",
+        scope: "track",
+        page: 43,
+        parameters: [
+          {
+            name: "FLICK",
+            values_raw: "0\u201350\u2013100",
+            default: 50,
+            notes: "Turntable playback speed control.",
+            key: "flick",
+            knob: true,
+            verification_status: "official_pdf_visual_verified"
+          }
+        ],
+        availability_notes: "Track FX only. When TRACK FX MODE is MULTI, available only in FX A.",
+        key: "vinyl_flick"
+      }
+    ],
+    notes: [
+      "All printed pages 34\u201338 visually checked. Range endpoints do not establish quantization or internal DSP mapping.",
+      "Musical glyph ranges remain unresolved pending enlarged visual verification; do not invent complete tempo enums.",
+      "No default marked for STEP RATE, DIST TYPE, DYNAMICS TYPE. RATE and TEMPO use blue quarter-note glyphs as defaults.",
+      "Values_raw preserves the PDF text extraction, including proprietary music-font character codes. These codes are not literal UI text.",
+      "Tempo glyphs were verified from enlarged PDF renders: \u02C7 = half note (1/2), \xB8 = quarter note (1/4), ` = thirty-second note (1/32), \u02DC = sixteenth note (1/16), \xAA = whole note.",
+      "The manual gives tempo-note endpoints as ranges, not a full enumerated list of intermediate dotted/triplet values. No missing intermediate values or resolution/step size are invented.",
+      "Default values are confirmed from the rendered bold/blue type and PDF span color 0x00558f. Null means no default is marked in the source, not that the device has no default.",
+      "A blue star means default FX sequence target; a black star means another allowed target. The gray knob symbol means controllable by the INPUT FX/TRACK FX knob.",
+      "Numeric ranges retain the printed default in the middle when present; they do not imply a third range endpoint.",
+      "Only pages 39\u201343 were extracted into effects. Page 34 was consulted solely for the meaning of sequence-star and knob symbols.",
+      "Primary file groups TAPE ECHO1/2 and ROLL1/2 into families without duplicating their shared parameter rows. late-effects-expanded-variants.json retains all 29 distinct variant definitions.",
+      "No bold/default value is marked for ISOLATOR STEP RATE, AUTO PAN STEP RATE, TWIST RELEASE, ROLL1 ROLL, or ROLL2 ROLL.",
+      "Exact intermediate synchronized-note choices and frequency increments are not enumerated on these manual pages.",
+      "STEP SLICER STEP LENGTH and STEP LEVEL are described as values for one step, but these pages do not document an array/index interface.",
+      "Official specification reports 49 Input / 53 Track types. This catalog reconciles that count by treating TAPE ECHO1/2 and ROLL1/2 as two families with distinct algorithm variants, consistent with the combined PDF headings. This grouping is a count reconciliation, not proof of firmware enum IDs.",
+      "No proprietary algorithms or hardware-equivalence claims can be inferred from a parameter guide. Exposed controls must be tested for actual DSP behavior.",
+      "Read official raw table/PDF for unexpanded musical-note and frequency stepping domains; absence of a published intermediate enum must remain explicit.",
+      "All defaults null indicate source not marked, not a recommended zero/default."
+    ],
+    numeric_review: {
+      date_utc: "2026-10-22T04:39:00Z",
+      method: "Second independent full visual comparison of all 267 expanded parameter rows against rendered official printed pages34\u201343. Blue/bold defaults checked; no suspected column contamination found.",
+      status: "document_verified_not_hardware_verified",
+      important: "Four DELAY FEEDBACK tables explicitly print 1\u201316/default16 and three REVERB PRE DELAY tables explicitly print0\u2013500ms/default500. These may be surprising but are not extraction mistakes. Any firmware discrepancy requires device or official errata evidence."
+    }
+  };
+
+  // src/audio/fx/official/parameters.ts
+  var OFFICIAL_FX_SOURCE = parameter_guide_default.source.pdf_url;
+  var OFFICIAL_FX_EFFECTS = parameter_guide_default.effects;
+  var option = (label, runtime, value = label) => ({ label, value, runtime });
+  function officialParameterDomain(parameter) {
+    const raw = parameter.values_raw;
+    const domain = { options: [], complete: true, unit: parameter.unit ?? (/(dB|ms|Hz|cm|OCT)\s*$/.exec(raw)?.[1] ?? "") };
+    if (raw.includes("MEAS")) {
+      domain.range = { min: 0, max: 100, step: 1 };
+      domain.options = [option("4MEAS", -16), option("2MEAS", -8), option("1MEAS", -4), option("1/2 note", -2, "half_note"), option("1/4 note", -1, "quarter_note"), option("1/32 note", -0.125, "thirty_second_note")];
+      if (raw.startsWith("OFF")) domain.options.unshift(option("OFF", -1e3));
+      domain.complete = false;
+      return domain;
+    }
+    if (parameter.tempo_range) {
+      const noteValues = {
+        "whole note": option("1/1 note", -4, "whole_note"),
+        "1/2 note": option("1/2 note", -2, "half_note"),
+        "1/16 note": option("1/16 note", -0.25, "sixteenth_note"),
+        "1/32 note": option("1/32 note", -0.125, "thirty_second_note")
+      };
+      domain.options = [...new Map([noteValues[parameter.tempo_range.from], option("1/4 note", -1, "quarter_note"), noteValues[parameter.tempo_range.to]].filter((v) => !!v).map((v) => [v.runtime, v])).values()];
+      if (raw.startsWith("THRU")) domain.options.unshift(option("THRU", -1e3));
+      const numberPart = raw.split(",")[0].replace(/\s/g, "");
+      const bounds = numberPart.match(/[+-]?\d+(?:\.\d+)?/g)?.map(Number);
+      if (bounds && bounds.length >= 2) domain.range = { min: bounds[0], max: bounds[bounds.length - 1], step: 1 };
+      domain.complete = false;
+      return domain;
+    }
+    if (raw.includes("FLAT") && raw.includes("12.5 kHz")) return { ...domain, unit: "Hz", range: { min: 20, max: 12500, step: 0.1 }, options: [option("FLAT", -1e3)] };
+    const numberedPattern = /^P(0?1)–(\d+)$/.exec(raw);
+    if (numberedPattern) return { ...domain, options: Array.from({ length: Number(numberedPattern[2]) }, (_, i) => option(`P${String(i + 1).padStart(numberedPattern[1].length, "0")}`, i)) };
+    const annotatedRange = /^([+-]?\d+(?:\.\d+)?)(?:–[+-]?\d+(?:\. ?\d+)?)+\s*(?:dB|ms|s)?(?:, INF)?$/.exec(raw);
+    if (annotatedRange) {
+      const bounds = raw.replace(/\. /g, ".").match(/[+-]?\d+(?:\.\d+)?/g).map(Number);
+      return { ...domain, range: { min: bounds[0], max: bounds[bounds.length - 1], step: bounds.some((v) => !Number.isInteger(v)) ? 0.1 : 1 }, options: raw.endsWith("INF") ? [option("INF", -1e3)] : [] };
+    }
+    if (raw === "C\u2013B" || raw === "C (Am)\u2013B (G#m)" || raw === "CHROMATIC, C (Am)\u2013B (G#m)") {
+      const chromatic = raw.startsWith("CHROMATIC");
+      const choices = Array.from({ length: 12 }, (_, index) => option(index === 0 ? raw.includes("(Am)") ? "C (Am)" : "C" : index === 11 ? raw.includes("(G#m)") ? "B (G#m)" : "B" : `Pitch class ${index} (C=0)`, index + (chromatic ? 1 : 0), index));
+      if (chromatic) choices.unshift(option("CHROMATIC", 0));
+      if (raw.includes("(Am)")) choices[chromatic ? 1 : 0].value = "C (Am)";
+      if (raw === "C\u2013B") choices[0].value = "C";
+      return { ...domain, options: choices, complete: false };
+    }
+    if (raw === "C1\u2013G9") {
+      const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      return { ...domain, unit: "MIDI note", options: Array.from({ length: 104 }, (_, i) => {
+        const midi = i + 24;
+        const label = `${names[midi % 12]}${Math.floor(midi / 12) - 1}`;
+        return option(label, midi);
+      }) };
+    }
+    if (/^(?:[+-]?\d+OCT|0)(?:, (?:[+-]?\d+OCT|0))+$/.test(raw)) {
+      return { ...domain, unit: "octave", options: raw.split(", ").map((label, index) => option(label, index, label === "0" ? 0 : label)) };
+    }
+    if (raw === "L50\u2013CENTER\u2013R50") return { ...domain, range: { min: -50, max: 50, step: 1 }, options: [option("CENTER", 0)] };
+    if (raw === "20.0 Hz\u201310.0 kHz") return { ...domain, unit: "Hz", range: { min: 20, max: 1e4, step: 0.1 } };
+    if (raw === "OFF, 31\u20131") return { ...domain, options: [option("OFF", -1e3), ...Array.from({ length: 31 }, (_, i) => option(String(31 - i), 31 - i, 31 - i))] };
+    if (raw === "OFF, 1/2\u20131/32") return { ...domain, options: [option("OFF", -1e3), ...Array.from({ length: 31 }, (_, i) => option(`1/${i + 2}`, i + 2))] };
+    if (raw === "P1\u2013P30") return { ...domain, options: Array.from({ length: 30 }, (_, i) => option(`P${i + 1}`, i)) };
+    if (raw === "CENTER, 1\u201310 cm") return { ...domain, unit: "cm", options: [option("CENTER", 0), ...Array.from({ length: 10 }, (_, i) => option(String(i + 1), i + 1, i + 1))] };
+    const numeric = /^([+-]?\d+(?:\.\d+)?)–([+-]?\d+(?:\.\d+)?)(?: (dB|ms|Hz)|OCT)?$/.exec(raw);
+    if (numeric) return { ...domain, unit: numeric[3] ?? domain.unit, range: { min: Number(numeric[1]), max: Number(numeric[2]), step: 1 } };
+    if (raw.includes("\u2013")) return { ...domain, complete: false };
+    if (raw.includes(",")) {
+      domain.options = raw.split(",").map((entry, index) => {
+        const label = entry.trim();
+        if (label === "BI-PHASE") return option(label, -1);
+        if (/^[+-]?\d+(?:\.\d+)?$/.test(label)) return option(label, Number(label), Number(label));
+        return option(label, index);
+      });
+      return domain;
+    }
+    return { ...domain, complete: false };
+  }
+  function findOfficialEffect(name) {
+    const normalized = name.replace(/^DSP /, "").replace(/ \((?:EXPERIMENTAL|CLEAN-ROOM|FDN16)\)$/, "").replace(/^FDN8 REVERB$/, "REVERB");
+    return OFFICIAL_FX_EFFECTS.find((effect) => effect.name === normalized);
+  }
+  function encodeOfficialValue(parameter, value) {
+    const domain = officialParameterDomain(parameter);
+    const selected = domain.options.find((candidate) => candidate.value === value);
+    if (selected) return selected.runtime;
+    if (typeof value === "string" && parameter.values_raw.endsWith("OCT") && /^[+-]?\d+OCT$/.test(value)) value = Number(value.slice(0, -3));
+    if (typeof value !== "number" || !Number.isFinite(value) || !domain.range) return null;
+    const { min, max, step } = domain.range;
+    if (value < min || value > max || Math.abs((value - min) / step - Math.round((value - min) / step)) > 1e-7) return null;
+    return value;
+  }
+  function resolveOfficialEffect(name, parameters = {}) {
+    const canonical = name.replace(" (EXPERIMENTAL)", "");
+    if (canonical === "TAPE ECHO" || canonical === "ROLL") {
+      const variant = parameters.official_variant;
+      return variant === 1 || variant === 2 ? findOfficialEffect(`${canonical}${variant}`) : void 0;
+    }
+    return findOfficialEffect(name);
+  }
+
+  // src/audio/fx/dsp/OfficialBrowserParameters.ts
+  var OFFICIAL_OFF = -1e3;
+  var keys = (...names) => Object.freeze(names.map((name) => `official_${name}`));
+  var BROWSER_OFFICIAL_PARAMETER_KEYS = Object.freeze({
+    lpf: keys("rate", "depth", "resonance", "cutoff", "step_rate"),
+    bpf: keys("rate", "depth", "resonance", "cutoff", "step_rate"),
+    hpf: keys("rate", "depth", "resonance", "cutoff", "step_rate"),
+    phaser: keys("rate", "depth", "resonance", "manual", "step_rate", "d_level", "e_level", "stage"),
+    flanger: keys("rate", "depth", "resonance", "manual", "step_rate", "d_level", "e_level", "separation"),
+    "lo-fi": keys("bitdepth", "samplerate", "balance"),
+    radio: keys("lo_fi", "level"),
+    "ring-mod": keys("frequency", "balance"),
+    sustainer: keys("attack", "release", "level", "low_gain", "hi_gain", "sustain"),
+    distortion: keys("type", "tone", "dist", "d_level", "e_level"),
+    eq: keys("lo", "lo_mid", "lo_mid_freq", "lo_mid_q", "hi_mid", "hi_mid_freq", "hi_mid_q", "high", "level"),
+    "slow-gear": keys("sens", "rise_time", "level"),
+    tremolo: keys("rate", "depth", "waveform"),
+    "auto-pan": keys("rate", "depth", "waveform", "init_phase", "step_rate"),
+    "manual-pan": keys("position"),
+    vibrato: keys("rate", "depth", "color", "d_level", "e_level"),
+    "stereo-enhance": keys("low_cut", "high_cut", "enhance"),
+    chorus: keys("rate", "depth", "d_level", "low_cut", "high_cut", "e_level"),
+    reverb: keys("time", "pre_delay", "density", "d_level", "low_cut", "high_cut", "e_level"),
+    "reverse-reverb": keys("time", "pre_delay", "gate_time", "d_level", "low_cut", "high_cut", "e_level"),
+    "pattern-slicer": keys("rate", "duty", "attack", "depth", "comp_threshold", "comp_gain"),
+    "beat-shift": keys("type", "shift"),
+    "vinyl-flick": keys("flick"),
+    "beat-repeat": keys("type", "length"),
+    "beat-scatter": keys("length"),
+    "gate-reverb": keys("time", "pre_delay", "threshold", "d_level", "low_cut", "high_cut", "e_level"),
+    synth: keys("frequency", "resonance", "decay", "balance"),
+    g2b: keys("balance"),
+    isolator: keys("band", "rate", "band_level", "depth", "step_rate", "waveform"),
+    delay: keys("time", "feedback", "d_level", "low_cut", "high_cut", "e_level"),
+    "panning-delay": keys("time", "feedback", "d_level", "low_cut", "high_cut", "e_level"),
+    "reverse-delay": keys("time", "feedback", "d_level", "low_cut", "high_cut", "e_level"),
+    "mod-delay": keys("time", "feedback", "mod_depth", "d_level", "low_cut", "high_cut", "e_level"),
+    "granular-delay": keys("time", "feedback", "e_level"),
+    warp: keys("level"),
+    twist: keys("release", "rise", "fall", "level"),
+    freeze: keys("attack", "release", "decay", "sustain", "balance"),
+    dynamics: keys("type", "dynamics"),
+    preamp: keys("amp_type", "spk_type", "gain", "t_comp", "bass", "middle", "treble", "presence", "mic_type", "mic_dis", "mic_pos", "e_level"),
+    electric: keys("shift", "formant", "speed", "stability", "scale"),
+    vocoder: keys("carrier", "tone", "attack", "mod_sens", "balance"),
+    "osc-voc": keys("carrier", "tone", "attack", "octave", "mod_sens", "release", "balance"),
+    "osc-bot": keys("osc", "tone", "attack", "note", "mod_sens", "balance"),
+    roll: keys("variant", "time", "feedback", "repeat", "roll", "balance"),
+    "step-slicer": keys("rate", "step_max", "step_length", "depth", "comp_threshold", "comp_gain", "step_index", ...Array.from({ length: 16 }, (_, i) => `step_level_${i + 1}`)),
+    "tape-echo": keys("variant", "repeat_rate", "intensity", "d_level", "bass", "treble", "low_cut", "high_cut", "e_level")
+  });
+  var BROWSER_OFFICIAL_SOURCE_ALGORITHMS = Object.freeze(["beat-shift", "vinyl-flick"]);
+  function isBrowserOfficialParameterSupported(algorithm, key, variant) {
+    if (!(BROWSER_OFFICIAL_PARAMETER_KEYS[algorithm] ?? []).includes(key)) return false;
+    if (algorithm !== "tape-echo" && algorithm !== "roll") return true;
+    if (key === "official_variant") return true;
+    if (variant !== 1 && variant !== 2) return false;
+    if (algorithm === "roll") return variant === 1 ? key !== "official_repeat" : key !== "official_feedback";
+    return variant === 1 ? key !== "official_low_cut" && key !== "official_high_cut" : key !== "official_bass" && key !== "official_treble";
+  }
+  function getBrowserOfficialDefaults(algorithm, variant) {
+    const names = { "ring-mod": "RING.MOD", distortion: "DIST", "lo-fi": "LO-FI", "osc-voc": "OSC VOC (M)" };
+    const name = names[algorithm] ?? algorithm.replace(/-/g, " ").toUpperCase();
+    const effect = resolveOfficialEffect(name, { official_variant: variant ?? 0 });
+    const defaults = {};
+    for (const parameter of effect?.parameters ?? []) {
+      const key = `official_${parameter.key}`;
+      if (algorithm === "step-slicer" && parameter.key === "step_level" && parameter.default !== null) {
+        const encoded2 = encodeOfficialValue(parameter, parameter.default);
+        if (encoded2 !== null) for (let i = 1; i <= 16; i += 1) defaults[`official_step_level_${i}`] = encoded2;
+        continue;
+      }
+      if (parameter.default === null || !isBrowserOfficialParameterSupported(algorithm, key, variant)) continue;
+      const encoded = encodeOfficialValue(parameter, parameter.default);
+      if (encoded !== null) defaults[key] = encoded;
+    }
+    return defaults;
+  }
+  function officialRateHz(value, bpm = 120, quarterNotesPerMeasure = 4) {
+    if (!Number.isFinite(value) || value === OFFICIAL_OFF) return 0;
+    if (value < 0) {
+      const meter = Number.isFinite(quarterNotesPerMeasure) ? Math.max(0.125, Math.min(128, quarterNotesPerMeasure)) : 4;
+      const beats = Math.abs(value) * (value === -4 || value === -8 || value === -16 ? meter / 4 : 1);
+      return Math.min(160, Math.max(40, Math.min(300, Number.isFinite(bpm) ? bpm : 120)) / (60 * Math.max(1e-4, beats)));
+    }
+    return 0.05 * 400 ** (Math.max(0, Math.min(100, value)) / 100);
+  }
+  var clamp5 = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+  var percent = (n) => clamp5(n, 0, 100) / 100;
+  var OfficialBrowserControlState = class {
+    values = {};
+    bpm = 120;
+    quarterNotesPerMeasure = 4;
+    algorithm;
+    sampleRate;
+    constructor(algorithm, sampleRate) {
+      this.algorithm = algorithm;
+      this.sampleRate = sampleRate;
+    }
+    has(name) {
+      return this.values[`official_${name}`] !== void 0;
+    }
+    get(name, fallback = 0) {
+      return this.values[`official_${name}`] ?? fallback;
+    }
+    translate(update) {
+      if (BROWSER_OFFICIAL_SOURCE_ALGORITHMS.includes(this.algorithm) && Object.keys(update).some((key) => key.startsWith("official_"))) {
+        throw new RangeError(`Official ${this.algorithm} controls require a source-aware loop transport; the causal Browser DSP core cannot render them.`);
+      }
+      if (this.algorithm === "vocoder" && update.official_carrier !== void 0 && (!Number.isInteger(update.official_carrier) || update.official_carrier < 6 || update.official_carrier > 10)) {
+        throw new RangeError("Browser VOCODER CARRIER supports TRACK1\u20135 only; MIC1/MIC2/INST1-L/R/INST2-L/R are not mapped.");
+      }
+      const variant = update.official_variant ?? this.values.official_variant;
+      if (update.official_variant !== void 0 && update.official_variant !== 1 && update.official_variant !== 2) throw new RangeError("Official FX variant must be 1 or 2");
+      for (const key of Object.keys(update)) {
+        if (key.startsWith("official_") && !isBrowserOfficialParameterSupported(this.algorithm, key, variant)) throw new RangeError(`Unsupported official Browser ${this.algorithm} parameter: ${key}`);
+      }
+      if (update.official_variant !== void 0 && update.official_variant !== this.values.official_variant) {
+        for (const key of Object.keys(this.values)) delete this.values[key];
+      }
+      if (Object.keys(this.values).length === 0 && Object.entries(update).some(([key, value]) => key.startsWith("official_") && key !== "official_step_index" && Number.isFinite(value))) {
+        Object.assign(this.values, getBrowserOfficialDefaults(this.algorithm, variant));
+      }
+      for (const key of Object.keys(update)) {
+        if (!key.startsWith("official_") || key === "official_step_index") continue;
+        const value = update[key];
+        if (Number.isFinite(value)) this.values[key] = value;
+      }
+      const tempoChanged = Number.isFinite(update.bpm);
+      if (tempoChanged) this.bpm = clamp5(update.bpm, 40, 300);
+      if (Number.isFinite(update.quarterNotesPerMeasure)) this.quarterNotesPerMeasure = clamp5(update.quarterNotesPerMeasure, 0.125, 128);
+      if (Object.keys(this.values).length === 0) return update;
+      const result = { ...update };
+      const v = (name, fallback = 0) => this.get(name, fallback);
+      const has = (name) => this.has(name);
+      if (has("balance")) result.mix = percent(v("balance"));
+      if (this.algorithm === "lpf" || this.algorithm === "bpf" || this.algorithm === "hpf") {
+        if (has("cutoff")) result.cutoffHz = 20 * 1e3 ** percent(v("cutoff"));
+        if (has("resonance")) {
+          result.q = 0.5 * 40 ** percent(v("resonance"));
+          delete result.filterResonancePercent;
+        }
+      } else if (this.algorithm === "phaser") {
+        if (has("rate")) result.phaserRateHz = officialRateHz(v("rate"), this.bpm, this.quarterNotesPerMeasure);
+        if (has("depth")) result.phaserDepth = percent(v("depth"));
+        if (has("resonance")) result.phaserFeedback = percent(v("resonance")) * 0.9;
+      } else if (this.algorithm === "flanger") {
+        if (has("rate")) result.flangerRateHz = officialRateHz(v("rate"), this.bpm, this.quarterNotesPerMeasure);
+        if (has("depth")) result.flangerDepth = percent(v("depth"));
+        if (has("resonance")) result.flangerFeedback = percent(v("resonance")) * 0.95;
+        if (has("manual")) result.flangerDelayMs = 0.2 + 9.8 * percent(v("manual"));
+      } else if (this.algorithm === "tremolo") {
+        if (has("rate")) result.tremoloRateHz = officialRateHz(v("rate"), this.bpm, this.quarterNotesPerMeasure);
+        if (has("depth")) result.tremoloDepth = percent(v("depth"));
+        result.mix = 1;
+      } else if (this.algorithm === "auto-pan") {
+        if (has("rate")) result.autoPanRateHz = officialRateHz(v("rate"), this.bpm, this.quarterNotesPerMeasure);
+        if (has("depth")) result.autoPanDepth = percent(v("depth"));
+        result.mix = 1;
+      } else if (this.algorithm === "manual-pan") {
+        if (has("position")) result.manualPanPosition = clamp5(v("position"), -50, 50) / 50;
+        result.mix = 1;
+      } else if (this.algorithm === "vibrato") {
+        if (has("rate")) result.vibratoRateHz = officialRateHz(v("rate"), this.bpm, this.quarterNotesPerMeasure);
+        if (has("depth")) result.vibratoDepthPercent = clamp5(v("depth"), 0, 100);
+      } else if (this.algorithm === "stereo-enhance") {
+        if (has("enhance")) {
+          result.stereoWidth = 1 + percent(v("enhance"));
+          result.stereoDecorrelation = percent(v("enhance"));
+        }
+        result.mix = 1;
+      } else if (this.algorithm === "chorus") {
+        if (has("rate")) result.chorusRateHz = officialRateHz(v("rate"), this.bpm, this.quarterNotesPerMeasure);
+        if (has("depth")) result.chorusDepthMs = 10 * percent(v("depth"));
+      } else if (this.algorithm === "reverb" || this.algorithm === "gate-reverb") {
+        if (has("time")) result.decaySeconds = clamp5(v("time"), 0.1, 10);
+        if (has("threshold")) result.gateThresholdDb = -60 + 60 * percent(v("threshold"));
+      } else if (this.algorithm === "synth") {
+        if (has("balance")) result.synthMixPercent = clamp5(v("balance"), 0, 100);
+      } else if (this.algorithm === "g2b") {
+        if (has("balance")) result.g2bBlendPercent = clamp5(v("balance"), 0, 100);
+      } else if (this.algorithm === "tape-echo" && has("variant")) {
+        if (has("intensity")) result.tapeEchoFeedback = 0.95 * clamp5(v("intensity"), 0, 100);
+      } else if (this.algorithm === "granular-delay") {
+        if (has("time")) result.granularDensityHz = 80 ** (1 - percent(v("time")));
+        if (has("feedback")) result.granularGrainSizeMs = 10 * 100 ** percent(v("feedback"));
+      } else if (this.algorithm === "isolator") {
+        result.mix = 1;
+      } else if (this.algorithm === "radio") {
+        if (has("lo_fi")) {
+          const amount = (clamp5(v("lo_fi"), 1, 10) - 1) / 9;
+          result.radioBand = amount < 0.34 ? 2 : amount < 0.67 ? 1 : 0;
+          result.radioDrive = 5 + amount * 90;
+          result.radioNoise = amount * 30;
+          result.mix = 1;
+        }
+      } else if (this.algorithm === "ring-mod") {
+        if (has("frequency")) result.ringModHz = 0.1 * 8e4 ** percent(v("frequency"));
+        result.ringModDepth = 1;
+      } else if (this.algorithm === "electric") {
+        result.mix = 1;
+      } else if (this.algorithm === "dynamics") {
+        const profile = officialDynamicsProfile(v("type", 0));
+        const dynamics = clamp5(v("dynamics"), -20, 20);
+        result.thresholdDb = clamp5(profile.threshold + dynamics * 0.18, -60, 0);
+        result.ratio = clamp5(profile.ratio ** (1 - dynamics / 30), 1, 20);
+        result.kneeDb = profile.knee;
+        result.attackMs = profile.attack;
+        result.releaseMs = profile.release;
+        result.outputDb = profile.makeup;
+        result.dynamicsDetector = profile.detector;
+        result.mix = 1;
+      } else if (this.algorithm === "sustainer") {
+        if (has("attack")) result.attackMs = 0.1 + 99.9 * percent(v("attack")) ** 2;
+        if (has("release")) result.releaseMs = 10 * 100 ** percent(v("release"));
+        if (has("sustain")) {
+          result.thresholdDb = -12 - 36 * percent(v("sustain"));
+          result.ratio = 1 + 19 * percent(v("sustain"));
+        }
+        result.mix = 1;
+      } else if (this.algorithm === "distortion") {
+        const type = Math.round(clamp5(v("type", 2), 0, 5));
+        const amount = percent(v("dist", 50));
+        const base = [4, 0, 8, 12, 18, 14][type] ?? 8;
+        result.driveDb = clamp5(base + amount * (type === 1 ? 12 : 24), 0, 36);
+        result.distortionMode = type === 3 || type === 4 ? "hard-clip" : type === 5 ? "fuzz" : "overdrive";
+      } else if (this.algorithm === "eq") {
+        if (has("lo")) result.eqLowGainDb = clamp5(v("lo"), -20, 20);
+        if (has("lo_mid")) result.eqMid1GainDb = clamp5(v("lo_mid"), -20, 20);
+        if (has("lo_mid_freq")) result.eqMid1FrequencyHz = clamp5(v("lo_mid_freq"), 20, 1e4);
+        if (has("lo_mid_q")) result.eqMid1Q = clamp5(v("lo_mid_q"), 0.5, 16);
+        if (has("hi_mid")) result.eqMid2GainDb = clamp5(v("hi_mid"), -20, 20);
+        if (has("hi_mid_freq")) result.eqMid2FrequencyHz = clamp5(v("hi_mid_freq"), 20, 1e4);
+        if (has("hi_mid_q")) result.eqMid2Q = clamp5(v("hi_mid_q"), 0.5, 16);
+        if (has("high")) result.eqHighGainDb = clamp5(v("high"), -20, 20);
+        result.mix = 1;
+      } else if (this.algorithm === "beat-repeat") {
+        result.division = v("length", -1) === OFFICIAL_OFF ? 1 : Math.abs(v("length", -1));
+        result.direction = v("type", 0);
+        result.decay = 0;
+        result.mix = v("length", -1) === OFFICIAL_OFF ? 0 : 1;
+      } else if (this.algorithm === "beat-scatter") {
+        result.beatScatterSliceBeats = v("length", -1) === OFFICIAL_OFF ? 1 : Math.abs(v("length", -1));
+        result.mix = v("length", -1) === OFFICIAL_OFF ? 0 : 1;
+      } else if (this.algorithm === "slow-gear") {
+        if (has("sens")) result.slowGearSensitivityPercent = clamp5(v("sens"), 0, 100);
+        if (has("rise_time")) result.slowGearAttackMs = 5 * 400 ** percent(v("rise_time"));
+        result.mix = 1;
+      }
+      return result;
+    }
+  };
+
   // src/audio/dsp/equalPowerCrossfade.ts
   var HALF_PI = Math.PI * 0.5;
   function clampPosition(position) {
@@ -328,10 +4655,10 @@
       let nearest = options[0] ?? 0.25;
       let nearestDistance = Math.abs(value - nearest);
       for (let index = 1; index < options.length; index += 1) {
-        const option = options[index] ?? nearest;
-        const distance = Math.abs(value - option);
+        const option2 = options[index] ?? nearest;
+        const distance = Math.abs(value - option2);
         if (distance < nearestDistance) {
-          nearest = option;
+          nearest = option2;
           nearestDistance = distance;
         }
       }
@@ -384,7 +4711,7 @@
   };
 
   // src/audio/fx/dsp/LoFiDsp.ts
-  var TWO_PI = 2 * Math.PI;
+  var TWO_PI2 = 2 * Math.PI;
   var LEFT_SEED = 2654435769;
   var RIGHT_SEED = 3518319157;
   var LoFiDsp = class {
@@ -402,24 +4729,31 @@
     lowpassAlpha = 1;
     framesSinceCoefficientUpdate = 0;
     hasHeldSample = false;
+    officialBitDepth = null;
+    officialDivisor = null;
     outputLeft = 0;
     outputRight = 0;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
-      this.bitDepth = new LinearParameterSmoother(clamp(parameters.bitDepth ?? 12, 4, 24));
-      this.reducedRateHz = new LinearParameterSmoother(clamp(parameters.sampleRateHz ?? 12e3, 500, this.sampleRate));
-      this.filterHz = new LinearParameterSmoother(clamp(parameters.filterHz ?? 12e3, 20, 2e4));
+      this.bitDepth = new LinearParameterSmoother(clamp6(parameters.bitDepth ?? 12, 4, 24));
+      this.reducedRateHz = new LinearParameterSmoother(clamp6(parameters.sampleRateHz ?? 12e3, 500, this.sampleRate));
+      this.filterHz = new LinearParameterSmoother(clamp6(parameters.filterHz ?? 12e3, 20, 2e4));
       this.randomLeft = new DeterministicPrng(LEFT_SEED);
       this.randomRight = new DeterministicPrng(RIGHT_SEED);
       this.updateLowpass(this.filterHz.currentValue);
     }
     setParameters(parameters, rampFrames = Math.round(this.sampleRate * 0.02)) {
       const ramp = Math.max(0, Math.floor(rampFrames));
-      if (Number.isFinite(parameters.bitDepth)) this.bitDepth.setTarget(clamp(parameters.bitDepth, 4, 24), ramp);
+      if (Number.isFinite(parameters.bitDepth)) this.bitDepth.setTarget(clamp6(parameters.bitDepth, 4, 24), ramp);
       if (Number.isFinite(parameters.sampleRateHz)) {
-        this.reducedRateHz.setTarget(clamp(parameters.sampleRateHz, 500, this.sampleRate), ramp);
+        this.reducedRateHz.setTarget(clamp6(parameters.sampleRateHz, 500, this.sampleRate), ramp);
       }
-      if (Number.isFinite(parameters.filterHz)) this.filterHz.setTarget(clamp(parameters.filterHz, 20, Math.min(2e4, this.sampleRate * 0.45)), ramp);
+      if (Number.isFinite(parameters.filterHz)) this.filterHz.setTarget(clamp6(parameters.filterHz, 20, Math.min(2e4, this.sampleRate * 0.45)), ramp);
+    }
+    /** OFF=-1000; otherwise bit depth 1..31 and integer rate divisors 2..32. */
+    setOfficialParameters(parameters) {
+      if (Number.isFinite(parameters.bitDepth)) this.officialBitDepth = parameters.bitDepth === -1e3 ? -1e3 : Math.round(clamp6(parameters.bitDepth, 1, 31));
+      if (Number.isFinite(parameters.sampleRateDivisor)) this.officialDivisor = parameters.sampleRateDivisor === -1e3 ? 1 : Math.round(clamp6(parameters.sampleRateDivisor, 2, 32));
     }
     get wetLeft() {
       return this.outputLeft;
@@ -428,9 +4762,11 @@
       return this.outputRight;
     }
     process(inputLeft, inputRight) {
-      const bits = Math.round(this.bitDepth.next());
-      const reducedRate = clamp(this.reducedRateHz.next(), 500, this.sampleRate);
-      const cutoff = clamp(this.filterHz.next(), 20, this.sampleRate * 0.45);
+      const legacyBits = Math.round(this.bitDepth.next());
+      const legacyRate = clamp6(this.reducedRateHz.next(), 500, this.sampleRate);
+      const bits = this.officialBitDepth ?? legacyBits;
+      const reducedRate = this.officialDivisor === null ? legacyRate : this.sampleRate / this.officialDivisor;
+      const cutoff = clamp6(this.filterHz.next(), 20, this.sampleRate * 0.45);
       if (this.framesSinceCoefficientUpdate === 0) this.updateLowpass(cutoff);
       this.framesSinceCoefficientUpdate += 1;
       if (this.framesSinceCoefficientUpdate >= 16) this.framesSinceCoefficientUpdate = 0;
@@ -443,14 +4779,15 @@
         }
       }
       if (capture) {
-        this.heldLeft = this.quantize(inputLeft, bits, this.randomLeft);
-        this.heldRight = this.quantize(inputRight, bits, this.randomRight);
+        this.heldLeft = bits === -1e3 ? inputLeft : this.quantize(inputLeft, bits, this.randomLeft);
+        this.heldRight = bits === -1e3 ? inputRight : this.quantize(inputRight, bits, this.randomRight);
         this.hasHeldSample = true;
       }
       this.lowpassLeft += this.lowpassAlpha * (this.heldLeft - this.lowpassLeft);
       this.lowpassRight += this.lowpassAlpha * (this.heldRight - this.lowpassRight);
-      this.outputLeft = this.lowpassLeft;
-      this.outputRight = this.lowpassRight;
+      const official = this.officialBitDepth !== null || this.officialDivisor !== null;
+      this.outputLeft = official ? this.heldLeft : this.lowpassLeft;
+      this.outputRight = official ? this.heldRight : this.lowpassRight;
     }
     reset() {
       this.holdPhase = 0;
@@ -469,16 +4806,16 @@
     quantize(input, bits, random) {
       const scale = 2 ** (bits - 1);
       const dither = random.nextFloat() - random.nextFloat();
-      const scaled = clamp(input, -1, 1) * scale + dither;
+      const scaled = clamp6(input, -1, 1) * scale + dither;
       const rounded = scaled < 0 ? -Math.round(-scaled) : Math.round(scaled);
-      return clamp(rounded / scale, -1, 1);
+      return clamp6(rounded / scale, -1, 1);
     }
     updateLowpass(cutoffHz) {
-      const cutoff = clamp(cutoffHz, 20, this.sampleRate * 0.45);
-      this.lowpassAlpha = 1 - Math.exp(-TWO_PI * cutoff / this.sampleRate);
+      const cutoff = clamp6(cutoffHz, 20, this.sampleRate * 0.45);
+      this.lowpassAlpha = 1 - Math.exp(-TWO_PI2 * cutoff / this.sampleRate);
     }
   };
-  function clamp(value, minimum, maximum) {
+  function clamp6(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
 
@@ -664,20 +5001,38 @@
     }
     setParameters(parameters, rampFrames = Math.round(this.sampleRate * DEFAULT_RAMP_SECONDS)) {
       const nyquist = this.sampleRate * 0.45;
-      if (Number.isFinite(parameters.lowFrequencyHz)) this.lowFrequencyHz = clamp2(parameters.lowFrequencyHz, 20, Math.min(500, nyquist));
-      if (Number.isFinite(parameters.lowGainDb)) this.lowGainDb = clamp2(parameters.lowGainDb, -15, 15);
-      if (Number.isFinite(parameters.mid1FrequencyHz)) this.mid1FrequencyHz = clamp2(parameters.mid1FrequencyHz, 80, Math.min(8e3, nyquist));
-      if (Number.isFinite(parameters.mid1Q)) this.mid1Q = clamp2(parameters.mid1Q, 0.1, 12);
-      if (Number.isFinite(parameters.mid1GainDb)) this.mid1GainDb = clamp2(parameters.mid1GainDb, -15, 15);
-      if (Number.isFinite(parameters.mid2FrequencyHz)) this.mid2FrequencyHz = clamp2(parameters.mid2FrequencyHz, 80, Math.min(12e3, nyquist));
-      if (Number.isFinite(parameters.mid2Q)) this.mid2Q = clamp2(parameters.mid2Q, 0.1, 12);
-      if (Number.isFinite(parameters.mid2GainDb)) this.mid2GainDb = clamp2(parameters.mid2GainDb, -15, 15);
-      if (Number.isFinite(parameters.highFrequencyHz)) this.highFrequencyHz = clamp2(parameters.highFrequencyHz, 1e3, Math.min(2e4, nyquist));
-      if (Number.isFinite(parameters.highGainDb)) this.highGainDb = clamp2(parameters.highGainDb, -15, 15);
+      if (Number.isFinite(parameters.lowFrequencyHz)) this.lowFrequencyHz = clamp7(parameters.lowFrequencyHz, 20, Math.min(500, nyquist));
+      if (Number.isFinite(parameters.lowGainDb)) this.lowGainDb = clamp7(parameters.lowGainDb, -15, 15);
+      if (Number.isFinite(parameters.mid1FrequencyHz)) this.mid1FrequencyHz = clamp7(parameters.mid1FrequencyHz, 80, Math.min(8e3, nyquist));
+      if (Number.isFinite(parameters.mid1Q)) this.mid1Q = clamp7(parameters.mid1Q, 0.1, 12);
+      if (Number.isFinite(parameters.mid1GainDb)) this.mid1GainDb = clamp7(parameters.mid1GainDb, -15, 15);
+      if (Number.isFinite(parameters.mid2FrequencyHz)) this.mid2FrequencyHz = clamp7(parameters.mid2FrequencyHz, 80, Math.min(12e3, nyquist));
+      if (Number.isFinite(parameters.mid2Q)) this.mid2Q = clamp7(parameters.mid2Q, 0.1, 12);
+      if (Number.isFinite(parameters.mid2GainDb)) this.mid2GainDb = clamp7(parameters.mid2GainDb, -15, 15);
+      if (Number.isFinite(parameters.highFrequencyHz)) this.highFrequencyHz = clamp7(parameters.highFrequencyHz, 1e3, Math.min(2e4, nyquist));
+      if (Number.isFinite(parameters.highGainDb)) this.highGainDb = clamp7(parameters.highGainDb, -15, 15);
       this.designTargets();
       const frames = Math.max(0, Math.floor(Number.isFinite(rampFrames) ? rampFrames : 0));
       this.remainingRampFrames = frames;
       if (frames === 0) {
+        this.currentCoefficients.set(this.targetCoefficients);
+        this.applyCoefficients();
+      }
+    }
+    /** Manual-domain path, deliberately not widening the legacy control contract. */
+    setOfficialParameters(parameters, rampFrames = Math.round(this.sampleRate * DEFAULT_RAMP_SECONDS)) {
+      const nyquist = this.sampleRate * 0.45;
+      if (Number.isFinite(parameters.lowGainDb)) this.lowGainDb = clamp7(parameters.lowGainDb, -20, 20);
+      if (Number.isFinite(parameters.mid1FrequencyHz)) this.mid1FrequencyHz = clamp7(parameters.mid1FrequencyHz, 20, Math.min(1e4, nyquist));
+      if (Number.isFinite(parameters.mid1Q)) this.mid1Q = clamp7(parameters.mid1Q, 0.5, 16);
+      if (Number.isFinite(parameters.mid1GainDb)) this.mid1GainDb = clamp7(parameters.mid1GainDb, -20, 20);
+      if (Number.isFinite(parameters.mid2FrequencyHz)) this.mid2FrequencyHz = clamp7(parameters.mid2FrequencyHz, 20, Math.min(1e4, nyquist));
+      if (Number.isFinite(parameters.mid2Q)) this.mid2Q = clamp7(parameters.mid2Q, 0.5, 16);
+      if (Number.isFinite(parameters.mid2GainDb)) this.mid2GainDb = clamp7(parameters.mid2GainDb, -20, 20);
+      if (Number.isFinite(parameters.highGainDb)) this.highGainDb = clamp7(parameters.highGainDb, -20, 20);
+      this.designTargets();
+      this.remainingRampFrames = Math.max(0, Math.floor(rampFrames));
+      if (this.remainingRampFrames === 0) {
         this.currentCoefficients.set(this.targetCoefficients);
         this.applyCoefficients();
       }
@@ -742,7 +5097,7 @@
       }
     }
   };
-  function clamp2(value, minimum, maximum) {
+  function clamp7(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
 
@@ -760,11 +5115,11 @@
   var FEEDBACK = 1;
   var PAN = 2;
   var MIX = 3;
-  function clamp3(value, minimum, maximum) {
+  function clamp8(value, minimum, maximum) {
     return Math.min(maximum, Math.max(minimum, value));
   }
   function finiteBounded(value, maximumMagnitude) {
-    return Number.isFinite(value) ? clamp3(value, -maximumMagnitude, maximumMagnitude) : 0;
+    return Number.isFinite(value) ? clamp8(value, -maximumMagnitude, maximumMagnitude) : 0;
   }
   function readLagrangeFromWriteHead(buffer, writeIndex, delaySamples) {
     const wholeDelay = Math.floor(delaySamples);
@@ -798,14 +5153,14 @@
     lastWetLeft = 0;
     lastWetRight = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp3(sampleRate, MIN_SAMPLE_RATE, MAX_SAMPLE_RATE) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp8(sampleRate, MIN_SAMPLE_RATE, MAX_SAMPLE_RATE) : 48e3;
       const capacity = Math.ceil(MAX_DELAY_MS * this.sampleRate / 1e3) + 8;
       this.buffers = [new Float32Array(capacity), new Float32Array(capacity)];
       this.smoothingCoefficient = 1 - Math.exp(-1 / (PARAMETER_SMOOTHING_SECONDS * this.sampleRate));
-      const initialTime = Number.isFinite(parameters.timeMs) ? clamp3(parameters.timeMs, MIN_DELAY_MS, MAX_DELAY_MS) : 500;
-      const initialFeedback = Number.isFinite(parameters.feedback) ? clamp3(parameters.feedback, 0, 95) : 30;
-      const initialPan = Number.isFinite(parameters.pan) ? clamp3(parameters.pan, -100, 100) : 70;
-      const initialMix = Number.isFinite(parameters.mix) ? clamp3(parameters.mix, 0, 100) : 25;
+      const initialTime = Number.isFinite(parameters.timeMs) ? clamp8(parameters.timeMs, MIN_DELAY_MS, MAX_DELAY_MS) : 500;
+      const initialFeedback = Number.isFinite(parameters.feedback) ? clamp8(parameters.feedback, 0, 95) : 30;
+      const initialPan = Number.isFinite(parameters.pan) ? clamp8(parameters.pan, -100, 100) : 70;
+      const initialMix = Number.isFinite(parameters.mix) ? clamp8(parameters.mix, 0, 100) : 25;
       this.current[TIME] = this.target[TIME] = initialTime;
       this.current[FEEDBACK] = this.target[FEEDBACK] = initialFeedback;
       this.current[PAN] = this.target[PAN] = initialPan;
@@ -813,10 +5168,10 @@
     }
     /** Update smoothed targets; invalid individual controls are ignored. */
     setParameters(parameters) {
-      if (Number.isFinite(parameters.timeMs)) this.target[TIME] = clamp3(parameters.timeMs, MIN_DELAY_MS, MAX_DELAY_MS);
-      if (Number.isFinite(parameters.feedback)) this.target[FEEDBACK] = clamp3(parameters.feedback, 0, 95);
-      if (Number.isFinite(parameters.pan)) this.target[PAN] = clamp3(parameters.pan, -100, 100);
-      if (Number.isFinite(parameters.mix)) this.target[MIX] = clamp3(parameters.mix, 0, 100);
+      if (Number.isFinite(parameters.timeMs)) this.target[TIME] = clamp8(parameters.timeMs, MIN_DELAY_MS, MAX_DELAY_MS);
+      if (Number.isFinite(parameters.feedback)) this.target[FEEDBACK] = clamp8(parameters.feedback, 0, 95);
+      if (Number.isFinite(parameters.pan)) this.target[PAN] = clamp8(parameters.pan, -100, 100);
+      if (Number.isFinite(parameters.mix)) this.target[MIX] = clamp8(parameters.mix, 0, 100);
     }
     /** Clear delay history and restore the smoothed controls to their targets. */
     reset() {
@@ -869,7 +5224,7 @@
       this.lastDryLeft = dryLeft;
       this.lastDryRight = dryRight;
       const rawDelay = (this.current[TIME] ?? 500) * this.sampleRate * 1e-3;
-      const delaySamples = clamp3(rawDelay, 2, this.buffers[0].length - 6);
+      const delaySamples = clamp8(rawDelay, 2, this.buffers[0].length - 6);
       const writeLeft = this.writeIndices[0] ?? 0;
       const writeRight = this.writeIndices[1] ?? 0;
       const delayedLeft = readLagrangeFromWriteHead(this.buffers[0], writeLeft, delaySamples);
@@ -898,14 +5253,15 @@
   var MAX_RATE_HZ = 10;
   var MAX_FEEDBACK_PERCENT = 95;
   var PARAMETER_SMOOTHING_SECONDS2 = 0.015;
-  var TWO_PI2 = 2 * Math.PI;
+  var TWO_PI3 = 2 * Math.PI;
   var MAX_SAMPLE_MAGNITUDE = 8;
   var FEEDBACK_STABILITY_SCALE2 = 0.78;
-  function clamp4(value, minimum, maximum) {
+  function clamp9(value, minimum, maximum) {
+    if (value !== 0 && value >= minimum && value <= maximum) return value;
     return Math.max(minimum, Math.min(maximum, value));
   }
   function finiteBounded2(value) {
-    return Number.isFinite(value) ? clamp4(value, -MAX_SAMPLE_MAGNITUDE, MAX_SAMPLE_MAGNITUDE) : 0;
+    return Number.isFinite(value) ? clamp9(value, -MAX_SAMPLE_MAGNITUDE, MAX_SAMPLE_MAGNITUDE) : 0;
   }
   function readLagrange(buffer, writeIndex, delaySamples) {
     const whole = Math.floor(delaySamples);
@@ -943,16 +5299,16 @@
     outputLeft = 0;
     outputRight = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp4(sampleRate, MIN_SAMPLE_RATE2, MAX_SAMPLE_RATE2) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp9(sampleRate, MIN_SAMPLE_RATE2, MAX_SAMPLE_RATE2) : 48e3;
       const capacity = Math.ceil((MAX_TIME_MS + MAX_DEPTH_MS) * this.sampleRate / 1e3) + 8;
       this.buffers = [new Float32Array(capacity), new Float32Array(capacity)];
-      this.rateHz = new LinearParameterSmoother(clamp4(parameters.rateHz ?? 0.3, MIN_RATE_HZ, MAX_RATE_HZ));
-      this.timeMs = new LinearParameterSmoother(clamp4(parameters.timeMs ?? 500, MIN_TIME_MS, MAX_TIME_MS));
-      this.depthMs = new LinearParameterSmoother(clamp4(parameters.depthMs ?? 10, 0, MAX_DEPTH_MS));
-      this.feedbackPercent = new LinearParameterSmoother(clamp4(parameters.feedbackPercent ?? 25, 0, MAX_FEEDBACK_PERCENT));
+      this.rateHz = new LinearParameterSmoother(clamp9(parameters.rateHz ?? 0.3, MIN_RATE_HZ, MAX_RATE_HZ));
+      this.timeMs = new LinearParameterSmoother(clamp9(parameters.timeMs ?? 500, MIN_TIME_MS, MAX_TIME_MS));
+      this.depthMs = new LinearParameterSmoother(clamp9(parameters.depthMs ?? 10, 0, MAX_DEPTH_MS));
+      this.feedbackPercent = new LinearParameterSmoother(clamp9(parameters.feedbackPercent ?? 25, 0, MAX_FEEDBACK_PERCENT));
       this.parameterRampFrames = Math.max(1, Math.round(this.sampleRate * PARAMETER_SMOOTHING_SECONDS2));
       const feedbackCutoff = Math.min(8e3, this.sampleRate * 0.45);
-      this.feedbackToneAlpha = 1 - Math.exp(-TWO_PI2 * feedbackCutoff / this.sampleRate);
+      this.feedbackToneAlpha = 1 - Math.exp(-TWO_PI3 * feedbackCutoff / this.sampleRate);
     }
     get wetLeft() {
       return this.outputLeft;
@@ -962,28 +5318,28 @@
     }
     setParameters(parameters) {
       if (Number.isFinite(parameters.timeMs)) {
-        this.timeMs.setTarget(clamp4(parameters.timeMs, MIN_TIME_MS, MAX_TIME_MS), this.parameterRampFrames);
+        this.timeMs.setTarget(clamp9(parameters.timeMs, MIN_TIME_MS, MAX_TIME_MS), this.parameterRampFrames);
       }
       if (Number.isFinite(parameters.rateHz)) {
-        this.rateHz.setTarget(clamp4(parameters.rateHz, MIN_RATE_HZ, MAX_RATE_HZ), this.parameterRampFrames);
+        this.rateHz.setTarget(clamp9(parameters.rateHz, MIN_RATE_HZ, MAX_RATE_HZ), this.parameterRampFrames);
       }
       if (Number.isFinite(parameters.depthMs)) {
-        this.depthMs.setTarget(clamp4(parameters.depthMs, 0, MAX_DEPTH_MS), this.parameterRampFrames);
+        this.depthMs.setTarget(clamp9(parameters.depthMs, 0, MAX_DEPTH_MS), this.parameterRampFrames);
       }
       if (Number.isFinite(parameters.feedbackPercent)) {
-        this.feedbackPercent.setTarget(clamp4(parameters.feedbackPercent, 0, MAX_FEEDBACK_PERCENT), this.parameterRampFrames);
+        this.feedbackPercent.setTarget(clamp9(parameters.feedbackPercent, 0, MAX_FEEDBACK_PERCENT), this.parameterRampFrames);
       }
     }
     processSample(inputLeft, inputRight) {
-      const rate = clamp4(this.rateHz.next(), MIN_RATE_HZ, MAX_RATE_HZ);
-      const timeMs = clamp4(this.timeMs.next(), MIN_TIME_MS, MAX_TIME_MS);
-      const requestedDepthMs = clamp4(this.depthMs.next(), 0, MAX_DEPTH_MS);
+      const rate = clamp9(this.rateHz.next(), MIN_RATE_HZ, MAX_RATE_HZ);
+      const timeMs = clamp9(this.timeMs.next(), MIN_TIME_MS, MAX_TIME_MS);
+      const requestedDepthMs = clamp9(this.depthMs.next(), 0, MAX_DEPTH_MS);
       const depthMs = Math.min(requestedDepthMs, timeMs - MIN_TIME_MS, MAX_TIME_MS + MAX_DEPTH_MS - timeMs);
-      const feedback = clamp4(this.feedbackPercent.next(), 0, MAX_FEEDBACK_PERCENT) * 0.01 * FEEDBACK_STABILITY_SCALE2;
+      const feedback = clamp9(this.feedbackPercent.next(), 0, MAX_FEEDBACK_PERCENT) * 0.01 * FEEDBACK_STABILITY_SCALE2;
       this.outputLeft = this.processChannel(inputLeft, 0, this.phase, timeMs, depthMs, feedback);
       this.outputRight = this.processChannel(inputRight, 1, this.phase + Math.PI * 0.5, timeMs, depthMs, feedback);
-      this.phase += TWO_PI2 * rate / this.sampleRate;
-      if (this.phase >= TWO_PI2) this.phase -= TWO_PI2;
+      this.phase += TWO_PI3 * rate / this.sampleRate;
+      if (this.phase >= TWO_PI3) this.phase -= TWO_PI3;
     }
     processBlock(inputLeft, inputRight, outputLeft, outputRight, frameCount) {
       let frames = Math.min(inputLeft.length, outputLeft.length);
@@ -1016,8 +5372,8 @@
     processChannel(input, channel, phase, timeMs, depthMs, feedback) {
       const buffer = this.buffers[channel];
       const writeIndex = this.writeIndices[channel] ?? 0;
-      const delayMs = clamp4(timeMs + depthMs * Math.sin(phase), MIN_TIME_MS, MAX_TIME_MS + MAX_DEPTH_MS);
-      const delaySamples = clamp4(delayMs * this.sampleRate / 1e3, 2, buffer.length - 6);
+      const delayMs = clamp9(timeMs + depthMs * Math.sin(phase), MIN_TIME_MS, MAX_TIME_MS + MAX_DEPTH_MS);
+      const delaySamples = clamp9(delayMs * this.sampleRate / 1e3, 2, buffer.length - 6);
       const delayed = readLagrange(buffer, writeIndex, delaySamples);
       const previousFiltered = this.feedbackFilter[channel] ?? 0;
       const filtered = previousFiltered + this.feedbackToneAlpha * (delayed - previousFiltered);
@@ -1029,7 +5385,7 @@
   };
 
   // src/audio/fx/dsp/BrowserTapeEchoDsp.ts
-  var TWO_PI3 = Math.PI * 2;
+  var TWO_PI4 = Math.PI * 2;
   var MIN_SAMPLE_RATE3 = 8e3;
   var MAX_SAMPLE_RATE3 = 192e3;
   var MAX_INPUT_MAGNITUDE2 = 8;
@@ -1049,15 +5405,16 @@
   var SATURATION = 3;
   var TONE_ALPHA = 4;
   var MIX2 = 5;
-  function clamp5(value, minimum, maximum) {
+  function clamp10(value, minimum, maximum) {
+    if (value !== 0 && value >= minimum && value <= maximum) return value;
     return Math.min(maximum, Math.max(minimum, value));
   }
   function finiteBounded3(value, maximumMagnitude) {
-    return Number.isFinite(value) ? clamp5(value, -maximumMagnitude, maximumMagnitude) : 0;
+    return Number.isFinite(value) ? clamp10(value, -maximumMagnitude, maximumMagnitude) : 0;
   }
   function coefficientForTone(toneHz, sampleRate) {
-    const cutoff = clamp5(toneHz, 500, Math.min(16e3, sampleRate * 0.45));
-    return 1 - Math.exp(-TWO_PI3 * cutoff / sampleRate);
+    const cutoff = clamp10(toneHz, 500, Math.min(16e3, sampleRate * 0.45));
+    return 1 - Math.exp(-TWO_PI4 * cutoff / sampleRate);
   }
   var BrowserTapeEchoDsp = class {
     sampleRate;
@@ -1068,6 +5425,9 @@
     reproToneStates = new Float64Array(2);
     previousRecordInputs = new Float64Array(2);
     previousAdAaInputs = new Float64Array(2);
+    previousPrimitive = new Float64Array(2);
+    primitiveSaturation = new Float64Array([Number.NaN, Number.NaN]);
+    primitiveValid = new Uint8Array(2);
     hissLowStates = new Float64Array(2);
     hissBandStates = new Float64Array(2);
     randomStates = new Uint32Array(2);
@@ -1083,22 +5443,22 @@
     lastWetLeft = 0;
     lastWetRight = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp5(sampleRate, MIN_SAMPLE_RATE3, MAX_SAMPLE_RATE3) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp10(sampleRate, MIN_SAMPLE_RATE3, MAX_SAMPLE_RATE3) : 48e3;
       const capacity = Math.ceil(
         3 * 2e3 * (1 + MAX_WOW_FRACTION) * this.sampleRate / 1e3
       ) + 8;
       this.buffers = [new Float32Array(capacity), new Float32Array(capacity)];
       this.smoothingCoefficient = 1 - Math.exp(-1 / (PARAMETER_SMOOTHING_SECONDS3 * this.sampleRate));
-      this.wowPhaseIncrement = TWO_PI3 * WOW_RATE_HZ / this.sampleRate;
-      this.flutterPhaseIncrement = TWO_PI3 * FLUTTER_RATE_HZ / this.sampleRate;
-      this.hissLowAlpha = 1 - Math.exp(-TWO_PI3 * 350 / this.sampleRate);
-      this.hissHighAlpha = 1 - Math.exp(-TWO_PI3 * Math.min(12e3, this.sampleRate * 0.45) / this.sampleRate);
-      const initialTime = Number.isFinite(parameters.timeMs) ? clamp5(parameters.timeMs, 20, 2e3) : 350;
-      const initialFeedback = Number.isFinite(parameters.feedback) ? clamp5(parameters.feedback, 0, 95) : 35;
-      const initialWow = Number.isFinite(parameters.wow) ? clamp5(parameters.wow, 0, 100) : 15;
-      const initialSaturation = Number.isFinite(parameters.saturation) ? clamp5(parameters.saturation, 0, 100) : 25;
-      const initialTone = Number.isFinite(parameters.toneHz) ? clamp5(parameters.toneHz, 500, 16e3) : 6e3;
-      const initialMix = Number.isFinite(parameters.mix) ? clamp5(parameters.mix, 0, 100) : 30;
+      this.wowPhaseIncrement = TWO_PI4 * WOW_RATE_HZ / this.sampleRate;
+      this.flutterPhaseIncrement = TWO_PI4 * FLUTTER_RATE_HZ / this.sampleRate;
+      this.hissLowAlpha = 1 - Math.exp(-TWO_PI4 * 350 / this.sampleRate);
+      this.hissHighAlpha = 1 - Math.exp(-TWO_PI4 * Math.min(12e3, this.sampleRate * 0.45) / this.sampleRate);
+      const initialTime = Number.isFinite(parameters.timeMs) ? clamp10(parameters.timeMs, 20, 2e3) : 350;
+      const initialFeedback = Number.isFinite(parameters.feedback) ? clamp10(parameters.feedback, 0, 95) : 35;
+      const initialWow = Number.isFinite(parameters.wow) ? clamp10(parameters.wow, 0, 100) : 15;
+      const initialSaturation = Number.isFinite(parameters.saturation) ? clamp10(parameters.saturation, 0, 100) : 25;
+      const initialTone = Number.isFinite(parameters.toneHz) ? clamp10(parameters.toneHz, 500, 16e3) : 6e3;
+      const initialMix = Number.isFinite(parameters.mix) ? clamp10(parameters.mix, 0, 100) : 30;
       this.current[TIME2] = this.target[TIME2] = initialTime;
       this.current[FEEDBACK2] = this.target[FEEDBACK2] = initialFeedback;
       this.current[WOW] = this.target[WOW] = initialWow;
@@ -1113,13 +5473,33 @@
       this.phases[3] = Math.PI * 0.71;
     }
     /** Update smoothed targets; invalid individual controls are ignored. */
+    /** Official ECHO2 beat sync can exceed the legacy two-second numeric domain.
+     * Grow only on the message handler, preserving source history; never in process.
+     */
+    setOfficialTimeMs(timeMs, immediate = false) {
+      if (!Number.isFinite(timeMs)) return;
+      const time = clamp10(timeMs, 1, 6e3);
+      const capacity = Math.ceil(3 * time * (1 + MAX_WOW_FRACTION) * this.sampleRate / 1e3) + 8;
+      if (capacity > this.buffers[0].length) {
+        const grown = [new Float32Array(capacity), new Float32Array(capacity)];
+        for (let channel = 0; channel < 2; channel += 1) {
+          const old = this.buffers[channel];
+          const write = this.writeIndices[channel];
+          for (let frame = 0; frame < old.length; frame += 1) grown[channel][frame] = old[(write + frame) % old.length];
+          this.writeIndices[channel] = old.length;
+        }
+        this.buffers = grown;
+      }
+      this.target[TIME2] = time;
+      if (immediate) this.current[TIME2] = time;
+    }
     setParameters(parameters) {
-      if (Number.isFinite(parameters.timeMs)) this.target[TIME2] = clamp5(parameters.timeMs, 20, 2e3);
-      if (Number.isFinite(parameters.feedback)) this.target[FEEDBACK2] = clamp5(parameters.feedback, 0, 95);
-      if (Number.isFinite(parameters.wow)) this.target[WOW] = clamp5(parameters.wow, 0, 100);
-      if (Number.isFinite(parameters.saturation)) this.target[SATURATION] = clamp5(parameters.saturation, 0, 100);
+      if (Number.isFinite(parameters.timeMs)) this.target[TIME2] = clamp10(parameters.timeMs, 20, 2e3);
+      if (Number.isFinite(parameters.feedback)) this.target[FEEDBACK2] = clamp10(parameters.feedback, 0, 95);
+      if (Number.isFinite(parameters.wow)) this.target[WOW] = clamp10(parameters.wow, 0, 100);
+      if (Number.isFinite(parameters.saturation)) this.target[SATURATION] = clamp10(parameters.saturation, 0, 100);
       if (Number.isFinite(parameters.toneHz)) this.target[TONE_ALPHA] = coefficientForTone(parameters.toneHz, this.sampleRate);
-      if (Number.isFinite(parameters.mix)) this.target[MIX2] = clamp5(parameters.mix, 0, 100);
+      if (Number.isFinite(parameters.mix)) this.target[MIX2] = clamp10(parameters.mix, 0, 100);
     }
     /** Clear delay and filter history while retaining parameter targets. */
     reset() {
@@ -1130,6 +5510,8 @@
       this.reproToneStates.fill(0);
       this.previousRecordInputs.fill(0);
       this.previousAdAaInputs.fill(0);
+      this.previousPrimitive.fill(0);
+      this.primitiveValid.fill(0);
       this.hissLowStates.fill(0);
       this.hissBandStates.fill(0);
       this.phases[0] = 0;
@@ -1235,17 +5617,17 @@
       let wowRight = (this.phases[1] ?? 0) + this.wowPhaseIncrement;
       let flutterLeft = (this.phases[2] ?? 0) + this.flutterPhaseIncrement;
       let flutterRight = (this.phases[3] ?? 0) + this.flutterPhaseIncrement;
-      if (wowLeft >= TWO_PI3) wowLeft -= TWO_PI3;
-      if (wowRight >= TWO_PI3) wowRight -= TWO_PI3;
-      if (flutterLeft >= TWO_PI3) flutterLeft -= TWO_PI3;
-      if (flutterRight >= TWO_PI3) flutterRight -= TWO_PI3;
+      if (wowLeft >= TWO_PI4) wowLeft -= TWO_PI4;
+      if (wowRight >= TWO_PI4) wowRight -= TWO_PI4;
+      if (flutterLeft >= TWO_PI4) flutterLeft -= TWO_PI4;
+      if (flutterRight >= TWO_PI4) flutterRight -= TWO_PI4;
       this.phases[0] = wowLeft;
       this.phases[1] = wowRight;
       this.phases[2] = flutterLeft;
       this.phases[3] = flutterRight;
     }
     readFractional(buffer, writeIndex, requestedDelay) {
-      const delay = clamp5(requestedDelay, 2, buffer.length - 3);
+      const delay = clamp10(requestedDelay, 2, buffer.length - 3);
       const integerDelay = Math.floor(delay);
       const fraction = delay - integerDelay;
       let indexMinus1 = writeIndex - integerDelay + 1;
@@ -1271,6 +5653,7 @@
       this.hissBandStates[channel] = bandState;
       const boundedInput = finiteBounded3(input + bandState * HISS_AMPLITUDE, MAX_INPUT_MAGNITUDE2);
       if (saturation <= 1e-6) {
+        this.primitiveValid[channel] = 0;
         this.previousRecordInputs[channel] = boundedInput;
         this.previousAdAaInputs[channel] = boundedInput;
         return boundedInput;
@@ -1286,8 +5669,16 @@
       const previous = this.previousAdAaInputs[channel] ?? 0;
       const delta = input - previous;
       this.previousAdAaInputs[channel] = input;
-      if (Math.abs(delta) < 1e-5) return this.softSaturator(0.5 * (input + previous), saturation);
-      return (this.saturationPrimitive(input, saturation) - this.saturationPrimitive(previous, saturation)) / delta;
+      if (Math.abs(delta) < 1e-5) {
+        this.primitiveValid[channel] = 0;
+        return this.softSaturator(0.5 * (input + previous), saturation);
+      }
+      const currentPrimitive = this.saturationPrimitive(input, saturation);
+      const previousPrimitive = this.primitiveValid[channel] && this.primitiveSaturation[channel] === saturation ? this.previousPrimitive[channel] : this.saturationPrimitive(previous, saturation);
+      this.previousPrimitive[channel] = currentPrimitive;
+      this.primitiveSaturation[channel] = saturation;
+      this.primitiveValid[channel] = 1;
+      return (currentPrimitive - previousPrimitive) / delta;
     }
     softSaturator(input, saturation) {
       if (saturation <= 1e-6) return input;
@@ -1313,7 +5704,7 @@
   };
 
   // src/audio/fx/dsp/BrowserTwistDsp.ts
-  var TWO_PI4 = Math.PI * 2;
+  var TWO_PI5 = Math.PI * 2;
   var MAX_SAMPLE_RATE4 = 192e3;
   var MAX_DELAY_MS2 = 300;
   var MIN_DELAY_MS2 = 30;
@@ -1323,11 +5714,11 @@
   var FEEDBACK_STABILITY_MARGIN = 0.72;
   var TABLE_POINTS = 1024;
   var TABLE_STRIDE = 5;
-  function clamp6(value, min, max) {
+  function clamp11(value, min, max) {
     return Math.min(max, Math.max(min, value));
   }
   function finiteBounded4(value, maxMagnitude) {
-    return Number.isFinite(value) ? clamp6(value, -maxMagnitude, maxMagnitude) : 0;
+    return Number.isFinite(value) ? clamp11(value, -maxMagnitude, maxMagnitude) : 0;
   }
   function transfer(amount, trajectory) {
     const magnitude = Math.abs(amount);
@@ -1366,8 +5757,43 @@
     lastWetRight = 0;
     lastDelayMs = CENTER_DELAY_MS;
     lastFeedback = 0.16;
+    officialEnabled = false;
+    officialActive = false;
+    officialRise = 50;
+    officialFall = 50;
+    officialRelease = 0;
+    officialPhase = 0;
+    officialFadeRemaining = 0;
+    officialRotation = new LinearParameterSmoother(0);
+    /** Authored continuous rotation, unlike the legacy manually positioned macro. */
+    setOfficialParameters(parameters) {
+      const first = !this.officialEnabled;
+      this.officialEnabled = true;
+      if (Number.isFinite(parameters.rise)) this.officialRise = clamp11(parameters.rise, 0, 100);
+      if (Number.isFinite(parameters.fall)) this.officialFall = clamp11(parameters.fall, 0, 100);
+      if (Number.isFinite(parameters.release)) this.officialRelease = parameters.release === 1 ? 1 : 0;
+      if (first) this.setOfficialActive(true);
+    }
+    get officialReleaseFrames() {
+      return this.officialRelease === 1 ? Math.max(1, Math.round(this.sampleRate * 2e-3 * 2500 ** (this.officialFall / 100))) : 16;
+    }
+    setOfficialActive(active) {
+      if (!this.officialEnabled || active === this.officialActive) return;
+      this.officialActive = active;
+      if (active) {
+        this.officialPhase = 0;
+        this.officialRotation.reset(0);
+        this.officialRotation.setTarget(1, Math.round(this.sampleRate * 2e-3 * 1e3 ** (this.officialRise / 100)));
+        this.officialFadeRemaining = 0;
+      } else if (this.officialRelease === 1) {
+        this.officialFadeRemaining = this.officialReleaseFrames;
+      } else {
+        this.officialRotation.reset(0);
+        this.officialFadeRemaining = 0;
+      }
+    }
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp6(sampleRate, 8e3, MAX_SAMPLE_RATE4) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp11(sampleRate, 8e3, MAX_SAMPLE_RATE4) : 48e3;
       const capacity = Math.ceil(MAX_DELAY_MS2 * this.sampleRate / 1e3) + 8;
       this.buffers = [new Float32Array(capacity), new Float32Array(capacity)];
       this.smoothingCoefficient = 1 - Math.exp(-1 / (PARAMETER_SMOOTHING_SECONDS4 * this.sampleRate));
@@ -1392,7 +5818,7 @@
           const negativeDelay = CENTER_DELAY_MS * Math.pow(MAX_DELAY_MS2 / CENTER_DELAY_MS, mappedMagnitude);
           const feedback = 0.16 + 0.66 * Math.pow(mappedMagnitude, 1.15);
           const cutoffHz = 7800 * Math.pow(0.1, mappedMagnitude);
-          const alpha = 1 - Math.exp(-TWO_PI4 * Math.min(cutoffHz, this.sampleRate * 0.45) / this.sampleRate);
+          const alpha = 1 - Math.exp(-TWO_PI5 * Math.min(cutoffHz, this.sampleRate * 0.45) / this.sampleRate);
           const offset = point * TABLE_STRIDE;
           table[offset] = mappedMagnitude;
           table[offset + 1] = positiveDelay;
@@ -1404,20 +5830,28 @@
     }
     /** Update bounded smoothed targets; discrete trajectory changes are also smoothed. */
     setParameters(parameters) {
-      if (Number.isFinite(parameters.amount)) this.amountTarget = clamp6(parameters.amount, -100, 100);
-      if (Number.isFinite(parameters.trajectory)) this.trajectoryTarget = Math.round(clamp6(parameters.trajectory, 0, 3));
+      if (Number.isFinite(parameters.amount)) this.amountTarget = clamp11(parameters.amount, -100, 100);
+      if (Number.isFinite(parameters.trajectory)) this.trajectoryTarget = Math.round(clamp11(parameters.trajectory, 0, 3));
     }
     /** Process one stereo frame and expose wet-only samples through the getters. */
     processSample(inputLeft, inputRight) {
       this.amountCurrent += this.smoothingCoefficient * (this.amountTarget - this.amountCurrent);
       this.trajectoryCurrent += this.smoothingCoefficient * (this.trajectoryTarget - this.trajectoryCurrent);
-      const signedMacro = clamp6(this.amountCurrent / 100, -1, 1);
+      let signedMacro = clamp11(this.amountCurrent / 100, -1, 1);
+      if (this.officialEnabled) {
+        const rotation = this.officialRotation.next();
+        if (this.officialActive || this.officialFadeRemaining > 0) {
+          this.officialPhase = (this.officialPhase + TWO_PI5 * (0.4 + 7.6 * rotation * rotation) / this.sampleRate) % TWO_PI5;
+          if (!this.officialActive) this.officialFadeRemaining -= 1;
+        }
+        signedMacro = rotation * Math.sin(this.officialPhase);
+      }
       const tablePosition = Math.abs(signedMacro) * TABLE_POINTS;
       const point = Math.min(TABLE_POINTS - 1, Math.floor(tablePosition));
       const fraction = tablePosition - point;
-      const modeA = Math.floor(this.trajectoryCurrent);
+      const modeA = this.officialEnabled ? 0 : Math.floor(this.trajectoryCurrent);
       const modeB = Math.min(3, modeA + 1);
-      const modeBlend = this.trajectoryCurrent - modeA;
+      const modeBlend = this.officialEnabled ? 0 : this.trajectoryCurrent - modeA;
       const tableA = this.trajectories[modeA];
       const tableB = this.trajectories[modeB];
       const offset0 = point * TABLE_STRIDE;
@@ -1443,7 +5877,7 @@
       }
       const mapped = signedMacro < 0 ? -mappedMagnitude : mappedMagnitude;
       const delayMs = signedMacro < 0 ? negativeDelayMs : positiveDelayMs;
-      const delayFrames = clamp6(delayMs * this.sampleRate / 1e3, 4, this.buffers[0].length - 3);
+      const delayFrames = clamp11(delayMs * this.sampleRate / 1e3, 4, this.buffers[0].length - 3);
       const delay = Math.floor(delayFrames);
       const fractionDelay = delayFrames - delay;
       const dryLeft = finiteBounded4(inputLeft, MAX_INPUT_MAGNITUDE3);
@@ -1456,7 +5890,7 @@
       const rightFilter = rightFeedbackState + alpha * (delayedRight - rightFeedbackState);
       this.feedbackFilter[0] = finiteBounded4(leftFilter, MAX_INPUT_MAGNITUDE3);
       this.feedbackFilter[1] = finiteBounded4(rightFilter, MAX_INPUT_MAGNITUDE3);
-      const boundedFeedback = clamp6(feedback, 0, 0.84) * FEEDBACK_STABILITY_MARGIN;
+      const boundedFeedback = clamp11(feedback, 0, 0.84) * FEEDBACK_STABILITY_MARGIN;
       const writeLeft = dryLeft + boundedFeedback * Math.tanh(this.feedbackFilter[0] * 1.5);
       const writeRight = dryRight + boundedFeedback * Math.tanh(this.feedbackFilter[1] * 1.5);
       const capacity = this.buffers[0].length;
@@ -1464,7 +5898,7 @@
       this.buffers[0][writeIndex] = finiteBounded4(writeLeft, MAX_INPUT_MAGNITUDE3);
       this.buffers[1][writeIndex] = finiteBounded4(writeRight, MAX_INPUT_MAGNITUDE3);
       this.writeFrame = writeIndex + 1 === capacity ? 0 : writeIndex + 1;
-      const pan = clamp6(mapped, -1, 1);
+      const pan = clamp11(mapped, -1, 1);
       const leftGain = pan > 0 ? Math.cos(pan * Math.PI * 0.5) : 1;
       const rightGain = pan < 0 ? Math.cos(-pan * Math.PI * 0.5) : 1;
       this.lastWetLeft = finiteBounded4(this.feedbackFilter[0] * leftGain, MAX_INPUT_MAGNITUDE3);
@@ -1510,10 +5944,14 @@
       this.trajectoryCurrent = this.trajectoryTarget;
       this.lastDelayMs = CENTER_DELAY_MS;
       this.lastFeedback = 0.16;
+      this.officialPhase = 0;
+      this.officialFadeRemaining = 0;
+      this.officialRotation.reset(0);
+      if (this.officialActive) this.officialRotation.setTarget(1, Math.round(this.sampleRate * 2e-3 * 1e3 ** (this.officialRise / 100)));
     }
   };
   function lagrange4(xMinus1, x0, xPlus1, xPlus2, fraction) {
-    const mu = clamp6(fraction, 0, 1);
+    const mu = clamp11(fraction, 0, 1);
     const cMinus1 = -mu * (mu - 1) * (mu - 2) / 6;
     const c0 = (mu + 1) * (mu - 1) * (mu - 2) / 2;
     const cPlus1 = -(mu + 1) * mu * (mu - 2) / 2;
@@ -1537,17 +5975,17 @@
   var GRAIN_VOICE_COUNT = 16;
   var WINDOW_TABLE_LENGTH = 2049;
   var SAFE_READ_MARGIN_SAMPLES = 4;
-  var TWO_PI5 = Math.PI * 2;
+  var TWO_PI6 = Math.PI * 2;
   var GRAIN_SIZE = 0;
   var DENSITY = 1;
   var PITCH = 2;
   var JITTER = 3;
   var FEEDBACK3 = 4;
-  function clamp7(value, minimum, maximum) {
+  function clamp12(value, minimum, maximum) {
     return Math.min(maximum, Math.max(minimum, value));
   }
   function finiteBounded5(value, maximumMagnitude = MAX_SAMPLE_MAGNITUDE2) {
-    return Number.isFinite(value) ? clamp7(value, -maximumMagnitude, maximumMagnitude) : 0;
+    return Number.isFinite(value) ? clamp12(value, -maximumMagnitude, maximumMagnitude) : 0;
   }
   function positiveModulo(value, modulus) {
     const result = value % modulus;
@@ -1588,20 +6026,20 @@
     lastWetLeft = 0;
     lastWetRight = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp7(sampleRate, MIN_SAMPLE_RATE4, MAX_SAMPLE_RATE5) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp12(sampleRate, MIN_SAMPLE_RATE4, MAX_SAMPLE_RATE5) : 48e3;
       const historyCapacity = Math.ceil(4500 * this.sampleRate / 1e3) + 16;
       this.buffers = [new Float32Array(historyCapacity), new Float32Array(historyCapacity)];
       this.windowTable = new Float32Array(WINDOW_TABLE_LENGTH);
       for (let index = 0; index < WINDOW_TABLE_LENGTH; index += 1) {
         const phase = index / (WINDOW_TABLE_LENGTH - 1);
-        this.windowTable[index] = 0.5 - 0.5 * Math.cos(TWO_PI5 * phase);
+        this.windowTable[index] = 0.5 - 0.5 * Math.cos(TWO_PI6 * phase);
       }
       this.smoothingCoefficient = 1 - Math.exp(-1 / (PARAMETER_SMOOTHING_SECONDS5 * this.sampleRate));
-      const grainSizeMs = Number.isFinite(parameters.grainSizeMs) ? clamp7(parameters.grainSizeMs, MIN_GRAIN_MS, MAX_GRAIN_MS) : 120;
-      const densityHz = Number.isFinite(parameters.densityHz) ? clamp7(parameters.densityHz, MIN_DENSITY_HZ, MAX_DENSITY_HZ) : 12;
-      const pitchSemitones = Number.isFinite(parameters.pitchSemitones) ? clamp7(parameters.pitchSemitones, -MAX_PITCH_SEMITONES, MAX_PITCH_SEMITONES) : 0;
-      const positionJitterPercent = Number.isFinite(parameters.positionJitterPercent) ? clamp7(parameters.positionJitterPercent, 0, 100) : 15;
-      const feedbackPercent = Number.isFinite(parameters.feedbackPercent) ? clamp7(parameters.feedbackPercent, 0, MAX_FEEDBACK_PERCENT2) : 15;
+      const grainSizeMs = Number.isFinite(parameters.grainSizeMs) ? clamp12(parameters.grainSizeMs, MIN_GRAIN_MS, MAX_GRAIN_MS) : 120;
+      const densityHz = Number.isFinite(parameters.densityHz) ? clamp12(parameters.densityHz, MIN_DENSITY_HZ, MAX_DENSITY_HZ) : 12;
+      const pitchSemitones = Number.isFinite(parameters.pitchSemitones) ? clamp12(parameters.pitchSemitones, -MAX_PITCH_SEMITONES, MAX_PITCH_SEMITONES) : 0;
+      const positionJitterPercent = Number.isFinite(parameters.positionJitterPercent) ? clamp12(parameters.positionJitterPercent, 0, 100) : 15;
+      const feedbackPercent = Number.isFinite(parameters.feedbackPercent) ? clamp12(parameters.feedbackPercent, 0, MAX_FEEDBACK_PERCENT2) : 15;
       this.current[GRAIN_SIZE] = this.target[GRAIN_SIZE] = grainSizeMs;
       this.current[DENSITY] = this.target[DENSITY] = densityHz;
       this.current[PITCH] = this.target[PITCH] = pitchSemitones;
@@ -1610,11 +6048,11 @@
     }
     /** Change grain controls with short smoothing; invalid controls are ignored. */
     setParameters(parameters) {
-      if (Number.isFinite(parameters.grainSizeMs)) this.target[GRAIN_SIZE] = clamp7(parameters.grainSizeMs, MIN_GRAIN_MS, MAX_GRAIN_MS);
-      if (Number.isFinite(parameters.densityHz)) this.target[DENSITY] = clamp7(parameters.densityHz, MIN_DENSITY_HZ, MAX_DENSITY_HZ);
-      if (Number.isFinite(parameters.pitchSemitones)) this.target[PITCH] = clamp7(parameters.pitchSemitones, -MAX_PITCH_SEMITONES, MAX_PITCH_SEMITONES);
-      if (Number.isFinite(parameters.positionJitterPercent)) this.target[JITTER] = clamp7(parameters.positionJitterPercent, 0, 100);
-      if (Number.isFinite(parameters.feedbackPercent)) this.target[FEEDBACK3] = clamp7(parameters.feedbackPercent, 0, MAX_FEEDBACK_PERCENT2);
+      if (Number.isFinite(parameters.grainSizeMs)) this.target[GRAIN_SIZE] = clamp12(parameters.grainSizeMs, MIN_GRAIN_MS, MAX_GRAIN_MS);
+      if (Number.isFinite(parameters.densityHz)) this.target[DENSITY] = clamp12(parameters.densityHz, MIN_DENSITY_HZ, MAX_DENSITY_HZ);
+      if (Number.isFinite(parameters.pitchSemitones)) this.target[PITCH] = clamp12(parameters.pitchSemitones, -MAX_PITCH_SEMITONES, MAX_PITCH_SEMITONES);
+      if (Number.isFinite(parameters.positionJitterPercent)) this.target[JITTER] = clamp12(parameters.positionJitterPercent, 0, 100);
+      if (Number.isFinite(parameters.feedbackPercent)) this.target[FEEDBACK3] = clamp12(parameters.feedbackPercent, 0, MAX_FEEDBACK_PERCENT2);
     }
     /** Clear all grain/history state and reset deterministic trigger scheduling. */
     reset() {
@@ -1645,7 +6083,7 @@
       const regeneration = (this.current[FEEDBACK3] ?? 0) * 0.01 * FEEDBACK_STABILITY_SCALE4;
       this.buffers[0][historyIndex] = finiteBounded5(dryLeft + regeneration * this.lastWetLeft);
       this.buffers[1][historyIndex] = finiteBounded5(dryRight + regeneration * this.lastWetRight);
-      const densityHz = clamp7(this.current[DENSITY] ?? 12, MIN_DENSITY_HZ, MAX_DENSITY_HZ);
+      const densityHz = clamp12(this.current[DENSITY] ?? 12, MIN_DENSITY_HZ, MAX_DENSITY_HZ);
       this.spawnPhase += densityHz / this.sampleRate;
       if (this.spawnPhase >= 1) {
         this.spawnPhase -= 1;
@@ -1702,13 +6140,13 @@
       const voice = this.nextVoice;
       this.nextVoice = voice + 1 >= GRAIN_VOICE_COUNT ? 0 : voice + 1;
       const requestedLength = Math.max(2, Math.round((this.current[GRAIN_SIZE] ?? 120) * this.sampleRate * 1e-3));
-      const densityHz = clamp7(this.current[DENSITY] ?? 12, MIN_DENSITY_HZ, MAX_DENSITY_HZ);
+      const densityHz = clamp12(this.current[DENSITY] ?? 12, MIN_DENSITY_HZ, MAX_DENSITY_HZ);
       const periodFrames = this.sampleRate / densityHz;
       const maxLengthForVoiceBudget = Math.max(2, Math.floor(periodFrames * GRAIN_VOICE_COUNT) - 1);
       const length = Math.min(requestedLength, maxLengthForVoiceBudget);
-      const pitch = clamp7(this.current[PITCH] ?? 0, -MAX_PITCH_SEMITONES, MAX_PITCH_SEMITONES);
+      const pitch = clamp12(this.current[PITCH] ?? 0, -MAX_PITCH_SEMITONES, MAX_PITCH_SEMITONES);
       const playbackRate = Math.pow(2, pitch / 12);
-      const jitter = clamp7(this.current[JITTER] ?? 0, 0, 100) * 0.01 * MAX_JITTER_FRACTION * length;
+      const jitter = clamp12(this.current[JITTER] ?? 0, 0, 100) * 0.01 * MAX_JITTER_FRACTION * length;
       const sourceAge = Math.max(1, playbackRate) * length + jitter + SAFE_READ_MARGIN_SAMPLES;
       const jitterOffset = (this.nextRandom() * 2 - 1) * jitter;
       this.ageFrames[voice] = 0;
@@ -1727,14 +6165,14 @@
   };
 
   // src/audio/fx/dsp/BrowserRadioDsp.ts
-  var TWO_PI6 = Math.PI * 2;
+  var TWO_PI7 = Math.PI * 2;
   var PARAM_SMOOTH_SECONDS = 0.015;
   var LEFT_SEED2 = 1380009009;
   var RIGHT_SEED2 = 1380009010;
   var BAND_HP = [420, 180, 45];
   var BAND_LP = [3200, 5200, 14500];
   var NOISE_ALPHA_HZ = 1900;
-  function clamp8(value, minimum, maximum) {
+  function clamp13(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function logCosh(value) {
@@ -1771,12 +6209,12 @@
     outputLeft = 0;
     outputRight = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp8(sampleRate, 8e3, 192e3) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp13(sampleRate, 8e3, 192e3) : 48e3;
       this.band = this.targetBand = this.normalizeBand(parameters.band ?? 0);
-      this.drive = this.targetDrive = 1 + 11 * clamp8(parameters.drive ?? 35, 0, 100) / 100;
-      this.noise = this.targetNoise = clamp8(parameters.noise ?? 8, 0, 100) / 100;
+      this.drive = this.targetDrive = 1 + 11 * clamp13(parameters.drive ?? 35, 0, 100) / 100;
+      this.noise = this.targetNoise = clamp13(parameters.noise ?? 8, 0, 100) / 100;
       this.smoothingAlpha = 1 - Math.exp(-1 / (PARAM_SMOOTH_SECONDS * this.sampleRate));
-      this.noiseAlpha = 1 - Math.exp(-TWO_PI6 * NOISE_ALPHA_HZ / this.sampleRate);
+      this.noiseAlpha = 1 - Math.exp(-TWO_PI7 * NOISE_ALPHA_HZ / this.sampleRate);
       this.dropoutEnvelope.fill(1);
       this.highpassLeft = new TptStateVariableFilter(this.sampleRate);
       this.highpassRight = new TptStateVariableFilter(this.sampleRate);
@@ -1792,8 +6230,8 @@
     }
     setParameters(parameters) {
       if (Number.isFinite(parameters.band)) this.targetBand = this.normalizeBand(parameters.band);
-      if (Number.isFinite(parameters.drive)) this.targetDrive = 1 + 11 * clamp8(parameters.drive, 0, 100) / 100;
-      if (Number.isFinite(parameters.noise)) this.targetNoise = clamp8(parameters.noise, 0, 100) / 100;
+      if (Number.isFinite(parameters.drive)) this.targetDrive = 1 + 11 * clamp13(parameters.drive, 0, 100) / 100;
+      if (Number.isFinite(parameters.noise)) this.targetNoise = clamp13(parameters.noise, 0, 100) / 100;
     }
     processSample(left, right) {
       this.drive += this.smoothingAlpha * (this.targetDrive - this.drive);
@@ -1826,7 +6264,7 @@
       this.dropoutEvents = 0;
     }
     normalizeBand(value) {
-      return Math.round(clamp8(value, 0, 2));
+      return Math.round(clamp13(value, 0, 2));
     }
     updateFilterCoefficients() {
       const highpass = Math.min(BAND_HP[this.band] ?? 420, this.sampleRate * 0.42);
@@ -1880,13 +6318,13 @@
   var MAX_DELAY_MS3 = 10;
   var MAX_MODULATION_FACTOR = 0.9;
   var PARAMETER_SMOOTHING_SECONDS6 = 0.015;
-  var TWO_PI7 = 2 * Math.PI;
+  var TWO_PI8 = 2 * Math.PI;
   var MAX_SAMPLE_MAGNITUDE3 = 8;
-  function clamp9(value, minimum, maximum) {
+  function clamp14(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function finiteBounded6(value) {
-    return Number.isFinite(value) ? clamp9(value, -MAX_SAMPLE_MAGNITUDE3, MAX_SAMPLE_MAGNITUDE3) : 0;
+    return Number.isFinite(value) ? clamp14(value, -MAX_SAMPLE_MAGNITUDE3, MAX_SAMPLE_MAGNITUDE3) : 0;
   }
   function readLagrange3(buffer, writeIndex, delaySamples) {
     const wholeDelay = Math.floor(delaySamples);
@@ -1919,15 +6357,17 @@
     delayMs;
     parameterRampFrames;
     phase = 0;
+    officialColor = 0;
+    officialRateActive = false;
     outputLeft = 0;
     outputRight = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp9(sampleRate, MIN_SAMPLE_RATE5, MAX_SAMPLE_RATE6) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp14(sampleRate, MIN_SAMPLE_RATE5, MAX_SAMPLE_RATE6) : 48e3;
       const capacity = Math.ceil(MAX_DELAY_MS3 * (1 + MAX_MODULATION_FACTOR) * this.sampleRate / 1e3) + 8;
       this.buffers = [new Float32Array(capacity), new Float32Array(capacity)];
-      this.rateHz = new LinearParameterSmoother(clamp9(parameters.rateHz ?? 5, MIN_RATE_HZ2, MAX_RATE_HZ2));
-      this.depthPercent = new LinearParameterSmoother(clamp9(parameters.depthPercent ?? 35, MIN_DEPTH_PERCENT, MAX_DEPTH_PERCENT));
-      this.delayMs = new LinearParameterSmoother(clamp9(parameters.delayMs ?? 2, MIN_DELAY_MS3, MAX_DELAY_MS3));
+      this.rateHz = new LinearParameterSmoother(clamp14(parameters.rateHz ?? 5, MIN_RATE_HZ2, MAX_RATE_HZ2));
+      this.depthPercent = new LinearParameterSmoother(clamp14(parameters.depthPercent ?? 35, MIN_DEPTH_PERCENT, MAX_DEPTH_PERCENT));
+      this.delayMs = new LinearParameterSmoother(clamp14(parameters.delayMs ?? 2, MIN_DELAY_MS3, MAX_DELAY_MS3));
       this.parameterRampFrames = Math.round(this.sampleRate * PARAMETER_SMOOTHING_SECONDS6);
     }
     get wetLeft() {
@@ -1947,25 +6387,32 @@
     }
     setParameters(parameters) {
       if (Number.isFinite(parameters.rateHz)) {
-        this.rateHz.setTarget(clamp9(parameters.rateHz, MIN_RATE_HZ2, MAX_RATE_HZ2), this.parameterRampFrames);
+        this.rateHz.setTarget(clamp14(parameters.rateHz, MIN_RATE_HZ2, MAX_RATE_HZ2), this.parameterRampFrames);
       }
       if (Number.isFinite(parameters.depthPercent)) {
-        this.depthPercent.setTarget(clamp9(parameters.depthPercent, MIN_DEPTH_PERCENT, MAX_DEPTH_PERCENT), this.parameterRampFrames);
+        this.depthPercent.setTarget(clamp14(parameters.depthPercent, MIN_DEPTH_PERCENT, MAX_DEPTH_PERCENT), this.parameterRampFrames);
       }
       if (Number.isFinite(parameters.delayMs)) {
-        this.delayMs.setTarget(clamp9(parameters.delayMs, MIN_DELAY_MS3, MAX_DELAY_MS3), this.parameterRampFrames);
+        this.delayMs.setTarget(clamp14(parameters.delayMs, MIN_DELAY_MS3, MAX_DELAY_MS3), this.parameterRampFrames);
       }
     }
     processSample(inputLeft, inputRight) {
-      const rate = clamp9(this.rateHz.next(), MIN_RATE_HZ2, MAX_RATE_HZ2);
-      const depth = clamp9(this.depthPercent.next() / 100, 0, 1) * MAX_MODULATION_FACTOR;
-      const baseDelaySamples = clamp9(this.delayMs.next(), MIN_DELAY_MS3, MAX_DELAY_MS3) * this.sampleRate / 1e3;
+      const rate = clamp14(this.rateHz.next(), this.officialRateActive ? 0 : MIN_RATE_HZ2, this.officialRateActive ? 160 : MAX_RATE_HZ2);
+      const depth = clamp14(this.depthPercent.next() / 100, 0, 1) * MAX_MODULATION_FACTOR;
+      const baseDelaySamples = clamp14(this.delayMs.next(), MIN_DELAY_MS3, MAX_DELAY_MS3) * this.sampleRate / 1e3;
       const left = this.processChannel(inputLeft, 0, this.phase, baseDelaySamples, depth);
       const right = this.processChannel(inputRight, 1, this.phase + Math.PI * 0.5, baseDelaySamples, depth);
       this.outputLeft = left;
       this.outputRight = right;
-      this.phase += TWO_PI7 * rate / this.sampleRate;
-      if (this.phase >= TWO_PI7) this.phase -= TWO_PI7;
+      this.phase += TWO_PI8 * rate / this.sampleRate;
+      if (this.phase >= TWO_PI8) this.phase -= TWO_PI8;
+    }
+    setOfficialParameters(parameters) {
+      if (Number.isFinite(parameters.color)) this.officialColor = clamp14(parameters.color, 0, 100) / 100;
+      if (Number.isFinite(parameters.rateHz)) {
+        this.officialRateActive = true;
+        this.rateHz.setTarget(clamp14(parameters.rateHz, 0, 160), this.parameterRampFrames);
+      }
     }
     reset() {
       this.buffers[0].fill(0);
@@ -1981,8 +6428,8 @@
     processChannel(input, channel, phase, baseDelaySamples, depth) {
       const buffer = this.buffers[channel];
       const writeIndex = this.writeIndices[channel] ?? 0;
-      const delaySamples = clamp9(
-        baseDelaySamples * (1 + depth * Math.sin(phase)),
+      const delaySamples = clamp14(
+        baseDelaySamples * (1 + depth * ((1 - this.officialColor * 0.5) * Math.sin(phase) + this.officialColor * 0.3 * Math.sin(2 * phase + 0.4) + this.officialColor * 0.2 * Math.sin(3 * phase + 0.8))),
         2,
         buffer.length - 6
       );
@@ -2010,7 +6457,7 @@
   var GATE_CLOSE_OFFSET_DB = 24;
   var GATE_OPEN_OFFSET_DB = 18;
   var LIMITER_CEILING = 0.9660508789898133;
-  function clamp10(value, minimum, maximum) {
+  function clamp15(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function onePoleAlpha(timeMs, sampleRate) {
@@ -2040,6 +6487,7 @@
     sampleRate;
     outputLeft = 0;
     outputRight = 0;
+    attack;
     threshold;
     ratio;
     release;
@@ -2059,31 +6507,34 @@
     controlsCountdown = 0;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
-      this.threshold = new ParameterSmoother(this.sampleRate, clamp10(parameters.thresholdDb ?? DEFAULT_THRESHOLD_DB, MIN_THRESHOLD_DB, MAX_THRESHOLD_DB));
-      this.ratio = new ParameterSmoother(this.sampleRate, clamp10(parameters.ratio ?? DEFAULT_RATIO, MIN_RATIO, MAX_RATIO));
-      this.release = new ParameterSmoother(this.sampleRate, clamp10(parameters.releaseMs ?? DEFAULT_RELEASE_MS, MIN_RELEASE_MS, MAX_RELEASE_MS));
-      this.outputDb = new ParameterSmoother(this.sampleRate, clamp10(parameters.outputDb ?? DEFAULT_OUTPUT_DB, -24, 12));
+      this.attack = new ParameterSmoother(this.sampleRate, clamp15(parameters.attackMs ?? 2, 0.1, 100));
+      this.threshold = new ParameterSmoother(this.sampleRate, clamp15(parameters.thresholdDb ?? DEFAULT_THRESHOLD_DB, MIN_THRESHOLD_DB, MAX_THRESHOLD_DB));
+      this.ratio = new ParameterSmoother(this.sampleRate, clamp15(parameters.ratio ?? DEFAULT_RATIO, MIN_RATIO, MAX_RATIO));
+      this.release = new ParameterSmoother(this.sampleRate, clamp15(parameters.releaseMs ?? DEFAULT_RELEASE_MS, MIN_RELEASE_MS, MAX_RELEASE_MS));
+      this.outputDb = new ParameterSmoother(this.sampleRate, clamp15(parameters.outputDb ?? DEFAULT_OUTPUT_DB, -24, 12));
       this.gateEnvelopeAttackAlpha = onePoleAlpha(1, this.sampleRate);
       this.gateEnvelopeReleaseAlpha = onePoleAlpha(60, this.sampleRate);
       this.gateOpenAlpha = onePoleAlpha(1, this.sampleRate);
       this.gateCloseAlpha = onePoleAlpha(60, this.sampleRate);
       this.limiterReleaseAlpha = onePoleAlpha(60, this.sampleRate);
-      this.refreshCompressorCoefficients(parameters.releaseMs ?? DEFAULT_RELEASE_MS);
+      this.refreshCompressorCoefficients(parameters.releaseMs ?? DEFAULT_RELEASE_MS, parameters.attackMs ?? 2);
     }
     setParameters(parameters) {
-      if (Number.isFinite(parameters.thresholdDb)) this.threshold.setTarget(clamp10(parameters.thresholdDb, MIN_THRESHOLD_DB, MAX_THRESHOLD_DB));
-      if (Number.isFinite(parameters.ratio)) this.ratio.setTarget(clamp10(parameters.ratio, MIN_RATIO, MAX_RATIO));
-      if (Number.isFinite(parameters.releaseMs)) this.release.setTarget(clamp10(parameters.releaseMs, MIN_RELEASE_MS, MAX_RELEASE_MS));
-      if (Number.isFinite(parameters.outputDb)) this.outputDb.setTarget(clamp10(parameters.outputDb, -24, 12));
+      if (Number.isFinite(parameters.attackMs)) this.attack.setTarget(clamp15(parameters.attackMs, 0.1, 100));
+      if (Number.isFinite(parameters.thresholdDb)) this.threshold.setTarget(clamp15(parameters.thresholdDb, MIN_THRESHOLD_DB, MAX_THRESHOLD_DB));
+      if (Number.isFinite(parameters.ratio)) this.ratio.setTarget(clamp15(parameters.ratio, MIN_RATIO, MAX_RATIO));
+      if (Number.isFinite(parameters.releaseMs)) this.release.setTarget(clamp15(parameters.releaseMs, MIN_RELEASE_MS, MAX_RELEASE_MS));
+      if (Number.isFinite(parameters.outputDb)) this.outputDb.setTarget(clamp15(parameters.outputDb, -24, 12));
     }
     /** Advances one stereo frame; all computation uses fixed scalar state. */
     processSample(inputLeft, inputRight) {
+      const attackMs = this.attack.next();
       const thresholdDb = this.threshold.next();
       const ratio = this.ratio.next();
       const releaseMs = this.release.next();
       const outputDb = this.outputDb.next();
       if (this.controlsCountdown <= 0) {
-        this.refreshCompressorCoefficients(releaseMs);
+        this.refreshCompressorCoefficients(releaseMs, attackMs);
         this.controlsCountdown = 15;
       } else {
         this.controlsCountdown -= 1;
@@ -2126,9 +6577,9 @@
       this.outputRight = 0;
       this.controlsCountdown = 0;
     }
-    refreshCompressorCoefficients(releaseMs) {
-      this.attackAlpha = onePoleAlpha(2, this.sampleRate);
-      this.releaseAlpha = onePoleAlpha(clamp10(releaseMs, MIN_RELEASE_MS, MAX_RELEASE_MS), this.sampleRate);
+    refreshCompressorCoefficients(releaseMs, attackMs = 2) {
+      this.attackAlpha = onePoleAlpha(attackMs, this.sampleRate);
+      this.releaseAlpha = onePoleAlpha(clamp15(releaseMs, MIN_RELEASE_MS, MAX_RELEASE_MS), this.sampleRate);
     }
   };
 
@@ -2145,7 +6596,7 @@
   var CONTROL_SMOOTHING_SECONDS = 0.015;
   var GATE_EDGE_SMOOTHING_SECONDS = 2e-3;
   var SVF_Q = Math.SQRT1_2;
-  var clamp11 = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
+  var clamp16 = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
   var dbToLinear2 = (valueDb) => 10 ** (valueDb / 20);
   var nearestGateRate = (value) => {
     let nearest = GATE_RATE_CHOICES[0];
@@ -2177,17 +6628,28 @@
     bpm;
     cycleBeatPosition = 0;
     isGateOpen = true;
+    officialActive = false;
+    officialBand = 0;
+    officialRate = 2;
+    officialBandLevel = 0.5;
+    officialDepth = 0.5;
+    officialStepRate = 0;
+    officialWaveform = 0;
+    officialPhase = 0;
+    officialStepPhase = 1;
+    officialHeldLfo = 0;
+    officialBandGain = 1;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
       const nyquist = this.sampleRate * 0.499;
       const lowCrossover = Math.min(CROSSOVER_LOW_HZ, nyquist * 0.45);
       const highCrossover = Math.min(CROSSOVER_HIGH_HZ, nyquist * 0.8);
-      const initialLowDb = clamp11(Number.isFinite(parameters.lowGainDb) ? parameters.lowGainDb : 0, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB);
-      const initialMidDb = clamp11(Number.isFinite(parameters.midGainDb) ? parameters.midGainDb : 0, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB);
-      const initialHighDb = clamp11(Number.isFinite(parameters.highGainDb) ? parameters.highGainDb : 0, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB);
-      const initialGateRate = nearestGateRate(clamp11(Number.isFinite(parameters.gateRateBeats) ? parameters.gateRateBeats : 0.5, 0.25, 4));
-      const initialGateDepth = clamp11(Number.isFinite(parameters.gateDepthPercent) ? parameters.gateDepthPercent : 0, GATE_DEPTH_MIN_PERCENT, GATE_DEPTH_MAX_PERCENT) / 100;
-      this.bpm = clamp11(Number.isFinite(parameters.bpm) ? parameters.bpm : 120, BPM_MIN, BPM_MAX);
+      const initialLowDb = clamp16(Number.isFinite(parameters.lowGainDb) ? parameters.lowGainDb : 0, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB);
+      const initialMidDb = clamp16(Number.isFinite(parameters.midGainDb) ? parameters.midGainDb : 0, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB);
+      const initialHighDb = clamp16(Number.isFinite(parameters.highGainDb) ? parameters.highGainDb : 0, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB);
+      const initialGateRate = nearestGateRate(clamp16(Number.isFinite(parameters.gateRateBeats) ? parameters.gateRateBeats : 0.5, 0.25, 4));
+      const initialGateDepth = clamp16(Number.isFinite(parameters.gateDepthPercent) ? parameters.gateDepthPercent : 0, GATE_DEPTH_MIN_PERCENT, GATE_DEPTH_MAX_PERCENT) / 100;
+      this.bpm = clamp16(Number.isFinite(parameters.bpm) ? parameters.bpm : 120, BPM_MIN, BPM_MAX);
       this.gateRateBeats = initialGateRate;
       this.pendingGateRateBeats = initialGateRate;
       this.lowGain = new LinearParameterSmoother(dbToLinear2(initialLowDb));
@@ -2207,23 +6669,32 @@
     setParameters(parameters) {
       const rampFrames = Math.max(1, Math.round(this.sampleRate * CONTROL_SMOOTHING_SECONDS));
       if (Number.isFinite(parameters.lowGainDb)) {
-        this.lowGain.setTarget(dbToLinear2(clamp11(parameters.lowGainDb, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB)), rampFrames);
+        this.lowGain.setTarget(dbToLinear2(clamp16(parameters.lowGainDb, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB)), rampFrames);
       }
       if (Number.isFinite(parameters.midGainDb)) {
-        this.midGain.setTarget(dbToLinear2(clamp11(parameters.midGainDb, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB)), rampFrames);
+        this.midGain.setTarget(dbToLinear2(clamp16(parameters.midGainDb, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB)), rampFrames);
       }
       if (Number.isFinite(parameters.highGainDb)) {
-        this.highGain.setTarget(dbToLinear2(clamp11(parameters.highGainDb, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB)), rampFrames);
+        this.highGain.setTarget(dbToLinear2(clamp16(parameters.highGainDb, BAND_GAIN_MIN_DB, BAND_GAIN_MAX_DB)), rampFrames);
       }
       if (Number.isFinite(parameters.gateRateBeats)) {
-        this.pendingGateRateBeats = nearestGateRate(clamp11(parameters.gateRateBeats, 0.25, 4));
+        this.pendingGateRateBeats = nearestGateRate(clamp16(parameters.gateRateBeats, 0.25, 4));
       }
       if (Number.isFinite(parameters.gateDepthPercent)) {
-        this.gateDepth.setTarget(clamp11(parameters.gateDepthPercent, GATE_DEPTH_MIN_PERCENT, GATE_DEPTH_MAX_PERCENT) / 100, rampFrames);
+        this.gateDepth.setTarget(clamp16(parameters.gateDepthPercent, GATE_DEPTH_MIN_PERCENT, GATE_DEPTH_MAX_PERCENT) / 100, rampFrames);
       }
       if (Number.isFinite(parameters.bpm)) {
-        this.bpm = clamp11(parameters.bpm, BPM_MIN, BPM_MAX);
+        this.bpm = clamp16(parameters.bpm, BPM_MIN, BPM_MAX);
       }
+    }
+    setOfficialParameters(parameters) {
+      this.officialActive = true;
+      this.officialBand = Math.round(clamp16(parameters.band, 0, 2));
+      this.officialRate = clamp16(parameters.rateHz, 0, 160);
+      this.officialBandLevel = clamp16(parameters.bandLevel, 0, 100) / 100;
+      this.officialDepth = clamp16(parameters.depth, 0, 100) / 100;
+      this.officialStepRate = clamp16(parameters.stepRateHz, 0, 160);
+      this.officialWaveform = parameters.waveform === 1 ? 1 : 0;
     }
     processSample(inputLeft, inputRight) {
       const leftLow = this.processLow(inputLeft, 0);
@@ -2248,8 +6719,23 @@
       const gateGain = 1 - gateDepth * (1 - this.gateEnvelope.next());
       const leftMid = inputLeft - leftLow - leftHigh;
       const rightMid = inputRight - rightLow - rightHigh;
-      this.outputLeft = clamp11((leftLow * lowGain + leftMid * midGain + leftHigh * highGain) * gateGain, -16, 16);
-      this.outputRight = clamp11((rightLow * lowGain + rightMid * midGain + rightHigh * highGain) * gateGain, -16, 16);
+      if (this.officialActive) {
+        this.officialPhase = (this.officialPhase + this.officialRate / this.sampleRate) % 1;
+        if (this.officialStepRate === 0 || this.officialStepPhase >= 1) {
+          this.officialHeldLfo = this.officialWaveform === 0 ? 1 - 4 * Math.abs(this.officialPhase - 0.5) : this.officialPhase < 0.5 ? 1 : -1;
+          this.officialStepPhase %= 1;
+        }
+        this.officialStepPhase += this.officialStepRate / this.sampleRate;
+        const target = this.officialBandLevel * (1 - this.officialDepth * (1 - this.officialHeldLfo) * 0.5);
+        this.officialBandGain += (target - this.officialBandGain) * (1 - Math.exp(-1 / (this.sampleRate * 2e-3)));
+        const selectedLeft = this.officialBand === 0 ? leftLow : this.officialBand === 1 ? leftMid : leftHigh;
+        const selectedRight = this.officialBand === 0 ? rightLow : this.officialBand === 1 ? rightMid : rightHigh;
+        this.outputLeft = clamp16(inputLeft + selectedLeft * (this.officialBandGain - 1), -16, 16);
+        this.outputRight = clamp16(inputRight + selectedRight * (this.officialBandGain - 1), -16, 16);
+        return;
+      }
+      this.outputLeft = clamp16((leftLow * lowGain + leftMid * midGain + leftHigh * highGain) * gateGain, -16, 16);
+      this.outputRight = clamp16((rightLow * lowGain + rightMid * midGain + rightHigh * highGain) * gateGain, -16, 16);
     }
     reset() {
       for (let channel = 0; channel < 2; channel += 1) {
@@ -2264,6 +6750,10 @@
       this.gateDepth.reset();
       this.gateEnvelope.reset(1);
       this.cycleBeatPosition = 0;
+      this.officialPhase = 0;
+      this.officialStepPhase = 1;
+      this.officialHeldLfo = 0;
+      this.officialBandGain = 1;
       this.gateRateBeats = this.pendingGateRateBeats;
       this.isGateOpen = true;
       this.outputLeft = 0;
@@ -2299,7 +6789,7 @@
   var REARM_QUIET_SECONDS = 0.035;
   var MINIMUM_BASELINE_ENERGY = 1e-20;
   var MAX_DETECTOR_INPUT = 4;
-  function clamp12(value, minimum, maximum) {
+  function clamp17(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function onePoleAlpha2(seconds, sampleRate) {
@@ -2323,8 +6813,8 @@
     envelope = 0;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
-      const initialAttackMs = Number.isFinite(parameters.attackMs) ? clamp12(parameters.attackMs, MIN_ATTACK_MS, MAX_ATTACK_MS) : DEFAULT_ATTACK_MS;
-      const initialSensitivity = Number.isFinite(parameters.sensitivityPercent) ? clamp12(parameters.sensitivityPercent, MIN_SENSITIVITY_PERCENT, MAX_SENSITIVITY_PERCENT) : DEFAULT_SENSITIVITY_PERCENT;
+      const initialAttackMs = Number.isFinite(parameters.attackMs) ? clamp17(parameters.attackMs, MIN_ATTACK_MS, MAX_ATTACK_MS) : DEFAULT_ATTACK_MS;
+      const initialSensitivity = Number.isFinite(parameters.sensitivityPercent) ? clamp17(parameters.sensitivityPercent, MIN_SENSITIVITY_PERCENT, MAX_SENSITIVITY_PERCENT) : DEFAULT_SENSITIVITY_PERCENT;
       this.attackMs = new LinearParameterSmoother(initialAttackMs);
       this.sensitivityPercent = new LinearParameterSmoother(initialSensitivity);
       this.energyWindow = new Float64Array(Math.max(1, Math.ceil(this.sampleRate * ENERGY_WINDOW_SECONDS)));
@@ -2339,11 +6829,11 @@
     setParameters(parameters) {
       const smoothingFrames = Math.round(this.sampleRate * PARAMETER_SMOOTHING_SECONDS7);
       if (Number.isFinite(parameters.attackMs)) {
-        this.attackMs.setTarget(clamp12(parameters.attackMs, MIN_ATTACK_MS, MAX_ATTACK_MS), smoothingFrames);
+        this.attackMs.setTarget(clamp17(parameters.attackMs, MIN_ATTACK_MS, MAX_ATTACK_MS), smoothingFrames);
       }
       if (Number.isFinite(parameters.sensitivityPercent)) {
         this.sensitivityPercent.setTarget(
-          clamp12(parameters.sensitivityPercent, MIN_SENSITIVITY_PERCENT, MAX_SENSITIVITY_PERCENT),
+          clamp17(parameters.sensitivityPercent, MIN_SENSITIVITY_PERCENT, MAX_SENSITIVITY_PERCENT),
           smoothingFrames
         );
       }
@@ -2352,8 +6842,8 @@
     processSample(inputLeft, inputRight) {
       const attackMs = this.attackMs.next();
       const sensitivity = this.sensitivityPercent.next() / 100;
-      const safeLeft = Number.isFinite(inputLeft) ? clamp12(inputLeft, -MAX_DETECTOR_INPUT, MAX_DETECTOR_INPUT) : 0;
-      const safeRight = Number.isFinite(inputRight) ? clamp12(inputRight, -MAX_DETECTOR_INPUT, MAX_DETECTOR_INPUT) : 0;
+      const safeLeft = Number.isFinite(inputLeft) ? clamp17(inputLeft, -MAX_DETECTOR_INPUT, MAX_DETECTOR_INPUT) : 0;
+      const safeRight = Number.isFinite(inputRight) ? clamp17(inputRight, -MAX_DETECTOR_INPUT, MAX_DETECTOR_INPUT) : 0;
       const frameEnergy = 0.5 * (safeLeft * safeLeft + safeRight * safeRight);
       const oldEnergy = this.energyWindow[this.energyWindowIndex] ?? 0;
       this.energyWindow[this.energyWindowIndex] = frameEnergy;
@@ -2395,7 +6885,7 @@
       }
       const attackFrames = Math.max(1, attackMs * this.sampleRate / 1e3);
       if (this.rampElapsedFrames > 0 && this.rampElapsedFrames < attackFrames) {
-        const phase = clamp12(this.rampElapsedFrames / attackFrames, 0, 1);
+        const phase = clamp17(this.rampElapsedFrames / attackFrames, 0, 1);
         this.envelope = 0.5 - 0.5 * Math.cos(Math.PI * phase);
         this.rampElapsedFrames += 1;
         return this.envelope;
@@ -2489,6 +6979,16 @@
     }
     get remainingFramesToBoundary() {
       return this.framesUntilBoundary;
+    }
+    /** Exact documented note lengths, including 1/32 note; legacy quantization is unchanged. */
+    setOfficialLengthBeats(beats, initial = false) {
+      if (!Number.isFinite(beats) || beats < 0.125 || beats > 4) return;
+      this.pendingSliceBeats = beats;
+      if (initial) {
+        this.currentSliceBeats = beats;
+        this.activeIntervalFrames = this.intervalFrames(this.currentBpm, beats);
+        this.framesUntilBoundary = this.activeIntervalFrames;
+      }
     }
     setParameters(parameters) {
       if (Number.isFinite(parameters.bpm)) this.pendingBpm = this.clampBpm(parameters.bpm);
@@ -2627,10 +7127,10 @@
       let nearest = 0.25;
       let distance = Math.abs(value - nearest);
       for (let index = 1; index < options.length; index += 1) {
-        const option = options[index];
-        const nextDistance = Math.abs(value - option);
+        const option2 = options[index];
+        const nextDistance = Math.abs(value - option2);
         if (nextDistance < distance) {
-          nearest = option;
+          nearest = option2;
           distance = nextDistance;
         }
       }
@@ -3081,7 +7581,7 @@
   function finiteOrZero(value) {
     return Number.isFinite(value) ? value : 0;
   }
-  function clamp13(value, minimum, maximum) {
+  function clamp18(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   var BrowserReverseReverbDsp = class {
@@ -3143,8 +7643,8 @@
       this.currentSegmentBeats = this.pendingSegmentBeats = this.quantizeBeats(parameters.segmentBeats ?? 0.5);
       this.currentFeedback = this.pendingFeedback = this.clampFeedbackPercent(parameters.feedbackPercent ?? 0);
       this.currentCrossfadeMs = this.pendingCrossfadeMs = this.clampCrossfade(parameters.crossfadeMs ?? 20);
-      this.currentDecaySeconds = clamp13(finiteOrZero(parameters.decaySeconds ?? 2), 0.1, 10);
-      this.currentDampingCutoffHz = clamp13(finiteOrZero(parameters.dampingCutoffHz ?? 8e3), 500, Math.min(16e3, this.sampleRate * 0.499));
+      this.currentDecaySeconds = clamp18(finiteOrZero(parameters.decaySeconds ?? 2), 0.1, 10);
+      this.currentDampingCutoffHz = clamp18(finiteOrZero(parameters.dampingCutoffHz ?? 8e3), 500, Math.min(16e3, this.sampleRate * 0.499));
       this.currentSegmentFrames = this.segmentFrames(this.currentBpm, this.currentSegmentBeats);
       this.dampingAlpha = 1 - Math.exp(-2 * Math.PI * this.currentDampingCutoffHz / this.sampleRate);
       this.refreshFeedbackGains();
@@ -3185,18 +7685,18 @@
       if (Number.isFinite(parameters.feedbackPercent)) this.pendingFeedback = this.clampFeedbackPercent(parameters.feedbackPercent);
       if (Number.isFinite(parameters.crossfadeMs)) this.pendingCrossfadeMs = this.clampCrossfade(parameters.crossfadeMs);
       if (Number.isFinite(parameters.decaySeconds)) {
-        this.currentDecaySeconds = clamp13(parameters.decaySeconds, 0.1, 10);
+        this.currentDecaySeconds = clamp18(parameters.decaySeconds, 0.1, 10);
         this.refreshFeedbackGains();
       }
       if (Number.isFinite(parameters.dampingCutoffHz)) {
-        this.currentDampingCutoffHz = clamp13(parameters.dampingCutoffHz, 500, Math.min(16e3, this.sampleRate * 0.499));
+        this.currentDampingCutoffHz = clamp18(parameters.dampingCutoffHz, 500, Math.min(16e3, this.sampleRate * 0.499));
         this.dampingAlpha = 1 - Math.exp(-2 * Math.PI * this.currentDampingCutoffHz / this.sampleRate);
       }
     }
     /** Mutates wetLeft/wetRight without allocating or assuming a block size. */
     processSample(inputLeft, inputRight) {
-      const safeLeft = clamp13(finiteOrZero(inputLeft), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
-      const safeRight = clamp13(finiteOrZero(inputRight), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+      const safeLeft = clamp18(finiteOrZero(inputLeft), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+      const safeRight = clamp18(finiteOrZero(inputRight), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
       let reverseInputLeft = 0;
       let reverseInputRight = 0;
       if (this.hasCapturedSegment && this.playbackBufferIndex >= 0 && this.playbackLength > 0) {
@@ -3215,8 +7715,8 @@
       this.wetRight = this.processFdn(reverseInputRight, reverseInputLeft, 1);
       const captureLeft = this.captureLeft[this.captureBufferIndex];
       const captureRight = this.captureRight[this.captureBufferIndex];
-      captureLeft[this.captureFrames] = clamp13(finiteOrZero(safeLeft + this.currentFeedback * this.wetLeft), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
-      captureRight[this.captureFrames] = clamp13(finiteOrZero(safeRight + this.currentFeedback * this.wetRight), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+      captureLeft[this.captureFrames] = clamp18(finiteOrZero(safeLeft + this.currentFeedback * this.wetLeft), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+      captureRight[this.captureFrames] = clamp18(finiteOrZero(safeRight + this.currentFeedback * this.wetRight), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
       this.captureFrames += 1;
       if (this.hasCapturedSegment) this.playbackElapsedFrames += 1;
       this.framesProcessed += 1;
@@ -3281,9 +7781,9 @@
         const delayed = buffer[writeIndex] ?? 0;
         const coefficient = ALLPASS_COEFFICIENTS[stage] ?? 0.5;
         const output2 = delayed - coefficient * diffused;
-        buffer[writeIndex] = clamp13(finiteOrZero(diffused + coefficient * output2), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+        buffer[writeIndex] = clamp18(finiteOrZero(diffused + coefficient * output2), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
         diffuserIndices[stage] = writeIndex + 1 >= buffer.length ? 0 : writeIndex + 1;
-        diffused = clamp13(finiteOrZero(output2), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+        diffused = clamp18(finiteOrZero(output2), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
       }
       const lines = this.fdnBuffers[channel];
       const writeIndices = this.fdnWriteIndices[channel];
@@ -3318,7 +7818,7 @@
       this.writeFdnLine(lines[6], writeIndices, 6, -primaryInput - crossInjection + h6 * feedback[6]);
       this.writeFdnLine(lines[7], writeIndices, 7, primaryInput - crossInjection + h7 * feedback[7]);
       const output = (d0 - d1 + d2 - d3 + d4 - d5 + d6 - d7) * 0.24;
-      return clamp13(finiteOrZero(output), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+      return clamp18(finiteOrZero(output), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
     }
     readDamped(buffer, writeIndices, line, dampingStates) {
       const delayed = buffer[writeIndices[line] ?? 0] ?? 0;
@@ -3329,7 +7829,7 @@
     }
     writeFdnLine(buffer, writeIndices, line, value) {
       const writeIndex = writeIndices[line] ?? 0;
-      buffer[writeIndex] = clamp13(finiteOrZero(value), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
+      buffer[writeIndex] = clamp18(finiteOrZero(value), -MAX_INTERNAL_SAMPLE, MAX_INTERNAL_SAMPLE);
       writeIndices[line] = writeIndex + 1 >= buffer.length ? 0 : writeIndex + 1;
     }
     refreshFeedbackGains() {
@@ -3338,7 +7838,7 @@
         for (let line = 0; line < FDN_DELAY_SECONDS.length; line += 1) {
           const delaySeconds = (FDN_DELAY_SECONDS[line] ?? 0.03) * channelScale;
           const gain = Math.pow(1e-3, delaySeconds / this.currentDecaySeconds);
-          this.fdnFeedbackGains[channel][line] = clamp13(gain, 0, 0.995);
+          this.fdnFeedbackGains[channel][line] = clamp18(gain, 0, 0.995);
         }
       }
     }
@@ -3401,13 +7901,13 @@
       return nearest;
     }
     clampBpm(value) {
-      return clamp13(finiteOrZero(value), 30, 300);
+      return clamp18(finiteOrZero(value), 30, 300);
     }
     clampFeedbackPercent(value) {
-      return clamp13(finiteOrZero(value), 0, MAX_FEEDBACK * 100) / 100;
+      return clamp18(finiteOrZero(value), 0, MAX_FEEDBACK * 100) / 100;
     }
     clampCrossfade(value) {
-      return clamp13(finiteOrZero(value), 1, 100);
+      return clamp18(finiteOrZero(value), 1, 100);
     }
     totalSamples(buffers) {
       let total = 0;
@@ -3444,6 +7944,9 @@
   var QUEUE_MASK = QUEUE_CAPACITY - 1;
   var ONSET_REFRACTORY_MS = 90;
   var PENDING_ONSET_MAX_MS = 300;
+  var SOURCE_BUFFER_SIZE = 8192;
+  var SOURCE_BUFFER_MASK = SOURCE_BUFFER_SIZE - 1;
+  var OFFICIAL_BEAT_DURATIONS = [16, 8, 4, 2, 1, 0.125];
   var BrowserAutoRiffDsp = class {
     sampleRate;
     /** Most recent valid YIN estimate; 0 when no periodic pitch is tracked. */
@@ -3461,6 +7964,10 @@
     framesProcessed = 0;
     lastPoppedFrame = -1;
     lastPoppedSemitones = 0;
+    /** Source audio to feed to the host pitch shifter. Legacy controls pass through. */
+    wetLeft = 0;
+    wetRight = 0;
+    attackGain = 1;
     decimatedRate;
     onsetAttackAlpha;
     onsetReleaseAlpha;
@@ -3496,6 +8003,22 @@
     currentBeatStepRate;
     currentScale;
     currentOnsetSensitivity;
+    currentOfficialTempo;
+    currentQuarterNotesPerMeasure = 4;
+    currentHold = false;
+    currentAttack = 0;
+    currentLoop = false;
+    currentKey;
+    sourceLeft = new Float32Array(SOURCE_BUFFER_SIZE);
+    sourceRight = new Float32Array(SOURCE_BUFFER_SIZE);
+    sourceWrite = 0;
+    sourceCount = 0;
+    heldPeriod = 0;
+    heldRead = 0;
+    heldStart = 0;
+    heldSourceMidi = 0;
+    phraseAttack = 0;
+    phraseAttackDecay;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
       this.decimatedRate = this.sampleRate / DECIMATION_FACTOR;
@@ -3505,10 +8028,12 @@
       this.maxLag = Math.min(255, Math.floor(this.decimatedRate / YIN_MIN_F0_HZ));
       this.minLag = Math.max(2, Math.floor(this.decimatedRate / YIN_MAX_F0_HZ));
       this.yinWindow = Math.min(384, Math.max(64, this.maxLag * 2));
+      this.phraseAttackDecay = Math.exp(-1 / (0.03 * this.sampleRate));
       this.currentBpm = this.clampBpm(parameters.bpm ?? 120);
       this.currentBeatStepRate = this.clampRate(parameters.beatStepRate ?? 0.5);
       this.currentScale = this.clampScale(parameters.scale ?? 0);
       this.currentOnsetSensitivity = this.clampSensitivity(parameters.onsetSensitivity ?? 0.65);
+      this.setParameters(parameters);
       this.updateOnsetClock(0);
     }
     get latencyFrames() {
@@ -3525,6 +8050,24 @@
     }
     get activeOnsetSensitivity() {
       return this.currentOnsetSensitivity;
+    }
+    get activeOfficialTempo() {
+      return this.currentOfficialTempo;
+    }
+    get activeHold() {
+      return this.currentHold;
+    }
+    get sourceHeld() {
+      return this.heldPeriod > 0;
+    }
+    get activeAttack() {
+      return this.currentAttack;
+    }
+    get activeLoop() {
+      return this.currentLoop;
+    }
+    get activeKey() {
+      return this.currentKey;
     }
     get queueDepth() {
       return this.queueCount;
@@ -3548,23 +8091,53 @@
         activeBpm: this.currentBpm,
         activeBeatStepRate: this.currentBeatStepRate,
         activeScale: this.currentScale,
-        framesProcessed: this.framesProcessed
+        framesProcessed: this.framesProcessed,
+        activeOfficialTempo: this.currentOfficialTempo,
+        activeHold: this.currentHold,
+        sourceHeld: this.sourceHeld,
+        activeAttack: this.currentAttack,
+        activeLoop: this.currentLoop,
+        activeKey: this.currentKey,
+        attackGain: this.attackGain
       };
     }
     setParameters(parameters) {
       if (Number.isFinite(parameters.bpm)) this.currentBpm = this.clampBpm(parameters.bpm);
-      if (Number.isFinite(parameters.beatStepRate)) this.currentBeatStepRate = this.clampRate(parameters.beatStepRate);
-      if (Number.isFinite(parameters.scale)) this.currentScale = this.clampScale(parameters.scale);
+      if (Number.isFinite(parameters.quarterNotesPerMeasure) && parameters.quarterNotesPerMeasure >= 0.125 && parameters.quarterNotesPerMeasure <= 128) this.currentQuarterNotesPerMeasure = parameters.quarterNotesPerMeasure;
+      if (Number.isFinite(parameters.beatStepRate)) {
+        this.currentBeatStepRate = this.clampRate(parameters.beatStepRate);
+        this.currentOfficialTempo = void 0;
+      }
+      if (Number.isFinite(parameters.scale)) {
+        this.currentScale = this.clampScale(parameters.scale);
+        this.currentKey = void 0;
+      }
       if (Number.isFinite(parameters.onsetSensitivity)) {
         this.currentOnsetSensitivity = this.clampSensitivity(parameters.onsetSensitivity);
       }
+      const tempo = parameters.officialTempo;
+      if (typeof tempo === "number" && (Number.isInteger(tempo) && tempo >= 0 && tempo <= 100 || OFFICIAL_BEAT_DURATIONS.some((beats) => tempo === -beats))) this.currentOfficialTempo = tempo;
+      if (parameters.hold === 0 || parameters.hold === 1) {
+        this.currentHold = parameters.hold === 1;
+        if (!this.currentHold) this.heldPeriod = 0;
+        else this.captureHeldSource();
+      }
+      if (Number.isInteger(parameters.attack) && parameters.attack >= 0 && parameters.attack <= 100) this.currentAttack = parameters.attack;
+      if (parameters.loop === 0 || parameters.loop === 1) this.currentLoop = parameters.loop === 1;
+      if (Number.isInteger(parameters.key) && parameters.key >= 0 && parameters.key <= 11) this.currentKey = parameters.key;
     }
     setTempo(bpm, beatStepRate) {
       if (Number.isFinite(bpm)) this.currentBpm = this.clampBpm(bpm);
-      if (Number.isFinite(beatStepRate)) this.currentBeatStepRate = this.clampRate(beatStepRate);
+      if (Number.isFinite(beatStepRate)) {
+        this.currentBeatStepRate = this.clampRate(beatStepRate);
+        this.currentOfficialTempo = void 0;
+      }
     }
     setScale(scale) {
-      if (Number.isFinite(scale)) this.currentScale = this.clampScale(scale);
+      if (Number.isFinite(scale)) {
+        this.currentScale = this.clampScale(scale);
+        this.currentKey = void 0;
+      }
     }
     setOnsetSensitivity(sensitivity) {
       if (Number.isFinite(sensitivity)) this.currentOnsetSensitivity = this.clampSensitivity(sensitivity);
@@ -3574,6 +8147,37 @@
      * sequence edges remain sample-clocked across variable callback segments.
      */
     processSample(input, frame) {
+      this.processStereoSample(input, input, frame);
+    }
+    /** Both analysis and optional source hold/accent are sample-clocked. */
+    processStereoSample(left, right, frame) {
+      const l = Number.isFinite(left) ? Math.max(-8, Math.min(8, left)) : 0;
+      const r = Number.isFinite(right) ? Math.max(-8, Math.min(8, right)) : 0;
+      if (!this.sourceHeld) {
+        this.sourceLeft[this.sourceWrite] = l;
+        this.sourceRight[this.sourceWrite] = r;
+        this.sourceWrite = this.sourceWrite + 1 & SOURCE_BUFFER_MASK;
+        this.sourceCount = Math.min(SOURCE_BUFFER_SIZE, this.sourceCount + 1);
+      }
+      this.analyzeSample((l + r) * 0.5, frame);
+      if (this.currentHold && !this.sourceHeld) this.captureHeldSource();
+      this.attackGain = 1 + this.currentAttack / 100 * this.phraseAttack;
+      this.phraseAttack *= this.phraseAttackDecay;
+      if (this.sourceHeld) {
+        const position = this.heldStart + this.heldRead;
+        const base = Math.floor(position);
+        const fraction = position - base;
+        const index = base & SOURCE_BUFFER_MASK;
+        const next = base + 1 & SOURCE_BUFFER_MASK;
+        this.wetLeft = (this.sourceLeft[index] + fraction * (this.sourceLeft[next] - this.sourceLeft[index])) * this.attackGain;
+        this.wetRight = (this.sourceRight[index] + fraction * (this.sourceRight[next] - this.sourceRight[index])) * this.attackGain;
+        this.heldRead = (this.heldRead + 1) % this.heldPeriod;
+      } else {
+        this.wetLeft = l * this.attackGain;
+        this.wetRight = r * this.attackGain;
+      }
+    }
+    analyzeSample(input, frame) {
       const sampleFrame = Number.isFinite(frame) ? Math.floor(frame) : this.framesProcessed;
       const sample = Number.isFinite(input) ? Math.max(-8, Math.min(8, input)) : 0;
       this.framesProcessed += 1;
@@ -3586,7 +8190,7 @@
         this.decimationSum = 0;
         this.decimationCount = 0;
       }
-      if (!this.hasPitch) {
+      if (!this.hasPitch && !this.sourceHeld) {
         this.sequenceActive = false;
         this.step = -1;
         if (this.pendingOnset && sampleFrame - this.pendingOnsetFrame > this.pendingOnsetFrames()) {
@@ -3595,15 +8199,9 @@
       } else if (this.pendingOnset) {
         this.startSequence(sampleFrame);
       }
-      if (this.sequenceActive && this.hasPitch && sampleFrame >= this.nextSequenceFrame) {
+      if (this.sequenceActive && (this.hasPitch || this.sourceHeld) && sampleFrame >= this.nextSequenceFrame) {
         this.emitSequenceCommand(sampleFrame);
       }
-    }
-    /** Average stereo to mono without creating an intermediate sample object. */
-    processStereoSample(left, right, frame) {
-      const l = Number.isFinite(left) ? left : 0;
-      const r = Number.isFinite(right) ? right : 0;
-      this.processSample((l + r) * 0.5, frame);
     }
     /** Pop one fixed-capacity primitive command into the mutable lastPopped* fields. */
     tryPopPitchChange() {
@@ -3615,6 +8213,18 @@
       return true;
     }
     reset() {
+      this.sourceLeft.fill(0);
+      this.sourceRight.fill(0);
+      this.sourceWrite = 0;
+      this.sourceCount = 0;
+      this.heldPeriod = 0;
+      this.heldRead = 0;
+      this.heldStart = 0;
+      this.heldSourceMidi = 0;
+      this.phraseAttack = 0;
+      this.attackGain = 1;
+      this.wetLeft = 0;
+      this.wetRight = 0;
       this.yinRing.fill(0);
       this.yinCmnd.fill(0);
       this.queueFrames.fill(0);
@@ -3667,7 +8277,7 @@
       if (!this.onsetArmed && this.fastEnergy < Math.max(absoluteFloor * absoluteFloor * 4, this.slowEnergy * 0.35)) {
         this.onsetArmed = true;
       }
-      if (this.onsetArmed && frame >= this.nextOnsetFrame && rising && this.fastEnergy >= threshold) {
+      if (!this.sourceHeld && this.onsetArmed && frame >= this.nextOnsetFrame && rising && this.fastEnergy >= threshold) {
         this.onset = true;
         this.onsetCount += 1;
         this.lastOnsetFrame = frame;
@@ -3764,13 +8374,24 @@
       this.pitchConfidence = 0;
       this.hasPitch = false;
       this.failedPitchAnalyses = 0;
-      this.sequenceActive = false;
-      this.step = -1;
+      if (!this.sourceHeld) {
+        this.sequenceActive = false;
+        this.step = -1;
+      }
+    }
+    captureHeldSource() {
+      if (this.sourceHeld || !this.hasPitch || this.pitchEstimateHz <= 0 || this.onsetCount === 0) return;
+      const period = this.sampleRate / this.pitchEstimateHz;
+      if (period < 2 || period + 2 >= SOURCE_BUFFER_SIZE || this.sourceCount < Math.ceil(period) + 2) return;
+      this.heldPeriod = period;
+      this.heldStart = this.sourceWrite - period - 1;
+      this.heldRead = 0;
+      this.heldSourceMidi = this.pitchEstimateMidi;
     }
     startSequence(frame) {
       this.pendingOnset = false;
       if (frame - this.pendingOnsetFrame > this.pendingOnsetFrames()) return;
-      this.riffRootMidi = Math.round(this.pitchEstimateMidi);
+      this.riffRootMidi = Math.round(this.sourceHeld ? this.heldSourceMidi : this.pitchEstimateMidi);
       const interval = this.intervalFrames();
       let firstFrame = Math.ceil(this.pendingOnsetFrame / interval) * interval;
       if (firstFrame < frame) firstFrame = Math.ceil(frame / interval) * interval;
@@ -3781,15 +8402,24 @@
     }
     emitSequenceCommand(frame) {
       const degree = RIFF_DEGREES[this.sequenceStep] ?? 0;
-      const interval = this.intervalForDegree(degree, this.currentScale);
+      let interval = this.intervalForDegree(degree, this.currentKey === void 0 ? this.currentScale : 1);
+      if (this.currentKey !== void 0) {
+        const tonic = this.currentKey + 12 * Math.round((this.riffRootMidi - this.currentKey) / 12);
+        const source = this.sourceHeld ? this.heldSourceMidi : this.pitchEstimateMidi;
+        interval += tonic - Math.round(source);
+      }
       const semitones = Math.max(-24, Math.min(24, interval));
+      if (this.sequenceStep === 0) this.phraseAttack = 1;
       this.enqueuePitchChange(frame, semitones);
       this.sequenceStep += 1;
       if (this.sequenceStep >= RIFF_DEGREES.length) {
-        this.sequenceActive = false;
-        this.step = -1;
-        this.nextSequenceFrame = -1;
-        return;
+        if (this.currentLoop) this.sequenceStep = 0;
+        else {
+          this.sequenceActive = false;
+          this.step = -1;
+          this.nextSequenceFrame = -1;
+          return;
+        }
       }
       this.step = this.sequenceStep;
       this.nextSequenceFrame += this.intervalFrames();
@@ -3820,6 +8450,10 @@
       this.queueCount += 1;
     }
     intervalFrames() {
+      if (this.currentOfficialTempo !== void 0) {
+        const seconds = this.currentOfficialTempo < 0 ? -this.currentOfficialTempo * (this.currentOfficialTempo <= -4 ? this.currentQuarterNotesPerMeasure / 4 : 1) * 60 / this.currentBpm : 2 * Math.pow(0.025, this.currentOfficialTempo / 100);
+        return Math.max(1, Math.round(seconds * this.sampleRate));
+      }
       return Math.max(1, Math.round(this.sampleRate * 60 * this.currentBeatStepRate / this.currentBpm));
     }
     pendingOnsetFrames() {
@@ -3863,6 +8497,7 @@
   var INACTIVE_TARGET = -128;
   var STATE_TARGET_EPSILON = 0.25;
   var MAX_NOTE = 127;
+  var MANUAL_VOICE_DEGREES = [-7, 7, -5, -4, -3, -2, 2, 3, 4, 5, 0];
   var SCALE_INTERVALS2 = [
     [0, 2, 4, 5, 7, 9, 11],
     // Major
@@ -3922,6 +8557,9 @@
     midiChannelValue;
     mixValue;
     voicesValue;
+    officialManualVoice = -1;
+    officialAutoVoice = -1;
+    officialHrmMode = 1;
     currentVoiceCount = 0;
     currentTarget1 = INACTIVE_TARGET;
     currentTarget2 = INACTIVE_TARGET;
@@ -3957,6 +8595,7 @@
       this.midiChannelValue = this.clampChannel(options.midiChannel ?? 1);
       this.mixValue = this.clampMix(options.mix ?? 70);
       this.voicesValue = this.clampVoices(options.voices ?? 2);
+      this.setParameters(options);
     }
     get latencyFrames() {
       return (this.yinWindow + this.maxLag + YIN_HOP) * DECIMATION_FACTOR2;
@@ -4025,6 +8664,15 @@
     /** Update control values. Changing channel clears held notes to avoid stuck voices. */
     setParameters(parameters) {
       let changed = false;
+      for (const [name, maximum] of [["officialManualVoice", 10], ["officialAutoVoice", 6], ["officialHrmMode", 1]]) {
+        const value = parameters[name];
+        if (value === void 0) continue;
+        if (!Number.isInteger(value) || value < (name === "officialHrmMode" ? 0 : -1) || value > maximum) {
+          throw new RangeError(`HRM ${name} is outside its admitted range.`);
+        }
+        changed ||= value !== this[name];
+        this[name] = value;
+      }
       if (Number.isFinite(parameters.key)) {
         const next = this.clampKey(parameters.key);
         changed ||= next !== this.keyValue;
@@ -4245,7 +8893,7 @@
       }
       const previousHasPitch = this.hasPitch;
       this.hasPitch = true;
-      if (this.activeNoteCount > 0 && (previousHasPitch !== nextHasPitch || this.targetsNeedRefresh())) {
+      if ((this.activeNoteCount > 0 || this.officialManualVoice >= 0) && (previousHasPitch !== nextHasPitch || this.targetsNeedRefresh())) {
         this.recomputeTargets(frame, 0, -1, false, false);
       }
     }
@@ -4256,7 +8904,7 @@
       this.pitchConfidence = 0;
       this.hasPitch = false;
       this.failedAnalyses = 0;
-      if (hadPitch && this.activeNoteCount > 0) this.recomputeTargets(frame, 0, -1, false, true);
+      if (hadPitch && (this.activeNoteCount > 0 || this.officialManualVoice >= 0)) this.recomputeTargets(frame, 0, -1, false, true);
     }
     recomputeTargets(frame, reason, note, noteOn, forceEvent) {
       const oldCount = this.currentVoiceCount;
@@ -4265,7 +8913,13 @@
       this.currentVoiceCount = 0;
       this.currentTarget1 = INACTIVE_TARGET;
       this.currentTarget2 = INACTIVE_TARGET;
-      if (this.activeNoteCount > 0 && this.hasPitch) {
+      if (this.hasPitch && this.officialManualVoice >= 0) {
+        this.currentTarget1 = this.officialManualTarget();
+        this.currentVoiceCount = 1;
+      } else if (this.hasPitch && this.activeNoteCount > 0 && this.officialAutoVoice >= 0) {
+        this.currentTarget1 = this.officialAutoTarget();
+        this.currentVoiceCount = 1;
+      } else if (this.activeNoteCount > 0 && this.hasPitch) {
         let first = -1;
         let second = -1;
         for (let midi = 0; midi <= MAX_NOTE; midi += 1) {
@@ -4297,12 +8951,58 @@
       }
     }
     targetsNeedRefresh() {
-      if (this.activeNoteCount === 0 || !this.hasPitch) return false;
+      if (this.activeNoteCount === 0 && this.officialManualVoice < 0 || !this.hasPitch) return false;
       const previous = this.currentTarget1;
       const candidate = this.calculateTarget1();
       return Math.abs(candidate - previous) >= STATE_TARGET_EPSILON;
     }
+    /** One diatonic voice, with authored subtle UNISON detuning. */
+    officialManualTarget() {
+      const voice = this.officialManualVoice;
+      if (voice === 0) return -12;
+      if (voice === 1) return 12;
+      if (voice === 10) return 0.08;
+      const degree = MANUAL_VOICE_DEGREES[voice];
+      const root = this.snapToScale(this.pitchEstimateMidi);
+      return Math.max(-24, Math.min(24, this.scaleDegreeAbove(root, degree) - this.pitchEstimateMidi));
+    }
+    /** Clean-room chord voicing: LOW/HIGH choose the nearest admitted chord tone
+     * in that direction; LOWER/HIGHER choose the next one. HYBRID additionally
+     * filters those tones through KEY, falling back to that key when disjoint.
+     * No Roland chord-recognition or voicing identity is claimed. */
+    officialAutoTarget() {
+      const voice = this.officialAutoVoice;
+      if (voice === 0) return -12;
+      if (voice === 1) return 12;
+      if (voice === 6) return 0.08;
+      const source = this.pitchEstimateMidi;
+      const direction = voice === 2 || voice === 3 ? -1 : 1;
+      const ordinal = voice === 2 || voice === 5 ? 2 : 1;
+      let found = 0;
+      let target = Math.round(source);
+      for (let distance = 1; distance <= 24; distance += 1) {
+        const candidate = direction > 0 ? Math.floor(source) + distance : Math.ceil(source) - distance;
+        const pc = (candidate % 12 + 12) % 12;
+        let chordTone = false;
+        for (let note = pc; note <= MAX_NOTE; note += 12) if (this.activeNoteCounts[note] > 0) {
+          chordTone = true;
+          break;
+        }
+        const relative = ((candidate - this.keyValue) % 12 + 12) % 12;
+        const inKey = SCALE_INTERVALS2[this.scaleValue].includes(relative);
+        if (chordTone && (this.officialHrmMode === 1 || inKey)) {
+          target = candidate;
+          if (++found >= ordinal) return target - source;
+        }
+      }
+      if (this.officialHrmMode === 0) {
+        return this.scaleDegreeAbove(this.snapToScale(source), direction * (ordinal + 1)) - source;
+      }
+      return Math.max(-24, Math.min(24, target - source));
+    }
     calculateTarget1() {
+      if (this.officialManualVoice >= 0) return this.officialManualTarget();
+      if (this.officialAutoVoice >= 0 && this.activeNoteCount > 0) return this.officialAutoTarget();
       let first = -1;
       let second = -1;
       for (let midi = 0; midi <= MAX_NOTE; midi += 1) {
@@ -4429,6 +9129,7 @@
     frameSamples;
     hopSamples;
     ring;
+    analysisFrame;
     differences;
     normalizedDifferences;
     ringMask;
@@ -4474,6 +9175,7 @@
       this.analysisWindowSamples = this.frameSamples - this.maximumLag;
       const ringLength = nextPowerOfTwo(this.frameSamples * 2);
       this.ring = new Float32Array(ringLength);
+      this.analysisFrame = new Float32Array(this.frameSamples);
       this.differences = new Float64Array(this.maximumLag + 1);
       this.normalizedDifferences = new Float64Array(this.maximumLag + 1);
       this.ringMask = ringLength - 1;
@@ -4516,31 +9218,28 @@
         let index = frameStart + i;
         if (index >= this.ring.length) index -= this.ring.length;
         const sample = this.ring[index];
+        this.analysisFrame[i] = sample;
         energy += sample * sample;
       }
       const rms = Math.sqrt(energy / this.frameSamples);
+      const activeThreshold = this.currentVoiced ? Math.min(0.28, this.threshold + 0.05) : this.threshold;
+      let cumulativeDifference = 0;
       this.differences[0] = 0;
       for (let lag = 1; lag <= this.maximumLag; lag += 1) {
         let sum = 0;
         for (let i = 0; i < this.analysisWindowSamples; i += 1) {
-          let firstIndex = frameStart + i;
-          if (firstIndex >= this.ring.length) firstIndex -= this.ring.length;
-          let secondIndex = firstIndex + lag;
-          if (secondIndex >= this.ring.length) secondIndex -= this.ring.length;
-          const delta = this.ring[firstIndex] - this.ring[secondIndex];
+          const delta = this.analysisFrame[i] - this.analysisFrame[i + lag];
           sum += delta * delta;
         }
         this.differences[lag] = sum;
-      }
-      let cumulativeDifference = 0;
-      for (let lag = 1; lag <= this.maximumLag; lag += 1) {
         const difference = this.differences[lag];
         cumulativeDifference += difference;
         this.normalizedDifferences[lag] = cumulativeDifference > 1e-15 ? difference * lag / cumulativeDifference : 1;
+        const previousLag = lag - 1;
+        if (previousLag >= this.minimumLag && this.normalizedDifferences[previousLag] < activeThreshold && this.normalizedDifferences[previousLag] <= this.normalizedDifferences[lag]) break;
       }
       let bestLag = 0;
       let bestValue = Number.POSITIVE_INFINITY;
-      const activeThreshold = this.currentVoiced ? Math.min(0.28, this.threshold + 0.05) : this.threshold;
       for (let lag = this.minimumLag; lag <= this.maximumLag; lag += 1) {
         const value = this.normalizedDifferences[lag];
         if (value < bestValue) {
@@ -4932,6 +9631,7 @@
     maxLag;
     yinWindow;
     yinRing = new Float32Array(YIN_RING_LENGTH);
+    yinAnalysisFrame;
     yinCmnd = new Float32Array(YIN_CMND_LENGTH);
     queueFrames = new Float64Array(QUEUE_CAPACITY2);
     queueSemitones = new Float32Array(QUEUE_CAPACITY2);
@@ -4954,6 +9654,7 @@
     invalidAnalyses = 0;
     targetOffsetSemitones;
     targetFormantSemitones = 0;
+    targetNote = -1;
     targetMidiInitialized = false;
     lastFrame = 0;
     lastQueuedVoiced = false;
@@ -4966,9 +9667,11 @@
       this.maxLag = Math.max(2, Math.min(YIN_CMND_LENGTH - 2, Math.floor(this.decimatedRate / YIN_MIN_F0_HZ2)));
       this.minLag = Math.max(2, Math.floor(this.decimatedRate / YIN_MAX_F0_HZ2));
       this.yinWindow = Math.min(256, Math.max(64, this.maxLag * 2));
+      this.yinAnalysisFrame = new Float32Array(this.yinWindow + this.maxLag);
       this.latencyFrames = (this.yinWindow + this.maxLag + YIN_HOP_DECIMATED2) * DECIMATION_FACTOR3;
       this.targetOffsetSemitones = this.clampPitch(parameters.pitch ?? 0);
       this.psolaProcessor = this.createPsolaProcessor();
+      this.setParameters(parameters);
     }
     get queueDepth() {
       return this.queueCount;
@@ -4992,6 +9695,12 @@
     }
     setParameters(parameters) {
       let changed = false;
+      if (parameters.note !== void 0) {
+        if (!Number.isInteger(parameters.note) || parameters.note < -1 || parameters.note > 11) throw new RangeError("ROBOT note must be -1 (legacy) or a pitch class from 0 to 11.");
+        this.targetNote = parameters.note;
+        this.targetMidiInitialized = false;
+        changed = true;
+      }
       if (parameters.pitch !== void 0) {
         if (!Number.isFinite(parameters.pitch)) throw new RangeError("ROBOT pitch must be finite.");
         if (parameters.pitch < -24 || parameters.pitch > 24) throw new RangeError("ROBOT pitch must be between -24 and +24 semitones.");
@@ -5113,6 +9822,9 @@
         this.rejectPitch();
         return;
       }
+      for (let i = 0; i < this.yinAnalysisFrame.length; i += 1) {
+        this.yinAnalysisFrame[i] = this.yinRing[newest - i & YIN_RING_MASK2];
+      }
       let cumulative = 0;
       let bestLag = -1;
       let bestCmnd = 1;
@@ -5120,8 +9832,8 @@
       for (let lag = 1; lag <= this.maxLag; lag += 1) {
         let difference = 0;
         for (let i = 0; i < this.yinWindow; i += 1) {
-          const a = this.yinRing[newest - i & YIN_RING_MASK2];
-          const b = this.yinRing[newest - i - lag & YIN_RING_MASK2];
+          const a = this.yinAnalysisFrame[i];
+          const b = this.yinAnalysisFrame[i + lag];
           const delta = a - b;
           difference += delta * delta;
         }
@@ -5135,6 +9847,7 @@
         if (lag >= this.minLag && firstThresholdLag < 0 && normalized < YIN_THRESHOLD) {
           firstThresholdLag = lag;
         }
+        if (firstThresholdLag >= 0 && lag > firstThresholdLag && this.yinCmnd[lag] >= this.yinCmnd[lag - 1]) break;
       }
       if (firstThresholdLag >= 0) {
         let lag = firstThresholdLag;
@@ -5190,8 +9903,8 @@
     updateTarget(frame, force) {
       if (!this.hasPitch) return;
       const shiftedMidi = this.pitchEstimateMidi + this.targetOffsetSemitones;
-      let targetMidi = Math.round(shiftedMidi);
-      if (this.targetMidiInitialized) {
+      let targetMidi = this.targetNote >= 0 ? 60 + this.targetNote : Math.round(shiftedMidi);
+      if (this.targetNote < 0 && this.targetMidiInitialized) {
         if (targetMidi > this.targetMidi && shiftedMidi < this.targetMidi + 0.5 + NOTE_CHANGE_HYSTERESIS) {
           targetMidi = this.targetMidi;
         } else if (targetMidi < this.targetMidi && shiftedMidi > this.targetMidi - 0.5 - NOTE_CHANGE_HYSTERESIS) {
@@ -5199,7 +9912,7 @@
         }
       }
       this.targetMidiInitialized = true;
-      const semitones = Math.max(-24, Math.min(24, targetMidi - this.pitchEstimateMidi));
+      const semitones = this.targetNote >= 0 ? Math.max(-36, Math.min(48, targetMidi - this.pitchEstimateMidi)) : Math.max(-24, Math.min(24, targetMidi - this.pitchEstimateMidi));
       this.targetMidi = targetMidi;
       this.targetSemitones = semitones;
       this.updateProcessingMode(frame);
@@ -5275,9 +9988,8 @@
     }
   };
 
-  // src/audio/fx/dsp/BrowserPatternSlicerDsp.ts
-  var RATE_OPTIONS = [0.25, 0.5, 1, 2, 4];
-  var PATTERNS = [
+  // src/audio/fx/dsp/BrowserOfficialPatternSlicerDsp.ts
+  var BROWSER_AUTHORED_SLICER_PATTERNS = [
     [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
     [1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0],
     [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
@@ -5287,6 +9999,76 @@
     [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0],
     [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1]
   ];
+  var clamp19 = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  var BrowserOfficialPatternSlicerDsp = class {
+    sampleRate;
+    wetLeft = 0;
+    wetRight = 0;
+    rateHz = 2;
+    duty = 0.5;
+    attack = 0.35;
+    depth = 1;
+    threshold = -30;
+    makeup = 10 ** (2 / 20);
+    pattern = 0;
+    phase = 0;
+    step = 0;
+    gate = 1;
+    envelope = 0;
+    gateAlpha;
+    attackAlpha;
+    releaseAlpha;
+    constructor(sampleRate = 48e3, parameters = {}) {
+      this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
+      this.gateAlpha = Math.exp(-1 / (this.sampleRate * 2e-3));
+      this.attackAlpha = Math.exp(-1 / (this.sampleRate * 5e-3));
+      this.releaseAlpha = Math.exp(-1 / (this.sampleRate * 0.08));
+      this.setParameters(parameters);
+    }
+    get stepIndex() {
+      return this.step;
+    }
+    setParameters(p) {
+      if (Number.isFinite(p.rateHz)) this.rateHz = clamp19(p.rateHz, 1e-4, 160);
+      if (Number.isFinite(p.duty)) this.duty = clamp19(p.duty, 1, 99) / 100;
+      if (Number.isFinite(p.attack)) this.attack = clamp19(p.attack, 0, 100) / 100;
+      if (Number.isFinite(p.depth)) this.depth = clamp19(p.depth, 0, 100) / 100;
+      if (Number.isFinite(p.compThreshold)) this.threshold = clamp19(p.compThreshold, -30, 0);
+      if (Number.isFinite(p.compGain)) this.makeup = 10 ** (clamp19(p.compGain, 0, 20) / 20);
+      if (Number.isFinite(p.softwarePattern)) this.pattern = Math.round(clamp19(p.softwarePattern, 0, 7));
+    }
+    processSample(left, right) {
+      const l = Number.isFinite(left) ? clamp19(left, -8, 8) : 0, r = Number.isFinite(right) ? clamp19(right, -8, 8) : 0;
+      const level = Math.max(Math.abs(l), Math.abs(r));
+      const alpha = level > this.envelope ? this.attackAlpha : this.releaseAlpha;
+      this.envelope = alpha * this.envelope + (1 - alpha) * level;
+      const above = Math.max(0, 20 * Math.log10(Math.max(1e-12, this.envelope)) - this.threshold);
+      const compressor = this.makeup * 10 ** (-0.75 * above / 20);
+      const active = BROWSER_AUTHORED_SLICER_PATTERNS[this.pattern][this.step];
+      const target = this.phase < this.duty ? active * (1 + 3 * this.attack * Math.exp(-this.phase / 0.1)) : 0;
+      this.gate = this.gateAlpha * this.gate + (1 - this.gateAlpha) * target;
+      const gain = (1 - this.depth + this.depth * this.gate) * compressor;
+      this.wetLeft = clamp19(l * gain, -8, 8);
+      this.wetRight = clamp19(r * gain, -8, 8);
+      this.phase += this.rateHz / this.sampleRate;
+      if (this.phase >= 1) {
+        this.phase -= 1;
+        this.step = this.step + 1 & 15;
+      }
+      return this;
+    }
+    reset() {
+      this.phase = 0;
+      this.step = 0;
+      this.gate = 1;
+      this.envelope = 0;
+      this.wetLeft = this.wetRight = 0;
+    }
+  };
+
+  // src/audio/fx/dsp/BrowserPatternSlicerDsp.ts
+  var RATE_OPTIONS = [0.25, 0.5, 1, 2, 4];
+  var PATTERNS = BROWSER_AUTHORED_SLICER_PATTERNS;
   var BrowserPatternSlicerDsp = class {
     sampleRate;
     wetLeft = 0;
@@ -5294,6 +10076,7 @@
     framesProcessed = 0;
     boundaryCount = 0;
     lastBoundaryFrame = -1;
+    official = null;
     currentBpm;
     currentPattern;
     currentRateBeats;
@@ -5337,7 +10120,12 @@
         remainingFramesToBoundary: this.framesUntilStep
       };
     }
+    setOfficialParameters(parameters) {
+      this.official ??= new BrowserOfficialPatternSlicerDsp(this.sampleRate, { softwarePattern: this.pendingPattern });
+      this.official.setParameters(parameters);
+    }
     setParameters(parameters) {
+      if (Number.isFinite(parameters.pattern)) this.official?.setParameters({ softwarePattern: parameters.pattern });
       if (Number.isFinite(parameters.bpm)) this.pendingBpm = this.clampBpm(parameters.bpm);
       if (Number.isFinite(parameters.pattern)) this.pendingPattern = this.clampPattern(parameters.pattern);
       if (Number.isFinite(parameters.rateBeats)) this.pendingRateBeats = this.quantizeRate(parameters.rateBeats);
@@ -5346,6 +10134,13 @@
     }
     /** Applies the raised-cosine gate directly to the stereo frame, with no allocations. */
     processSample(left, right) {
+      if (this.official) {
+        this.official.processSample(left, right);
+        this.wetLeft = this.official.wetLeft;
+        this.wetRight = this.official.wetRight;
+        this.framesProcessed += 1;
+        return;
+      }
       let gain = this.stepTargetGain;
       const edgeFrames = Math.min(this.stepFrames, Math.max(1, Math.round(this.currentEdgeMs * this.sampleRate / 1e3)));
       if (edgeFrames > 1 && this.stepElapsedFrames < edgeFrames && this.previousStepGain !== this.stepTargetGain) {
@@ -5361,6 +10156,7 @@
       if (this.framesUntilStep <= 0) this.onStepBoundary();
     }
     reset() {
+      this.official?.reset();
       this.currentBpm = this.pendingBpm;
       this.currentPattern = this.pendingPattern;
       this.currentRateBeats = this.pendingRateBeats;
@@ -5416,10 +10212,10 @@
       let nearest = RATE_OPTIONS[0];
       let distance = Math.abs(value - nearest);
       for (let index = 1; index < RATE_OPTIONS.length; index += 1) {
-        const option = RATE_OPTIONS[index];
-        const nextDistance = Math.abs(value - option);
+        const option2 = RATE_OPTIONS[index];
+        const nextDistance = Math.abs(value - option2);
         if (nextDistance < distance) {
-          nearest = option;
+          nearest = option2;
           distance = nextDistance;
         }
       }
@@ -5610,10 +10406,10 @@
       let nearest = RATE_OPTIONS2[0];
       let distance = Math.abs(value - nearest);
       for (let index = 1; index < RATE_OPTIONS2.length; index += 1) {
-        const option = RATE_OPTIONS2[index];
-        const nextDistance = Math.abs(value - option);
+        const option2 = RATE_OPTIONS2[index];
+        const nextDistance = Math.abs(value - option2);
         if (nextDistance < distance) {
-          nearest = option;
+          nearest = option2;
           distance = nextDistance;
         }
       }
@@ -5811,14 +10607,14 @@
   var FIR_CENTER = (FIR_TAPS - 1) / 2;
   var FIR_CUTOFF = 0.235;
   var CABINET_TAPS = 129;
-  var TWO_PI8 = Math.PI * 2;
+  var TWO_PI9 = Math.PI * 2;
   var MAX_OUTPUT = 4;
   var MODEL_RAMP_FRAMES_SECONDS = 0.025;
   var MODEL_DRIVE = new Float64Array([0.78, 1, 1.16, 1.08, 0.88]);
   var MODEL_SHAPE = new Float64Array([1.2, 1.65, 2.2, 2.7, 1.55]);
   var MODEL_BIAS = new Float64Array([0, 0.085, 0.02, -0.045, 0.055]);
   var MODEL_WET = new Float64Array([0.68, 0.82, 0.92, 1, 0.76]);
-  function clamp14(value, low, high) {
+  function clamp20(value, low, high) {
     return Math.max(low, Math.min(high, value));
   }
   function sinc(value) {
@@ -5832,7 +10628,7 @@
     for (let tap = 0; tap < FIR_TAPS; tap += 1) {
       const centered = tap - FIR_CENTER;
       const position = tap / (FIR_TAPS - 1);
-      const window = 0.42 - 0.5 * Math.cos(TWO_PI8 * position) + 0.08 * Math.cos(2 * TWO_PI8 * position);
+      const window = 0.42 - 0.5 * Math.cos(TWO_PI9 * position) + 0.08 * Math.cos(2 * TWO_PI9 * position);
       const coefficient = 2 * FIR_CUTOFF * sinc(2 * FIR_CUTOFF * centered) * window;
       interpolation[tap] = coefficient;
       sum += coefficient;
@@ -5849,8 +10645,8 @@
     const absolute = Math.abs(value);
     return absolute + Math.log1p(Math.exp(-2 * absolute)) - Math.LN2;
   }
-  function antiderivative(shape, bias, value) {
-    return logCosh2(shape * (value + bias)) / shape - value * Math.tanh(shape * bias);
+  function antiderivative(shape, bias, value, biasValue) {
+    return logCosh2(shape * (value + bias)) / shape - value * biasValue;
   }
   function directFormBiquad(input, coefficients, state, offset) {
     const output = coefficients.b0 * input + (state[offset] ?? 0);
@@ -5876,7 +10672,7 @@
     let real = 0;
     let imaginary = 0;
     for (let tap = 0; tap < CABINET_TAPS; tap += 1) {
-      const angle = TWO_PI8 * 500 * tap / sampleRate;
+      const angle = TWO_PI9 * 500 * tap / sampleRate;
       const coefficient = response[tap] ?? 0;
       real += coefficient * Math.cos(angle);
       imaginary -= coefficient * Math.sin(angle);
@@ -5907,6 +10703,7 @@
     sampleRate;
     outputLeft = 0;
     outputRight = 0;
+    official = null;
     model;
     gain;
     level;
@@ -5917,6 +10714,22 @@
     upsampleWriteIndex = new Int32Array(2);
     waveshapedWriteIndex = new Int32Array(2);
     previousDriven = new Float64Array(2);
+    previousAntiderivative = new Float64Array(2);
+    antiderivativeValid = new Uint8Array(2);
+    antiderivativeShape = Number.NaN;
+    antiderivativeBias = Number.NaN;
+    biasValue = 0;
+    slopeAtZero = 1;
+    cachedModelPosition = Number.NaN;
+    cachedModelDrive = 1;
+    cachedShape = 1;
+    cachedBias = 0;
+    cachedNonlinearBlend = 1;
+    cachedGainPercent = Number.NaN;
+    cachedDriveModel = Number.NaN;
+    cachedStageDrive = 1;
+    cachedLevelDb = Number.NaN;
+    cachedLevelLinear = 1;
     cabinetHistory = [new Float64Array(CABINET_TAPS), new Float64Array(CABINET_TAPS)];
     cabinetWriteIndex = new Int32Array(2);
     constructor(sampleRate, parameters = {}) {
@@ -5927,9 +10740,9 @@
       const initialMiddle = Number.isFinite(parameters.middleDb) ? parameters.middleDb : 0;
       const initialTreble = Number.isFinite(parameters.trebleDb) ? parameters.trebleDb : 0;
       const initialLevel = Number.isFinite(parameters.levelDb) ? parameters.levelDb : 0;
-      this.model = new LinearParameterSmoother(clamp14(Math.round(initialModel), 0, 4));
-      this.gain = new OnePoleSmoother(this.sampleRate, clamp14(initialGain, 0, 100));
-      this.level = new OnePoleSmoother(this.sampleRate, clamp14(initialLevel, -24, 12));
+      this.model = new LinearParameterSmoother(clamp20(Math.round(initialModel), 0, 4));
+      this.gain = new OnePoleSmoother(this.sampleRate, clamp20(initialGain, 0, 100));
+      this.level = new OnePoleSmoother(this.sampleRate, clamp20(initialLevel, -24, 12));
       this.equalizer = new EqualizerDsp(this.sampleRate, {
         lowFrequencyHz: Math.min(170, this.sampleRate * 0.2),
         lowGainDb: initialBass,
@@ -5943,35 +10756,73 @@
     }
     setParameters(parameters) {
       if (Number.isFinite(parameters.model)) {
-        this.model.setTarget(clamp14(Math.round(parameters.model), 0, 4), Math.round(this.sampleRate * MODEL_RAMP_FRAMES_SECONDS));
+        this.model.setTarget(clamp20(Math.round(parameters.model), 0, 4), Math.round(this.sampleRate * MODEL_RAMP_FRAMES_SECONDS));
       }
-      if (Number.isFinite(parameters.gainPercent)) this.gain.setTarget(clamp14(parameters.gainPercent, 0, 100));
-      if (Number.isFinite(parameters.levelDb)) this.level.setTarget(clamp14(parameters.levelDb, -24, 12));
+      if (Number.isFinite(parameters.gainPercent)) this.gain.setTarget(clamp20(parameters.gainPercent, 0, 100));
+      if (Number.isFinite(parameters.levelDb)) this.level.setTarget(clamp20(parameters.levelDb, -24, 12));
       this.equalizer.setParameters({
         lowGainDb: Number.isFinite(parameters.bassDb) ? parameters.bassDb : void 0,
         mid1GainDb: Number.isFinite(parameters.middleDb) ? parameters.middleDb : void 0,
         highGainDb: Number.isFinite(parameters.trebleDb) ? parameters.trebleDb : void 0
       });
     }
+    /**
+     * Opt-in manual-domain path. Empty/invalid updates preserve the exact legacy
+     * five-model path. Once enabled, later legacy updates cannot override these
+     * controls. All response synthesis/allocation happens here, never in render.
+     */
+    setOfficialParameters(parameters) {
+      if (!hasOfficialPreampValue(parameters)) return;
+      if (this.official) this.official.setParameters(parameters);
+      else this.official = new OfficialPreampControls(this.sampleRate, parameters);
+    }
     processSample(inputLeft, inputRight) {
+      if (this.official) {
+        this.processOfficialSample(inputLeft, inputRight, this.official);
+        return;
+      }
       const modelPosition = this.model.next();
-      const lowerModel = Math.floor(modelPosition);
-      const upperModel = Math.min(4, lowerModel + 1);
-      const modelBlend = modelPosition - lowerModel;
-      const modelDrive = lerpTable(MODEL_DRIVE, lowerModel, upperModel, modelBlend);
-      const shape = lerpTable(MODEL_SHAPE, lowerModel, upperModel, modelBlend);
-      const bias = lerpTable(MODEL_BIAS, lowerModel, upperModel, modelBlend);
-      const nonlinearBlend = lerpTable(MODEL_WET, lowerModel, upperModel, modelBlend);
+      if (modelPosition !== this.cachedModelPosition) {
+        const lowerModel = Math.floor(modelPosition);
+        const upperModel = Math.min(4, lowerModel + 1);
+        const modelBlend = modelPosition - lowerModel;
+        this.cachedModelDrive = lerpTable(MODEL_DRIVE, lowerModel, upperModel, modelBlend);
+        this.cachedShape = lerpTable(MODEL_SHAPE, lowerModel, upperModel, modelBlend);
+        this.cachedBias = lerpTable(MODEL_BIAS, lowerModel, upperModel, modelBlend);
+        this.cachedNonlinearBlend = lerpTable(MODEL_WET, lowerModel, upperModel, modelBlend);
+        this.cachedModelPosition = modelPosition;
+      }
+      const modelDrive = this.cachedModelDrive;
+      const shape = this.cachedShape;
+      const bias = this.cachedBias;
+      const nonlinearBlend = this.cachedNonlinearBlend;
+      if (shape !== this.antiderivativeShape || bias !== this.antiderivativeBias) {
+        this.antiderivativeValid.fill(0);
+        this.antiderivativeShape = shape;
+        this.antiderivativeBias = bias;
+        this.biasValue = Math.tanh(shape * bias);
+        this.slopeAtZero = Math.max(0.2, shape * (1 - this.biasValue * this.biasValue));
+      }
       const gainPercent = this.gain.next() / 100;
-      const stageDrive = modelDrive * (1 + gainPercent * gainPercent * 28);
-      const levelLinear = 10 ** (this.level.next() / 20);
+      if (modelDrive !== this.cachedDriveModel || gainPercent !== this.cachedGainPercent) {
+        this.cachedStageDrive = modelDrive * (1 + gainPercent * gainPercent * 28);
+        this.cachedDriveModel = modelDrive;
+        this.cachedGainPercent = gainPercent;
+      }
+      const stageDrive = this.cachedStageDrive;
+      const levelDb = this.level.next();
+      if (levelDb !== this.cachedLevelDb) {
+        this.cachedLevelLinear = 10 ** (levelDb / 20);
+        this.cachedLevelDb = levelDb;
+      }
+      const levelLinear = this.cachedLevelLinear;
       const preEqLeft = this.processOversampledChannel(Number.isFinite(inputLeft) ? inputLeft : 0, 0, stageDrive, shape, bias, nonlinearBlend);
       const preEqRight = this.processOversampledChannel(Number.isFinite(inputRight) ? inputRight : 0, 1, stageDrive, shape, bias, nonlinearBlend);
       this.equalizer.process(preEqLeft, preEqRight);
       this.outputLeft = this.processCabinet(this.equalizer.outputLeft, 0) * levelLinear;
       this.outputRight = this.processCabinet(this.equalizer.outputRight, 1) * levelLinear;
-      this.outputLeft = clamp14(Number.isFinite(this.outputLeft) ? this.outputLeft : 0, -MAX_OUTPUT, MAX_OUTPUT);
-      this.outputRight = clamp14(Number.isFinite(this.outputRight) ? this.outputRight : 0, -MAX_OUTPUT, MAX_OUTPUT);
+      this.outputLeft = clamp20(Number.isFinite(this.outputLeft) ? this.outputLeft : 0, -MAX_OUTPUT, MAX_OUTPUT);
+      this.outputRight = clamp20(Number.isFinite(this.outputRight) ? this.outputRight : 0, -MAX_OUTPUT, MAX_OUTPUT);
     }
     reset() {
       for (let channel = 0; channel < 2; channel += 1) {
@@ -5982,10 +10833,32 @@
       this.upsampleWriteIndex.fill(0);
       this.waveshapedWriteIndex.fill(0);
       this.previousDriven.fill(0);
+      this.previousAntiderivative.fill(0);
+      this.antiderivativeValid.fill(0);
       this.cabinetWriteIndex.fill(0);
       this.equalizer.reset();
+      this.official?.reset();
       this.outputLeft = 0;
       this.outputRight = 0;
+    }
+    processOfficialSample(inputLeft, inputRight, controls) {
+      const left = Number.isFinite(inputLeft) ? clamp20(inputLeft, -16, 16) : 0;
+      const right = Number.isFinite(inputRight) ? clamp20(inputRight, -16, 16) : 0;
+      controls.prepareFrame(left, right);
+      const shape = controls.shape;
+      const bias = controls.bias;
+      if (shape !== this.antiderivativeShape || bias !== this.antiderivativeBias) {
+        this.antiderivativeValid.fill(0);
+        this.antiderivativeShape = shape;
+        this.antiderivativeBias = bias;
+        this.biasValue = Math.tanh(shape * bias);
+        this.slopeAtZero = Math.max(0.2, shape * (1 - this.biasValue * this.biasValue));
+      }
+      const ampLeft = this.processOversampledChannel(left, 0, controls.drive, shape, bias, controls.blend);
+      const ampRight = this.processOversampledChannel(right, 1, controls.drive, shape, bias, controls.blend);
+      controls.processToneAndCabinet(ampLeft * controls.dynamicGain, ampRight * controls.dynamicGain);
+      this.outputLeft = clamp20(Number.isFinite(controls.outputLeft) ? controls.outputLeft : 0, -MAX_OUTPUT, MAX_OUTPUT);
+      this.outputRight = clamp20(Number.isFinite(controls.outputRight) ? controls.outputRight : 0, -MAX_OUTPUT, MAX_OUTPUT);
     }
     processOversampledChannel(input, channel, drive, shape, bias, blend) {
       const inputHistory = this.upsampleHistory[channel];
@@ -5993,8 +10866,8 @@
       let upIndex = this.upsampleWriteIndex[channel] ?? 0;
       let downIndex = this.waveshapedWriteIndex[channel] ?? 0;
       let output = 0;
-      const biasValue = Math.tanh(shape * bias);
-      const slopeAtZero = Math.max(0.2, shape * (1 - biasValue * biasValue));
+      const biasValue = this.biasValue;
+      const slopeAtZero = this.slopeAtZero;
       for (let phase = 0; phase < 2; phase += 1) {
         inputHistory[upIndex] = phase === 0 ? input : 0;
         let reconstructed = 0;
@@ -6005,7 +10878,17 @@
         const driven = reconstructed * drive;
         const previous = this.previousDriven[channel] ?? 0;
         const difference = driven - previous;
-        const shaped = Math.abs(difference) < 1e-8 ? (Math.tanh(shape * (0.5 * (driven + previous) + bias)) - biasValue) / slopeAtZero : (antiderivative(shape, bias, driven) - antiderivative(shape, bias, previous)) / (difference * slopeAtZero);
+        let shaped;
+        if (Math.abs(difference) < 1e-8) {
+          shaped = (Math.tanh(shape * (0.5 * (driven + previous) + bias)) - biasValue) / slopeAtZero;
+          this.antiderivativeValid[channel] = 0;
+        } else {
+          const currentPrimitive = antiderivative(shape, bias, driven, biasValue);
+          const previousPrimitive = this.antiderivativeValid[channel] ? this.previousAntiderivative[channel] : antiderivative(shape, bias, previous, biasValue);
+          shaped = (currentPrimitive - previousPrimitive) / (difference * slopeAtZero);
+          this.previousAntiderivative[channel] = currentPrimitive;
+          this.antiderivativeValid[channel] = 1;
+        }
         this.previousDriven[channel] = driven;
         const normalized = reconstructed * (1 - blend) + shaped * blend;
         shapedHistory[downIndex] = normalized;
@@ -6046,6 +10929,267 @@
     const second = table[high] ?? first;
     return first + (second - first) * blend;
   }
+  var OFFICIAL_DRIVE = new Float64Array([0.68, 0.76, 0.56, 1.02, 1.19, 1.42, 1.27, 1.61, 1.76]);
+  var OFFICIAL_SHAPE = new Float64Array([1.08, 1.31, 0.85, 1.72, 2.05, 2.68, 2.32, 3.05, 3.48]);
+  var OFFICIAL_BIAS = new Float64Array([0, 0.052, 5e-3, 0.091, -0.034, 0.021, -0.086, 0.047, -0.012]);
+  var OFFICIAL_BLEND = new Float64Array([0.61, 0.74, 0.48, 0.85, 0.92, 0.98, 0.94, 1, 1]);
+  var OFFICIAL_SAG = new Float64Array([0.12, 0.26, 0.06, 0.48, 0.39, 0.3, 0.62, 0.44, 0.22]);
+  var OFFICIAL_ATTACK_MS = new Float64Array([2, 8, 1.2, 12, 8, 3, 18, 5, 1.8]);
+  var OFFICIAL_RELEASE_MS = new Float64Array([45, 110, 30, 145, 120, 75, 190, 105, 55]);
+  function hasOfficialPreampValue(p) {
+    return Number.isFinite(p.ampType) || Number.isFinite(p.spkType) || Number.isFinite(p.gain) || Number.isFinite(p.tComp) || Number.isFinite(p.bass) || Number.isFinite(p.middle) || Number.isFinite(p.treble) || Number.isFinite(p.presence) || Number.isFinite(p.micType) || Number.isFinite(p.micDis) || Number.isFinite(p.micPos);
+  }
+  function officialValue(value, fallback, low, high, integer = false) {
+    if (!Number.isFinite(value)) return fallback;
+    return clamp20(integer ? Math.round(value) : value, low, high);
+  }
+  var OfficialPreampControls = class {
+    outputLeft = 0;
+    outputRight = 0;
+    drive = 1;
+    shape = 1;
+    bias = 0;
+    blend = 1;
+    dynamicGain = 1;
+    parameters;
+    model;
+    gain;
+    compression;
+    cabinetWet;
+    tone;
+    cabinet = new Float64Array(CABINET_TAPS);
+    targetCabinet = new Float64Array(CABINET_TAPS);
+    cabinetHistory = [new Float64Array(CABINET_TAPS), new Float64Array(CABINET_TAPS)];
+    cabinetIndex = new Int32Array(2);
+    attack = new Float64Array(9);
+    release = new Float64Array(9);
+    rampFrames;
+    sampleRate;
+    cabinetRamp = 0;
+    envelope = 0;
+    modelPosition = Number.NaN;
+    modelDrive = 1;
+    modelSag = 0;
+    attackStep = 1;
+    releaseStep = 1;
+    constructor(sampleRate, p) {
+      this.sampleRate = sampleRate;
+      this.parameters = {
+        ampType: officialValue(p.ampType, 3, 0, 8, true),
+        spkType: officialValue(p.spkType, 1, 0, 8, true),
+        gain: officialValue(p.gain, 50, 0, 120),
+        tComp: officialValue(p.tComp, 0, -10, 10),
+        bass: officialValue(p.bass, 50, 0, 100),
+        middle: officialValue(p.middle, 50, 0, 100),
+        treble: officialValue(p.treble, 50, 0, 100),
+        presence: officialValue(p.presence, 50, 0, 100),
+        micType: officialValue(p.micType, 0, 0, 4, true),
+        micDis: officialValue(p.micDis, 0, 0, 1, true),
+        micPos: officialValue(p.micPos, 0, 0, 10, true)
+      };
+      this.rampFrames = Math.max(1, Math.round(sampleRate * MODEL_RAMP_FRAMES_SECONDS));
+      this.model = new LinearParameterSmoother(this.parameters.ampType);
+      this.gain = new LinearParameterSmoother(this.parameters.gain);
+      this.compression = new LinearParameterSmoother(this.parameters.tComp);
+      this.cabinetWet = new LinearParameterSmoother(this.parameters.spkType === 0 ? 0 : 1);
+      this.tone = new EqualizerDsp(sampleRate, {
+        lowFrequencyHz: 150,
+        mid1FrequencyHz: 800,
+        mid1Q: 0.8,
+        mid2FrequencyHz: Math.min(2900, sampleRate * 0.32),
+        mid2Q: 0.65,
+        highFrequencyHz: Math.min(5800, sampleRate * 0.42)
+      });
+      this.updateTone(0);
+      this.updateCabinet();
+      this.cabinet.set(this.targetCabinet);
+      this.cabinetRamp = 0;
+      for (let model = 0; model < 9; model += 1) {
+        this.attack[model] = 1 - Math.exp(-1 / (sampleRate * OFFICIAL_ATTACK_MS[model] * 1e-3));
+        this.release[model] = 1 - Math.exp(-1 / (sampleRate * OFFICIAL_RELEASE_MS[model] * 1e-3));
+      }
+    }
+    setParameters(p) {
+      const old = this.parameters;
+      const amp = officialValue(p.ampType, old.ampType, 0, 8, true);
+      const speaker = officialValue(p.spkType, old.spkType, 0, 8, true);
+      const gain = officialValue(p.gain, old.gain, 0, 120);
+      const compression = officialValue(p.tComp, old.tComp, -10, 10);
+      const bass = officialValue(p.bass, old.bass, 0, 100);
+      const middle = officialValue(p.middle, old.middle, 0, 100);
+      const treble = officialValue(p.treble, old.treble, 0, 100);
+      const presence = officialValue(p.presence, old.presence, 0, 100);
+      const microphone = officialValue(p.micType, old.micType, 0, 4, true);
+      const distance = officialValue(p.micDis, old.micDis, 0, 1, true);
+      const position = officialValue(p.micPos, old.micPos, 0, 10, true);
+      const toneChanged = bass !== old.bass || middle !== old.middle || treble !== old.treble || presence !== old.presence;
+      const cabinetChanged = speaker !== old.spkType || microphone !== old.micType || distance !== old.micDis || position !== old.micPos || speaker === 1 && amp !== old.ampType;
+      if (amp !== old.ampType) this.model.setTarget(amp, this.rampFrames);
+      if (gain !== old.gain) this.gain.setTarget(gain, this.rampFrames);
+      if (compression !== old.tComp) this.compression.setTarget(compression, this.rampFrames);
+      if (speaker !== old.spkType) this.cabinetWet.setTarget(speaker === 0 ? 0 : 1, this.rampFrames);
+      old.ampType = amp;
+      old.spkType = speaker;
+      old.gain = gain;
+      old.tComp = compression;
+      old.bass = bass;
+      old.middle = middle;
+      old.treble = treble;
+      old.presence = presence;
+      old.micType = microphone;
+      old.micDis = distance;
+      old.micPos = position;
+      if (toneChanged) this.updateTone(this.rampFrames);
+      if (cabinetChanged) this.updateCabinet();
+    }
+    /** Allocation-free, stereo-linked level detector and dynamic power-stage sag. */
+    prepareFrame(left, right) {
+      const position = this.model.next();
+      if (position !== this.modelPosition) {
+        const low = Math.floor(position);
+        const high = Math.min(8, low + 1);
+        const fraction = position - low;
+        this.modelDrive = lerpTable(OFFICIAL_DRIVE, low, high, fraction);
+        this.shape = lerpTable(OFFICIAL_SHAPE, low, high, fraction);
+        this.bias = lerpTable(OFFICIAL_BIAS, low, high, fraction);
+        this.blend = lerpTable(OFFICIAL_BLEND, low, high, fraction);
+        this.modelSag = lerpTable(OFFICIAL_SAG, low, high, fraction);
+        this.attackStep = lerpTable(this.attack, low, high, fraction);
+        this.releaseStep = lerpTable(this.release, low, high, fraction);
+        this.modelPosition = position;
+      }
+      const peak = Math.max(Math.abs(left), Math.abs(right));
+      this.envelope += (peak - this.envelope) * (peak > this.envelope ? this.attackStep : this.releaseStep);
+      const compression = (0.16 + this.modelSag) * 2 ** (this.compression.next() / 5);
+      const pressure = Math.max(0, this.envelope - 0.035) / 0.35;
+      this.dynamicGain = 1 / Math.sqrt(1 + compression * pressure);
+      const gain = this.gain.next() / 100;
+      this.drive = this.modelDrive * (1 + 28 * gain * gain) / (1 + 0.24 * compression * pressure);
+    }
+    processToneAndCabinet(left, right) {
+      this.tone.process(left, right);
+      if (this.cabinetRamp > 0) {
+        const inverseRemaining = 1 / this.cabinetRamp;
+        for (let tap = 0; tap < CABINET_TAPS; tap += 1) {
+          this.cabinet[tap] = this.cabinet[tap] + (this.targetCabinet[tap] - this.cabinet[tap]) * inverseRemaining;
+        }
+        this.cabinetRamp -= 1;
+      }
+      const wet = this.cabinetWet.next();
+      if (wet === 0) {
+        this.processCabinet(this.tone.outputLeft, 0, false);
+        this.processCabinet(this.tone.outputRight, 1, false);
+        this.outputLeft = this.tone.outputLeft;
+        this.outputRight = this.tone.outputRight;
+        return;
+      }
+      this.outputLeft = this.tone.outputLeft * (1 - wet) + this.processCabinet(this.tone.outputLeft, 0) * wet;
+      this.outputRight = this.tone.outputRight * (1 - wet) + this.processCabinet(this.tone.outputRight, 1) * wet;
+    }
+    reset() {
+      this.model.reset();
+      this.gain.reset();
+      this.compression.reset();
+      this.cabinetWet.reset();
+      this.envelope = 0;
+      this.modelPosition = Number.NaN;
+      this.tone.reset();
+      this.cabinet.set(this.targetCabinet);
+      this.cabinetRamp = 0;
+      this.cabinetHistory[0].fill(0);
+      this.cabinetHistory[1].fill(0);
+      this.cabinetIndex.fill(0);
+      this.outputLeft = 0;
+      this.outputRight = 0;
+    }
+    updateTone(rampFrames) {
+      const p = this.parameters;
+      this.tone.setParameters({
+        lowGainDb: (p.bass - 50) * 0.24,
+        mid1GainDb: (p.middle - 50) * 0.24,
+        mid2GainDb: (p.treble - 50) * 0.24,
+        highGainDb: (p.presence - 50) * 0.24
+      }, rampFrames);
+    }
+    updateCabinet() {
+      if (this.parameters.spkType === 0) return;
+      this.targetCabinet.set(createOfficialCabinetResponse(this.sampleRate, this.parameters));
+      this.cabinetRamp = this.rampFrames;
+    }
+    processCabinet(input, channel, convolve = true) {
+      const history = this.cabinetHistory[channel];
+      let index = this.cabinetIndex[channel];
+      history[index] = input;
+      let output = 0;
+      if (convolve) {
+        for (let tap = 0; tap < CABINET_TAPS; tap += 1) {
+          const historyIndex = index >= tap ? index - tap : index + CABINET_TAPS - tap;
+          output += history[historyIndex] * this.cabinet[tap];
+        }
+      }
+      index += 1;
+      this.cabinetIndex[channel] = index === CABINET_TAPS ? 0 : index;
+      return output;
+    }
+  };
+  var CAB_HIGH_PASS = new Float64Array([0, 94, 155, 116, 83, 71, 89, 59, 47]);
+  var CAB_LOW_PASS = new Float64Array([0, 5650, 6650, 6200, 5450, 5150, 6050, 4650, 4250]);
+  var CAB_BODY_HZ = new Float64Array([0, 192, 305, 238, 180, 146, 202, 126, 106]);
+  var CAB_BODY_DB = new Float64Array([0, 2.3, 1.4, 2, 2.7, 3.2, 3.8, 4.3, 4.9]);
+  var CAB_PRESENCE_HZ = new Float64Array([0, 1900, 2450, 2210, 1840, 1720, 2180, 1630, 1490]);
+  var CAB_BREAKUP_HZ = new Float64Array([0, 4050, 4700, 4390, 3980, 3760, 4450, 3510, 3190]);
+  function createOfficialCabinetResponse(sampleRate, p) {
+    const type = p.spkType;
+    const original = type === 1;
+    const width = !original ? 1 : p.ampType === 2 ? 1.5 : 1.13 - p.ampType * 0.045;
+    const body = !original ? 1 : p.ampType === 2 ? 0.35 : 0.8 + p.ampType * 0.07;
+    const frequency = (value) => Math.min(value, sampleRate * 0.44);
+    const sections = [
+      designRbjBiquad("highpass", sampleRate, frequency(CAB_HIGH_PASS[type] * width), 0.71),
+      designRbjBiquad("lowpass", sampleRate, frequency(CAB_LOW_PASS[type] * width), 0.72),
+      designRbjBiquad("peaking", sampleRate, frequency(CAB_BODY_HZ[type]), 0.95, CAB_BODY_DB[type] * body),
+      designRbjBiquad("peaking", sampleRate, frequency(CAB_PRESENCE_HZ[type] * width), 0.92, 2.1),
+      designRbjBiquad("peaking", sampleRate, frequency(CAB_BREAKUP_HZ[type] * width), 1.75, -4.1 - type * 0.12)
+    ];
+    const state = new Float64Array(24);
+    const speaker = new Float64Array(CABINET_TAPS);
+    for (let tap = 0; tap < CABINET_TAPS; tap += 1) {
+      let sample = tap === 0 ? 1 : 0;
+      for (let section = 0; section < sections.length; section += 1) sample = directFormBiquad(sample, sections[section], state, 2 * section);
+      speaker[tap] = sample;
+    }
+    let real = 0;
+    let imaginary = 0;
+    for (let tap = 0; tap < CABINET_TAPS; tap += 1) {
+      real += speaker[tap] * Math.cos(TWO_PI9 * 500 * tap / sampleRate);
+      imaginary -= speaker[tap] * Math.sin(TWO_PI9 * 500 * tap / sampleRate);
+    }
+    const normalization = 1 / Math.max(1e-6, Math.hypot(real, imaginary));
+    const mic = p.micType;
+    const micLow = [0, 2.6, -0.6, 1.5, 0][mic];
+    const micPeakHz = [4350, 3450, 6850, 2850, 1e3][mic];
+    const micPeakDb = [4.2, 2.8, 2.1, 1.6, 0][mic];
+    const micHigh = [-3.4, -1.8, 2.7, 0.8, 0][mic];
+    const near = p.micDis === 1;
+    const position = p.micPos / 10;
+    const micSections = [
+      designRbjBiquad("low-shelf", sampleRate, frequency(210), Math.SQRT1_2, micLow),
+      designRbjBiquad("peaking", sampleRate, frequency(micPeakHz), 1.1, micPeakDb),
+      designRbjBiquad("high-shelf", sampleRate, frequency(5850), Math.SQRT1_2, micHigh),
+      designRbjBiquad("low-shelf", sampleRate, frequency(185), Math.SQRT1_2, near ? 2.8 : -3.5),
+      designRbjBiquad("high-shelf", sampleRate, frequency(4200 - 1e3 * position), Math.SQRT1_2, (near ? 0 : -2.2) - 11 * position),
+      designRbjBiquad("peaking", sampleRate, frequency(2750), 0.8, -3 * position)
+    ];
+    state.fill(0);
+    const response = new Float64Array(CABINET_TAPS);
+    const distanceGain = near ? 1 : 0.74;
+    for (let tap = 0; tap < CABINET_TAPS; tap += 1) {
+      let sample = speaker[tap] * normalization;
+      for (let section = 0; section < micSections.length; section += 1) sample = directFormBiquad(sample, micSections[section], state, 2 * section);
+      response[tap] = sample * distanceGain;
+    }
+    return response;
+  }
 
   // src/audio/fx/dsp/BrowserSynthDsp.ts
   var DEFAULT_SENSITIVITY = 60;
@@ -6062,11 +11206,11 @@
   var FILTER_RESONANCE_Q = 1.25;
   var MAX_INPUT_MAGNITUDE4 = 4;
   var MAX_OUTPUT_MAGNITUDE = 4;
-  function clamp15(value, minimum, maximum) {
+  function clamp21(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function cleanNumber(value, fallback, minimum, maximum) {
-    return typeof value === "number" && Number.isFinite(value) ? clamp15(value, minimum, maximum) : fallback;
+    return typeof value === "number" && Number.isFinite(value) ? clamp21(value, minimum, maximum) : fallback;
   }
   function nextPowerOfTwo2(value) {
     let result = 1;
@@ -6125,7 +11269,7 @@
       return this.voicedValue;
     }
     setSensitivity(value) {
-      if (Number.isFinite(value)) this.sensitivity = clamp15(value, 0, 100);
+      if (Number.isFinite(value)) this.sensitivity = clamp21(value, 0, 100);
     }
     pushSample(sample, sensitivity = this.sensitivity) {
       this.setSensitivity(sensitivity);
@@ -6199,7 +11343,7 @@
           break;
         }
       }
-      this.confidenceValue = Number.isFinite(bestValue) ? clamp15(1 - bestValue, 0, 1) : 0;
+      this.confidenceValue = Number.isFinite(bestValue) ? clamp21(1 - bestValue, 0, 1) : 0;
       const amplitudeThreshold = 3e-3 + (1 - sensitivity) * 0.035;
       const candidate = rms >= amplitudeThreshold && bestLag > 0 && bestValue < activeThreshold;
       if (candidate) {
@@ -6212,7 +11356,7 @@
           const right = this.normalizedDifferences[bestLag + 1];
           const denominator = left - 2 * center + right;
           if (Math.abs(denominator) > 1e-12) {
-            refinedLag += clamp15(0.5 * (left - right) / denominator, -0.5, 0.5);
+            refinedLag += clamp21(0.5 * (left - right) / denominator, -0.5, 0.5);
           }
         }
         const measuredLogFrequency = Math.log(this.sampleRate / refinedLag);
@@ -6260,6 +11404,10 @@
     subOscillatorPhase = 0;
     triangleState = 0;
     controlsCountdown = 0;
+    officialResonanceQ = FILTER_RESONANCE_Q;
+    officialDecayAlpha = null;
+    officialFilterEnvelope = 0;
+    officialOnsetCooldown = 0;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
       this.decimation = Math.max(1, Math.ceil(this.sampleRate / 12e3));
@@ -6334,32 +11482,46 @@
     setParameters(parameters) {
       const rampFrames = Math.max(1, Math.round(this.sampleRate * PARAMETER_RAMP_SECONDS));
       if (Number.isFinite(parameters.sensitivity)) {
-        this.sensitivity.setTarget(clamp15(parameters.sensitivity, 0, 100), rampFrames);
+        this.sensitivity.setTarget(clamp21(parameters.sensitivity, 0, 100), rampFrames);
       }
       if (Number.isFinite(parameters.waveform)) {
-        this.waveform.setTarget(Math.round(clamp15(parameters.waveform, 0, 2)), rampFrames);
+        this.waveform.setTarget(Math.round(clamp21(parameters.waveform, 0, 2)), rampFrames);
       }
       if (Number.isFinite(parameters.octave)) {
-        this.octave.setTarget(clamp15(parameters.octave, -24, 24), rampFrames);
+        this.octave.setTarget(clamp21(parameters.octave, -24, 24), rampFrames);
       }
       if (Number.isFinite(parameters.tone)) {
-        this.toneHz.setTarget(clamp15(parameters.tone, 100, 16e3), rampFrames);
+        this.toneHz.setTarget(clamp21(parameters.tone, 100, 16e3), rampFrames);
       }
       if (Number.isFinite(parameters.mix)) {
-        this.mixPercent.setTarget(clamp15(parameters.mix, 0, 100), rampFrames);
+        this.mixPercent.setTarget(clamp21(parameters.mix, 0, 100), rampFrames);
       }
       if (Number.isFinite(parameters.pitchSnapPercent)) {
-        this.pitchSnapPercent.setTarget(clamp15(parameters.pitchSnapPercent, 0, 100), rampFrames);
+        this.pitchSnapPercent.setTarget(clamp21(parameters.pitchSnapPercent, 0, 100), rampFrames);
       }
       if (Number.isFinite(parameters.subMixPercent)) {
-        this.subMixPercent.setTarget(clamp15(parameters.subMixPercent, 0, 100), rampFrames);
+        this.subMixPercent.setTarget(clamp21(parameters.subMixPercent, 0, 100), rampFrames);
       }
+    }
+    /** Official frequency/resonance/decay extend the filter, not the legacy oscillator controls. */
+    setOfficialParameters(parameters) {
+      if (Number.isFinite(parameters.frequencyHz)) this.toneHz.setTarget(clamp21(parameters.frequencyHz, 20, this.sampleRate * 0.45), Math.round(this.sampleRate * PARAMETER_RAMP_SECONDS));
+      if (Number.isFinite(parameters.resonanceQ)) this.officialResonanceQ = clamp21(parameters.resonanceQ, 0.5, 20);
+      if (Number.isFinite(parameters.decayMs)) this.officialDecayAlpha = onePoleAlpha3(clamp21(parameters.decayMs, 10, 2e3) / 1e3, this.sampleRate);
     }
     /** Advances one stereo frame; the processor has no block-size-dependent state. */
     processSample(inputLeft, inputRight) {
-      const left = Number.isFinite(inputLeft) ? clamp15(inputLeft, -MAX_INPUT_MAGNITUDE4, MAX_INPUT_MAGNITUDE4) : 0;
-      const right = Number.isFinite(inputRight) ? clamp15(inputRight, -MAX_INPUT_MAGNITUDE4, MAX_INPUT_MAGNITUDE4) : 0;
+      const left = Number.isFinite(inputLeft) ? clamp21(inputLeft, -MAX_INPUT_MAGNITUDE4, MAX_INPUT_MAGNITUDE4) : 0;
+      const right = Number.isFinite(inputRight) ? clamp21(inputRight, -MAX_INPUT_MAGNITUDE4, MAX_INPUT_MAGNITUDE4) : 0;
       const peak = Math.max(Math.abs(left), Math.abs(right));
+      if (this.officialDecayAlpha !== null) {
+        if (this.officialOnsetCooldown > 0) this.officialOnsetCooldown -= 1;
+        if (peak > Math.max(5e-3, this.inputEnvelopeValue * 1.8) && this.officialOnsetCooldown === 0) {
+          this.officialFilterEnvelope = 1;
+          this.officialOnsetCooldown = Math.round(this.sampleRate * 0.04);
+        }
+        this.officialFilterEnvelope *= this.officialDecayAlpha;
+      }
       const envelopeAlpha = peak > this.inputEnvelopeValue ? this.envelopeAttackAlpha : this.envelopeReleaseAlpha;
       this.inputEnvelopeValue = peak + envelopeAlpha * (this.inputEnvelopeValue - peak);
       const sensitivity = this.sensitivity.next();
@@ -6382,7 +11544,7 @@
       }
       const voiced = this.detector.voiced;
       const confidence = this.detector.confidence;
-      const trackingTarget = voiced ? clamp15((confidence - 0.2) / 0.8, 0, 1) : 0;
+      const trackingTarget = voiced ? clamp21((confidence - 0.2) / 0.8, 0, 1) : 0;
       const trackingAlpha = trackingTarget > this.trackingBlend ? this.trackingAttackAlpha : this.trackingReleaseAlpha;
       this.trackingBlend = trackingTarget + trackingAlpha * (this.trackingBlend - trackingTarget);
       if (this.controlsCountdown <= 0) {
@@ -6394,13 +11556,13 @@
           const snappedFrequency = Math.exp(
             Math.log(measuredFrequency) + (Math.log(quantizedFrequency) - Math.log(measuredFrequency)) * pitchSnap
           );
-          this.targetFrequencyHz = clamp15(
+          this.targetFrequencyHz = clamp21(
             snappedFrequency * octaveRatio,
             10,
             this.sampleRate * 0.45
           );
         }
-        this.filter.setParameters(Math.min(tone, this.sampleRate * 0.45), FILTER_RESONANCE_Q);
+        this.filter.setParameters(Math.min(tone * (this.officialDecayAlpha === null ? 1 : 2 ** (2 * this.officialFilterEnvelope)), this.sampleRate * 0.45), this.officialResonanceQ);
         this.controlsCountdown = FILTER_CONTROL_INTERVAL - 1;
       } else {
         this.controlsCountdown -= 1;
@@ -6410,15 +11572,15 @@
       }
       let oscillator = 0;
       if (this.oscillatorFrequencyHz > 0) {
-        const dt = clamp15(this.oscillatorFrequencyHz / this.sampleRate, 1e-5, 0.45);
+        const dt = clamp21(this.oscillatorFrequencyHz / this.sampleRate, 1e-5, 0.45);
         const subDt = dt * 0.5;
-        const saw = 2 * this.oscillatorPhase - 1 - this.polyBlep(this.oscillatorPhase, dt);
+        const saw2 = 2 * this.oscillatorPhase - 1 - this.polyBlep(this.oscillatorPhase, dt);
         let square = this.oscillatorPhase < 0.5 ? 1 : -1;
         square += this.polyBlep(this.oscillatorPhase, dt);
         let secondEdge = this.oscillatorPhase + 0.5;
         if (secondEdge >= 1) secondEdge -= 1;
         square -= this.polyBlep(secondEdge, dt);
-        this.triangleState = clamp15(this.triangleState + square * (4 * dt), -1, 1);
+        this.triangleState = clamp21(this.triangleState + square * (4 * dt), -1, 1);
         const subSquareRaw = this.subOscillatorPhase < 0.5 ? 1 : -1;
         let subSquare = subSquareRaw + this.polyBlep(this.subOscillatorPhase, subDt);
         let subSecondEdge = this.subOscillatorPhase + 0.5;
@@ -6426,7 +11588,7 @@
         subSquare -= this.polyBlep(subSecondEdge, subDt);
         let selectedWave;
         if (waveform <= 1) {
-          selectedWave = saw + (square - saw) * waveform;
+          selectedWave = saw2 + (square - saw2) * waveform;
         } else {
           selectedWave = square + (this.triangleState - square) * (waveform - 1);
         }
@@ -6437,18 +11599,20 @@
         if (this.subOscillatorPhase >= 1) this.subOscillatorPhase -= 1;
       }
       const filteredOscillator = this.filter.processSample(oscillator);
-      const velocity = clamp15(this.inputEnvelopeValue * 2.5, 0, 0.9);
+      const velocity = clamp21(this.inputEnvelopeValue * 2.5, 0, 0.9);
       const synthesized = filteredOscillator * velocity * this.trackingBlend;
       const wetLeft = left * (1 - this.trackingBlend) + synthesized;
       const wetRight = right * (1 - this.trackingBlend) + synthesized;
-      this.outputLeft = clamp15(left * (1 - mix) + wetLeft * mix, -MAX_OUTPUT_MAGNITUDE, MAX_OUTPUT_MAGNITUDE);
-      this.outputRight = clamp15(right * (1 - mix) + wetRight * mix, -MAX_OUTPUT_MAGNITUDE, MAX_OUTPUT_MAGNITUDE);
+      this.outputLeft = clamp21(left * (1 - mix) + wetLeft * mix, -MAX_OUTPUT_MAGNITUDE, MAX_OUTPUT_MAGNITUDE);
+      this.outputRight = clamp21(right * (1 - mix) + wetRight * mix, -MAX_OUTPUT_MAGNITUDE, MAX_OUTPUT_MAGNITUDE);
     }
     reset() {
       this.detector.reset();
       this.decimatorCount = 0;
       this.decimatorFiltered = 0;
       this.inputEnvelopeValue = 0;
+      this.officialFilterEnvelope = 0;
+      this.officialOnsetCooldown = 0;
       this.trackingBlend = 0;
       this.targetFrequencyHz = 0;
       this.oscillatorFrequencyHz = 0;
@@ -6542,7 +11706,90 @@
     }
   };
 
+  // src/audio/fx/dsp/BrowserOfficialVoiceDsp.ts
+  function validateVoiceControls(parameters, limits, effect) {
+    for (const [key, value] of Object.entries(parameters)) {
+      if (value === void 0) continue;
+      const range = limits[key];
+      if (!range || typeof value !== "number" || !Number.isInteger(value) || value < range[0] || value > range[1]) {
+        throw new RangeError(`${effect} official ${key} is unsupported or outside its integer domain.`);
+      }
+    }
+  }
+  function voiceAttackSeconds(value) {
+    return 25e-5 * 256 ** (value / 100);
+  }
+  function voiceReleaseSeconds(value) {
+    return 5e-3 * 144 ** (value / 100);
+  }
+  function blep(phase, step) {
+    if (phase < step) {
+      const t = phase / step;
+      return 2 * t - t * t - 1;
+    }
+    if (phase > 1 - step) {
+      const t = (phase - 1) / step;
+      return t * t + 2 * t + 1;
+    }
+    return 0;
+  }
+  function saw(phase, step) {
+    return 2 * phase - 1 - blep(phase, step);
+  }
+  var BrowserOfficialVoiceOscillator = class {
+    phase = 0;
+    lowerPhase = 0.31;
+    upperPhase = 0.67;
+    step = 110 / 48e3;
+    lowerStep = this.step;
+    upperStep = this.step;
+    waveform = 0;
+    sampleRate;
+    constructor(sampleRate) {
+      this.sampleRate = sampleRate;
+      this.setFrequency(110);
+    }
+    setWaveform(waveform) {
+      this.waveform = waveform;
+    }
+    setFrequency(frequencyHz) {
+      this.step = Math.max(0, Math.min(0.44, frequencyHz / this.sampleRate));
+      this.lowerStep = this.step * 2 ** (-7 / 1200);
+      this.upperStep = this.step * 2 ** (7 / 1200);
+    }
+    processSample() {
+      const phase = this.phase;
+      const step = this.step;
+      if (step <= 0) return 0;
+      let output;
+      if (this.waveform === 0) output = saw(phase, step);
+      else if (this.waveform === 1) {
+        output = 0.72 * saw(phase, step) - 0.28 * Math.sin(2 * Math.PI * phase);
+      } else if (this.waveform === 2) {
+        output = (saw(phase, step) + saw(this.lowerPhase, this.lowerStep) + saw(this.upperPhase, this.upperStep)) / 3;
+      } else {
+        const duty = this.waveform === 3 ? 0.5 : 0.25;
+        const edge = phase >= duty ? phase - duty : phase + 1 - duty;
+        output = (phase < duty ? 1 : -1) + blep(phase, step) - blep(edge, step) - (2 * duty - 1);
+      }
+      this.phase += step;
+      if (this.phase >= 1) this.phase -= 1;
+      this.lowerPhase += this.lowerStep;
+      if (this.lowerPhase >= 1) this.lowerPhase -= 1;
+      this.upperPhase += this.upperStep;
+      if (this.upperPhase >= 1) this.upperPhase -= 1;
+      return output;
+    }
+    reset() {
+      this.phase = 0;
+      this.lowerPhase = 0.31;
+      this.upperPhase = 0.67;
+    }
+  };
+
   // src/audio/fx/vocoder/BrowserVocoderCore.ts
+  var SHAPING_LIMITS = { tone: [-50, 50], attack: [0, 100], mod_sens: [-50, 50], release: [0, 100], formant: [-50, 50] };
+  var OFFICIAL_LIMITS = { tone: [-50, 50], attack: [0, 100], mod_sens: [-50, 50] };
   var MIN_SAMPLE_RATE6 = 8e3;
   var MAX_SAMPLE_RATE7 = 192e3;
   var MIN_BANDS = 8;
@@ -6558,11 +11805,11 @@
   var MAX_OUTPUT_MAGNITUDE2 = 4;
   var ERB_SCALE = 21.4;
   var ERB_FACTOR = 437e-5;
-  function clamp16(value, minimum, maximum) {
+  function clamp22(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function boundedSample(value) {
-    return Number.isFinite(value) ? clamp16(value, -MAX_INPUT_MAGNITUDE5, MAX_INPUT_MAGNITUDE5) : 0;
+    return Number.isFinite(value) ? clamp22(value, -MAX_INPUT_MAGNITUDE5, MAX_INPUT_MAGNITUDE5) : 0;
   }
   function erb(number) {
     return ERB_SCALE * Math.log10(1 + ERB_FACTOR * number);
@@ -6593,10 +11840,15 @@
     oscillatorStep;
     activeBands;
     carrierMode;
+    bandGains = new Float64Array(MAX_BANDS).fill(1);
+    toneValue = 0;
+    formantValue = 0;
+    modulatorGain = 1;
+    officialActive = false;
     phase = 0;
     currentOutput = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp16(sampleRate, MIN_SAMPLE_RATE6, MAX_SAMPLE_RATE7) : 48e3;
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp22(sampleRate, MIN_SAMPLE_RATE6, MAX_SAMPLE_RATE7) : 48e3;
       this.activeBands = _BrowserVocoderCore.validateBands(parameters.bands ?? 16);
       this.carrierMode = _BrowserVocoderCore.validateCarrier(parameters.carrier ?? 1);
       this.attackCoefficient = Math.exp(-1 / (ATTACK_SECONDS * this.sampleRate));
@@ -6636,8 +11888,8 @@
       return this.envelopes[band] ?? 0;
     }
     setParameters(parameters) {
-      const keys = Object.keys(parameters);
-      for (const key of keys) {
+      const keys2 = Object.keys(parameters);
+      for (const key of keys2) {
         if (key !== "bands" && key !== "carrier") {
           throw new RangeError(`Browser VOCODER does not support the ${key} parameter.`);
         }
@@ -6654,6 +11906,30 @@
         this.configureFilterbank(nextBands);
       }
       this.carrierMode = nextCarrier;
+    }
+    /** Only real local controls; physical CARRIER routing and CARRIER THRU remain unsupported. */
+    setOfficialParameters(parameters) {
+      validateVoiceControls(parameters, OFFICIAL_LIMITS, "VOCODER");
+      if (!Object.values(parameters).some((value) => value !== void 0)) return;
+      if (!this.officialActive) {
+        this.setVoiceShapingParameters({ tone: 0, attack: 50, mod_sens: 0 });
+        this.officialActive = true;
+      }
+      this.setVoiceShapingParameters(parameters);
+    }
+    /** Reusable analysis/resynthesis shaping for ELECTRIC and the OSC effects. */
+    setVoiceShapingParameters(parameters) {
+      validateVoiceControls(parameters, SHAPING_LIMITS, "Voice shaping");
+      if (parameters.attack !== void 0) this.attackCoefficient = Math.exp(-1 / (voiceAttackSeconds(parameters.attack) * this.sampleRate));
+      if (parameters.release !== void 0) this.releaseCoefficient = Math.exp(-1 / (voiceReleaseSeconds(parameters.release) * this.sampleRate));
+      if (parameters.mod_sens !== void 0) this.modulatorGain = 10 ** (parameters.mod_sens * 0.36 / 20);
+      if (parameters.tone !== void 0) this.toneValue = parameters.tone;
+      if (parameters.formant !== void 0) this.formantValue = parameters.formant;
+      if (parameters.tone !== void 0 || parameters.formant !== void 0) this.configureFilterbank(this.activeBands);
+    }
+    getCarrierBandCenterFrequencyHz(band) {
+      const center = this.getBandCenterFrequencyHz(band);
+      return center > 0 ? Math.min(this.sampleRate * 0.45, center * 2 ** (this.formantValue / 50)) : 0;
     }
     /** Voice-input carrier or internal anti-aliased saw/square carrier mode. */
     processSample(modulatorLeft, modulatorRight) {
@@ -6691,18 +11967,18 @@
         const analysis = this.analysisFilters[band];
         const carrierFilter = this.carrierFilters[band];
         if (!analysis || !carrierFilter) continue;
-        analysis.processSample(modulator);
+        analysis.processSample(boundedSample(modulator * this.modulatorGain));
         const carrier = bandCarriers === null ? scalarCarrier : boundedSample(bandCarriers[band] ?? 0);
         carrierFilter.processSample(carrier);
-        const target = clamp16(Math.abs(analysis.bandpass), 0, MAX_ENVELOPE);
+        const target = clamp22(Math.abs(analysis.bandpass), 0, MAX_ENVELOPE);
         const previous = this.envelopes[band] ?? 0;
         const coefficient = target > previous ? this.attackCoefficient : this.releaseCoefficient;
-        const envelope = clamp16(coefficient * previous + (1 - coefficient) * target, 0, MAX_ENVELOPE);
+        const envelope = clamp22(coefficient * previous + (1 - coefficient) * target, 0, MAX_ENVELOPE);
         this.envelopes[band] = envelope;
-        sum += envelope * carrierFilter.bandpass;
+        sum += envelope * carrierFilter.bandpass * this.bandGains[band];
       }
       const normalized = sum * 4 / Math.sqrt(this.activeBands);
-      this.currentOutput = Number.isFinite(normalized) ? clamp16(normalized, -MAX_OUTPUT_MAGNITUDE2, MAX_OUTPUT_MAGNITUDE2) : 0;
+      this.currentOutput = Number.isFinite(normalized) ? clamp22(normalized, -MAX_OUTPUT_MAGNITUDE2, MAX_OUTPUT_MAGNITUDE2) : 0;
       return this.currentOutput;
     }
     reset() {
@@ -6739,7 +12015,9 @@
         const centerHz = inverseErb(lowErb + (highErb - lowErb) * position);
         this.centerFrequenciesHz[band] = centerHz;
         this.analysisFilters[band]?.setParameters(centerHz, FILTER_Q);
-        this.carrierFilters[band]?.setParameters(centerHz, FILTER_Q);
+        this.carrierFilters[band]?.setParameters(Math.min(this.sampleRate * 0.45, centerHz * 2 ** (this.formantValue / 50)), FILTER_Q);
+        const tiltDb = clamp22(this.toneValue / 50 * 6 * Math.log2(centerHz / 1e3), -18, 18);
+        this.bandGains[band] = 10 ** (tiltDb / 20);
       }
     }
     static validateBands(value) {
@@ -6757,6 +12035,7 @@
   };
 
   // src/audio/fx/BrowserOscBotCore.ts
+  var OFFICIAL_LIMITS2 = { osc: [0, 4], tone: [-50, 50], attack: [0, 100], note: [24, 127], mod_sens: [-50, 50] };
   var MIN_SAMPLE_RATE7 = 8e3;
   var MAX_SAMPLE_RATE8 = 192e3;
   var MIN_BANDS2 = 8;
@@ -6779,11 +12058,11 @@
     [0, 4, 7, 11, 12, 11, 7, 4],
     [0, -5, 0, 7, 0, -5, 12, 7]
   ];
-  function clamp17(value, minimum, maximum) {
+  function clamp23(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
-  function bounded(value, magnitude) {
-    return Number.isFinite(value) ? clamp17(value, -magnitude, magnitude) : 0;
+  function bounded4(value, magnitude) {
+    return Number.isFinite(value) ? clamp23(value, -magnitude, magnitude) : 0;
   }
   function polyBlep2(phase, increment) {
     if (increment <= 0 || increment >= 0.5) return 0;
@@ -6807,7 +12086,7 @@
       this.sampleRate = sampleRate;
     }
     set(frequencyHz, waveform) {
-      this.frequencyHz = clamp17(frequencyHz, 1, this.sampleRate * MAX_OSC_FREQUENCY_RATIO);
+      this.frequencyHz = clamp23(frequencyHz, 1, this.sampleRate * MAX_OSC_FREQUENCY_RATIO);
       this.waveform = waveform;
     }
     reset() {
@@ -6824,7 +12103,7 @@
       if (this.waveform === 0) {
         output = 2 * this.phase - 1 - polyBlep2(this.phase, increment);
       } else if (this.waveform === 2) {
-        this.triangle = clamp17(this.triangle * 0.99999 + 4 * increment * square, -1, 1);
+        this.triangle = clamp23(this.triangle * 0.99999 + 4 * increment * square, -1, 1);
         output = this.triangle;
       }
       this.phase += increment;
@@ -6839,6 +12118,10 @@
     oscillators;
     bandCarriers;
     toneFilter;
+    officialOscillator;
+    officialEnabled = false;
+    officialNote = 36;
+    officialWaveform = 0;
     activeBands;
     waveform;
     patternIndex;
@@ -6856,6 +12139,7 @@
       }
       _BrowserOscBotCore.validateFrame(initialFrame);
       this.sampleRate = sampleRate;
+      this.officialOscillator = new BrowserOfficialVoiceOscillator(sampleRate);
       this.activeBands = _BrowserOscBotCore.validateBands(parameters.bands ?? DEFAULT_BANDS);
       this.waveform = _BrowserOscBotCore.validateWaveform(parameters.waveform ?? 1);
       this.patternIndex = _BrowserOscBotCore.validatePattern(parameters.pattern ?? 0);
@@ -6926,22 +12210,48 @@
         const oldStepFrames = this.currentStepFrames;
         this.currentStepFrames = _BrowserOscBotCore.computeStepFrames(this.sampleRate, this.tempoValue);
         const elapsed = oldStepFrames - this.framesUntilStep;
-        const phase = oldStepFrames > 0 ? clamp17(elapsed / oldStepFrames, 0, 1) : 0;
+        const phase = oldStepFrames > 0 ? clamp23(elapsed / oldStepFrames, 0, 1) : 0;
         this.framesUntilStep = Math.max(1, Math.round(this.currentStepFrames * (1 - phase)));
       }
       this.toneFilter.setParameters(this.toneCutoffHz, FILTER_Q2);
       this.updateCarrierBank();
     }
+    /** Official NOTE is a fixed carrier pitch, not the provisional legacy pattern bank. */
+    setOfficialParameters(parameters) {
+      validateVoiceControls(parameters, OFFICIAL_LIMITS2, "OSC BOT");
+      if (!Object.values(parameters).some((value) => value !== void 0)) return;
+      if (!this.officialEnabled) {
+        this.vocoder.setVoiceShapingParameters({ tone: 0, attack: 50, mod_sens: 0 });
+        this.officialEnabled = true;
+      }
+      if (parameters.note !== void 0) this.officialNote = parameters.note;
+      if (parameters.osc !== void 0) this.officialWaveform = parameters.osc;
+      this.officialOscillator.setWaveform(this.officialWaveform);
+      this.officialOscillator.setFrequency(this.targetFrequencyHz);
+      const shaping = {};
+      if (parameters.tone !== void 0) shaping.tone = parameters.tone;
+      if (parameters.attack !== void 0) shaping.attack = parameters.attack;
+      if (parameters.mod_sens !== void 0) shaping.mod_sens = parameters.mod_sens;
+      this.vocoder.setVoiceShapingParameters(shaping);
+    }
+    /** Software convention: C4 = MIDI 60; hardware octave-label parity is not claimed. */
+    get targetFrequencyHz() {
+      return Math.min(this.sampleRate * 0.44, 440 * 2 ** ((this.officialNote - 69) / 12));
+    }
     setTempoBpm(tempoBpm) {
       this.setParameters({ tempoBpm });
     }
     processSample(modulatorSample) {
-      const modulator = bounded(modulatorSample, MAX_INPUT_MAGNITUDE6);
+      const modulator = bounded4(modulatorSample, MAX_INPUT_MAGNITUDE6);
       const filtered = this.processWet(modulator);
-      this.currentOutput = bounded(modulator * (1 - this.mix) + filtered * this.mix, MAX_OUTPUT_MAGNITUDE3);
+      this.currentOutput = bounded4(modulator * (1 - this.mix) + filtered * this.mix, MAX_OUTPUT_MAGNITUDE3);
       return this.currentOutput;
     }
     processWet(modulator) {
+      if (this.officialEnabled) {
+        this.frame += 1;
+        return this.vocoder.processWithCarrier(modulator, this.officialOscillator.processSample());
+      }
       if (this.framesUntilStep <= 0) {
         this.activeStep = this.activeStep + 1 & 7;
         this.framesUntilStep = this.stepFrames;
@@ -6954,19 +12264,19 @@
       const filtered = this.toneFilter.processSample(vocoded);
       this.frame += 1;
       this.framesUntilStep -= 1;
-      return bounded(filtered, MAX_OUTPUT_MAGNITUDE3);
+      return bounded4(filtered, MAX_OUTPUT_MAGNITUDE3);
     }
     processBlock(inputLeft, inputRight, outputLeft, outputRight, frames = Math.min(inputLeft.length, inputRight.length, outputLeft.length, outputRight.length)) {
       const count = Math.max(0, Math.min(Math.floor(frames), inputLeft.length, inputRight.length, outputLeft.length, outputRight.length));
       for (let index = 0; index < count; index += 1) {
         const left = inputLeft[index] ?? 0;
         const right = inputRight[index] ?? 0;
-        const modulator = bounded((bounded(left, MAX_INPUT_MAGNITUDE6) + bounded(right, MAX_INPUT_MAGNITUDE6)) * 0.5, MAX_INPUT_MAGNITUDE6);
+        const modulator = bounded4((bounded4(left, MAX_INPUT_MAGNITUDE6) + bounded4(right, MAX_INPUT_MAGNITUDE6)) * 0.5, MAX_INPUT_MAGNITUDE6);
         const wet = this.processWet(modulator);
-        const boundedLeft = bounded(left, MAX_INPUT_MAGNITUDE6);
-        const boundedRight = bounded(right, MAX_INPUT_MAGNITUDE6);
-        outputLeft[index] = bounded(boundedLeft * (1 - this.mix) + wet * this.mix, MAX_OUTPUT_MAGNITUDE3);
-        outputRight[index] = bounded(boundedRight * (1 - this.mix) + wet * this.mix, MAX_OUTPUT_MAGNITUDE3);
+        const boundedLeft = bounded4(left, MAX_INPUT_MAGNITUDE6);
+        const boundedRight = bounded4(right, MAX_INPUT_MAGNITUDE6);
+        outputLeft[index] = bounded4(boundedLeft * (1 - this.mix) + wet * this.mix, MAX_OUTPUT_MAGNITUDE3);
+        outputRight[index] = bounded4(boundedRight * (1 - this.mix) + wet * this.mix, MAX_OUTPUT_MAGNITUDE3);
         this.currentOutput = (outputLeft[index] + outputRight[index]) * 0.5;
       }
     }
@@ -6977,6 +12287,7 @@
       this.framesUntilStep = this.currentStepFrames;
       this.currentOutput = 0;
       this.vocoder.reset();
+      this.officialOscillator.reset();
       this.toneFilter.reset();
       for (const oscillator of this.oscillators) oscillator.reset();
       this.updateCarrierBank();
@@ -7088,6 +12399,16 @@
       this.count += 1;
       return true;
     }
+    /** Replace queued events with one safety event at an absolute frame. */
+    replacePendingWith(frame, code, value = 0) {
+      if (!Number.isInteger(frame) || !Number.isInteger(code) || !Number.isFinite(value) || frame < this.currentFrame || this.blockActive) return false;
+      this.count = 0;
+      this.eventFrames[0] = frame;
+      this.eventCodes[0] = code;
+      this.eventValues[0] = value;
+      this.count = 1;
+      return true;
+    }
     peekNextFrame() {
       return this.count > 0 ? this.eventFrames[0] : null;
     }
@@ -7136,6 +12457,7 @@
   };
 
   // src/audio/fx/BrowserOscVocCore.ts
+  var OFFICIAL_LIMITS3 = { carrier: [0, 4], tone: [-50, 50], attack: [0, 100], octave: [0, 3], mod_sens: [-50, 50], release: [0, 100] };
   var MIN_SAMPLE_RATE8 = 8e3;
   var MAX_SAMPLE_RATE9 = 192e3;
   var MAX_EVENT_COUNT = 256;
@@ -7147,14 +12469,15 @@
   var MAX_OUTPUT_MAGNITUDE4 = 4;
   var EVENT_NOTE_ON = 1;
   var EVENT_NOTE_OFF = 2;
+  var EVENT_ALL_NOTES_OFF = 3;
   var EVENT_KIND_SHIFT = 14;
   var EVENT_CHANNEL_SHIFT = 7;
   var MIDI_NOTE_COUNT = 128;
-  function clamp18(value, minimum, maximum) {
+  function clamp24(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function cleanSample(value) {
-    return Number.isFinite(value) ? clamp18(value, -MAX_INPUT_MAGNITUDE7, MAX_INPUT_MAGNITUDE7) : 0;
+    return Number.isFinite(value) ? clamp24(value, -MAX_INPUT_MAGNITUDE7, MAX_INPUT_MAGNITUDE7) : 0;
   }
   function polyBlep3(phase, step) {
     if (step <= 0) return 0;
@@ -7180,6 +12503,10 @@
     selectedChannel;
     octaveSemitones;
     activeBands;
+    officialOscillator;
+    officialEnabled = false;
+    officialCarrier = 0;
+    officialOctave = 2;
     phase = 0;
     phaseStep = 440 / 48e3;
     lastFrequencyHz = 440;
@@ -7196,6 +12523,7 @@
         throw new RangeError(`Browser OSC VOC sample rate must be from ${MIN_SAMPLE_RATE8} to ${MAX_SAMPLE_RATE9} Hz.`);
       }
       this.sampleRate = sampleRate;
+      this.officialOscillator = new BrowserOfficialVoiceOscillator(sampleRate);
       this.attackCoefficient = Math.exp(-1 / (ATTACK_SECONDS2 * sampleRate));
       this.releaseCoefficient = Math.exp(-1 / (RELEASE_SECONDS2 * sampleRate));
       this.currentWaveform = 0;
@@ -7263,6 +12591,30 @@
       }
       this.refreshPitch();
     }
+    /** Additive official domain: OCTAVE ordinals 0/1/2/3 mean -2/-1/0/+1 octaves. */
+    setOfficialParameters(parameters) {
+      validateVoiceControls(parameters, OFFICIAL_LIMITS3, "OSC VOC (M)");
+      if (!Object.values(parameters).some((value) => value !== void 0)) return;
+      if (!this.officialEnabled) {
+        this.vocoder.setVoiceShapingParameters({ tone: 0, attack: 50, mod_sens: 0, release: 50 });
+        this.attackCoefficient = Math.exp(-1 / (voiceAttackSeconds(50) * this.sampleRate));
+        this.releaseCoefficient = Math.exp(-1 / (voiceReleaseSeconds(50) * this.sampleRate));
+        this.officialEnabled = true;
+      }
+      if (parameters.carrier !== void 0) this.officialCarrier = parameters.carrier;
+      if (parameters.octave !== void 0) this.officialOctave = parameters.octave;
+      this.octaveSemitones = (this.officialOctave - 2) * 12;
+      this.officialOscillator.setWaveform(this.officialCarrier);
+      if (parameters.attack !== void 0) this.attackCoefficient = Math.exp(-1 / (voiceAttackSeconds(parameters.attack) * this.sampleRate));
+      if (parameters.release !== void 0) this.releaseCoefficient = Math.exp(-1 / (voiceReleaseSeconds(parameters.release) * this.sampleRate));
+      const shaping = {};
+      if (parameters.tone !== void 0) shaping.tone = parameters.tone;
+      if (parameters.attack !== void 0) shaping.attack = parameters.attack;
+      if (parameters.release !== void 0) shaping.release = parameters.release;
+      if (parameters.mod_sens !== void 0) shaping.mod_sens = parameters.mod_sens;
+      this.vocoder.setVoiceShapingParameters(shaping);
+      this.refreshPitch();
+    }
     /** Queue a MIDI note-on at an absolute frame; velocity 0 means note-off. */
     noteOn(channel, note, velocity, frame) {
       _BrowserOscVocCore.validateEvent(channel, note, frame);
@@ -7275,6 +12627,16 @@
     noteOff(channel, note, frame) {
       _BrowserOscVocCore.validateEvent(channel, note, frame);
       this.enqueue(frame, EVENT_NOTE_OFF, channel, note, 0);
+    }
+    /** Schedule a sample-aligned panic, discarding stale pending MIDI events. */
+    allNotesOff(frame) {
+      if (!Number.isSafeInteger(frame) || frame < this.currentFrame) {
+        throw new RangeError(`Browser OSC VOC all-notes-off frame must be a safe integer at or after ${this.currentFrame}.`);
+      }
+      const code = EVENT_ALL_NOTES_OFF << EVENT_KIND_SHIFT;
+      if (!this.scheduler.replacePendingWith(frame, code, 0)) {
+        throw new RangeError("Browser OSC VOC could not schedule all-notes-off while processing a block.");
+      }
     }
     /** Process one sample frame. Omitted right input means mono input. */
     processSample(modulatorLeft, modulatorRight = modulatorLeft) {
@@ -7337,6 +12699,7 @@
       this.heldVelocities.fill(0);
       this.heldOrder.fill(0);
       this.phase = 0;
+      this.officialOscillator.reset();
       this.phaseStep = 440 / this.sampleRate;
       this.lastFrequencyHz = 440;
       this.voiceTarget = 0;
@@ -7361,6 +12724,13 @@
       const kind = code >> EVENT_KIND_SHIFT;
       const channel = code >> EVENT_CHANNEL_SHIFT & 127;
       const note = code & 127;
+      if (kind === EVENT_ALL_NOTES_OFF) {
+        this.heldVelocities.fill(0);
+        this.heldOrder.fill(0);
+        this.latestNote = -1;
+        this.voiceTarget = 0;
+        return;
+      }
       if (channel !== this.selectedChannel) return;
       if (kind === EVENT_NOTE_ON && this.scheduler.eventValue > 0) {
         this.heldVelocities[note] = this.scheduler.eventValue / 127;
@@ -7389,22 +12759,23 @@
     refreshPitch() {
       if (this.latestNote < 0) return;
       const frequency = 440 * 2 ** ((this.latestNote - 69 + this.octaveSemitones) / 12);
-      const boundedFrequency = clamp18(frequency, 0, this.sampleRate * 0.45);
+      const boundedFrequency = clamp24(frequency, 0, this.sampleRate * 0.45);
       this.lastFrequencyHz = Number.isFinite(boundedFrequency) ? boundedFrequency : 0;
       this.phaseStep = this.lastFrequencyHz / this.sampleRate;
+      this.officialOscillator.setFrequency(this.lastFrequencyHz);
     }
     renderSample(modulatorLeft, modulatorRight) {
       const modulator = (cleanSample(modulatorLeft) + cleanSample(modulatorRight)) * 0.5;
       const coefficient = this.voiceTarget > this.voiceEnvelope ? this.attackCoefficient : this.releaseCoefficient;
-      this.voiceEnvelope = clamp18(
+      this.voiceEnvelope = clamp24(
         coefficient * this.voiceEnvelope + (1 - coefficient) * this.voiceTarget,
         0,
         1
       );
-      let carrier = this.nextCarrierSample() * this.voiceEnvelope;
+      let carrier = (this.officialEnabled ? this.officialOscillator.processSample() : this.nextCarrierSample()) * this.voiceEnvelope;
       if (!Number.isFinite(carrier)) carrier = 0;
       const output = this.vocoder.processWithCarrier(modulator, carrier);
-      const safeOutput = Number.isFinite(output) ? clamp18(output, -MAX_OUTPUT_MAGNITUDE4, MAX_OUTPUT_MAGNITUDE4) : 0;
+      const safeOutput = Number.isFinite(output) ? clamp24(output, -MAX_OUTPUT_MAGNITUDE4, MAX_OUTPUT_MAGNITUDE4) : 0;
       this.currentLeft = safeOutput;
       this.currentRight = safeOutput;
     }
@@ -7466,10 +12837,10 @@
   };
 
   // src/audio/fx/dsp/BrowserRollDsp.ts
-  var MIN_BPM = 40;
-  var MAX_BPM = 300;
+  var MIN_BPM3 = 40;
+  var MAX_BPM3 = 300;
   var MAX_SLICE_BEATS = 4;
-  var MAX_CAPTURE_SECONDS = 60 * MAX_SLICE_BEATS / MIN_BPM;
+  var MAX_CAPTURE_SECONDS2 = 60 * MAX_SLICE_BEATS / MIN_BPM3;
   var EVENT_FADE_FRAMES = 16;
   var SLICE_DIVISIONS = [0.25, 0.5, 1, 2, 4];
   var HALF_PI2 = Math.PI * 0.5;
@@ -7515,7 +12886,7 @@
     hasSlice = false;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
-      this.maxSliceFrames = Math.ceil(this.sampleRate * MAX_CAPTURE_SECONDS) + 2;
+      this.maxSliceFrames = Math.ceil(this.sampleRate * MAX_CAPTURE_SECONDS2) + 2;
       this.leftBuffers = [new Float32Array(this.maxSliceFrames), new Float32Array(this.maxSliceFrames)];
       this.rightBuffers = [new Float32Array(this.maxSliceFrames), new Float32Array(this.maxSliceFrames)];
       this.currentBpm = this.pendingBpm = this.clampBpm(parameters.bpm ?? 120);
@@ -7736,16 +13107,16 @@
       return 2 ** (semitones / 12);
     }
     clampBpm(value) {
-      return Math.max(MIN_BPM, Math.min(MAX_BPM, value));
+      return Math.max(MIN_BPM3, Math.min(MAX_BPM3, value));
     }
     quantizeSliceBeats(value) {
       let nearest = SLICE_DIVISIONS[0];
       let distance = Math.abs(value - nearest);
       for (let index = 1; index < SLICE_DIVISIONS.length; index += 1) {
-        const option = SLICE_DIVISIONS[index];
-        const nextDistance = Math.abs(value - option);
+        const option2 = SLICE_DIVISIONS[index];
+        const nextDistance = Math.abs(value - option2);
         if (nextDistance < distance) {
-          nearest = option;
+          nearest = option2;
           distance = nextDistance;
         }
       }
@@ -7783,11 +13154,12 @@
   var MAX_LOOP_SEAM_MS = 5;
   var PITCH_SMOOTHING_MS = 15;
   var MAX_ABS_SAMPLE = 8;
-  function clamp19(value, minimum, maximum) {
+  var DEFAULT_OFFICIAL_ENVELOPE_VALUE = 30;
+  function clamp25(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function finiteSample(value) {
-    return Number.isFinite(value) ? clamp19(value, -MAX_ABS_SAMPLE, MAX_ABS_SAMPLE) : 0;
+    return Number.isFinite(value) ? clamp25(value, -MAX_ABS_SAMPLE, MAX_ABS_SAMPLE) : 0;
   }
   function onePoleAlpha4(timeMs, sampleRate) {
     return Math.exp(-1 / (Math.max(1e-3, timeMs) * 1e-3 * sampleRate));
@@ -7819,6 +13191,16 @@
     loopLength = 0;
     loopCrossfadeFrames = 0;
     loopPhase = 0;
+    officialMode = false;
+    attackFrames;
+    decayFrames;
+    releaseFrames;
+    sustainGain = DEFAULT_OFFICIAL_ENVELOPE_VALUE / 100;
+    envelopeStage = "idle";
+    envelopeElapsed = 0;
+    envelopeDuration = 1;
+    envelopeStartGain = 0;
+    envelopeTargetGain = 0;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= MIN_SAMPLE_RATE9 ? sampleRate : DEFAULT_SAMPLE_RATE;
       this.maxCaptureFrames = Math.ceil(this.sampleRate * MAX_CAPTURE_MS / 1e3);
@@ -7829,9 +13211,12 @@
       this.captureLengthFrames = this.framesForCapture(DEFAULT_CAPTURE_MS);
       this.fadeStep = 1 / Math.max(1, Math.round(this.sampleRate * RELEASE_FADE_MS / 1e3));
       this.pitchSmoothingAlpha = onePoleAlpha4(PITCH_SMOOTHING_MS, this.sampleRate);
+      this.attackFrames = this.framesForOfficialTime(DEFAULT_OFFICIAL_ENVELOPE_VALUE, 2, 2e3);
+      this.decayFrames = this.framesForOfficialTime(DEFAULT_OFFICIAL_ENVELOPE_VALUE, 10, 2e3);
+      this.releaseFrames = this.framesForOfficialTime(DEFAULT_OFFICIAL_ENVELOPE_VALUE, 2, 5e3);
       this.setParameters(parameters);
     }
-    /** Target capture state; when false, a short release fade may still be active. */
+    /** Target capture state; when false, its release fade may still be active. */
     get isFrozen() {
       return this.targetFrozen;
     }
@@ -7839,14 +13224,68 @@
     get hasFrozenBuffer() {
       return this.frozenBufferActive;
     }
+    /** Maximum tail length for the outer activation/bypass lifecycle. */
+    get officialReleaseFrames() {
+      return this.releaseFrames;
+    }
+    /**
+     * Enables a wet-only, amplitude-ADSR path with the official 0..100 controls.
+     * The manual specifies the controls, not their millisecond transfer curves:
+     * these exponential mappings (A: 2..2000 ms, D: 10..2000 ms, R: 2..5000 ms)
+     * are authored clean-room behavior, not a claim of Roland factory DSP.
+     * Stage amplitudes use linear ramps; SUSTAIN maps directly to 0..100% gain.
+     * Calling this method with an empty object enables the official defaults (30).
+     * Never calling it preserves the original mixed-output micro-loop behavior.
+     */
+    setOfficialParameters(parameters) {
+      const previousAttackFrames = this.attackFrames;
+      const previousDecayFrames = this.decayFrames;
+      const previousReleaseFrames = this.releaseFrames;
+      const previousSustainGain = this.sustainGain;
+      if (Number.isFinite(parameters.attack)) {
+        this.attackFrames = this.framesForOfficialTime(parameters.attack, 2, 2e3);
+      }
+      if (Number.isFinite(parameters.decay)) {
+        this.decayFrames = this.framesForOfficialTime(parameters.decay, 10, 2e3);
+      }
+      if (Number.isFinite(parameters.release)) {
+        this.releaseFrames = this.framesForOfficialTime(parameters.release, 2, 5e3);
+      }
+      if (Number.isFinite(parameters.sustain)) {
+        this.sustainGain = clamp25(parameters.sustain, 0, 100) / 100;
+      }
+      if (!this.officialMode) {
+        this.officialMode = true;
+        this.activationGain = Math.sin(this.activationGain * Math.PI / 2);
+        if (this.frozenBufferActive) {
+          if (this.targetFrozen && !this.capturePending) {
+            this.startEnvelopeStage("attack", 1, this.attackFrames);
+          } else {
+            this.startEnvelopeStage("release", 0, this.releaseFrames);
+          }
+        }
+        return;
+      }
+      if (this.envelopeStage === "attack" && this.attackFrames !== previousAttackFrames) {
+        this.startEnvelopeStage("attack", 1, this.attackFrames);
+      } else if (this.envelopeStage === "decay") {
+        if (this.decayFrames !== previousDecayFrames) {
+          this.startEnvelopeStage("decay", this.sustainGain, this.decayFrames);
+        } else if (this.sustainGain !== previousSustainGain) {
+          this.startEnvelopeStage("decay", this.sustainGain, this.envelopeDuration - this.envelopeElapsed);
+        }
+      } else if (this.envelopeStage === "release" && this.releaseFrames !== previousReleaseFrames) {
+        this.startEnvelopeStage("release", 0, this.releaseFrames);
+      }
+    }
     /** Controls and capture length latch at the next freeze activation. */
     setParameters(parameters) {
       if (Number.isFinite(parameters.captureLengthMs)) {
-        this.captureLengthMs = clamp19(parameters.captureLengthMs, MIN_CAPTURE_MS, MAX_CAPTURE_MS);
+        this.captureLengthMs = clamp25(parameters.captureLengthMs, MIN_CAPTURE_MS, MAX_CAPTURE_MS);
         this.captureLengthFrames = this.framesForCapture(this.captureLengthMs);
       }
       if (Number.isFinite(parameters.pitchSemitones)) {
-        this.targetPitchSemitones = clamp19(parameters.pitchSemitones, MIN_PITCH_SEMITONES, MAX_PITCH_SEMITONES2);
+        this.targetPitchSemitones = clamp25(parameters.pitchSemitones, MIN_PITCH_SEMITONES, MAX_PITCH_SEMITONES2);
         this.targetPlaybackRate = Math.pow(2, this.targetPitchSemitones / 12);
       }
       if (typeof parameters.frozen === "boolean" && parameters.frozen !== this.targetFrozen) {
@@ -7864,18 +13303,27 @@
         this.captureHistory();
         this.capturePending = false;
       }
-      const fadeTarget = this.targetFrozen && this.frozenBufferActive && !this.capturePending ? 1 : 0;
-      this.activationGain = this.moveToward(this.activationGain, fadeTarget, this.fadeStep);
+      if (this.officialMode) {
+        this.advanceOfficialEnvelope();
+      } else {
+        const fadeTarget = this.targetFrozen && this.frozenBufferActive && !this.capturePending ? 1 : 0;
+        this.activationGain = this.moveToward(this.activationGain, fadeTarget, this.fadeStep);
+      }
       let frozenLeft = 0;
       let frozenRight = 0;
       if (this.frozenBufferActive) {
         frozenLeft = this.readFrozenChannel(this.loopLeft);
         frozenRight = this.readFrozenChannel(this.loopRight);
       }
-      const dryGain = Math.cos(this.activationGain * Math.PI / 2);
-      const frozenGain = Math.sin(this.activationGain * Math.PI / 2);
-      this.outputLeft = finiteSample(left * dryGain + frozenLeft * frozenGain);
-      this.outputRight = finiteSample(right * dryGain + frozenRight * frozenGain);
+      if (this.officialMode) {
+        this.outputLeft = this.activationGain > 0 ? finiteSample(frozenLeft * this.activationGain) : 0;
+        this.outputRight = this.activationGain > 0 ? finiteSample(frozenRight * this.activationGain) : 0;
+      } else {
+        const dryGain = Math.cos(this.activationGain * Math.PI / 2);
+        const frozenGain = Math.sin(this.activationGain * Math.PI / 2);
+        this.outputLeft = finiteSample(left * dryGain + frozenLeft * frozenGain);
+        this.outputRight = finiteSample(right * dryGain + frozenRight * frozenGain);
+      }
       if (this.frozenBufferActive) this.advanceLoop();
       if (this.frozenBufferActive && !this.targetFrozen && this.activationGain === 0) {
         this.frozenBufferActive = false;
@@ -7912,6 +13360,11 @@
       this.capturePending = false;
       this.frozenBufferActive = false;
       this.activationGain = 0;
+      this.envelopeStage = "idle";
+      this.envelopeElapsed = 0;
+      this.envelopeDuration = 1;
+      this.envelopeStartGain = 0;
+      this.envelopeTargetGain = 0;
       this.playbackRate = this.targetPlaybackRate;
       this.outputLeft = 0;
       this.outputRight = 0;
@@ -7943,6 +13396,9 @@
         this.targetFrozen = true;
         if (this.frozenBufferActive && this.activationGain > 0) {
           this.capturePending = true;
+          if (this.officialMode && this.envelopeStage !== "release") {
+            this.startEnvelopeStage("release", 0, this.releaseFrames);
+          }
         } else if (this.historyFrames >= this.captureLengthFrames) {
           this.captureHistory();
           this.capturePending = false;
@@ -7953,6 +13409,9 @@
       }
       this.targetFrozen = false;
       this.capturePending = false;
+      if (this.officialMode && this.frozenBufferActive && this.envelopeStage !== "release") {
+        this.startEnvelopeStage("release", 0, this.releaseFrames);
+      }
     }
     captureHistory() {
       this.loopLength = this.captureLengthFrames;
@@ -7974,6 +13433,42 @@
       );
       this.loopPhase = this.loopCrossfadeFrames;
       this.frozenBufferActive = true;
+      if (this.officialMode) {
+        this.activationGain = 0;
+        this.startEnvelopeStage("attack", 1, this.attackFrames);
+      }
+    }
+    startEnvelopeStage(stage, target, duration) {
+      this.envelopeStage = stage;
+      this.envelopeElapsed = 0;
+      this.envelopeDuration = Math.max(1, duration);
+      this.envelopeStartGain = this.activationGain;
+      this.envelopeTargetGain = target;
+    }
+    advanceOfficialEnvelope() {
+      if (!this.frozenBufferActive) {
+        this.activationGain = 0;
+        this.envelopeStage = "idle";
+        return;
+      }
+      if (this.envelopeStage === "idle") return;
+      if (this.envelopeStage === "sustain") {
+        this.activationGain = this.sustainGain;
+        return;
+      }
+      this.envelopeElapsed += 1;
+      if (this.envelopeElapsed < this.envelopeDuration) {
+        this.activationGain = this.envelopeStartGain + (this.envelopeTargetGain - this.envelopeStartGain) * this.envelopeElapsed / this.envelopeDuration;
+        return;
+      }
+      this.activationGain = this.envelopeTargetGain;
+      if (this.envelopeStage === "attack") {
+        this.startEnvelopeStage("decay", this.sustainGain, this.decayFrames);
+      } else if (this.envelopeStage === "decay") {
+        this.envelopeStage = "sustain";
+      } else {
+        this.envelopeStage = "idle";
+      }
     }
     writeHistory(left, right) {
       this.historyLeft[this.writePosition] = left;
@@ -7985,7 +13480,7 @@
     readFrozenChannel(buffer) {
       const seamStart = this.loopLength - this.loopCrossfadeFrames;
       if (this.loopPhase + this.playbackRate >= seamStart) {
-        const seamPosition = clamp19(
+        const seamPosition = clamp25(
           (this.loopPhase - seamStart + this.playbackRate) / this.loopCrossfadeFrames,
           0,
           1
@@ -7993,16 +13488,16 @@
         const oldGain = 1 - seamPosition;
         const newGain = seamPosition;
         const outgoing = this.readLoopPosition(buffer, this.loopPhase);
-        const incoming = this.readLoopPosition(buffer, clamp19(this.loopPhase - seamStart, 0, this.loopCrossfadeFrames));
+        const incoming = this.readLoopPosition(buffer, clamp25(this.loopPhase - seamStart, 0, this.loopCrossfadeFrames));
         return finiteSample(outgoing * oldGain + incoming * newGain);
       }
       return this.readLoopPosition(buffer, this.loopPhase);
     }
     readLoopPosition(buffer, position) {
-      const bounded3 = clamp19(position, 0, this.loopLength - 1);
-      const firstFrame = Math.floor(bounded3);
+      const bounded6 = clamp25(position, 0, this.loopLength - 1);
+      const firstFrame = Math.floor(bounded6);
       const secondFrame = Math.min(firstFrame + 1, this.loopLength - 1);
-      const fraction = bounded3 - firstFrame;
+      const fraction = bounded6 - firstFrame;
       const firstIndex = (this.loopStart + firstFrame) % this.maxCaptureFrames;
       const secondIndex = (this.loopStart + secondFrame) % this.maxCaptureFrames;
       const firstSample = buffer[firstIndex] ?? 0;
@@ -8016,7 +13511,11 @@
       }
     }
     framesForCapture(milliseconds) {
-      return clamp19(Math.round(this.sampleRate * milliseconds / 1e3), 1, this.maxCaptureFrames);
+      return clamp25(Math.round(this.sampleRate * milliseconds / 1e3), 1, this.maxCaptureFrames);
+    }
+    framesForOfficialTime(value, minimumMs, maximumMs) {
+      const milliseconds = minimumMs * Math.pow(maximumMs / minimumMs, clamp25(value, 0, 100) / 100);
+      return Math.max(1, Math.round(this.sampleRate * milliseconds / 1e3));
     }
     wrapHistoryIndex(index) {
       let wrapped = index % this.maxCaptureFrames;
@@ -8033,35 +13532,35 @@
   // src/audio/fx/dsp/BrowserWarpDsp.ts
   var MIN_SAMPLE_RATE10 = 8e3;
   var MAX_SAMPLE_RATE10 = 192e3;
-  var MIN_BPM2 = 30;
-  var MAX_BPM2 = 300;
+  var MIN_BPM4 = 30;
+  var MAX_BPM4 = 300;
   var CAPTURE_BEATS = [0.25, 0.5, 1, 2, 4];
-  var MAX_CAPTURE_SECONDS2 = 8;
+  var MAX_CAPTURE_SECONDS3 = 8;
   var GRAIN_COUNT = 8;
   var WINDOW_TABLE_SIZE = 1024;
   var GRAIN_WINDOW_MS = 160;
   var MAX_FEEDBACK2 = 0.8;
   var MAX_SAMPLE = 8;
-  var TWO_PI9 = Math.PI * 2;
+  var TWO_PI10 = Math.PI * 2;
   var FDN_DELAY_SECONDS2 = [0.0297, 0.0371, 0.0411, 0.0533, 0.0617, 0.0719, 0.0797, 0.0893];
   var BPM = 0;
   var CAPTURE = 1;
   var SMEAR = 2;
   var PITCH2 = 3;
   var FEEDBACK4 = 4;
-  function clamp20(value, minimum, maximum) {
+  function clamp26(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
   function finiteBounded7(value) {
-    return Number.isFinite(value) ? clamp20(value, -MAX_SAMPLE, MAX_SAMPLE) : 0;
+    return Number.isFinite(value) ? clamp26(value, -MAX_SAMPLE, MAX_SAMPLE) : 0;
   }
   function quantizeBeats(value) {
     let chosen = CAPTURE_BEATS[0];
     let distance = Number.POSITIVE_INFINITY;
-    for (const option of CAPTURE_BEATS) {
-      const currentDistance = Math.abs(option - value);
+    for (const option2 of CAPTURE_BEATS) {
+      const currentDistance = Math.abs(option2 - value);
       if (currentDistance < distance) {
-        chosen = option;
+        chosen = option2;
         distance = currentDistance;
       }
     }
@@ -8105,8 +13604,8 @@
     lastFdnLeft = 0;
     lastFdnRight = 0;
     constructor(sampleRate = 48e3, parameters = {}) {
-      this.sampleRate = Number.isFinite(sampleRate) ? clamp20(sampleRate, MIN_SAMPLE_RATE10, MAX_SAMPLE_RATE10) : 48e3;
-      this.maxCaptureFrames = Math.ceil(this.sampleRate * MAX_CAPTURE_SECONDS2);
+      this.sampleRate = Number.isFinite(sampleRate) ? clamp26(sampleRate, MIN_SAMPLE_RATE10, MAX_SAMPLE_RATE10) : 48e3;
+      this.maxCaptureFrames = Math.ceil(this.sampleRate * MAX_CAPTURE_SECONDS3);
       const makeBank = () => [
         new Float32Array(this.maxCaptureFrames),
         new Float32Array(this.maxCaptureFrames)
@@ -8114,7 +13613,7 @@
       this.banks = [makeBank(), makeBank()];
       this.window = new Float32Array(WINDOW_TABLE_SIZE + 1);
       for (let index = 0; index <= WINDOW_TABLE_SIZE; index += 1) {
-        this.window[index] = 0.5 - 0.5 * Math.cos(TWO_PI9 * index / WINDOW_TABLE_SIZE);
+        this.window[index] = 0.5 - 0.5 * Math.cos(TWO_PI10 * index / WINDOW_TABLE_SIZE);
       }
       this.fdnLines = FDN_DELAY_SECONDS2.map((seconds) => new Float32Array(
         Math.max(1, Math.round(seconds * this.sampleRate))
@@ -8131,12 +13630,12 @@
         }
       }
       this.parameterAlpha = 1 - Math.exp(-1 / (0.015 * this.sampleRate));
-      this.dampingAlpha = 1 - Math.exp(-TWO_PI9 * 6500 / this.sampleRate);
-      const bpm = Number.isFinite(parameters.bpm) ? clamp20(parameters.bpm, MIN_BPM2, MAX_BPM2) : 120;
+      this.dampingAlpha = 1 - Math.exp(-TWO_PI10 * 6500 / this.sampleRate);
+      const bpm = Number.isFinite(parameters.bpm) ? clamp26(parameters.bpm, MIN_BPM4, MAX_BPM4) : 120;
       const capture = Number.isFinite(parameters.captureBeats) ? quantizeBeats(parameters.captureBeats) : 1;
-      const smear = Number.isFinite(parameters.smearPercent) ? clamp20(parameters.smearPercent, 0, 100) : 30;
-      const pitch = Number.isFinite(parameters.pitchSemitones) ? clamp20(parameters.pitchSemitones, -24, 24) : 0;
-      const feedback = Number.isFinite(parameters.feedbackPercent) ? clamp20(parameters.feedbackPercent, 0, 95) : 20;
+      const smear = Number.isFinite(parameters.smearPercent) ? clamp26(parameters.smearPercent, 0, 100) : 30;
+      const pitch = Number.isFinite(parameters.pitchSemitones) ? clamp26(parameters.pitchSemitones, -24, 24) : 0;
+      const feedback = Number.isFinite(parameters.feedbackPercent) ? clamp26(parameters.feedbackPercent, 0, 95) : 20;
       this.current.set([bpm, capture, smear, pitch, feedback]);
       this.target.set(this.current);
       this.setParameters(parameters);
@@ -8151,11 +13650,11 @@
       return this.frozenLength;
     }
     setParameters(parameters) {
-      if (Number.isFinite(parameters.bpm)) this.target[BPM] = clamp20(parameters.bpm, MIN_BPM2, MAX_BPM2);
+      if (Number.isFinite(parameters.bpm)) this.target[BPM] = clamp26(parameters.bpm, MIN_BPM4, MAX_BPM4);
       if (Number.isFinite(parameters.captureBeats)) this.target[CAPTURE] = quantizeBeats(parameters.captureBeats);
-      if (Number.isFinite(parameters.smearPercent)) this.target[SMEAR] = clamp20(parameters.smearPercent, 0, 100);
-      if (Number.isFinite(parameters.pitchSemitones)) this.target[PITCH2] = clamp20(parameters.pitchSemitones, -24, 24);
-      if (Number.isFinite(parameters.feedbackPercent)) this.target[FEEDBACK4] = clamp20(parameters.feedbackPercent, 0, 95);
+      if (Number.isFinite(parameters.smearPercent)) this.target[SMEAR] = clamp26(parameters.smearPercent, 0, 100);
+      if (Number.isFinite(parameters.pitchSemitones)) this.target[PITCH2] = clamp26(parameters.pitchSemitones, -24, 24);
+      if (Number.isFinite(parameters.feedbackPercent)) this.target[FEEDBACK4] = clamp26(parameters.feedbackPercent, 0, 95);
       if (typeof parameters.frozen === "boolean" && parameters.frozen !== this.freezeRequested) {
         this.freezeRequested = parameters.frozen;
         if (this.freezeRequested && !this.freezeActive) this.freezePending = true;
@@ -8175,7 +13674,7 @@
       this.writerPosition = (this.writerPosition + 1) % this.maxCaptureFrames;
       this.validFrames = Math.min(this.validFrames + 1, this.maxCaptureFrames);
       if (this.freezePending) this.tryCapture();
-      const smear = clamp20(this.current[SMEAR] ?? 30, 0, 100) * 0.01;
+      const smear = clamp26(this.current[SMEAR] ?? 30, 0, 100) * 0.01;
       const density = 6 + smear * 34;
       this.spawnPhase += density / this.sampleRate;
       if (this.spawnPhase >= 1) {
@@ -8258,7 +13757,7 @@
       this.captureCount = 0;
     }
     captureFramesForCurrentTempo() {
-      const framesPerBeat = this.sampleRate * 60 / clamp20(this.current[BPM] ?? 120, MIN_BPM2, MAX_BPM2);
+      const framesPerBeat = this.sampleRate * 60 / clamp26(this.current[BPM] ?? 120, MIN_BPM4, MAX_BPM4);
       return Math.max(32, Math.min(this.maxCaptureFrames, Math.round(framesPerBeat * (this.current[CAPTURE] ?? 1))));
     }
     tryCapture() {
@@ -8290,7 +13789,7 @@
       this.nextVoice = (voice + 1) % GRAIN_COUNT;
       this.lengthFrames[voice] = 0;
       this.ageFrames[voice] = 0;
-      const beatFrames = this.sampleRate * 60 / clamp20(this.current[BPM] ?? 120, MIN_BPM2, MAX_BPM2);
+      const beatFrames = this.sampleRate * 60 / clamp26(this.current[BPM] ?? 120, MIN_BPM4, MAX_BPM4);
       const captureLength = this.freezeActive ? this.frozenLength : Math.max(32, this.validFrames);
       const length = Math.max(32, Math.min(
         Math.round(this.sampleRate * GRAIN_WINDOW_MS * 1e-3),
@@ -8298,7 +13797,7 @@
         captureLength
       ));
       const pitchJitter = this.nextRandomSigned() * smear * 4;
-      const pitch = clamp20((this.current[PITCH2] ?? 0) + pitchJitter, -24, 24);
+      const pitch = clamp26((this.current[PITCH2] ?? 0) + pitchJitter, -24, 24);
       const step = 2 ** (pitch / 12);
       const jitterFrames = Math.round(smear * length * 0.25 * this.nextRandomSigned());
       let position;
@@ -8383,6 +13882,8 @@
   };
 
   // src/audio/fx/dsp/BrowserElectricDsp.ts
+  var OFFICIAL_LIMITS4 = { shift: [-12, 12], formant: [-50, 50], speed: [0, 10], stability: [-10, 10], scale: [0, 12] };
+  var MAJOR_SCALE_MASK = 1 << 0 | 1 << 2 | 1 << 4 | 1 << 5 | 1 << 7 | 1 << 9 | 1 << 11;
   var DEFAULT_CHARACTER = 0;
   var DEFAULT_PITCH_SNAP_PERCENT = 50;
   var DEFAULT_TONE_HZ3 = 5e3;
@@ -8390,11 +13891,11 @@
   var MAX_OUTPUT2 = 4;
   var RING_CARRIER_RATIO = Math.SQRT2;
   var TONE_UPDATE_INTERVAL = 16;
-  function clamp21(value, minimum, maximum) {
+  function clamp27(value, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
-  function bounded2(value, fallback, minimum, maximum) {
-    return Number.isFinite(value) ? clamp21(value, minimum, maximum) : fallback;
+  function bounded5(value, fallback, minimum, maximum) {
+    return Number.isFinite(value) ? clamp27(value, minimum, maximum) : fallback;
   }
   var BrowserElectricDsp = class _BrowserElectricDsp {
     sampleRate;
@@ -8404,6 +13905,17 @@
     toneHz;
     toneLeft;
     toneRight;
+    officialOscillator;
+    officialEnabled = false;
+    officialShift = 0;
+    officialScale = 0;
+    officialStability = 0;
+    officialSpeed = 5;
+    officialPitchAlpha = 0;
+    officialQuantizedNote = null;
+    officialPitchTarget = 0;
+    officialPitchFrequency = 0;
+    officialCountdown = 0;
     characterValue;
     toneCountdown = 0;
     carrierPhase = 0;
@@ -8411,9 +13923,10 @@
     outputRightValue = 0;
     constructor(sampleRate, parameters = {}) {
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
+      this.officialOscillator = new BrowserOfficialVoiceOscillator(this.sampleRate);
       this.characterValue = _BrowserElectricDsp.validateCharacter(parameters.character ?? DEFAULT_CHARACTER);
-      const pitchSnap = bounded2(parameters.pitchSnapPercent ?? DEFAULT_PITCH_SNAP_PERCENT, DEFAULT_PITCH_SNAP_PERCENT, 0, 100);
-      const tone = bounded2(parameters.toneHz ?? DEFAULT_TONE_HZ3, DEFAULT_TONE_HZ3, 100, 16e3);
+      const pitchSnap = bounded5(parameters.pitchSnapPercent ?? DEFAULT_PITCH_SNAP_PERCENT, DEFAULT_PITCH_SNAP_PERCENT, 0, 100);
+      const tone = bounded5(parameters.toneHz ?? DEFAULT_TONE_HZ3, DEFAULT_TONE_HZ3, 100, 16e3);
       const safeTone = Math.min(tone, this.sampleRate * 0.45);
       this.toneHz = new LinearParameterSmoother(safeTone);
       this.toneLeft = new TptStateVariableFilter(this.sampleRate, safeTone, Math.SQRT1_2);
@@ -8450,7 +13963,10 @@
       return this.voice.detectedFrequencyHz;
     }
     get targetPitchHz() {
-      return this.voice.targetPitchHz;
+      return this.officialEnabled ? this.officialPitchTarget : this.voice.targetPitchHz;
+    }
+    get currentPitchHz() {
+      return this.officialEnabled ? this.officialPitchFrequency : this.voice.targetPitchHz;
     }
     get isVoiced() {
       return this.voice.isVoiced;
@@ -8460,7 +13976,7 @@
     }
     /** Classic and Metallic need an accepted F0; those paths fail dry until voiced. */
     get requiresVoicedInput() {
-      return this.characterValue === 0 || this.characterValue === 1;
+      return this.officialEnabled || this.characterValue === 0 || this.characterValue === 1;
     }
     setParameters(parameters) {
       if (parameters.character !== void 0) {
@@ -8468,21 +13984,44 @@
       }
       const rampFrames = Math.max(1, Math.round(this.sampleRate * 0.02));
       if (Number.isFinite(parameters.pitchSnapPercent)) {
-        this.voice.setParameters({ pitchSnapPercent: bounded2(parameters.pitchSnapPercent, DEFAULT_PITCH_SNAP_PERCENT, 0, 100) });
+        this.voice.setParameters({ pitchSnapPercent: bounded5(parameters.pitchSnapPercent, DEFAULT_PITCH_SNAP_PERCENT, 0, 100) });
       }
       if (Number.isFinite(parameters.toneHz)) {
-        const nextTone = Math.min(bounded2(parameters.toneHz, DEFAULT_TONE_HZ3, 100, 16e3), this.sampleRate * 0.45);
+        const nextTone = Math.min(bounded5(parameters.toneHz, DEFAULT_TONE_HZ3, 100, 16e3), this.sampleRate * 0.45);
         this.toneHz.setTarget(nextTone, rampFrames);
         this.voice.setParameters({ tone: nextTone });
         this.bitCrusher.setParameters({ filterHz: nextTone }, rampFrames);
       }
     }
+    /** Official pitch-correction route, separate from the provisional legacy character bank. */
+    setOfficialParameters(parameters) {
+      validateVoiceControls(parameters, OFFICIAL_LIMITS4, "ELECTRIC");
+      if (!Object.values(parameters).some((value) => value !== void 0)) return;
+      if (!this.officialEnabled) {
+        this.vocoder.setVoiceShapingParameters({ formant: 0, tone: 0, attack: 50, release: 50, mod_sens: 0 });
+        this.officialEnabled = true;
+      }
+      if (parameters.shift !== void 0) this.officialShift = parameters.shift;
+      if (parameters.stability !== void 0) this.officialStability = parameters.stability;
+      if (parameters.speed !== void 0) this.officialSpeed = parameters.speed;
+      if (parameters.scale !== void 0 && parameters.scale !== this.officialScale) {
+        this.officialScale = parameters.scale;
+        this.officialQuantizedNote = null;
+      }
+      if (parameters.formant !== void 0) this.vocoder.setVoiceShapingParameters({ formant: parameters.formant });
+      const correctionSeconds = 0.2 * 5e-3 ** (this.officialSpeed / 10);
+      this.officialPitchAlpha = 1 - Math.exp(-1 / (correctionSeconds * this.sampleRate));
+    }
     processSample(inputLeft, inputRight) {
-      const left = Number.isFinite(inputLeft) ? clamp21(inputLeft, -MAX_INPUT, MAX_INPUT) : 0;
-      const right = Number.isFinite(inputRight) ? clamp21(inputRight, -MAX_INPUT, MAX_INPUT) : 0;
+      const left = Number.isFinite(inputLeft) ? clamp27(inputLeft, -MAX_INPUT, MAX_INPUT) : 0;
+      const right = Number.isFinite(inputRight) ? clamp27(inputRight, -MAX_INPUT, MAX_INPUT) : 0;
       const mono = (left + right) * 0.5;
       this.voice.processSample(left, right);
       const voiced = this.voice.isVoiced;
+      if (this.officialEnabled) {
+        this.processOfficialSample(left, right, mono);
+        return;
+      }
       const voiceLeft = this.voice.outputLeft;
       const voiceRight = this.voice.outputRight;
       const voiceMono = (voiceLeft + voiceRight) * 0.5;
@@ -8495,7 +14034,7 @@
           break;
         case 1: {
           const fundamental = this.voice.targetPitchHz;
-          const carrierHz = clamp21(fundamental * RING_CARRIER_RATIO, 0, this.sampleRate * 0.45);
+          const carrierHz = clamp27(fundamental * RING_CARRIER_RATIO, 0, this.sampleRate * 0.45);
           const step = carrierHz / this.sampleRate;
           const carrier = Math.sin(2 * Math.PI * this.carrierPhase);
           this.carrierPhase += step;
@@ -8524,7 +14063,7 @@
       }
       const tone = this.toneHz.next();
       if (this.toneCountdown <= 0) {
-        const cutoff = clamp21(tone, 100, this.sampleRate * 0.45);
+        const cutoff = clamp27(tone, 100, this.sampleRate * 0.45);
         this.toneLeft.setParameters(cutoff, Math.SQRT1_2);
         this.toneRight.setParameters(cutoff, Math.SQRT1_2);
         this.toneCountdown = TONE_UPDATE_INTERVAL - 1;
@@ -8533,11 +14072,58 @@
       }
       const filteredLeft = this.toneLeft.processSample(wetLeft);
       const filteredRight = this.toneRight.processSample(wetRight);
-      this.outputLeftValue = Number.isFinite(filteredLeft) ? clamp21(filteredLeft, -MAX_OUTPUT2, MAX_OUTPUT2) : 0;
-      this.outputRightValue = Number.isFinite(filteredRight) ? clamp21(filteredRight, -MAX_OUTPUT2, MAX_OUTPUT2) : 0;
+      this.outputLeftValue = Number.isFinite(filteredLeft) ? clamp27(filteredLeft, -MAX_OUTPUT2, MAX_OUTPUT2) : 0;
+      this.outputRightValue = Number.isFinite(filteredRight) ? clamp27(filteredRight, -MAX_OUTPUT2, MAX_OUTPUT2) : 0;
+    }
+    processOfficialSample(left, right, mono) {
+      if (!this.voice.isVoiced) {
+        this.outputLeftValue = clamp27(left, -MAX_OUTPUT2, MAX_OUTPUT2);
+        this.outputRightValue = clamp27(right, -MAX_OUTPUT2, MAX_OUTPUT2);
+        return;
+      }
+      if (this.officialCountdown <= 0) {
+        const measured = 69 + 12 * Math.log2(this.voice.detectedFrequencyHz / 440);
+        const nearest = this.nearestScaleNote(measured);
+        const held = this.officialQuantizedNote;
+        const hysteresis = (this.officialStability + 10) * 0.045;
+        if (held === null || Math.abs(measured - held) - Math.abs(measured - nearest) > hysteresis) {
+          this.officialQuantizedNote = nearest;
+        }
+        this.officialPitchTarget = Math.min(this.sampleRate * 0.44, 440 * 2 ** (((this.officialQuantizedNote ?? nearest) + this.officialShift - 69) / 12));
+        this.officialCountdown = TONE_UPDATE_INTERVAL - 1;
+      } else this.officialCountdown -= 1;
+      if (this.officialPitchFrequency <= 0) this.officialPitchFrequency = this.officialPitchTarget;
+      this.officialPitchFrequency += (this.officialPitchTarget - this.officialPitchFrequency) * this.officialPitchAlpha;
+      this.officialOscillator.setFrequency(this.officialPitchFrequency);
+      const carrier = this.officialOscillator.processSample();
+      const output = this.vocoder.processWithCarrier(mono, carrier);
+      this.outputLeftValue = clamp27(output, -MAX_OUTPUT2, MAX_OUTPUT2);
+      this.outputRightValue = this.outputLeftValue;
+    }
+    nearestScaleNote(note) {
+      if (this.officialScale === 0) return Math.round(note);
+      const root = this.officialScale - 1;
+      let nearest = Math.round(note);
+      let distance = Infinity;
+      const first = Math.floor(note) - 12;
+      for (let candidate = first; candidate <= first + 24; candidate += 1) {
+        const pitchClass = ((candidate - root) % 12 + 12) % 12;
+        if ((MAJOR_SCALE_MASK & 1 << pitchClass) === 0) continue;
+        const current = Math.abs(candidate - note);
+        if (current < distance) {
+          nearest = candidate;
+          distance = current;
+        }
+      }
+      return nearest;
     }
     reset() {
       this.voice.reset();
+      this.officialOscillator.reset();
+      this.officialQuantizedNote = null;
+      this.officialPitchTarget = 0;
+      this.officialPitchFrequency = 0;
+      this.officialCountdown = 0;
       this.vocoder.reset();
       this.bitCrusher.reset();
       this.toneLeft.reset();
@@ -8580,7 +14166,7 @@
       catalogFunction: "RING.MOD (catalog ID 9)",
       formulaIds: ["F01", "F06", "F29"],
       algorithmicLatencySamples: 0,
-      cleanRoomProvenance: "Supplied report F29 sine-carrier equation and clean-room phase accumulator; no Roland source or code."
+      cleanRoomProvenance: "Supplied report F29 sine-carrier equation with a sine default and selectable, harmonic-limited triangle wavetable; no Roland source or code. Triangle alias/quality acceptance remains open."
     },
     distortion: {
       catalogFunction: "DIST (catalog ID 24)",
@@ -8859,13 +14445,41 @@
     robot: {
       catalogFunction: "ROBOT (catalog ID 16)",
       formulaIds: ["F09", "F10", "F11", "F12"],
-      algorithmicLatencySamples: 0,
+      // Default 48 kHz PSOLA core reference; the instance getter follows sample rate.
+      algorithmicLatencySamples: 1416,
       implementationStatus: "experimental",
-      cleanRoomProvenance: "Experimental sample-clocked monophonic decimated-YIN tracking and semitone target quantization driving a separately pinned Signalsmith LIVE_FX shifter in the host. Polyphonic and unvoiced pitch tracking are unsupported; vendor formant compensation is enabled and anchored to tracked source F0, with zero shift expressing preserve intent and nonzero shift expressing independent envelope movement. Quality acceptance remains unverified; total acquisition/shifter latency requires measurement and no Roland source or firmware semantics are asserted."
+      cleanRoomProvenance: "Experimental sample-clocked monophonic decimated-YIN tracking and semitone target quantization with a fixed-latency PSOLA-lite core and a separately pinned Signalsmith LIVE_FX fallback in the host. The core latency excludes tracker acquisition; BrowserRobotFX aligns both paths to max(PSOLA, Signalsmith) latency, not measured physical end-to-end delay. Polyphonic and unvoiced pitch tracking are unsupported; vendor formant compensation is enabled and anchored to tracked source F0, with zero shift expressing preserve intent and nonzero shift expressing independent envelope movement. Quality acceptance remains unverified and no Roland source or firmware semantics are asserted."
     }
   };
-  var TWO_PI10 = Math.PI * 2;
+  var TWO_PI11 = Math.PI * 2;
   var DEFAULT_SMOOTHING_SECONDS = 0.015;
+  var FILTER_RESONANCE_PERCENT_CURVE_EXPONENT = 2.117350426267045;
+  function filterResonancePercentToQ(percent2) {
+    const normalized = clamp28(percent2, 0, 100) / 100;
+    if (normalized === 0.15) return Math.SQRT1_2;
+    return 0.5 + 11.5 * normalized ** FILTER_RESONANCE_PERCENT_CURVE_EXPONENT;
+  }
+  var RING_MOD_WAVETABLE_SIZE = 2048;
+  var RING_MOD_TRIANGLE_HARMONIC_TIERS = [63, 31, 15, 7, 3, 1];
+  function createRingModTriangleTables() {
+    return RING_MOD_TRIANGLE_HARMONIC_TIERS.map((maximumHarmonic) => {
+      const table = new Float64Array(RING_MOD_WAVETABLE_SIZE);
+      for (let sample = 0; sample < table.length; sample += 1) {
+        const phase = TWO_PI11 * sample / table.length;
+        let value = 0;
+        for (let harmonic = 1; harmonic <= maximumHarmonic; harmonic += 2) {
+          const alternating = (harmonic - 1) / 2 % 2 === 0 ? 1 : -1;
+          value += alternating * Math.sin(harmonic * phase) / (harmonic * harmonic);
+        }
+        table[sample] = value;
+      }
+      let peak = 0;
+      for (let sample = 0; sample < table.length; sample += 1) peak = Math.max(peak, Math.abs(table[sample] ?? 0));
+      if (peak > 0) for (let sample = 0; sample < table.length; sample += 1) table[sample] = (table[sample] ?? 0) / peak;
+      return table;
+    });
+  }
+  var RING_MOD_TRIANGLE_TABLES = createRingModTriangleTables();
   var DEFAULT_DELAY_SECONDS = [0.0297, 0.0335, 0.0361, 0.0397, 0.0431, 0.0473, 0.0527, 0.0579];
   var EARLY_REFLECTION_DELAYS_SECONDS = [0, 67e-4, 0.0113, 0.0169, 0.0227, 0.0289, 0.0341];
   var EARLY_REFLECTION_GAINS_LEFT = [0.13, 0.068, -0.047, 0.035, -0.026, 0.021, -0.014];
@@ -8879,12 +14493,19 @@
   var DISTORTION_OVERSAMPLE_FACTOR = 4;
   var DISTORTION_FIR_TAPS = 65;
   var DISTORTION_UPSAMPLE_INPUT_HISTORY = Math.ceil(DISTORTION_FIR_TAPS / DISTORTION_OVERSAMPLE_FACTOR);
+  var DISTORTION_INTERPOLATION_TAPS_BY_PHASE = [
+    DISTORTION_UPSAMPLE_INPUT_HISTORY,
+    DISTORTION_UPSAMPLE_INPUT_HISTORY - 1,
+    DISTORTION_UPSAMPLE_INPUT_HISTORY - 1,
+    DISTORTION_UPSAMPLE_INPUT_HISTORY - 1
+  ];
   var DISTORTION_FIR_CENTER = (DISTORTION_FIR_TAPS - 1) / 2;
   var DISTORTION_CUTOFF_CYCLES_PER_OVERSAMPLE_SAMPLE = 0.117;
   var DISTORTION_MODE_CROSSFADE_OVERSAMPLED_SAMPLES = 256;
   var DISTORTION_DRY_DELAY_SAMPLES = 16;
   var DISTORTION_BIAS = 0.12;
   var FUZZ_SHARPNESS = 2.2;
+  var FUZZ_BIAS_TANH = Math.tanh(FUZZ_SHARPNESS * DISTORTION_BIAS);
   var FLANGER_MAX_DELAY_MILLISECONDS = 10;
   var FLANGER_MIN_DELAY_MILLISECONDS = 0.2;
   var FLANGER_MAX_DEPTH_MILLISECONDS = 5;
@@ -8928,7 +14549,7 @@
   var PHASER_MIN_FREQUENCY_HZ = 120;
   var PHASER_MAX_FREQUENCY_HZ = 3e3;
   var PHASER_FEEDBACK_FILTER_HZ = 7e3;
-  var PHASER_MAX_STAGES = 8;
+  var PHASER_MAX_STAGES = 12;
   var TREMOLO_DEFAULT_RATE_HZ = 4;
   var TREMOLO_DEFAULT_DEPTH = 0.5;
   var TREMOLO_MIN_RATE_HZ = 0.05;
@@ -8946,7 +14567,7 @@
     for (let tap = 0; tap < DISTORTION_FIR_TAPS; tap += 1) {
       const centered = tap - DISTORTION_FIR_CENTER;
       const normalized = tap / (DISTORTION_FIR_TAPS - 1);
-      const blackman = 0.42 - 0.5 * Math.cos(TWO_PI10 * normalized) + 0.08 * Math.cos(2 * TWO_PI10 * normalized);
+      const blackman = 0.42 - 0.5 * Math.cos(TWO_PI11 * normalized) + 0.08 * Math.cos(2 * TWO_PI11 * normalized);
       const coefficient = DISTORTION_OVERSAMPLE_FACTOR * 2 * DISTORTION_CUTOFF_CYCLES_PER_OVERSAMPLE_SAMPLE * sinc2(2 * DISTORTION_CUTOFF_CYCLES_PER_OVERSAMPLE_SAMPLE * centered) * blackman;
       interpolation[tap] = coefficient;
       coefficientSum += coefficient;
@@ -8967,9 +14588,9 @@
   function distortionFunction(mode, value) {
     switch (mode) {
       case "hard-clip":
-        return clamp22(value, -1, 1);
+        return clamp28(value, -1, 1);
       case "fuzz":
-        return Math.tanh(FUZZ_SHARPNESS * (value + DISTORTION_BIAS)) - Math.tanh(FUZZ_SHARPNESS * DISTORTION_BIAS);
+        return Math.tanh(FUZZ_SHARPNESS * (value + DISTORTION_BIAS)) - FUZZ_BIAS_TANH;
       case "overdrive":
         return Math.tanh(value);
     }
@@ -8981,7 +14602,7 @@
         return absolute <= 1 ? 0.5 * value * value : absolute - 0.5;
       }
       case "fuzz":
-        return logCosh3(FUZZ_SHARPNESS * (value + DISTORTION_BIAS)) / FUZZ_SHARPNESS - value * Math.tanh(FUZZ_SHARPNESS * DISTORTION_BIAS);
+        return logCosh3(FUZZ_SHARPNESS * (value + DISTORTION_BIAS)) / FUZZ_SHARPNESS - value * FUZZ_BIAS_TANH;
       case "overdrive":
         return logCosh3(value);
     }
@@ -8998,26 +14619,37 @@
     current;
     target;
     oneMinusAlpha;
+    settled = false;
     constructor(sampleRate, initialValue, smoothingSeconds = DEFAULT_SMOOTHING_SECONDS) {
       this.current = initialValue;
       this.target = initialValue;
       this.oneMinusAlpha = 1 - Math.exp(-1 / (sampleRate * smoothingSeconds));
     }
+    get isSettled() {
+      return this.settled;
+    }
     setTarget(value) {
-      this.target = value;
+      if (!Object.is(this.target, value)) {
+        this.target = value;
+        this.settled = false;
+      }
     }
     next() {
+      if (this.settled) return this.current;
+      const previous = this.current;
       this.current += (this.target - this.current) * this.oneMinusAlpha;
+      if (Object.is(this.current, previous)) this.settled = true;
       return this.current;
     }
   };
-  function clamp22(value, minimum, maximum) {
+  function clamp28(value, minimum, maximum) {
+    if (value !== 0 && value >= minimum && value <= maximum) return value;
     return Math.max(minimum, Math.min(maximum, value));
   }
   function validateBrowserVocoderParameters(parameters) {
     const supported = ["mix", "vocoderBands", "vocoderCarrier"];
     for (const key of Object.keys(parameters)) {
-      if (!supported.includes(key)) {
+      if (!supported.includes(key) && key !== "bpm" && key !== "quarterNotesPerMeasure" && !key.startsWith("official_")) {
         throw new RangeError(key === "formant" || key === "vocoderFormantSemitones" ? "Browser VOCODER formant shifting is unsupported; no formant remapping is applied." : `Browser VOCODER does not support the ${key} parameter.`);
       }
     }
@@ -9034,7 +14666,7 @@
   function validateBrowserElectricParameters(parameters) {
     const supported = ["mix", "electricCharacter", "electricPitchSnapPercent", "electricToneHz"];
     for (const key of Object.keys(parameters)) {
-      if (!supported.includes(key)) {
+      if (!supported.includes(key) && key !== "bpm" && key !== "quarterNotesPerMeasure" && !key.startsWith("official_")) {
         throw new RangeError(`Browser ELECTRIC does not support the ${key} parameter.`);
       }
     }
@@ -9054,7 +14686,7 @@
   function validateBrowserOscBotParameters(parameters, sampleRate) {
     const supported = ["mix", "oscBotWaveform", "oscBotPattern", "oscBotToneHz", "bpm"];
     for (const key of Object.keys(parameters)) {
-      if (!supported.includes(key)) {
+      if (!supported.includes(key) && key !== "bpm" && key !== "quarterNotesPerMeasure" && !key.startsWith("official_")) {
         throw new RangeError(`Browser OSC BOT does not support the ${key} parameter.`);
       }
     }
@@ -9077,7 +14709,7 @@
   function validateBrowserOscVocParameters(parameters) {
     const supported = ["mix", "oscVocWaveform", "oscVocMidiChannel", "oscVocOctave", "oscVocBands"];
     for (const key of Object.keys(parameters)) {
-      if (!supported.includes(key)) throw new RangeError(`Browser OSC VOC (M) does not support the ${key} parameter.`);
+      if (!supported.includes(key) && key !== "bpm" && key !== "quarterNotesPerMeasure" && !key.startsWith("official_")) throw new RangeError(`Browser OSC VOC (M) does not support the ${key} parameter.`);
     }
     if (parameters.mix !== void 0 && (!Number.isFinite(parameters.mix) || parameters.mix < 0 || parameters.mix > 1)) {
       throw new RangeError("Browser OSC VOC (M) mix must be between 0 and 1.");
@@ -9095,17 +14727,13 @@
       throw new RangeError("Browser OSC VOC (M) bands must be an integer from 8 to 24.");
     }
   }
-  function positiveModulo2(value, modulus) {
-    const result = value % modulus;
-    return result < 0 ? result + modulus : result;
-  }
   function isTremoloWaveform(value) {
     return value === "sine" || value === "triangle" || value === "square";
   }
   function firstOrderAllpassCoefficient(frequencyHz, sampleRate) {
-    const frequency = clamp22(frequencyHz, 20, sampleRate * 0.45);
+    const frequency = clamp28(frequencyHz, 20, sampleRate * 0.45);
     const tangent = Math.tan(Math.PI * frequency / sampleRate);
-    return clamp22((tangent - 1) / (tangent + 1), -0.9995, 0.9995);
+    return clamp28((tangent - 1) / (tangent + 1), -0.9995, 0.9995);
   }
   function polyBlep4(phase, phaseStep) {
     if (phase < phaseStep) {
@@ -9127,7 +14755,8 @@
     const coefficient2 = -(fraction * oneMinus * (3 - fraction)) / 2;
     const coefficient3 = fraction * oneMinus * (2 - fraction) / 6;
     const length = buffer.length;
-    let index = positiveModulo2(writeIndex - wholeDelay, length);
+    let index = writeIndex - wholeDelay;
+    if (index < 0) index += length;
     const sample0 = buffer[index] ?? 0;
     index = index > 0 ? index - 1 : length - 1;
     const sample1 = buffer[index] ?? 0;
@@ -9145,8 +14774,9 @@
       if (this.algorithm === "synth" || this.algorithm === "g2b" || this.algorithm === "electric") return 2868;
       if (this.algorithm === "beat-shift") return this.beatShift?.latencySamples ?? 0;
       if (this.algorithm === "reverse-delay") return this.reverseDelay?.latencySamples ?? 0;
-      if (this.algorithm === "reverse-reverb") return this.reverseReverb?.latencySamples ?? 0;
+      if (this.algorithm === "reverse-reverb") return this.officialReverseReverb?.latencySamples ?? this.reverseReverb?.latencySamples ?? 0;
       if (this.algorithm === "vinyl-flick") return this.vinylFlick?.algorithmicLatencySamples ?? 0;
+      if (this.algorithm === "robot") return this.robot?.psolaLatencySamples ?? 0;
       return 0;
     }
     blocksProcessed = 0;
@@ -9166,8 +14796,16 @@
     gateDetectorEnvelope = 0;
     gateHoldRemainingSamples = 0;
     gateGain = 0;
+    gateDetectorRelease;
+    gateThresholdKey = Number.NaN;
+    gateThresholdLinear = 0;
+    gateHoldKey = Number.NaN;
+    gateHoldSamples = 1;
+    gateReleaseKey = Number.NaN;
+    gateReleaseCoefficient = 0;
     ringModHz;
     ringModDepth;
+    ringModWaveform;
     driveDb;
     outputDb;
     flangerDelayMs;
@@ -9220,15 +14858,28 @@
     autoPanWetLeft = 0;
     autoPanWetRight = 0;
     bypassMix = new LinearParameterSmoother(0);
+    // Cache the exact equal-power coefficients while mix/bypass controls are
+    // stationary. Values are refreshed from the existing helpers whenever the
+    // sample-position changes, so automation retains the original equations.
+    cachedWetPosition = Number.NaN;
+    cachedWetDryGain = 1;
+    cachedWetGain = 0;
+    cachedBypassPosition = Number.NaN;
+    cachedBypassActiveGain = 1;
+    cachedBypassGain = 0;
     distortionModeBlend = new LinearParameterSmoother(1);
     distortionModeOld;
     distortionModeTarget;
     driveLinear = 1;
     outputLinear = 1;
-    upsampleHistory = new Float64Array(DISTORTION_UPSAMPLE_INPUT_HISTORY * 2);
+    // Duplicate each circular history so processDistortionSample can read a
+    // contiguous window without a wrap branch for every FIR tap.
+    upsampleHistory = new Float64Array(DISTORTION_UPSAMPLE_INPUT_HISTORY * 4);
     upsampleWriteIndices = new Int32Array(2);
     previousDrivenInput = new Float64Array(2);
-    waveshapedHistory = new Float64Array(DISTORTION_FIR_TAPS * 2);
+    distortionPreviousPrimitive = new Float64Array(2);
+    distortionPrimitiveValid = new Uint8Array(2);
+    waveshapedHistory = new Float64Array(DISTORTION_FIR_TAPS * 4);
     waveshapedWriteIndices = new Int32Array(2);
     dryDelayBuffers = [
       new Float32Array(DISTORTION_DRY_DELAY_SAMPLES),
@@ -9324,62 +14975,111 @@
     flangerDampingAlpha;
     earlyRingLength;
     controlUpdateCountdown = 0;
+    // `advanceControls` updates a fixed set of smoothed values every audio
+    // sample. Once every smoother and waveform crossfade has reached its exact
+    // terminal value, the values and their derived coefficients are immutable
+    // until the next control message. A short scan cadence detects that state
+    // without adding work to every sample; the coefficient refresh after the
+    // final ramp is required before the fast path can become active.
+    controlsSteady = false;
+    controlSettleScanCountdown = 0;
+    controlSmoothersSettled = false;
+    // Test-only differential reference switch; production instances keep this
+    // enabled and it never changes DSP parameters or audio state.
+    settledControlFastPathEnabled = true;
     currentAudioFrame = 0;
+    official;
+    officialDelay = null;
+    officialRoll = null;
+    officialReverseReverb = null;
+    officialStepSlicer = null;
+    officialDirectGain = new LinearParameterSmoother(1);
+    officialEffectGain = new LinearParameterSmoother(1);
+    officialLevelGain = new LinearParameterSmoother(1);
+    officialIndependentMix = false;
+    officialModulation = false;
+    officialFilterPhase = 0;
+    officialStepPhase = 1;
+    officialLfoLeft = 0;
+    officialLfoRight = 0;
+    officialBiPhase = false;
+    officialToneEq = null;
+    officialLowCutLeft;
+    officialLowCutRight;
+    officialHighCutLeft;
+    officialHighCutRight;
+    officialHasLowCut = false;
+    officialHasHighCut = false;
+    officialPreDelayBuffers;
+    officialPreDelayWrite = 0;
+    officialPreDelaySamples = 0;
+    officialInitPhase = NaN;
+    officialLastVariant = 0;
     constructor(algorithm, sampleRate = 48e3, parameters = {}, initialFrame = 0) {
+      this.official = new OfficialBrowserControlState(algorithm, sampleRate);
+      parameters = this.official.translate(parameters);
       if (algorithm === "vocoder") validateBrowserVocoderParameters(parameters);
       if (algorithm === "electric") validateBrowserElectricParameters(parameters);
       if (algorithm === "osc-voc") validateBrowserOscVocParameters(parameters);
       this.algorithm = algorithm;
       this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8e3 ? sampleRate : 48e3;
+      this.officialLowCutLeft = new TptStateVariableFilter(this.sampleRate);
+      this.officialLowCutRight = new TptStateVariableFilter(this.sampleRate);
+      this.officialHighCutLeft = new TptStateVariableFilter(this.sampleRate);
+      this.officialHighCutRight = new TptStateVariableFilter(this.sampleRate);
+      this.officialPreDelayBuffers = algorithm === "reverb" || algorithm === "gate-reverb" ? [new Float32Array(Math.ceil(this.sampleRate * 0.5) + 1), new Float32Array(Math.ceil(this.sampleRate * 0.5) + 1)] : null;
+      this.gateDetectorRelease = algorithm === "gate-reverb" ? Math.exp(-1 / (GATE_REVERB_DETECTOR_RELEASE_MS * 1e-3 * this.sampleRate)) : 0;
       this.currentAudioFrame = Number.isSafeInteger(initialFrame) && initialFrame >= 0 ? Math.floor(initialFrame) : 0;
       const nyquist = this.sampleRate * 0.499;
-      const initialCutoff = clamp22(parameters.cutoffHz ?? 1200, 20, nyquist);
-      const initialQ = clamp22(parameters.q ?? Math.SQRT1_2, 0.1, 30);
+      const initialCutoff = clamp28(parameters.cutoffHz ?? 1200, 20, nyquist);
+      const mappedFilterResonance = (algorithm === "lpf" || algorithm === "hpf") && Number.isFinite(parameters.filterResonancePercent) ? filterResonancePercentToQ(parameters.filterResonancePercent) : void 0;
+      const initialQ = clamp28(mappedFilterResonance ?? parameters.q ?? Math.SQRT1_2, 0.1, 30);
       if (algorithm === "osc-bot") validateBrowserOscBotParameters(parameters, this.sampleRate);
-      const initialWet = clamp22(parameters.mix ?? (algorithm === "vocoder" || algorithm === "osc-voc" || algorithm === "osc-bot" || algorithm === "electric" ? 0.7 : algorithm === "delay" || algorithm === "panning-delay" || algorithm === "mod-delay" ? DELAY_DEFAULT_MIX : algorithm === "chorus" ? 0.4 : algorithm === "phaser" || algorithm === "beat-repeat" || algorithm === "beat-scatter" || algorithm === "roll" || algorithm === "twist" ? 0.5 : algorithm === "lo-fi" || algorithm === "radio" ? 0.7 : algorithm === "tape-echo" || algorithm === "gate-reverb" || algorithm === "reverse-delay" ? 0.3 : algorithm === "reverse-reverb" ? 0.35 : algorithm === "granular-delay" ? 0.35 : algorithm === "warp" ? 0.4 : 1), 0, 1);
+      const initialWet = clamp28(parameters.mix ?? (algorithm === "vocoder" || algorithm === "osc-voc" || algorithm === "osc-bot" || algorithm === "electric" ? 0.7 : algorithm === "delay" || algorithm === "panning-delay" || algorithm === "mod-delay" ? DELAY_DEFAULT_MIX : algorithm === "chorus" ? 0.4 : algorithm === "phaser" || algorithm === "beat-repeat" || algorithm === "beat-scatter" || algorithm === "roll" || algorithm === "twist" ? 0.5 : algorithm === "lo-fi" || algorithm === "radio" ? 0.7 : algorithm === "tape-echo" || algorithm === "gate-reverb" || algorithm === "reverse-delay" ? 0.3 : algorithm === "reverse-reverb" ? 0.35 : algorithm === "granular-delay" ? 0.35 : algorithm === "warp" ? 0.4 : 1), 0, 1);
       if (algorithm === "freeze" && Number.isFinite(parameters.freezeMode) && parameters.freezeMode !== 0) {
         throw new RangeError("Spectral FREEZE mode is unavailable; only micro-loop mode is wired.");
       }
-      const initialDecay = clamp22(parameters.decaySeconds ?? (algorithm === "gate-reverb" || algorithm === "reverse-reverb" ? 2 : 2.4), 0.1, 20);
-      const initialDamping = clamp22(parameters.dampingHz ?? 9e3, 200, nyquist);
-      const initialGateThresholdDb = clamp22(parameters.gateThresholdDb ?? GATE_REVERB_DEFAULT_THRESHOLD_DB, -60, 0);
-      const initialGateHoldMs = clamp22(parameters.gateHoldMs ?? GATE_REVERB_DEFAULT_HOLD_MS, 5, 2e3);
-      const initialGateReleaseMs = clamp22(parameters.gateReleaseMs ?? GATE_REVERB_DEFAULT_RELEASE_MS, 10, 2e3);
-      const initialRingModHz = clamp22(parameters.ringModHz ?? 440, 0, Math.min(4e3, nyquist));
-      const initialRingModDepth = clamp22(parameters.ringModDepth ?? 1, 0, 1);
-      const initialDriveDb = clamp22(parameters.driveDb ?? 18, 0, 36);
-      const initialOutputDb = clamp22(parameters.outputDb ?? 0, -24, 12);
+      const initialDecay = clamp28(parameters.decaySeconds ?? (algorithm === "gate-reverb" || algorithm === "reverse-reverb" ? 2 : 2.4), 0.1, 20);
+      const initialDamping = clamp28(parameters.dampingHz ?? 9e3, 200, nyquist);
+      const initialGateThresholdDb = clamp28(parameters.gateThresholdDb ?? GATE_REVERB_DEFAULT_THRESHOLD_DB, -60, 0);
+      const initialGateHoldMs = clamp28(parameters.gateHoldMs ?? GATE_REVERB_DEFAULT_HOLD_MS, 5, 2e3);
+      const initialGateReleaseMs = clamp28(parameters.gateReleaseMs ?? GATE_REVERB_DEFAULT_RELEASE_MS, 10, 2e3);
+      const initialRingModHz = clamp28(parameters.ringModHz ?? 440, 0, Math.min(8e3, this.sampleRate * 0.45));
+      const initialRingModDepth = clamp28(parameters.ringModDepth ?? 1, 0, 1);
+      const initialRingModWaveform = parameters.ringModWaveform === 1 ? 1 : 0;
+      const initialDriveDb = clamp28(parameters.driveDb ?? 18, 0, 36);
+      const initialOutputDb = clamp28(parameters.outputDb ?? 0, -24, 12);
       const initialDistortionMode = isDistortionMode(parameters.distortionMode) ? parameters.distortionMode : "overdrive";
-      const initialFlangerDelayMs = clamp22(parameters.flangerDelayMs ?? FLANGER_DEFAULT_DELAY_MILLISECONDS, FLANGER_MIN_DELAY_MILLISECONDS, FLANGER_MAX_DELAY_MILLISECONDS);
-      const initialFlangerRateHz = clamp22(parameters.flangerRateHz ?? FLANGER_DEFAULT_RATE_HZ, 0.05, 20);
-      const initialFlangerDepth = clamp22(parameters.flangerDepth ?? FLANGER_DEFAULT_DEPTH, 0, 1);
-      const initialFlangerFeedback = clamp22(parameters.flangerFeedback ?? FLANGER_DEFAULT_FEEDBACK, -0.95, 0.95);
-      const initialThresholdDb = clamp22(parameters.thresholdDb ?? DYNAMICS_DEFAULT_THRESHOLD_DB, -60, 0);
-      const initialRatio = clamp22(parameters.ratio ?? DYNAMICS_DEFAULT_RATIO, 1, 20);
-      const initialKneeDb = clamp22(parameters.kneeDb ?? DYNAMICS_DEFAULT_KNEE_DB, 0, 24);
-      const initialAttackMs = clamp22(parameters.attackMs ?? DYNAMICS_DEFAULT_ATTACK_MS, 0.1, 100);
-      const initialReleaseMs = clamp22(parameters.releaseMs ?? DYNAMICS_DEFAULT_RELEASE_MS, 5, 1e3);
-      const initialDelayTimeMs = clamp22(parameters.delayTimeMs ?? DELAY_DEFAULT_TIME_MILLISECONDS, DELAY_MIN_TIME_MILLISECONDS, DELAY_MAX_TIME_MILLISECONDS);
-      const initialDelayFeedback = clamp22(parameters.delayFeedback ?? DELAY_DEFAULT_FEEDBACK, 0, 0.95);
-      const initialDelayToneHz = clamp22(parameters.delayToneHz ?? DELAY_DEFAULT_TONE_HZ, 100, Math.min(16e3, nyquist));
-      const initialChorusDelayMs = clamp22(parameters.chorusDelayMs ?? CHORUS_DEFAULT_DELAY_MILLISECONDS, CHORUS_MIN_DELAY_MILLISECONDS, CHORUS_MAX_DELAY_MILLISECONDS);
-      const initialChorusRateHz = clamp22(parameters.chorusRateHz ?? CHORUS_DEFAULT_RATE_HZ, 0.05, 10);
-      const initialChorusDepthMs = clamp22(parameters.chorusDepthMs ?? CHORUS_DEFAULT_DEPTH_MILLISECONDS, 0.2, 20);
-      const initialChorusVoices = Math.round(clamp22(parameters.chorusVoices ?? CHORUS_DEFAULT_VOICES, 2, 4));
-      const initialChorusFeedback = clamp22(parameters.chorusFeedback ?? CHORUS_DEFAULT_FEEDBACK, 0, CHORUS_FEEDBACK_MAX);
-      const initialChorusToneHz = clamp22(parameters.chorusToneHz ?? CHORUS_DEFAULT_TONE_HZ, 100, Math.min(16e3, nyquist));
-      const initialPhaserRateHz = clamp22(parameters.phaserRateHz ?? PHASER_DEFAULT_RATE_HZ, 0.05, 20);
-      const initialPhaserDepth = clamp22(parameters.phaserDepth ?? PHASER_DEFAULT_DEPTH, 0, 1);
-      const initialPhaserFeedback = clamp22(parameters.phaserFeedback ?? PHASER_DEFAULT_FEEDBACK, 0, PHASER_FEEDBACK_MAX);
-      const initialPhaserStages = clamp22(parameters.phaserStages ?? PHASER_DEFAULT_STAGES, 4, PHASER_MAX_STAGES) < 6 ? 4 : 8;
-      const initialTremoloRateHz = clamp22(parameters.tremoloRateHz ?? TREMOLO_DEFAULT_RATE_HZ, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ);
-      const initialTremoloDepth = clamp22(parameters.tremoloDepth ?? TREMOLO_DEFAULT_DEPTH, 0, 1);
+      const initialFlangerDelayMs = clamp28(parameters.flangerDelayMs ?? FLANGER_DEFAULT_DELAY_MILLISECONDS, FLANGER_MIN_DELAY_MILLISECONDS, FLANGER_MAX_DELAY_MILLISECONDS);
+      const initialFlangerRateHz = clamp28(parameters.flangerRateHz ?? FLANGER_DEFAULT_RATE_HZ, 0.05, 20);
+      const initialFlangerDepth = clamp28(parameters.flangerDepth ?? FLANGER_DEFAULT_DEPTH, 0, 1);
+      const initialFlangerFeedback = clamp28(parameters.flangerFeedback ?? FLANGER_DEFAULT_FEEDBACK, -0.95, 0.95);
+      const initialThresholdDb = clamp28(parameters.thresholdDb ?? DYNAMICS_DEFAULT_THRESHOLD_DB, -60, 0);
+      const initialRatio = clamp28(parameters.ratio ?? DYNAMICS_DEFAULT_RATIO, 1, 20);
+      const initialKneeDb = clamp28(parameters.kneeDb ?? DYNAMICS_DEFAULT_KNEE_DB, 0, 24);
+      const initialAttackMs = clamp28(parameters.attackMs ?? DYNAMICS_DEFAULT_ATTACK_MS, 0.1, 100);
+      const initialReleaseMs = clamp28(parameters.releaseMs ?? DYNAMICS_DEFAULT_RELEASE_MS, 5, 1e3);
+      const initialDelayTimeMs = clamp28(parameters.delayTimeMs ?? DELAY_DEFAULT_TIME_MILLISECONDS, DELAY_MIN_TIME_MILLISECONDS, DELAY_MAX_TIME_MILLISECONDS);
+      const initialDelayFeedback = clamp28(parameters.delayFeedback ?? DELAY_DEFAULT_FEEDBACK, 0, 0.95);
+      const initialDelayToneHz = clamp28(parameters.delayToneHz ?? DELAY_DEFAULT_TONE_HZ, 100, Math.min(16e3, nyquist));
+      const initialChorusDelayMs = clamp28(parameters.chorusDelayMs ?? CHORUS_DEFAULT_DELAY_MILLISECONDS, CHORUS_MIN_DELAY_MILLISECONDS, CHORUS_MAX_DELAY_MILLISECONDS);
+      const initialChorusRateHz = clamp28(parameters.chorusRateHz ?? CHORUS_DEFAULT_RATE_HZ, 0.05, 10);
+      const initialChorusDepthMs = clamp28(parameters.chorusDepthMs ?? CHORUS_DEFAULT_DEPTH_MILLISECONDS, 0.2, 20);
+      const initialChorusVoices = Math.round(clamp28(parameters.chorusVoices ?? CHORUS_DEFAULT_VOICES, 2, 4));
+      const initialChorusFeedback = clamp28(parameters.chorusFeedback ?? CHORUS_DEFAULT_FEEDBACK, 0, CHORUS_FEEDBACK_MAX);
+      const initialChorusToneHz = clamp28(parameters.chorusToneHz ?? CHORUS_DEFAULT_TONE_HZ, 100, Math.min(16e3, nyquist));
+      const initialPhaserRateHz = clamp28(parameters.phaserRateHz ?? PHASER_DEFAULT_RATE_HZ, 0.05, 20);
+      const initialPhaserDepth = clamp28(parameters.phaserDepth ?? PHASER_DEFAULT_DEPTH, 0, 1);
+      const initialPhaserFeedback = clamp28(parameters.phaserFeedback ?? PHASER_DEFAULT_FEEDBACK, 0, PHASER_FEEDBACK_MAX);
+      const initialPhaserStages = clamp28(parameters.phaserStages ?? PHASER_DEFAULT_STAGES, 4, PHASER_MAX_STAGES) < 6 ? 4 : 8;
+      const initialTremoloRateHz = clamp28(parameters.tremoloRateHz ?? TREMOLO_DEFAULT_RATE_HZ, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ);
+      const initialTremoloDepth = clamp28(parameters.tremoloDepth ?? TREMOLO_DEFAULT_DEPTH, 0, 1);
       const initialTremoloWaveform = isTremoloWaveform(parameters.tremoloWaveform) ? parameters.tremoloWaveform : "sine";
-      const initialAutoPanRateHz = clamp22(parameters.autoPanRateHz ?? AUTO_PAN_DEFAULT_RATE_HZ, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ);
-      const initialAutoPanDepth = clamp22(parameters.autoPanDepth ?? AUTO_PAN_DEFAULT_DEPTH, 0, 1);
-      const initialStereoWidth = clamp22(parameters.stereoWidth ?? 1, 0, 2);
-      const initialStereoLowMonoCutoffHz = clamp22(parameters.stereoLowMonoCutoffHz ?? 120, 20, Math.min(1e3, nyquist));
-      const initialStereoDecorrelation = clamp22(parameters.stereoDecorrelation ?? 0.25, 0, 1);
+      const initialAutoPanRateHz = clamp28(parameters.autoPanRateHz ?? AUTO_PAN_DEFAULT_RATE_HZ, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ);
+      const initialAutoPanDepth = clamp28(parameters.autoPanDepth ?? AUTO_PAN_DEFAULT_DEPTH, 0, 1);
+      const initialStereoWidth = clamp28(parameters.stereoWidth ?? 1, 0, 2);
+      const initialStereoLowMonoCutoffHz = clamp28(parameters.stereoLowMonoCutoffHz ?? 120, 20, Math.min(1e3, nyquist));
+      const initialStereoDecorrelation = clamp28(parameters.stereoDecorrelation ?? 0.25, 0, 1);
       const initialAutoPanWaveform = isTremoloWaveform(parameters.autoPanWaveform) ? parameters.autoPanWaveform : "sine";
       this.tremoloWaveformOld = initialTremoloWaveform;
       this.tremoloWaveformTarget = initialTremoloWaveform;
@@ -9396,6 +15096,7 @@
       this.gateReleaseMs = new ExponentialParameterSmoother(this.sampleRate, initialGateReleaseMs);
       this.ringModHz = new ExponentialParameterSmoother(this.sampleRate, initialRingModHz);
       this.ringModDepth = new ExponentialParameterSmoother(this.sampleRate, initialRingModDepth);
+      this.ringModWaveform = new ExponentialParameterSmoother(this.sampleRate, initialRingModWaveform, 0.02);
       this.driveDb = new ExponentialParameterSmoother(this.sampleRate, initialDriveDb);
       this.outputDb = new ExponentialParameterSmoother(this.sampleRate, initialOutputDb);
       this.flangerDelayMs = new ExponentialParameterSmoother(this.sampleRate, initialFlangerDelayMs);
@@ -9431,9 +15132,9 @@
       this.outputLinear = Math.pow(10, initialOutputDb / 20);
       this.filterLeft = new TptStateVariableFilter(this.sampleRate, initialCutoff, initialQ);
       this.filterRight = new TptStateVariableFilter(this.sampleRate, initialCutoff, initialQ);
-      this.phaseStep = TWO_PI10 * initialRingModHz / this.sampleRate;
-      this.dcBlockCoefficient = Math.exp(-TWO_PI10 * 10 / this.sampleRate);
-      this.flangerDampingAlpha = 1 - Math.exp(-TWO_PI10 * FLANGER_FEEDBACK_FILTER_HZ / this.sampleRate);
+      this.phaseStep = TWO_PI11 * initialRingModHz / this.sampleRate;
+      this.dcBlockCoefficient = Math.exp(-TWO_PI11 * 10 / this.sampleRate);
+      this.flangerDampingAlpha = 1 - Math.exp(-TWO_PI11 * FLANGER_FEEDBACK_FILTER_HZ / this.sampleRate);
       this.fdnBuffers = new Array(16);
       this.delayLengths = new Int32Array(16);
       this.fdnWriteIndices = new Int32Array(16);
@@ -9443,7 +15144,7 @@
       this.delayDampingStates = new Float64Array(16);
       this.delayReadScratch = new Float64Array(16);
       this.dampingAlpha = new Float64Array(16);
-      this.currentControls = new Float64Array(36);
+      this.currentControls = new Float64Array(37);
       this.currentControls[0] = initialCutoff;
       this.currentControls[1] = initialQ;
       this.currentControls[2] = initialWet;
@@ -9451,6 +15152,7 @@
       this.currentControls[4] = initialDamping;
       this.currentControls[5] = initialRingModHz;
       this.currentControls[6] = initialRingModDepth;
+      this.currentControls[36] = initialRingModWaveform;
       this.currentControls[7] = initialDriveDb;
       this.currentControls[8] = initialOutputDb;
       this.currentControls[9] = initialFlangerDelayMs;
@@ -9531,6 +15233,12 @@
         bpm: parameters.bpm,
         scale: parameters.autoRiffScale,
         beatStepRate: parameters.autoRiffRateBeats,
+        officialTempo: parameters.autoRiffOfficialTempo,
+        quarterNotesPerMeasure: parameters.quarterNotesPerMeasure,
+        hold: parameters.autoRiffHold,
+        attack: parameters.autoRiffAttack,
+        loop: parameters.autoRiffLoop,
+        key: parameters.autoRiffKey,
         onsetSensitivity: Number.isFinite(parameters.autoRiffSensitivityPercent) ? parameters.autoRiffSensitivityPercent / 100 : void 0
       }) : null;
       this.hrmAuto = algorithm === "hrm-auto" ? new BrowserHrmAutoDsp(this.sampleRate, {
@@ -9538,9 +15246,12 @@
         scale: parameters.hrmAutoScale,
         midiChannel: parameters.hrmAutoMidiChannel,
         mix: parameters.hrmAutoMixPercent,
+        officialManualVoice: parameters.hrmAutoOfficialManualVoice,
+        officialAutoVoice: parameters.hrmAutoOfficialVoice,
+        officialHrmMode: parameters.hrmAutoOfficialHrmMode,
         voices: 2
       }) : null;
-      this.robot = algorithm === "robot" ? new BrowserRobotDsp(this.sampleRate, { pitch: parameters.robotPitch }) : null;
+      this.robot = algorithm === "robot" ? new BrowserRobotDsp(this.sampleRate, { pitch: parameters.robotPitch, note: parameters.robotNote }) : null;
       this.patternSlicer = algorithm === "pattern-slicer" ? new BrowserPatternSlicerDsp(this.sampleRate, {
         bpm: parameters.bpm,
         pattern: parameters.patternSlicerPattern,
@@ -9620,6 +15331,7 @@
         delayMs: parameters.vibratoDelayMs
       }) : null;
       this.sustainer = algorithm === "sustainer" ? new BrowserSustainerDsp(this.sampleRate, {
+        attackMs: parameters.attackMs,
         thresholdDb: parameters.thresholdDb,
         ratio: parameters.ratio,
         releaseMs: parameters.releaseMs,
@@ -9696,7 +15408,7 @@
         depthMs: parameters.modDelayDepthMs,
         feedbackPercent: parameters.modDelayFeedbackPercent
       }) : null;
-      this.manualPanPosition = new LinearParameterSmoother(clamp22(parameters.manualPanPosition ?? 0, -1, 1));
+      this.manualPanPosition = new LinearParameterSmoother(clamp28(parameters.manualPanPosition ?? 0, -1, 1));
       this.manualPanLeftTable = new Float32Array(2049);
       this.manualPanRightTable = new Float32Array(2049);
       for (let index = 0; index < this.manualPanLeftTable.length; index += 1) {
@@ -9713,7 +15425,7 @@
           this.delayLengths[index] = samples;
           this.fdnBuffers[index] = new Float32Array(samples + 6);
           this.delayModPhases[index] = channel === 0 ? line * 0.37 : 0.19 + line * 0.41;
-          this.delayModPhaseSteps[index] = TWO_PI10 * (0.071 + line * 0.013) / this.sampleRate;
+          this.delayModPhaseSteps[index] = TWO_PI11 * (0.071 + line * 0.013) / this.sampleRate;
         }
         this.earlyRingLength = Math.max(2, Math.ceil(this.sampleRate * 0.035) + 1);
         this.earlyBuffers = [new Float32Array(this.earlyRingLength), new Float32Array(this.earlyRingLength)];
@@ -9732,7 +15444,7 @@
       }
       this.delayWriteIndices = new Int32Array(2);
       this.delayToneStates = new Float64Array(2);
-      this.delayToneAlpha = 1 - Math.exp(-TWO_PI10 * initialDelayToneHz / this.sampleRate);
+      this.delayToneAlpha = 1 - Math.exp(-TWO_PI11 * initialDelayToneHz / this.sampleRate);
       if (this.algorithm === "delay") {
         const capacity = Math.ceil(DELAY_MAX_TIME_MILLISECONDS * this.sampleRate / 1e3) + 8;
         this.delayBuffers = [new Float32Array(capacity), new Float32Array(capacity)];
@@ -9742,8 +15454,8 @@
       this.chorusWriteIndices = new Int32Array(8);
       this.chorusFeedbackStates = new Float64Array(8);
       this.chorusVoiceCount = initialChorusVoices;
-      this.chorusToneAlpha = 1 - Math.exp(-TWO_PI10 * initialChorusToneHz / this.sampleRate);
-      this.chorusPhaseStep = TWO_PI10 * initialChorusRateHz / this.sampleRate;
+      this.chorusToneAlpha = 1 - Math.exp(-TWO_PI11 * initialChorusToneHz / this.sampleRate);
+      this.chorusPhaseStep = TWO_PI11 * initialChorusRateHz / this.sampleRate;
       if (this.algorithm === "chorus") {
         const capacity = Math.ceil(CHORUS_MAX_DELAY_MILLISECONDS * this.sampleRate / 1e3) + 8;
         this.chorusBuffers = new Array(8);
@@ -9756,9 +15468,9 @@
       this.phaserInputStates = new Float64Array(2 * PHASER_MAX_STAGES);
       this.phaserOutputStates = new Float64Array(2 * PHASER_MAX_STAGES);
       this.phaserFeedbackStates = new Float64Array(2);
-      this.phaserToneAlpha = 1 - Math.exp(-TWO_PI10 * Math.min(PHASER_FEEDBACK_FILTER_HZ, nyquist) / this.sampleRate);
+      this.phaserToneAlpha = 1 - Math.exp(-TWO_PI11 * Math.min(PHASER_FEEDBACK_FILTER_HZ, nyquist) / this.sampleRate);
       this.phaserStageCount = initialPhaserStages;
-      this.phaserPhaseStep = TWO_PI10 * initialPhaserRateHz / this.sampleRate;
+      this.phaserPhaseStep = TWO_PI11 * initialPhaserRateHz / this.sampleRate;
       this.tremoloPhaseStep = initialTremoloRateHz / this.sampleRate;
       this.autoPanPhaseStep = initialAutoPanRateHz / this.sampleRate;
       this.earlyDelays = new Int32Array(EARLY_REFLECTION_DELAYS_SECONDS.length);
@@ -9771,6 +15483,7 @@
         }
         this.refreshTimeVariantCoefficients(initialDecay, initialDamping);
       }
+      this.applyOfficialControls(true);
     }
     /**
      * Update targets from outside the render loop. Invalid individual values
@@ -9778,6 +15491,9 @@
      * parameter claims.
      */
     setParameters(parameters) {
+      const previousCarrier = this.official.get("carrier", -1);
+      parameters = this.official.translate(parameters);
+      if (this.algorithm === "vocoder" && this.official.get("carrier", -1) !== previousCarrier) this.vocoder?.reset();
       const nyquist = this.sampleRate * 0.499;
       if (this.algorithm === "vocoder") {
         validateBrowserVocoderParameters(parameters);
@@ -9814,32 +15530,40 @@
       if (this.algorithm === "freeze" && Number.isFinite(parameters.freezeMode) && parameters.freezeMode !== 0) {
         throw new RangeError("Spectral FREEZE mode is unavailable; only micro-loop mode is wired.");
       }
-      if (Number.isFinite(parameters.cutoffHz)) this.cutoff.setTarget(clamp22(parameters.cutoffHz, 20, nyquist));
-      if (Number.isFinite(parameters.q)) this.q.setTarget(clamp22(parameters.q, 0.1, 30));
-      if (Number.isFinite(parameters.mix)) this.wet.setTarget(clamp22(parameters.mix, 0, 1));
-      if (Number.isFinite(parameters.decaySeconds)) this.decaySeconds.setTarget(clamp22(parameters.decaySeconds, 0.1, 20));
-      if (Number.isFinite(parameters.dampingHz)) this.dampingHz.setTarget(clamp22(parameters.dampingHz, 200, nyquist));
-      if (Number.isFinite(parameters.gateThresholdDb)) this.gateThresholdDb.setTarget(clamp22(parameters.gateThresholdDb, -60, 0));
-      if (Number.isFinite(parameters.gateHoldMs)) this.gateHoldMs.setTarget(clamp22(parameters.gateHoldMs, 5, 2e3));
-      if (Number.isFinite(parameters.gateReleaseMs)) this.gateReleaseMs.setTarget(clamp22(parameters.gateReleaseMs, 10, 2e3));
-      if (Number.isFinite(parameters.ringModHz)) this.ringModHz.setTarget(clamp22(parameters.ringModHz, 0, Math.min(4e3, nyquist)));
-      if (Number.isFinite(parameters.ringModDepth)) this.ringModDepth.setTarget(clamp22(parameters.ringModDepth, 0, 1));
-      if (Number.isFinite(parameters.driveDb)) this.driveDb.setTarget(clamp22(parameters.driveDb, 0, 36));
-      if (Number.isFinite(parameters.outputDb)) this.outputDb.setTarget(clamp22(parameters.outputDb, -24, 12));
+      this.controlsSteady = false;
+      this.controlSmoothersSettled = false;
+      this.controlSettleScanCountdown = 0;
+      if (Number.isFinite(parameters.cutoffHz)) this.cutoff.setTarget(clamp28(parameters.cutoffHz, 20, nyquist));
+      if ((this.algorithm === "lpf" || this.algorithm === "hpf") && Number.isFinite(parameters.filterResonancePercent)) {
+        this.q.setTarget(filterResonancePercentToQ(parameters.filterResonancePercent));
+      } else if (Number.isFinite(parameters.q)) {
+        this.q.setTarget(clamp28(parameters.q, 0.1, 30));
+      }
+      if (Number.isFinite(parameters.mix)) this.wet.setTarget(clamp28(parameters.mix, 0, 1));
+      if (Number.isFinite(parameters.decaySeconds)) this.decaySeconds.setTarget(clamp28(parameters.decaySeconds, 0.1, 20));
+      if (Number.isFinite(parameters.dampingHz)) this.dampingHz.setTarget(clamp28(parameters.dampingHz, 200, nyquist));
+      if (Number.isFinite(parameters.gateThresholdDb)) this.gateThresholdDb.setTarget(clamp28(parameters.gateThresholdDb, -60, 0));
+      if (Number.isFinite(parameters.gateHoldMs)) this.gateHoldMs.setTarget(clamp28(parameters.gateHoldMs, 5, 2e3));
+      if (Number.isFinite(parameters.gateReleaseMs)) this.gateReleaseMs.setTarget(clamp28(parameters.gateReleaseMs, 10, 2e3));
+      if (Number.isFinite(parameters.ringModHz)) this.ringModHz.setTarget(clamp28(parameters.ringModHz, 0, Math.min(8e3, this.sampleRate * 0.45)));
+      if (Number.isFinite(parameters.ringModDepth)) this.ringModDepth.setTarget(clamp28(parameters.ringModDepth, 0, 1));
+      if (parameters.ringModWaveform === 0 || parameters.ringModWaveform === 1) this.ringModWaveform.setTarget(parameters.ringModWaveform);
+      if (Number.isFinite(parameters.driveDb)) this.driveDb.setTarget(clamp28(parameters.driveDb, 0, 36));
+      if (Number.isFinite(parameters.outputDb)) this.outputDb.setTarget(clamp28(parameters.outputDb, -24, 12));
       if (isDistortionMode(parameters.distortionMode)) this.requestDistortionMode(parameters.distortionMode);
-      if (Number.isFinite(parameters.flangerDelayMs)) this.flangerDelayMs.setTarget(clamp22(parameters.flangerDelayMs, FLANGER_MIN_DELAY_MILLISECONDS, FLANGER_MAX_DELAY_MILLISECONDS));
-      if (Number.isFinite(parameters.flangerRateHz)) this.flangerRateHz.setTarget(clamp22(parameters.flangerRateHz, 0.05, 20));
-      if (Number.isFinite(parameters.flangerDepth)) this.flangerDepth.setTarget(clamp22(parameters.flangerDepth, 0, 1));
-      if (Number.isFinite(parameters.flangerFeedback)) this.flangerFeedback.setTarget(clamp22(parameters.flangerFeedback, -0.95, 0.95));
-      if (Number.isFinite(parameters.thresholdDb)) this.dynamicsThreshold.setTarget(clamp22(parameters.thresholdDb, -60, 0));
-      if (Number.isFinite(parameters.ratio)) this.dynamicsRatio.setTarget(clamp22(parameters.ratio, 1, 20));
-      if (Number.isFinite(parameters.kneeDb)) this.dynamicsKnee.setTarget(clamp22(parameters.kneeDb, 0, 24));
-      if (Number.isFinite(parameters.attackMs)) this.dynamicsAttackMs.setTarget(clamp22(parameters.attackMs, 0.1, 100));
-      if (Number.isFinite(parameters.releaseMs)) this.dynamicsReleaseMs.setTarget(clamp22(parameters.releaseMs, 5, 1e3));
+      if (Number.isFinite(parameters.flangerDelayMs)) this.flangerDelayMs.setTarget(clamp28(parameters.flangerDelayMs, FLANGER_MIN_DELAY_MILLISECONDS, FLANGER_MAX_DELAY_MILLISECONDS));
+      if (Number.isFinite(parameters.flangerRateHz)) this.flangerRateHz.setTarget(clamp28(parameters.flangerRateHz, 0.05, 20));
+      if (Number.isFinite(parameters.flangerDepth)) this.flangerDepth.setTarget(clamp28(parameters.flangerDepth, 0, 1));
+      if (Number.isFinite(parameters.flangerFeedback)) this.flangerFeedback.setTarget(clamp28(parameters.flangerFeedback, -0.95, 0.95));
+      if (Number.isFinite(parameters.thresholdDb)) this.dynamicsThreshold.setTarget(clamp28(parameters.thresholdDb, -60, 0));
+      if (Number.isFinite(parameters.ratio)) this.dynamicsRatio.setTarget(clamp28(parameters.ratio, 1, 20));
+      if (Number.isFinite(parameters.kneeDb)) this.dynamicsKnee.setTarget(clamp28(parameters.kneeDb, 0, 24));
+      if (Number.isFinite(parameters.attackMs)) this.dynamicsAttackMs.setTarget(clamp28(parameters.attackMs, 0.1, 100));
+      if (Number.isFinite(parameters.releaseMs)) this.dynamicsReleaseMs.setTarget(clamp28(parameters.releaseMs, 5, 1e3));
       if (parameters.dynamicsDetector === "peak" || parameters.dynamicsDetector === "rms") this.dynamicsDetector = parameters.dynamicsDetector;
-      if (Number.isFinite(parameters.delayTimeMs)) this.delayTimeMs.setTarget(clamp22(parameters.delayTimeMs, DELAY_MIN_TIME_MILLISECONDS, DELAY_MAX_TIME_MILLISECONDS));
-      if (Number.isFinite(parameters.delayFeedback)) this.delayFeedback.setTarget(clamp22(parameters.delayFeedback, 0, 0.95));
-      if (Number.isFinite(parameters.delayToneHz)) this.delayToneHz.setTarget(clamp22(parameters.delayToneHz, 100, Math.min(16e3, this.sampleRate * 0.499)));
+      if (Number.isFinite(parameters.delayTimeMs)) this.delayTimeMs.setTarget(clamp28(parameters.delayTimeMs, DELAY_MIN_TIME_MILLISECONDS, DELAY_MAX_TIME_MILLISECONDS));
+      if (Number.isFinite(parameters.delayFeedback)) this.delayFeedback.setTarget(clamp28(parameters.delayFeedback, 0, 0.95));
+      if (Number.isFinite(parameters.delayToneHz)) this.delayToneHz.setTarget(clamp28(parameters.delayToneHz, 100, Math.min(16e3, this.sampleRate * 0.499)));
       if (this.algorithm === "mod-delay") {
         this.modDelay?.setParameters({
           timeMs: parameters.modDelayTimeMs,
@@ -9855,25 +15579,25 @@
           pan: parameters.panningDelayPan
         });
       }
-      if (Number.isFinite(parameters.chorusDelayMs)) this.chorusDelayMs.setTarget(clamp22(parameters.chorusDelayMs, CHORUS_MIN_DELAY_MILLISECONDS, CHORUS_MAX_DELAY_MILLISECONDS));
-      if (Number.isFinite(parameters.chorusRateHz)) this.chorusRateHz.setTarget(clamp22(parameters.chorusRateHz, 0.05, 10));
-      if (Number.isFinite(parameters.chorusDepthMs)) this.chorusDepthMs.setTarget(clamp22(parameters.chorusDepthMs, 0.2, 20));
-      if (Number.isFinite(parameters.chorusVoices)) this.chorusVoiceCount = Math.round(clamp22(parameters.chorusVoices, 2, 4));
-      if (Number.isFinite(parameters.chorusFeedback)) this.chorusFeedback.setTarget(clamp22(parameters.chorusFeedback, 0, CHORUS_FEEDBACK_MAX));
-      if (Number.isFinite(parameters.chorusToneHz)) this.chorusToneHz.setTarget(clamp22(parameters.chorusToneHz, 100, Math.min(16e3, this.sampleRate * 0.499)));
-      if (Number.isFinite(parameters.phaserRateHz)) this.phaserRateHz.setTarget(clamp22(parameters.phaserRateHz, 0.05, 20));
-      if (Number.isFinite(parameters.phaserDepth)) this.phaserDepth.setTarget(clamp22(parameters.phaserDepth, 0, 1));
-      if (Number.isFinite(parameters.phaserFeedback)) this.phaserFeedback.setTarget(clamp22(parameters.phaserFeedback, 0, PHASER_FEEDBACK_MAX));
-      if (Number.isFinite(parameters.phaserStages)) this.phaserStageCount = clamp22(parameters.phaserStages, 4, PHASER_MAX_STAGES) < 6 ? 4 : 8;
-      if (Number.isFinite(parameters.tremoloRateHz)) this.tremoloRateHz.setTarget(clamp22(parameters.tremoloRateHz, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ));
-      if (Number.isFinite(parameters.tremoloDepth)) this.tremoloDepth.setTarget(clamp22(parameters.tremoloDepth, 0, 1));
+      if (Number.isFinite(parameters.chorusDelayMs)) this.chorusDelayMs.setTarget(clamp28(parameters.chorusDelayMs, CHORUS_MIN_DELAY_MILLISECONDS, CHORUS_MAX_DELAY_MILLISECONDS));
+      if (Number.isFinite(parameters.chorusRateHz)) this.chorusRateHz.setTarget(clamp28(parameters.chorusRateHz, 0.05, 10));
+      if (Number.isFinite(parameters.chorusDepthMs)) this.chorusDepthMs.setTarget(clamp28(parameters.chorusDepthMs, 0.2, 20));
+      if (Number.isFinite(parameters.chorusVoices)) this.chorusVoiceCount = Math.round(clamp28(parameters.chorusVoices, 2, 4));
+      if (Number.isFinite(parameters.chorusFeedback)) this.chorusFeedback.setTarget(clamp28(parameters.chorusFeedback, 0, CHORUS_FEEDBACK_MAX));
+      if (Number.isFinite(parameters.chorusToneHz)) this.chorusToneHz.setTarget(clamp28(parameters.chorusToneHz, 100, Math.min(16e3, this.sampleRate * 0.499)));
+      if (Number.isFinite(parameters.phaserRateHz)) this.phaserRateHz.setTarget(clamp28(parameters.phaserRateHz, 0.05, 20));
+      if (Number.isFinite(parameters.phaserDepth)) this.phaserDepth.setTarget(clamp28(parameters.phaserDepth, 0, 1));
+      if (Number.isFinite(parameters.phaserFeedback)) this.phaserFeedback.setTarget(clamp28(parameters.phaserFeedback, 0, PHASER_FEEDBACK_MAX));
+      if (Number.isFinite(parameters.phaserStages)) this.phaserStageCount = clamp28(parameters.phaserStages, 4, PHASER_MAX_STAGES) < 6 ? 4 : 8;
+      if (Number.isFinite(parameters.tremoloRateHz)) this.tremoloRateHz.setTarget(clamp28(parameters.tremoloRateHz, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ));
+      if (Number.isFinite(parameters.tremoloDepth)) this.tremoloDepth.setTarget(clamp28(parameters.tremoloDepth, 0, 1));
       if (isTremoloWaveform(parameters.tremoloWaveform)) this.requestTremoloWaveform(parameters.tremoloWaveform);
-      if (Number.isFinite(parameters.autoPanRateHz)) this.autoPanRateHz.setTarget(clamp22(parameters.autoPanRateHz, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ));
-      if (Number.isFinite(parameters.autoPanDepth)) this.autoPanDepth.setTarget(clamp22(parameters.autoPanDepth, 0, 1));
+      if (Number.isFinite(parameters.autoPanRateHz)) this.autoPanRateHz.setTarget(clamp28(parameters.autoPanRateHz, TREMOLO_MIN_RATE_HZ, TREMOLO_MAX_RATE_HZ));
+      if (Number.isFinite(parameters.autoPanDepth)) this.autoPanDepth.setTarget(clamp28(parameters.autoPanDepth, 0, 1));
       if (isTremoloWaveform(parameters.autoPanWaveform)) this.requestAutoPanWaveform(parameters.autoPanWaveform);
-      if (Number.isFinite(parameters.stereoWidth)) this.stereoWidth.setTarget(clamp22(parameters.stereoWidth, 0, 2));
-      if (Number.isFinite(parameters.stereoLowMonoCutoffHz)) this.stereoLowMonoCutoffHz.setTarget(clamp22(parameters.stereoLowMonoCutoffHz, 20, Math.min(1e3, this.sampleRate * 0.499)));
-      if (Number.isFinite(parameters.stereoDecorrelation)) this.stereoDecorrelation.setTarget(clamp22(parameters.stereoDecorrelation, 0, 1));
+      if (Number.isFinite(parameters.stereoWidth)) this.stereoWidth.setTarget(clamp28(parameters.stereoWidth, 0, 2));
+      if (Number.isFinite(parameters.stereoLowMonoCutoffHz)) this.stereoLowMonoCutoffHz.setTarget(clamp28(parameters.stereoLowMonoCutoffHz, 20, Math.min(1e3, this.sampleRate * 0.499)));
+      if (Number.isFinite(parameters.stereoDecorrelation)) this.stereoDecorrelation.setTarget(clamp28(parameters.stereoDecorrelation, 0, 1));
       if (this.algorithm === "beat-repeat") this.beatRepeat?.setParameters(parameters);
       if (this.algorithm === "roll") {
         this.roll?.setParameters({
@@ -9940,6 +15664,12 @@
           bpm: parameters.bpm,
           scale: Number.isFinite(parameters.autoRiffScale) ? parameters.autoRiffScale : void 0,
           beatStepRate: parameters.autoRiffRateBeats,
+          officialTempo: parameters.autoRiffOfficialTempo,
+          quarterNotesPerMeasure: parameters.quarterNotesPerMeasure,
+          hold: parameters.autoRiffHold,
+          attack: parameters.autoRiffAttack,
+          loop: parameters.autoRiffLoop,
+          key: parameters.autoRiffKey,
           onsetSensitivity: Number.isFinite(parameters.autoRiffSensitivityPercent) ? parameters.autoRiffSensitivityPercent / 100 : void 0
         });
       }
@@ -9948,11 +15678,14 @@
           key: parameters.hrmAutoKey,
           scale: parameters.hrmAutoScale,
           midiChannel: parameters.hrmAutoMidiChannel,
-          mix: parameters.hrmAutoMixPercent
+          mix: parameters.hrmAutoMixPercent,
+          officialManualVoice: parameters.hrmAutoOfficialManualVoice,
+          officialAutoVoice: parameters.hrmAutoOfficialVoice,
+          officialHrmMode: parameters.hrmAutoOfficialHrmMode
         });
       }
       if (this.algorithm === "robot") {
-        this.robot?.setParameters({ pitch: parameters.robotPitch, formant: parameters.robotFormantSemitones });
+        this.robot?.setParameters({ pitch: parameters.robotPitch, formant: parameters.robotFormantSemitones, note: parameters.robotNote });
       }
       if (this.algorithm === "pattern-slicer") {
         this.patternSlicer?.setParameters({
@@ -10099,8 +15832,9 @@
         });
       }
       if (Number.isFinite(parameters.manualPanPosition)) {
-        this.manualPanPosition.setTarget(clamp22(parameters.manualPanPosition, -1, 1), Math.round(this.sampleRate * DEFAULT_SMOOTHING_SECONDS));
+        this.manualPanPosition.setTarget(clamp28(parameters.manualPanPosition, -1, 1), Math.round(this.sampleRate * DEFAULT_SMOOTHING_SECONDS));
       }
+      this.applyOfficialControls(false);
     }
     /** Small read-only diagnostics for deterministic clock tests and host status. */
     get beatRepeatDiagnostics() {
@@ -10245,6 +15979,14 @@
       return this.stepSlicer?.diagnostics ?? null;
     }
     setBypass(bypassed, rampFrames = 0) {
+      if (this.algorithm === "freeze" && Object.keys(this.official.values).length > 0) {
+        this.freeze?.setParameters({ frozen: !bypassed });
+        if (bypassed) rampFrames = this.freeze?.officialReleaseFrames ?? rampFrames;
+      }
+      if (this.algorithm === "twist" && Object.keys(this.official.values).length > 0) {
+        this.twist?.setOfficialActive(!bypassed);
+        if (bypassed) rampFrames = this.twist?.officialReleaseFrames ?? rampFrames;
+      }
       this.bypassMix.setTarget(bypassed ? 1 : 0, rampFrames);
     }
     get bypassed() {
@@ -10285,12 +16027,18 @@
       }
       throw new RangeError("MIDI note events are only supported by OSC VOC (M) and HRM AUTO (M).");
     }
+    scheduleMidiAllNotesOff(frame) {
+      if (this.algorithm !== "osc-voc" || !this.oscVoc) {
+        throw new RangeError(`${this.algorithm} does not accept OSC VOC MIDI all-notes-off.`);
+      }
+      this.oscVoc.allNotesOff(frame);
+    }
     /**
      * Process up to two channels. Null input is silence; a mono-to-stereo caller
      * may deliberately pass the same left input for both input channels. Arrays
      * are not retained and no output storage is created by this method.
      */
-    processBlock(inputLeft, inputRight, outputLeft, outputRight, frameCount, inputIsMono = inputRight === null) {
+    processBlock(inputLeft, inputRight, outputLeft, outputRight, frameCount, inputIsMono = inputRight === null, carrierLeft = null, carrierRight = null) {
       this.blocksProcessed += 1;
       const frames = Math.max(0, Math.floor(frameCount ?? Math.max(outputLeft?.length ?? 0, outputRight?.length ?? 0)));
       const inputLeftLength = inputLeft?.length ?? 0;
@@ -10300,7 +16048,15 @@
       const monoAutoPanInput = this.algorithm === "auto-pan" && (!inputRight || inputRightLength === 0);
       const monoStereoEnhanceInput = this.algorithm === "stereo-enhance" && (!inputRight || inputRightLength === 0);
       const monoManualPanInput = this.algorithm === "manual-pan" && inputIsMono;
-      if (this.fullyBypassed && this.algorithm !== "beat-shift" && this.algorithm !== "reverse-delay" && this.algorithm !== "reverse-reverb" && this.algorithm !== "vinyl-flick" && this.algorithm !== "freeze" && this.algorithm !== "osc-voc" && this.algorithm !== "hrm-auto") {
+      if (this.fullyBypassed && !this.officialRoll && this.algorithm !== "beat-shift" && this.algorithm !== "reverse-delay" && this.algorithm !== "reverse-reverb" && this.algorithm !== "vinyl-flick" && this.algorithm !== "freeze" && this.algorithm !== "osc-voc" && this.algorithm !== "hrm-auto") {
+        const bypassRightInput = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput ? inputLeft : inputRight;
+        if (outputLeft && inputLeft && outputLeftLength === frames && inputLeftLength === frames && outputLeft.buffer !== inputLeft.buffer && (!outputRight || outputLeft.buffer !== outputRight.buffer) && (!bypassRightInput || outputLeft.buffer !== bypassRightInput.buffer) && (!outputRight || outputRight.buffer !== inputLeft.buffer && outputRight.buffer !== bypassRightInput?.buffer) && (!outputRight || bypassRightInput && outputRightLength === frames && bypassRightInput.length === frames)) {
+          outputLeft.set(inputLeft);
+          if (outputRight && bypassRightInput) outputRight.set(bypassRightInput);
+          this.framesProcessed += frames;
+          this.currentAudioFrame += frames;
+          return;
+        }
         for (let frame = 0; frame < frames; frame += 1) {
           if (frame < outputLeftLength && outputLeft) outputLeft[frame] = frame < inputLeftLength ? inputLeft?.[frame] ?? 0 : 0;
           if (frame < outputRightLength && outputRight) {
@@ -10325,16 +16081,38 @@
         if (Math.abs(dryLeft) < MIN_STATE_MAGNITUDE) dryLeft = 0;
         if (Math.abs(dryRight) < MIN_STATE_MAGNITUDE) dryRight = 0;
         this.advanceControls();
+        if (this.officialModulation) this.advanceOfficialModulation();
         if (this.algorithm === "dynamics") this.updateDynamicsDetector(dryLeft, dryRight);
-        if (this.algorithm === "gate-reverb") this.updateGateReverbEnvelope(dryLeft, dryRight);
-        const wetPosition = this.algorithm === "electric" && this.electric?.requiresVoicedInput && !this.electric.isVoiced ? 0 : this.algorithm === "preamp" || this.algorithm === "synth" || this.algorithm === "g2b" ? 1 : this.algorithm === "beat-repeat" && !this.beatRepeat?.hasCapturedSlice || this.algorithm === "roll" && !this.roll?.hasCapturedSlice || this.algorithm === "beat-scatter" && !this.beatScatter?.hasCapturedSlice || this.algorithm === "reverse-delay" && !this.reverseDelay?.hasCaptured ? 0 : this.algorithm === "beat-shift" ? this.beatShift?.mixAvailability ?? 0 : this.algorithm === "pattern-slicer" || this.algorithm === "step-slicer" ? 1 : this.currentControls[2] ?? 1;
-        const wetDryGain = equalPowerFadeOutGain(wetPosition);
-        const wetGain = equalPowerFadeInGain(wetPosition);
+        if (this.algorithm === "gate-reverb" && !this.official.has("threshold")) this.updateGateReverbEnvelope(dryLeft, dryRight);
+        const wetPosition = this.algorithm === "electric" && this.electric?.requiresVoicedInput && !this.electric.isVoiced ? 0 : this.algorithm === "preamp" || this.algorithm === "synth" || this.algorithm === "g2b" ? 1 : this.algorithm === "beat-repeat" && !this.beatRepeat?.hasCapturedSlice || this.algorithm === "roll" && !(this.officialRoll ? this.officialRoll.hasCapturedSlice : this.roll?.hasCapturedSlice) || this.algorithm === "beat-scatter" && !this.beatScatter?.hasCapturedSlice || this.algorithm === "reverse-delay" && !this.reverseDelay?.hasCaptured ? 0 : this.algorithm === "beat-shift" ? this.beatShift?.mixAvailability ?? 0 : this.algorithm === "pattern-slicer" || this.algorithm === "step-slicer" ? 1 : this.currentControls[2] ?? 1;
+        if (wetPosition !== this.cachedWetPosition) {
+          this.cachedWetPosition = wetPosition;
+          this.cachedWetDryGain = equalPowerFadeOutGain(wetPosition);
+          this.cachedWetGain = equalPowerFadeInGain(wetPosition);
+        }
+        const wetDryGain = this.officialIndependentMix ? this.officialDirectGain.next() : this.cachedWetDryGain;
+        const wetGain = this.officialIndependentMix ? this.officialEffectGain.next() : this.cachedWetGain;
         let mixDryLeft = this.algorithm === "distortion" ? this.processDistortionDryDelay(dryLeft, 0) : dryLeft;
         let mixDryRight = this.algorithm === "distortion" ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
         let wetLeft;
         let wetRight;
-        if (this.algorithm === "vinyl-flick") {
+        if (this.officialReverseReverb) {
+          this.officialReverseReverb.processSample(dryLeft, dryRight);
+          wetLeft = this.officialReverseReverb.wetLeft;
+          wetRight = this.officialReverseReverb.wetRight;
+        } else if (this.officialStepSlicer) {
+          this.officialStepSlicer.processSample(dryLeft, dryRight);
+          wetLeft = this.officialStepSlicer.wetLeft;
+          wetRight = this.officialStepSlicer.wetRight;
+        } else if (this.officialRoll) {
+          this.officialRoll.processSample(dryLeft, dryRight);
+          wetLeft = this.officialRoll.wetLeft;
+          wetRight = this.officialRoll.wetRight;
+        } else if (this.officialDelay) {
+          this.officialDelay.processSample(dryLeft, dryRight);
+          wetLeft = this.officialDelay.wetLeft;
+          wetRight = this.officialDelay.wetRight;
+        } else if (this.algorithm === "vinyl-flick") {
           this.vinylFlick?.processSample(dryLeft, dryRight);
           wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
           wetRight = this.vinylFlick?.wetRight ?? dryRight;
@@ -10378,8 +16156,8 @@
           wetRight = this.reverseReverb?.wetRight ?? 0;
         } else if (this.algorithm === "auto-riff") {
           this.autoRiff?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
-          wetLeft = dryLeft;
-          wetRight = dryRight;
+          wetLeft = this.autoRiff?.wetLeft ?? dryLeft;
+          wetRight = this.autoRiff?.wetRight ?? dryRight;
         } else if (this.algorithm === "hrm-auto") {
           this.hrmAuto?.processSample((dryLeft + dryRight) * 0.5, this.currentAudioFrame + frame);
           wetLeft = dryLeft;
@@ -10449,9 +16227,18 @@
           wetLeft = this.g2b?.outputLeft ?? dryLeft;
           wetRight = this.g2b?.outputRight ?? dryRight;
         } else if (this.algorithm === "vocoder") {
-          this.vocoder?.processSample(dryLeft, dryRight);
-          wetLeft = this.vocoder?.outputLeft ?? 0;
-          wetRight = this.vocoder?.outputRight ?? 0;
+          if (this.official.has("carrier")) {
+            const rawCarrierL = carrierLeft?.[frame] ?? 0;
+            const rawCarrierR = carrierRight?.[frame] ?? rawCarrierL;
+            const carrierL = Number.isFinite(rawCarrierL) ? rawCarrierL : 0;
+            const carrierR = Number.isFinite(rawCarrierR) ? rawCarrierR : 0;
+            wetLeft = this.vocoder?.processWithCarrier((dryLeft + dryRight) * 0.5, (carrierL + carrierR) * 0.5) ?? 0;
+            wetRight = wetLeft;
+          } else {
+            this.vocoder?.processSample(dryLeft, dryRight);
+            wetLeft = this.vocoder?.outputLeft ?? 0;
+            wetRight = this.vocoder?.outputRight ?? 0;
+          }
         } else if (this.algorithm === "electric") {
           this.electric?.processSample(dryLeft, dryRight);
           wetLeft = this.electric?.outputLeft ?? dryLeft;
@@ -10482,8 +16269,35 @@
           wetLeft = this.modDelay?.wetLeft ?? 0;
           wetRight = this.modDelay?.wetRight ?? 0;
         } else {
-          wetLeft = this.processEffectSample(dryLeft, 0);
-          wetRight = this.processEffectSample(dryRight, 1);
+          let effectLeft = dryLeft, effectRight = dryRight;
+          if (this.officialPreDelayBuffers) {
+            const [leftBuffer, rightBuffer] = this.officialPreDelayBuffers;
+            leftBuffer[this.officialPreDelayWrite] = dryLeft;
+            rightBuffer[this.officialPreDelayWrite] = dryRight;
+            const readIndex = (this.officialPreDelayWrite - this.officialPreDelaySamples + leftBuffer.length) % leftBuffer.length;
+            effectLeft = leftBuffer[readIndex];
+            effectRight = rightBuffer[readIndex];
+            this.officialPreDelayWrite = (this.officialPreDelayWrite + 1) % leftBuffer.length;
+          }
+          wetLeft = this.processEffectSample(effectLeft, 0);
+          wetRight = this.processEffectSample(effectRight, 1);
+        }
+        if (this.officialHasLowCut) {
+          this.officialLowCutLeft.processSample(wetLeft);
+          this.officialLowCutRight.processSample(wetRight);
+          wetLeft = this.officialLowCutLeft.highpass;
+          wetRight = this.officialLowCutRight.highpass;
+        }
+        if (this.officialHasHighCut) {
+          this.officialHighCutLeft.processSample(wetLeft);
+          this.officialHighCutRight.processSample(wetRight);
+          wetLeft = this.officialHighCutLeft.lowpass;
+          wetRight = this.officialHighCutRight.lowpass;
+        }
+        if (this.officialToneEq) {
+          this.officialToneEq.process(wetLeft, wetRight);
+          wetLeft = this.officialToneEq.outputLeft;
+          wetRight = this.officialToneEq.outputRight;
         }
         if (!Number.isFinite(wetLeft)) {
           wetLeft = 0;
@@ -10494,18 +16308,25 @@
           this.nonFiniteOutputSamples += 1;
         }
         if (this.algorithm === "gate-reverb") {
+          if (this.official.has("threshold")) this.updateGateReverbEnvelope(wetLeft, wetRight);
           wetLeft *= this.gateGain;
           wetRight *= this.gateGain;
         }
-        let mixedLeft = mixDryLeft * wetDryGain + wetLeft * wetGain;
-        let mixedRight = mixDryRight * wetDryGain + wetRight * wetGain;
+        const officialLevel = this.officialLevelGain.next();
+        let mixedLeft = (mixDryLeft * wetDryGain + wetLeft * wetGain) * officialLevel;
+        let mixedRight = (mixDryRight * wetDryGain + wetRight * wetGain) * officialLevel;
         const bypassPosition = this.bypassMix.next();
         if (bypassPosition >= 1) {
           mixedLeft = dryLeft;
           mixedRight = dryRight;
         } else {
-          const activeGain = equalPowerFadeOutGain(bypassPosition);
-          const bypassGain = equalPowerFadeInGain(bypassPosition);
+          if (bypassPosition !== this.cachedBypassPosition) {
+            this.cachedBypassPosition = bypassPosition;
+            this.cachedBypassActiveGain = equalPowerFadeOutGain(bypassPosition);
+            this.cachedBypassGain = equalPowerFadeInGain(bypassPosition);
+          }
+          const activeGain = this.cachedBypassActiveGain;
+          const bypassGain = this.cachedBypassGain;
           mixedLeft = mixedLeft * activeGain + dryLeft * bypassGain;
           mixedRight = mixedRight * activeGain + dryRight * bypassGain;
         }
@@ -10520,15 +16341,15 @@
         }
         if (this.algorithm === "ring-mod") {
           this.phase += this.phaseStep;
-          if (this.phase >= TWO_PI10) this.phase -= TWO_PI10;
+          if (this.phase >= TWO_PI11) this.phase -= TWO_PI11;
         }
         if (this.algorithm === "chorus") {
           this.chorusPhase += this.chorusPhaseStep;
-          if (this.chorusPhase >= TWO_PI10) this.chorusPhase -= TWO_PI10;
+          if (this.chorusPhase >= TWO_PI11) this.chorusPhase -= TWO_PI11;
         }
         if (this.algorithm === "phaser") {
           this.phaserPhase += this.phaserPhaseStep;
-          if (this.phaserPhase >= TWO_PI10) this.phaserPhase -= TWO_PI10;
+          if (this.phaserPhase >= TWO_PI11) this.phaserPhase -= TWO_PI11;
         }
         if (this.algorithm === "tremolo") {
           this.tremoloPhase += this.tremoloPhaseStep;
@@ -10539,8 +16360,8 @@
           if (this.autoPanPhase >= 1) this.autoPanPhase -= 1;
         }
         if (this.algorithm === "slow-gear") {
-          mixedLeft = clamp22(mixedLeft, -4, 4);
-          mixedRight = clamp22(mixedRight, -4, 4);
+          mixedLeft = clamp28(mixedLeft, -4, 4);
+          mixedRight = clamp28(mixedRight, -4, 4);
         }
         if (!Number.isFinite(mixedLeft)) {
           mixedLeft = 0;
@@ -10559,6 +16380,9 @@
       this.currentAudioFrame += frames;
     }
     reset() {
+      this.controlsSteady = false;
+      this.controlSmoothersSettled = false;
+      this.controlSettleScanCountdown = 0;
       this.filterLeft.reset();
       this.filterRight.reset();
       for (let index = 0; index < this.fdnBuffers.length; index += 1) {
@@ -10575,6 +16399,8 @@
       this.upsampleHistory.fill(0);
       this.upsampleWriteIndices.fill(0);
       this.previousDrivenInput.fill(0);
+      this.distortionPreviousPrimitive.fill(0);
+      this.distortionPrimitiveValid.fill(0);
       this.waveshapedHistory.fill(0);
       this.waveshapedWriteIndices.fill(0);
       this.dryDelayBuffers[0]?.fill(0);
@@ -10604,11 +16430,23 @@
       this.phaserOutputStates.fill(0);
       this.phaserFeedbackStates.fill(0);
       this.phaserPhase = 0;
+      this.officialFilterPhase = 0;
+      this.officialStepPhase = 1;
+      this.officialLfoLeft = 0;
+      this.officialLfoRight = 0;
+      this.officialToneEq?.reset();
+      this.officialLowCutLeft.reset();
+      this.officialLowCutRight.reset();
+      this.officialHighCutLeft.reset();
+      this.officialHighCutRight.reset();
+      this.officialPreDelayBuffers?.[0].fill(0);
+      this.officialPreDelayBuffers?.[1].fill(0);
+      this.officialPreDelayWrite = 0;
       this.tremoloPhase = 0;
       this.tremoloWaveformOld = this.tremoloWaveformTarget;
       this.tremoloWaveformBlend.reset(1);
       this.tremoloWaveformBlendValue = 1;
-      this.autoPanPhase = 0;
+      this.autoPanPhase = Number.isFinite(this.officialInitPhase) ? clamp28(this.officialInitPhase, 0, 180) / 360 : 0;
       this.autoPanWaveformOld = this.autoPanWaveformTarget;
       this.autoPanWaveformBlend.reset(1);
       this.autoPanWaveformBlendValue = 1;
@@ -10626,10 +16464,15 @@
       this.beatRepeat?.reset();
       this.roll?.reset();
       this.freeze?.reset();
+      if (this.algorithm === "freeze" && Object.keys(this.official.values).length > 0) this.freeze?.setParameters({ frozen: !this.bypassed });
       this.warp?.reset();
       this.beatScatter?.reset();
       this.beatShift?.reset();
       this.reverseDelay?.reset();
+      this.officialDelay?.reset();
+      this.officialRoll?.reset();
+      this.officialStepSlicer?.reset();
+      this.officialReverseReverb?.reset();
       this.reverseReverb?.reset();
       this.autoRiff?.reset();
       this.hrmAuto?.reset();
@@ -10660,7 +16503,208 @@
       this.manualPanWetLeft = 0;
       this.manualPanWetRight = 0;
     }
+    applyOfficialControls(initial) {
+      const c = this.official;
+      const ramp = initial ? 0 : Math.round(this.sampleRate * 0.02);
+      const isCountedDelay = this.algorithm === "delay" || this.algorithm === "panning-delay" || this.algorithm === "reverse-delay" || this.algorithm === "mod-delay";
+      const hasOfficial = Object.keys(c.values).length > 0;
+      const isOfficialTape = this.algorithm === "tape-echo" && c.has("variant");
+      if (hasOfficial) {
+        if (this.algorithm === "electric") this.electric?.setOfficialParameters({ shift: c.get("shift"), formant: c.get("formant"), speed: c.get("speed", 5), stability: c.get("stability", 0), scale: c.get("scale") });
+        if (this.algorithm === "vocoder") this.vocoder?.setOfficialParameters({ tone: c.get("tone"), attack: c.get("attack", 50), mod_sens: c.get("mod_sens") });
+        if (this.algorithm === "osc-voc") this.oscVoc?.setOfficialParameters({ carrier: c.get("carrier"), tone: c.get("tone"), attack: c.get("attack", 50), octave: c.get("octave", 2), mod_sens: c.get("mod_sens"), release: c.get("release", 50) });
+        if (this.algorithm === "osc-bot") this.oscBot?.setOfficialParameters({ osc: c.get("osc"), tone: c.get("tone"), attack: c.get("attack", 50), note: c.get("note", 36), mod_sens: c.get("mod_sens") });
+        if (this.algorithm === "preamp") this.preamp?.setOfficialParameters({ ampType: c.get("amp_type", 3), spkType: c.get("spk_type", 1), gain: c.get("gain", 50), tComp: c.get("t_comp"), bass: c.get("bass", 50), middle: c.get("middle", 50), treble: c.get("treble", 50), presence: c.get("presence", 50), micType: c.get("mic_type"), micDis: c.get("mic_dis"), micPos: c.get("mic_pos") });
+      }
+      if (this.algorithm === "dynamics" && hasOfficial) {
+        const profile = officialDynamicsProfile(c.get("type", 0));
+        this.officialToneEq ??= new EqualizerDsp(this.sampleRate);
+        this.officialToneEq.setOfficialParameters({ lowGainDb: profile.low, highGainDb: profile.high }, ramp);
+        this.officialHasLowCut = profile.lowCut > 0;
+        this.officialHasHighCut = profile.highCut > 0;
+        if (this.officialHasLowCut) {
+          this.officialLowCutLeft.setParameters(profile.lowCut, Math.SQRT1_2);
+          this.officialLowCutRight.setParameters(profile.lowCut, Math.SQRT1_2);
+        }
+        if (this.officialHasHighCut) {
+          this.officialHighCutLeft.setParameters(Math.min(this.sampleRate * 0.45, profile.highCut), Math.SQRT1_2);
+          this.officialHighCutRight.setParameters(Math.min(this.sampleRate * 0.45, profile.highCut), Math.SQRT1_2);
+        }
+      }
+      if (this.algorithm === "beat-scatter" && c.has("length")) this.beatScatter?.setOfficialLengthBeats(c.get("length") === -1e3 ? 1 : Math.abs(c.get("length")), initial);
+      if (this.algorithm === "reverse-reverb" && hasOfficial) {
+        const values = { timeSeconds: c.get("time", 3), preDelayMs: c.get("pre_delay", 500), gateTimeSeconds: c.get("gate_time", 0.5), lowCutHz: c.get("low_cut", -1e3), highCutHz: c.get("high_cut", -1e3) };
+        this.officialReverseReverb ??= new BrowserOfficialReverseReverbDsp(this.sampleRate, values);
+        this.officialReverseReverb.setParameters(values);
+      }
+      if (this.algorithm === "pattern-slicer" && hasOfficial) this.patternSlicer?.setOfficialParameters({ rateHz: officialRateHz(c.get("rate", -1), c.bpm, c.quarterNotesPerMeasure), duty: c.get("duty", 50), attack: c.get("attack", 35), depth: c.get("depth", 100), compThreshold: c.get("comp_threshold", -30), compGain: c.get("comp_gain", 2) });
+      if (this.algorithm === "step-slicer" && hasOfficial) {
+        const values = { rateHz: officialRateHz(c.get("rate", -1), c.bpm, c.quarterNotesPerMeasure), stepMax: c.get("step_max", 16), stepLength: c.get("step_length", 50), depth: c.get("depth", 100), compThreshold: c.get("comp_threshold", -30), compGain: c.get("comp_gain", 6), levels: Array.from({ length: 16 }, (_, i) => c.get(`step_level_${i + 1}`, 100)) };
+        this.officialStepSlicer ??= new BrowserOfficialStepSlicerDsp(this.sampleRate, values);
+        this.officialStepSlicer.setParameters(values);
+      }
+      if (this.algorithm === "roll" && c.has("variant")) {
+        const variant = c.get("variant");
+        if (variant !== this.officialLastVariant) {
+          this.officialRoll?.reset();
+          this.officialLastVariant = variant;
+        }
+        const values = { variant, time: c.get("time", -1), repeats: c.get(variant === 1 ? "feedback" : "repeat", 50), roll: c.get("roll", 0), bpm: c.bpm };
+        this.officialRoll ??= new BrowserOfficialRollDsp(this.sampleRate, values);
+        this.officialRoll.setParameters(values);
+      }
+      if (isOfficialTape) {
+        const variant = c.get("variant");
+        if (variant !== this.officialLastVariant) {
+          this.officialLastVariant = variant;
+          this.officialHasLowCut = false;
+          this.officialHasHighCut = false;
+          this.officialToneEq = null;
+        }
+        const repeatRate = c.get("repeat_rate", variant === 1 ? 50 : 200);
+        const time = variant === 1 ? 2e3 * 5e-4 ** (clamp28(repeatRate, 0, 100) / 100) : repeatRate < 0 ? Math.min(4, Math.abs(repeatRate)) * 6e4 / clamp28(c.bpm, 40, 300) : clamp28(repeatRate, 1, 2e3);
+        this.tapeEcho?.setOfficialTimeMs(time, initial);
+        if (variant === 1 && (c.has("bass") || c.has("treble"))) {
+          this.officialToneEq ??= new EqualizerDsp(this.sampleRate);
+          this.officialToneEq.setOfficialParameters({ lowGainDb: clamp28(c.get("bass"), -50, 50) * 0.4, highGainDb: clamp28(c.get("treble"), -50, 50) * 0.4 }, ramp);
+        }
+      }
+      if (isCountedDelay && hasOfficial) {
+        const values = { time: c.get("time", 200), feedback: c.get("feedback", 16), modDepth: c.get("mod_depth", 50), bpm: c.bpm };
+        this.officialDelay ??= new BrowserOfficialDelayDsp(this.algorithm, this.sampleRate, values);
+        this.officialDelay.setParameters(values);
+      }
+      if (isCountedDelay && hasOfficial || isOfficialTape || c.has("d_level") || c.has("e_level") || (this.algorithm === "warp" || this.algorithm === "twist") && c.has("level")) {
+        this.officialIndependentMix = true;
+        this.officialDirectGain.setTarget(this.algorithm === "preamp" ? 0 : clamp28(c.get("d_level", 100), 0, 100) / 100, ramp);
+        const effectLevel = this.algorithm === "warp" || this.algorithm === "twist" ? c.get("level", 50) : c.get("e_level", isCountedDelay || isOfficialTape ? 50 : 100);
+        this.officialEffectGain.setTarget(clamp28(effectLevel, 0, isCountedDelay || isOfficialTape ? 120 : 100) / 100, ramp);
+      }
+      if (c.has("level") && this.algorithm !== "warp" && this.algorithm !== "twist") this.officialLevelGain.setTarget(clamp28(c.get("level", 100), 0, 100) / 100, ramp);
+      if (this.algorithm === "lpf" || this.algorithm === "bpf" || this.algorithm === "hpf" || this.algorithm === "phaser" || this.algorithm === "flanger" || this.algorithm === "auto-pan") {
+        this.officialModulation = c.has("rate") || c.has("depth") || c.has("step_rate") || c.has("separation");
+      }
+      if (c.has("rate")) {
+        const rate = officialRateHz(c.get("rate"), c.bpm, c.quarterNotesPerMeasure);
+        if (this.algorithm === "phaser") this.phaserRateHz.setTarget(rate);
+        if (this.algorithm === "flanger") this.flangerRateHz.setTarget(rate);
+        if (this.algorithm === "tremolo") this.tremoloRateHz.setTarget(rate);
+        if (this.algorithm === "auto-pan") this.autoPanRateHz.setTarget(rate);
+        if (this.algorithm === "chorus") this.chorusRateHz.setTarget(rate);
+      }
+      if (c.has("low_cut") && !this.officialReverseReverb) {
+        this.officialHasLowCut = c.get("low_cut") !== -1e3;
+        const frequency = clamp28(c.get("low_cut"), 20, Math.min(12500, this.sampleRate * 0.45));
+        this.officialLowCutLeft.setParameters(frequency, Math.SQRT1_2);
+        this.officialLowCutRight.setParameters(frequency, Math.SQRT1_2);
+      }
+      if (c.has("high_cut") && !this.officialReverseReverb) {
+        this.officialHasHighCut = c.get("high_cut") !== -1e3;
+        const frequency = clamp28(c.get("high_cut"), 20, Math.min(12500, this.sampleRate * 0.45));
+        this.officialHighCutLeft.setParameters(frequency, Math.SQRT1_2);
+        this.officialHighCutRight.setParameters(frequency, Math.SQRT1_2);
+      }
+      if (c.has("pre_delay")) this.officialPreDelaySamples = Math.round(clamp28(c.get("pre_delay"), 0, 500) * this.sampleRate / 1e3);
+      if (this.algorithm === "auto-pan" && c.has("init_phase") && c.get("init_phase") !== this.officialInitPhase) {
+        this.officialInitPhase = c.get("init_phase");
+        this.autoPanPhase = clamp28(this.officialInitPhase, 0, 180) / 360;
+      }
+      if (this.algorithm === "freeze" && hasOfficial) {
+        this.freeze?.setOfficialParameters({ attack: c.get("attack", 30), release: c.get("release", 30), decay: c.get("decay", 30), sustain: c.get("sustain", 30) });
+        this.freeze?.setParameters({ frozen: !this.bypassed });
+      }
+      if (this.algorithm === "twist" && hasOfficial) {
+        this.twist?.setOfficialParameters({ rise: c.get("rise", 50), fall: c.get("fall", 50), release: c.get("release", 0) });
+        this.twist?.setOfficialActive(!this.bypassed);
+      }
+      if (this.algorithm === "vibrato") this.vibrato?.setOfficialParameters({
+        color: c.has("color") ? c.get("color") : void 0,
+        rateHz: c.has("rate") ? officialRateHz(c.get("rate"), c.bpm, c.quarterNotesPerMeasure) : void 0
+      });
+      if (this.algorithm === "synth") this.synth?.setOfficialParameters({
+        frequencyHz: c.has("frequency") ? 20 * 1e3 ** (clamp28(c.get("frequency"), 0, 100) / 100) : void 0,
+        resonanceQ: c.has("resonance") ? 0.5 * 40 ** (clamp28(c.get("resonance"), 0, 100) / 100) : void 0,
+        decayMs: c.has("decay") ? 10 * 200 ** (clamp28(c.get("decay"), 0, 100) / 100) : void 0
+      });
+      if (this.algorithm === "isolator" && Object.keys(c.values).length > 0) this.isolator?.setOfficialParameters({
+        band: c.get("band", 0),
+        rateHz: officialRateHz(c.get("rate", -1), c.bpm, c.quarterNotesPerMeasure),
+        bandLevel: c.get("band_level", 50),
+        depth: c.get("depth", 50),
+        stepRateHz: officialRateHz(c.get("step_rate", -1e3), c.bpm, c.quarterNotesPerMeasure),
+        waveform: c.get("waveform", 0)
+      });
+      if (this.algorithm === "phaser" && c.has("stage")) {
+        const stage = c.get("stage");
+        this.officialBiPhase = stage === -1;
+        this.phaserStageCount = stage === 12 ? 12 : stage === 8 || stage === -1 ? 8 : 4;
+      }
+      if (this.algorithm === "lo-fi") {
+        this.loFi?.setOfficialParameters({
+          bitDepth: c.has("bitdepth") ? c.get("bitdepth") : void 0,
+          sampleRateDivisor: c.has("samplerate") ? c.get("samplerate") : void 0
+        });
+      }
+      if (this.algorithm === "eq") this.equalizer?.setOfficialParameters({
+        lowGainDb: c.has("lo") ? c.get("lo") : void 0,
+        mid1GainDb: c.has("lo_mid") ? c.get("lo_mid") : void 0,
+        mid1FrequencyHz: c.has("lo_mid_freq") ? c.get("lo_mid_freq") : void 0,
+        mid1Q: c.has("lo_mid_q") ? c.get("lo_mid_q") : void 0,
+        mid2GainDb: c.has("hi_mid") ? c.get("hi_mid") : void 0,
+        mid2FrequencyHz: c.has("hi_mid_freq") ? c.get("hi_mid_freq") : void 0,
+        mid2Q: c.has("hi_mid_q") ? c.get("hi_mid_q") : void 0,
+        highGainDb: c.has("high") ? c.get("high") : void 0
+      }, ramp);
+      if (this.algorithm === "sustainer" && (c.has("low_gain") || c.has("hi_gain")) || this.algorithm === "distortion" && (c.has("tone") || c.has("type"))) {
+        this.officialToneEq ??= new EqualizerDsp(this.sampleRate);
+        if (this.algorithm === "sustainer") this.officialToneEq.setOfficialParameters({ lowGainDb: c.get("low_gain"), highGainDb: c.get("hi_gain") }, ramp);
+        else {
+          const tone = clamp28(c.get("tone"), -50, 50) / 50;
+          const type = Math.round(clamp28(c.get("type", 2), 0, 5));
+          this.officialToneEq.setOfficialParameters({
+            lowGainDb: -tone * 12 + [-3, 0, 1, 2, 5, 3][type],
+            highGainDb: tone * 12 + [-2, 0, -3, 1, 4, -5][type],
+            mid1FrequencyHz: 900,
+            mid1GainDb: [4, 0, 3, 0, -6, -2][type]
+          }, ramp);
+        }
+      }
+    }
+    advanceOfficialModulation() {
+      const c = this.official;
+      const isFilter = this.algorithm === "lpf" || this.algorithm === "bpf" || this.algorithm === "hpf";
+      const phase = isFilter ? this.officialFilterPhase : this.algorithm === "phaser" ? this.phaserPhase : this.algorithm === "auto-pan" ? TWO_PI11 * this.autoPanPhase : this.flangerPhases[0] ?? 0;
+      const offset = this.algorithm === "flanger" ? Math.PI * clamp28(c.get("separation", 100), 0, 100) / 100 : this.algorithm === "phaser" ? Math.PI * 0.5 : 0;
+      const stepRate = officialRateHz(c.get("step_rate", -1e3), c.bpm, c.quarterNotesPerMeasure);
+      if (stepRate === 0 || this.officialStepPhase >= 1) {
+        this.officialLfoLeft = Math.sin(phase);
+        this.officialLfoRight = Math.sin(phase + offset);
+        this.officialStepPhase %= 1;
+      }
+      this.officialStepPhase += stepRate / this.sampleRate;
+      if (isFilter) {
+        const rate = officialRateHz(c.get("rate", -1), c.bpm, c.quarterNotesPerMeasure);
+        this.officialFilterPhase = (this.officialFilterPhase + TWO_PI11 * rate / this.sampleRate) % TWO_PI11;
+        if (this.controlUpdateCountdown === 15) {
+          const base = this.currentControls[0] ?? 1200;
+          const modulated = clamp28(base * 2 ** (5 * clamp28(c.get("depth", 50), 0, 100) / 100 * this.officialLfoLeft), 20, this.sampleRate * 0.45);
+          const q = this.currentControls[1] ?? Math.SQRT1_2;
+          this.filterLeft.setParameters(modulated, q);
+          this.filterRight.setParameters(modulated, q);
+        }
+      }
+    }
     advanceControls() {
+      if (this.settledControlFastPathEnabled && this.controlsSteady) {
+        if (this.controlUpdateCountdown <= 0) {
+          this.refreshControlDependentCoefficients();
+          this.controlUpdateCountdown = 15;
+        } else {
+          this.controlUpdateCountdown -= 1;
+        }
+        return;
+      }
+      const refreshedCoefficients = this.controlUpdateCountdown <= 0;
       this.currentControls[0] = this.cutoff.next();
       this.currentControls[1] = this.q.next();
       this.currentControls[2] = this.wet.next();
@@ -10668,6 +16712,7 @@
       this.currentControls[4] = this.dampingHz.next();
       this.currentControls[5] = this.ringModHz.next();
       this.currentControls[6] = this.ringModDepth.next();
+      this.currentControls[36] = this.ringModWaveform.next();
       this.currentControls[7] = this.driveDb.next();
       this.currentControls[8] = this.outputDb.next();
       this.currentControls[9] = this.flangerDelayMs.next();
@@ -10705,33 +16750,46 @@
       } else if (this.algorithm === "dynamics" || this.algorithm === "delay") {
         this.outputLinear = Math.pow(10, (this.currentControls[8] ?? 0) / 20);
       }
-      if (this.controlUpdateCountdown <= 0) {
-        const cutoffHz = this.currentControls[0] ?? 1200;
-        const resonanceQ = this.currentControls[1] ?? Math.SQRT1_2;
-        if (this.algorithm === "lpf" || this.algorithm === "bpf" || this.algorithm === "hpf") {
-          this.filterLeft.setParameters(cutoffHz, resonanceQ);
-          this.filterRight.setParameters(cutoffHz, resonanceQ);
-        } else if (this.algorithm === "reverb" || this.algorithm === "gate-reverb") {
-          this.refreshTimeVariantCoefficients(this.currentControls[3] ?? 2.4, this.currentControls[4] ?? 9e3);
-        } else if (this.algorithm === "dynamics") {
-          this.dynamicsAttackAlpha = Math.exp(-1 / (Math.max(0.1, this.currentControls[16] ?? DYNAMICS_DEFAULT_ATTACK_MS) * 1e-3 * this.sampleRate));
-          this.dynamicsReleaseAlpha = Math.exp(-1 / (Math.max(5, this.currentControls[17] ?? DYNAMICS_DEFAULT_RELEASE_MS) * 1e-3 * this.sampleRate));
-        } else if (this.algorithm === "delay") {
-          this.delayToneAlpha = 1 - Math.exp(-TWO_PI10 * Math.min(this.currentControls[20] ?? DELAY_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
-        } else if (this.algorithm === "chorus") {
-          this.chorusToneAlpha = 1 - Math.exp(-TWO_PI10 * Math.min(this.currentControls[25] ?? CHORUS_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
-        } else if (this.algorithm === "stereo-enhance") {
-          this.refreshStereoEnhanceCoefficients(this.currentControls[34] ?? 120);
-        }
+      if (refreshedCoefficients) {
+        this.refreshControlDependentCoefficients();
         this.controlUpdateCountdown = 15;
       } else {
         this.controlUpdateCountdown -= 1;
       }
-      if (this.algorithm === "ring-mod") this.phaseStep = TWO_PI10 * (this.currentControls[5] ?? 440) / this.sampleRate;
-      if (this.algorithm === "chorus") this.chorusPhaseStep = TWO_PI10 * (this.currentControls[22] ?? CHORUS_DEFAULT_RATE_HZ) / this.sampleRate;
-      if (this.algorithm === "phaser") this.phaserPhaseStep = TWO_PI10 * (this.currentControls[26] ?? PHASER_DEFAULT_RATE_HZ) / this.sampleRate;
+      if (this.algorithm === "ring-mod") this.phaseStep = TWO_PI11 * (this.currentControls[5] ?? 440) / this.sampleRate;
+      if (this.algorithm === "chorus") this.chorusPhaseStep = TWO_PI11 * (this.currentControls[22] ?? CHORUS_DEFAULT_RATE_HZ) / this.sampleRate;
+      if (this.algorithm === "phaser") this.phaserPhaseStep = TWO_PI11 * (this.currentControls[26] ?? PHASER_DEFAULT_RATE_HZ) / this.sampleRate;
       if (this.algorithm === "tremolo") this.tremoloPhaseStep = (this.currentControls[29] ?? TREMOLO_DEFAULT_RATE_HZ) / this.sampleRate;
       if (this.algorithm === "auto-pan") this.autoPanPhaseStep = (this.currentControls[31] ?? AUTO_PAN_DEFAULT_RATE_HZ) / this.sampleRate;
+      if (this.controlSettleScanCountdown <= 0) {
+        this.controlSettleScanCountdown = 15;
+        if (this.advanceControlSmoothersSettled()) this.controlSmoothersSettled = true;
+      } else {
+        this.controlSettleScanCountdown -= 1;
+      }
+      if (this.controlSmoothersSettled && refreshedCoefficients) this.controlsSteady = true;
+    }
+    refreshControlDependentCoefficients() {
+      const cutoffHz = this.currentControls[0] ?? 1200;
+      const resonanceQ = this.currentControls[1] ?? Math.SQRT1_2;
+      if (this.algorithm === "lpf" || this.algorithm === "bpf" || this.algorithm === "hpf") {
+        this.filterLeft.setParameters(cutoffHz, resonanceQ);
+        this.filterRight.setParameters(cutoffHz, resonanceQ);
+      } else if (this.algorithm === "reverb" || this.algorithm === "gate-reverb") {
+        this.refreshTimeVariantCoefficients(this.currentControls[3] ?? 2.4, this.currentControls[4] ?? 9e3);
+      } else if (this.algorithm === "dynamics") {
+        this.dynamicsAttackAlpha = Math.exp(-1 / (Math.max(0.1, this.currentControls[16] ?? DYNAMICS_DEFAULT_ATTACK_MS) * 1e-3 * this.sampleRate));
+        this.dynamicsReleaseAlpha = Math.exp(-1 / (Math.max(5, this.currentControls[17] ?? DYNAMICS_DEFAULT_RELEASE_MS) * 1e-3 * this.sampleRate));
+      } else if (this.algorithm === "delay") {
+        this.delayToneAlpha = 1 - Math.exp(-TWO_PI11 * Math.min(this.currentControls[20] ?? DELAY_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
+      } else if (this.algorithm === "chorus") {
+        this.chorusToneAlpha = 1 - Math.exp(-TWO_PI11 * Math.min(this.currentControls[25] ?? CHORUS_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
+      } else if (this.algorithm === "stereo-enhance") {
+        this.refreshStereoEnhanceCoefficients(this.currentControls[34] ?? 120);
+      }
+    }
+    advanceControlSmoothersSettled() {
+      return this.cutoff.isSettled && this.q.isSettled && this.wet.isSettled && this.decaySeconds.isSettled && this.dampingHz.isSettled && this.ringModHz.isSettled && this.ringModDepth.isSettled && this.ringModWaveform.isSettled && this.driveDb.isSettled && this.outputDb.isSettled && this.flangerDelayMs.isSettled && this.flangerDepth.isSettled && this.flangerRateHz.isSettled && this.flangerFeedback.isSettled && this.dynamicsThreshold.isSettled && this.dynamicsRatio.isSettled && this.dynamicsKnee.isSettled && this.dynamicsAttackMs.isSettled && this.dynamicsReleaseMs.isSettled && this.delayTimeMs.isSettled && this.delayFeedback.isSettled && this.delayToneHz.isSettled && this.chorusDelayMs.isSettled && this.chorusRateHz.isSettled && this.chorusDepthMs.isSettled && this.chorusFeedback.isSettled && this.chorusToneHz.isSettled && this.phaserRateHz.isSettled && this.phaserDepth.isSettled && this.phaserFeedback.isSettled && this.tremoloRateHz.isSettled && this.tremoloDepth.isSettled && this.autoPanRateHz.isSettled && this.autoPanDepth.isSettled && this.stereoWidth.isSettled && this.stereoLowMonoCutoffHz.isSettled && this.stereoDecorrelation.isSettled && this.tremoloWaveformBlendValue === 1 && this.autoPanWaveformBlendValue === 1;
     }
     /** Stereo-linked gate control for the FDN8 return; allocated state is scalar-only. */
     updateGateReverbEnvelope(left, right) {
@@ -10739,11 +16797,20 @@
       if (linkedPeak >= this.gateDetectorEnvelope) {
         this.gateDetectorEnvelope = linkedPeak;
       } else {
-        const detectorRelease = Math.exp(-1 / (GATE_REVERB_DETECTOR_RELEASE_MS * 1e-3 * this.sampleRate));
-        this.gateDetectorEnvelope *= detectorRelease;
+        this.gateDetectorEnvelope *= this.gateDetectorRelease;
       }
-      const threshold = Math.pow(10, this.gateThresholdDb.next() / 20);
-      const holdSamples = Math.max(1, Math.round(this.gateHoldMs.next() * 1e-3 * this.sampleRate));
+      const thresholdDb = this.gateThresholdDb.next();
+      if (thresholdDb !== this.gateThresholdKey) {
+        this.gateThresholdKey = thresholdDb;
+        this.gateThresholdLinear = Math.pow(10, thresholdDb / 20);
+      }
+      const threshold = this.gateThresholdLinear;
+      const holdMs = this.gateHoldMs.next();
+      if (holdMs !== this.gateHoldKey) {
+        this.gateHoldKey = holdMs;
+        this.gateHoldSamples = Math.max(1, Math.round(holdMs * 1e-3 * this.sampleRate));
+      }
+      const holdSamples = this.gateHoldSamples;
       const releaseMs = this.gateReleaseMs.next();
       const closeThreshold = threshold * GATE_REVERB_HYSTERESIS_RATIO;
       if (this.gateDetectorEnvelope >= threshold) {
@@ -10754,10 +16821,13 @@
       } else if (this.gateHoldRemainingSamples > 0) {
         this.gateHoldRemainingSamples -= 1;
       } else if (this.gateGain > 0) {
-        const releaseCoefficient = Math.exp(
-          -(GATE_REVERB_RELEASE_DB * Math.LN10 / 20) / (Math.max(10, releaseMs) * 1e-3 * this.sampleRate)
-        );
-        this.gateGain *= releaseCoefficient;
+        if (releaseMs !== this.gateReleaseKey) {
+          this.gateReleaseKey = releaseMs;
+          this.gateReleaseCoefficient = Math.exp(
+            -(GATE_REVERB_RELEASE_DB * Math.LN10 / 20) / (Math.max(10, releaseMs) * 1e-3 * this.sampleRate)
+          );
+        }
+        this.gateGain *= this.gateReleaseCoefficient;
         if (this.gateGain < 1e-4) this.gateGain = 0;
       }
     }
@@ -10777,14 +16847,15 @@
     }
     requestDistortionMode(mode) {
       if (mode === this.distortionModeTarget) return;
+      this.distortionPrimitiveValid.fill(0);
       this.distortionModeOld = this.distortionModeTarget;
       this.distortionModeTarget = mode;
       this.distortionModeBlend.reset(0);
       this.distortionModeBlend.setTarget(1, DISTORTION_MODE_CROSSFADE_OVERSAMPLED_SAMPLES);
     }
     refreshTimeVariantCoefficients(decaySeconds, dampingHz) {
-      const cutoff = clamp22(dampingHz, 200, this.sampleRate * 0.499);
-      const alpha = 1 - Math.exp(-TWO_PI10 * cutoff / this.sampleRate);
+      const cutoff = clamp28(dampingHz, 200, this.sampleRate * 0.499);
+      const alpha = 1 - Math.exp(-TWO_PI11 * cutoff / this.sampleRate);
       for (let index = 0; index < 16; index += 1) {
         const lineSamples = this.delayLengths[index] ?? 1;
         this.delayFeedbackGains[index] = Math.pow(10, -3 * lineSamples / (Math.max(0.1, decaySeconds) * this.sampleRate));
@@ -10794,8 +16865,8 @@
     /** Recomputed outside the inner DSP path when the smoothed cutoff moves. */
     refreshStereoEnhanceCoefficients(lowMonoCutoffHz) {
       const nyquist = this.sampleRate * 0.499;
-      const cutoff = clamp22(lowMonoCutoffHz, 20, Math.min(1e3, nyquist));
-      this.stereoLowpassAlpha = 1 - Math.exp(-TWO_PI10 * cutoff / this.sampleRate);
+      const cutoff = clamp28(lowMonoCutoffHz, 20, Math.min(1e3, nyquist));
+      this.stereoLowpassAlpha = 1 - Math.exp(-TWO_PI11 * cutoff / this.sampleRate);
       this.stereoAllpass1Coefficient = firstOrderAllpassCoefficient(Math.min(650, this.sampleRate * 0.12), this.sampleRate);
       this.stereoAllpass2Coefficient = firstOrderAllpassCoefficient(Math.min(2300, this.sampleRate * 0.36), this.sampleRate);
     }
@@ -10823,7 +16894,7 @@
     }
     /** Static equal-power pan for mono sources; smooth balance for stereo input. */
     processManualPan(inputLeft, inputRight, monoInput) {
-      const position = clamp22(this.manualPanPosition.next(), -1, 1);
+      const position = clamp28(this.manualPanPosition.next(), -1, 1);
       const tablePosition = (position + 1) * 1024;
       const index = Math.min(2047, Math.floor(tablePosition));
       const fraction = tablePosition - index;
@@ -10973,28 +17044,47 @@
       return delayed;
     }
     /** 4x zero-stuffed sinc oversampling, ADAA waveshaping and FIR decimation. */
+    /** Exact ADAA primitive reuse for a settled mode, never across a mode fade. */
+    processCachedDistortionSample(mode, current, previous, channel) {
+      const difference = current - previous;
+      if (Math.abs(difference) < 1e-8) {
+        this.distortionPrimitiveValid[channel] = 0;
+        return distortionFunction(mode, 0.5 * (current + previous));
+      }
+      const currentPrimitive = distortionAntiderivative(mode, current);
+      const previousPrimitive = this.distortionPrimitiveValid[channel] ? this.distortionPreviousPrimitive[channel] : distortionAntiderivative(mode, previous);
+      this.distortionPreviousPrimitive[channel] = currentPrimitive;
+      this.distortionPrimitiveValid[channel] = 1;
+      return (currentPrimitive - previousPrimitive) / difference;
+    }
     processDistortionSample(input, channel) {
-      const inputHistoryBase = channel * DISTORTION_UPSAMPLE_INPUT_HISTORY;
-      const waveshapedHistoryBase = channel * DISTORTION_FIR_TAPS;
+      const inputHistoryBase = channel * DISTORTION_UPSAMPLE_INPUT_HISTORY * 2;
+      const waveshapedHistoryBase = channel * DISTORTION_FIR_TAPS * 2;
+      const upsampleHistory = this.upsampleHistory;
+      const waveshapedHistory = this.waveshapedHistory;
+      const interpolation = DISTORTION_FILTERS.interpolation;
+      const decimation = DISTORTION_FILTERS.decimation;
       let upWriteIndex = this.upsampleWriteIndices[channel] ?? 0;
       let downWriteIndex = this.waveshapedWriteIndices[channel] ?? 0;
       let output = 0;
-      this.upsampleHistory[inputHistoryBase + upWriteIndex] = input;
+      const upWriteOffset = inputHistoryBase + upWriteIndex;
+      upsampleHistory[upWriteOffset] = input;
+      upsampleHistory[upWriteOffset + DISTORTION_UPSAMPLE_INPUT_HISTORY] = input;
       for (let subSample = 0; subSample < DISTORTION_OVERSAMPLE_FACTOR; subSample += 1) {
         let reconstructed = 0;
-        let inputHistoryIndex = upWriteIndex;
-        for (let inputTap = 0; inputTap < DISTORTION_UPSAMPLE_INPUT_HISTORY; inputTap += 1) {
+        let inputHistoryIndex = upWriteOffset + DISTORTION_UPSAMPLE_INPUT_HISTORY;
+        const phaseTapCount = DISTORTION_INTERPOLATION_TAPS_BY_PHASE[subSample];
+        for (let inputTap = 0; inputTap < phaseTapCount; inputTap += 1) {
           const coefficientIndex = subSample + DISTORTION_OVERSAMPLE_FACTOR * inputTap;
-          if (coefficientIndex < DISTORTION_FIR_TAPS) {
-            reconstructed += (this.upsampleHistory[inputHistoryBase + inputHistoryIndex] ?? 0) * (DISTORTION_FILTERS.interpolation[coefficientIndex] ?? 0);
-          }
-          inputHistoryIndex = inputHistoryIndex > 0 ? inputHistoryIndex - 1 : DISTORTION_UPSAMPLE_INPUT_HISTORY - 1;
+          reconstructed += upsampleHistory[inputHistoryIndex] * interpolation[coefficientIndex];
+          inputHistoryIndex -= 1;
         }
         const driven = reconstructed * this.driveLinear;
         let shaped;
         if (this.distortionModeOld === this.distortionModeTarget) {
-          shaped = antiderivativeAntialiasSample(this.distortionModeTarget, driven, this.previousDrivenInput[channel] ?? 0);
+          shaped = this.processCachedDistortionSample(this.distortionModeTarget, driven, this.previousDrivenInput[channel] ?? 0, channel);
         } else {
+          this.distortionPrimitiveValid[channel] = 0;
           const oldModeOutput = antiderivativeAntialiasSample(
             this.distortionModeOld,
             driven,
@@ -11014,13 +17104,15 @@
         }
         this.previousDrivenInput[channel] = driven;
         const boundedShaped = Number.isFinite(shaped * this.outputLinear) ? shaped * this.outputLinear : 0;
-        this.waveshapedHistory[waveshapedHistoryBase + downWriteIndex] = boundedShaped;
+        const downWriteOffset = waveshapedHistoryBase + downWriteIndex;
+        waveshapedHistory[downWriteOffset] = boundedShaped;
+        waveshapedHistory[downWriteOffset + DISTORTION_FIR_TAPS] = boundedShaped;
         if (subSample === 0) {
           let decimated = 0;
-          let historyIndex = downWriteIndex;
+          let historyIndex = downWriteOffset + DISTORTION_FIR_TAPS;
           for (let tap = 0; tap < DISTORTION_FIR_TAPS; tap += 1) {
-            decimated += (this.waveshapedHistory[waveshapedHistoryBase + historyIndex] ?? 0) * (DISTORTION_FILTERS.decimation[tap] ?? 0);
-            historyIndex = historyIndex > 0 ? historyIndex - 1 : DISTORTION_FIR_TAPS - 1;
+            decimated += waveshapedHistory[historyIndex] * decimation[tap];
+            historyIndex -= 1;
           }
           output = decimated;
         }
@@ -11034,13 +17126,32 @@
       return output;
     }
     processRingMod(input, channel) {
-      const carrier = Math.sin(this.phase);
+      const sineCarrier = Math.sin(this.phase);
+      const waveformBlend = this.currentControls[36] ?? 0;
+      const carrier = waveformBlend <= 0 ? sineCarrier : waveformBlend >= 1 ? this.ringModTriangle(this.phase, this.currentControls[5] ?? 440) : sineCarrier + (this.ringModTriangle(this.phase, this.currentControls[5] ?? 440) - sineCarrier) * waveformBlend;
       const depth = this.currentControls[6] ?? 1;
       const modulated = input * (1 - depth + depth * carrier);
       const dcBlocked = modulated - (this.dcBlockInput[channel] ?? 0) + this.dcBlockCoefficient * (this.dcBlockOutput[channel] ?? 0);
       this.dcBlockInput[channel] = modulated;
       this.dcBlockOutput[channel] = Math.abs(dcBlocked) < MIN_STATE_MAGNITUDE ? 0 : dcBlocked;
       return this.dcBlockOutput[channel] ?? 0;
+    }
+    ringModTriangle(phaseRadians, carrierHz) {
+      const harmonicBudget = this.sampleRate * 0.45 / Math.max(carrierHz, 1e-9);
+      let tier = RING_MOD_TRIANGLE_TABLES.length - 1;
+      for (let index = 0; index < RING_MOD_TRIANGLE_HARMONIC_TIERS.length; index += 1) {
+        if (RING_MOD_TRIANGLE_HARMONIC_TIERS[index] <= harmonicBudget) {
+          tier = index;
+          break;
+        }
+      }
+      const table = RING_MOD_TRIANGLE_TABLES[tier];
+      const position = phaseRadians / TWO_PI11 * table.length;
+      const baseIndex = Math.floor(position);
+      const fraction = position - baseIndex;
+      const first = table[baseIndex % table.length] ?? 0;
+      const second = table[(baseIndex + 1) % table.length] ?? 0;
+      return first + (second - first) * fraction;
     }
     /** Smoothed sine-LFO flanger with a four-point Lagrange read head. */
     processFlanger(input, channel) {
@@ -11051,10 +17162,10 @@
       const baseDelayMs = this.currentControls[9] ?? FLANGER_DEFAULT_DELAY_MILLISECONDS;
       const depth = this.currentControls[10] ?? FLANGER_DEFAULT_DEPTH;
       const rateHz = this.currentControls[11] ?? FLANGER_DEFAULT_RATE_HZ;
-      const feedback = clamp22(this.currentControls[12] ?? FLANGER_DEFAULT_FEEDBACK, -0.95, 0.95);
+      const feedback = clamp28(this.currentControls[12] ?? FLANGER_DEFAULT_FEEDBACK, -0.95, 0.95);
       const excursionMs = depth * FLANGER_MAX_DEPTH_MILLISECONDS;
-      const delayMs = clamp22(
-        baseDelayMs + excursionMs * Math.sin(phase),
+      const delayMs = clamp28(
+        baseDelayMs + excursionMs * (this.officialModulation ? channel === 0 ? this.officialLfoLeft : this.officialLfoRight : Math.sin(phase)),
         FLANGER_MIN_DELAY_MILLISECONDS,
         FLANGER_MAX_DELAY_MILLISECONDS
       );
@@ -11064,14 +17175,14 @@
       const filteredFeedback = damping + this.flangerDampingAlpha * (delayed - damping);
       this.flangerFeedbackStates[channel] = Number.isFinite(filteredFeedback) ? filteredFeedback : 0;
       const writeSample = input + feedback * Math.tanh(filteredFeedback * 1.5);
-      buffer[writeIndex] = Number.isFinite(writeSample) ? clamp22(writeSample, -4, 4) : 0;
+      buffer[writeIndex] = Number.isFinite(writeSample) ? clamp28(writeSample, -4, 4) : 0;
       let nextWriteIndex = writeIndex + 1;
       if (nextWriteIndex >= buffer.length) nextWriteIndex = 0;
       this.flangerWriteIndices[channel] = nextWriteIndex;
-      let nextPhase = phase + TWO_PI10 * rateHz / this.sampleRate;
-      if (nextPhase >= TWO_PI10) nextPhase -= TWO_PI10;
+      let nextPhase = phase + TWO_PI11 * rateHz / this.sampleRate;
+      if (nextPhase >= TWO_PI11) nextPhase -= TWO_PI11;
       this.flangerPhases[channel] = nextPhase;
-      return 0.5 * (input + delayed);
+      return this.officialIndependentMix ? delayed : 0.5 * (input + delayed);
     }
     /** Stereo-linked peak/RMS envelope and the clean-room F08 soft-knee curve. */
     updateDynamicsDetector(left, right) {
@@ -11108,7 +17219,7 @@
         }
       }
       const gain = Math.pow(10, gainReductionDb / 20) * this.outputLinear;
-      this.dynamicsGain = Number.isFinite(gain) ? clamp22(gain, 0, 16) : 0;
+      this.dynamicsGain = Number.isFinite(gain) ? clamp28(gain, 0, 16) : 0;
     }
     /** Fixed-capacity stereo delay line with smoothed fractional read and feedback. */
     processDelay(input, channel) {
@@ -11123,9 +17234,9 @@
       const previousTone = this.delayToneStates[channel] ?? 0;
       const filtered = previousTone + this.delayToneAlpha * (delayed - previousTone);
       this.delayToneStates[channel] = Number.isFinite(filtered) ? filtered : 0;
-      const feedback = clamp22(this.currentControls[19] ?? DELAY_DEFAULT_FEEDBACK, 0, 0.95);
+      const feedback = clamp28(this.currentControls[19] ?? DELAY_DEFAULT_FEEDBACK, 0, 0.95);
       const writeSample = input + feedback * Math.tanh(filtered);
-      buffer[writeIndex] = Number.isFinite(writeSample) ? clamp22(writeSample, -4, 4) : 0;
+      buffer[writeIndex] = Number.isFinite(writeSample) ? clamp28(writeSample, -4, 4) : 0;
       let nextWriteIndex = writeIndex + 1;
       if (nextWriteIndex >= buffer.length) nextWriteIndex = 0;
       this.delayWriteIndices[channel] = nextWriteIndex;
@@ -11136,7 +17247,7 @@
       const voices = this.chorusVoiceCount;
       const baseDelayMs = this.currentControls[21] ?? CHORUS_DEFAULT_DELAY_MILLISECONDS;
       const depthMs = this.currentControls[23] ?? CHORUS_DEFAULT_DEPTH_MILLISECONDS;
-      const feedback = clamp22(this.currentControls[24] ?? CHORUS_DEFAULT_FEEDBACK, 0, CHORUS_FEEDBACK_MAX);
+      const feedback = clamp28(this.currentControls[24] ?? CHORUS_DEFAULT_FEEDBACK, 0, CHORUS_FEEDBACK_MAX);
       const channelBase = channel * 4;
       let sum = 0;
       for (let voice = 0; voice < voices; voice += 1) {
@@ -11144,8 +17255,8 @@
         const buffer = this.chorusBuffers[index];
         if (!buffer) continue;
         const writeIndex = this.chorusWriteIndices[index] ?? 0;
-        const phase = this.chorusPhase + TWO_PI10 * voice / voices + (channel === 0 ? 0 : Math.PI * 0.5);
-        const delayMs = clamp22(
+        const phase = this.chorusPhase + TWO_PI11 * voice / voices + (channel === 0 ? 0 : Math.PI * 0.5);
+        const delayMs = clamp28(
           baseDelayMs + depthMs * Math.sin(phase),
           CHORUS_MIN_DELAY_MILLISECONDS,
           CHORUS_MAX_DELAY_MILLISECONDS
@@ -11156,7 +17267,7 @@
         const filtered = previousTone + this.chorusToneAlpha * (delayed - previousTone);
         this.chorusFeedbackStates[index] = Number.isFinite(filtered) ? filtered : 0;
         const writeSample = input + feedback * Math.tanh(filtered);
-        buffer[writeIndex] = Number.isFinite(writeSample) ? clamp22(writeSample, -4, 4) : 0;
+        buffer[writeIndex] = Number.isFinite(writeSample) ? clamp28(writeSample, -4, 4) : 0;
         let nextWriteIndex = writeIndex + 1;
         if (nextWriteIndex >= buffer.length) nextWriteIndex = 0;
         this.chorusWriteIndices[index] = nextWriteIndex;
@@ -11166,10 +17277,12 @@
     }
     /** Four/eight cascaded all-pass sections with a quadrature stereo sweep. */
     processPhaser(input, channel) {
-      const depth = clamp22(this.currentControls[27] ?? PHASER_DEFAULT_DEPTH, 0, 1);
-      const feedback = clamp22(this.currentControls[28] ?? PHASER_DEFAULT_FEEDBACK, 0, PHASER_FEEDBACK_MAX);
+      const depth = clamp28(this.currentControls[27] ?? PHASER_DEFAULT_DEPTH, 0, 1);
+      const feedback = clamp28(this.currentControls[28] ?? PHASER_DEFAULT_FEEDBACK, 0, PHASER_FEEDBACK_MAX);
       const phase = this.phaserPhase + (channel === 0 ? 0 : Math.PI * 0.5);
-      const sweepPosition = 0.5 + 0.5 * depth * Math.sin(phase);
+      const lfo = this.officialModulation ? channel === 0 ? this.officialLfoLeft : this.officialLfoRight : Math.sin(phase);
+      const manual = this.official.has("manual") ? clamp28(this.official.get("manual"), 0, 100) / 100 : 0.5;
+      const sweepPosition = clamp28(manual + 0.5 * depth * lfo, 0, 1);
       const maximumFrequency = Math.min(PHASER_MAX_FREQUENCY_HZ, this.sampleRate * 0.45);
       const baseFrequency = PHASER_MIN_FREQUENCY_HZ * Math.pow(maximumFrequency / PHASER_MIN_FREQUENCY_HZ, sweepPosition);
       const channelOffset = channel * PHASER_MAX_STAGES;
@@ -11177,7 +17290,8 @@
       let stageInput = input + feedback * Math.tanh(feedbackSource);
       for (let stage = 0; stage < this.phaserStageCount; stage += 1) {
         const stageScale = 0.72 + stage * 0.08;
-        const cutoff = clamp22(baseFrequency * stageScale, 20, maximumFrequency);
+        const secondBankFrequency = this.officialBiPhase && stage >= 4 ? PHASER_MIN_FREQUENCY_HZ * Math.pow(maximumFrequency / PHASER_MIN_FREQUENCY_HZ, clamp28(manual - 0.5 * depth * lfo, 0, 1)) : baseFrequency;
+        const cutoff = clamp28(secondBankFrequency * stageScale, 20, maximumFrequency);
         const tangent = Math.tan(Math.PI * cutoff / this.sampleRate);
         const coefficient = (tangent - 1) / (tangent + 1);
         const stateIndex = channelOffset + stage;
@@ -11191,35 +17305,36 @@
       const previousFeedback = this.phaserFeedbackStates[channel] ?? 0;
       const filteredFeedback = previousFeedback + this.phaserToneAlpha * (stageInput - previousFeedback);
       this.phaserFeedbackStates[channel] = Number.isFinite(filteredFeedback) ? filteredFeedback : 0;
-      return 0.5 * (input + stageInput);
+      return this.officialIndependentMix ? stageInput : 0.5 * (input + stageInput);
     }
     lfoValue(waveform, phase, phaseStep) {
-      if (waveform === "sine") return Math.sin(TWO_PI10 * phase);
+      if (waveform === "sine") return Math.sin(TWO_PI11 * phase);
       if (waveform === "triangle") return 1 - 4 * Math.abs(phase - 0.5);
       let square = phase < 0.5 ? 1 : -1;
       square += polyBlep4(phase, phaseStep);
       const fallingEdgePhase = phase < 0.5 ? phase + 0.5 : phase - 0.5;
       square -= polyBlep4(fallingEdgePhase, phaseStep);
-      return clamp22(square, -1, 1);
+      return clamp28(square, -1, 1);
     }
     /** Stereo-linked amplitude modulation with a click-safe band-limited square LFO. */
     processTremolo(input) {
-      const depth = clamp22(this.currentControls[30] ?? TREMOLO_DEFAULT_DEPTH, 0, 1);
+      const depth = clamp28(this.currentControls[30] ?? TREMOLO_DEFAULT_DEPTH, 0, 1);
       const oldLfo = this.lfoValue(this.tremoloWaveformOld, this.tremoloPhase, this.tremoloPhaseStep);
-      const targetLfo = this.lfoValue(this.tremoloWaveformTarget, this.tremoloPhase, this.tremoloPhaseStep);
+      const targetLfo = this.tremoloWaveformOld === this.tremoloWaveformTarget ? oldLfo : this.lfoValue(this.tremoloWaveformTarget, this.tremoloPhase, this.tremoloPhaseStep);
       const blend = this.tremoloWaveformBlendValue;
-      const lfo = oldLfo + (targetLfo - oldLfo) * blend;
+      const lfo = this.official.has("waveform") ? this.officialWaveform(Math.sin(TWO_PI11 * this.tremoloPhase)) : oldLfo + (targetLfo - oldLfo) * blend;
       const gain = 1 - depth * 0.5 * (1 - lfo);
       return input * gain;
     }
     /** Equal-power mono pan and stereo mid/side autopan share one bounded LFO. */
     processAutoPan(inputLeft, inputRight, monoInput) {
-      const depth = clamp22(this.currentControls[32] ?? AUTO_PAN_DEFAULT_DEPTH, 0, 1);
+      const depth = clamp28(this.currentControls[32] ?? AUTO_PAN_DEFAULT_DEPTH, 0, 1);
       const oldLfo = this.lfoValue(this.autoPanWaveformOld, this.autoPanPhase, this.autoPanPhaseStep);
-      const targetLfo = this.lfoValue(this.autoPanWaveformTarget, this.autoPanPhase, this.autoPanPhaseStep);
+      const targetLfo = this.autoPanWaveformOld === this.autoPanWaveformTarget ? oldLfo : this.lfoValue(this.autoPanWaveformTarget, this.autoPanPhase, this.autoPanPhaseStep);
       const blend = this.autoPanWaveformBlendValue;
-      const lfo = oldLfo + (targetLfo - oldLfo) * blend;
-      const pan = clamp22(depth * lfo, -1, 1);
+      const rawLfo = this.officialModulation ? this.officialLfoLeft : oldLfo + (targetLfo - oldLfo) * blend;
+      const lfo = this.official.has("waveform") ? this.officialWaveform(rawLfo) : rawLfo;
+      const pan = clamp28(depth * lfo, -1, 1);
       const angle = (pan + 1) * Math.PI * 0.25;
       const leftGain = Math.cos(angle);
       const rightGain = Math.sin(angle);
@@ -11234,6 +17349,11 @@
       this.autoPanWetLeft = mid * leftGain * Math.SQRT2 + side * sideGain;
       this.autoPanWetRight = mid * rightGain * Math.SQRT2 - side * sideGain;
     }
+    /** Normalized tanh continuously sharpens sine toward square without discontinuities. */
+    officialWaveform(sine) {
+      const sharpness = 0.25 * 80 ** (clamp28(this.official.get("waveform", 50), 0, 100) / 100);
+      return Math.tanh(sharpness * sine) / Math.tanh(sharpness);
+    }
     processReverb(input, channel) {
       const lineStart = channel === 0 ? 0 : 8;
       let feedbackSum = 0;
@@ -11243,10 +17363,13 @@
       if (earlyBuffer) earlyBuffer[earlyIndex] = input;
       const earlyCoefficients = channel === 0 ? EARLY_REFLECTION_GAINS_LEFT : EARLY_REFLECTION_GAINS_RIGHT;
       let early = input * (earlyCoefficients[0] ?? 0);
-      for (let tap = 1; tap < EARLY_REFLECTION_DELAYS_SECONDS.length; tap += 1) {
+      const density = this.official.has("density") ? clamp28(this.official.get("density"), 1, 10) : 10;
+      const earlyTapCount = Math.max(2, Math.ceil(EARLY_REFLECTION_DELAYS_SECONDS.length * density / 10));
+      for (let tap = 1; tap < earlyTapCount; tap += 1) {
         if (!earlyBuffer) continue;
         const delay = this.earlyDelays[tap] ?? 0;
-        const readIndex = positiveModulo2(earlyIndex - delay, this.earlyRingLength);
+        let readIndex = earlyIndex - delay;
+        if (readIndex < 0) readIndex += this.earlyRingLength;
         early += (earlyBuffer[readIndex] ?? 0) * (earlyCoefficients[tap] ?? 0);
       }
       earlyIndex += 1;
@@ -11260,17 +17383,17 @@
         const modulatedDelay = (this.delayLengths[index] ?? 1) + FDN_MODULATION_DEPTH_SAMPLES * Math.sin(modulationPhase);
         const raw = buffer ? readLagrangeFromWriteHead2(buffer, writeIndex, modulatedDelay) : 0;
         let nextModulationPhase = modulationPhase + (this.delayModPhaseSteps[index] ?? 0);
-        if (nextModulationPhase >= TWO_PI10) nextModulationPhase -= TWO_PI10;
+        if (nextModulationPhase >= TWO_PI11) nextModulationPhase -= TWO_PI11;
         this.delayModPhases[index] = nextModulationPhase;
         const damping = this.delayDampingStates[index] ?? 0;
         const alpha = this.dampingAlpha[index] ?? 1;
         const damped = damping + alpha * (raw - damping);
-        this.delayDampingStates[index] = Math.abs(damped) < MIN_STATE_MAGNITUDE ? 0 : damped;
-        this.delayReadScratch[index] = this.delayDampingStates[index] ?? 0;
-        const feedback = (this.delayReadScratch[index] ?? 0) * (this.delayFeedbackGains[index] ?? 0);
+        const dampedState = Math.abs(damped) < MIN_STATE_MAGNITUDE ? 0 : damped;
+        this.delayDampingStates[index] = dampedState;
+        const feedback = dampedState * (this.delayFeedbackGains[index] ?? 0);
         this.delayReadScratch[index] = feedback;
         feedbackSum += feedback;
-        outputSum += (this.delayDampingStates[index] ?? 0) * (line % 2 === 0 ? 1 : -1);
+        outputSum += dampedState * (line % 2 === 0 ? 1 : -1);
       }
       for (let line = 0; line < 8; line += 1) {
         const index = lineStart + line;
@@ -11279,7 +17402,8 @@
         const feedback = this.delayReadScratch[index] ?? 0;
         const householderOutput = feedback - HOUSEHOLDER_ROW_SUM_FACTOR * feedbackSum;
         const injectionSign = (line & 1) === 0 ? 1 : -1;
-        let next = householderOutput + input * FDN_INJECTION_GAIN * injectionSign;
+        const injectionWeight = this.official.has("density") ? clamp28(density * 0.8 - line, 0, 1) : 1;
+        let next = householderOutput + input * FDN_INJECTION_GAIN * injectionSign * injectionWeight;
         if (!Number.isFinite(next) || Math.abs(next) < MIN_STATE_MAGNITUDE) next = 0;
         const writeIndex = this.fdnWriteIndices[index] ?? 0;
         buffer[writeIndex] = next;
@@ -11354,6 +17478,14 @@
           } catch (error) {
             this.port.postMessage?.({ type: "error", message: error instanceof Error ? error.message : String(error) });
           }
+        } else if (message?.type === "midi-all-notes-off") {
+          const noteMessage = message;
+          try {
+            this.core.scheduleMidiAllNotesOff(noteMessage.frame);
+            this.port.postMessage?.({ type: "midi-event-queued", frame: noteMessage.frame, panic: true });
+          } catch (error) {
+            this.port.postMessage?.({ type: "error", message: error instanceof Error ? error.message : String(error) });
+          }
         } else if (message?.type === "reset") {
           this.core.reset();
         }
@@ -11377,7 +17509,7 @@
       }
       if (leftOutput || rightOutput) {
         const inputIsMono = !inputChannels || inputChannels.length < 2;
-        this.core.processBlock(leftInput, rightInput, leftOutput, rightOutput, frames, inputIsMono);
+        this.core.processBlock(leftInput, rightInput, leftOutput, rightOutput, frames, inputIsMono, inputs[1]?.[0] ?? null, inputs[1]?.[1] ?? null);
       }
       while (this.core.tryPopAutoRiffPitchChange()) {
         this.port.postMessage?.({

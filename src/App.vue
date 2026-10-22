@@ -12,6 +12,7 @@ const isInitialized = ref(false);
 const initError = ref('');
 const actionError = ref('');
 const initInFlight = ref(false);
+const recoveryInFlight = ref(false);
 const initStarted = ref(false);
 const toolsOpen = ref(false);
 const audioMode = ref<AudioMode>(engine.getMode());
@@ -96,12 +97,55 @@ const initAudio = async (silent = false) => {
 };
 
 const retryAudio = () => {
+  if (engine.isBrowserRecoveryAwaitingUserResume()) {
+    if (initInFlight.value) return;
+    initInFlight.value = true;
+    actionError.value = '';
+    initError.value = '';
+    void engine.resumeRecoveredBrowserOutputFromUserActivation().then(() => {
+      uiStatus.value = engine.getUiStatus();
+      isInitialized.value = uiStatus.value.ready;
+      initError.value = uiStatus.value.lastError;
+    }).catch((error: unknown) => {
+      uiStatus.value = engine.getUiStatus();
+      isInitialized.value = uiStatus.value.ready;
+      actionError.value = error instanceof Error ? error.message : String(error);
+      initError.value = actionError.value;
+    }).finally(() => { initInFlight.value = false; });
+    return;
+  }
+
   if (initInFlight.value) {
+    if (recoveryInFlight.value) return;
     // BrowserAudioEngine.init may be waiting for a resume() call made before
     // user activation. Re-issue only resume in this trusted click handler; do
     // not start a second initialization while the first one is still pending.
     void engine.resumeFromUserActivation().catch((error: unknown) => {
       console.error('Failed to resume audio engine from user activation:', error);
+    });
+    return;
+  }
+
+  if (audioMode.value === 'browser' && engine.isBrowserContextClosed()) {
+    initInFlight.value = true;
+    initStarted.value = true;
+    recoveryInFlight.value = true;
+    actionError.value = '';
+    initError.value = '';
+    // Call the factory directly in this click handler; it creates the new
+    // AudioContext before its first asynchronous preparation step.
+    void engine.recoverClosedBrowserAudioContext().then(() => {
+      uiStatus.value = engine.getUiStatus();
+      isInitialized.value = uiStatus.value.ready;
+      initError.value = uiStatus.value.lastError;
+    }).catch((error: unknown) => {
+      uiStatus.value = engine.getUiStatus();
+      isInitialized.value = uiStatus.value.ready;
+      actionError.value = error instanceof Error ? error.message : String(error);
+      initError.value = actionError.value;
+    }).finally(() => {
+      recoveryInFlight.value = false;
+      initInFlight.value = false;
     });
     return;
   }

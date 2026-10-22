@@ -1,0 +1,13 @@
+run_id=A2_baseline_20261018T165755Z
+started_utc=2026-10-18T16:57:55Z
+finished_utc=2026-10-18T16:59:17Z
+elapsed_wall_approx=82s
+source_head=f7bee1d0360fe46f3a586094bec42076df433cf9
+source_tree=5c5963e83cb30dab121fc886935969d678acfddb
+variant=unmodified baseline
+patch_sha256=none
+executable_sha256=d7965be30a917ee8b54e36d6aa04a287bc57efff08c9855c4bc8fe464c7169c6
+compiler=c++ (Debian 14.2.0-19) 14.2.0
+cmake=cmake version 4.4.4
+benchmark=100000 64-frame callbacks, five 300s stereo loops, 20 per-track FX slots, 5000 warmup, 48kHz, Release -O3 -DNDEBUG
+provenance_note=Portable Linux CPU callback simulation, no hardware. Captured from stdout in /tmp/rc505-baseline-probe.json; process returned 0, all output validation from JSON. Pre-run load/affinity not recorded. Exploratory repeat; not an acceptance run.

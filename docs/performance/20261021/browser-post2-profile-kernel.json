@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_worklet_node_vm_relative_kernel_microbenchmark",
+  "generatedAtUtc": "2026-10-21T11:27:18.496Z",
+  "repositoryHead": null,
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sourcePath": "/tmp/rc505-browser-perf/post2.js",
+  "sourceSha256": "564567b92f58f39b0b4fe1e61999dafe59a235c491defba3069d70987bc480fa",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 64,
+  "measuredBlocksPerPass": 128,
+  "passes": 3,
+  "timingSource": "Node process.hrtime.bigint() around synchronous worklet process() calls in a Node VM; this is a relative kernel diagnostic only.",
+  "exclusions": [
+    "No browser AudioWorklet scheduler, AudioContext, cross-thread scheduling, or device endpoint.",
+    "No 20-slot graph or five Signalsmith LIVE_POLY processors.",
+    "One synthetic stereo signal and one processor instance per algorithm; not a representative audio-quality suite.",
+    "Results rank relative JavaScript DSP cost in this Node VM and do not pass or replace browser/native realtime acceptance."
+  ],
+  "results": [
+    {
+      "catalogName": "FDN8 REVERB",
+      "algorithm": "reverb",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 254.69036,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6855374069824218,
+          "nanosecondsPerInputFrame": 15545.06591796875
+        },
+        {
+          "elapsedMilliseconds": 258.720936,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6963863084472656,
+          "nanosecondsPerInputFrame": 15791.07275390625
+        },
+        {
+          "elapsedMilliseconds": 282.41544,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.7601636293945312,
+          "nanosecondsPerInputFrame": 17237.2705078125
+        }
+      ],
+      "medianRealtimeRatio": 0.6963863084472656,
+      "finiteOutput": true,
+      "outputRms": 0.02781673282588517
+    }
+  ]
+}

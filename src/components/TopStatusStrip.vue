@@ -7,12 +7,25 @@
       </div>
       <div v-if="initError" class="status-error" role="alert">{{ initError }}</div>
       <div class="status-note mode-summary" :title="capabilitySummary">{{ capabilitySummary }}</div>
-      <div v-if="isInitialized && audioModeLabel === 'BROWSER'" class="input-status" data-testid="input-status">INPUT {{ uiStatus.inputReady ? 'READY' : 'NOT CONNECTED' }} · OUTPUT READY</div>
+      <div v-if="audioModeLabel === 'BROWSER' && (isInitialized || uiStatus.inputCaptureWarming)" class="input-status" data-testid="input-status">
+        INPUT {{ uiStatus.inputCaptureWarming ? 'CAPTURE WARMING' : uiStatus.inputCaptureUnavailableReason ? 'LEGACY CAPTURE' : uiStatus.inputReady ? 'READY' : 'NOT CONNECTED' }} · OUTPUT READY
+      </div>
+      <div v-if="audioModeLabel === 'BROWSER' && uiStatus.inputCaptureWarming"
+        class="input-status input-warmup" data-testid="input-capture-warming" role="status" aria-live="polite">
+        Shared recording pre-roll is warming; record and overdub are disabled until ready (~186 ms at 44.1 kHz).
+      </div>
+      <div v-else-if="isInitialized && audioModeLabel === 'BROWSER' && uiStatus.inputCaptureUnavailableReason"
+        class="input-status input-warmup" data-testid="input-capture-unavailable" role="status">
+        {{ uiStatus.inputCaptureUnavailableReason }} Legacy recording remains available.
+      </div>
+      <div v-if="uiStatus.recoveryAwaitingUserResume" class="input-status input-warmup" data-testid="recovery-awaiting-resume" role="status">
+        Loops, undo history, and saved settings are restored stopped and muted. Click to resume output; reconnect input separately.
+      </div>
     </div>
 
     <div class="control-cluster">
       <button class="status-action start-action" data-testid="start-audio" type="button" :disabled="isInitialized && (audioModeLabel !== 'BROWSER' || uiStatus.inputReady)" @click="$emit('retry-audio')">
-        {{ initInFlight ? 'CONNECTING…' : isInitialized && (audioModeLabel !== 'BROWSER' || uiStatus.inputReady) ? 'READY' : isInitialized ? 'CONNECT INPUT' : initStarted ? 'RETRY AUDIO' : 'START AUDIO' }}
+        {{ initInFlight ? 'CONNECTING…' : uiStatus.recoveryAwaitingUserResume ? 'RESUME RECOVERED AUDIO' : uiStatus.inputCaptureWarming ? 'WARMING…' : isInitialized && (audioModeLabel !== 'BROWSER' || uiStatus.inputReady) ? 'READY' : isInitialized ? 'CONNECT INPUT' : initStarted ? 'RETRY AUDIO' : 'START AUDIO' }}
       </button>
       <button class="status-action" type="button" @click="$emit('toggle-audio-mode')">
         AUDIO {{ audioModeLabel }}
@@ -132,6 +145,7 @@ defineEmits<{
 }
 
 .input-status { font-size: 13px; line-height: 1.45; color: #c7cdd6; }
+.input-status.input-warmup { color: #f1c879; font-size: 11px; }
 .status-note { max-width: 60vw; color: #c7cdd6; overflow-wrap: anywhere; }
 .status-action:focus-visible, .app-menu summary:focus-visible { outline: 2px solid #ef5064; outline-offset: 3px; }
 .status-action:disabled { opacity: .5; cursor: default; }

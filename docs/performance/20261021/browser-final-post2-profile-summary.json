@@ -1,0 +1,316 @@
+{
+  "profile": "docs/performance/20261021/browser-final-post2.cpuprofile",
+  "totalSamples": 1716,
+  "ranking": [
+    {
+      "function": "processReverb",
+      "line": 11507,
+      "selfSamples": 1109
+    },
+    {
+      "function": "readLagrangeFromWriteHead2",
+      "line": 9258,
+      "selfSamples": 241
+    },
+    {
+      "function": "processBlock",
+      "line": 10475,
+      "selfSamples": 175
+    },
+    {
+      "function": "",
+      "line": 8974,
+      "selfSamples": 38
+    },
+    {
+      "function": "refreshTimeVariantCoefficients",
+      "line": 11015,
+      "selfSamples": 34
+    },
+    {
+      "function": "processEffectSample",
+      "line": 11078,
+      "selfSamples": 27
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 11
+    },
+    {
+      "function": "Script",
+      "line": 85,
+      "selfSamples": 8
+    },
+    {
+      "function": "process",
+      "line": 11643,
+      "selfSamples": 8
+    },
+    {
+      "function": "(garbage collector)",
+      "line": 0,
+      "selfSamples": 4
+    },
+    {
+      "function": "createRingModTriangleTables",
+      "line": 8973,
+      "selfSamples": 3
+    },
+    {
+      "function": "BrowserFxDspCore",
+      "line": 9492,
+      "selfSamples": 3
+    },
+    {
+      "function": "advanceControls",
+      "line": 10868,
+      "selfSamples": 3
+    },
+    {
+      "function": "(program)",
+      "line": 0,
+      "selfSamples": 2
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 2
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 2
+    },
+    {
+      "function": "setSourceMapsSupport",
+      "line": 71,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "getHighWaterMark",
+      "line": 33,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__name",
+      "line": 4,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/dispatcher/client.js",
+      "line": 9133,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/llhttp/constants.js",
+      "line": 3379,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "Agent",
+      "line": 9799,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/web/fetch/util.js",
+      "line": 5440,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/web/fetch/constants.js",
+      "line": 4032,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/web/eventsource/eventsource-stream.js",
+      "line": 15896,
+      "selfSamples": 1
+    },
+    {
+      "function": "Pool",
+      "line": 9698,
+      "selfSamples": 1
+    },
+    {
+      "function": "realpathSync",
+      "line": 2772,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileSourceTextModule",
+      "line": 316,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "openFileHandle",
+      "line": 0,
+      "selfSamples": 1
+    },
+    {
+      "function": "readFileHandle",
+      "line": 566,
+      "selfSamples": 1
+    },
+    {
+      "function": "update",
+      "line": 145,
+      "selfSamples": 1
+    },
+    {
+      "function": "createContext",
+      "line": 225,
+      "selfSamples": 1
+    },
+    {
+      "function": "createOversamplingFilters",
+      "line": 5845,
+      "selfSamples": 1
+    },
+    {
+      "function": "createDistortionFilters",
+      "line": 9073,
+      "selfSamples": 1
+    },
+    {
+      "function": "FxProcessor",
+      "line": 11580,
+      "selfSamples": 1
+    },
+    {
+      "function": "refreshControlDependentCoefficients",
+      "line": 10943,
+      "selfSamples": 1
+    },
+    {
+      "function": "Writable",
+      "line": 390,
+      "selfSamples": 1
+    },
+    {
+      "function": "writeFileHandle",
+      "line": 481,
+      "selfSamples": 1
+    },
+    {
+      "function": "(idle)",
+      "line": 0,
+      "selfSamples": 1
+    }
+  ]
+}

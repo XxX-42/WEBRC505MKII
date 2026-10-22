@@ -1,0 +1,26 @@
+--- /tmp/rc505-browser-perf/core-baseline.ts	2026-10-21 04:16:19.187050601 -0700
++++ /tmp/rc505-browser-perf/core-round3.ts	2026-10-21 04:23:30.453289274 -0700
+@@ -2349,6 +2349,23 @@
+     // warm while bypassed. Output still stays exact-dry, so a later activation
+     // or capture edge has the input history it needs.
+     if (this.fullyBypassed && this.algorithm !== 'beat-shift' && this.algorithm !== 'reverse-delay' && this.algorithm !== 'reverse-reverb' && this.algorithm !== 'vinyl-flick' && this.algorithm !== 'freeze' && this.algorithm !== 'osc-voc' && this.algorithm !== 'hrm-auto') {
++      // Web Audio's usual equal-size channels can use a native copy without
++      // subarray views or per-sample bounds checks. Keep the general path for
++      // partial blocks, missing inputs, and deliberately mismatched arrays.
++      const bypassRightInput = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput
++        ? inputLeft : inputRight;
++      if (outputLeft && inputLeft && outputLeftLength === frames && inputLeftLength === frames
++        && outputLeft.buffer !== inputLeft.buffer
++        && (!outputRight || outputLeft.buffer !== outputRight.buffer)
++        && (!bypassRightInput || outputLeft.buffer !== bypassRightInput.buffer)
++        && (!outputRight || (outputRight.buffer !== inputLeft.buffer && outputRight.buffer !== bypassRightInput?.buffer))
++        && ((!outputRight) || (bypassRightInput && outputRightLength === frames && bypassRightInput.length === frames))) {
++        outputLeft.set(inputLeft);
++        if (outputRight && bypassRightInput) outputRight.set(bypassRightInput);
++        this.framesProcessed += frames;
++        this.currentAudioFrame += frames;
++        return;
++      }
+       for (let frame = 0; frame < frames; frame += 1) {
+         if (frame < outputLeftLength && outputLeft) outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
+         if (frame < outputRightLength && outputRight) {

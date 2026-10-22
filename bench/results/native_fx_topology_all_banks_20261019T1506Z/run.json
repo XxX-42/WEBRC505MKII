@@ -1,0 +1,15 @@
+{
+  "runId": "native_fx_topology_all_banks_20261019T1506Z",
+  "sourceCommit": "9c900304ddd4d206c920a05028b1b91c84651b91",
+  "harnessDiffSha256": "350fe8e0829b50dd1621093af18aea3f6d6861834c9369a21bd38d90aec25e64",
+  "benchmarkBinarySha256": "57e90f7b619f54314ea4ea66d5bc80bdcdb00255cbb48c228d101b87aef3b3f2",
+  "buildType": "Release",
+  "startedUtc": "2026-10-19T15:06:19Z",
+  "command": "native_per_track_fx_bench --topology=all-banks --pitch=off --warmup-callbacks=5000 --measured-callbacks=100000",
+  "sampleRateHz": 48000,
+  "framesPerCallback": 64,
+  "configuredTopology": "20 private per-track + 4 Input + 4 shared playback + rhythm enabled",
+  "pitch": "off",
+  "input": "synthetic mono 330 Hz, 0.1 peak, processed by configured Input bank",
+  "backend": "portable NativeAudioCore CPU callback simulation, no RtAudio hardware"
+}

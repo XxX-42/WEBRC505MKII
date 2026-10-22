@@ -1,0 +1,16 @@
+{
+  "runId": "native_fx_topology_all_banks_20261019T1457Z",
+  "sourceCommit": "9c900304ddd4d206c920a05028b1b91c84651b91",
+  "workingTreeCodeUnderTest": "native-mvp/engine-cpp/tests/native_per_track_fx_bench.cpp has uncommitted topology harness extension",
+  "startedUtc": "2026-10-19T14:56:53Z",
+  "command": "native_per_track_fx_bench --topology=all-banks --warmup-callbacks=5000 --measured-callbacks=100000",
+  "sampleRateHz": 48000,
+  "framesPerCallback": 64,
+  "configuredTopology": "20 private per-track + 4 Input + 4 shared playback + rhythm enabled",
+  "pitch": "off",
+  "input": "synthetic mono 330 Hz, 0.1 peak, processed by configured Input bank",
+  "backend": "portable NativeAudioCore CPU callback simulation, no RtAudio hardware",
+  "timingWrapper": "bash time keyword; prior /usr/bin/time attempt failed before executing benchmark",
+  "harnessDiffSha256": "2bf78fe41d7fab5259b5de0c51e0ae17122b1c9d88b161bff9113dbf937286be",
+  "note": "Timing run predates the final after-measure Input/shared fault-health fields. It did validate every configured route after warmup; do not infer after-measure Input/shared health from this record. Equivalent callback graph and instrumentation; later final-harness run(s) are provided separately."
+}

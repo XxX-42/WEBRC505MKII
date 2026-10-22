@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-10-22T04:17:58.020557+00:00",
+  "scope": "dot cloud Vite HTTP startup smoke only, not user-machine deployment or a real browser",
+  "command": [
+    "node_modules/.bin/vite",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "5198",
+    "--strictPort"
+  ],
+  "htmlStatus": 200,
+  "htmlBytes": 423,
+  "workletStatus": 200,
+  "servedWorkletSHA256": "d438eb0dbcefd1eb6ba2f5052f598d66cc277139f9b5d45bab8831ae96e1c8d5",
+  "diskWorkletSHA256": "d438eb0dbcefd1eb6ba2f5052f598d66cc277139f9b5d45bab8831ae96e1c8d5",
+  "status": "passed",
+  "ownServerStopped": true
+}

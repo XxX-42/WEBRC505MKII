@@ -1,0 +1,3 @@
+     ff8:	e8 03 f0 ff ff       	call   0 <webrc::native::(anonymous namespace)::antialiasedTriode(float, float, float, float, float, float, float&, bool&)>
+    164a:	e8 b1 e9 ff ff       	call   0 <webrc::native::(anonymous namespace)::antialiasedTriode(float, float, float, float, float, float, float&, bool&)>
+    1c1e:	e8 dd e3 ff ff       	call   0 <webrc::native::(anonymous namespace)::antialiasedTriode(float, float, float, float, float, float, float&, bool&)>

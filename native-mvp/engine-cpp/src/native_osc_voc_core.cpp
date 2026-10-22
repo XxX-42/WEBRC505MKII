@@ -1,4 +1,5 @@
 #include "native_osc_voc_core.hpp"
+#include "native_official_fx.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -88,6 +89,12 @@ bool NativeOscVocCore::prepare(std::uint32_t sampleRate, std::uint64_t firstFram
     wetMixTarget_ = config_.wetMix;
     wetMixStep_ = 0.0;
     wetMixRampRemaining_ = 0U;
+    official_.prepare(sampleRate_);
+    if (official_.active()) {
+        (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), official_.releaseSeconds());
+        attackCoefficient_ = std::exp(-1.0 / (official_.attackSeconds() * static_cast<double>(sampleRate_)));
+        releaseCoefficient_ = std::exp(-1.0 / (official_.releaseSeconds() * static_cast<double>(sampleRate_)));
+    }
     reset();
     return true;
 }
@@ -123,6 +130,8 @@ bool NativeOscVocCore::setConfig(const NativeOscVocConfig& config) noexcept {
         return false;
     }
     config_ = config;
+    if (sampleRate_ != 0U && official_.active())
+        (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), official_.releaseSeconds());
     queuedOctaveShift_.store(config_.octaveShift, std::memory_order_release);
     queuedTransposeSemitones_.store(config_.transposeSemitones, std::memory_order_release);
     queuedMidiChannel_.store(config_.midiChannel, std::memory_order_release);
@@ -141,6 +150,7 @@ bool NativeOscVocCore::setConfig(const NativeOscVocConfig& config) noexcept {
                     static_cast<int>(voice.note), config_.octaveShift, config_.transposeSemitones));
                 (void)voice.oscillatorA.setFrequency(frequency);
                 (void)voice.oscillatorB.setFrequency(frequency);
+                if (official_.active()) (void)voice.officialOscillator.setFrequency(frequency);
             }
             if (waveformChanged || (pulseWidthChanged && config_.waveform == NativeOscVocWaveform::Pulse)) {
                 configureVoiceWaveform(voice, config_.waveform, config_.pulseWidth);
@@ -155,6 +165,48 @@ bool NativeOscVocCore::setConfig(const NativeOscVocConfig& config) noexcept {
 
 bool NativeOscVocCore::setParameter(std::string_view parameterId, float value,
                                     std::uint64_t rampFrames) noexcept {
+    if (parameterId.substr(0U, 9U) == "official_") {
+        if (!official::validParameter("osc_voc_m", parameterId, value)) return false;
+        if (!official_.active()) {
+            official_.activate("osc_voc_m");
+            // The manual octave replaces both legacy transposition controls.
+            config_.octaveShift = 0;
+            config_.transposeSemitones = 0;
+            queuedOctaveShift_.store(0, std::memory_order_release);
+            queuedTransposeSemitones_.store(0, std::memory_order_release);
+            for (auto& voice : voices_) if (voice.active) {
+                (void)voice.officialOscillator.prepare(sampleRate_,
+                    static_cast<float>(noteFrequency(voice.note, 0, 0)), officialWaveform_);
+            }
+            constexpr std::string_view keys[]{"official_carrier", "official_tone", "official_attack",
+                "official_octave", "official_mod_sens", "official_release", "official_balance"};
+            for (const auto key : keys) {
+                const auto* domain = official::parameterDomain("osc_voc_m", key);
+                if (domain != nullptr && domain->hasDefault) (void)setParameter(key, domain->defaultValue, 0U);
+            }
+        }
+        if (parameterId == "official_carrier") {
+            officialWaveform_ = static_cast<unsigned int>(value);
+            for (auto& voice : voices_) if (voice.active)
+                (void)voice.officialOscillator.setWaveform(officialWaveform_);
+        } else if (parameterId == "official_octave") {
+            config_.octaveShift = static_cast<int>(value) - 2;
+            config_.transposeSemitones = 0;
+            queuedOctaveShift_.store(config_.octaveShift, std::memory_order_release);
+            queuedTransposeSemitones_.store(0, std::memory_order_release);
+            for (auto& voice : voices_) if (voice.active)
+                (void)voice.officialOscillator.setFrequency(static_cast<float>(noteFrequency(
+                    voice.note, config_.octaveShift, 0)));
+        } else if (parameterId == "official_balance") {
+            return setParameter("mix", value, rampFrames);
+        } else if (!official_.setParameter("osc_voc_m", parameterId, value)) return false;
+        if (sampleRate_ != 0U) {
+            (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), official_.releaseSeconds());
+            attackCoefficient_ = std::exp(-1.0 / (official_.attackSeconds() * static_cast<double>(sampleRate_)));
+            releaseCoefficient_ = std::exp(-1.0 / (official_.releaseSeconds() * static_cast<double>(sampleRate_)));
+        }
+        return true;
+    }
     NativeOscVocConfig candidate = config_;
     if (parameterId == "waveform") {
         if (!isIntegral(value) || value < 0.0f || value > 2.0f) {
@@ -203,6 +255,7 @@ bool NativeOscVocCore::setParameter(std::string_view parameterId, float value,
 
 void NativeOscVocCore::reset() noexcept {
     filterBank_.reset();
+    official_.reset();
     for (auto& voice : voices_) {
         voice.active = false;
         voice.gateOpen = false;
@@ -450,6 +503,7 @@ void NativeOscVocCore::startVoice(const Event& event) noexcept {
         return;
     }
     selected->oscillatorB.reset(1.0 - static_cast<double>(config_.pulseWidth));
+    if (official_.active()) (void)selected->officialOscillator.prepare(sampleRate_, event.frequencyHz, officialWaveform_);
     selected->note = event.note;
     selected->channel = event.channel;
     selected->amplitude = 0.0f;
@@ -502,7 +556,8 @@ float NativeOscVocCore::renderCarrierSample() noexcept {
         }
 
         float waveformSample = oscillatorA;
-        if (config_.waveform == NativeOscVocWaveform::Pulse) {
+        if (official_.active()) waveformSample = voice.officialOscillator.processSample();
+        else if (config_.waveform == NativeOscVocWaveform::Pulse) {
             waveformSample = oscillatorA - oscillatorB;
         }
         carrier += static_cast<double>(waveformSample) * static_cast<double>(voice.amplitude);
@@ -513,12 +568,13 @@ float NativeOscVocCore::renderCarrierSample() noexcept {
 float NativeOscVocCore::processMonoFrame(float modulator, float dryLeft, float dryRight,
                                          float* outputLeft, float* outputRight) noexcept {
     dispatchDueEvents(frameClock_);
-    filterBank_.analyzeModulatorSample(boundedSample(modulator));
+    filterBank_.analyzeModulatorSample(official_.active() ? official_.modulator(modulator) : boundedSample(modulator));
     const float carrier = renderCarrierSample();
     for (std::size_t band = 0U; band < filterBank_.bandCount(); ++band) {
         bandCarriers_[band] = filterBank_.filterCarrierSample(band, carrier);
     }
-    const float wet = filterBank_.synthesizeSample(bandCarriers_.data(), filterBank_.bandCount());
+    float wet = filterBank_.synthesizeSample(bandCarriers_.data(), filterBank_.bandCount());
+    if (official_.active()) wet = official_.tone(wet);
 
     if (wetMixRampRemaining_ != 0U) {
         wetMixCurrent_ = static_cast<float>(static_cast<double>(wetMixCurrent_) + wetMixStep_);

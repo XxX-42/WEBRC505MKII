@@ -1,0 +1,66 @@
+{
+  "decision": "rejected",
+  "productionChanged": false,
+  "reason": "Apparent first-order reverb/phaser gains reverse sign under BAAB, generic control moves similarly; no repeatable >=3% gain justifies 11% bundle growth and generated state-machine complexity.",
+  "baselineBundleHash": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+  "candidateBundleHash": "808609880fd58006a523122d51444850b8e9f8c2465cbf70cfd8d394b6c01be0",
+  "abba": [
+    {
+      "algorithm": "reverb",
+      "improvementPercent": 5.4938229184631755,
+      "bitExact": true
+    },
+    {
+      "algorithm": "gate-reverb",
+      "improvementPercent": -2.003386393040296,
+      "bitExact": true
+    },
+    {
+      "algorithm": "phaser",
+      "improvementPercent": 3.3439402893298498,
+      "bitExact": true
+    },
+    {
+      "algorithm": "distortion",
+      "improvementPercent": -0.42546041626929654,
+      "bitExact": true
+    },
+    {
+      "algorithm": "lpf",
+      "improvementPercent": 2.70541023751667,
+      "bitExact": true
+    }
+  ],
+  "baab": [
+    {
+      "algorithm": "reverb",
+      "improvementPercent": -3.0988654753056233,
+      "bitExact": true
+    },
+    {
+      "algorithm": "gate-reverb",
+      "improvementPercent": -2.9795064177916553,
+      "bitExact": true
+    },
+    {
+      "algorithm": "phaser",
+      "improvementPercent": -2.812533139540796,
+      "bitExact": true
+    }
+  ],
+  "bundleBytes": {
+    "baseline": 545084,
+    "candidate": 605278
+  },
+  "correctness": {
+    "fullStreamCases": 48,
+    "fullStreamAllExactFiniteStereo": true,
+    "catalogRoutes": 46,
+    "catalogCases": 1656,
+    "catalogChangedPcm": 0,
+    "transitionShapeCases": 128,
+    "transitionBlocks": 6144
+  },
+  "startupLimitation": "Fresh Node VM context load/first-call/warmup, not pure JIT attribution or browser startup.",
+  "productionRisk": "Candidate mechanically duplicates 1405 lines; would require build-time generation from one canonical body, never manual copies, if accepted. Rejected before production integration."
+}

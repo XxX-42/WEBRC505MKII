@@ -11,6 +11,8 @@ export class DelayFX implements FXBase {
     private dry: GainNode;
     private filter: BiquadFilterNode; // Tape simulation
     private currentMix = 0.5;
+    private delayTimeSeconds = 0.3;
+    private feedbackAmount = 0.3;
 
     constructor(context: AudioContext) {
         this.context = context;
@@ -55,13 +57,19 @@ export class DelayFX implements FXBase {
 
     setParam(key: string, value: number) {
         if (key === 'time') {
+            this.delayTimeSeconds = value;
             this.delay.delayTime.setTargetAtTime(value, this.context.currentTime, 0.1);
         } else if (key === 'feedback') {
+            this.feedbackAmount = value;
             this.feedback.gain.setTargetAtTime(value * 0.9, this.context.currentTime, 0.1);
         } else if (key === 'mix') {
             this.currentMix = Math.max(0, Math.min(1, value));
             this.applyMix(this.currentMix);
         }
+    }
+
+    getParameterSnapshot(): Readonly<Record<string, number>> {
+        return Object.freeze({ time: this.delayTimeSeconds, feedback: this.feedbackAmount, mix: this.currentMix });
     }
 
     setBypass(bypass: boolean) {

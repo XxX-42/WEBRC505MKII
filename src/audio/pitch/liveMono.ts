@@ -43,6 +43,7 @@ export class YinPitchDetector {
   readonly hopSamples: number;
 
   private readonly ring: Float32Array;
+  private readonly analysisFrame: Float32Array;
   private readonly differences: Float64Array;
   private readonly normalizedDifferences: Float64Array;
   private readonly ringMask: number;
@@ -94,6 +95,7 @@ export class YinPitchDetector {
     this.analysisWindowSamples = this.frameSamples - this.maximumLag;
     const ringLength = nextPowerOfTwo(this.frameSamples * 2);
     this.ring = new Float32Array(ringLength);
+    this.analysisFrame = new Float32Array(this.frameSamples);
     this.differences = new Float64Array(this.maximumLag + 1);
     this.normalizedDifferences = new Float64Array(this.maximumLag + 1);
     this.ringMask = ringLength - 1;
@@ -145,36 +147,38 @@ export class YinPitchDetector {
       let index = frameStart + i;
       if (index >= this.ring.length) index -= this.ring.length;
       const sample = this.ring[index]!;
+      this.analysisFrame[i] = sample;
       energy += sample * sample;
     }
     const rms = Math.sqrt(energy / this.frameSamples);
 
+    const activeThreshold = this.currentVoiced ? Math.min(0.28, this.threshold + 0.05) : this.threshold;
+    let cumulativeDifference = 0;
     this.differences[0] = 0;
     for (let lag = 1; lag <= this.maximumLag; lag += 1) {
       let sum = 0;
       for (let i = 0; i < this.analysisWindowSamples; i += 1) {
-        let firstIndex = frameStart + i;
-        if (firstIndex >= this.ring.length) firstIndex -= this.ring.length;
-        let secondIndex = firstIndex + lag;
-        if (secondIndex >= this.ring.length) secondIndex -= this.ring.length;
-        const delta = this.ring[firstIndex]! - this.ring[secondIndex]!;
+        const delta = this.analysisFrame[i]! - this.analysisFrame[i + lag]!;
         sum += delta * delta;
       }
       this.differences[lag] = sum;
-    }
-
-    let cumulativeDifference = 0;
-    for (let lag = 1; lag <= this.maximumLag; lag += 1) {
+      // Preserve the original Float64 store/read before adding to the sum.
       const difference = this.differences[lag]!;
       cumulativeDifference += difference;
       this.normalizedDifferences[lag] = cumulativeDifference > 1e-15
         ? (difference * lag) / cumulativeDifference
         : 1;
+      // The first qualifying local trough is final once its right neighbor is known.
+      // Remaining scratch is never read on this analysis; later analyses overwrite
+      // their entire needed prefix before selection.
+      const previousLag = lag - 1;
+      if (previousLag >= this.minimumLag
+        && this.normalizedDifferences[previousLag]! < activeThreshold
+        && this.normalizedDifferences[previousLag]! <= this.normalizedDifferences[lag]!) break;
     }
 
     let bestLag = 0;
     let bestValue = Number.POSITIVE_INFINITY;
-    const activeThreshold = this.currentVoiced ? Math.min(0.28, this.threshold + 0.05) : this.threshold;
     for (let lag = this.minimumLag; lag <= this.maximumLag; lag += 1) {
       const value = this.normalizedDifferences[lag]!;
       if (value < bestValue) {

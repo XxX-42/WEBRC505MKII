@@ -12,6 +12,7 @@ export type TrackFxTarget = BrowserTrackFxTarget | NativeTrackFxTarget;
 export interface TrackFxTargetRuntimeStatus {
   readonly pendingRestart?: boolean;
   readonly pendingApply?: boolean;
+  readonly outcomeUnknown?: boolean;
   readonly error?: string | null;
   readonly processingFaulted?: boolean;
   readonly controlFaulted?: boolean;
@@ -90,6 +91,12 @@ export function useTrackFxTargetState() {
     const slot = status?.slots.find((item) => item.slotIndex === activeSlotIndex.value);
     return (slot as TrackFxSlotStatus | undefined) ?? null;
   });
+  const nativeNamedParametersPending = computed(() => {
+    statusRevision.value;
+    return isSharedTarget.value
+      ? shared.nativeNamedParametersPending.value
+      : nativeMode.value && Boolean(native.slotRuntime.value?.pendingApply || native.slotRuntime.value?.outcomeUnknown);
+  });
   const warning = computed(() => {
     if (isSharedTarget.value) return '';
     return nativeMode.value ? native.warning.value : browser.warning.value;
@@ -157,6 +164,13 @@ export function useTrackFxTargetState() {
       : browser.setActive(trackId, activeSlotIndex.value, active);
   }
 
+  /** Submit named overrides for the Native shared post-mix bank slot. */
+  function setSharedNativeNamedParameters(parameters: Record<string, number>): boolean {
+    if (!nativeMode.value || !isSharedTarget.value || !Number.isInteger(activeSlotIndex.value) ||
+        activeSlotIndex.value < 0 || activeSlotIndex.value >= 4) return false;
+    return shared.setNativeNamedParameters(activeSlotIndex.value, parameters);
+  }
+
   function setSlotActive(slot: FxSlotId, active: boolean): boolean {
     const index = selectedSlotIndex(slot);
     if (index < 0 || typeof active !== 'boolean' || fxDisabled.value) return false;
@@ -176,7 +190,7 @@ export function useTrackFxTargetState() {
 
   return {
     mode, nativeMode, target, isSharedTarget, slots, activeSlot, activeSlotIndex, activeFx, activeFxIsEmpty,
-    fxOptions, fxDisabled, fxUnavailableReason, runtimeStatus, warning,
-    selectTarget, selectSlot, setValue, setType, setActive, setSlotActive,
+    fxOptions, fxDisabled, fxUnavailableReason, runtimeStatus, warning, nativeNamedParametersPending,
+    selectTarget, selectSlot, setValue, setType, setActive, setSlotActive, setSharedNativeNamedParameters,
   };
 }

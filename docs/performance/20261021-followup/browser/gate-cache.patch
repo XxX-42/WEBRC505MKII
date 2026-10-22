@@ -1,0 +1,74 @@
+diff --git a/src/audio/fx/dsp/BrowserFxDspCore.ts b/src/audio/fx/dsp/BrowserFxDspCore.ts
+index 08abd7f..c80b47c 100644
+--- a/src/audio/fx/dsp/BrowserFxDspCore.ts
++++ b/src/audio/fx/dsp/BrowserFxDspCore.ts
+@@ -1095,6 +1095,13 @@ export class BrowserFxDspCore {
+   private gateDetectorEnvelope = 0;
+   private gateHoldRemainingSamples = 0;
+   private gateGain = 0;
++  private readonly gateDetectorRelease: number;
++  private gateThresholdKey = Number.NaN;
++  private gateThresholdLinear = 0;
++  private gateHoldKey = Number.NaN;
++  private gateHoldSamples = 1;
++  private gateReleaseKey = Number.NaN;
++  private gateReleaseCoefficient = 0;
+   private readonly ringModHz: ExponentialParameterSmoother;
+   private readonly ringModDepth: ExponentialParameterSmoother;
+   private readonly ringModWaveform: ExponentialParameterSmoother;
+@@ -1287,6 +1294,7 @@ export class BrowserFxDspCore {
+     if (algorithm === 'osc-voc') validateBrowserOscVocParameters(parameters);
+     this.algorithm = algorithm;
+     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8000 ? sampleRate : 48000;
++    this.gateDetectorRelease = Math.exp(-1 / (GATE_REVERB_DETECTOR_RELEASE_MS * 0.001 * this.sampleRate));
+     this.currentAudioFrame = Number.isSafeInteger(initialFrame) && initialFrame >= 0 ? Math.floor(initialFrame) : 0;
+ 
+     const nyquist = this.sampleRate * 0.499;
+@@ -2940,12 +2948,23 @@ export class BrowserFxDspCore {
+       // Instant peak attack keeps a sharp transient from being missed.
+       this.gateDetectorEnvelope = linkedPeak;
+     } else {
+-      const detectorRelease = Math.exp(-1 / (GATE_REVERB_DETECTOR_RELEASE_MS * 0.001 * this.sampleRate));
+-      this.gateDetectorEnvelope *= detectorRelease;
++      this.gateDetectorEnvelope *= this.gateDetectorRelease;
+     }
+ 
+-    const threshold = Math.pow(10, this.gateThresholdDb.next() / 20);
+-    const holdSamples = Math.max(1, Math.round(this.gateHoldMs.next() * 0.001 * this.sampleRate));
++    // Advance every smoother on every sample, including while the gate is shut.
++    // Only memoize exact derived values; neither the envelope nor control rate changes.
++    const thresholdDb = this.gateThresholdDb.next();
++    if (thresholdDb !== this.gateThresholdKey) {
++      this.gateThresholdKey = thresholdDb;
++      this.gateThresholdLinear = Math.pow(10, thresholdDb / 20);
++    }
++    const threshold = this.gateThresholdLinear;
++    const holdMs = this.gateHoldMs.next();
++    if (holdMs !== this.gateHoldKey) {
++      this.gateHoldKey = holdMs;
++      this.gateHoldSamples = Math.max(1, Math.round(holdMs * 0.001 * this.sampleRate));
++    }
++    const holdSamples = this.gateHoldSamples;
+     const releaseMs = this.gateReleaseMs.next();
+     const closeThreshold = threshold * GATE_REVERB_HYSTERESIS_RATIO;
+     if (this.gateDetectorEnvelope >= threshold) {
+@@ -2957,11 +2976,14 @@ export class BrowserFxDspCore {
+       this.gateHoldRemainingSamples -= 1;
+     } else if (this.gateGain > 0) {
+       // Define the release control as approximately the time to -60 dB.
+-      const releaseCoefficient = Math.exp(-
+-        (GATE_REVERB_RELEASE_DB * Math.LN10 / 20)
+-        / (Math.max(10, releaseMs) * 0.001 * this.sampleRate),
+-      );
+-      this.gateGain *= releaseCoefficient;
++      if (releaseMs !== this.gateReleaseKey) {
++        this.gateReleaseKey = releaseMs;
++        this.gateReleaseCoefficient = Math.exp(-
++          (GATE_REVERB_RELEASE_DB * Math.LN10 / 20)
++          / (Math.max(10, releaseMs) * 0.001 * this.sampleRate),
++        );
++      }
++      this.gateGain *= this.gateReleaseCoefficient;
+       if (this.gateGain < 1e-4) this.gateGain = 0;
+     }
+   }

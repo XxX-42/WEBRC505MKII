@@ -1,5 +1,6 @@
 import { SampleFrameScheduler } from '../dsp/SampleFrameScheduler';
 import { BrowserVocoderCore } from './vocoder/BrowserVocoderCore';
+import { BrowserOfficialVoiceOscillator, validateVoiceControls, voiceAttackSeconds, voiceReleaseSeconds, type OfficialVoiceWaveform } from './dsp/BrowserOfficialVoiceDsp';
 
 export type BrowserOscVocWaveform = 0 | 1 | 2;
 
@@ -20,6 +21,9 @@ export interface BrowserOscVocParameters {
   bands?: number;
 }
 
+export interface BrowserOscVocOfficialParameters { carrier?: number; tone?: number; attack?: number; octave?: number; mod_sens?: number; release?: number }
+const OFFICIAL_LIMITS = { carrier: [0, 4], tone: [-50, 50], attack: [0, 100], octave: [0, 3], mod_sens: [-50, 50], release: [0, 100] } as const;
+
 const MIN_SAMPLE_RATE = 8000;
 const MAX_SAMPLE_RATE = 192000;
 const MAX_EVENT_COUNT = 256;
@@ -31,6 +35,7 @@ const MAX_INPUT_MAGNITUDE = 8;
 const MAX_OUTPUT_MAGNITUDE = 4;
 const EVENT_NOTE_ON = 1;
 const EVENT_NOTE_OFF = 2;
+const EVENT_ALL_NOTES_OFF = 3;
 const EVENT_KIND_SHIFT = 14;
 const EVENT_CHANNEL_SHIFT = 7;
 const MIDI_NOTE_COUNT = 128;
@@ -72,14 +77,18 @@ export class BrowserOscVocCore {
   readonly latencySamples = 0;
   readonly eventCapacity = MAX_EVENT_COUNT;
 
-  private readonly attackCoefficient: number;
-  private readonly releaseCoefficient: number;
+  private attackCoefficient: number;
+  private releaseCoefficient: number;
   private vocoder: BrowserVocoderCore;
   private scheduler: SampleFrameScheduler;
   private currentWaveform: BrowserOscVocWaveform;
   private selectedChannel: number;
   private octaveSemitones: number;
   private activeBands: number;
+  private readonly officialOscillator: BrowserOfficialVoiceOscillator;
+  private officialEnabled = false;
+  private officialCarrier = 0;
+  private officialOctave = 2;
   private phase = 0;
   private phaseStep = 440 / 48000;
   private lastFrequencyHz = 440;
@@ -97,6 +106,7 @@ export class BrowserOscVocCore {
       throw new RangeError(`Browser OSC VOC sample rate must be from ${MIN_SAMPLE_RATE} to ${MAX_SAMPLE_RATE} Hz.`);
     }
     this.sampleRate = sampleRate;
+    this.officialOscillator = new BrowserOfficialVoiceOscillator(sampleRate);
     this.attackCoefficient = Math.exp(-1 / (ATTACK_SECONDS * sampleRate));
     this.releaseCoefficient = Math.exp(-1 / (RELEASE_SECONDS * sampleRate));
     this.currentWaveform = 0;
@@ -157,6 +167,31 @@ export class BrowserOscVocCore {
     this.refreshPitch();
   }
 
+  /** Additive official domain: OCTAVE ordinals 0/1/2/3 mean -2/-1/0/+1 octaves. */
+  setOfficialParameters(parameters: BrowserOscVocOfficialParameters): void {
+    validateVoiceControls(parameters, OFFICIAL_LIMITS, 'OSC VOC (M)');
+    if (!Object.values(parameters).some(value => value !== undefined)) return;
+    if (!this.officialEnabled) {
+      this.vocoder.setVoiceShapingParameters({ tone: 0, attack: 50, mod_sens: 0, release: 50 });
+      this.attackCoefficient = Math.exp(-1 / (voiceAttackSeconds(50) * this.sampleRate));
+      this.releaseCoefficient = Math.exp(-1 / (voiceReleaseSeconds(50) * this.sampleRate));
+      this.officialEnabled = true;
+    }
+    if (parameters.carrier !== undefined) this.officialCarrier = parameters.carrier;
+    if (parameters.octave !== undefined) this.officialOctave = parameters.octave;
+    this.octaveSemitones = (this.officialOctave - 2) * 12;
+    this.officialOscillator.setWaveform(this.officialCarrier as OfficialVoiceWaveform);
+    if (parameters.attack !== undefined) this.attackCoefficient = Math.exp(-1 / (voiceAttackSeconds(parameters.attack) * this.sampleRate));
+    if (parameters.release !== undefined) this.releaseCoefficient = Math.exp(-1 / (voiceReleaseSeconds(parameters.release) * this.sampleRate));
+    const shaping: { tone?: number; attack?: number; release?: number; mod_sens?: number } = {};
+    if (parameters.tone !== undefined) shaping.tone = parameters.tone;
+    if (parameters.attack !== undefined) shaping.attack = parameters.attack;
+    if (parameters.release !== undefined) shaping.release = parameters.release;
+    if (parameters.mod_sens !== undefined) shaping.mod_sens = parameters.mod_sens;
+    this.vocoder.setVoiceShapingParameters(shaping);
+    this.refreshPitch();
+  }
+
   /** Queue a MIDI note-on at an absolute frame; velocity 0 means note-off. */
   noteOn(channel: number, note: number, velocity: number, frame: number): void {
     BrowserOscVocCore.validateEvent(channel, note, frame);
@@ -170,6 +205,17 @@ export class BrowserOscVocCore {
   noteOff(channel: number, note: number, frame: number): void {
     BrowserOscVocCore.validateEvent(channel, note, frame);
     this.enqueue(frame, EVENT_NOTE_OFF, channel, note, 0);
+  }
+
+  /** Schedule a sample-aligned panic, discarding stale pending MIDI events. */
+  allNotesOff(frame: number): void {
+    if (!Number.isSafeInteger(frame) || frame < this.currentFrame) {
+      throw new RangeError(`Browser OSC VOC all-notes-off frame must be a safe integer at or after ${this.currentFrame}.`);
+    }
+    const code = EVENT_ALL_NOTES_OFF << EVENT_KIND_SHIFT;
+    if (!this.scheduler.replacePendingWith(frame, code, 0)) {
+      throw new RangeError('Browser OSC VOC could not schedule all-notes-off while processing a block.');
+    }
   }
 
   /** Process one sample frame. Omitted right input means mono input. */
@@ -243,6 +289,7 @@ export class BrowserOscVocCore {
     this.heldVelocities.fill(0);
     this.heldOrder.fill(0);
     this.phase = 0;
+    this.officialOscillator.reset();
     this.phaseStep = 440 / this.sampleRate;
     this.lastFrequencyHz = 440;
     this.voiceTarget = 0;
@@ -271,6 +318,13 @@ export class BrowserOscVocCore {
     const kind = code >> EVENT_KIND_SHIFT;
     const channel = (code >> EVENT_CHANNEL_SHIFT) & 0x7f;
     const note = code & 0x7f;
+    if (kind === EVENT_ALL_NOTES_OFF) {
+      this.heldVelocities.fill(0);
+      this.heldOrder.fill(0);
+      this.latestNote = -1;
+      this.voiceTarget = 0;
+      return;
+    }
     if (channel !== this.selectedChannel) return;
 
     if (kind === EVENT_NOTE_ON && this.scheduler.eventValue > 0) {
@@ -305,6 +359,7 @@ export class BrowserOscVocCore {
     const boundedFrequency = clamp(frequency, 0, this.sampleRate * 0.45);
     this.lastFrequencyHz = Number.isFinite(boundedFrequency) ? boundedFrequency : 0;
     this.phaseStep = this.lastFrequencyHz / this.sampleRate;
+    this.officialOscillator.setFrequency(this.lastFrequencyHz);
   }
 
   private renderSample(modulatorLeft: number, modulatorRight: number): void {
@@ -318,7 +373,7 @@ export class BrowserOscVocCore {
       1,
     );
 
-    let carrier = this.nextCarrierSample() * this.voiceEnvelope;
+    let carrier = (this.officialEnabled ? this.officialOscillator.processSample() : this.nextCarrierSample()) * this.voiceEnvelope;
     if (!Number.isFinite(carrier)) carrier = 0;
     const output = this.vocoder.processWithCarrier(modulator, carrier);
     const safeOutput = Number.isFinite(output) ? clamp(output, -MAX_OUTPUT_MAGNITUDE, MAX_OUTPUT_MAGNITUDE) : 0;

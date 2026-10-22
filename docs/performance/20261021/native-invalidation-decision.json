@@ -1,0 +1,9 @@
+{
+  "decision": "REJECTED",
+  "automationPooledGainPercent": -3.028877440124833,
+  "sinePooledGainPercent": -7.220552168062966,
+  "silencePooledGainPercent": 5.639240300431458,
+  "reason": "Automation benefit did not reproduce across forward/reverse order; steady waveform regression. Heavy mean/median gains below3%.",
+  "baseline": "positive-zero candidate",
+  "sourcePatch": "native-preamp-invalidation-candidate.patch"
+}

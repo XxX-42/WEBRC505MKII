@@ -1,0 +1,808 @@
+{
+  "generatedAt": "2026-10-21T11:25:28.065Z",
+  "node": "v24.19.0",
+  "blocks": 10000,
+  "rounds": 4,
+  "sourceHashes": {
+    "baseline": "7465f2341349ce918d6c565ebb686ead813ad1ca9d1ac66795c9aacb55d309d0",
+    "candidate": "4f4efec0c23ffe22c67dbcfe3352563324b82504654edde9e6058c42f37529c7"
+  },
+  "scope": "Synchronous exact-source Node VM kernel only; no browser AudioContext, scheduler, hardware, xrun, or production five-loop acceptance. Tracks are independent FX instances. Reverse-reverb is an effect, not reverse loop playback; KeepPitch not exercised.",
+  "correctness": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+  "scenarios": [
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 20.088686,
+      "candidateMs": 12.745107,
+      "improvementPercent": 36.55579563541388,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4a3bdca81abd870ee00daf0a35b5383e6b6a23343496576eac02be1dbf6e1a88",
+        "candidate": "4a3bdca81abd870ee00daf0a35b5383e6b6a23343496576eac02be1dbf6e1a88"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 22.969851
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 13.670199
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 11.62447
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 18.615139
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 20.088686
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 12.42184
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 12.987101
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 20.019722
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 18.718955
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 12.745107
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 11.908247
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 20.207815
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 18.822871
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 12.333077
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 36.796385
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 21.55368
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 113.656005,
+      "candidateMs": 70.867697,
+      "improvementPercent": 37.64720394668103,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6e609e6178b60cc0be54eecba15d329de79f20053d8062ff1bddd58e39448c6e",
+        "candidate": "6e609e6178b60cc0be54eecba15d329de79f20053d8062ff1bddd58e39448c6e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 113.656005
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 96.280452
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 76.048677
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 116.362024
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 125.857672
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 81.549195
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 68.4075
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 113.322795
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 133.498619
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 70.867697
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 63.662783
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 103.491341
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 107.205581
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 67.968954
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 63.864714
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 103.899706
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 26.02378,
+      "candidateMs": 14.541408,
+      "improvementPercent": 44.122614009186975,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3c329ca4d8a9fd43e274df4fc990f52f2d8367fb017a7f1dbcbdc5948ddf48a8",
+        "candidate": "3c329ca4d8a9fd43e274df4fc990f52f2d8367fb017a7f1dbcbdc5948ddf48a8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 29.161353
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 16.120029
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 14.843419
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 25.659316
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 26.971688
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 14.541408
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 14.082953
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 27.112759
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 25.553177
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 14.388909
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 15.226212
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 24.381726
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 25.106619
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 14.002912
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 13.782042
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 26.02378
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 132.855087,
+      "candidateMs": 70.67736,
+      "improvementPercent": 46.80116388768765,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "e21beeb4b198c61045e277b178bb400ca5b0ebf9fe46bc869d587bf3c3e01307",
+        "candidate": "e21beeb4b198c61045e277b178bb400ca5b0ebf9fe46bc869d587bf3c3e01307"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 132.085315
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 72.206471
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 75.938973
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 132.855087
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 135.545399
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 69.320705
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 65.88071
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 128.067756
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 124.497107
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 70.67736
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 77.582661
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 141.866935
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 123.782221
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 64.495388
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 66.461125
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 137.853766
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 19.343517,
+      "candidateMs": 12.103992,
+      "improvementPercent": 37.426105087301345,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3d341832733c8e5a1f529a4abdfd0e1a04861438276c6099bdf914227ab38cdd",
+        "candidate": "3d341832733c8e5a1f529a4abdfd0e1a04861438276c6099bdf914227ab38cdd"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 18.488791
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 11.378899
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 11.477968
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 18.668469
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 18.481479
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 12.090692
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 12.103992
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 19.368134
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 19.567071
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 12.243772
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 11.892075
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 22.593643
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 19.343517
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 12.361957
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 12.252994
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 18.789149
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 95.891283,
+      "candidateMs": 60.462934,
+      "improvementPercent": 36.946370818711436,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f4535a14bae75d4ee3a877236b71322e912e53968e31281165e55f98f959082c",
+        "candidate": "f4535a14bae75d4ee3a877236b71322e912e53968e31281165e55f98f959082c"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 95.891283
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 60.462934
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 60.568497
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 95.86875
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 94.967005
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 58.715725
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 58.042332
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 94.758493
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 94.965182
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 58.78615
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 61.078032
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 96.920159
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 105.007477
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 61.706005
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 60.181636
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 100.154137
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 25.782068,
+      "candidateMs": 13.767436,
+      "improvementPercent": 46.600730399128565,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "64b52c3249b11dc3186cae54111665c177fe762b4a3bb847e79cde7f3a4028ef",
+        "candidate": "64b52c3249b11dc3186cae54111665c177fe762b4a3bb847e79cde7f3a4028ef"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 26.518303
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 14.219774
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 13.826063
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 24.514093
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 25.355257
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 13.767436
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 13.046663
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 25.247736
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 26.741519
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 13.785391
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 12.826442
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 25.767045
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 27.824846
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 12.910438
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 13.127615
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 25.782068
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 139.729569,
+      "candidateMs": 67.621069,
+      "improvementPercent": 51.60575568654333,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "48f927cea9cd9f0af9bd155a0f1d86875a376910ec3b1837044a8e38535172ad",
+        "candidate": "48f927cea9cd9f0af9bd155a0f1d86875a376910ec3b1837044a8e38535172ad"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 119.223724
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 64.526372
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 64.712502
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 129.233886
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 122.895387
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 64.115614
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 63.619139
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 138.429475
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 139.729569
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 79.51821
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 67.621069
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 161.461614
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 151.609407
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 73.074518
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 82.273083
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 154.376759
+        }
+      ]
+    }
+  ],
+  "timingEligible": true,
+  "coordination": "Other workers held compiler, test, and benchmark load; shared cloud scheduling still uncontrolled"
+}

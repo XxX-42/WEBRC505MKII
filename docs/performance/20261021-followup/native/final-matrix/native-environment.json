@@ -1,0 +1,42 @@
+{
+  "utc": "2026-10-21T18:56:03.299700+00:00",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "candidateBuildBindingVerified": true,
+  "buildBindingScope": "Candidate and matrix binaries only; per-row flag is authoritative for baseline and round1",
+  "buildBindingEvidence": "docs/performance/20261021-followup/native/final-build-manifest.json",
+  "requestedChildCpu": 0,
+  "allowedAffinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "hardware": "HARDWARE_BLOCKED: no physical device/driver callback",
+  "isolation": "Other task-team builds and timings paused; shared cloud host is not a real-time controlled device",
+  "buildFlags": "CMAKE_BUILD_TYPE=Release; GNU C++ -O3 -DNDEBUG; no fast-math, reduced oversampling or experimental ADAA",
+  "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+  "declaredSourceSha256": {
+    "native-mvp/engine-cpp/src/native_preamp_processor.cpp": "fb5c5e68c5165a201d5b283b22572a674a0b40cf9d2da3564191c520c02ee1cb",
+    "native-mvp/engine-cpp/include/native_preamp_processor.hpp": "5f9bc0cec4d898293b45cef42fa17fa5cbefd55e30dcb764e190b6d254e0c681"
+  },
+  "binaries": {
+    "baseline": {
+      "path": "/tmp/rc505-native-followup/build-base/native_performance_matrix",
+      "sha256": "784a57c23ad714df80114d61c64d0a22409d1058d5d3b6c73c8d0d32c0caf36a"
+    },
+    "candidate": {
+      "path": "/tmp/rc505-native-followup/build-final/native_performance_matrix",
+      "sha256": "8e798e54c45e369212d9258ffdf1838d43db91ecbb73b9ab80b58e2b4335f1ee"
+    },
+    "matrix": {
+      "path": "/tmp/rc505-native-followup/build-final/native_performance_matrix",
+      "sha256": "8e798e54c45e369212d9258ffdf1838d43db91ecbb73b9ab80b58e2b4335f1ee"
+    }
+  },
+  "cpuModel": "AMD EPYC 9V74 80-Core Processor"
+}

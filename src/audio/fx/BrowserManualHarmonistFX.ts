@@ -1,3 +1,4 @@
+import { officialFormantSemitones, officialPitchDefaults } from './dsp/OfficialPitchParameters';
 import { createLiveInputTransposeNode, type LiveInputTransposeNode } from '../pitch/signalsmith';
 import type { FXBase } from './FXBase';
 
@@ -10,11 +11,13 @@ const MAX_INTERVAL_SEMITONES = 24;
 /**
  * Browser HRM MANUAL: full-level latency-aligned dry audio plus two
  * independently Signalsmith-transposed harmony voices. Their sum is panned
- * as one harmony bus and added to dry audio using mix_percent. Formant
- * processing is not available in the current Signalsmith live-input adapter.
+ * as one harmony bus and added to dry audio using mix_percent. The optional
+ * official path uses a mono-F0 analyzer and a single key/degree-aware voice;
+ * FORMANT is an authored spectral-envelope shift, not a measured Roland law.
  */
 export class BrowserManualHarmonistFX implements FXBase {
   readonly name = 'HRM MANUAL';
+  readonly algorithm = 'hrm-manual';
   readonly input: GainNode;
   readonly output: GainNode;
   readonly ready: Promise<void>;
@@ -25,6 +28,7 @@ export class BrowserManualHarmonistFX implements FXBase {
   private readonly dryGain: GainNode;
   private readonly voiceAlignmentDelays: [DelayNode, DelayNode];
   private readonly voicePan: StereoPannerNode;
+  private readonly voiceMutes: [GainNode, GainNode];
   private readonly voiceGain: GainNode;
   private readonly onFailure?: FailureHandler;
   private voiceNodes: [LiveInputTransposeNode, LiveInputTransposeNode] | null = null;
@@ -39,7 +43,19 @@ export class BrowserManualHarmonistFX implements FXBase {
   private voice2Interval = 12;
   private mixPercent = 50;
   private panPercent = 0;
+  private officialActive = false;
+  private officialVoiced = false;
+  private officialTarget = 0;
+  private officialValues: Record<string, number> = { voice: 6, formant: 0, pan: 0, key: 0, d_level: 100, hrm_level: 80 };
+  private analyzerNode: AudioWorkletNode | null = null;
+  private analyzerSink: GainNode | null = null;
+  private analyzerReady: Promise<void> | null = null;
+  private readonly officialParameters: Record<string, number> = {};
+  private officialInitialized = false;
   public error = '';
+
+  /** The private A–D chain waits until both independent voices are installed. */
+  get processorReady(): boolean { return this.voiceReady && (!this.officialActive || this.analyzerNode !== null) && !this.disposed && !this.error; }
 
   constructor(context: AudioContext, onFailure?: FailureHandler) {
     this.context = context;
@@ -51,6 +67,7 @@ export class BrowserManualHarmonistFX implements FXBase {
     this.dryGain = context.createGain();
     this.voiceAlignmentDelays = [context.createDelay(0.1), context.createDelay(0.1)];
     this.voicePan = context.createStereoPanner();
+    this.voiceMutes = [context.createGain(), context.createGain()];
     this.voiceGain = context.createGain();
 
     // Bypass is a separate, true zero-latency path. Active dry remains at
@@ -60,8 +77,10 @@ export class BrowserManualHarmonistFX implements FXBase {
     this.input.connect(this.dryDelay);
     this.dryDelay.connect(this.dryGain);
     this.dryGain.connect(this.output);
-    this.voiceAlignmentDelays[0].connect(this.voicePan);
-    this.voiceAlignmentDelays[1].connect(this.voicePan);
+    for (let voice = 0; voice < 2; voice += 1) {
+      this.voiceAlignmentDelays[voice]!.connect(this.voiceMutes[voice]!);
+      this.voiceMutes[voice]!.connect(this.voicePan);
+    }
     this.voicePan.connect(this.voiceGain);
     this.voiceGain.connect(this.output);
     this.applyPan();
@@ -79,10 +98,23 @@ export class BrowserManualHarmonistFX implements FXBase {
     return Math.max(this.voiceNodes[0].latencySamples, this.voiceNodes[1].latencySamples);
   }
 
+  /** Shared Browser amount macro controls harmony level (0–1 → 0–100%). */
+  setAmount(value: number): void {
+    if (!Number.isFinite(value)) return;
+    const official = { ...this.officialParameters };
+    this.setParam('mix_percent', Math.max(0, Math.min(1, value)) * 100);
+    for (const [key, selected] of Object.entries(official)) this.setParam(key, selected);
+  }
+
   setParam(key: string, value: number): void {
     if (this.disposed) return;
     if (!Number.isFinite(value)) {
       this.failClosed(`HRM MANUAL ${key} must be a finite number.`, key);
+      return;
+    }
+
+    if (key.startsWith('official_')) {
+      this.setOfficialParameter(key, value);
       return;
     }
 
@@ -91,6 +123,8 @@ export class BrowserManualHarmonistFX implements FXBase {
         this.failClosed(`HRM MANUAL ${key} must be between -24 and +24 semitones.`, key);
         return;
       }
+      this.officialActive = false;
+      this.analyzerNode?.port.postMessage({ type: 'set-bypass', value: true, rampFrames: 0 });
       const voice: VoiceIndex = key === 'voice_1_interval' ? 0 : 1;
       if (voice === 0) this.voice1Interval = value;
       else this.voice2Interval = value;
@@ -136,10 +170,121 @@ export class BrowserManualHarmonistFX implements FXBase {
     );
   }
 
+  private setOfficialParameter(key: string, value: number): void {
+    const name = key.slice('official_'.length);
+    const ranges: Record<string, readonly [number, number]> = {
+      voice: [0, 10], formant: [-50, 50], pan: [-50, 50], key: [0, 11], d_level: [0, 100], hrm_level: [0, 100],
+    };
+    const range = ranges[name];
+    if (!range || !Number.isInteger(value) || value < range[0] || value > range[1]) {
+      this.failClosed(`HRM MANUAL unsupported or out-of-range ${key}.`, key);
+      return;
+    }
+    this.initializeOfficialParameters(key);
+    this.officialParameters[key] = value;
+    this.officialActive = true;
+    this.officialValues[name] = value;
+    if (name === 'pan') { this.panPercent = value * 2; this.applyPan(); }
+    this.clearParameterFailure(key);
+    this.configureOfficialAnalyzer();
+    void this.ensureOfficialAnalyzer();
+    if (name === 'formant' && this.officialVoiced) this.scheduleOfficialVoice(this.officialTarget);
+    this.applyRouting();
+  }
+
+  private configureOfficialAnalyzer(): void {
+    this.analyzerNode?.port.postMessage({ type: 'configure', parameters: {
+      hrmAutoKey: this.officialValues.key!, hrmAutoScale: 0,
+      hrmAutoOfficialManualVoice: this.officialValues.voice!,
+    } });
+    this.analyzerNode?.port.postMessage({ type: 'set-bypass', value: this.bypassed || !this.officialActive, rampFrames: 0 });
+  }
+
+  private ensureOfficialAnalyzer(): Promise<void> {
+    if (this.analyzerReady) return this.analyzerReady;
+    this.analyzerReady = (async () => {
+      try {
+        if (!this.context.audioWorklet || typeof AudioWorkletNode === 'undefined') throw new Error('AudioWorklet is unavailable.');
+        await this.context.audioWorklet.addModule('/worklets/fx-processor.js');
+        if (this.disposed) return;
+        const analyzer = new AudioWorkletNode(this.context, 'rc505-fx-processor', {
+          numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2],
+          channelCount: 2, channelCountMode: 'explicit',
+          processorOptions: { algorithm: 'hrm-auto', sampleRate: this.context.sampleRate,
+            parameters: { hrmAutoKey: this.officialValues.key!, hrmAutoScale: 0, hrmAutoOfficialManualVoice: this.officialValues.voice! },
+            bypassed: this.bypassed },
+        });
+        this.analyzerNode = analyzer;
+        this.analyzerSink = this.context.createGain();
+        this.analyzerSink.gain.value = 0;
+        this.input.connect(analyzer);
+        analyzer.connect(this.analyzerSink);
+        this.analyzerSink.connect(this.output);
+        analyzer.onprocessorerror = () => this.failRuntime('HRM MANUAL pitch analyzer failed.');
+        analyzer.port.onmessage = (event: MessageEvent<unknown>) => this.handleOfficialTarget(event.data);
+        this.configureOfficialAnalyzer();
+        this.applyRouting();
+      } catch (cause) {
+        if (this.analyzerNode) this.analyzerNode.port.onmessage = null;
+        this.analyzerNode?.disconnect(); this.analyzerSink?.disconnect();
+        this.analyzerNode = null; this.analyzerSink = null;
+        if (!this.disposed) this.failRuntime(`HRM MANUAL official analyzer unavailable: ${String(cause)}`);
+      }
+    })();
+    return this.analyzerReady;
+  }
+
+  private handleOfficialTarget(raw: unknown): void {
+    if (this.disposed || !this.officialActive) return;
+    const message = raw as { type?: string; message?: string; frame?: number; voiceCount?: number; target1?: number } | null;
+    if (message?.type === 'error') { this.failRuntime(`HRM MANUAL analyzer failed: ${message.message}`); return; }
+    if (message?.type !== 'hrm-auto-target') return;
+    if (!Number.isSafeInteger(message.frame) || (message.voiceCount !== 0 && message.voiceCount !== 1) ||
+        !Number.isFinite(message.target1) || (message.voiceCount === 1 && Math.abs(message.target1!) > 24)) {
+      this.failRuntime('HRM MANUAL analyzer emitted a malformed harmony target.'); return;
+    }
+    this.officialVoiced = message.voiceCount === 1;
+    if (this.officialVoiced) {
+      this.officialTarget = message.target1!;
+      this.scheduleOfficialVoice(this.officialTarget, message.frame! / this.context.sampleRate);
+    }
+    this.applyRouting();
+  }
+
+  private scheduleOfficialVoice(target: number, sourceTime = this.context.currentTime): void {
+    const node = this.voiceNodes?.[0];
+    if (!node) return;
+    const outputTime = sourceTime + node.latencySeconds;
+    if (outputTime < this.context.currentTime) { this.failRuntime('HRM MANUAL target missed its pitch-scheduling deadline.'); return; }
+    try {
+      void node.setPitch(target, outputTime, true, officialFormantSemitones(this.officialValues.formant!), 0, true)
+        .catch((cause: unknown) => this.failRuntime(`HRM MANUAL pitch/formant schedule failed: ${String(cause)}`));
+    } catch (cause) { this.failRuntime(`HRM MANUAL pitch/formant schedule failed: ${String(cause)}`); }
+  }
+
+  private initializeOfficialParameters(exceptKey: string): void {
+    if (this.officialInitialized) return;
+    this.officialInitialized = true;
+    for (const [key, value] of Object.entries(officialPitchDefaults(this.name, this.algorithm))) {
+      if (key !== exceptKey) this.setParam(key, value);
+    }
+  }
+
   setBypass(bypass: boolean): void {
     if (this.disposed) return;
     this.bypassed = bypass;
+    this.analyzerNode?.port.postMessage({ type: 'set-bypass', value: bypass || !this.officialActive, rampFrames: 0 });
     this.applyRouting();
+  }
+
+  getParameterSnapshot(): Readonly<Record<string, number>> {
+    return Object.freeze({
+      voice_1_interval: this.voice1Interval,
+      voice_2_interval: this.voice2Interval,
+      pan_percent: this.panPercent,
+      mix_percent: this.mixPercent,
+      ...this.officialParameters,
+    });
   }
 
   dispose(): void {
@@ -151,6 +296,12 @@ export class BrowserManualHarmonistFX implements FXBase {
     this.dryGain.disconnect();
     for (const delay of this.voiceAlignmentDelays) delay.disconnect();
     for (const node of this.voiceNodes ?? []) node.disconnect();
+    for (const gain of this.voiceMutes) gain.disconnect();
+    if (this.analyzerNode) this.analyzerNode.port.onmessage = null;
+    this.analyzerNode?.disconnect();
+    this.analyzerSink?.disconnect();
+    this.analyzerNode = null;
+    this.analyzerSink = null;
     this.voicePan.disconnect();
     this.voiceGain.disconnect();
     this.output.disconnect();
@@ -220,6 +371,7 @@ export class BrowserManualHarmonistFX implements FXBase {
     }
 
     this.voiceReady = true;
+    if (this.officialActive && this.officialVoiced) this.scheduleOfficialVoice(this.officialTarget);
     // Parameters can change before the asynchronous Worklet modules finish.
     if (this.voice1Interval !== initialIntervals[0]) {
       this.scheduleVoicePitch(0, this.voice1Interval, this.failureSerial, 'voice_1_interval');
@@ -228,6 +380,8 @@ export class BrowserManualHarmonistFX implements FXBase {
       this.scheduleVoicePitch(1, this.voice2Interval, this.failureSerial, 'voice_2_interval');
     }
     this.applyRouting();
+    // Legacy instances incur no additional promise hops or analyzer setup.
+    if (this.officialActive) await this.ensureOfficialAnalyzer();
   }
 
   private scheduleVoicePitch(
@@ -299,8 +453,10 @@ export class BrowserManualHarmonistFX implements FXBase {
 
   private applyRouting(): void {
     const direct = this.bypassed || this.failed || !this.voiceReady ? 1 : 0;
-    const dry = direct ? 0 : 1;
-    const voice = direct ? 0 : this.mixPercent / 100;
+    const dry = direct ? 0 : this.officialActive ? this.officialValues.d_level! / 100 : 1;
+    const voice = direct ? 0 : this.officialActive ? this.officialValues.hrm_level! / 100 : this.mixPercent / 100;
+    this.voiceMutes[0].gain.setTargetAtTime(this.officialActive && !this.officialVoiced ? 0 : 1, this.context.currentTime, 0.005);
+    this.voiceMutes[1].gain.setTargetAtTime(this.officialActive ? 0 : 1, this.context.currentTime, 0.005);
     const now = this.context.currentTime;
     for (const [gain, value] of [
       [this.directGain, direct],

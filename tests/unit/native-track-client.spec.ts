@@ -12,6 +12,8 @@ describe('Native multi-track bridge client', () => {
     await client.playTrack(5);
     await client.toggleTrackOverdub(5);
     await client.clearTrack(5);
+    await client.undoTrack(1);
+    await client.redoTrack(3);
 
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
       'http://127.0.0.1:17755/v1/transport/record',
@@ -19,6 +21,8 @@ describe('Native multi-track bridge client', () => {
       'http://127.0.0.1:17755/v1/transport/play?trackId=5',
       'http://127.0.0.1:17755/v1/transport/overdub-toggle?trackId=5',
       'http://127.0.0.1:17755/v1/transport/clear?trackId=5',
+      'http://127.0.0.1:17755/v1/transport/undo',
+      'http://127.0.0.1:17755/v1/transport/redo?trackId=3',
     ]);
   });
 
@@ -30,6 +34,7 @@ describe('Native multi-track bridge client', () => {
       'X-Native-Loop-Frame-Count': '2',
       'X-Native-Loop-Channels': '2',
       'X-Native-Loop-Sample-Format': 'float32le',
+      'X-Native-Loop-Revision': '17',
     };
     const fetchMock = vi.fn(async () => ({
       ok: true,
@@ -45,7 +50,7 @@ describe('Native multi-track bridge client', () => {
       'http://127.0.0.1:17755/v1/export/loop-snapshot?trackId=3',
       { method: 'GET' },
     );
-    expect(snapshot).toMatchObject({ sampleRate: 48_000, frameCount: 2, channels: 2 });
+    expect(snapshot).toMatchObject({ sampleRate: 48_000, frameCount: 2, channels: 2, contentRevision: 17 });
     expect([...snapshot.samples]).toEqual([...samples]);
   });
 
@@ -55,6 +60,7 @@ describe('Native multi-track bridge client', () => {
     const client = new NativeBridgeClient();
 
     await expect(client.recordTrack(0)).rejects.toThrow(/between 1 and 5/);
+    await expect(client.undoTrack(0)).rejects.toThrow(/between 1 and 5/);
     await expect(client.getLoopSnapshot(6)).rejects.toThrow(/between 1 and 5/);
     expect(fetchMock).not.toHaveBeenCalled();
   });

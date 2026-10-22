@@ -1,0 +1,2 @@
+Native bridge HTTP simulation passed, including five-track status, selector validation, per-track recording, stereo snapshots, callback-acknowledged project archive import/cancel/status routes, OSC VOC absolute-frame MIDI routing/status, and HRM AUTO exact-slot MIDI route/status. The fake RtAudio callback source is synthetic and is not device, timing, XRUN, or audio-quality evidence.
+{"earlyResponseRecoveries": []}

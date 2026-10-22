@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { FX_CATALOG, FX_CATALOG_AUDIT } from '../../src/audio/fx/catalog';
 
 describe('53-effect catalog metadata', () => {
+  it('keeps BEAT SHIFT source-offset, crossfade, and latency descriptions distinct', () => {
+    const beatShift = FX_CATALOG.find((effect) => effect.id === 'beat-shift');
+    const routingDoc = readFileSync(resolve(process.cwd(), 'docs/dsp/BROWSER_LOOP_TRANSPORT_ROUTING.md'), 'utf8');
+    const algorithmDoc = readFileSync(resolve(process.cwd(), 'docs/dsp/FX_ALGORITHM_DETAILS.md'), 'utf8');
+    expect(beatShift?.runtimeImplementations?.map(({ runtime, target }) => ({ runtime, target }))).toEqual([
+      { runtime: 'browser', target: 'loop-transport' },
+      { runtime: 'native', target: 'loop-transport' },
+    ]);
+    expect(beatShift?.latencyNote).toContain('transition duration, not pipeline latency');
+    expect(beatShift?.implementationNote).toContain('not algorithmic or end-to-end latency');
+    expect(beatShift?.parameters.find((parameter) => parameter.key === 'crossfade')?.range).toEqual({ min: 1, max: 10 });
+    expect(routingDoc).toContain('1–10 ms crossfade');
+    expect(routingDoc).toContain('This duration is not the algorithmic latency or end-to-end latency');
+    expect(algorithmDoc).toContain('not a multi-beat look-ahead delay');
+    expect(algorithmDoc).not.toContain('BEAT SHIFT is Browser-only');
+  });
+
   it('contains 53 distinct effects with 49 Input and 53 Track assignments', () => {
     expect(FX_CATALOG).toHaveLength(53);
     expect(new Set(FX_CATALOG.map((effect) => effect.id)).size).toBe(53);
@@ -81,21 +100,23 @@ describe('53-effect catalog metadata', () => {
       native: 46,
       browserInput: 44,
       browserTrack: 46,
-      nativeInput: 43,
+      nativeInput: 44,
       nativeTrack: 46,
     });
     expect(FX_CATALOG_AUDIT.experimentalRuntimeImplementationCounts).toEqual({
       browser: 7,
-      native: 6,
+      native: 7,
       browserInput: 5,
-      browserTrack: 7,
+      browserTrack: 6,
+      browserLoopTransport: 2,
       nativeInput: 5,
       nativeTrack: 6,
+      nativeLoopTransport: 2,
     });
     expect(FX_CATALOG.filter((effect) => effect.runtimeImplementations?.some((item) => item.runtime === 'native'))
       .map((effect) => effect.id).sort())
       .toEqual([
-        'auto-pan', 'auto-riff', 'beat-repeat', 'beat-scatter', 'bpf', 'chorus', 'delay', 'dist', 'dynamics', 'electric', 'eq', 'flanger',
+        'auto-pan', 'auto-riff', 'beat-repeat', 'beat-scatter', 'beat-shift', 'bpf', 'chorus', 'delay', 'dist', 'dynamics', 'electric', 'eq', 'flanger',
         'freeze', 'g2b', 'gate-reverb', 'granular-delay', 'hpf', 'hrm-auto-m', 'hrm-manual', 'isolator', 'lo-fi', 'lpf', 'manual-pan', 'mod-delay', 'octave',
         'osc-bot', 'osc-voc-m', 'panning-delay', 'pattern-slicer', 'phaser', 'pitch-bend', 'preamp', 'radio', 'reverb', 'reverse-delay', 'reverse-reverb', 'ring-mod',
         'robot', 'roll', 'slow-gear', 'step-slicer', 'stereo-enhance', 'sustainer', 'synth', 'tape-echo',
@@ -132,6 +153,7 @@ describe('53-effect catalog metadata', () => {
       for (const { runtime, target } of implementations) {
         if (target === 'input-bank-slot') expect(effect.availability.input).toBe(true);
         if (target === 'track-bank-slot') expect(effect.availability.track).toBe(true);
+        if (target === 'loop-transport') expect(effect.availability.track).toBe(true);
         expect(runtime).toMatch(/^(browser|native)$/);
       }
     }
@@ -181,12 +203,16 @@ describe('53-effect catalog metadata', () => {
       runtimeSupport: 'experimental',
       runtimeImplementations: [
         { runtime: 'browser', target: 'track-bank-slot' },
+        { runtime: 'browser', target: 'loop-transport' },
         { runtime: 'native', target: 'track-bank-slot' },
+        { runtime: 'native', target: 'loop-transport' },
       ],
     });
-    expect(vinylFlick?.implementationNote).toContain('not quality-accepted');
-    expect(vinylFlick?.implementationNote).toContain('source-aware per-loop read-head access');
-    expect(vinylFlick?.latencyNote).toContain('Native 3 frames; Browser 2 frames');
+    expect(vinylFlick?.implementationNote).toContain('no sound-quality acceptance');
+    expect(vinylFlick?.implementationNote).toContain('target rate clamp(1 + speedPercent/100, 0, 2) independently of mix');
+    expect(vinylFlick?.implementationNote).toContain('linear dry/wet blend');
+    expect(vinylFlick?.latencyNote).toContain('crossfade duration');
+    expect(vinylFlick?.latencyNote).toContain('Total algorithm and end-to-end latency are unmeasured');
     expect(vinylFlick?.parameters.map(({ key }) => key)).toEqual(['speed', 'return-time', 'brake', 'mix']);
 
     const robot = FX_CATALOG.find((effect) => effect.id === 'robot');
@@ -258,10 +284,16 @@ describe('53-effect catalog metadata', () => {
       availability: { input: false, track: true },
       implementationStatus: 'experimental',
       runtimeSupport: 'experimental',
-      runtimeImplementations: [{ runtime: 'browser', target: 'track-bank-slot' }],
+      runtimeImplementations: [
+        { runtime: 'browser', target: 'loop-transport' },
+        { runtime: 'native', target: 'loop-transport' },
+      ],
     });
     expect(beatShift?.implementationNote).toContain('not quality-accepted');
-    expect(beatShift?.implementationNote).toContain('Loop-playback read-head integration');
+    expect(beatShift?.implementationNote).toContain('not a selectable A–D insert');
+    expect(beatShift?.implementationNote).toContain('transition duration, not algorithmic or end-to-end latency');
+    expect(beatShift?.latencyNote).toContain('not pipeline latency');
+    expect(beatShift?.parameters.find((parameter) => parameter.id === 'beat-shift.crossfade')?.range).toEqual({ min: 1, max: 10 });
     expect(beatShift?.parameters.map((parameter) => parameter.id)).toEqual([
       'beat-shift.offset', 'beat-shift.crossfade',
     ]);
@@ -403,6 +435,7 @@ describe('53-effect catalog metadata', () => {
       runtimeImplementations: [
         { runtime: 'browser', target: 'input-bank-slot' },
         { runtime: 'browser', target: 'track-bank-slot' },
+        { runtime: 'native', target: 'input-bank-slot' },
         { runtime: 'native', target: 'track-bank-slot' },
       ],
     });

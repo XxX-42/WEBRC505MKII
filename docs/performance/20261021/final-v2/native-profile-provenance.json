@@ -1,0 +1,8 @@
+{
+  "productionSourceEqualsProfileSource": true,
+  "sourceSha256": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8",
+  "wholeCore": "-pg Release, 48kHz 64frames 5tracks heavy20FX, 5000 callbacks +1000 warmup",
+  "preampOnly": "-O3 -pg, 60000 blocks *64 frames; steady sine and sustained automation separate",
+  "scope": "Sampling diagnostics; not accepted callback timing measurements",
+  "gprofAliasWarning": "NativeOscBotProcessor destructor-labelled samples may be compiler symbol folding; not an actual destructor hotspot claim"
+}

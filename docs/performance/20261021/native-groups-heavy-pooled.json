@@ -1,0 +1,11 @@
+{
+  "pooledGainPercent": {
+    "meanNs": -2.430006419992803,
+    "p50Ns": -0.9942484799855045,
+    "p95Ns": -6.6543609583831875,
+    "p99Ns": -14.539306924183881,
+    "maxNs": 36.52270199790135
+  },
+  "hashesEqual": true,
+  "aggregation": "Gain is ratio of arithmetic means of per-run statistics; p99 means mean(run p99), NOT pooled callback quantile. Raw callback timing arrays were not retained."
+}

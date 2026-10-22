@@ -149,11 +149,40 @@
     />
 
     <HrmAutoFxEditor
-      v-if="activeFx?.type === 'HRM AUTO (M)'"
+      v-if="activeFx?.type === 'HRM AUTO (M)' || activeFx?.type === 'HRM AUTO (M) (EXPERIMENTAL)'"
       :model-value="activeFx.hrmAutoParameters"
       :midi-target="{ path: 'track', slot: activeFx?.id ?? 'A', effectId: 'hrm_auto_m' }"
       @update:model-value="updateHrmAutoParameters"
     />
+
+    <BrowserCatalogParametersEditor
+      v-if="browserNamedControls.length"
+      :key="`browser-track-${activeSlot}-${activeFx?.type}`"
+      :title="`Track FX slot ${activeSlot}`"
+      :controls="browserNamedControls"
+      :model-value="activeNamedParameters"
+      :disabled="fxDisabled"
+      data-track-named-controls
+      @change="updateBrowserNamedParameter"
+      @reset="resetBrowserNamedControls"
+    />
+
+    <NativeCatalogParametersEditor
+      v-if="nativeSchema && nativeSchema.parameters.length"
+      :key="`native-track-${activeSlot}-${activeFx?.type}`"
+      :title="`SHARED TRACK ${activeSlot} · ${activeFx?.type ?? ''}`"
+      :schema="nativeSchema"
+      :model-value="activeNamedParameters"
+      :macro-parameters="nativeMacroParameters"
+      :runtime="runtimeStatus"
+      :pending-submission="nativeNamedParametersPending"
+      :disabled="fxDisabled || nativeNamedParametersPending || Boolean(runtimeStatus?.pendingApply || runtimeStatus?.outcomeUnknown)"
+      @apply="applyNativeNamedParameters"
+    />
+    <p v-else-if="nativeMode && activeFx?.type && activeFx.type !== 'NONE' && !dedicatedNativeEditorTypes.has(activeFx.type) && !nativeSchema" class="detail-note" data-native-parameter-schema-unavailable>
+      Named controls unavailable: this Native host does not advertise a valid descriptor schema
+    </p>
+    <p v-if="nativeParameterError" class="detail-note" role="alert">{{ nativeParameterError }}</p>
 
     <div class="slot-row">
       <HardwareButton
@@ -187,8 +216,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { AudioEngine } from '../../audio/AudioEngine';
+import { nativeCatalogMacroParameters } from '../../audio/nativeFxCatalog';
+import { mergeOfficialParameterEdit } from '../../audio/fx/official/parameters';
+import { getBrowserTrackFxControls, getBrowserTrackFxMacroKeys, sanitizeBrowserTrackFxParameters } from '../../composables/browserTrackFxParameters';
 import { createDefaultNativeStepSlicerParameters, type NativeStepSlicerParameters } from '../../audio/nativeStepSlicerParameters';
 import { createDefaultPreampParameters, sanitizePreampParameters, type PreampParameters } from '../../audio/preampParameters';
 import { createDefaultSynthParameters, sanitizeSynthParameters, type SynthParameters } from '../../audio/synthParameters';
@@ -200,6 +232,8 @@ import NativeTrackFxPanel from './NativeTrackFxPanel.vue';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareKnob from '../ui/HardwareKnob.vue';
 import NativeStepSlicerEditor from '../fx/NativeStepSlicerEditor.vue';
+import NativeCatalogParametersEditor from '../fx/NativeCatalogParametersEditor.vue';
+import BrowserCatalogParametersEditor from '../fx/BrowserCatalogParametersEditor.vue';
 import PreampFxEditor from '../fx/PreampFxEditor.vue';
 import SynthFxEditor from '../fx/SynthFxEditor.vue';
 import G2bFxEditor from '../fx/G2bFxEditor.vue';
@@ -227,7 +261,8 @@ import { createDefaultHrmAutoParameters, sanitizeHrmAutoParameters, toCatalogHrm
 import ElectricFxEditor from '../fx/ElectricFxEditor.vue';
 import { createDefaultElectricParameters, sanitizeElectricParameters, toBrowserElectricParameters, toNativeElectricParameters, type ElectricParameters } from '../../audio/electricParameters';
 
-const { slots, fxOptions, fxDisabled, fxUnavailableReason, runtimeStatus, activeSlot, selectSlot } = useFxPanelState('track');
+const { slots, fxOptions, fxDisabled, fxUnavailableReason, runtimeStatus, activeSlot, selectSlot,
+  setNativeNamedParameters, nativeNamedParametersPending } = useFxPanelState('track');
 const trackFxTarget = useTrackFxTargetState();
 const { state } = usePanelFocus();
 const editMode = ref(false);
@@ -248,6 +283,33 @@ function changeNativeTrackTarget(event: Event) {
 }
 
 const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlot.value) ?? slots.value[0]);
+const activeSlotIndex = computed(() => slots.value.findIndex((slot) => slot.id === activeFx.value?.id));
+const dedicatedNativeEditorTypes = new Set([
+  'PREAMP', 'SYNTH', 'G2B', 'ROLL', 'FREEZE', 'PITCH BEND', 'HRM MANUAL',
+  'OCTAVE', 'VOCODER', 'OSC VOC (M)', 'AUTO RIFF', 'AUTO RIFF (EXPERIMENTAL)',
+  'ROBOT', 'ROBOT (EXPERIMENTAL)', 'HRM AUTO (M)', 'HRM AUTO (M) (EXPERIMENTAL)',
+  'ELECTRIC', 'STEP SLICER',
+]);
+const activeNamedParameters = computed(() => activeFx.value?.namedParametersByType?.[activeFx.value.type] ?? {});
+const browserNamedControls = computed(() => {
+  const slot = activeFx.value;
+  if (!slot || !browserMode.value || browserTrackTarget.value !== 'shared' || fxDisabled.value) return [];
+  return getBrowserTrackFxControls(slot.type, activeNamedParameters.value, activeSlotIndex.value, 'shared')
+    .filter((control) => !dedicatedNativeEditorTypes.has(slot.type) || control.provenance !== 'extension');
+});
+const nativeSchema = computed(() => nativeMode.value && nativeTrackTarget.value === 'shared' && activeFx.value?.type
+  ? AudioEngine.getInstance().getNativeCatalogFxParameterSchema(
+    activeFx.value.type, 'track', 0, activeNamedParameters.value, activeSlotIndex.value)
+  : null);
+const nativeMacroParameters = computed(() => activeFx.value
+  ? nativeCatalogMacroParameters(activeFx.value.type, activeFx.value.value)
+  : {});
+const nativeParameterError = ref('');
+watch([activeSlot, () => activeFx.value?.type, nativeTrackTarget], () => { nativeParameterError.value = ''; });
+function applyNativeNamedParameters(parameters: Record<string, number>) {
+  nativeParameterError.value = setNativeNamedParameters(activeSlotIndex.value, parameters)
+    ? '' : 'Native did not accept the named controls; check the schema and current slot status.';
+}
 const sharedFxIsEmpty = computed(() => !activeFx.value?.type || activeFx.value.type === 'NONE');
 const sharedFxValueDisabled = computed(() => fxDisabled.value || sharedFxIsEmpty.value);
 const sharedFxValueDisabledReason = computed(() => fxDisabled.value
@@ -264,6 +326,35 @@ const nativeFxRuntimeText = computed(() => {
 });
 const currentTrackId = computed(() => state.currentTrackId);
 
+function updateBrowserNamedParameter(key: string, event: Event): void {
+  const slot = activeFx.value;
+  const control = browserNamedControls.value.find((candidate) => candidate.key === key);
+  if (!slot || !control || !browserMode.value) return;
+  const raw = (event.target as HTMLInputElement | HTMLSelectElement).value;
+  if (!raw.trim()) return;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return;
+  const sanitized = sanitizeBrowserTrackFxParameters(slot.type, mergeOfficialParameterEdit(activeNamedParameters.value, key, value));
+  if (!Object.prototype.hasOwnProperty.call(sanitized, key)) return;
+  slot.namedParametersByType = { ...(slot.namedParametersByType ?? {}), [slot.type]: sanitized };
+}
+
+function resetBrowserNamedControls(): void {
+  const slot = activeFx.value;
+  const index = activeSlotIndex.value;
+  if (!slot || index < 0 || !browserMode.value) return;
+  const type = slot.type;
+  const presets = { ...(slot.namedParametersByType ?? {}) };
+  delete presets[type];
+  slot.namedParametersByType = Object.keys(presets).length ? presets : undefined;
+  const engine = AudioEngine.getInstance();
+  // Recreate the insert to clear the processor's complete named overlay.
+  engine.setFxType('track', index, 'NONE');
+  engine.setFxType('track', index, type);
+  engine.setFxParam('track', index, slot.value);
+  engine.setFxActive('track', index, slot.active);
+}
+
 const updateActiveValue = (value: number) => {
   if (!trackFxTarget.isSharedTarget.value) {
     trackFxTarget.setValue(value);
@@ -272,6 +363,18 @@ const updateActiveValue = (value: number) => {
   if (!activeFx.value || !activeFx.value.type || activeFx.value.type === 'NONE' || fxDisabled.value) return;
   const bounded = Math.max(0, Math.min(100, Math.round(value)));
   activeFx.value.value = bounded;
+  if (browserMode.value) {
+    const slot = activeFx.value;
+    const macroKeys = new Set(getBrowserTrackFxMacroKeys(slot.type));
+    const existing = slot.namedParametersByType?.[slot.type];
+    if (existing && Object.keys(existing).some((key) => macroKeys.has(key))) {
+      const remaining = Object.fromEntries(Object.entries(existing).filter(([key]) => !macroKeys.has(key)));
+      const next = { ...(slot.namedParametersByType ?? {}) };
+      if (Object.keys(remaining).length) next[slot.type] = remaining;
+      else delete next[slot.type];
+      slot.namedParametersByType = Object.keys(next).length ? next : undefined;
+    }
+  }
   if (activeFx.value.type === 'PREAMP') {
     const current = sanitizePreampParameters(activeFx.value.preampParameters ?? createDefaultPreampParameters());
     updatePreampParameters({ ...current, gainPercent: bounded });
@@ -316,7 +419,7 @@ const updateActiveValue = (value: number) => {
     const current = sanitizeRobotFxParameters(activeFx.value.robotParameters ?? createDefaultRobotFxParameters());
     updateRobotParameters({ ...current, mixPercent: bounded });
   }
-  if (activeFx.value.type === 'HRM AUTO (M)') {
+  if (activeFx.value.type === 'HRM AUTO (M)' || activeFx.value.type === 'HRM AUTO (M) (EXPERIMENTAL)') {
     const current = sanitizeHrmAutoParameters(activeFx.value.hrmAutoParameters ?? createDefaultHrmAutoParameters());
     updateHrmAutoParameters({ ...current, mixPercent: bounded });
   }
@@ -448,7 +551,7 @@ const updateRobotParameters = (parameters: RobotFxParameters) => {
 
 const updateHrmAutoParameters = (parameters: HrmAutoParameters) => {
   const slot = activeFx.value;
-  if (!slot || slot.type !== 'HRM AUTO (M)') return;
+  if (!slot || (slot.type !== 'HRM AUTO (M)' && slot.type !== 'HRM AUTO (M) (EXPERIMENTAL)')) return;
   slot.hrmAutoParameters = sanitizeHrmAutoParameters(parameters);
   slot.value = slot.hrmAutoParameters.mixPercent;
   const slotIndex = slots.value.findIndex((candidate) => candidate.id === slot.id);

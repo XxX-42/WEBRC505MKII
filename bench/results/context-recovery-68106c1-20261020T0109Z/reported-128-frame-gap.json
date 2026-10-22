@@ -1,0 +1,25 @@
+{
+  "status": "reported-in-earlier-summary-only",
+  "sourceFile": "verification-68106c1.json",
+  "rawRunLog": null,
+  "reproducedInCurrentRun": false,
+  "currentRunId": "context-recovery-68106c1-20261020T0109Z",
+  "currentRunForwardGapRejects": 0,
+  "diagnosticCopiedFromSummary": {
+    "test": "browser-record-stop-timeout: a suspended AudioContext cannot leave a shared recording stuck busy or corrupt a resumed take",
+    "reason": "input-frame-discontinuity",
+    "requestedFrame": 18560,
+    "startReceivedFrame": 18560,
+    "ageFrames": 0,
+    "preRollCapacityFrames": 8192,
+    "retainedRange": "[10368, 18560)",
+    "previousCallbackEndFrame": 18560,
+    "currentCallbackStartFrame": 18688,
+    "preRollEndAtCallbackStart": 18560,
+    "preRollValidFrames": 8192,
+    "ready": true,
+    "generation": "1/1",
+    "sampleRateHz": 44100
+  },
+  "cause": "unknown; no causal attribution is supported by the preserved raw artifacts"
+}

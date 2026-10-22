@@ -1,0 +1,131 @@
+import { describe, expect, it } from 'vitest';
+import { BrowserFxDspCore, type BrowserFxAlgorithm, type BrowserFxParameters } from '../../src/audio/fx/dsp/BrowserFxDspCore';
+
+const fallbackAlgorithms: BrowserFxAlgorithm[] = [
+  'lpf', 'bpf', 'hpf', 'ring-mod', 'flanger', 'dynamics', 'delay', 'chorus',
+  'phaser', 'tremolo', 'reverb', 'gate-reverb', 'distortion',
+];
+type FallbackAlgorithm = typeof fallbackAlgorithms[number];
+
+const parameterSets: Record<FallbackAlgorithm, BrowserFxParameters> = {
+  lpf: { cutoffHz: 4400, q: 3.2, mix: 0.63 },
+  bpf: { cutoffHz: 2700, q: 2.4, mix: 0.47 },
+  hpf: { cutoffHz: 310, q: 1.8, mix: 0.81 },
+  'ring-mod': { ringModHz: 713, ringModDepth: 0.62, ringModWaveform: 0, mix: 0.73 },
+  flanger: { flangerDelayMs: 4.1, flangerRateHz: 1.73, flangerDepth: 0.51, flangerFeedback: 0.42, mix: 0.66 },
+  dynamics: { thresholdDb: -23, ratio: 4.2, kneeDb: 8, attackMs: 7, releaseMs: 121, mix: 0.77 },
+  delay: { delayTimeMs: 163, delayFeedback: 0.58, delayToneHz: 3900, mix: 0.69 },
+  chorus: { chorusDelayMs: 16, chorusRateHz: 1.9, chorusDepthMs: 6.2, chorusVoices: 3, chorusFeedback: 0.31, mix: 0.71 },
+  phaser: { phaserRateHz: 0.87, phaserDepth: 0.72, phaserFeedback: 0.36, phaserStages: 8, mix: 0.6 },
+  tremolo: { tremoloRateHz: 3.1, tremoloDepth: 0.65, tremoloWaveform: 'sine', mix: 0.8 },
+  reverb: { decaySeconds: 3.1, dampingHz: 4600, mix: 0.58 },
+  'gate-reverb': { decaySeconds: 2.7, dampingHz: 5100, gateThresholdDb: -34, gateHoldMs: 18, gateReleaseMs: 90, mix: 0.62 },
+  distortion: { driveDb: 22, outputDb: -5, distortionMode: 'fuzz', mix: 0.74 },
+};
+
+function makeSignal(frames: number, start: number): { left: Float32Array; right: Float32Array } {
+  const left = new Float32Array(frames);
+  const right = new Float32Array(frames);
+  for (let i = 0; i < frames; i += 1) {
+    const n = start + i;
+    left[i] = 0.19 * Math.sin((2 * Math.PI * 311 * n) / 48_000)
+      + 0.11 * Math.sin((2 * Math.PI * 1877 * n) / 48_000)
+      + (n % 997 === 0 ? 0.33 : 0);
+    right[i] = 0.17 * Math.sin((2 * Math.PI * 701 * n) / 48_000 + 0.3)
+      + 0.09 * Math.sin((2 * Math.PI * 2671 * n) / 48_000)
+      + (n % 1597 === 0 ? -0.27 : 0);
+  }
+  return { left, right };
+}
+
+function bits(samples: Float32Array): Uint32Array {
+  return new Uint32Array(samples.buffer, samples.byteOffset, samples.length);
+}
+
+function renderPair(algorithm: FallbackAlgorithm, mono: boolean): void {
+  const optimized = new BrowserFxDspCore(algorithm, 48_000);
+  const reference = new BrowserFxDspCore(algorithm, 48_000);
+  const referenceInternals = reference as unknown as {
+    processEffectSample(input: number, channel: 0 | 1): number;
+    processEffectSampleDispatch: (input: number, channel: 0 | 1) => number;
+    usesScalarEffectSampleDispatch: boolean;
+  };
+  // Keep the original per-sample string switch as the bit-exact oracle.
+  referenceInternals.usesScalarEffectSampleDispatch = false;
+  referenceInternals.processEffectSampleDispatch = (input, channel) => referenceInternals.processEffectSample(input, channel);
+
+  const initial = parameterSets[algorithm];
+  optimized.setParameters(initial);
+  reference.setParameters(initial);
+
+  const totalFrames = 18_321;
+  const signal = makeSignal(totalFrames, 0);
+  const optimizedLeft = new Float32Array(totalFrames);
+  const optimizedRight = new Float32Array(totalFrames);
+  const referenceLeft = new Float32Array(totalFrames);
+  const referenceRight = new Float32Array(totalFrames);
+  const blockSizes = [1, 31, 127, 256, 7, 513, 64, 1024];
+  let offset = 0;
+  let block = 0;
+  let changed = false;
+  let bypassed = false;
+  let reset = false;
+
+  while (offset < totalFrames) {
+    if (!changed && offset >= 4097) {
+      const ramp = { ...initial, mix: 0.29, cutoffHz: 1180, q: 0.83, delayTimeMs: 43, decaySeconds: 5.7 };
+      optimized.setParameters(ramp);
+      reference.setParameters(ramp);
+      changed = true;
+    }
+    if (!bypassed && offset >= 8193) {
+      optimized.setBypass(true, 73);
+      reference.setBypass(true, 73);
+      bypassed = true;
+    }
+    if (bypassed && !reset && offset >= 10_007) {
+      optimized.reset();
+      reference.reset();
+      reset = true;
+    }
+    if (bypassed && offset >= 11_007) {
+      optimized.setBypass(false, 119);
+      reference.setBypass(false, 119);
+      bypassed = false;
+    }
+
+    const count = Math.min(blockSizes[block % blockSizes.length] ?? 128, totalFrames - offset);
+    const inputLeft = signal.left.subarray(offset, offset + count);
+    const inputRight = mono ? null : signal.right.subarray(offset, offset + count);
+    optimized.processBlock(
+      inputLeft,
+      inputRight,
+      optimizedLeft.subarray(offset, offset + count),
+      optimizedRight.subarray(offset, offset + count),
+      count,
+      mono,
+    );
+    reference.processBlock(
+      inputLeft,
+      inputRight,
+      referenceLeft.subarray(offset, offset + count),
+      referenceRight.subarray(offset, offset + count),
+      count,
+      mono,
+    );
+    offset += count;
+    block += 1;
+  }
+
+  expect(bits(optimizedLeft), `${algorithm} left output differs from switch oracle`).toEqual(bits(referenceLeft));
+  expect(bits(optimizedRight), `${algorithm} right output differs from switch oracle`).toEqual(bits(referenceRight));
+  expect(optimized.nonFiniteOutputSamples).toBe(reference.nonFiniteOutputSamples);
+  expect(optimized.framesProcessed).toBe(reference.framesProcessed);
+}
+
+describe('Browser FX constructor-selected scalar dispatch', () => {
+  it.each(fallbackAlgorithms)('is bit-identical to the original switch for %s', (algorithm) => {
+    renderPair(algorithm, false);
+    renderPair(algorithm, true);
+  });
+});

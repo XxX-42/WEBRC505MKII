@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "cases": 16,
+  "blocks": 768,
+  "sourceHashes": [
+    "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "e2f010c28e38e6b3823f834a85847d9986e71b64bfde1e882e958633a8c1fe03"
+  ],
+  "scope": "Exact output bytes, counters, frame clock and controls through interrupted ramps/mode changes/reset/nonfinite input and overlapping buffers; correctness only"
+}

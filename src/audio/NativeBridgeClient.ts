@@ -1,4 +1,5 @@
 import { NATIVE_CATALOG_FX_LABELS } from './nativeFxCatalog';
+import { PROJECT_ARCHIVE_LIMITS } from './projectArchive';
 
 export type NativeBackend = 'WASAPI' | 'ASIO';
 export type NativeLooperState = 'Empty' | 'Recording' | 'Stopped' | 'Playing' | 'Overdubbing';
@@ -10,7 +11,14 @@ export type NativeLoopTransportStatus =
   | 'waitingForPlayback'
   | 'active'
   | 'unsupportedRecording'
-  | 'unsupportedOverdubbing';
+  | 'unsupportedOverdubbing'
+  | 'unsupportedPitchProcessing';
+
+/** Real playback-only carrier source availability, when advertised by the host. */
+export type NativeVocoderCarrierStatus =
+  | 'notRequested' | 'ready' | 'empty' | 'stopped'
+  | 'unsupportedRecording' | 'unsupportedOverdubbing' | 'unsupportedPitchProcessing'
+  | 'historyPinned' | 'bufferUnavailable';
 
 export interface NativeLoopTransportConfig {
   mode: NativeLoopTransportMode;
@@ -28,6 +36,41 @@ export interface NativeHqRendererCapability {
   engines: NativeHqEngine[];
 }
 
+export interface NativeTrackHistoryStatus {
+  canUndo: boolean;
+  canRedo: boolean;
+  retainedPcmBytes: number;
+  unavailableReason: 'none' | 'budgetExceeded' | 'snapshotUnavailable' | 'noUndo' | 'noRedo' | 'trackMustBeStopped' | 'unknown';
+}
+
+export type NativeProjectImportState = 'pending' | 'claimed' | 'committed' | 'cancelled';
+
+export class NativeProjectImportOutcomeUnknownError extends Error {
+  public constructor(cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    super(`The Native bridge did not acknowledge an import generation, so the request outcome is unknown. Do not retry until the host state is checked. ${detail}`);
+    this.name = 'NativeProjectImportOutcomeUnknownError';
+  }
+}
+
+export interface NativeProjectImportStatus {
+  ok: true;
+  generation: number;
+  state: NativeProjectImportState;
+  error?: string;
+}
+
+export class NativeProjectImportIndeterminateError extends Error {
+  public readonly generation: number;
+
+  public constructor(generation: number, detail?: unknown) {
+    const reason = detail === undefined ? '' : ` The last bridge request failed: ${detail instanceof Error ? detail.message : String(detail)}`;
+    super(`Native project import generation ${generation} has an indeterminate outcome; check its status before retrying.${reason}`);
+    this.name = 'NativeProjectImportIndeterminateError';
+    this.generation = generation;
+  }
+}
+
 export interface NativeDeviceInfo {
   id: string;
   name: string;
@@ -43,6 +86,35 @@ export interface NativeDeviceCatalog {
   defaultInputIdByBackend: Record<string, string>;
   defaultOutputIdByBackend: Record<string, string>;
   bufferOptions: number[];
+}
+
+/** Authoritative per-effect range/choice metadata published by a Native host. */
+export interface NativeFxParameterDescriptor {
+  id: string;
+  label: string;
+  minimum: number;
+  maximum: number;
+  defaultValue: number;
+  smoothingMs: number;
+  discrete: boolean;
+  discreteValues?: number[];
+  /** Present only for accepted pre-schema compatibility names such as LPF/HPF `q`. */
+  legacyAlias?: boolean;
+  provenance?: 'official-interface' | 'extension' | 'routing';
+  unit?: string;
+  step?: number;
+  semanticSupport?: 'partial_live_stream' | 'partial_source_modes';
+  limitation?: string;
+  options?: Array<{ value: number; label: string }>;
+  sourcePage?: number;
+  officialEffectName?: string;
+  documentedDefault?: number | null;
+}
+
+export interface NativeFxParameterSchema {
+  version: 1;
+  parameters: NativeFxParameterDescriptor[];
+  legacyAliases: NativeFxParameterDescriptor[];
 }
 
 export interface NativeRhythmConfig {
@@ -99,12 +171,21 @@ export interface NativeStatus {
   nativeLooperMaxRecordSeconds?: number;
   nativeLooperPreallocatedBytes?: number;
   nativeLooperStorageBudgetBytes?: number;
+  /** Host-wide epoch for loop PCM/history edits and track-state transitions a project load replaces. */
+  projectContentRevision?: number;
+  /** Host marks the revision/status pair unstable if it raced a callback edit. */
+  projectContentRevisionSnapshotStable?: boolean;
   nativeTracks?: Array<{
     trackId: number;
     state: NativeLooperState;
     loopProgress: number;
+    /** Monotonic loop-content revision; older hosts omit it. */
+    contentRevision?: number;
     loopTransportStatus?: NativeLoopTransportStatus;
+    vocoderCarrierStatus?: NativeVocoderCarrierStatus;
+    history?: NativeTrackHistoryStatus;
   }>;
+  nativeHistory?: { budgetBytes: number; retainedBytes: number };
   nativePitch?: NativePitchStatus;
   /** Missing status is treated as unavailable; old bridge builds cannot render Native HQ. */
   nativeHqRenderer?: NativeHqRendererCapability;
@@ -122,6 +203,10 @@ export interface NativeStatus {
     statusNote: string;
   };
   nativeFx?: {
+    /** Missing/unknown means this host predates descriptor-backed parameter controls. */
+    parameterSchemaVersion?: number;
+    /** Host accepts complete authored snapshots; live removals may require stopped audio. */
+    catalogParameterReplacement?: boolean;
     implementedCatalogEffects?: string[];
     catalogEffectAvailability?: Array<{
       effectId: string;
@@ -129,6 +214,9 @@ export interface NativeStatus {
       input: boolean;
       track: boolean;
       perTrackInsert?: boolean;
+      parameters?: NativeFxParameterDescriptor[];
+      legacyParameterAliases?: NativeFxParameterDescriptor[];
+      officialParameters?: NativeFxParameterDescriptor[];
     }>;
     catalogGraphAvailable?: boolean;
     /** Independent pre-sum loop chains, separate from the legacy postmix bank. */
@@ -281,6 +369,8 @@ export interface NativeLoopSnapshot {
   readonly frameCount: number;
   /** 1 for legacy hosts; 2 for the current Native stereo-track snapshot. */
   readonly channels: 1 | 2;
+  /** Monotonic content revision captured by the same callback pin as PCM. */
+  readonly contentRevision?: number;
   readonly samples: Float32Array;
 }
 
@@ -288,6 +378,7 @@ export interface NativeLoopSnapshotMetadata {
   readonly sampleRate: number;
   readonly frameCount: number;
   readonly channels: 1 | 2;
+  readonly contentRevision?: number;
 }
 
 export interface NativeTrackMetadata {
@@ -295,6 +386,7 @@ export interface NativeTrackMetadata {
   readonly sampleRate: number;
   readonly frameCount: number;
   readonly channels: 2;
+  readonly contentRevision?: number;
 }
 
 export interface NativeHqRenderOptions {
@@ -373,6 +465,8 @@ export interface NativeCatalogSlotConfig {
   slot: NativeFxSlot;
   effectId: string;
   parameters?: Record<string, number>;
+  /** Omitted/false preserves legacy patch-client semantics. */
+  replaceParameters?: boolean;
   bypassed: boolean;
 }
 
@@ -452,6 +546,128 @@ export class NativeBridgeClient {
     return this.request<NativeStatus>('/v1/status');
   }
 
+  /** Upload a validated v1 archive with its operation-start host revision. */
+  public async beginProjectArchiveImport(archive: ArrayBuffer | Uint8Array, expectedProjectContentRevision: number): Promise<number> {
+    const bytes = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
+    if (bytes.byteLength < 12 || bytes.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
+      throw new RangeError('Native project archive is empty or exceeds the supported archive-size limit.');
+    }
+    if (!(bytes.buffer instanceof ArrayBuffer)) {
+      throw new TypeError('Native project archive input must be backed by a regular ArrayBuffer.');
+    }
+    if (!Number.isSafeInteger(expectedProjectContentRevision) || expectedProjectContentRevision < 0) {
+      throw new RangeError('Native project import requires a valid operation-start content revision.');
+    }
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/v1/project/import?expectedContentRevision=${expectedProjectContentRevision}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        // Fetch supports ArrayBufferView request bodies. TS 5.9's DOM type is
+        // narrower for Uint8Array<ArrayBufferLike>; validated project inputs
+        // are ordinary ArrayBuffers, so preserve the view without another
+        // full-size copy of a potentially large PCM archive.
+        body: bytes as unknown as Uint8Array<ArrayBuffer>,
+      });
+    } catch (error) {
+      throw new NativeProjectImportOutcomeUnknownError(
+        new Error(`Native bridge is unreachable at ${this.baseUrl}: ${error instanceof Error ? error.message : String(error)}`),
+      );
+    }
+    if (!response.ok) throw await this.readHttpError(response, 'Native project archive import was rejected');
+    let payload: unknown;
+    try { payload = await response.json(); }
+    catch { throw new NativeProjectImportOutcomeUnknownError('Native bridge returned invalid project-import JSON.'); }
+    if (!isObject(payload) || payload.ok !== true || !Number.isSafeInteger(payload.generation) ||
+        (payload.generation as number) <= 0) {
+      throw new NativeProjectImportOutcomeUnknownError('Native bridge returned an invalid project-import generation.');
+    }
+    return payload.generation as number;
+  }
+
+  public async getProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
+    if (!Number.isSafeInteger(generation) || generation <= 0) throw new RangeError('Project import generation must be a positive safe integer.');
+    const payload = await this.request<BridgeResponse>(`/v1/project/import/status?generation=${generation}`);
+    if (!isObject(payload) || payload.ok !== true || payload.generation !== generation ||
+        !(['pending', 'claimed', 'committed', 'cancelled'] as const).includes(payload.state as NativeProjectImportState) ||
+        (payload.error !== undefined && typeof payload.error !== 'string')) {
+      throw new Error('Native bridge returned an invalid project-import status.');
+    }
+    return {
+      ok: true,
+      generation,
+      state: payload.state as NativeProjectImportState,
+      ...(typeof payload.error === 'string' && payload.error.length > 0 ? { error: payload.error } : {}),
+    };
+  }
+
+  public async cancelProjectArchiveImport(generation: number): Promise<void> {
+    if (!Number.isSafeInteger(generation) || generation <= 0) throw new RangeError('Project import generation must be a positive safe integer.');
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/v1/project/import/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify({ generation }),
+      });
+    } catch (error) {
+      throw new Error(`Native bridge is unreachable at ${this.baseUrl}: ${error}`);
+    }
+    // A 409 can mean the callback has claimed the transaction. Callers must
+    // poll status and must never treat that response as a completed cancel.
+    if (!response.ok && response.status !== 409) throw await this.readHttpError(response, 'Native project import cancellation failed');
+  }
+
+  /** Wait for callback commit; cancellation only succeeds while the generation is pending. */
+  public async waitForProjectArchiveImport(
+    generation: number,
+    timeoutMs = 10_000,
+    operationStillCurrent: () => boolean = () => true,
+  ): Promise<NativeProjectImportStatus> {
+    const readStatus = async (): Promise<NativeProjectImportStatus> => {
+      try {
+        return await this.getProjectArchiveImportStatus(generation);
+      } catch (error) {
+        // Once the upload has returned a generation, a lost bridge response
+        // cannot prove rollback: the audio callback may still commit it.
+        throw new NativeProjectImportIndeterminateError(generation, error);
+      }
+    };
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const status = await readStatus();
+      if (status.state === 'committed' || status.state === 'cancelled') return status;
+      // A project operation can become stale after the archive has been
+      // accepted but before the audio callback claims it. Cancel only while
+      // the host still reports Pending; a claimed generation is never treated
+      // as cancelled or rolled back by the client.
+      if (status.state === 'pending' && !operationStillCurrent()) {
+        try {
+          await this.cancelProjectArchiveImport(generation);
+        } catch (error) {
+          throw new NativeProjectImportIndeterminateError(generation, error);
+        }
+        const afterCancel = await readStatus();
+        if (afterCancel.state === 'committed' || afterCancel.state === 'cancelled') return afterCancel;
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 20));
+    }
+    const latest = await readStatus();
+    if (latest.state === 'committed' || latest.state === 'cancelled') return latest;
+    if (latest.state === 'pending') {
+      try {
+        await this.cancelProjectArchiveImport(generation);
+      } catch (error) {
+        throw new NativeProjectImportIndeterminateError(generation, error);
+      }
+      const afterCancel = await readStatus();
+      if (afterCancel.state === 'committed' || afterCancel.state === 'cancelled') return afterCancel;
+    }
+    // Once claimed, cancellation cannot safely release callback-owned memory.
+    // Keep the generation visible so the caller can poll instead of retrying.
+    throw new NativeProjectImportIndeterminateError(generation);
+  }
+
   /** Gets the small loop description before requesting any rendered PCM bytes. */
   public async getTrackMetadata(trackId = 1): Promise<NativeTrackMetadata> {
     assertNativeTrackId(trackId);
@@ -479,6 +695,8 @@ export class NativeBridgeClient {
       sampleRate: payload.sampleRate as number,
       frameCount: payload.frameCount as number,
       channels: 2,
+      ...(Number.isSafeInteger(payload.contentRevision) && (payload.contentRevision as number) >= 0
+        ? { contentRevision: payload.contentRevision as number } : {}),
     };
   }
 
@@ -636,7 +854,12 @@ export class NativeBridgeClient {
       }
     }
 
-    return { sampleRate, frameCount, channels, samples };
+    const revisionHeader = response.headers.get('X-Native-Loop-Revision');
+    const contentRevision = revisionHeader == null ? undefined : Number(revisionHeader);
+    return {
+      sampleRate, frameCount, channels, samples,
+      ...(contentRevision !== undefined && Number.isSafeInteger(contentRevision) && contentRevision >= 0 ? { contentRevision } : {}),
+    };
   }
 
   public async applyConfig(config: NativeConfig): Promise<NativeStatus> {
@@ -692,6 +915,14 @@ export class NativeBridgeClient {
 
   public async clearTrack(trackId: number): Promise<NativeStatus> {
     return this.requestTrackTransport('/v1/transport/clear', trackId);
+  }
+
+  public async undoTrack(trackId: number): Promise<NativeStatus> {
+    return this.requestTrackTransport('/v1/transport/undo', trackId);
+  }
+
+  public async redoTrack(trackId: number): Promise<NativeStatus> {
+    return this.requestTrackTransport('/v1/transport/redo', trackId);
   }
 
   public async setLoopTransport(trackId: number, config: NativeLoopTransportConfig): Promise<NativeStatus> {
@@ -773,6 +1004,7 @@ export class NativeBridgeClient {
         typeof config.effectId !== 'string' ||
         (config.effectId !== '' && config.effectId !== 'hrm_auto_m' && !Object.prototype.hasOwnProperty.call(NATIVE_CATALOG_FX_LABELS, config.effectId)) ||
         typeof config.bypassed !== 'boolean' ||
+        (config.replaceParameters !== undefined && typeof config.replaceParameters !== 'boolean') ||
         (config.parameters !== undefined && (!isObject(config.parameters) ||
           Object.entries(config.parameters).some(([key, value]) => !key || !Number.isFinite(value))))) {
       throw new RangeError('Native catalog slot has an invalid slot, effect type, bypass, or parameter value.');

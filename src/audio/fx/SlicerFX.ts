@@ -103,6 +103,10 @@ export class SlicerFX implements FXBase {
         }
     }
 
+    getParameterSnapshot(): Readonly<Record<string, number>> {
+        return Object.freeze({ rate: ((this.rate - 1) / 19) * 100, depth: this.depth * 100, bypassed: Number(this.isBypassed) });
+    }
+
     public dispose() {
         this.lfo.stop();
         this.lfo.disconnect();

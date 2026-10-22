@@ -1,0 +1,219 @@
+{
+  "generatedAt": "2026-10-21T18:27:12.484Z",
+  "scope": "Exact bundled worklet synchronous Node VM parity, not browser callback or hardware acceptance",
+  "sourceHashes": [
+    "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "a94ac0589bdf9496ae3f7d4c649e3657afba979bcf518cd8a46a86e7fa83f8f7"
+  ],
+  "cases": [
+    {
+      "rate": 8000,
+      "channels": 1,
+      "mode": "default",
+      "frames": 80000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "8bdbdca74427de31a285adfeb0dbe4211163be523f0489aa31e1ee9e3d169236",
+        "8bdbdca74427de31a285adfeb0dbe4211163be523f0489aa31e1ee9e3d169236"
+      ]
+    },
+    {
+      "rate": 8000,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 80000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "8bdbdca74427de31a285adfeb0dbe4211163be523f0489aa31e1ee9e3d169236",
+        "8bdbdca74427de31a285adfeb0dbe4211163be523f0489aa31e1ee9e3d169236"
+      ]
+    },
+    {
+      "rate": 8000,
+      "channels": 2,
+      "mode": "default",
+      "frames": 80000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "df131dbfcedff60a158a0b8d06bfeeb5da315e6c5f3505941c01872e38670dd0",
+        "df131dbfcedff60a158a0b8d06bfeeb5da315e6c5f3505941c01872e38670dd0"
+      ]
+    },
+    {
+      "rate": 8000,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 80000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "df131dbfcedff60a158a0b8d06bfeeb5da315e6c5f3505941c01872e38670dd0",
+        "df131dbfcedff60a158a0b8d06bfeeb5da315e6c5f3505941c01872e38670dd0"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "mode": "default",
+      "frames": 441088,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "2e0e4d42af2c7a0fb69749883a89ff5c6db47867347541fe32b869fbc7c4b2a1",
+        "2e0e4d42af2c7a0fb69749883a89ff5c6db47867347541fe32b869fbc7c4b2a1"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 441088,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "2e0e4d42af2c7a0fb69749883a89ff5c6db47867347541fe32b869fbc7c4b2a1",
+        "2e0e4d42af2c7a0fb69749883a89ff5c6db47867347541fe32b869fbc7c4b2a1"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "mode": "default",
+      "frames": 441088,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "79fc7fa1f29892d61e8c5e54897076b7b86e1f6a32fd9b2e9d55ef3fdabb593a",
+        "79fc7fa1f29892d61e8c5e54897076b7b86e1f6a32fd9b2e9d55ef3fdabb593a"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 441088,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "79fc7fa1f29892d61e8c5e54897076b7b86e1f6a32fd9b2e9d55ef3fdabb593a",
+        "79fc7fa1f29892d61e8c5e54897076b7b86e1f6a32fd9b2e9d55ef3fdabb593a"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "mode": "default",
+      "frames": 480000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "4a2d345957767d53ac00b420c9516cbee0b5212c84b20f99569c79f46958684f",
+        "4a2d345957767d53ac00b420c9516cbee0b5212c84b20f99569c79f46958684f"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 480000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "4a2d345957767d53ac00b420c9516cbee0b5212c84b20f99569c79f46958684f",
+        "4a2d345957767d53ac00b420c9516cbee0b5212c84b20f99569c79f46958684f"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "mode": "default",
+      "frames": 480000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "b5bb58d71d9c2f1ce5eb1c2fb1e3fd27c1f2974eef8d5dd0e1ab0b29e2e8a057",
+        "b5bb58d71d9c2f1ce5eb1c2fb1e3fd27c1f2974eef8d5dd0e1ab0b29e2e8a057"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 480000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "b5bb58d71d9c2f1ce5eb1c2fb1e3fd27c1f2974eef8d5dd0e1ab0b29e2e8a057",
+        "b5bb58d71d9c2f1ce5eb1c2fb1e3fd27c1f2974eef8d5dd0e1ab0b29e2e8a057"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 1,
+      "mode": "default",
+      "frames": 960000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "9e811886f45bd5fb8d2955c7cce43c655be528cc6effff585985cb6c8e89abf7",
+        "9e811886f45bd5fb8d2955c7cce43c655be528cc6effff585985cb6c8e89abf7"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 960000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "9e811886f45bd5fb8d2955c7cce43c655be528cc6effff585985cb6c8e89abf7",
+        "9e811886f45bd5fb8d2955c7cce43c655be528cc6effff585985cb6c8e89abf7"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 2,
+      "mode": "default",
+      "frames": 960000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "ef17b50f1367b792c8c44068fbc3c5738d3b9a509ed3aaa8c7d4eb8faa1ddd6f",
+        "ef17b50f1367b792c8c44068fbc3c5738d3b9a509ed3aaa8c7d4eb8faa1ddd6f"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 960000,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "ef17b50f1367b792c8c44068fbc3c5738d3b9a509ed3aaa8c7d4eb8faa1ddd6f",
+        "ef17b50f1367b792c8c44068fbc3c5738d3b9a509ed3aaa8c7d4eb8faa1ddd6f"
+      ]
+    }
+  ],
+  "pass": true
+}

@@ -31,6 +31,7 @@ public:
     // auto-riff.* catalog IDs. Invalid or non-finite values are rejected.
     [[nodiscard]] bool setParameter(std::string_view name, float value) noexcept;
     [[nodiscard]] bool setTempoBpm(float bpm) noexcept;
+    [[nodiscard]] bool setQuarterNotesPerMeasure(float beats) noexcept;
     void reset() noexcept;
 
     // In-place mono or stereo. A stream must keep the channel count selected
@@ -58,6 +59,8 @@ public:
     [[nodiscard]] float tempoBpm() const noexcept { return tempoBpm_; }
     [[nodiscard]] float stepRateBeats() const noexcept { return stepRateBeats_; }
     [[nodiscard]] float sensitivity() const noexcept { return sensitivity_; }
+    [[nodiscard]] bool officialControlsActive() const noexcept { return officialActive_; }
+    [[nodiscard]] bool sourceHeld() const noexcept { return heldPeriod_ > 0.0; }
     [[nodiscard]] unsigned int stepPeriodSamples() const noexcept { return stepPeriodSamples_; }
     [[nodiscard]] std::uint64_t sampleCursor() const noexcept { return sampleCursor_; }
 
@@ -113,6 +116,7 @@ private:
     void advanceSequenceAt(std::uint64_t absoluteFrame) noexcept;
     void startSequence(std::uint64_t absoluteFrame) noexcept;
     void updateTargetSemitones() noexcept;
+    void captureHeldSource() noexcept;
 
     NativePolyPitchProcessor shifter_{};
     YinTracker detector_{};
@@ -135,6 +139,7 @@ private:
     unsigned int decimatorCount_ = 0U;
     double decimatorSum_ = 0.0;
     float tempoBpm_ = 120.0f;
+    float quarterNotesPerMeasure_ = 4.0f;
     float stepRateBeats_ = 0.5f;
     float sensitivity_ = 55.0f;
     float mix_ = 0.65f;
@@ -149,6 +154,26 @@ private:
     int rootMidiNote_ = -1;
     bool voiced_ = false;
     bool sequenceRunning_ = false;
+    // Authored official control laws; the undocumented P1-P30 patterns are
+    // intentionally not claimed. Fixed history captures one periodic source.
+    std::array<float, 8192U * 2U> sourceRing_{};
+    unsigned int sourceWrite_ = 0U;
+    unsigned int sourceCount_ = 0U;
+    double heldStart_ = 0.0;
+    double heldRead_ = 0.0;
+    double heldPeriod_ = 0.0;
+    float heldMidi_ = 0.0f;
+    float officialTempo_ = -1.0f;
+    float attack_ = 0.0f;
+    float attackEnvelope_ = 0.0f;
+    float attackDecay_ = 0.0f;
+    int officialKey_ = -1;
+    bool officialActive_ = false;
+    bool officialTempoActive_ = false;
+    bool hold_ = false;
+    bool loopSelected_ = false;
+    bool loop_ = false;
+    bool sequenceCompleted_ = false;
     bool prepared_ = false;
 };
 

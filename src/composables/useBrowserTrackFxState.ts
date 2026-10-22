@@ -1,8 +1,11 @@
+import { mergeOfficialParameterEdit } from '../audio/fx/official/parameters';
 import { computed, reactive, readonly, ref } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { BROWSER_PER_TRACK_FX_TYPES } from '../audio/BrowserTrackFxChain';
 import type { FxSlotId } from './usePanelFocus';
 import { getBrowserTrackFxControls, getBrowserTrackFxMacroKeys, sanitizeBrowserTrackFxParameters } from './browserTrackFxParameters';
+import { createDefaultAutoRiffParameters } from '../audio/autoRiffParameters';
+import { createDefaultOscVocParameters } from '../audio/oscVocParameters';
 
 export const BROWSER_TRACK_FX_STORAGE_KEY = 'webrc505_browser_per_track_fx_v1';
 export type BrowserTrackFxTarget = 'shared' | 1 | 2 | 3 | 4 | 5;
@@ -29,17 +32,32 @@ const state = reactive({
   })),
 });
 const warnings = reactive<Record<string, string>>({});
+const pendingTypeSnapshots = new Map<string, BrowserTrackFxSlotState>();
 const statusRevision = ref(0);
 let initialized = false;
 let browserSynced = false;
 
 const validTrack = (trackId: number) => Number.isInteger(trackId) && trackId >= 1 && trackId <= 5;
 const validSlot = (slotIndex: number) => Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex < 4;
-const validType = (type: string) => type === 'NONE' || BROWSER_PER_TRACK_FX_TYPES.includes(type);
-const menuType = (type: string) => type === 'WARP' || type === 'REVERSE REVERB' ? `${type} (EXPERIMENTAL)` : type;
+const validType = (type: string) => type === 'NONE'
+  || BROWSER_PER_TRACK_FX_TYPES.includes(type.endsWith(' (EXPERIMENTAL)')
+    ? type.slice(0, -' (EXPERIMENTAL)'.length)
+    : type);
+const experimentalTypes = new Set(['WARP', 'REVERSE REVERB', 'AUTO RIFF', 'ROBOT', 'HRM AUTO (M)']);
+const menuType = (type: string) => {
+  const canonical = type.endsWith(' (EXPERIMENTAL)') ? type.slice(0, -' (EXPERIMENTAL)'.length) : type;
+  return experimentalTypes.has(canonical) ? `${canonical} (EXPERIMENTAL)` : type;
+};
 const warningKey = (trackId: number, slotIndex: number) => `${trackId}:${slotIndex}`;
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const boundedAmount = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+const defaultAmountForType = (type: string) => {
+  if (type === 'TRANSPOSE' || type === 'PITCH BEND') return 50;
+  if (type === 'AUTO RIFF' || type === 'AUTO RIFF (EXPERIMENTAL)') return createDefaultAutoRiffParameters().mixPercent;
+  if (type === 'OSC VOC (M)') return createDefaultOscVocParameters().mixPercent;
+  if (type.replace(' (EXPERIMENTAL)', '') === 'HRM AUTO (M)') return getBrowserTrackFxControls(type).find(({ key }) => key === 'mix')?.defaultValue ?? 70;
+  return 0;
+};
 
 function persist() {
   try {
@@ -74,9 +92,9 @@ function load() {
           return;
         }
         slot.type = menuType(type);
-        slot.value = boundedAmount(rawSlot.value);
+        slot.value = typeof rawSlot.value === 'number' ? boundedAmount(rawSlot.value) : defaultAmountForType(type);
         slot.active = type !== 'NONE' && rawSlot.active === true;
-        slot.namedParameters = sanitizeBrowserTrackFxParameters(type, rawSlot.namedParameters);
+        slot.namedParameters = sanitizeBrowserTrackFxParameters(type, rawSlot.namedParameters, {}, 'private');
         // A capture command cannot restore audio that is absent after reload.
         if ('freezeEnabled' in slot.namedParameters) slot.namedParameters.freezeEnabled = 0;
         if ('warpFreezeEnabled' in slot.namedParameters) slot.namedParameters.warpFreezeEnabled = 0;
@@ -120,7 +138,19 @@ export function ensureBrowserTrackFxStateInitialized() {
         const runtime = engine.getTrackFxStatus(bank.trackId)[0];
         for (const status of runtime?.slots ?? []) {
           const slot = bank.slots[status.slotIndex];
-          if (status.error && slot?.active) {
+          const key = warningKey(bank.trackId, status.slotIndex);
+          const previous = pendingTypeSnapshots.get(key);
+          if (slot && previous && !status.pendingApply) {
+            const acknowledgedType = status.type ?? 'NONE';
+            if (acknowledgedType === slot.type) {
+              pendingTypeSnapshots.delete(key);
+            } else if (status.warning?.startsWith('FX replacement failed; kept existing')) {
+              Object.assign(slot, previous, { namedParameters: { ...previous.namedParameters } });
+              pendingTypeSnapshots.delete(key);
+              changed = true;
+            }
+          }
+          if (!status.pendingApply && status.error && slot?.active) {
             slot.active = false;
             changed = true;
           }
@@ -142,7 +172,7 @@ export function useBrowserTrackFxState() {
   const activeSlot = computed(() => currentBank.value?.activeSlot ?? 'A');
   const activeSlotIndex = computed(() => slotIds.indexOf(activeSlot.value));
   const activeFx = computed(() => slots.value[activeSlotIndex.value] ?? null);
-  const controls = computed(() => getBrowserTrackFxControls(activeFx.value?.type ?? 'NONE'));
+  const controls = computed(() => getBrowserTrackFxControls(activeFx.value?.type ?? 'NONE', activeFx.value?.namedParameters ?? {}, activeSlotIndex.value));
   const runtimeStatus = computed(() => {
     statusRevision.value;
     if (typeof state.target !== 'number' || AudioEngine.getInstance().getMode() !== 'browser') return null;
@@ -179,16 +209,33 @@ export function useBrowserTrackFxState() {
       warnings[warningKey(trackId, slotIndex)] = `Unsupported Browser per-track FX: ${type}. No shared-bank fallback was applied.`;
       return false;
     }
-    return updateSlot(trackId, slotIndex, (slot) => {
+    const slot = state.tracks[trackId - 1]!.slots[slotIndex]!;
+    const previous = { ...slot, namedParameters: { ...slot.namedParameters } };
+    const key = warningKey(trackId, slotIndex);
+    if (!pendingTypeSnapshots.has(key)) pendingTypeSnapshots.set(key, previous);
+    const applied = updateSlot(trackId, slotIndex, (slot) => {
       const selectedType = menuType(type);
       if (slot.type === selectedType) return;
       slot.type = selectedType;
       slot.active = false;
-      slot.value = 0;
+      slot.value = defaultAmountForType(selectedType);
       slot.namedParameters = {};
       delete warnings[warningKey(trackId, slotIndex)];
       return syncSlot(trackId, slotIndex);
     });
+    const runtimeStatus = AudioEngine.getInstance().getTrackFxStatus(trackId)[0]?.slots[slotIndex];
+    const runtimeStillHasPrevious = runtimeStatus?.type === previous.type;
+    if (!applied && runtimeStillHasPrevious) {
+      // A rejected adapter selection must not discard the user's previous
+      // per-track settings. The runtime chain also retains its previous slot.
+      Object.assign(slot, previous);
+      persist();
+      statusRevision.value += 1;
+      pendingTypeSnapshots.delete(key);
+    } else if (runtimeStatus && !runtimeStatus.pendingApply && runtimeStatus.type === slot.type) {
+      pendingTypeSnapshots.delete(key);
+    }
+    return applied;
   }
 
   function setValue(trackId: number, slotIndex: number, value: number): boolean {
@@ -211,13 +258,13 @@ export function useBrowserTrackFxState() {
     if (!validTrack(trackId) || !validSlot(slotIndex)) return false;
     if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) return false;
     const slot = state.tracks[trackId - 1]!.slots[slotIndex]!;
-    const sanitized = sanitizeBrowserTrackFxParameters(slot.type, parameters);
+    const sanitized = sanitizeBrowserTrackFxParameters(slot.type, parameters, slot.namedParameters, 'private');
     if (Object.keys(sanitized).length !== Object.keys(parameters).length) {
       warnings[warningKey(trackId, slotIndex)] = 'Unsupported or non-finite named parameter rejected.';
       return false;
     }
     return updateSlot(trackId, slotIndex, (current) => {
-      current.namedParameters = { ...current.namedParameters, ...sanitized };
+      current.namedParameters = { ...(sanitized.official_variant !== undefined ? mergeOfficialParameterEdit(current.namedParameters, 'official_variant', sanitized.official_variant) : current.namedParameters), ...sanitized };
       delete warnings[warningKey(trackId, slotIndex)];
       const applied = AudioEngine.getInstance().setTrackFxNamedParameters(trackId, slotIndex, sanitized);
       if (!applied) {

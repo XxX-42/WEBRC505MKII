@@ -1,0 +1,51 @@
+--- /tmp/rc505-native-followup/robot-base.cpp	2026-10-21 11:24:39.051912319 -0700
++++ /tmp/rc505-native-followup/robot-candidate.cpp	2026-10-21 11:24:39.074626862 -0700
+@@ -3,6 +3,10 @@
+ #include <algorithm>
+ #include <cmath>
+ #include <limits>
++#if defined(__SSE2__) && !defined(__FMA__) && !defined(NATIVE_ROBOT_FORCE_SCALAR)
++#include <emmintrin.h>
++#define NATIVE_ROBOT_ORDERED_SSE2 1
++#endif
+ 
+ namespace webrc::native {
+ 
+@@ -84,14 +88,37 @@
+     }
+     const double rms = std::sqrt(energy / static_cast<double>(frameSamples));
+ 
++#if defined(NATIVE_ROBOT_ORDERED_SSE2)
++    alignas(16) std::array<float, kDetectorRingCapacity> orderedFrame;
++    for (unsigned int i = 0U; i < frameSamples; ++i)
++        orderedFrame[i] = ring[(frameStart + i) & kDetectorRingMask];
++#endif
+     differences[0] = 0.0;
+     for (unsigned int lag = 1U; lag <= maximumLag; ++lag) {
+         double sum = 0.0;
++#if defined(NATIVE_ROBOT_ORDERED_SSE2)
++        unsigned int i = 0U;
++        for (; i + 1U < analysisWindowSamples; i += 2U) {
++            const __m128d first = _mm_cvtps_pd(_mm_castsi128_ps(_mm_loadl_epi64(
++                reinterpret_cast<const __m128i*>(orderedFrame.data() + i))));
++            const __m128d second = _mm_cvtps_pd(_mm_castsi128_ps(_mm_loadl_epi64(
++                reinterpret_cast<const __m128i*>(orderedFrame.data() + i + lag))));
++            const __m128d delta = _mm_sub_pd(first, second);
++            const __m128d squared = _mm_mul_pd(delta, delta);
++            sum += _mm_cvtsd_f64(squared);
++            sum += _mm_cvtsd_f64(_mm_unpackhi_pd(squared, squared));
++        }
++        for (; i < analysisWindowSamples; ++i) {
++            const double delta = static_cast<double>(orderedFrame[i]) - static_cast<double>(orderedFrame[i + lag]);
++            sum += delta * delta;
++        }
++#else
+         for (unsigned int i = 0U; i < analysisWindowSamples; ++i) {
+             const double delta = static_cast<double>(ring[(frameStart + i) & kDetectorRingMask]) -
+                 static_cast<double>(ring[(frameStart + i + lag) & kDetectorRingMask]);
+             sum += delta * delta;
+         }
++#endif
+         differences[lag] = sum;
+     }
+ 

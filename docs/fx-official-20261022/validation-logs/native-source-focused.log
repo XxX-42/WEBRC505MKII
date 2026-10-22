@@ -1,0 +1,8 @@
+Internal ctest changing into directory: /workspace/scratch/2230ee2a4571/rc505-official-native-build
+Test project /workspace/scratch/2230ee2a4571/rc505-official-native-build
+    Start 1: native_official_fx_parameters_tests
+1/1 Test #1: native_official_fx_parameters_tests ...   Passed    7.12 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   7.12 sec

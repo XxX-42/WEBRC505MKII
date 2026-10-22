@@ -1,0 +1,3256 @@
+{
+  "generatedAt": "2026-10-21T12:22:41.857Z",
+  "node": "v24.19.0",
+  "blocks": 16,
+  "rounds": 1,
+  "sourceHashes": {
+    "baseline": "7465f2341349ce918d6c565ebb686ead813ad1ca9d1ac66795c9aacb55d309d0",
+    "candidate": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9"
+  },
+  "scope": "Synchronous exact-source Node VM kernel only; no browser AudioContext, scheduler, hardware, xrun, or production five-loop acceptance. Tracks are independent FX instances. Reverse-reverb is an effect, not reverse loop playback; KeepPitch not exercised.",
+  "correctness": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+  "scenarios": [
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.083666,
+      "candidateMs": 0.070807,
+      "improvementPercent": 15.369445174861962,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4a3bdca81abd870ee00daf0a35b5383e6b6a23343496576eac02be1dbf6e1a88",
+        "candidate": "4a3bdca81abd870ee00daf0a35b5383e6b6a23343496576eac02be1dbf6e1a88"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.083666
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.051317
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.070807
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.075884
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 40.312281,
+      "candidateMs": 45.207805,
+      "improvementPercent": -12.144001476870049,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "acf6c3b7e4465dbb0d3aa32647b323d70c01ca7e1fcc4a31596847ea4957234e",
+        "candidate": "acf6c3b7e4465dbb0d3aa32647b323d70c01ca7e1fcc4a31596847ea4957234e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 35.463086
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 43.613302
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 45.207805
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 40.312281
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 49.572931,
+      "candidateMs": 50.187196,
+      "improvementPercent": -1.2391137413279019,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "aa22ba8c19a0a5b755cf8afcae853adf4c0b313348b2663ffb38974d566b16d5",
+        "candidate": "aa22ba8c19a0a5b755cf8afcae853adf4c0b313348b2663ffb38974d566b16d5"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 49.572931
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 50.187196
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 39.419258
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 38.608292
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 75.797628,
+      "candidateMs": 79.019415,
+      "improvementPercent": -4.250511638701937,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "5183df402d1097409c8795e1bf82a3c71a021f57fc5a1d1b932d9f608494fbe2",
+        "candidate": "5183df402d1097409c8795e1bf82a3c71a021f57fc5a1d1b932d9f608494fbe2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 75.797628
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 79.019415
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 54.780945
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 69.820112
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 27.890434,
+      "candidateMs": 19.584866,
+      "improvementPercent": 29.77927127272382,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "c23ee61a6aecf646c015b4237eccf916e60bc13e4167fe1b7a349d968755fed7",
+        "candidate": "c23ee61a6aecf646c015b4237eccf916e60bc13e4167fe1b7a349d968755fed7"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 27.890434
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 19.584866
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 14.845361
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 22.855491
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 38.187762,
+      "candidateMs": 33.174012,
+      "improvementPercent": 13.129206157721418,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3255b8eea2e89e184636c2cadf4393af9391ec81bf82e50e8bdcba92134986b0",
+        "candidate": "3255b8eea2e89e184636c2cadf4393af9391ec81bf82e50e8bdcba92134986b0"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 38.187762
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 25.095229
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 33.174012
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 38.130496
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 52.034374,
+      "candidateMs": 37.198634,
+      "improvementPercent": 28.511422084178438,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4efb5dc1761e9dfc79ae50b982ea8505289a1fd102a714fd90ff4a7a1d242daf",
+        "candidate": "4efb5dc1761e9dfc79ae50b982ea8505289a1fd102a714fd90ff4a7a1d242daf"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 50.782
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 34.343028
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 37.198634
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 52.034374
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 41.363761,
+      "candidateMs": 18.607334,
+      "improvementPercent": 55.01537203060427,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "cea349a3bfbe20eb278aa173357259b46f4c47c95d7e9656c46544a2a4f2ecf9",
+        "candidate": "cea349a3bfbe20eb278aa173357259b46f4c47c95d7e9656c46544a2a4f2ecf9"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 41.363761
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 18.457018
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 18.607334
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 28.783964
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 36.827806,
+      "candidateMs": 24.767116,
+      "improvementPercent": 32.74886915609363,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d490e14c66ac95c79cdb128036f9659e11754faf722f40f607770dfbab544e9a",
+        "candidate": "d490e14c66ac95c79cdb128036f9659e11754faf722f40f607770dfbab544e9a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 36.827806
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 24.767116
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 24.193119
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 28.217845
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.17187,
+      "candidateMs": 0.091148,
+      "improvementPercent": 46.96689358235875,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6e609e6178b60cc0be54eecba15d329de79f20053d8062ff1bddd58e39448c6e",
+        "candidate": "6e609e6178b60cc0be54eecba15d329de79f20053d8062ff1bddd58e39448c6e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.17187
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.091148
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.090246
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.136086
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 344.571775,
+      "candidateMs": 396.353124,
+      "improvementPercent": -15.027739576173937,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "80f39b8ef7a8a9c8f707b098e610d157da6c2d1ed59b20fc55f78c7411fd03e7",
+        "candidate": "80f39b8ef7a8a9c8f707b098e610d157da6c2d1ed59b20fc55f78c7411fd03e7"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 344.571775
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 396.353124
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 295.309191
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 306.258011
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 201.254872,
+      "candidateMs": 185.630738,
+      "improvementPercent": 7.763356903975971,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "b40d053b18b0632e7a29d2defec99b6d1136d3ea334cd6ee5f457cc39e56ff42",
+        "candidate": "b40d053b18b0632e7a29d2defec99b6d1136d3ea334cd6ee5f457cc39e56ff42"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 201.254872
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 180.283836
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 185.630738
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 183.702687
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 274.463695,
+      "candidateMs": 234.23358,
+      "improvementPercent": 14.657718209324544,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "18df014b8c4fb8936b6d3def474ce65d818b598099b389073f492c35b74d653e",
+        "candidate": "18df014b8c4fb8936b6d3def474ce65d818b598099b389073f492c35b74d653e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 237.992838
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 232.52394
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 234.23358
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 274.463695
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 108.716059,
+      "candidateMs": 82.555068,
+      "improvementPercent": 24.0635939534931,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "891f2480a312f72340562c4bacb3edb632022831fb4584395b1fa78145aee489",
+        "candidate": "891f2480a312f72340562c4bacb3edb632022831fb4584395b1fa78145aee489"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 108.716059
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 82.555068
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 81.40023
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 104.151854
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 187.306112,
+      "candidateMs": 101.827277,
+      "improvementPercent": 45.635902687468096,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "20072fbdaca07b9e38156dac6ebb88f9517b8ecbf9da7d3a227f6f95c5197ab2",
+        "candidate": "20072fbdaca07b9e38156dac6ebb88f9517b8ecbf9da7d3a227f6f95c5197ab2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 131.345667
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 85.336534
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 101.827277
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 187.306112
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 251.265788,
+      "candidateMs": 126.985138,
+      "improvementPercent": 49.46182725043331,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "b6e1d047b7d2afc453e095e2f5fa101349534d1ce549d0596b8a37b463cea70a",
+        "candidate": "b6e1d047b7d2afc453e095e2f5fa101349534d1ce549d0596b8a37b463cea70a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 251.265788
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 122.165085
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 126.985138
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 209.755999
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 120.409492,
+      "candidateMs": 80.530513,
+      "improvementPercent": 33.11946453523781,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "7ba40ae434794213bdeb6b790539b2b855258c8af18f4baf615de8fdae26a809",
+        "candidate": "7ba40ae434794213bdeb6b790539b2b855258c8af18f4baf615de8fdae26a809"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 102.107368
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 80.530513
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 66.538397
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 120.409492
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 165.182083,
+      "candidateMs": 110.134023,
+      "improvementPercent": 33.32568460224587,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "91f490c3042e9de570eea441e1dfa600dfe71e0720925e636c3dd94b02110365",
+        "candidate": "91f490c3042e9de570eea441e1dfa600dfe71e0720925e636c3dd94b02110365"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 165.182083
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 110.134023
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 105.538111
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 153.949627
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.274906,
+      "candidateMs": 0.100502,
+      "improvementPercent": 63.44132176089281,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3c329ca4d8a9fd43e274df4fc990f52f2d8367fb017a7f1dbcbdc5948ddf48a8",
+        "candidate": "3c329ca4d8a9fd43e274df4fc990f52f2d8367fb017a7f1dbcbdc5948ddf48a8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.274906
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.100502
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.027432
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.200713
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 51.199372,
+      "candidateMs": 43.722976,
+      "improvementPercent": 14.602515046473608,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "a611cdfa4956d9fba3dfb0018bea077172ae288ed134748ad849b33e69c9b87a",
+        "candidate": "a611cdfa4956d9fba3dfb0018bea077172ae288ed134748ad849b33e69c9b87a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 51.199372
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 43.722976
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 33.985319
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 31.687201
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 53.488239,
+      "candidateMs": 55.745056,
+      "improvementPercent": -4.219277063879412,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "220be22f9c78baa5bd540c233ba3a96c9473d36a2913695d75159e0dfc7665d3",
+        "candidate": "220be22f9c78baa5bd540c233ba3a96c9473d36a2913695d75159e0dfc7665d3"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 46.492132
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 55.70067
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 55.745056
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 53.488239
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 49.212498,
+      "candidateMs": 53.633168,
+      "improvementPercent": -8.982819770701344,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d4fd75c852c47318ab61c7409db9d359f0acd5294ef9b5a2d0a7c351e1d897bf",
+        "candidate": "d4fd75c852c47318ab61c7409db9d359f0acd5294ef9b5a2d0a7c351e1d897bf"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 49.212498
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 53.633168
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 47.667745
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 48.059937
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 29.113321,
+      "candidateMs": 14.535789,
+      "improvementPercent": 50.07169055017804,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "c1355f294bcfc3ff1aff20e35e56a1e19ac1fd981e2ffbf67ca6cffd20db1854",
+        "candidate": "c1355f294bcfc3ff1aff20e35e56a1e19ac1fd981e2ffbf67ca6cffd20db1854"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 29.113321
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 14.14419
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 14.535789
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 23.277653
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 52.990436,
+      "candidateMs": 30.263713,
+      "improvementPercent": 42.88834875787775,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f817a07ed3f9ddfa4a14d8535b6d8eab6e4e9e16fbfa5aa0e91ad9faf3160cb3",
+        "candidate": "f817a07ed3f9ddfa4a14d8535b6d8eab6e4e9e16fbfa5aa0e91ad9faf3160cb3"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 52.990436
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 30.263713
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 29.89637
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 52.944006
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 50.02617,
+      "candidateMs": 27.907371,
+      "improvementPercent": 44.214456153649174,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "bcbc68b5bf3c4e4ec21053ab1f678455c621a54342f485f9e3671cbc206487d4",
+        "candidate": "bcbc68b5bf3c4e4ec21053ab1f678455c621a54342f485f9e3671cbc206487d4"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 36.686595
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 22.966703
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 27.907371
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 50.02617
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 26.168259,
+      "candidateMs": 15.218262,
+      "improvementPercent": 41.8445759039606,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "5ff45af00172f1267f8a0ff088c955e2773f4020c5b87865532cae105d78d95a",
+        "candidate": "5ff45af00172f1267f8a0ff088c955e2773f4020c5b87865532cae105d78d95a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 26.168259
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 15.054105
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 15.218262
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 25.595135
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 36.476699,
+      "candidateMs": 21.200209,
+      "improvementPercent": 41.88013284864402,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f5db54d988c15cf5ce239ae75501f499ab66978cca16c55cb5e4d6d32f102ef7",
+        "candidate": "f5db54d988c15cf5ce239ae75501f499ab66978cca16c55cb5e4d6d32f102ef7"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 30.267429
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 17.902548
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 21.200209
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 36.476699
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.371991,
+      "candidateMs": 0.17911,
+      "improvementPercent": 51.85098564212576,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "e21beeb4b198c61045e277b178bb400ca5b0ebf9fe46bc869d587bf3c3e01307",
+        "candidate": "e21beeb4b198c61045e277b178bb400ca5b0ebf9fe46bc869d587bf3c3e01307"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.371991
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.17911
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.17911
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.340103
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 258.834505,
+      "candidateMs": 231.852937,
+      "improvementPercent": 10.424254679645584,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6be420ef48801cf52cd9c104feffa755e627f401b22e7cfb411146116b6031ea",
+        "candidate": "6be420ef48801cf52cd9c104feffa755e627f401b22e7cfb411146116b6031ea"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 232.110122
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 231.269925
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 231.852937
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 258.834505
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 249.604813,
+      "candidateMs": 257.317909,
+      "improvementPercent": -3.090123105919429,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "92246a81709f43323838f6e28e4c51e1366ae7b118ffe2eb571784452a44914e",
+        "candidate": "92246a81709f43323838f6e28e4c51e1366ae7b118ffe2eb571784452a44914e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 243.153965
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 230.551936
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 257.317909
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 249.604813
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 389.660281,
+      "candidateMs": 332.157455,
+      "improvementPercent": 14.757168950458144,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3169fb3b7614179831e98eb8d52ac423a699073d7da8fa9cd0dd5ed488d7ba84",
+        "candidate": "3169fb3b7614179831e98eb8d52ac423a699073d7da8fa9cd0dd5ed488d7ba84"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 389.660281
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 332.157455
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 270.026567
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 314.052793
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 137.67528,
+      "candidateMs": 87.581995,
+      "improvementPercent": 36.38509760067311,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "0dc20bdf1578ac132c6515535eef9b5181c42d966f6f437e32b21d2eead62f45",
+        "candidate": "0dc20bdf1578ac132c6515535eef9b5181c42d966f6f437e32b21d2eead62f45"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 137.67528
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 87.581995
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 77.753694
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 129.304852
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 271.112374,
+      "candidateMs": 164.074138,
+      "improvementPercent": 39.4811326464944,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "28039854a5c81e55805c71b1f2991da76995245ab210a26947bbe92f40e3da13",
+        "candidate": "28039854a5c81e55805c71b1f2991da76995245ab210a26947bbe92f40e3da13"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 216.790439
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 160.592665
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 164.074138
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 271.112374
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 276.359031,
+      "candidateMs": 189.599589,
+      "improvementPercent": 31.393742294602266,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3b59d9001394f246b37dbc0bdc0f9eac9c60677d7caea64b4d76b321c766f38d",
+        "candidate": "3b59d9001394f246b37dbc0bdc0f9eac9c60677d7caea64b4d76b321c766f38d"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 224.499229
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 189.599589
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 189.550935
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 276.359031
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 86.631868,
+      "candidateMs": 50.759688,
+      "improvementPercent": 41.40760303125405,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "09f5d45079ebbf2adb8cd7daa2532d86111a7084a571eaf8c144905c234e36c8",
+        "candidate": "09f5d45079ebbf2adb8cd7daa2532d86111a7084a571eaf8c144905c234e36c8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 83.763223
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 50.759688
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 48.217433
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 86.631868
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 185.732208,
+      "candidateMs": 105.345179,
+      "improvementPercent": 43.281146477298115,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "8578bb2367c3247579347fe4b99c673a1b40fae1f0bafdc609d5d3b9843f84b2",
+        "candidate": "8578bb2367c3247579347fe4b99c673a1b40fae1f0bafdc609d5d3b9843f84b2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 182.74338
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 105.345179
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 104.08959
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 185.732208
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.039079,
+      "candidateMs": 0.018898,
+      "improvementPercent": 51.64154661071163,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3d341832733c8e5a1f529a4abdfd0e1a04861438276c6099bdf914227ab38cdd",
+        "candidate": "3d341832733c8e5a1f529a4abdfd0e1a04861438276c6099bdf914227ab38cdd"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.039079
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.018898
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.018548
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.027721
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 46.186765,
+      "candidateMs": 46.122938,
+      "improvementPercent": 0.13819326813645505,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d0e35318f4cf839d4797b0a59474fb9dab8e53ac1712f0f000a5cdcc02a4c0cd",
+        "candidate": "d0e35318f4cf839d4797b0a59474fb9dab8e53ac1712f0f000a5cdcc02a4c0cd"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 46.186765
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 46.122938
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 45.847023
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 41.291592
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 49.313683,
+      "candidateMs": 49.151289,
+      "improvementPercent": 0.3293081962667421,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "2325779e63f1fb7636b5b0140dd536c00af3e106f3d3d3af638c8f8c99a2358a",
+        "candidate": "2325779e63f1fb7636b5b0140dd536c00af3e106f3d3d3af638c8f8c99a2358a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 42.673594
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 49.151289
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 49.079062
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 49.313683
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 63.454386,
+      "candidateMs": 67.817939,
+      "improvementPercent": -6.876676735946985,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "8a17e206c9de9ae3ffb43d72a59ecccd52b66acbf7fe501407675a60c4d834aa",
+        "candidate": "8a17e206c9de9ae3ffb43d72a59ecccd52b66acbf7fe501407675a60c4d834aa"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 63.454386
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 67.789997
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 67.817939
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 60.837442
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 21.57596,
+      "candidateMs": 15.453097,
+      "improvementPercent": 28.378171817152055,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f27dbd2e39cc131687c0f597c6382b2deb72f60aa17a801e57aa57bad77b2eb4",
+        "candidate": "f27dbd2e39cc131687c0f597c6382b2deb72f60aa17a801e57aa57bad77b2eb4"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 21.57596
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 14.866949
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 15.453097
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 19.312145
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 32.911328,
+      "candidateMs": 16.019333,
+      "improvementPercent": 51.32577755598315,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "92fd6d71d8209069a7cb07899fec971a8e23a32896741f79a31dbdab17035699",
+        "candidate": "92fd6d71d8209069a7cb07899fec971a8e23a32896741f79a31dbdab17035699"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 32.911328
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 16.019333
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 16.011611
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 24.085274
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 58.206575,
+      "candidateMs": 40.239583,
+      "improvementPercent": 30.86763308097066,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "14d73d72dabbc590bc6d00255618902fd372702a3e882f42874b85cd62876669",
+        "candidate": "14d73d72dabbc590bc6d00255618902fd372702a3e882f42874b85cd62876669"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 43.368123
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 40.239583
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 38.053164
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 58.206575
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 26.612206,
+      "candidateMs": 17.061351,
+      "improvementPercent": 35.889001460457656,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "2708dc6a3e4adbd9634a04d87d865d1797bf6e90ef9e95761dfcf9bee2ffd28c",
+        "candidate": "2708dc6a3e4adbd9634a04d87d865d1797bf6e90ef9e95761dfcf9bee2ffd28c"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 26.612206
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 17.061351
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 16.86107
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 26.005684
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 41.864927,
+      "candidateMs": 27.787894,
+      "improvementPercent": 33.624883664552904,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d7dd4e0ad4d25d6d0b7b1f1f1c3d4d8ade1ddb0f96fc2b7bf3fefe25ef159af7",
+        "candidate": "d7dd4e0ad4d25d6d0b7b1f1f1c3d4d8ade1ddb0f96fc2b7bf3fefe25ef159af7"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 41.864927
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 27.787894
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 27.589597
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 41.751306
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.27936,
+      "candidateMs": 0.109815,
+      "improvementPercent": 60.69050687285223,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f4535a14bae75d4ee3a877236b71322e912e53968e31281165e55f98f959082c",
+        "candidate": "f4535a14bae75d4ee3a877236b71322e912e53968e31281165e55f98f959082c"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.161503
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.109815
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.094853
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.27936
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 184.60451,
+      "candidateMs": 161.299288,
+      "improvementPercent": 12.624405546755069,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d6fa7dbf9bc8718d67636ed16ece2f42e2b73b01d01b55e45fdb10b15e7627eb",
+        "candidate": "d6fa7dbf9bc8718d67636ed16ece2f42e2b73b01d01b55e45fdb10b15e7627eb"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 184.60451
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 161.299288
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 156.49987
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 154.873164
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 232.719298,
+      "candidateMs": 185.291093,
+      "improvementPercent": 20.38000518547457,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f954540ba358a552a7e71966bcb7ad35a6535591d9af21992af302032644748d",
+        "candidate": "f954540ba358a552a7e71966bcb7ad35a6535591d9af21992af302032644748d"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 201.950247
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 185.291093
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 168.49169
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 232.719298
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 378.935494,
+      "candidateMs": 299.078958,
+      "improvementPercent": 21.07391291247054,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f928754f86f7779aeb51e921b9d46af6552fb58c237e95f7f6129d43942e8e1c",
+        "candidate": "f928754f86f7779aeb51e921b9d46af6552fb58c237e95f7f6129d43942e8e1c"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 328.318184
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 299.078958
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 259.151161
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 378.935494
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 108.146793,
+      "candidateMs": 76.704868,
+      "improvementPercent": 29.07337714582068,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "2a68a65bcc4aac740ed6843e4f5e62058f0dc2031f707b841e45433fe03b31d1",
+        "candidate": "2a68a65bcc4aac740ed6843e4f5e62058f0dc2031f707b841e45433fe03b31d1"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 90.027977
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 64.369595
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 76.704868
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 108.146793
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 175.174737,
+      "candidateMs": 120.967905,
+      "improvementPercent": 30.94443464185135,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f730a2965d113aa10dd88066f14abbd317efc424a31b924dd3f9859f066fc26a",
+        "candidate": "f730a2965d113aa10dd88066f14abbd317efc424a31b924dd3f9859f066fc26a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 158.734136
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 120.244753
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 120.967905
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 175.174737
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 207.552402,
+      "candidateMs": 123.246226,
+      "improvementPercent": 40.61922444048612,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "0222c5792146571db169f8cfeaaeee957ea990812bb306d7e7812f5e00e83612",
+        "candidate": "0222c5792146571db169f8cfeaaeee957ea990812bb306d7e7812f5e00e83612"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 207.552402
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 116.887588
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 123.246226
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 175.90389
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 97.520841,
+      "candidateMs": 55.919606,
+      "improvementPercent": 42.6588148475873,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6fd486839ec86e30ba0407e8fcdf9a71928b66d081acb1437111e016f9b2a05b",
+        "candidate": "6fd486839ec86e30ba0407e8fcdf9a71928b66d081acb1437111e016f9b2a05b"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 97.520841
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 55.919606
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 54.489916
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 89.603689
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 166.826488,
+      "candidateMs": 153.887256,
+      "improvementPercent": 7.756101656950309,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "e7e3ae542d3b097bcd944889a349808711bd92b3b7284cea13c1d4c2baf47ddf",
+        "candidate": "e7e3ae542d3b097bcd944889a349808711bd92b3b7284cea13c1d4c2baf47ddf"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 147.108473
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 104.290556
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 153.887256
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 166.826488
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.070096,
+      "candidateMs": 0.036535,
+      "improvementPercent": 47.87862360191738,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "64b52c3249b11dc3186cae54111665c177fe762b4a3bb847e79cde7f3a4028ef",
+        "candidate": "64b52c3249b11dc3186cae54111665c177fe762b4a3bb847e79cde7f3a4028ef"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.070096
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.036535
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.036144
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.069615
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 39.401698,
+      "candidateMs": 30.586059,
+      "improvementPercent": 22.373754044812998,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "bdf8102db9afec9a0343dd660756428c15e0360e767cfa9c471c36bd0bdbc4c8",
+        "candidate": "bdf8102db9afec9a0343dd660756428c15e0360e767cfa9c471c36bd0bdbc4c8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 39.401698
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 30.586059
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 30.350275
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 30.650706
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 35.698349,
+      "candidateMs": 49.562524,
+      "improvementPercent": -38.837020165834566,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4e49597e84820ddd3908376d99efcf4c8fd6568cb421fa05286d82b1f9f619b2",
+        "candidate": "4e49597e84820ddd3908376d99efcf4c8fd6568cb421fa05286d82b1f9f619b2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 35.698349
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 49.562524
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 32.809488
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 32.49215
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 57.68256,
+      "candidateMs": 54.019792,
+      "improvementPercent": 6.3498707408270345,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "a9393cca8c8eb13afb06a15d7ea4107d7728a8fababc34f4fbb7334dea684375",
+        "candidate": "a9393cca8c8eb13afb06a15d7ea4107d7728a8fababc34f4fbb7334dea684375"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 47.677185
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 52.110436
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 54.019792
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 57.68256
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 40.093731,
+      "candidateMs": 24.119185,
+      "improvementPercent": 39.8430018897468,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "8353a6b087d804cf5465fed28483eb88018451bdd8b66b8933459a6face5f7e8",
+        "candidate": "8353a6b087d804cf5465fed28483eb88018451bdd8b66b8933459a6face5f7e8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 35.984611
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 24.116692
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 24.119185
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 40.093731
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 41.818229,
+      "candidateMs": 24.151344,
+      "improvementPercent": 42.246851247574355,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6e5d9998c89b144b2e5a15535af143fe1337bc63c6faedf9322db397ad098080",
+        "candidate": "6e5d9998c89b144b2e5a15535af143fe1337bc63c6faedf9322db397ad098080"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 41.377775
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 24.151344
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 22.733587
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 41.818229
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 36.236203,
+      "candidateMs": 24.527545,
+      "improvementPercent": 32.31204439383454,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "7dd812c7a65b9711f9f18afafa802b931dfe9cf218dda9990176b61e845e4abb",
+        "candidate": "7dd812c7a65b9711f9f18afafa802b931dfe9cf218dda9990176b61e845e4abb"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 34.58499
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 24.053843
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 24.527545
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 36.236203
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 28.94557,
+      "candidateMs": 12.430517,
+      "improvementPercent": 57.05554597819287,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "ac2b08f4d9632625acfb3f10adbb8abb3b524c02e4925e8fbf69cdfa3161b2b3",
+        "candidate": "ac2b08f4d9632625acfb3f10adbb8abb3b524c02e4925e8fbf69cdfa3161b2b3"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 18.667494
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 11.382421
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 12.430517
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 28.94557
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 36.483888,
+      "candidateMs": 23.934822,
+      "improvementPercent": 34.396186064379975,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4f89d56895f95cd6da9d40b0e0a13c972d7599aea922efe464a228f0dcae8fca",
+        "candidate": "4f89d56895f95cd6da9d40b0e0a13c972d7599aea922efe464a228f0dcae8fca"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 36.483888
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 21.491817
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 23.934822
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 34.684432
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 0.363306,
+      "candidateMs": 0.182845,
+      "improvementPercent": 49.67190192289696,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "48f927cea9cd9f0af9bd155a0f1d86875a376910ec3b1837044a8e38535172ad",
+        "candidate": "48f927cea9cd9f0af9bd155a0f1d86875a376910ec3b1837044a8e38535172ad"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.363306
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.182845
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.182464
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.360863
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 236.177386,
+      "candidateMs": 250.771351,
+      "improvementPercent": -6.179238938650977,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "25f080dd67f65a623959e3adb7e8e06809d96b08d39708c260698797ab442414",
+        "candidate": "25f080dd67f65a623959e3adb7e8e06809d96b08d39708c260698797ab442414"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 236.177386
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 250.771351
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 238.710546
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 226.581161
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 188.770584,
+      "candidateMs": 172.48118,
+      "improvementPercent": 8.629206762426511,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "8739da4315dded8f4b05df1fe5b48c40d87b8f493186a83b676f1bd16b250393",
+        "candidate": "8739da4315dded8f4b05df1fe5b48c40d87b8f493186a83b676f1bd16b250393"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 188.770584
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 164.001777
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 172.48118
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 167.97702
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 271.948591,
+      "candidateMs": 353.491133,
+      "improvementPercent": -29.98454292414405,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "655779416ae9c79279719b2d542b4f3432d05ed8a64515dec7618575e9438565",
+        "candidate": "655779416ae9c79279719b2d542b4f3432d05ed8a64515dec7618575e9438565"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 223.661887
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 270.11033
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 353.491133
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 271.948591
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 134.046476,
+      "candidateMs": 118.258181,
+      "improvementPercent": 11.778224591297736,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "784e1be515320c3a76fb6aeebdeae1dce0000cb168efa0227e773ee2363ccf03",
+        "candidate": "784e1be515320c3a76fb6aeebdeae1dce0000cb168efa0227e773ee2363ccf03"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 133.814548
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 117.554838
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 118.258181
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 134.046476
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "distortion",
+      "preampModel": null,
+      "distortionMode": "fuzz",
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 271.79684,
+      "candidateMs": 160.58328,
+      "improvementPercent": 40.91790029641257,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "97dbeb46aa784b24384f65342a849d17c24b8aa34dcc7184badd1d7d7fe8ba08",
+        "candidate": "97dbeb46aa784b24384f65342a849d17c24b8aa34dcc7184badd1d7d7fe8ba08"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 271.79684
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 129.707258
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 160.58328
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 241.850553
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "phaser",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 187.793893,
+      "candidateMs": 136.475247,
+      "improvementPercent": 27.327111217615585,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6b4c8596cc0a18c7cef7501c6fe1d3bf47791dc12da897e96bb0115ea033c71c",
+        "candidate": "6b4c8596cc0a18c7cef7501c6fe1d3bf47791dc12da897e96bb0115ea033c71c"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 187.793893
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 136.475247
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 126.660575
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 186.653828
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "mod-delay",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 121.956934,
+      "candidateMs": 74.31883,
+      "improvementPercent": 39.06141490897106,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "45d0d9df3f5f77b2e3bfbcc27c21870e28b7b24a74f3ca25aae1aac014ff14a2",
+        "candidate": "45d0d9df3f5f77b2e3bfbcc27c21870e28b7b24a74f3ca25aae1aac014ff14a2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 99.133626
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 54.088704
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 74.31883
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 121.956934
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "tape-echo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 213.923319,
+      "candidateMs": 132.817705,
+      "improvementPercent": 37.913404849519935,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "26c04e97063cd6505179028fd13bbd131d08c1062a97af3678ed86de072647d4",
+        "candidate": "26c04e97063cd6505179028fd13bbd131d08c1062a97af3678ed86de072647d4"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 206.213087
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 132.817705
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 110.954328
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 213.923319
+        }
+      ]
+    }
+  ],
+  "timingEligible": false,
+  "timingQualification": "Correctness-only final source gate, intentionally co-loaded with Native wall-clock soak and root correctness; timings must not be used as isolated performance evidence."
+}

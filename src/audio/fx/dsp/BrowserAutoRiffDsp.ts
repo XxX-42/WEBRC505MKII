@@ -1,9 +1,11 @@
 /**
  * Clean-room, provisional AUTO RIFF analysis and pitch-command sequencer.
  * This class analyzes a caller-provided mono stream (or averages stereo in
- * processStereoSample) and queues quantized pitch-shift commands. It does not
- * resynthesize audio and is not sound-quality accepted. All analysis/queue
- * storage is fixed at construction; the sample callback allocates nothing.
+ * processStereoSample) and queues quantized pitch-shift commands. Its optional
+ * HOLD captures a bounded periodic source waveform; ATTACK adds a decaying
+ * phrase accent before the host pitch shifter. These authored controls are
+ * not a reconstruction of BOSS DSP or the undocumented P1–P30 phrases.
+ * Storage is fixed at construction; the sample callback allocates nothing.
  */
 
 export type BrowserAutoRiffScale = 0 | 1 | 2 | 3 | 4;
@@ -11,10 +13,21 @@ export type BrowserAutoRiffBeatStepRate = 0.25 | 0.5 | 1 | 2 | 4;
 
 export interface BrowserAutoRiffParameters {
   bpm?: number;
+  quarterNotesPerMeasure?: number;
   beatStepRate?: number;
   scale?: BrowserAutoRiffScale;
   /** 0..1; larger values detect quieter and less abrupt attacks. */
   onsetSensitivity?: number;
+  /** Official 0..100 scale, or negative beat duration. Authored manual curve. */
+  officialTempo?: number;
+  /** 0/1: latch a periodic source waveform so input silence does not end it. */
+  hold?: number;
+  /** 0..100: added phrase-onset loudness, not an envelope rise-time control. */
+  attack?: number;
+  /** 0/1: repeat the existing authored eight-step pattern, not a BOSS phrase. */
+  loop?: number;
+  /** 0..11: use a major-key tonic closest to the acquired input note. */
+  key?: number;
 }
 
 export interface BrowserAutoRiffDiagnostics {
@@ -33,6 +46,13 @@ export interface BrowserAutoRiffDiagnostics {
   activeBeatStepRate: number;
   activeScale: BrowserAutoRiffScale;
   framesProcessed: number;
+  activeOfficialTempo: number | undefined;
+  activeHold: boolean;
+  sourceHeld: boolean;
+  activeAttack: number;
+  activeLoop: boolean;
+  activeKey: number | undefined;
+  attackGain: number;
 }
 
 const BEAT_STEP_RATES: readonly BrowserAutoRiffBeatStepRate[] = [0.25, 0.5, 1, 2, 4];
@@ -56,6 +76,9 @@ const QUEUE_CAPACITY = 32;
 const QUEUE_MASK = QUEUE_CAPACITY - 1;
 const ONSET_REFRACTORY_MS = 90;
 const PENDING_ONSET_MAX_MS = 300;
+const SOURCE_BUFFER_SIZE = 8192;
+const SOURCE_BUFFER_MASK = SOURCE_BUFFER_SIZE - 1;
+const OFFICIAL_BEAT_DURATIONS = [16, 8, 4, 2, 1, 0.125] as const;
 
 export class BrowserAutoRiffDsp {
   readonly sampleRate: number;
@@ -76,6 +99,10 @@ export class BrowserAutoRiffDsp {
   framesProcessed = 0;
   lastPoppedFrame = -1;
   lastPoppedSemitones = 0;
+  /** Source audio to feed to the host pitch shifter. Legacy controls pass through. */
+  wetLeft = 0;
+  wetRight = 0;
+  attackGain = 1;
 
   private readonly decimatedRate: number;
   private readonly onsetAttackAlpha: number;
@@ -112,6 +139,22 @@ export class BrowserAutoRiffDsp {
   private currentBeatStepRate: BrowserAutoRiffBeatStepRate;
   private currentScale: BrowserAutoRiffScale;
   private currentOnsetSensitivity: number;
+  private currentOfficialTempo: number | undefined;
+  private currentQuarterNotesPerMeasure = 4;
+  private currentHold = false;
+  private currentAttack = 0;
+  private currentLoop = false;
+  private currentKey: number | undefined;
+  private readonly sourceLeft = new Float32Array(SOURCE_BUFFER_SIZE);
+  private readonly sourceRight = new Float32Array(SOURCE_BUFFER_SIZE);
+  private sourceWrite = 0;
+  private sourceCount = 0;
+  private heldPeriod = 0;
+  private heldRead = 0;
+  private heldStart = 0;
+  private heldSourceMidi = 0;
+  private phraseAttack = 0;
+  private readonly phraseAttackDecay: number;
 
   constructor(sampleRate: number, parameters: BrowserAutoRiffParameters = {}) {
     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8_000 ? sampleRate : 48_000;
@@ -124,10 +167,12 @@ export class BrowserAutoRiffDsp {
     this.maxLag = Math.min(255, Math.floor(this.decimatedRate / YIN_MIN_F0_HZ));
     this.minLag = Math.max(2, Math.floor(this.decimatedRate / YIN_MAX_F0_HZ));
     this.yinWindow = Math.min(384, Math.max(64, this.maxLag * 2));
+    this.phraseAttackDecay = Math.exp(-1 / (0.030 * this.sampleRate));
     this.currentBpm = this.clampBpm(parameters.bpm ?? 120);
     this.currentBeatStepRate = this.clampRate(parameters.beatStepRate ?? 0.5);
     this.currentScale = this.clampScale(parameters.scale ?? 0);
     this.currentOnsetSensitivity = this.clampSensitivity(parameters.onsetSensitivity ?? 0.65);
+    this.setParameters(parameters);
     this.updateOnsetClock(0);
   }
 
@@ -140,6 +185,12 @@ export class BrowserAutoRiffDsp {
   get activeBeatStepRate(): BrowserAutoRiffBeatStepRate { return this.currentBeatStepRate; }
   get activeScale(): BrowserAutoRiffScale { return this.currentScale; }
   get activeOnsetSensitivity(): number { return this.currentOnsetSensitivity; }
+  get activeOfficialTempo(): number | undefined { return this.currentOfficialTempo; }
+  get activeHold(): boolean { return this.currentHold; }
+  get sourceHeld(): boolean { return this.heldPeriod > 0; }
+  get activeAttack(): number { return this.currentAttack; }
+  get activeLoop(): boolean { return this.currentLoop; }
+  get activeKey(): number | undefined { return this.currentKey; }
   get queueDepth(): number { return this.queueCount; }
   get stepFrames(): number { return this.intervalFrames(); }
 
@@ -160,25 +211,56 @@ export class BrowserAutoRiffDsp {
       activeBeatStepRate: this.currentBeatStepRate,
       activeScale: this.currentScale,
       framesProcessed: this.framesProcessed,
+      activeOfficialTempo: this.currentOfficialTempo,
+      activeHold: this.currentHold,
+      sourceHeld: this.sourceHeld,
+      activeAttack: this.currentAttack,
+      activeLoop: this.currentLoop,
+      activeKey: this.currentKey,
+      attackGain: this.attackGain,
     };
   }
 
   setParameters(parameters: BrowserAutoRiffParameters): void {
     if (Number.isFinite(parameters.bpm)) this.currentBpm = this.clampBpm(parameters.bpm as number);
-    if (Number.isFinite(parameters.beatStepRate)) this.currentBeatStepRate = this.clampRate(parameters.beatStepRate as number);
-    if (Number.isFinite(parameters.scale)) this.currentScale = this.clampScale(parameters.scale as number);
+    if (Number.isFinite(parameters.quarterNotesPerMeasure) && parameters.quarterNotesPerMeasure! >= 0.125 && parameters.quarterNotesPerMeasure! <= 128) this.currentQuarterNotesPerMeasure = parameters.quarterNotesPerMeasure!;
+    if (Number.isFinite(parameters.beatStepRate)) {
+      this.currentBeatStepRate = this.clampRate(parameters.beatStepRate as number);
+      this.currentOfficialTempo = undefined; // explicit legacy rate resumes legacy units
+    }
+    if (Number.isFinite(parameters.scale)) {
+      this.currentScale = this.clampScale(parameters.scale as number);
+      this.currentKey = undefined; // explicit legacy scale resumes root-relative operation
+    }
     if (Number.isFinite(parameters.onsetSensitivity)) {
       this.currentOnsetSensitivity = this.clampSensitivity(parameters.onsetSensitivity as number);
     }
+    const tempo = parameters.officialTempo;
+    if (typeof tempo === 'number' && ((Number.isInteger(tempo) && tempo >= 0 && tempo <= 100)
+      || OFFICIAL_BEAT_DURATIONS.some(beats => tempo === -beats))) this.currentOfficialTempo = tempo;
+    if (parameters.hold === 0 || parameters.hold === 1) {
+      this.currentHold = parameters.hold === 1;
+      if (!this.currentHold) this.heldPeriod = 0;
+      else this.captureHeldSource();
+    }
+    if (Number.isInteger(parameters.attack) && parameters.attack! >= 0 && parameters.attack! <= 100) this.currentAttack = parameters.attack!;
+    if (parameters.loop === 0 || parameters.loop === 1) this.currentLoop = parameters.loop === 1;
+    if (Number.isInteger(parameters.key) && parameters.key! >= 0 && parameters.key! <= 11) this.currentKey = parameters.key;
   }
 
   setTempo(bpm: number, beatStepRate: number): void {
     if (Number.isFinite(bpm)) this.currentBpm = this.clampBpm(bpm);
-    if (Number.isFinite(beatStepRate)) this.currentBeatStepRate = this.clampRate(beatStepRate);
+    if (Number.isFinite(beatStepRate)) {
+      this.currentBeatStepRate = this.clampRate(beatStepRate);
+      this.currentOfficialTempo = undefined;
+    }
   }
 
   setScale(scale: number): void {
-    if (Number.isFinite(scale)) this.currentScale = this.clampScale(scale);
+    if (Number.isFinite(scale)) {
+      this.currentScale = this.clampScale(scale);
+      this.currentKey = undefined;
+    }
   }
 
   setOnsetSensitivity(sensitivity: number): void {
@@ -190,6 +272,41 @@ export class BrowserAutoRiffDsp {
    * sequence edges remain sample-clocked across variable callback segments.
    */
   processSample(input: number, frame: number): void {
+    this.processStereoSample(input, input, frame);
+  }
+
+  /** Both analysis and optional source hold/accent are sample-clocked. */
+  processStereoSample(left: number, right: number, frame: number): void {
+    const l = Number.isFinite(left) ? Math.max(-8, Math.min(8, left)) : 0;
+    const r = Number.isFinite(right) ? Math.max(-8, Math.min(8, right)) : 0;
+    if (!this.sourceHeld) {
+      this.sourceLeft[this.sourceWrite] = l;
+      this.sourceRight[this.sourceWrite] = r;
+      this.sourceWrite = (this.sourceWrite + 1) & SOURCE_BUFFER_MASK;
+      this.sourceCount = Math.min(SOURCE_BUFFER_SIZE, this.sourceCount + 1);
+    }
+    this.analyzeSample((l + r) * 0.5, frame);
+    if (this.currentHold && !this.sourceHeld) this.captureHeldSource();
+    this.attackGain = 1 + this.currentAttack / 100 * this.phraseAttack;
+    this.phraseAttack *= this.phraseAttackDecay;
+    if (this.sourceHeld) {
+      // Interpolation over one detected period preserves the tracked F0.
+      // Fixed ring history is frozen, so silence can never overwrite the hold.
+      const position = this.heldStart + this.heldRead;
+      const base = Math.floor(position);
+      const fraction = position - base;
+      const index = base & SOURCE_BUFFER_MASK;
+      const next = (base + 1) & SOURCE_BUFFER_MASK;
+      this.wetLeft = (this.sourceLeft[index]! + fraction * (this.sourceLeft[next]! - this.sourceLeft[index]!)) * this.attackGain;
+      this.wetRight = (this.sourceRight[index]! + fraction * (this.sourceRight[next]! - this.sourceRight[index]!)) * this.attackGain;
+      this.heldRead = (this.heldRead + 1) % this.heldPeriod;
+    } else {
+      this.wetLeft = l * this.attackGain;
+      this.wetRight = r * this.attackGain;
+    }
+  }
+
+  private analyzeSample(input: number, frame: number): void {
     const sampleFrame = Number.isFinite(frame) ? Math.floor(frame) : this.framesProcessed;
     const sample = Number.isFinite(input) ? Math.max(-8, Math.min(8, input)) : 0;
     this.framesProcessed += 1;
@@ -205,7 +322,7 @@ export class BrowserAutoRiffDsp {
       this.decimationCount = 0;
     }
 
-    if (!this.hasPitch) {
+    if (!this.hasPitch && !this.sourceHeld) {
       this.sequenceActive = false;
       this.step = -1;
       if (this.pendingOnset && sampleFrame - this.pendingOnsetFrame > this.pendingOnsetFrames()) {
@@ -215,16 +332,9 @@ export class BrowserAutoRiffDsp {
       this.startSequence(sampleFrame);
     }
 
-    if (this.sequenceActive && this.hasPitch && sampleFrame >= this.nextSequenceFrame) {
+    if (this.sequenceActive && (this.hasPitch || this.sourceHeld) && sampleFrame >= this.nextSequenceFrame) {
       this.emitSequenceCommand(sampleFrame);
     }
-  }
-
-  /** Average stereo to mono without creating an intermediate sample object. */
-  processStereoSample(left: number, right: number, frame: number): void {
-    const l = Number.isFinite(left) ? left : 0;
-    const r = Number.isFinite(right) ? right : 0;
-    this.processSample((l + r) * 0.5, frame);
   }
 
   /** Pop one fixed-capacity primitive command into the mutable lastPopped* fields. */
@@ -238,6 +348,18 @@ export class BrowserAutoRiffDsp {
   }
 
   reset(): void {
+    this.sourceLeft.fill(0);
+    this.sourceRight.fill(0);
+    this.sourceWrite = 0;
+    this.sourceCount = 0;
+    this.heldPeriod = 0;
+    this.heldRead = 0;
+    this.heldStart = 0;
+    this.heldSourceMidi = 0;
+    this.phraseAttack = 0;
+    this.attackGain = 1;
+    this.wetLeft = 0;
+    this.wetRight = 0;
     this.yinRing.fill(0);
     this.yinCmnd.fill(0);
     this.queueFrames.fill(0);
@@ -292,7 +414,7 @@ export class BrowserAutoRiffDsp {
     if (!this.onsetArmed && this.fastEnergy < Math.max(absoluteFloor * absoluteFloor * 4, this.slowEnergy * 0.35)) {
       this.onsetArmed = true;
     }
-    if (this.onsetArmed && frame >= this.nextOnsetFrame && rising && this.fastEnergy >= threshold) {
+    if (!this.sourceHeld && this.onsetArmed && frame >= this.nextOnsetFrame && rising && this.fastEnergy >= threshold) {
       this.onset = true;
       this.onsetCount += 1;
       this.lastOnsetFrame = frame;
@@ -400,14 +522,26 @@ export class BrowserAutoRiffDsp {
     this.pitchConfidence = 0;
     this.hasPitch = false;
     this.failedPitchAnalyses = 0;
-    this.sequenceActive = false;
-    this.step = -1;
+    if (!this.sourceHeld) {
+      this.sequenceActive = false;
+      this.step = -1;
+    }
+  }
+
+  private captureHeldSource(): void {
+    if (this.sourceHeld || !this.hasPitch || this.pitchEstimateHz <= 0 || this.onsetCount === 0) return;
+    const period = this.sampleRate / this.pitchEstimateHz;
+    if (period < 2 || period + 2 >= SOURCE_BUFFER_SIZE || this.sourceCount < Math.ceil(period) + 2) return;
+    this.heldPeriod = period;
+    this.heldStart = this.sourceWrite - period - 1;
+    this.heldRead = 0;
+    this.heldSourceMidi = this.pitchEstimateMidi;
   }
 
   private startSequence(frame: number): void {
     this.pendingOnset = false;
     if (frame - this.pendingOnsetFrame > this.pendingOnsetFrames()) return;
-    this.riffRootMidi = Math.round(this.pitchEstimateMidi);
+    this.riffRootMidi = Math.round(this.sourceHeld ? this.heldSourceMidi : this.pitchEstimateMidi);
     const interval = this.intervalFrames();
     let firstFrame = Math.ceil(this.pendingOnsetFrame / interval) * interval;
     if (firstFrame < frame) firstFrame = Math.ceil(frame / interval) * interval;
@@ -419,15 +553,27 @@ export class BrowserAutoRiffDsp {
 
   private emitSequenceCommand(frame: number): void {
     const degree = RIFF_DEGREES[this.sequenceStep] ?? 0;
-    const interval = this.intervalForDegree(degree, this.currentScale);
+    // A single explicitly authored pattern, never labelled P1–P30. With KEY
+    // selected, use major scale degrees around the closest tonic. Subtract
+    // current source pitch so a moving input cannot transpose the whole key.
+    let interval = this.intervalForDegree(degree, this.currentKey === undefined ? this.currentScale : 1);
+    if (this.currentKey !== undefined) {
+      const tonic = this.currentKey + 12 * Math.round((this.riffRootMidi - this.currentKey) / 12);
+      const source = this.sourceHeld ? this.heldSourceMidi : this.pitchEstimateMidi;
+      interval += tonic - Math.round(source);
+    }
     const semitones = Math.max(-24, Math.min(24, interval));
+    if (this.sequenceStep === 0) this.phraseAttack = 1;
     this.enqueuePitchChange(frame, semitones);
     this.sequenceStep += 1;
     if (this.sequenceStep >= RIFF_DEGREES.length) {
-      this.sequenceActive = false;
-      this.step = -1;
-      this.nextSequenceFrame = -1;
-      return;
+      if (this.currentLoop) this.sequenceStep = 0;
+      else {
+        this.sequenceActive = false;
+        this.step = -1;
+        this.nextSequenceFrame = -1;
+        return;
+      }
     }
     this.step = this.sequenceStep;
     this.nextSequenceFrame += this.intervalFrames();
@@ -464,6 +610,14 @@ export class BrowserAutoRiffDsp {
   }
 
   private intervalFrames(): number {
+    if (this.currentOfficialTempo !== undefined) {
+      // The guide does not publish the manual 0..100 transfer curve. This
+      // clean-room curve spans 2 s to 50 ms per step; notes follow current BPM.
+      const seconds = this.currentOfficialTempo < 0
+        ? -this.currentOfficialTempo * (this.currentOfficialTempo <= -4 ? this.currentQuarterNotesPerMeasure / 4 : 1) * 60 / this.currentBpm
+        : 2 * Math.pow(0.025, this.currentOfficialTempo / 100);
+      return Math.max(1, Math.round(seconds * this.sampleRate));
+    }
     return Math.max(1, Math.round((this.sampleRate * 60 * this.currentBeatStepRate) / this.currentBpm));
   }
 

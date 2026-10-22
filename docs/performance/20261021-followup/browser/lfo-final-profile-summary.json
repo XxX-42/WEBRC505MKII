@@ -1,0 +1,20 @@
+{
+  "samples": 620,
+  "selfSamples": {
+    "processBlock": 389,
+    "lfoValue": 88,
+    "": 46,
+    "processEffectSample": 19,
+    "compileForInternalLoader": 14,
+    "process": 13,
+    "(garbage collector)": 9,
+    "Script": 8,
+    "__require": 7,
+    "(program)": 4,
+    "BrowserFxDspCore": 3,
+    "internalBinding": 2,
+    "(idle)": 2,
+    "update": 2,
+    "resolve": 1
+  }
+}

@@ -1,0 +1,3 @@
+command=/tmp/native_per_track_fx_bench_B_candidate_fb3bd75 --pitch=live-poly --pitch-track=1 --pitch-semitones=7 
+started=2026-10-19T14:42:09Z
+ended=2026-10-19T14:43:28Z

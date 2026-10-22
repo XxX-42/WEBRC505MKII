@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_offline_context_single_fx_relative_kernel_diagnostic",
+  "generatedAtUtc": "2026-10-18T23:55:22.025Z",
+  "repositoryHead": "f1c69af99aa9f88606be46c44b35ad6ff0ab7b08",
+  "browserVersion": "154.0.8037.57",
+  "browserExecutable": "/tmp/rc505-cft154-restore/extracted/chrome-headless-shell-linux64/chrome-headless-shell",
+  "algorithm": "chorus",
+  "sampleRateHz": 44100,
+  "measuredAudioSecondsPerRun": 2,
+  "rounds": 3,
+  "timingSource": "Main-thread performance.now() surrounding OfflineAudioContext.startRendering() in Chrome for Testing; offline render time is not live-callback timing.",
+  "exclusions": [
+    "No live AudioContext callback scheduling, deadline, XRUN, whole graph, CPU contention, or physical output.",
+    "One effect processor at a time; does not establish the 5-track/20-private-slot aggregate performance.",
+    "Deterministic stereo noise/multitone/impulse excitation is for runtime equivalence, not sound-quality acceptance."
+  ],
+  "baselineSource": {
+    "ref": "f1c69af:public/worklets/fx-processor.js",
+    "sha256": "9f44d47aa7a2989abd4c9d460c3255408e16278185ecae2a29e1df5b58b3d267"
+  },
+  "candidateSource": {
+    "path": "public/worklets/fx-processor.js",
+    "sha256": "9b1bc274f852292f0d2e8181f0e1fbf3c437887f0aecbe923dff9e7e004d6c1a"
+  },
+  "warmups": [
+    {
+      "version": "baseline",
+      "frames": 33075,
+      "elapsedMilliseconds": 29.200000002980232,
+      "realtimeRatio": 0.038933333337306975,
+      "finite": true,
+      "rms": 0.1246645508900911,
+      "outputSha256": "db368172eeb62aab0ca6620c1ca76b1826a74a9c5aa4090dfa40be366a0443eb"
+    },
+    {
+      "version": "candidate",
+      "frames": 33075,
+      "elapsedMilliseconds": 26.799999997019768,
+      "realtimeRatio": 0.03573333332935969,
+      "finite": true,
+      "rms": 0.1246645508900911,
+      "outputSha256": "db368172eeb62aab0ca6620c1ca76b1826a74a9c5aa4090dfa40be366a0443eb"
+    }
+  ],
+  "runs": [
+    {
+      "round": 1,
+      "label": "A1-R1",
+      "version": "baseline",
+      "frames": 88200,
+      "elapsedMilliseconds": 64.39999999850988,
+      "realtimeRatio": 0.03219999999925494,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 1,
+      "label": "B1-R1",
+      "version": "candidate",
+      "frames": 88200,
+      "elapsedMilliseconds": 54.80000000447035,
+      "realtimeRatio": 0.027400000002235175,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 1,
+      "label": "B2-R1",
+      "version": "candidate",
+      "frames": 88200,
+      "elapsedMilliseconds": 56.79999999701977,
+      "realtimeRatio": 0.028399999998509885,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 1,
+      "label": "A2-R1",
+      "version": "baseline",
+      "frames": 88200,
+      "elapsedMilliseconds": 64.10000000149012,
+      "realtimeRatio": 0.03205000000074506,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 2,
+      "label": "A1-R2",
+      "version": "baseline",
+      "frames": 88200,
+      "elapsedMilliseconds": 65.80000000447035,
+      "realtimeRatio": 0.032900000002235176,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 2,
+      "label": "B1-R2",
+      "version": "candidate",
+      "frames": 88200,
+      "elapsedMilliseconds": 57.29999999701977,
+      "realtimeRatio": 0.028649999998509885,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 2,
+      "label": "B2-R2",
+      "version": "candidate",
+      "frames": 88200,
+      "elapsedMilliseconds": 47.70000000298023,
+      "realtimeRatio": 0.023850000001490117,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 2,
+      "label": "A2-R2",
+      "version": "baseline",
+      "frames": 88200,
+      "elapsedMilliseconds": 56.69999999552965,
+      "realtimeRatio": 0.028349999997764826,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 3,
+      "label": "A1-R3",
+      "version": "baseline",
+      "frames": 88200,
+      "elapsedMilliseconds": 54,
+      "realtimeRatio": 0.027,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 3,
+      "label": "B1-R3",
+      "version": "candidate",
+      "frames": 88200,
+      "elapsedMilliseconds": 57.79999999701977,
+      "realtimeRatio": 0.028899999998509885,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 3,
+      "label": "B2-R3",
+      "version": "candidate",
+      "frames": 88200,
+      "elapsedMilliseconds": 56.600000001490116,
+      "realtimeRatio": 0.02830000000074506,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    },
+    {
+      "round": 3,
+      "label": "A2-R3",
+      "version": "baseline",
+      "frames": 88200,
+      "elapsedMilliseconds": 63.100000001490116,
+      "realtimeRatio": 0.03155000000074506,
+      "finite": true,
+      "rms": 0.12385076359242038,
+      "outputSha256": "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+    }
+  ],
+  "summary": {
+    "baseline": {
+      "runCount": 6,
+      "medianRealtimeRatio": 0.03205000000074506,
+      "meanRealtimeRatio": 0.030675000000124176,
+      "outputsFinite": true,
+      "distinctOutputHashes": [
+        "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+      ],
+      "rmsValues": [
+        0.12385076359242038
+      ]
+    },
+    "candidate": {
+      "runCount": 6,
+      "medianRealtimeRatio": 0.028399999998509885,
+      "meanRealtimeRatio": 0.027583333333333335,
+      "outputsFinite": true,
+      "distinctOutputHashes": [
+        "f34744edb4a9965538b5846b152e51f371d5386a86cca56745137676c7de4e4f"
+      ],
+      "rmsValues": [
+        0.12385076359242038
+      ]
+    },
+    "bitIdenticalOutputAcrossVersions": true
+  }
+}

@@ -10,6 +10,7 @@
  * lookahead or added latency, and no Roland source or code is used.
  */
 export interface BrowserSustainerParameters {
+  attackMs?: number;
   thresholdDb?: number;
   ratio?: number;
   releaseMs?: number;
@@ -71,6 +72,7 @@ export class BrowserSustainerDsp {
   outputLeft = 0;
   outputRight = 0;
 
+  private readonly attack: ParameterSmoother;
   private readonly threshold: ParameterSmoother;
   private readonly ratio: ParameterSmoother;
   private readonly release: ParameterSmoother;
@@ -91,6 +93,7 @@ export class BrowserSustainerDsp {
 
   constructor(sampleRate: number, parameters: BrowserSustainerParameters = {}) {
     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8000 ? sampleRate : 48000;
+    this.attack = new ParameterSmoother(this.sampleRate, clamp(parameters.attackMs ?? 2, 0.1, 100));
     this.threshold = new ParameterSmoother(this.sampleRate, clamp(parameters.thresholdDb ?? DEFAULT_THRESHOLD_DB, MIN_THRESHOLD_DB, MAX_THRESHOLD_DB));
     this.ratio = new ParameterSmoother(this.sampleRate, clamp(parameters.ratio ?? DEFAULT_RATIO, MIN_RATIO, MAX_RATIO));
     this.release = new ParameterSmoother(this.sampleRate, clamp(parameters.releaseMs ?? DEFAULT_RELEASE_MS, MIN_RELEASE_MS, MAX_RELEASE_MS));
@@ -100,10 +103,11 @@ export class BrowserSustainerDsp {
     this.gateOpenAlpha = onePoleAlpha(1, this.sampleRate);
     this.gateCloseAlpha = onePoleAlpha(60, this.sampleRate);
     this.limiterReleaseAlpha = onePoleAlpha(60, this.sampleRate);
-    this.refreshCompressorCoefficients(parameters.releaseMs ?? DEFAULT_RELEASE_MS);
+    this.refreshCompressorCoefficients(parameters.releaseMs ?? DEFAULT_RELEASE_MS, parameters.attackMs ?? 2);
   }
 
   setParameters(parameters: BrowserSustainerParameters): void {
+    if (Number.isFinite(parameters.attackMs)) this.attack.setTarget(clamp(parameters.attackMs as number, 0.1, 100));
     if (Number.isFinite(parameters.thresholdDb)) this.threshold.setTarget(clamp(parameters.thresholdDb as number, MIN_THRESHOLD_DB, MAX_THRESHOLD_DB));
     if (Number.isFinite(parameters.ratio)) this.ratio.setTarget(clamp(parameters.ratio as number, MIN_RATIO, MAX_RATIO));
     if (Number.isFinite(parameters.releaseMs)) this.release.setTarget(clamp(parameters.releaseMs as number, MIN_RELEASE_MS, MAX_RELEASE_MS));
@@ -112,13 +116,14 @@ export class BrowserSustainerDsp {
 
   /** Advances one stereo frame; all computation uses fixed scalar state. */
   processSample(inputLeft: number, inputRight: number): void {
+    const attackMs = this.attack.next();
     const thresholdDb = this.threshold.next();
     const ratio = this.ratio.next();
     const releaseMs = this.release.next();
     const outputDb = this.outputDb.next();
 
     if (this.controlsCountdown <= 0) {
-      this.refreshCompressorCoefficients(releaseMs);
+      this.refreshCompressorCoefficients(releaseMs, attackMs);
       this.controlsCountdown = 15;
     } else {
       this.controlsCountdown -= 1;
@@ -170,8 +175,8 @@ export class BrowserSustainerDsp {
     this.controlsCountdown = 0;
   }
 
-  private refreshCompressorCoefficients(releaseMs: number): void {
-    this.attackAlpha = onePoleAlpha(2, this.sampleRate);
+  private refreshCompressorCoefficients(releaseMs: number, attackMs = 2): void {
+    this.attackAlpha = onePoleAlpha(attackMs, this.sampleRate);
     this.releaseAlpha = onePoleAlpha(clamp(releaseMs, MIN_RELEASE_MS, MAX_RELEASE_MS), this.sampleRate);
   }
 }

@@ -1,0 +1,858 @@
+{
+  "profile": "docs/performance/20261021/browser-final-clamp-tape.cpuprofile",
+  "totalSamples": 7013,
+  "ranking": [
+    {
+      "function": "processBlock",
+      "url": "public/worklets/fx-processor.js",
+      "line": 10475,
+      "selfSamples": 1758
+    },
+    {
+      "function": "processReverb",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11507,
+      "selfSamples": 1168
+    },
+    {
+      "function": "processPhaser",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11438,
+      "selfSamples": 492
+    },
+    {
+      "function": "logCosh3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9093,
+      "selfSamples": 262
+    },
+    {
+      "function": "processChorus",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11405,
+      "selfSamples": 257
+    },
+    {
+      "function": "readLagrangeFromWriteHead2",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9258,
+      "selfSamples": 249
+    },
+    {
+      "function": "logCosh2",
+      "url": "public/worklets/fx-processor.js",
+      "line": 5864,
+      "selfSamples": 137
+    },
+    {
+      "function": "processFlanger",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11316,
+      "selfSamples": 100
+    },
+    {
+      "function": "processDistortionSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11219,
+      "selfSamples": 95
+    },
+    {
+      "function": "processFrameSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 862,
+      "selfSamples": 87
+    },
+    {
+      "function": "processSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 2096,
+      "selfSamples": 84
+    },
+    {
+      "function": "processDelay",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11384,
+      "selfSamples": 83
+    },
+    {
+      "function": "updateGateReverbEnvelope",
+      "url": "public/worklets/fx-processor.js",
+      "line": 10966,
+      "selfSamples": 83
+    },
+    {
+      "function": "processEffectSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11078,
+      "selfSamples": 82
+    },
+    {
+      "function": "clamp7",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1562,
+      "selfSamples": 82
+    },
+    {
+      "function": "processOversampledChannel",
+      "url": "public/worklets/fx-processor.js",
+      "line": 6048,
+      "selfSamples": 77
+    },
+    {
+      "function": "processFrameSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1187,
+      "selfSamples": 76
+    },
+    {
+      "function": "processSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 5988,
+      "selfSamples": 75
+    },
+    {
+      "function": "updateDynamicsDetector",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11347,
+      "selfSamples": 74
+    },
+    {
+      "function": "processChannel",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1017,
+      "selfSamples": 71
+    },
+    {
+      "function": "processSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1652,
+      "selfSamples": 68
+    },
+    {
+      "function": "process",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11641,
+      "selfSamples": 60
+    },
+    {
+      "function": "processCachedDistortionSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11207,
+      "selfSamples": 60
+    },
+    {
+      "function": "clamp9",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1901,
+      "selfSamples": 60
+    },
+    {
+      "function": "saturationPrimitive",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1313,
+      "selfSamples": 55
+    },
+    {
+      "function": "saturationPrimitive",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1313,
+      "selfSamples": 49
+    },
+    {
+      "function": "finiteBounded2",
+      "url": "public/worklets/fx-processor.js",
+      "line": 908,
+      "selfSamples": 44
+    },
+    {
+      "function": "processRingMod",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11287,
+      "selfSamples": 43
+    },
+    {
+      "function": "finiteBounded5",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1565,
+      "selfSamples": 43
+    },
+    {
+      "function": "lfoValue",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11466,
+      "selfSamples": 41
+    },
+    {
+      "function": "",
+      "url": "public/worklets/fx-processor.js",
+      "line": 8974,
+      "selfSamples": 40
+    },
+    {
+      "function": "refreshTimeVariantCoefficients",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11015,
+      "selfSamples": 40
+    },
+    {
+      "function": "processAutoPan",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11486,
+      "selfSamples": 35
+    },
+    {
+      "function": "finiteBounded6",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1904,
+      "selfSamples": 35
+    },
+    {
+      "function": "readLagrangeFromWriteHead2",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9258,
+      "selfSamples": 34
+    },
+    {
+      "function": "readLagrange2",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1572,
+      "selfSamples": 34
+    },
+    {
+      "function": "clamp9",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1901,
+      "selfSamples": 34
+    },
+    {
+      "function": "clamp9",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1901,
+      "selfSamples": 33
+    },
+    {
+      "function": "processSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 978,
+      "selfSamples": 32
+    },
+    {
+      "function": "processFrameSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1187,
+      "selfSamples": 32
+    },
+    {
+      "function": "processSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1975,
+      "selfSamples": 32
+    },
+    {
+      "function": "",
+      "url": "file:///workspace/scratch/2230ee2a4571/rc505-gain-recovery/bench/microbench_browser_fx_worklet.mjs",
+      "line": 1,
+      "selfSamples": 30
+    },
+    {
+      "function": "readFractional",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1254,
+      "selfSamples": 29
+    },
+    {
+      "function": "(garbage collector)",
+      "url": "",
+      "line": 0,
+      "selfSamples": 28
+    },
+    {
+      "function": "clamp22",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9154,
+      "selfSamples": 28
+    },
+    {
+      "function": "clamp3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 763,
+      "selfSamples": 28
+    },
+    {
+      "function": "processChannel",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1997,
+      "selfSamples": 27
+    },
+    {
+      "function": "BrowserFxDspCore",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9492,
+      "selfSamples": 26
+    },
+    {
+      "function": "adaa",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1293,
+      "selfSamples": 26
+    },
+    {
+      "function": "lfoValue",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11466,
+      "selfSamples": 25
+    },
+    {
+      "function": "finiteBounded3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1057,
+      "selfSamples": 25
+    },
+    {
+      "function": "readFractional",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1254,
+      "selfSamples": 23
+    },
+    {
+      "function": "adaa",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1293,
+      "selfSamples": 21
+    },
+    {
+      "function": "clamp14",
+      "url": "public/worklets/fx-processor.js",
+      "line": 5837,
+      "selfSamples": 21
+    },
+    {
+      "function": "processFrameSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 862,
+      "selfSamples": 20
+    },
+    {
+      "function": "finiteBounded",
+      "url": "public/worklets/fx-processor.js",
+      "line": 766,
+      "selfSamples": 20
+    },
+    {
+      "function": "advanceControls",
+      "url": "public/worklets/fx-processor.js",
+      "line": 10868,
+      "selfSamples": 19
+    },
+    {
+      "function": "clamp3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 763,
+      "selfSamples": 18
+    },
+    {
+      "function": "readLagrangeFromWriteHead2",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9258,
+      "selfSamples": 17
+    },
+    {
+      "function": "refreshControlDependentCoefficients",
+      "url": "public/worklets/fx-processor.js",
+      "line": 10943,
+      "selfSamples": 16
+    },
+    {
+      "function": "readLagrange",
+      "url": "public/worklets/fx-processor.js",
+      "line": 911,
+      "selfSamples": 16
+    },
+    {
+      "function": "finiteBounded3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1057,
+      "selfSamples": 13
+    },
+    {
+      "function": "readLagrange3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1907,
+      "selfSamples": 13
+    },
+    {
+      "function": "readLagrangeFromWriteHead2",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9258,
+      "selfSamples": 12
+    },
+    {
+      "function": "finiteBounded3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1057,
+      "selfSamples": 12
+    },
+    {
+      "function": "readLagrangeFromWriteHead",
+      "url": "public/worklets/fx-processor.js",
+      "line": 769,
+      "selfSamples": 11
+    },
+    {
+      "function": "readLagrangeFromWriteHead",
+      "url": "public/worklets/fx-processor.js",
+      "line": 769,
+      "selfSamples": 11
+    },
+    {
+      "function": "dbToLinear",
+      "url": "public/worklets/fx-processor.js",
+      "line": 2035,
+      "selfSamples": 11
+    },
+    {
+      "function": "setParameters",
+      "url": "public/worklets/fx-processor.js",
+      "line": 74,
+      "selfSamples": 10
+    },
+    {
+      "function": "finiteBounded",
+      "url": "public/worklets/fx-processor.js",
+      "line": 766,
+      "selfSamples": 9
+    },
+    {
+      "function": "finiteBounded3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1057,
+      "selfSamples": 9
+    },
+    {
+      "function": "clamp7",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1562,
+      "selfSamples": 9
+    },
+    {
+      "function": "clamp4",
+      "url": "public/worklets/fx-processor.js",
+      "line": 904,
+      "selfSamples": 8
+    },
+    {
+      "function": "Script",
+      "url": "node:vm",
+      "line": 85,
+      "selfSamples": 7
+    },
+    {
+      "function": "clamp3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 763,
+      "selfSamples": 7
+    },
+    {
+      "function": "processCabinet",
+      "url": "public/worklets/fx-processor.js",
+      "line": 6097,
+      "selfSamples": 7
+    },
+    {
+      "function": "recordWithHiss",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1272,
+      "selfSamples": 6
+    },
+    {
+      "function": "recordWithHiss",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1272,
+      "selfSamples": 6
+    },
+    {
+      "function": "refreshCompressorCoefficients",
+      "url": "public/worklets/fx-processor.js",
+      "line": 2145,
+      "selfSamples": 5
+    },
+    {
+      "function": "(program)",
+      "url": "",
+      "line": 0,
+      "selfSamples": 4
+    },
+    {
+      "function": "distortionAntiderivative",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9107,
+      "selfSamples": 4
+    },
+    {
+      "function": "clamp3",
+      "url": "public/worklets/fx-processor.js",
+      "line": 763,
+      "selfSamples": 4
+    },
+    {
+      "function": "lib/core/util.js",
+      "url": "node:internal/deps/undici/undici",
+      "line": 1218,
+      "selfSamples": 3
+    },
+    {
+      "function": "FxProcessor",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11578,
+      "selfSamples": 3
+    },
+    {
+      "function": "clamp22",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9154,
+      "selfSamples": 3
+    },
+    {
+      "function": "refreshStereoEnhanceCoefficients",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11025,
+      "selfSamples": 3
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 2
+    },
+    {
+      "function": "(idle)",
+      "url": "",
+      "line": 0,
+      "selfSamples": 2
+    },
+    {
+      "function": "createRingModTriangleTables",
+      "url": "public/worklets/fx-processor.js",
+      "line": 8973,
+      "selfSamples": 2
+    },
+    {
+      "function": "get wetLeft",
+      "url": "public/worklets/fx-processor.js",
+      "line": 958,
+      "selfSamples": 2
+    },
+    {
+      "function": "next",
+      "url": "public/worklets/fx-processor.js",
+      "line": 38,
+      "selfSamples": 2
+    },
+    {
+      "function": "processSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1158,
+      "selfSamples": 2
+    },
+    {
+      "function": "processStereoEnhance",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11033,
+      "selfSamples": 2
+    },
+    {
+      "function": "synchronizeFrame",
+      "url": "public/worklets/fx-processor.js",
+      "line": 10434,
+      "selfSamples": 2
+    },
+    {
+      "function": "__require",
+      "url": "node:internal/deps/undici/undici",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__name",
+      "url": "node:internal/deps/undici/undici",
+      "line": 4,
+      "selfSamples": 1
+    },
+    {
+      "function": "createWritableStdioStream",
+      "url": "node:internal/bootstrap/switches/is_main_thread",
+      "line": 50,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "url": "",
+      "line": 0,
+      "selfSamples": 1
+    },
+    {
+      "function": "getHighWaterMark",
+      "url": "node:internal/streams/state",
+      "line": 33,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "url": "node:internal/deps/undici/undici",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "url": "node:internal/deps/undici/undici",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "url": "node:internal/deps/undici/undici",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "url": "node:tls",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "url": "node:internal/crypto/util",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "url": "node:internal/crypto/keys",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "url": "node:internal/bootstrap/realm",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "internalBinding",
+      "url": "node:internal/bootstrap/realm",
+      "line": 182,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "url": "node:internal/deps/undici/undici",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/web/fetch/response.js",
+      "url": "node:internal/deps/undici/undici",
+      "line": 11544,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "url": "node:zlib",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "requireBuiltin",
+      "url": "node:internal/bootstrap/realm",
+      "line": 420,
+      "selfSamples": 1
+    },
+    {
+      "function": "channel",
+      "url": "node:diagnostics_channel",
+      "line": 239,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "url": "node:internal/webstreams/readablestream",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/web/eventsource/eventsource.js",
+      "url": "node:internal/deps/undici/undici",
+      "line": 16130,
+      "selfSamples": 1
+    },
+    {
+      "function": "defaultFactory",
+      "url": "node:internal/deps/undici/undici",
+      "line": 10699,
+      "selfSamples": 1
+    },
+    {
+      "function": "getOrInitializeCascadedLoader",
+      "url": "node:internal/modules/esm/loader",
+      "line": 922,
+      "selfSamples": 1
+    },
+    {
+      "function": "loadAndTranslate",
+      "url": "node:internal/modules/esm/loader",
+      "line": 492,
+      "selfSamples": 1
+    },
+    {
+      "function": "update",
+      "url": "node:internal/crypto/hash",
+      "line": 145,
+      "selfSamples": 1
+    },
+    {
+      "function": "createContext",
+      "url": "node:vm",
+      "line": 225,
+      "selfSamples": 1
+    },
+    {
+      "function": "createOversamplingFilters",
+      "url": "public/worklets/fx-processor.js",
+      "line": 5845,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1065,
+      "selfSamples": 1
+    },
+    {
+      "function": "BrowserGranularDelayDsp",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1606,
+      "selfSamples": 1
+    },
+    {
+      "function": "EqualizerDsp",
+      "url": "public/worklets/fx-processor.js",
+      "line": 653,
+      "selfSamples": 1
+    },
+    {
+      "function": "refreshTimeVariantCoefficients",
+      "url": "public/worklets/fx-processor.js",
+      "line": 11015,
+      "selfSamples": 1
+    },
+    {
+      "function": "firstOrderAllpassCoefficient",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9242,
+      "selfSamples": 1
+    },
+    {
+      "function": "advanceControlSmoothersSettled",
+      "url": "public/worklets/fx-processor.js",
+      "line": 10962,
+      "selfSamples": 1
+    },
+    {
+      "function": "get wetRight",
+      "url": "public/worklets/fx-processor.js",
+      "line": 961,
+      "selfSamples": 1
+    },
+    {
+      "function": "processSample",
+      "url": "public/worklets/fx-processor.js",
+      "line": 833,
+      "selfSamples": 1
+    },
+    {
+      "function": "get wetOutputLeft",
+      "url": "public/worklets/fx-processor.js",
+      "line": 837,
+      "selfSamples": 1
+    },
+    {
+      "function": "get wetOutputRight",
+      "url": "public/worklets/fx-processor.js",
+      "line": 840,
+      "selfSamples": 1
+    },
+    {
+      "function": "softSaturator",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1308,
+      "selfSamples": 1
+    },
+    {
+      "function": "get wetOutputLeft",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1162,
+      "selfSamples": 1
+    },
+    {
+      "function": "get wetOutputRight",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1166,
+      "selfSamples": 1
+    },
+    {
+      "function": "get wetOutputRight",
+      "url": "public/worklets/fx-processor.js",
+      "line": 1714,
+      "selfSamples": 1
+    },
+    {
+      "function": "process",
+      "url": "public/worklets/fx-processor.js",
+      "line": 686,
+      "selfSamples": 1
+    },
+    {
+      "function": "next",
+      "url": "public/worklets/fx-processor.js",
+      "line": 9146,
+      "selfSamples": 1
+    }
+  ]
+}

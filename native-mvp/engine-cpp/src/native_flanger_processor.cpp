@@ -58,7 +58,14 @@ bool NativeFlangerProcessor::setConfig(
         !std::isfinite(config.depth) || !std::isfinite(config.feedback) ||
         !std::isfinite(config.wetMix) ||
         config.delayMs < kMinimumDelayMs || config.delayMs > kMaximumDelayMs ||
-        config.rateHz < 0.05f || config.rateHz > 20.0f ||
+        !std::isfinite(config.stepRateHz) || !std::isfinite(config.separation) ||
+        !std::isfinite(config.directLevel) || !std::isfinite(config.effectLevel) ||
+        config.stepRateHz < 0.0f || config.stepRateHz > 100.0f ||
+        config.separation < 0.0f || config.separation > 1.0f ||
+        config.directLevel < 0.0f || config.directLevel > 1.0f ||
+        config.effectLevel < 0.0f || config.effectLevel > 1.0f ||
+        config.rateHz < (config.officialControls ? 0.001f : 0.05f) ||
+        config.rateHz > (config.officialControls ? 100.0f : 20.0f) ||
         config.depth < 0.0f || config.depth > 1.0f ||
         config.feedback < -kFeedbackLimit || config.feedback > kFeedbackLimit ||
         config.wetMix < 0.0f || config.wetMix > 1.0f) {
@@ -66,6 +73,10 @@ bool NativeFlangerProcessor::setConfig(
     }
 
     config_ = config;
+    stepRateHz_.setTarget(config.stepRateHz, rampFrames);
+    separation_.setTarget(config.separation, rampFrames);
+    directLevel_.setTarget(config.directLevel, rampFrames);
+    effectLevel_.setTarget(config.effectLevel, rampFrames);
     delayMs_.setTarget(config.delayMs, rampFrames);
     rateHz_.setTarget(config.rateHz, rampFrames);
     depth_.setTarget(config.depth, rampFrames);
@@ -80,6 +91,12 @@ void NativeFlangerProcessor::reset() noexcept {
     }
     writeIndices_.fill(0U);
     feedbackStates_.fill(0.0f);
+    stepPhase_ = 1.0;
+    heldWaves_.fill(0.0);
+    stepRateHz_.reset(config_.stepRateHz);
+    separation_.reset(config_.separation);
+    directLevel_.reset(config_.directLevel);
+    effectLevel_.reset(config_.effectLevel);
     leftPhase_ = 0.0;
     rightPhase_ = kPi;
     delayMs_.reset(config_.delayMs);
@@ -145,6 +162,13 @@ float NativeFlangerProcessor::processInPlace(
         const float feedback = feedback_.next();
         const float mix = wetMix_.next();
         const auto gains = dsp::equalPowerCrossfadeGains(mix);
+        const float stepHz = stepRateHz_.next();
+        const float separation = separation_.next();
+        const float direct = directLevel_.next();
+        const float effect = effectLevel_.next();
+        const bool captureStep = stepHz <= 0.0f || stepPhase_ >= 1.0;
+        if (stepPhase_ >= 1.0) stepPhase_ -= std::floor(stepPhase_);
+        if (stepHz > 0.0f) stepPhase_ += static_cast<double>(stepHz) / sampleRate_;
         const std::size_t offset = static_cast<std::size_t>(frame) * channels;
         std::array<float, kChannels> dry{};
         std::array<float, kChannels> delayed{};
@@ -155,10 +179,12 @@ float NativeFlangerProcessor::processInPlace(
             // poisoning feedback state or interpolation history.
             dry[channel] = std::isfinite(input) ? std::clamp(input, -kFeedbackStateLimit, kFeedbackStateLimit) : 0.0f;
 
-            const double phase = channel == 0U ? leftPhase_ : rightPhase_;
+            const double phase = channel == 0U ? leftPhase_ :
+                (config_.officialControls ? leftPhase_ + kPi * separation : rightPhase_);
+            if (captureStep) heldWaves_[channel] = std::sin(phase);
             const double excursionMs = static_cast<double>(depth) * static_cast<double>(kMaximumDepthMs);
             const double modulatedDelayMs = std::clamp(
-                static_cast<double>(baseDelayMs) + excursionMs * std::sin(phase),
+                static_cast<double>(baseDelayMs) + excursionMs * heldWaves_[channel],
                 static_cast<double>(kMinimumDelayMs),
                 static_cast<double>(kMaximumDelayMs)
             );
@@ -199,7 +225,9 @@ float NativeFlangerProcessor::processInPlace(
             // feedback is confined to the write path. Equal-power crossfade
             // below then gives independent, well-defined dry/wet endpoints.
             const float wet = 0.5f * (dry[channel] + delayed[channel]);
-            const float output = (dry[channel] * gains.first) + (wet * gains.second);
+            const float output = config_.officialControls && config_.enabled
+                ? dry[channel] * direct + delayed[channel] * effect
+                : (dry[channel] * gains.first) + (wet * gains.second);
             const float safeOutput = std::isfinite(output) ? output : 0.0f;
             interleaved[offset + channel] = safeOutput;
             peak = std::max(peak, std::fabs(safeOutput));

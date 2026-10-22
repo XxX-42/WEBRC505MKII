@@ -1,0 +1,2489 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+ RUN  v3.2.4 /workspace/scratch/2230ee2a4571/rc505-fx-parameters-20261022
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > lists WARP only as an experimental option in both Browser A–D banks
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > lists WARP only as an experimental option in both Browser A–D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > lists WARP only as an experimental option in both Browser A–D banks
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > lists WARP only as an experimental option in both Browser A–D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes HRM AUTO (M) from its experimental Browser catalog route in both A-D banks
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes HRM AUTO (M) from its experimental Browser catalog route in both A-D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes HRM AUTO (M) from its experimental Browser catalog route in both A-D banks
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes HRM AUTO (M) from its experimental Browser catalog route in both A-D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > centers TRANSPOSE when newly selected so the first sound is unshifted
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > centers TRANSPOSE when newly selected so the first sound is unshifted
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > centers TRANSPOSE when newly selected so the first sound is unshifted
+Unknown FX type: TRANSPOSE
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+Unknown FX type: PITCH BEND
+Unknown FX type: PITCH BEND
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes, updates, and persists HRM MANUAL controls in both runtime slot stores
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes, updates, and persists HRM MANUAL controls in both runtime slot stores
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes, updates, and persists HRM MANUAL controls in both runtime slot stores
+Unknown FX type: HRM MANUAL
+Unknown FX type: HRM MANUAL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes, updates, and persists HRM MANUAL controls in both runtime slot stores
+Unknown FX type: HRM MANUAL
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores
+Unknown FX type: OCTAVE
+Unknown FX type: OCTAVE
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores
+Unknown FX type: OCTAVE
+Unknown FX type: OCTAVE
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists the Browser VOCODER filterbank, carrier and mix
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists the Browser VOCODER filterbank, carrier and mix
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists the Browser VOCODER filterbank, carrier and mix
+Unknown FX type: VOCODER
+Unknown FX type: VOCODER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists the Browser VOCODER filterbank, carrier and mix
+Unknown FX type: VOCODER
+Unknown FX type: VOCODER
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > retains the shared Browser A–D selector and full option list
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > retains the shared Browser A–D selector and full option list
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT out of the Browser input selector
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT out of the Browser input selector
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes AUTO RIFF experimentally only when its Browser bank route is catalogued
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes AUTO RIFF experimentally only when its Browser bank route is catalogued
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes AUTO RIFF experimentally only when its Browser bank route is catalogued
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes AUTO RIFF experimentally only when its Browser bank route is catalogued
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+
+ ✓ tests/unit/browser-shared-fx-parameters-ui.spec.ts (12 tests) 5005ms
+   ✓ Browser face input shared FX controls > preserves the dedicated editor while exposing official controls and dispatching/persisting the edit  2267ms
+   ✓ Browser face input shared FX controls > requires an explicit ROLL variant and clears incompatible official fields on a variant change  303ms
+   ✓ Browser face track shared FX controls > preserves the dedicated editor while exposing official controls and dispatching/persisting the edit  368ms
+   ✓ Browser face track shared FX controls > requires an explicit ROLL variant and clears incompatible official fields on a variant change  318ms
+   ✓ Browser tech input shared FX controls > preserves the dedicated editor while exposing official controls and dispatching/persisting the edit  415ms
+ ✓ tests/unit/browser-yin-exact-optimization.spec.ts (22 tests) 4930ms
+   ✓ exact YIN frame-copy and prefix termination > keeps PCM and recursive state through mixed input, reset and poisoned scratch at 12000  385ms
+   ✓ exact YIN frame-copy and prefix termination > keeps long voiced PCM and mode changes exact at 440 Hz  300ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 24000 Hz / threshold 0.03  335ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 24000 Hz / threshold 0.4  329ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 48000 Hz / threshold 0.03  635ms
+   ✓ exact YIN frame-copy and prefix termination > overwrites every needed detector scratch prefix at 48000 Hz / threshold 0.4  708ms
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT bypassed when a previously active slot changes effect
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT bypassed when a previously active slot changes effect
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT bypassed when a previously active slot changes effect
+Unknown FX type: BEAT REPEAT
+Unknown FX type: BEAT REPEAT
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT bypassed when a previously active slot changes effect
+Unknown FX type: BEAT REPEAT
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation when a track slot changes to BEAT SCATTER
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation when a track slot changes to BEAT SCATTER
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation when a track slot changes to BEAT SCATTER
+Unknown FX type: BEAT SCATTER
+Unknown FX type: BEAT SCATTER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation when a track slot changes to BEAT SCATTER
+Unknown FX type: BEAT SCATTER
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: ROLL
+Unknown FX type: ROLL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: ROLL
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: ROLL
+Unknown FX type: ROLL
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+Unknown FX type: ROLL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+Unknown FX type: ROLL
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stdout | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > sends the same supported ROBOT pitch/formant/mix keys in Browser and Native modes
+FX Set: INPUT [A] -> FILTER
+FX Set: INPUT [C] -> REVERB
+FX Set: INPUT [D] -> SLICER
+FX Set: TRACK [A] -> FILTER
+FX Set: TRACK [C] -> REVERB
+FX Set: TRACK [D] -> SLICER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > sends the same supported ROBOT pitch/formant/mix keys in Browser and Native modes
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+ ✓ tests/unit/fx-panel-state.spec.ts (20 tests) 6966ms
+   ✓ FX panel runtime selection > keeps Native FX disabled until a bridge status confirms catalog support  1958ms
+   ✓ FX panel runtime selection > lists WARP only as an experimental option in both Browser A–D banks  431ms
+   ✓ FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed  372ms
+   ✓ FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores  330ms
+   ✓ FX panel runtime selection > exposes AUTO RIFF experimentally only when its Browser bank route is catalogued  366ms
+   ✓ FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields  529ms
+   ✓ FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters  545ms
+ ✓ tests/unit/official-browser-parameters.spec.ts (258 tests) 7064ms
+   ✓ manual-aligned Browser controls have real audio behavior > electric.scale 0 -> 1 changes the rendered signal  337ms
+   ✓ manual-aligned Browser controls have real audio behavior > keeps official parameter audio sample-clocked across callback sizes  483ms
+ ✓ tests/unit/fx-worklet.spec.ts (24 tests) 3339ms
+   ✓ checked-in Browser FX AudioWorklet bundle > runs configured GATE REVERB through variable worklet quanta with bounded gated tail  470ms
+   ✓ checked-in Browser FX AudioWorklet bundle > runs configured oversampled distortion and Lagrange flanger through variable worklet quanta  335ms
+   ✓ checked-in Browser FX AudioWorklet bundle > runs real stereo granular grains with controls through variable worklet quanta  698ms
+ ✓ tests/unit/browser-official-voice-controls.spec.ts (30 tests) 3287ms
+   ✓ official Browser voice audio behavior > ELECTRIC SHIFT transposes; SCALE constrains detected pitch to its pitch classes  430ms
+   ✓ official Browser voice audio behavior > ELECTRIC SPEED changes correction time and STABILITY creates note-selection hysteresis  595ms
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes four selected effects through each existing input and shared track A–D bank
+FX Set: INPUT [A] -> DSP LPF
+FX Set: TRACK [A] -> DSP LPF
+FX Set: INPUT [B] -> DSP BPF
+FX Set: TRACK [B] -> DSP BPF
+FX Set: INPUT [C] -> DSP HPF
+FX Set: TRACK [C] -> DSP HPF
+FX Set: INPUT [D] -> FDN8 REVERB
+FX Set: TRACK [D] -> FDN8 REVERB
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > constructs G2B on the actual Input and shared Track bank slots
+FX Set: INPUT [A] -> G2B
+FX Set: TRACK [C] -> G2B
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes ELECTRIC characters through all Input and shared Track A-D worklet slots
+FX Set: INPUT [A] -> ELECTRIC
+FX Set: INPUT [B] -> ELECTRIC
+FX Set: INPUT [C] -> ELECTRIC
+FX Set: INPUT [D] -> ELECTRIC
+FX Set: TRACK [A] -> ELECTRIC
+FX Set: TRACK [B] -> ELECTRIC
+FX Set: TRACK [C] -> ELECTRIC
+FX Set: TRACK [D] -> ELECTRIC
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes VOCODER through the real Input and shared Track slot adapters with named controls
+FX Set: INPUT [B] -> VOCODER
+FX Set: TRACK [D] -> VOCODER
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes OSC BOT through Input and shared Track worklets with tempo and named controls
+FX Set: INPUT [A] -> OSC BOT
+FX Set: TRACK [C] -> OSC BOT
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes OSC VOC (M) through selected Input and shared Track slots with MIDI controls
+FX Set: INPUT [B] -> OSC VOC (M)
+FX Set: TRACK [D] -> OSC VOC (M)
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes future Web MIDI note timestamps to only configured OSC VOC slots
+FX Set: INPUT [A] -> OSC VOC (M)
+FX Set: INPUT [C] -> DSP LPF
+FX Set: TRACK [B] -> OSC VOC (M)
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes ROLL through both Input and shared Track A–D worklets with tempo and named controls
+FX Set: INPUT [B] -> ROLL
+FX Set: TRACK [D] -> ROLL
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes FREEZE micro-loop controls through Browser Input and shared Track A–D
+FX Set: INPUT [A] -> FREEZE
+FX Set: TRACK [C] -> FREEZE
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > surfaces unsupported Browser spectral FREEZE configuration through engine status
+FX Set: INPUT [A] -> FREEZE
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes GATE REVERB controls through both Browser A–D banks
+FX Set: INPUT [A] -> GATE REVERB
+FX Set: TRACK [A] -> GATE REVERB
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes SLOW GEAR through Input and shared Track A–D with provisional controls
+FX Set: INPUT [A] -> SLOW GEAR
+FX Set: TRACK [A] -> SLOW GEAR
+FX Set: INPUT [B] -> SLOW GEAR
+FX Set: TRACK [B] -> SLOW GEAR
+FX Set: INPUT [C] -> SLOW GEAR
+FX Set: TRACK [C] -> SLOW GEAR
+FX Set: INPUT [D] -> SLOW GEAR
+FX Set: TRACK [D] -> SLOW GEAR
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes PREAMP source #23 through input and shared track banks with model/tone controls
+FX Set: INPUT [C] -> PREAMP
+FX Set: TRACK [B] -> PREAMP
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > installs VINYL FLICK through the real Track worklet path with neutral-center macro and track-only catalog scope
+FX Set: TRACK [A] -> VINYL FLICK
+
+ ✓ tests/unit/official-browser-counted-delay.spec.ts (29 tests) 2313ms
+   ✓ official browser counted-repeat delays > grows only when necessary and preserves the source history during a live tempo change  587ms
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes ISOLATOR through both A–D banks and preserves its band, gate and BPM controls
+FX Set: INPUT [A] -> ISOLATOR
+FX Set: TRACK [A] -> ISOLATOR
+FX Set: INPUT [B] -> ISOLATOR
+FX Set: TRACK [B] -> ISOLATOR
+FX Set: INPUT [C] -> ISOLATOR
+FX Set: TRACK [C] -> ISOLATOR
+FX Set: INPUT [D] -> ISOLATOR
+FX Set: TRACK [D] -> ISOLATOR
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > applies the generic bank parameter and active state to the selected DSP instance
+FX Set: INPUT [A] -> DSP LPF
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > configures the oversampled distortion and fractional-delay flanger macros
+FX Set: INPUT [A] -> DIST
+FX Set: TRACK [A] -> FLANGER
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes and configures the low-latency dynamics compressor in both banks
+FX Set: INPUT [C] -> DYNAMICS
+FX Set: TRACK [C] -> DYNAMICS
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes MOD DELAY into Browser Input and shared Track banks with smoothed fractional-delay controls
+FX Set: INPUT [B] -> MOD DELAY
+FX Set: TRACK [C] -> MOD DELAY
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes stereo-enhance through input and track A–D slots with normalized width controls
+FX Set: INPUT [A] -> STEREO ENHANCE
+FX Set: TRACK [D] -> STEREO ENHANCE
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes the preallocated fractional delay through the existing bank slot
+FX Set: INPUT [B] -> DELAY
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes and mixes the multi-voice chorus through a track-bank slot
+FX Set: TRACK [B] -> CHORUS
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes PHASER through both A–D banks as an all-pass worklet, not the legacy placeholder
+FX Set: INPUT [A] -> PHASER
+FX Set: TRACK [D] -> PHASER
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes TREMOLO through input and shared track banks with an amplitude-depth macro
+FX Set: INPUT [B] -> TREMOLO
+FX Set: TRACK [C] -> TREMOLO
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes AUTO PAN through input and shared track banks with an equal-power pan-depth macro
+FX Set: INPUT [D] -> AUTO PAN
+FX Set: TRACK [A] -> AUTO PAN
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes clean-room Lo-Fi to input and shared track slots with a bounded mix macro
+FX Set: INPUT [B] -> LO-FI
+FX Set: TRACK [C] -> LO-FI
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes four-band EQ to input and shared track slots with a flat-to-tilt macro
+FX Set: INPUT [A] -> EQ
+FX Set: TRACK [D] -> EQ
+
+ ✓ tests/unit/fx-dsp-core.spec.ts (33 tests) 9606ms
+   ✓ bounded Browser FX DSP core > sweeps filter and FDN8 processing across sample rates with finite, bounded output  2679ms
+   ✓ bounded Browser FX DSP core > is block-size invariant for filters, modulated delay, oversampled distortion, and FDN8 feedback  473ms
+   ✓ bounded Browser FX DSP core > runs the integrated granular core with real wet audio, bounded output and block-invariant stereo state  433ms
+   ✓ bounded Browser FX DSP core > exposes meaningful filter, modulation, reverb-mix, and decay controls  337ms
+   ✓ bounded Browser FX DSP core > creates decorrelated multi-voice stereo chorus with wet/dry control and bounded feedback  519ms
+   ✓ bounded Browser FX DSP core > sweeps real four/eight-stage phaser notches with stereo offset and stable feedback  1025ms
+   ✓ bounded Browser FX DSP core > clamps phaser parameters to 4/8 stages and stays invariant across arbitrary callback quanta  477ms
+   ✓ bounded Browser FX DSP core > keeps tremolo rate/depth updates bounded and invariant across arbitrary block segmentation  509ms
+   ✓ bounded Browser FX DSP core > keeps autopan waveform/rate updates block-invariant and clamps unsafe controls  458ms
+   ✓ bounded Browser FX DSP core > implements deterministic Lo-Fi sample-rate hold and bit reduction across variable blocks  518ms
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes TWIST through Browser Input and shared Track A–D banks with signed macro controls
+FX Set: INPUT [B] -> TWIST
+FX Set: TRACK [C] -> TWIST
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes experimental WARP through Input A and shared Track D with tempo, granular controls, and no spectral mode
+FX Set: INPUT [A] -> WARP (EXPERIMENTAL)
+FX Set: TRACK [D] -> WARP (EXPERIMENTAL)
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes MANUAL PAN to both banks with the generic amount mapped to a static position
+FX Set: INPUT [B] -> MANUAL PAN
+FX Set: TRACK [C] -> MANUAL PAN
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes TAPE ECHO to both banks and maps its provisional controls
+FX Set: INPUT [B] -> TAPE ECHO
+FX Set: TRACK [C] -> TAPE ECHO
+
+stderr | tests/unit/app-audio-retry.spec.ts > App audio startup > keeps output ready after input failure and allows a separate input retry
+Failed to initialize audio engine: Error: Microphone permission denied
+    at /workspace/scratch/2230ee2a4571/rc505-fx-parameters-20261022/tests/unit/app-audio-retry.spec.ts:68:65
+    at file:///workspace/scratch/2230ee2a4571/rc505-quality-recovery-20261022/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes PANNING DELAY to Input and shared Track banks with amount and custom controls
+FX Set: INPUT [A] -> PANNING DELAY
+FX Set: TRACK [D] -> PANNING DELAY
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes GRANULAR DELAY through input and shared Track A–D slots with all grain controls
+FX Set: INPUT [B] -> GRANULAR DELAY
+FX Set: TRACK [D] -> GRANULAR DELAY
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes RADIO through input and shared Track A–D slots with band, drive, noise and mix controls
+FX Set: INPUT [A] -> RADIO
+FX Set: TRACK [C] -> RADIO
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes SUSTAINER through Input and every shared Track A–D slot with its four controls
+FX Set: INPUT [A] -> SUSTAINER
+FX Set: TRACK [A] -> SUSTAINER
+FX Set: TRACK [B] -> SUSTAINER
+FX Set: TRACK [C] -> SUSTAINER
+FX Set: TRACK [D] -> SUSTAINER
+
+stdout | tests/unit/browser-fx-bank-routing.spec.ts > Browser clean-room DSP in dynamic FX banks > routes VIBRATO through input and shared Track A–D slots with LFO and delay controls
+FX Set: INPUT [A] -> VIBRATO
+FX Set: TRACK [D] -> VIBRATO
+
+ ✓ tests/unit/browser-fx-bank-routing.spec.ts (36 tests) 2135ms
+ ✓ tests/unit/browser-electric-dsp.spec.ts (4 tests) 2196ms
+   ✓ clean-room Browser ELECTRIC DSP > renders four distinct, finite character paths from the same voiced source  1297ms
+   ✓ clean-room Browser ELECTRIC DSP > blends measured F0 toward the nearest semitone as pitch snap increases  593ms
+ ✓ tests/unit/app-audio-retry.spec.ts (9 tests) 2818ms
+   ✓ App audio startup > waits for a user gesture before Browser initialization and connects its input  1189ms
+ ✓ tests/unit/official-browser-preamp.spec.ts (32 tests) 1873ms
+stdout | tests/unit/trackAudioPitch.spec.ts > TrackAudio KeepPitch opt-in routing > falls back from LIVE_MONO for reverse and short loops
+Track 1 reverse: true
+
+stdout | tests/unit/trackAudioPitch.spec.ts > TrackAudio KeepPitch opt-in routing > falls back from LIVE_MONO for reverse and short loops
+Track 1 reverse: false
+
+stdout | tests/unit/trackAudioPitch.spec.ts > TrackAudio KeepPitch opt-in routing > falls back to legacy reverse playback and tears down the pitch route
+Track 1 reverse: true
+
+stdout | tests/unit/trackAudioPitch.spec.ts > TrackAudio KeepPitch opt-in routing > keeps LIVE_POLY leased while PCM undo and redo restart the selected loop
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 1.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 240.00 BPM
+  2 measure(s): 8 beats → 480.00 BPM
+  4 measure(s): 16 beats → 960.00 BPM
+  8 measure(s): 32 beats → 1920.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 44100 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+ ✓ tests/unit/native-shared-bank-named-parameters.spec.ts (7 tests) 1325ms
+   ✓ Native shared Input and Track named parameter controls > validates host schema and persists controls only after an exact Native ACK for each bank  327ms
+ ✓ tests/unit/browser-synth.spec.ts (6 tests) 2089ms
+   ✓ clean-room Browser SYNTH > is accepted by the shipped processor factory and applies named configure updates  431ms
+   ✓ clean-room Browser SYNTH > tracks a monophonic sine and resynthesizes the selected octave with polyBLEP  320ms
+   ✓ clean-room Browser SYNTH > changes harmonic content with waveform and tone controls  644ms
+   ✓ clean-room Browser SYNTH > produces identical output for different callback block sizes and resets its detector state  386ms
+stdout | tests/unit/trackAudioPitch.spec.ts > TrackAudio KeepPitch opt-in routing > releases the lease only when clearing/disposal truly retires LIVE_POLY
+Track 1 cleared
+
+stdout | tests/unit/trackAudioPitch.spec.ts > TrackAudio KeepPitch opt-in routing > stops and clears the Worklet on stop/reset without changing default playback
+Track 1 cleared
+
+ ✓ tests/unit/trackAudioPitch.spec.ts (11 tests) 1984ms
+   ✓ TrackAudio KeepPitch opt-in routing > routes an opted-in loop through Signalsmith internal buffers with measured latency  300ms
+   ✓ TrackAudio KeepPitch opt-in routing > replaces the internal loop buffer on source changes and falls back for too-short loops  545ms
+   ✓ TrackAudio KeepPitch opt-in routing > keeps LIVE_POLY leased while PCM undo and redo restart the selected loop  807ms
+ ✓ tests/unit/browser-per-track-fx-ui.spec.ts (9 tests) 1787ms
+   ✓ Browser per-track FX target UI > routes independent track/slot controls, then returns to the unchanged shared editor  455ms
+stdout | tests/unit/browser-per-track-fx.spec.ts > Browser five independent pre-mix A–D chains > wires every actual TrackAudio private bank before level/pan/TrackMix and preserves the shared bank
+FX Set: TRACK [A] -> DELAY
+
+stdout | tests/unit/browser-per-track-fx.spec.ts > Browser five independent pre-mix A–D chains > wires every actual TrackAudio private bank before level/pan/TrackMix and preserves the shared bank
+FX Set: TRACK [A] -> BEAT SHIFT
+
+ ✓ tests/unit/browser-per-track-fx.spec.ts (75 tests) 1568ms
+ ✓ tests/unit/official-browser-reverse-reverb.spec.ts (13 tests) 1544ms
+   ✓ Browser official REVERSE REVERB rising wet tail > applies independent wet-only spectral cuts and treats FLAT as bypass  330ms
+   ✓ Browser official REVERSE REVERB rising wet tail > supports the full 10-second TIME, 1-second gate and 500-ms pre-delay without wrapping early  356ms
+ ✓ tests/unit/browser-fx-control-settled-fastpath.spec.ts (5 tests) 1637ms
+   ✓ Browser FX settled smoother fast path > matches original output bits through active ramps, changed targets, reset, and resumed ramps  747ms
+   ✓ Browser FX settled smoother fast path > keeps the coefficient countdown phase when a settled core receives new controls  570ms
+stdout | tests/unit/beat-repeat.spec.ts > Browser BEAT REPEAT (catalog ID 51) > rejects Input FX assignment and is wired only into the shared Track A–D bank
+FX Set: TRACK [C] -> BEAT REPEAT
+
+ ✓ tests/unit/native-face-fx-parameters.spec.ts (11 tests) 1509ms
+ ✓ tests/unit/panning-delay-dsp.spec.ts (7 tests) 1650ms
+   ✓ Browser PANNING DELAY DSP > keeps long high-feedback runs finite and bounded for hostile input  1099ms
+   ✓ Browser PANNING DELAY DSP > clamps constructor and updated parameter values to the catalog ranges  338ms
+ ✓ tests/unit/beat-repeat.spec.ts (5 tests) 1458ms
+   ✓ Browser BEAT REPEAT (catalog ID 51) > replays reverse/alternate slices with decay and bounded deterministic storage at the 6-second limit  1332ms
+ ✓ tests/unit/browser-tape-primitive-cache.spec.ts (1 test) 1360ms
+   ✓ Browser TAPE ECHO exact primitive cache > matches uncached ADAA through saturation disable/restore, reset and channel-specific silence  1359ms
+ ✓ tests/unit/browser-g2b.spec.ts (3 tests) 1665ms
+   ✓ clean-room Browser G2B > uses an explicit octave-down square voice, not the SYNTH source-pitch default  391ms
+   ✓ clean-room Browser G2B > honors blend, body cutoff, and bounded controls without callback-size dependence  894ms
+   ✓ clean-room Browser G2B > constructs through the shipped AudioWorklet and accepts named updates  379ms
+ ✓ tests/unit/official-browser-final-controls.spec.ts (20 tests) 1309ms
+ ✓ tests/unit/tape-echo-dsp.spec.ts (8 tests) 1308ms
+   ✓ Browser TAPE ECHO DSP > keeps long high-feedback runs finite and bounded for hostile input  1103ms
+ ✓ tests/unit/browser-preamp-antiderivative-cache.spec.ts (2 tests) 1134ms
+   ✓ Browser PREAMP exact ADAA primitive cache > is sample-identical to cache misses through every model, automation, reset and tiny inputs  1125ms
+stdout | tests/unit/trackAudio.spec.ts > TrackAudio transport sync helpers > reanchors Beat Shift to the shared BPM with a short source crossfade
+BPM updated to: 120
+
+stdout | tests/unit/trackAudio.spec.ts > TrackAudio transport sync helpers > reanchors Beat Shift to the shared BPM with a short source crossfade
+BPM updated to: 60
+BPM updated to: 120
+
+ ✓ tests/unit/browser-fdn-modulo-fast-path.spec.ts (5 tests) 1148ms
+stdout | tests/unit/trackAudio.spec.ts > TrackAudio transport sync helpers > returns to direct reverse playback when reverse is toggled during read-head playback
+Track 1 reverse: true
+
+ ✓ tests/unit/trackAudio.spec.ts (27 tests) 994ms
+ ✓ tests/unit/browser-osc-bot-core.spec.ts (6 tests) 1430ms
+   ✓ Browser clean-room OSC BOT carrier-bank core > renders distinct authored step patterns and is invariant to variable block sizes  857ms
+ ✓ tests/unit/browser-recovery-adoption.spec.ts (10 tests) 1108ms
+ ✓ tests/unit/official-browser-meter.spec.ts (37 tests) 1019ms
+ ✓ tests/unit/browser-per-track-fx-controls.spec.ts (56 tests) 1138ms
+ ✓ tests/unit/track-strip-live-pitch.spec.ts (10 tests) 715ms
+ ✓ tests/unit/projectArchive.spec.ts (13 tests) 897ms
+   ✓ project PCM archive codec > round-trips mono/stereo PCM, null tracks, and transport metadata deterministically  520ms
+ ✓ tests/unit/audioEngine.spec.ts (6 tests) 836ms
+ ✓ tests/unit/browser-preamp.spec.ts (9 tests) 725ms
+   ✓ clean-room Browser PREAMP > rejects high-frequency nonlinear aliases against a single-rate waveshaper reference  445ms
+ ✓ tests/unit/browser-distortion-antiderivative-cache.spec.ts (1 test) 631ms
+   ✓ Browser DIST exact ADAA primitive cache > matches uncached primitives through modes, interrupted crossfades, drive, reset and silence  630ms
+ ✓ tests/unit/official-pitch-extended-range.spec.ts (4 tests) 796ms
+   ✓ official pitch range reaches Signalsmith DSP > FORMANT changes the real spectral envelope in the requested direction  668ms
+ ✓ tests/unit/native-rhythm-ui.spec.ts (4 tests) 689ms
+ ✓ tests/unit/browser-per-track-fx-state.spec.ts (10 tests) 547ms
+stdout | tests/unit/browser-beat-shift.spec.ts > Browser clean-room BEAT SHIFT (catalog source ID 52) > keeps the shared Track A–D adapters dry for source-aware routing and preserves variable channels
+FX Set: TRACK [A] -> BEAT SHIFT
+FX Set: TRACK [B] -> BEAT SHIFT
+
+ ✓ tests/unit/browser-beat-shift.spec.ts (5 tests) 833ms
+   ✓ Browser clean-room BEAT SHIFT (catalog source ID 52) > is invariant to variable process-block segmentation and crossfades tempo/offset updates  458ms
+ ✓ tests/unit/browser-robot-latency-metadata.spec.ts (18 tests) 891ms
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > keeps an empty track recordable after stop-before-first-frame and preserves an incumbent loop
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > keeps an empty track recordable after stop-before-first-frame and preserves an incumbent loop
+Track 1: No master track - starting immediately
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > keeps an empty track recordable after stop-before-first-frame and preserves an incumbent loop
+Track 1 recorded: 0.00s (3 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 3528000.00 BPM
+  2 measure(s): 8 beats → 7056000.00 BPM
+  4 measure(s): 16 beats → 14112000.00 BPM
+  8 measure(s): 32 beats → 28224000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 3 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > preflights and atomically replaces several history owners against the shared cap
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > admits exactly 512 MiB of retained PCM across owners, without allocating a huge loop
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > shares actual stereo snapshot bytes within one engine and isolates other engines
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > shares actual stereo snapshot bytes within one engine and isolates other engines
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (4 samples)
+Track 1 cleared
+Track 2 cleared
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > rejects overdub before mutation when history plus rollback PCM exceed the shared cap
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > rejects overdub before mutation when history plus rollback PCM exceed the shared cap
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (4 samples)
+Track 1 cleared
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > rejects overdub before mutation when history plus rollback PCM exceed the shared cap
+Track 2 cleared
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > rejects an undo swap without changing either state when the inverse cannot fit
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser shared PCM history admission > rejects an undo swap without changing either state when the inverse cannot fit
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (4 samples)
+Track 2 cleared
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser five-track project replacement > installs all prepared buffers together and makes each previous loop that track’s undo step
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser five-track project replacement > installs all prepared buffers together and makes each previous loop that track’s undo step
+Track 1 recorded: 0.00s (2 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 5292000.00 BPM
+  2 measure(s): 8 beats → 10584000.00 BPM
+  4 measure(s): 16 beats → 21168000.00 BPM
+  8 measure(s): 32 beats → 42336000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 2 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (2 samples)
+Track 3 recorded: 0.00s (2 samples)
+Track 4 recorded: 0.00s (2 samples)
+Track 5 recorded: 0.00s (2 samples)
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser five-track project replacement > rejects the entire project before mutation when the shared undo budget cannot retain all five old loops
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser five-track project replacement > rejects the entire project before mutation when the shared undo budget cannot retain all five old loops
+Track 1 recorded: 0.00s (2 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 5292000.00 BPM
+  2 measure(s): 8 beats → 10584000.00 BPM
+  4 measure(s): 16 beats → 21168000.00 BPM
+  8 measure(s): 32 beats → 42336000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 2 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (2 samples)
+Track 3 recorded: 0.00s (2 samples)
+Track 4 recorded: 0.00s (2 samples)
+Track 5 recorded: 0.00s (2 samples)
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser five-track project replacement > rejects a stale generation without stopping or replacing any track
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser five-track project replacement > rejects a stale generation without stopping or replacing any track
+Track 1 recorded: 0.00s (1 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 10584000.00 BPM
+  2 measure(s): 8 beats → 21168000.00 BPM
+  4 measure(s): 16 beats → 42336000.00 BPM
+  8 measure(s): 32 beats → 84672000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 1 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (1 samples)
+Track 3 recorded: 0.00s (1 samples)
+Track 4 recorded: 0.00s (1 samples)
+Track 5 recorded: 0.00s (1 samples)
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > undoes record/clear per track, with repeatable redo and independent channel data
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > undoes record/clear per track, with repeatable redo and independent channel data
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (4 samples)
+Track 1 cleared
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > captures pre-overdub stereo bits once, waits for final patches, then swaps exact PCM
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > captures pre-overdub stereo bits once, waits for final patches, then swaps exact PCM
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back already-applied post-stop stereo writes in reverse order across loop wrap
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back already-applied post-stop stereo writes in reverse order across loop wrap
+Track 1 recorded: 0.00s (2 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 5292000.00 BPM
+  2 measure(s): 8 beats → 10584000.00 BPM
+  4 measure(s): 16 beats → 21168000.00 BPM
+  8 measure(s): 32 beats → 42336000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 2 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > applies only the pre-stop prefix of a delayed patch before acknowledging the last patch
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > applies only the pre-stop prefix of a delayed patch before acknowledging the last patch
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back and retires the processor when a patch predecessor does not match live PCM
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back and retires the processor when a patch predecessor does not match live PCM
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > restores the complete pre-overdub PCM and prior history after terminal pool overflow
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > restores the complete pre-overdub PCM and prior history after terminal pool overflow
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+Track 1 cleared
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > restores the complete pre-overdub PCM and prior history after terminal pool overflow
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > does not report a successful overflow rollback when the baseline image is unavailable
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > does not report a successful overflow rollback when the baseline image is unavailable
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > requires bit-exact patch preimages, including the sign bit of zero
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > requires bit-exact patch preimages, including the sign bit of zero
+Track 1 recorded: 0.00s (2 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 5292000.00 BPM
+  2 measure(s): 8 beats → 10584000.00 BPM
+  4 measure(s): 16 beats → 21168000.00 BPM
+  8 measure(s): 32 beats → 42336000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 2 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK reports a processor cutoff different from the requested stop frame
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK reports a processor cutoff different from the requested stop frame
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > validates the processor-reported cutoff when the host could not read its own stop frame
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > validates the processor-reported cutoff when the host could not read its own stop frame
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has missing request frame
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has missing request frame
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has NaN request frame
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has NaN request frame
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has request frame different from the requested boundary
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has request frame different from the requested boundary
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has missing exclusive applied end
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has missing exclusive applied end
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has NaN exclusive applied end
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has NaN exclusive applied end
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has exclusive applied end different from the requested boundary
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has exclusive applied end different from the requested boundary
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has missing processor frame
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has missing processor frame
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has processor frame before the requested cutoff
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has processor frame before the requested cutoff
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: missing patchesSent
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: missing patchesSent
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: NaN patchesSent
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: NaN patchesSent
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: fractional patchesSent
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: fractional patchesSent
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: infinite patchesSent
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: infinite patchesSent
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: negative patchesSent
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: negative patchesSent
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: missing overflowFrames
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: missing overflowFrames
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: NaN overflowFrames
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: NaN overflowFrames
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: negative overflowFrames
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: negative overflowFrames
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: missing overflowEvents
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: missing overflowEvents
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: NaN overflowEvents
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: NaN overflowEvents
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: patch count below already delivered messages
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rolls back if the terminal ACK has invalid counters: patch count below already delivered messages
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > keeps prior history when a skipped patch sequence is followed by an invalid stop ACK
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > keeps prior history when a skipped patch sequence is followed by an invalid stop ACK
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > stages exact shared-input frames before any PCM patch, then commits one undoable stereo edit
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > stages exact shared-input frames before any PCM patch, then commits one undoable stereo edit
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > accepts a zero-length backfill ACK after the tap has negotiated the same stereo format
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > accepts a zero-length backfill ACK after the tap has negotiated the same stereo format
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rejects an incomplete shared-input acknowledgement without changing PCM or history
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rejects an incomplete shared-input acknowledgement without changing PCM or history
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > waits for input-capture abort acknowledgement before releasing a startup lease
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > waits for input-capture abort acknowledgement before releasing a startup lease
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+ ✓ tests/unit/isolator-dsp.spec.ts (5 tests) 638ms
+   ✓ clean-room Browser ISOLATOR > recombines the three bands to unity at 0 dB with gate depth off  331ms
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > does not abort an already-stopped capture while its exact completion ACK is in flight
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > does not abort an already-stopped capture while its exact completion ACK is in flight
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > invalidates only the edited track redo on a new completed recording
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > invalidates only the edited track redo on a new completed recording
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 2 recorded: 0.00s (4 samples)
+Track 1 recorded: 0.00s (4 samples)
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > invalidates redo on the first actual overdub patch, but a no-input session preserves it
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > invalidates redo on the first actual overdub patch, but a no-input session preserves it
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+Track 1 cleared
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rejects overdub before PCM mutation if its rollback snapshot cannot be allocated
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > rejects overdub before PCM mutation if its rollback snapshot cannot be allocated
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+Track 1 cleared
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > restores its old master timing only when no current master would be overwritten
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser per-track one-step PCM history > restores its old master timing only when no current master would be overwritten
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+BPM updated to: 93
+Master track reset
+Track 1 cleared
+BPM updated to: 93
+Master track reset
+Track 2 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 2 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+BPM updated to: 137
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > discards a shared take after stop ACK timeout and fences a late ACK from a later session
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > discards a shared take after stop ACK timeout and fences a late ACK from a later session
+Track 1 recorded: 0.00s (3 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 3528000.00 BPM
+  2 measure(s): 8 beats → 7056000.00 BPM
+  4 measure(s): 16 beats → 14112000.00 BPM
+  8 measure(s): 32 beats → 28224000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 3 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Track 1 recorded: 0.00s (3 samples)
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > keeps the reserved undo image when terminal stop ACK times out after a pre-stop patch
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > keeps the reserved undo image when terminal stop ACK times out after a pre-stop patch
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > unlocks history after automatic capture-limit completion without a control-thread stop
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > unlocks history after automatic capture-limit completion without a control-thread stop
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > keeps both captured channels if the completion acknowledgement misreports mono
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > keeps both captured channels if the completion acknowledgement misreports mono
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > waits for every record chunk before publishing an undoable stereo recording
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > waits for every record chunk before publishing an undoable stereo recording
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > ignores queued recording completion/chunks after clear and keeps the existing redo
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > ignores queued recording completion/chunks after clear and keeps the existing redo
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > ignores queued recording completion/chunks after clear and keeps the existing redo
+Track 1 cleared
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > cancels an awaited recording startup on clear, without reviving the track
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > cancels an awaited recording startup on clear, without reviving the track
+Track 1 cleared
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > drains final overdub patches before clear, then restores the exact final stereo edit
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > drains final overdub patches before clear, then restores the exact final stereo edit
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > drains final overdub patches before clear, then restores the exact final stereo edit
+Master track reset
+Track 1 cleared
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > ignores a stale patch callback from a retired overdub generation while the next edit is active
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > ignores a stale patch callback from a retired overdub generation while the next edit is active
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > cancels overdub startup when clear wins the input-await race
+Master track reset
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > cancels overdub startup when clear wins the input-await race
+Track 1 recorded: 0.00s (4 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 2646000.00 BPM
+  2 measure(s): 8 beats → 5292000.00 BPM
+  4 measure(s): 16 beats → 10584000.00 BPM
+  8 measure(s): 32 beats → 21168000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 4 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+Master track reset
+Track 1 cleared
+
+stdout | tests/unit/browserPcmHistory.spec.ts > Browser PCM history asynchronous barriers > cancels overdub startup when clear wins the input-await race
+BPM updated to: 120
+
+ ✓ tests/unit/browserPcmHistory.spec.ts (58 tests) 728ms
+ ✓ tests/unit/native-step-slicer-persistence.spec.ts (1 test) 440ms
+   ✓ Native STEP SLICER per-slot persistence > persists edited sequence parameters independently for Input and Track slots  439ms
+ ✓ tests/unit/browser-robot-worklet.spec.ts (1 test) 550ms
+   ✓ Browser ROBOT worklet integration > renders PSOLA-lite voiced output, reports its gate, and is block-segmentation invariant  548ms
+ ✓ tests/unit/official-browser-freeze.spec.ts (15 tests) 497ms
+ ✓ tests/unit/browser-vocoder.spec.ts (8 tests) 506ms
+ ✓ tests/unit/rhythm-engine.spec.ts (7 tests) 513ms
+   ✓ rhythm clean-room catalog and renderer > keeps procedural output invariant when the absolute timeline is rendered in different block sizes  301ms
+ ✓ tests/unit/vinyl-flick-dsp.spec.ts (5 tests) 515ms
+ ✓ tests/unit/browser-osc-voc-core.spec.ts (9 tests) 376ms
+stdout | tests/unit/dsp-recording.spec.ts > TrackAudio recording chunk assembly > keeps latency trim, circular offset, and slave sizing while processing in place
+Track 1 recorded: 0.01s (8 samples)
+
+ ✓ tests/unit/dsp-recording.spec.ts (10 tests) 466ms
+ ✓ tests/unit/browser-fx-equal-power-cache.spec.ts (1 test) 318ms
+   ✓ Browser FX equal-power gain cache > is bit-identical to forcing a cache miss at every sample through automation and resets  317ms
+ ✓ tests/unit/browser-fx-clamp.spec.ts (6 tests) 325ms
+ ✓ tests/unit/granular-delay-dsp.spec.ts (3 tests) 338ms
+ ✓ tests/unit/official-controls-integration.spec.ts (5 tests) 322ms
+   ✓ Official controls across source, UI and executable whitelist > only exposes controls admitted by the real DSP registry, preserving legacy units  316ms
+ ✓ tests/unit/browser-auto-riff-dsp.spec.ts (7 tests) 449ms
+stdout | tests/unit/browser-loop-transport-routing.spec.ts > Browser Track source-aware BEAT SHIFT and VINYL FLICK routing > syncs active Track A–D types, named parameters, and macro updates to every TrackAudio
+FX Set: TRACK [A] -> BEAT SHIFT
+
+stdout | tests/unit/browser-loop-transport-routing.spec.ts > Browser Track source-aware BEAT SHIFT and VINYL FLICK routing > syncs active Track A–D types, named parameters, and macro updates to every TrackAudio
+FX Set: TRACK [B] -> VINYL FLICK
+
+stdout | tests/unit/browser-loop-transport-routing.spec.ts > Browser Track source-aware BEAT SHIFT and VINYL FLICK routing > syncs active Track A–D types, named parameters, and macro updates to every TrackAudio
+FX Set: TRACK [C] -> BEAT SHIFT
+
+stdout | tests/unit/browser-loop-transport-routing.spec.ts > Browser Track source-aware BEAT SHIFT and VINYL FLICK routing > syncs active Track A–D types, named parameters, and macro updates to every TrackAudio
+FX Set: TRACK [D] -> VINYL FLICK
+
+stdout | tests/unit/rhythm-worklet.spec.ts > rhythm AudioWorklet integration > reconfigures at the new tempo and keeps clean-room timing settings through tempo changes
+BPM updated to: 120
+
+stdout | tests/unit/browser-loop-transport-routing.spec.ts > Browser Track source-aware BEAT SHIFT and VINYL FLICK routing > clears a per-loop override without changing other tracks and blocks legacy shared sync from overwriting it
+FX Set: TRACK [A] -> BEAT SHIFT
+
+stdout | tests/unit/rhythm-worklet.spec.ts > rhythm AudioWorklet integration > reconfigures at the new tempo and keeps clean-room timing settings through tempo changes
+BPM updated to: 93
+BPM updated to: 120
+
+ ✓ tests/unit/rhythm-worklet.spec.ts (13 tests) 387ms
+stdout | tests/unit/browser-loop-transport-routing.spec.ts > Browser Track source-aware BEAT SHIFT and VINYL FLICK routing > keeps the shared postmix adapters dry, gates wrong placements, clears bypass/removal, and reports conflicts per track
+FX Set: TRACK [A] -> BEAT SHIFT
+
+ ✓ tests/unit/browser-warp.spec.ts (5 tests) 239ms
+stdout | tests/unit/browser-loop-transport-routing.spec.ts > Browser Track source-aware BEAT SHIFT and VINYL FLICK routing > keeps the shared postmix adapters dry, gates wrong placements, clears bypass/removal, and reports conflicts per track
+FX Set: TRACK [B] -> VINYL FLICK
+
+ ✓ tests/unit/mod-delay-dsp.spec.ts (3 tests) 341ms
+   ✓ Browser MOD DELAY (catalog source ID 39) > modulates a delayed tone, remains finite at maximum feedback and is block-invariant  323ms
+ ✓ tests/unit/browser-loop-transport-routing.spec.ts (5 tests) 335ms
+ ✓ tests/unit/official-browser-dynamics.spec.ts (23 tests) 354ms
+ ✓ tests/unit/native-per-track-fx-state.spec.ts (7 tests) 183ms
+ ✓ tests/unit/native-track-strip-capabilities.spec.ts (3 tests) 312ms
+ ✓ tests/unit/official-auto-riff-controls.spec.ts (13 tests) 331ms
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps the newest successful device when getUserMedia requests resolve out of order
+
+?? Switching input device to: mic-older
+
+?? Switching input device to: mic-newer
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps the newest successful device when getUserMedia requests resolve out of order
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps the newest successful device when getUserMedia requests resolve out of order
+  ? New input device connected
+  ??  Monitoring: DISABLED (SAFE)
+
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > withdraws exact-frame capture readiness while the shared ring rewarms after a timeline reset
+
+?? Switching input device to: mic-warmup
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > withdraws exact-frame capture readiness while the shared ring rewarms after a timeline reset
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > withdraws exact-frame capture readiness while the shared ring rewarms after a timeline reset
+  ? New input device connected
+  ??  Monitoring: DISABLED (SAFE)
+
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > does not let an older late stream or error overwrite the newest failed request
+
+?? Switching input device to: mic-older
+
+?? Switching input device to: mic-newer
+
+stderr | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > does not let an older late stream or error overwrite the newest failed request
+Failed to set input device: DOMException {}
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > does not start a default-device fallback for an obsolete request failure
+
+?? Switching input device to: mic-older
+
+?? Switching input device to: mic-newer
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > does not start a default-device fallback for an obsolete request failure
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > does not start a default-device fallback for an obsolete request failure
+  ? New input device connected
+  ??  Monitoring: DISABLED (SAFE)
+
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps a previously committed live input when a newer permission request fails during its warm-up
+
+?? Switching input device to: mic-older
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps a previously committed live input when a newer permission request fails during its warm-up
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps a previously committed live input when a newer permission request fails during its warm-up
+
+?? Switching input device to: mic-newer
+
+stderr | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps a previously committed live input when a newer permission request fails during its warm-up
+Failed to set input device: DOMException {}
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > ignores a queued ended callback from a retired stream and removes its listener before stopping it
+
+?? Switching input device to: mic-old
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > ignores a queued ended callback from a retired stream and removes its listener before stopping it
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > ignores a queued ended callback from a retired stream and removes its listener before stopping it
+  ? New input device connected
+  ??  Monitoring: DISABLED (SAFE)
+
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > ignores a queued ended callback from a retired stream and removes its listener before stopping it
+
+?? Switching input device to: mic-new
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > ignores a queued ended callback from a retired stream and removes its listener before stopping it
+  ? Disconnected old input node
+  ? Stopped old input stream
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > ignores a queued ended callback from a retired stream and removes its listener before stopping it
+  ? New input device connected
+  ??  Monitoring: DISABLED (SAFE)
+
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > aborts a live recording on active-track end and preserves the prior PCM
+
+?? Switching input device to: mic-live
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > aborts a live recording on active-track end and preserves the prior PCM
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > aborts a live recording on active-track end and preserves the prior PCM
+  ? New input device connected
+  ??  Monitoring: DISABLED (SAFE)
+
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > aborts the legacy recorder on active-track end when shared capture is unavailable
+
+?? Switching input device to: mic-live
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > aborts the legacy recorder on active-track end when shared capture is unavailable
+  ?? Device preferences saved
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > aborts the legacy recorder on active-track end when shared capture is unavailable
+  ? New input device connected
+  ??  Monitoring: DISABLED (SAFE)
+
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > reports an input that ends while its first shared-capture warm-up is still pending
+
+?? Switching input device to: mic-short-lived
+
+stdout | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > reports an input that ends while its first shared-capture warm-up is still pending
+  ?? Device preferences saved
+
+ ✓ tests/unit/browser-input-device-lifecycle.spec.ts (10 tests) 197ms
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+ ✓ tests/unit/electric-fx-panels.spec.ts (2 tests) 375ms
+   ✓ ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix  365ms
+ ✓ tests/unit/browser-roll-dsp.spec.ts (10 tests) 246ms
+ ✓ tests/unit/official-pitch-controls.spec.ts (30 tests) 232ms
+stdout | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+FX Set: INPUT [B] -> FILTER
+FX Set: INPUT [C] -> FILTER
+FX Set: INPUT [D] -> FILTER
+FX Set: TRACK [B] -> FILTER
+FX Set: TRACK [C] -> FILTER
+FX Set: TRACK [D] -> FILTER
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+ ✓ tests/unit/hrm-auto-panel-targets.spec.ts (2 tests) 265ms
+ ✓ tests/unit/slow-gear-dsp.spec.ts (5 tests) 226ms
+stdout | tests/unit/pattern-slicer.spec.ts > Browser PATTERN SLICER (catalog source ID 34) > routes PATTERN SLICER to both Browser input and Track A–D banks and exposes controls
+FX Set: INPUT [A] -> PATTERN SLICER
+FX Set: TRACK [A] -> PATTERN SLICER
+FX Set: INPUT [B] -> PATTERN SLICER
+FX Set: TRACK [B] -> PATTERN SLICER
+FX Set: INPUT [C] -> PATTERN SLICER
+FX Set: TRACK [C] -> PATTERN SLICER
+FX Set: INPUT [D] -> PATTERN SLICER
+FX Set: TRACK [D] -> PATTERN SLICER
+
+ ✓ tests/unit/pattern-slicer.spec.ts (5 tests) 266ms
+stdout | tests/unit/beat-scatter.spec.ts > Browser BEAT SCATTER (catalog source ID 50) > rejects Input assignment and routes a bypassed Worklet into the Track A–D bank
+FX Set: TRACK [A] -> BEAT SCATTER
+FX Set: TRACK [B] -> BEAT SCATTER
+FX Set: TRACK [C] -> BEAT SCATTER
+FX Set: TRACK [D] -> BEAT SCATTER
+
+ ✓ tests/unit/fx-processor-registry.spec.ts (5 tests) 211ms
+ ✓ tests/unit/beat-scatter.spec.ts (4 tests) 336ms
+stdout | tests/unit/browser-reverse-reverb.spec.ts > Browser experimental REVERSE REVERB (FX #49) > routes both Browser banks to the reverse-reverb worklet and accepts shared named controls
+FX Set: INPUT [A] -> REVERSE REVERB (EXPERIMENTAL)
+FX Set: TRACK [D] -> REVERSE REVERB (EXPERIMENTAL)
+
+ ✓ tests/unit/browser-reverse-reverb.spec.ts (4 tests) 265ms
+ ✓ tests/unit/browser-input-named-controls.spec.ts (2 tests) 202ms
+ ✓ tests/unit/browser-robot-dsp.spec.ts (6 tests) 177ms
+ ✓ tests/unit/trackUnit.spec.ts (5 tests) 274ms
+ ✓ tests/unit/live-mono-worklet.spec.ts (3 tests) 221ms
+ ✓ tests/unit/rhythm-ui.spec.ts (1 test) 155ms
+ ✓ tests/unit/vibrato-dsp.spec.ts (3 tests) 209ms
+ ✓ tests/unit/radio-fx.spec.ts (4 tests) 238ms
+ ✓ tests/unit/live-mono-pitch.spec.ts (11 tests) 173ms
+ ✓ tests/unit/eq-dsp.spec.ts (3 tests) 194ms
+ ✓ tests/unit/browser-twist.spec.ts (5 tests) 170ms
+ ✓ tests/unit/native-per-track-fx-ui.spec.ts (4 tests) 218ms
+stdout | tests/unit/browser-step-slicer.spec.ts > Browser STEP SLICER (catalog source ID 35) > routes through Browser Input A–D and the shared Track A–D worklet bank with mapped controls
+FX Set: INPUT [A] -> STEP SLICER
+FX Set: TRACK [A] -> STEP SLICER
+FX Set: INPUT [B] -> STEP SLICER
+FX Set: TRACK [B] -> STEP SLICER
+FX Set: INPUT [C] -> STEP SLICER
+FX Set: TRACK [C] -> STEP SLICER
+FX Set: INPUT [D] -> STEP SLICER
+FX Set: TRACK [D] -> STEP SLICER
+
+stdout | tests/unit/official-browser-bank-routing.spec.ts > Official parameters reach every Browser bank consistently > initializes and updates Input/shared Track tempo at the real transport BPM
+FX Set: INPUT [A] -> DSP LPF
+FX Set: TRACK [A] -> PHASER
+
+ ✓ tests/unit/browser-step-slicer.spec.ts (4 tests) 184ms
+stdout | tests/unit/official-browser-bank-routing.spec.ts > Official parameters reach every Browser bank consistently > rejects unknown tempo values at the shared public boundary and routes variants first
+FX Set: INPUT [A] -> TAPE ECHO
+
+ ✓ tests/unit/official-browser-bank-routing.spec.ts (4 tests) 173ms
+stdout | tests/unit/official-browser-source-transport.spec.ts > Official source-only transport, never causal history approximations > routes shared Track A official phase and speed to all real loop configurations and preserves macro priority
+FX Set: TRACK [A] -> BEAT SHIFT
+
+stdout | tests/unit/official-browser-source-transport.spec.ts > Official source-only transport, never causal history approximations > routes shared Track A official phase and speed to all real loop configurations and preserves macro priority
+FX Set: TRACK [A] -> VINYL FLICK
+
+stdout | tests/unit/official-browser-source-transport.spec.ts > Official controls reach stored-loop source readheads > TYPE0 starts from actual stored FUTURE/PAST source PCM
+BPM updated to: 120
+
+stdout | tests/unit/official-browser-source-transport.spec.ts > Official controls reach stored-loop source readheads > TYPE1 starts from actual stored FUTURE/PAST source PCM
+BPM updated to: 120
+
+stdout | tests/unit/official-browser-source-transport.spec.ts > Official controls reach stored-loop source readheads > FLICK100 schedules sustained2x on the actual loop source, not transient history catch-up
+BPM updated to: 120
+
+ ✓ tests/unit/official-browser-source-transport.spec.ts (13 tests) 124ms
+stdout | tests/unit/browser-audio-startup.spec.ts > Browser audio startup deadlines > keeps Browser output ready when microphone permission is denied
+
+?? Switching input device to: 
+
+stderr | tests/unit/browser-audio-startup.spec.ts > Browser audio startup deadlines > keeps Browser output ready when microphone permission is denied
+Failed to set input device: DOMException {}
+
+ ✓ tests/unit/browser-audio-startup.spec.ts (5 tests) 162ms
+ ✓ tests/unit/pitch-stretch.spec.ts (3 tests) 123ms
+stdout | tests/unit/browser-recovery-snapshot.spec.ts > Browser closed-context recovery snapshot contract > captures PCM/history references, shared budget, acknowledged FX/rhythm and transport without mutating the old graph
+BPM updated to: 107
+FX Set: INPUT [A] -> RING.MOD
+
+stdout | tests/unit/browser-recovery-snapshot.spec.ts > Browser closed-context recovery snapshot contract > captures PCM/history references, shared budget, acknowledged FX/rhythm and transport without mutating the old graph
+Master track reset
+
+ ✓ tests/unit/browser-recovery-snapshot.spec.ts (1 test) 141ms
+ ✓ tests/unit/browser-gate-coefficient-cache.spec.ts (4 tests) 73ms
+ ✓ tests/unit/browser-freeze-dsp.spec.ts (9 tests) 78ms
+ ✓ tests/unit/official-native-published-schema.spec.ts (52 tests) 114ms
+stdout | tests/unit/browser-reverse-delay.spec.ts > Browser clean-room REVERSE DELAY (catalog source ID 38) > routes Browser Input and every shared Track A–D slot through reverse-delay Worklets
+FX Set: INPUT [A] -> REVERSE DELAY
+FX Set: TRACK [A] -> REVERSE DELAY
+FX Set: INPUT [B] -> REVERSE DELAY
+FX Set: TRACK [B] -> REVERSE DELAY
+FX Set: INPUT [C] -> REVERSE DELAY
+FX Set: TRACK [C] -> REVERSE DELAY
+FX Set: INPUT [D] -> REVERSE DELAY
+FX Set: TRACK [D] -> REVERSE DELAY
+
+ ✓ tests/unit/browser-reverse-delay.spec.ts (6 tests) 104ms
+stdout | tests/unit/browserStereoAudio.spec.ts > Browser stereo worklet audio > assembles a two-channel AudioBuffer and patches both overdub channels without touching neighbors
+Track 1 recorded: 0.00s (3 samples)
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 0.000s
+Time signature: 4/4
+  1 measure(s): 4 beats → 3528000.00 BPM
+  2 measure(s): 8 beats → 7056000.00 BPM
+  4 measure(s): 16 beats → 14112000.00 BPM
+  8 measure(s): 32 beats → 28224000.00 BPM
+
+✓ Selected: 4 measure(s) → 120 BPM
+  Loop length: 3 samples @ 44100Hz
+=====================================
+
+BPM updated to: 120
+
+ ✓ tests/unit/browserStereoAudio.spec.ts (7 tests) 90ms
+ ✓ tests/unit/official-browser-roll.spec.ts (31 tests) 103ms
+ ✓ tests/unit/browser-hrm-auto-worklet.spec.ts (2 tests) 120ms
+stdout | tests/unit/browser-loopback.spec.ts > BrowserAudioEngine loopback worklet capture > loads the worklet and measures ordered samples from its bounded capture buffer
+Starting Loopback Latency Test...
+
+stdout | tests/unit/browser-loopback.spec.ts > BrowserAudioEngine loopback worklet capture > loads the worklet and measures ordered samples from its bounded capture buffer
+Latency Test: Peak at 0.1134s, Delay 0.1s, Result 13.38ms
+
+ ✓ tests/unit/official-parameter-schema.spec.ts (272 tests) 77ms
+stdout | tests/unit/browser-loopback.spec.ts > BrowserAudioEngine loopback worklet capture > surfaces an explicit AudioWorklet error without requesting a microphone stream
+Starting Loopback Latency Test...
+
+ ✓ tests/unit/browser-loopback.spec.ts (2 tests) 69ms
+stdout | tests/unit/loop-transport-editor.spec.ts > separate per-loop source transport editor > sends Native per-track settings with the current shared BPM and persists only after ACK
+BPM updated to: 132
+
+stdout | tests/unit/loop-transport-editor.spec.ts > separate per-loop source transport editor > sends Native per-track settings with the current shared BPM and persists only after ACK
+BPM updated to: 120
+
+ ✓ tests/unit/loop-transport-editor.spec.ts (4 tests) 116ms
+ ✓ tests/unit/hrm-auto-fx-editor.spec.ts (2 tests) 89ms
+ ✓ tests/unit/trackAudioLifecycle.spec.ts (4 tests) 96ms
+ ✓ tests/unit/browser-hrm-auto-dsp.spec.ts (10 tests) 95ms
+ ✓ tests/unit/official-browser-step-slicer.spec.ts (11 tests) 120ms
+ ✓ tests/unit/osc-voc-editor.spec.ts (3 tests) 79ms
+ ✓ tests/unit/filter-resonance-mapping.spec.ts (5 tests) 94ms
+ ✓ tests/unit/browser-distortion-fir-fast-path.spec.ts (3 tests) 93ms
+ ✓ tests/unit/native-project-import-client.spec.ts (10 tests) 75ms
+ ✓ tests/unit/trackAudioHqExport.spec.ts (3 tests) 64ms
+ ✓ tests/unit/hardwareControls.spec.ts (6 tests) 86ms
+ ✓ tests/unit/native-step-slicer.spec.ts (4 tests) 64ms
+ ✓ tests/unit/ring-mod-waveform.spec.ts (3 tests) 81ms
+ ✓ tests/unit/browser-step-slicer-editor.spec.ts (3 tests) 85ms
+ ✓ tests/unit/hqWavExport.spec.ts (7 tests) 57ms
+ ✓ tests/unit/browser-output-dsp.spec.ts (4 tests) 66ms
+ ✓ tests/unit/roll-parameters.spec.ts (2 tests) 47ms
+ ✓ tests/unit/preamp-controls.spec.ts (5 tests) 60ms
+ ✓ tests/unit/synth-parameters.spec.ts (5 tests) 58ms
+ ✓ tests/unit/pitch-bend-parameters.spec.ts (2 tests) 50ms
+ ✓ tests/unit/browser-roll-integration.spec.ts (2 tests) 39ms
+ ✓ tests/unit/auto-riff-fx-editor.spec.ts (1 test) 41ms
+ ✓ tests/unit/lcd-field-grid.spec.ts (3 tests) 64ms
+ ✓ tests/unit/dsp-primitives.spec.ts (8 tests) 37ms
+ ✓ tests/unit/g2b-parameters.spec.ts (3 tests) 52ms
+ ✓ tests/unit/fxCatalog.spec.ts (4 tests) 48ms
+ ✓ tests/unit/native-catalog-parameters-editor.spec.ts (1 test) 48ms
+ ✓ tests/unit/robot-fx-editor.spec.ts (1 test) 35ms
+ ✓ tests/unit/native-per-track-fx-runtime.spec.ts (13 tests) 32ms
+ ✓ tests/unit/freeze-parameters.spec.ts (4 tests) 32ms
+ ✓ tests/unit/browser-bypass-copy.spec.ts (6 tests) 37ms
+ ✓ tests/unit/manual-harmonist-parameters.spec.ts (2 tests) 39ms
+ ✓ tests/unit/native-fx-runtime.spec.ts (11 tests) 47ms
+stdout | tests/unit/transport.spec.ts > Transport events > emits start, beat, and stop events from the transport clock
+BPM updated to: 120
+
+ ✓ tests/unit/useTrackStripState-stop.spec.ts (2 tests) 38ms
+stdout | tests/unit/transport.spec.ts > Transport events > emits bpm-change when bpm updates
+BPM updated to: 132
+
+stdout | tests/unit/transport.spec.ts > Transport events > tracks project transport edits, including edit-and-revert ABA changes
+BPM updated to: 121
+BPM updated to: 120
+
+stdout | tests/unit/transport.spec.ts > Transport events > uses quarter-note BPM when deriving 6/8 measure duration
+Master track reset
+BPM updated to: 120
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 1.500s
+Time signature: 6/8
+  1 measure(s): 3 beats → 120.00 BPM
+  2 measure(s): 6 beats → 240.00 BPM
+  4 measure(s): 12 beats → 480.00 BPM
+  8 measure(s): 24 beats → 960.00 BPM
+
+✓ Selected: 1 measure(s) → 120 BPM
+  Loop length: 72000 samples @ 48000Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/transport.spec.ts > Transport events > uses quarter-note BPM when deriving 3/4 measure duration
+Master track reset
+BPM updated to: 120
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 1.500s
+Time signature: 3/4
+  1 measure(s): 3 beats → 120.00 BPM
+  2 measure(s): 6 beats → 240.00 BPM
+  4 measure(s): 12 beats → 480.00 BPM
+  8 measure(s): 24 beats → 960.00 BPM
+
+✓ Selected: 1 measure(s) → 120 BPM
+  Loop length: 72000 samples @ 48000Hz
+=====================================
+
+BPM updated to: 120
+
+stdout | tests/unit/transport.spec.ts > Transport events > uses quarter-note BPM when deriving 5/8 measure duration
+Master track reset
+BPM updated to: 120
+
+=== Master Track BPM Calculation ===
+Track 1 duration: 1.250s
+Time signature: 5/8
+  1 measure(s): 2.5 beats → 120.00 BPM
+  2 measure(s): 5 beats → 240.00 BPM
+  4 measure(s): 10 beats → 480.00 BPM
+  8 measure(s): 20 beats → 960.00 BPM
+
+✓ Selected: 1 measure(s) → 120 BPM
+  Loop length: 60000 samples @ 48000Hz
+=====================================
+
+BPM updated to: 120
+
+ ✓ tests/unit/transport.spec.ts (6 tests) 28ms
+ ✓ tests/unit/browser-track-io-worklet.spec.ts (16 tests) 38ms
+stdout | tests/unit/browser-manual-harmonist-fx.spec.ts > Browser HRM MANUAL FX > routes Input and all shared post-mix Track A–D slots through two independent Signalsmith voices
+FX Set: INPUT [A] -> HRM MANUAL
+FX Set: TRACK [A] -> HRM MANUAL
+FX Set: TRACK [B] -> HRM MANUAL
+FX Set: TRACK [C] -> HRM MANUAL
+FX Set: TRACK [D] -> HRM MANUAL
+
+ ✓ tests/unit/browser-manual-harmonist-fx.spec.ts (5 tests) 33ms
+ ✓ tests/unit/fx-chain-dsp.spec.ts (1 test) 39ms
+stdout | tests/unit/browser-transpose-fx.spec.ts > Browser TRANSPOSE FX > routes PITCH BEND through Input and shared post-mix Track slots with named controls
+FX Set: INPUT [B] -> PITCH BEND
+FX Set: TRACK [C] -> PITCH BEND
+
+stdout | tests/unit/browser-transpose-fx.spec.ts > Browser TRANSPOSE FX > routes Input and shared post-mix Track slots through Signalsmith
+FX Set: INPUT [A] -> TRANSPOSE
+FX Set: TRACK [D] -> TRANSPOSE
+
+ ✓ tests/unit/browser-transpose-fx.spec.ts (5 tests) 18ms
+stdout | tests/unit/native-rhythm-runtime.spec.ts > Native rhythm runtime adapter > wires capabilities and live shared BPM changes to the same Native client without ACK echoes
+BPM updated to: 91
+BPM updated to: 137
+
+stdout | tests/unit/native-rhythm-runtime.spec.ts > Native rhythm runtime adapter > wires capabilities and live shared BPM changes to the same Native client without ACK echoes
+BPM updated to: 149
+
+stdout | tests/unit/native-rhythm-runtime.spec.ts > Native rhythm runtime adapter > wires capabilities and live shared BPM changes to the same Native client without ACK echoes
+BPM updated to: 137
+
+stdout | tests/unit/native-rhythm-runtime.spec.ts > Native rhythm runtime adapter > wires capabilities and live shared BPM changes to the same Native client without ACK echoes
+BPM updated to: 120
+
+ ✓ tests/unit/native-rhythm-runtime.spec.ts (6 tests) 22ms
+stdout | tests/unit/browser-hrm-auto-fx.spec.ts > Browser HRM AUTO FX adapter > routes MIDI only after explicit exact-slot connection and preserves OSC routing
+FX Set: INPUT [A] -> HRM AUTO (M)
+FX Set: TRACK [B] -> HRM AUTO (M)
+
+stdout | tests/unit/browser-hrm-auto-fx.spec.ts > Browser HRM AUTO FX adapter > creates the experimental selector label by stable catalog ID and keeps its controls routable
+FX Set: INPUT [D] -> HRM AUTO (M) (EXPERIMENTAL)
+
+ ✓ tests/unit/browser-hrm-auto-fx.spec.ts (7 tests) 33ms
+ ✓ tests/unit/browser-pitch-bend-fx.spec.ts (7 tests) 37ms
+ ✓ tests/unit/browser-input-capture.spec.ts (15 tests) 22ms
+ ✓ tests/unit/native-bridge-timeout.spec.ts (4 tests) 22ms
+ ✓ tests/unit/native-fx-catalog.spec.ts (45 tests) 19ms
+stdout | tests/unit/browser-robot-fx.spec.ts > Browser ROBOT FX adapter > maps catalog parameters through exact Input and Track ROBOT instances and rejects unknown controls
+FX Set: INPUT [B] -> ROBOT (EXPERIMENTAL)
+FX Set: TRACK [C] -> ROBOT
+
+ ✓ tests/unit/browser-robot-fx.spec.ts (2 tests) 19ms
+ ✓ tests/unit/native-hq-wav-export.spec.ts (5 tests) 20ms
+ ✓ tests/unit/browser-octave-fx.spec.ts (4 tests) 15ms
+ ✓ tests/unit/browser-worklet-active-intervals.spec.ts (14 tests) 12ms
+ ✓ tests/unit/native-rhythm-client.spec.ts (21 tests) 12ms
+ ✓ tests/unit/midi-input-controller.spec.ts (9 tests) 11ms
+ ✓ tests/unit/official-fx-slot-scope.spec.ts (6 tests) 12ms
+ ✓ tests/unit/browser-recovery-fx-graph.spec.ts (12 tests) 13ms
+ ✓ tests/unit/native-fx-client.spec.ts (6 tests) 10ms
+ ✓ tests/unit/native-track-client.spec.ts (6 tests) 13ms
+ ✓ tests/unit/audio/pitch/signalsmithWasmBudget.spec.ts (8 tests) 9ms
+ ✓ tests/unit/official-native-replacement-contract.spec.ts (5 tests) 9ms
+ ✓ tests/unit/browser-block-meter.spec.ts (2 tests) 7ms
+stdout | tests/unit/browser-octave-routing.spec.ts > Browser OCTAVE dynamic-bank integration > connects three Signalsmith voices through selected Input and shared Track slots and applies named controls
+FX Set: INPUT [B] -> OCTAVE
+FX Set: TRACK [D] -> OCTAVE
+
+ ✓ tests/unit/browser-octave-routing.spec.ts (1 test) 26ms
+ ✓ tests/unit/useDevicePanel.spec.ts (4 tests) 4ms
+ ✓ tests/unit/native-per-track-fx-client.spec.ts (3 tests) 9ms
+ ✓ tests/unit/official-browser-adapter-boundary.spec.ts (6 tests) 8ms
+ ✓ tests/unit/useMonitoringControls.spec.ts (3 tests) 11ms
+ ✓ tests/unit/official-native-variant-routing.spec.ts (3 tests) 7ms
+ ✓ tests/unit/native-project-restore-baseline.spec.ts (3 tests) 6ms
+ ✓ tests/unit/official-native-indexed-controls.spec.ts (6 tests) 7ms
+ ✓ tests/unit/wav-export.spec.ts (5 tests) 7ms
+ ✓ tests/unit/signalsmith-formant-schedule.spec.ts (1 test) 8ms
+ ✓ tests/unit/dsp-worklet.spec.ts (3 tests) 5ms
+ ✓ tests/unit/native-osc-voc-midi.spec.ts (4 tests) 5ms
+ ✓ tests/unit/auto-riff-parameters.spec.ts (3 tests) 3ms
+ ✓ tests/unit/octave-parameters.spec.ts (2 tests) 8ms
+ ✓ tests/unit/vocoder-parameters.spec.ts (1 test) 7ms
+ ✓ tests/unit/third-party-notices.spec.ts (1 test) 3ms
+ ✓ tests/unit/robot-fx-parameters.spec.ts (2 tests) 3ms
+ ✓ tests/unit/rhythm-timing.spec.ts (3 tests) 4ms
+ ✓ tests/unit/hrm-auto-parameters.spec.ts (2 tests) 4ms
+ ✓ tests/unit/native-fx-parameter-snapshots.spec.ts (2 tests) 2ms
+
+ Test Files  180 passed (180)
+      Tests  2097 passed (2097)
+   Start at  23:35:06
+   Duration  49.08s (transform 8.13s, setup 1.64s, collect 23.67s, tests 108.07s, environment 64.35s, prepare 12.95s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

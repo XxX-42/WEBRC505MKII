@@ -1,0 +1,14 @@
+{
+  "verifiedUtc": "2026-10-21T13:24:30.869955+00:00",
+  "evidence": "native-build-provenance.json plus native-explicit-target-build.txt, CMake dependency source paths; accepted independent candidate matrix binary equality",
+  "candidateMatrixRowsMatchVerifiedBinary": true,
+  "supplementRowsMatchVerifiedBinary": true,
+  "candidatePreampSourceSha256": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8",
+  "soakExpectedBinarySha256": "8433c2e8117b75fa5e4224f3c41995f9503d3b5b27d9f336a32e3b41f841985a",
+  "catalogExpectedBinarySha256": "59599249bfe17d75e2113cbd1766f144de908ba730afd9e77a9c4902d5311e39",
+  "baseline": "dd7dbea archive, same final harness overlay, explicit targets; separate binary SHA in environment",
+  "warning": "Earlier raw runner source hashes are declarations alone. This independently checked build binding applies only to final-v2 verified binaries, never to invalid-stale-bench-final-v2.",
+  "soakTerminalBinaryMatchesVerifiedManifest": true,
+  "soakTerminalSourceMatchesVerifiedManifest": true,
+  "soakTerminalUtc": "2026-10-21T13:53:43.911419+00:00"
+}

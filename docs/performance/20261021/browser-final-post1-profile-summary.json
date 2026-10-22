@@ -1,0 +1,291 @@
+{
+  "profile": "docs/performance/20261021/browser-final-post1.cpuprofile",
+  "totalSamples": 1640,
+  "ranking": [
+    {
+      "function": "processReverb",
+      "line": 11510,
+      "selfSamples": 1071
+    },
+    {
+      "function": "readLagrangeFromWriteHead2",
+      "line": 9258,
+      "selfSamples": 239
+    },
+    {
+      "function": "processBlock",
+      "line": 10478,
+      "selfSamples": 148
+    },
+    {
+      "function": "",
+      "line": 8974,
+      "selfSamples": 40
+    },
+    {
+      "function": "refreshTimeVariantCoefficients",
+      "line": 11018,
+      "selfSamples": 38
+    },
+    {
+      "function": "processEffectSample",
+      "line": 11081,
+      "selfSamples": 14
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 12
+    },
+    {
+      "function": "Script",
+      "line": 85,
+      "selfSamples": 9
+    },
+    {
+      "function": "(garbage collector)",
+      "line": 0,
+      "selfSamples": 7
+    },
+    {
+      "function": "process",
+      "line": 11644,
+      "selfSamples": 5
+    },
+    {
+      "function": "(program)",
+      "line": 0,
+      "selfSamples": 3
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 3
+    },
+    {
+      "function": "BrowserFxDspCore",
+      "line": 9495,
+      "selfSamples": 3
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 2
+    },
+    {
+      "function": "advanceControls",
+      "line": 10871,
+      "selfSamples": 2
+    },
+    {
+      "function": "refreshControlDependentCoefficients",
+      "line": 10946,
+      "selfSamples": 2
+    },
+    {
+      "function": "(idle)",
+      "line": 0,
+      "selfSamples": 2
+    },
+    {
+      "function": "getCLIOptionsFromBinding",
+      "line": 32,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "Duplex",
+      "line": 64,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "_TstNode",
+      "line": 1095,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/llhttp/constants.js",
+      "line": 3379,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 130,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "internalBinding",
+      "line": 182,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "lib/web/fetch/response.js",
+      "line": 11544,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileFunction",
+      "line": 0,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "__require",
+      "line": 5,
+      "selfSamples": 1
+    },
+    {
+      "function": "compileForInternalLoader",
+      "line": 383,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "DispatcherBase",
+      "line": 2205,
+      "selfSamples": 1
+    },
+    {
+      "function": "#cachedDefaultResolve",
+      "line": 693,
+      "selfSamples": 1
+    },
+    {
+      "function": "loadBuiltinModule",
+      "line": 118,
+      "selfSamples": 1
+    },
+    {
+      "function": "set",
+      "line": 99,
+      "selfSamples": 1
+    },
+    {
+      "function": "FileHandle",
+      "line": 162,
+      "selfSamples": 1
+    },
+    {
+      "function": "write",
+      "line": 76,
+      "selfSamples": 1
+    },
+    {
+      "function": "createScript",
+      "line": 268,
+      "selfSamples": 1
+    },
+    {
+      "function": "",
+      "line": 1,
+      "selfSamples": 1
+    },
+    {
+      "function": "createRingModTriangleTables",
+      "line": 8973,
+      "selfSamples": 1
+    },
+    {
+      "function": "FxProcessor",
+      "line": 11581,
+      "selfSamples": 1
+    },
+    {
+      "function": "processReverb",
+      "line": 11510,
+      "selfSamples": 1
+    },
+    {
+      "function": "writeFileHandle",
+      "line": 481,
+      "selfSamples": 1
+    }
+  ]
+}

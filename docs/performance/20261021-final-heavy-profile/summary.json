@@ -1,0 +1,35 @@
+{
+  "sourceCommit": "85de65407377ad0efcbf99967e521db86f9f036d",
+  "sourceSnapshot": "git archive of engine-cpp at exact commit",
+  "buildManifest": "build-manifest.json",
+  "profileBinarySha256": "afdfe013c7d3786f901422eafb3dd980ecc15ee71a6ec115366f0d4e93ac992d",
+  "profileDataSha256": "f58c6b8a2e7f4ae74edbf4c7c6e04b248273b0a63b4fe0c8a1b9ef355f3ff146",
+  "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+  "flags": "Release -O3 -DNDEBUG plus -pg compile/link; no fast-math",
+  "command": "taskset -c 0 native_performance_matrix 48000 64 5 1 30000 playback 2",
+  "sampleQuantumSeconds": 0.01,
+  "scope": "Full device-free callback graph, 5 independent stereo tracks each PREAMP/DIST/ROBOT/reverb, initialization+warmup included; diagnostic instrumented time NOT performance admission",
+  "buildBindingVerified": true,
+  "pcmHash": "18273561745697624500",
+  "callbackAllocations": 0,
+  "hardwareXruns": null,
+  "selfPercent": {
+    "preampLoop": 23.51,
+    "preampADAA": 22.58,
+    "robotTracker": 13.35,
+    "signalsmithSpectrum": 7.43,
+    "distortionLoop": 6.23,
+    "unresolvedDestructorAttribution": 6.11,
+    "psolaYin": 4.87,
+    "reverb": 3.54,
+    "coreTrackDispatch": 0.16,
+    "coreCallback": 0.04
+  },
+  "frameParameterCalls": 5,
+  "limitations": [
+    "gprof instrumentation may change layout and call overhead",
+    "Self time excludes child cost; inclusive totals must not be added to self totals",
+    "No cache-miss, lock, scheduler trace or precise wall-stall attribution",
+    "Unresolved 6.11% destructor symbol is not evidence of callback destruction"
+  ]
+}

@@ -1,4 +1,6 @@
 #include "native_preamp_processor.hpp"
+#include "native_official_amp_profiles.hpp"
+#include "native_official_domains.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -49,28 +51,71 @@ constexpr std::array<float, 5U> kCabinetCutoffHz{{7200.0f, 5900.0f, 5300.0f, 640
     return static_cast<float>(absolute + std::log1p(std::exp(-2.0 * absolute)) - std::log(2.0));
 }
 
-[[nodiscard]] float triodeTransfer(float input, float slope, float bias) noexcept {
+[[nodiscard]] float triodeTransfer(
+    float input,
+    float slope,
+    float bias,
+    float biasTanh
+) noexcept {
     const float bounded = std::clamp(slope * (input + bias), -16.0f, 16.0f);
-    const float biasValue = std::clamp(slope * bias, -16.0f, 16.0f);
-    return std::tanh(bounded) - std::tanh(biasValue);
+    return std::tanh(bounded) - biasTanh;
 }
 
 // First-order ADAA for the smooth, biased triode-like transfer. Its
 // antiderivative is log(cosh(slope * (x + bias))) / slope minus the bias
 // offset's linear term. The finite-difference form attenuates folded
 // harmonics without a sample-rate-dependent waveshaping shortcut.
-[[nodiscard]] float antialiasedTriode(float input, float previousInput, float slope, float bias) noexcept {
+[[nodiscard]] float antialiasedTriode(
+    float input,
+    float previousInput,
+    float slope,
+    float bias,
+    float biasTanh,
+    float biasLogCosh,
+    float& previousAntiderivative,
+    bool& antiderivativeValid
+) noexcept {
     const float delta = input - previousInput;
+#if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+    (void)biasLogCosh;
+    (void)previousAntiderivative;
+#endif
     if (std::fabs(delta) < 1.0e-4f) {
-        return triodeTransfer(0.5f * (input + previousInput), slope, bias);
+        antiderivativeValid = false;
+        const float midpoint = 0.5f * (input + previousInput);
+        // For positive zero, the transfer's tanh argument is exactly the
+        // control-cached bias argument. Preserve negative-zero handling and
+        // every other sample/state update on the original path.
+        if (midpoint == 0.0f && !std::signbit(midpoint)) return 0.0f;
+        return triodeTransfer(midpoint, slope, bias, biasTanh);
     }
-    const auto antiderivative = [slope, bias](float value) noexcept {
+#if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+    const float shiftedInput = std::clamp(slope * (input + bias), -16.0f, 16.0f);
+    const float shiftedPrevious = std::clamp(slope * (previousInput + bias), -16.0f, 16.0f);
+    // Experimental only: the bias antiderivative constant cancels
+    // algebraically in this finite difference. Float rounding changes the
+    // output relative to the baseline, so this path stays opt-in until its
+    // sound-quality acceptance is established.
+    const float logDifference = logCosh(shiftedInput) - logCosh(shiftedPrevious);
+    const float result = (logDifference / slope - biasTanh * delta) / delta;
+#else
+    // Keep the established arithmetic as the production default. This is
+    // intentionally retained as the reference path for the opt-in numerical
+    // stability experiment below.
+    const auto antiderivative = [slope, bias, biasTanh, biasLogCosh](float value) noexcept {
         const float shifted = std::clamp(slope * (value + bias), -16.0f, 16.0f);
-        const float biasArgument = std::clamp(slope * bias, -16.0f, 16.0f);
-        return (logCosh(shifted) - logCosh(biasArgument)) / slope -
-               std::tanh(biasArgument) * value;
+        return (logCosh(shifted) - biasLogCosh) / slope - biasTanh * value;
     };
-    const float result = (antiderivative(input) - antiderivative(previousInput)) / delta;
+    // Reuse exactly the same rounded value from the preceding oversample.
+    // Shape changes and the small-delta branch invalidate it; no algebra,
+    // approximation, smoothing, or ADAA threshold changes are involved.
+    const float currentAntiderivative = antiderivative(input);
+    const float priorAntiderivative = antiderivativeValid
+        ? previousAntiderivative : antiderivative(previousInput);
+    previousAntiderivative = currentAntiderivative;
+    antiderivativeValid = true;
+    const float result = (currentAntiderivative - priorAntiderivative) / delta;
+#endif
     return std::isfinite(result) ? std::clamp(result, -2.0f, 2.0f) : 0.0f;
 }
 
@@ -84,6 +129,7 @@ bool NativePreampProcessor::prepare(unsigned int sampleRate) noexcept {
     toneLowCoefficient_ = onePoleCoefficient(180.0f, sampleRate_);
     toneUpperCoefficient_ = onePoleCoefficient(2500.0f, sampleRate_);
     cabinetHighPassCoefficient_ = onePoleCoefficient(72.0f, sampleRate_);
+    if (officialActive_) updateOfficialParameters(true);
     reset();
     return true;
 }
@@ -111,8 +157,102 @@ bool NativePreampProcessor::setConfig(const NativePreampConfig& config, std::uin
     return true;
 }
 
+bool NativePreampProcessor::setOfficialParameter(std::string_view key, float value) noexcept {
+    if (!official::validParameter("preamp", key, value)) return false;
+    const auto found = std::find(official_amp::keys.begin(), official_amp::keys.end(), key);
+    if (found == official_amp::keys.end()) return false;
+    const auto index = static_cast<std::size_t>(found - official_amp::keys.begin());
+    const bool firstWrite = !officialActive_;
+    if (firstWrite) {
+        officialControls_ = official_amp::defaults;
+        officialActive_ = true;
+        officialEnvelope_ = 0.0f;
+        clearChannelState();
+    }
+    officialControls_[index] = value;
+    if (firstWrite) {
+        officialGain_.reset(officialControls_[2]);
+        officialCompression_.reset(officialControls_[3]);
+        officialLevel_.reset(officialControls_[11] * .01f);
+    } else {
+        officialGain_.setTarget(officialControls_[2], 64U);
+        officialCompression_.setTarget(officialControls_[3], 64U);
+        officialLevel_.setTarget(officialControls_[11] * .01f, 64U);
+    }
+    updateOfficialParameters(firstWrite || index == 0U || index == 1U || (index >= 8U && index <= 10U));
+    return true;
+}
+
+void NativePreampProcessor::updateOfficialParameters(bool cabinetChanged) noexcept {
+    const auto amp = static_cast<unsigned int>(officialControls_[0]);
+    auto& parameters = officialFrameParameters_;
+    parameters.officialProfile = true;
+    parameters.officialBlend = official_amp::blend[amp];
+    // Four native stages retain the established oversampler/ADAA topology.
+    // Root-distributed drive and curvature share the Browser authored laws
+    // without claiming sample equivalence to its different stage topology.
+    const float slope = std::pow(official_amp::shape[amp], .25f);
+    for (unsigned int stage = 0U; stage < kNonlinearStageCount; ++stage) {
+        auto& shape = parameters.stages[stage];
+        shape.slope = slope * kStageSlope[stage];
+        shape.bias = official_amp::bias[amp] * (.72f + .17f * static_cast<float>(stage));
+        shape.biasArgument = shape.slope * shape.bias;
+        shape.biasTanh = std::tanh(shape.biasArgument);
+        shape.biasLogCosh = logCosh(shape.biasArgument);
+    }
+    for (auto& channel : channels_) channel.antiderivativeValid.fill(false);
+    if (sampleRate_ == 0U) return;
+    officialAttackCoefficient_ = std::exp(-1000.0f / (official_amp::attackMs[amp] * static_cast<float>(sampleRate_)));
+    officialReleaseCoefficient_ = std::exp(-1000.0f / (official_amp::releaseMs[amp] * static_cast<float>(sampleRate_)));
+    const auto hz = [this](double value) noexcept { return std::min(value, sampleRate_ * .44); };
+    for (auto& channel : channels_) {
+        (void)channel.officialTone[0].setParameters(dsp::BiquadType::LowShelf, sampleRate_, hz(150), .7071067811865476, (officialControls_[4] - 50) * .24);
+        (void)channel.officialTone[1].setParameters(dsp::BiquadType::Peaking, sampleRate_, hz(800), .8, (officialControls_[5] - 50) * .24);
+        (void)channel.officialTone[2].setParameters(dsp::BiquadType::Peaking, sampleRate_, hz(2900), .65, (officialControls_[6] - 50) * .24);
+        (void)channel.officialTone[3].setParameters(dsp::BiquadType::HighShelf, sampleRate_, hz(5800), .7071067811865476, (officialControls_[7] - 50) * .24);
+    }
+    if (cabinetChanged) official_amp::designCabinet(sampleRate_, officialControls_, parameters.cabinetCoefficients);
+}
+
+float NativePreampProcessor::processOfficialInPlace(float* interleaved, unsigned int frames, unsigned int channels) noexcept {
+    float peak = 0.0f;
+    const auto amp = static_cast<unsigned int>(officialControls_[0]);
+    auto& parameters = officialFrameParameters_;
+    for (unsigned int frame = 0U; frame < frames; ++frame) {
+        const auto offset = static_cast<std::size_t>(frame) * channels;
+        const float left = finiteBoundedInput(interleaved[offset]);
+        const float right = channels >= 2U ? finiteBoundedInput(interleaved[offset + 1U]) : 0.0f;
+        const float magnitude = std::max(std::fabs(left), std::fabs(right));
+        const float coefficient = magnitude > officialEnvelope_ ? officialAttackCoefficient_ : officialReleaseCoefficient_;
+        officialEnvelope_ = coefficient * officialEnvelope_ + (1.0f - coefficient) * magnitude;
+        const float compression = (.16f + official_amp::sag[amp]) * std::exp2(officialCompression_.next() / 5.0f);
+        const float pressure = std::max(0.0f, officialEnvelope_ - .035f) / .35f;
+        parameters.officialDynamicGain = 1.0f / std::sqrt(1.0f + compression * pressure);
+        const float gain = officialGain_.next() * .01f;
+        const float drive = official_amp::drive[amp] * (1.0f + 28.0f * gain * gain) / (1.0f + .24f * compression * pressure);
+        parameters.commonStageGain = std::pow(std::max(drive, .01f), .25f);
+        parameters.levelGain = officialLevel_.next();
+        interleaved[offset] = processSample(0U, left, parameters);
+        peak = std::max(peak, std::fabs(interleaved[offset]));
+        const float processedRight = processSample(1U, right, parameters);
+        if (channels >= 2U) {
+            interleaved[offset + 1U] = processedRight;
+            peak = std::max(peak, std::fabs(processedRight));
+        }
+    }
+    return peak;
+}
+
 void NativePreampProcessor::reset() noexcept {
+    frameParametersValid_ = false;
+    officialEnvelope_ = 0.0f;
+    if (officialActive_) {
+        officialGain_.reset(officialControls_[2]);
+        officialCompression_.reset(officialControls_[3]);
+        officialLevel_.reset(officialControls_[11] * .01f);
+    }
     clearChannelState();
+    rightChannelPristineZero_ = true;
     modelPosition_.reset(config_.model);
     gainPercent_.reset(config_.gainPercent);
     bassGain_.reset(gainForDb(config_.bassDb));
@@ -123,6 +263,7 @@ void NativePreampProcessor::reset() noexcept {
 
 float NativePreampProcessor::processInPlace(float* interleaved, unsigned int frames, unsigned int channels) noexcept {
     if (interleaved == nullptr || frames == 0U || channels == 0U || sampleRate_ == 0U) return 0.0f;
+    if (officialActive_) return processOfficialInPlace(interleaved, frames, channels);
 
     float peak = 0.0f;
     for (unsigned int frameIndex = 0U; frameIndex < frames; ++frameIndex) {
@@ -133,16 +274,30 @@ float NativePreampProcessor::processInPlace(float* interleaved, unsigned int fra
         const float middle = middleGain_.next();
         const float treble = trebleGain_.next();
         const float level = levelGain_.next();
+        const std::array<float, 6U> controls{{model, gain, bass, middle, treble, level}};
+        if (!frameParametersValid_ || controls != cachedControls_) {
+            for (auto& state : channels_) state.antiderivativeValid.fill(false);
+            cachedFrameParameters_ = makeFrameParameters(model, gain, bass, middle, treble, level);
+            cachedControls_ = controls;
+            frameParametersValid_ = true;
+        }
+        const FrameParameters& parameters = cachedFrameParameters_;
 
-        const float left = processSample(0U, finiteBoundedInput(interleaved[offset]),
-            model, gain, bass, middle, treble, level);
+        const float left = processSample(0U, finiteBoundedInput(interleaved[offset]), parameters);
         interleaved[offset] = left;
         peak = std::max(peak, std::fabs(left));
 
         const float rightInput = channels >= 2U
             ? finiteBoundedInput(interleaved[offset + 1U])
             : 0.0f;
-        const float right = processSample(1U, rightInput, model, gain, bass, middle, treble, level);
+        // A reset right channel fed only +0 remains exactly silent in every
+        // model: zero FIR histories, zero coupling states and the exact +0
+        // nonlinear identity. Ring rotations of all-zero history are equivalent.
+        // Once any nonzero or -0 input arrives, retain the original path forever
+        // until reset, including tails across later mono/stereo transitions.
+        if (rightChannelPristineZero_ && (rightInput != 0.0f || std::signbit(rightInput)))
+            rightChannelPristineZero_ = false;
+        const float right = rightChannelPristineZero_ ? 0.0f : processSample(1U, rightInput, parameters);
         if (channels >= 2U) {
             interleaved[offset + 1U] = right;
             peak = std::max(peak, std::fabs(right));
@@ -151,77 +306,132 @@ float NativePreampProcessor::processInPlace(float* interleaved, unsigned int fra
     return peak;
 }
 
-float NativePreampProcessor::processSample(
-    unsigned int channel,
-    float input,
+NativePreampProcessor::FrameParameters NativePreampProcessor::makeFrameParameters(
     float modelPosition,
     float gainPercent,
     float bassGain,
     float middleGain,
     float trebleGain,
     float levelGain
+) const noexcept {
+    FrameParameters parameters = cachedFrameParameters_;
+    const bool modelChanged = !frameParametersValid_ || modelPosition != cachedControls_[0];
+    const float boundedModel = std::clamp(modelPosition, 0.0f, 4.0f);
+    if (modelChanged || gainPercent != cachedControls_[1]) {
+        const float gain = std::clamp(gainPercent, 0.0f, 100.0f) * 0.01f;
+        const float totalDrive = 1.0f + modelValue(kMaxStageGain, boundedModel) * gain;
+        parameters.commonStageGain = std::pow(std::max(totalDrive, 0.01f), 0.25f);
+    }
+    if (modelChanged) {
+        for (unsigned int stage = 0U; stage < kNonlinearStageCount; ++stage) {
+            auto& stageParameters = parameters.stages[stage];
+            stageParameters.slope = modelValue(kTriodeSlope, boundedModel) * kStageSlope[stage];
+            stageParameters.bias = modelValue(kGridBias, boundedModel) *
+            (0.72f + 0.17f * static_cast<float>(stage));
+            stageParameters.biasArgument = std::clamp(
+            stageParameters.slope * stageParameters.bias, -16.0f, 16.0f);
+            stageParameters.biasTanh = std::tanh(stageParameters.biasArgument);
+            stageParameters.biasLogCosh = logCosh(stageParameters.biasArgument);
+        }
+    }
+
+    parameters.bassGain = bassGain;
+    parameters.middleGain = middleGain;
+    parameters.trebleGain = trebleGain;
+    parameters.levelGain = levelGain;
+    if (modelChanged) {
+        parameters.lowModelGain = modelValue(kModelBassGain, boundedModel);
+        parameters.middleModelGain = modelValue(kModelMiddleGain, boundedModel);
+        parameters.highModelGain = modelValue(kModelTrebleGain, boundedModel);
+        parameters.lowerModel = static_cast<unsigned int>(boundedModel);
+        parameters.upperModel = std::min(parameters.lowerModel + 1U, kModelCount - 1U);
+        parameters.modelFraction = boundedModel - static_cast<float>(parameters.lowerModel);
+        for (unsigned int tap = 0U; tap < kCabinetIrTaps; ++tap) {
+            const float lowerCoefficient = cabinetImpulseResponses_[parameters.lowerModel][tap];
+            parameters.cabinetCoefficients[tap] = lowerCoefficient +
+            (cabinetImpulseResponses_[parameters.upperModel][tap] - lowerCoefficient) * parameters.modelFraction;
+        }
+    }
+    return parameters;
+}
+
+float NativePreampProcessor::processSample(
+    unsigned int channel,
+    float input,
+    const FrameParameters& parameters
 ) noexcept {
     auto& state = channels_[channel];
     const float safeInput = finiteBoundedInput(input);
-    const float boundedModel = std::clamp(modelPosition, 0.0f, 4.0f);
-    const float gain = std::clamp(gainPercent, 0.0f, 100.0f) * 0.01f;
-    const float totalDrive = 1.0f + modelValue(kMaxStageGain, boundedModel) * gain;
-    const float commonStageGain = std::pow(std::max(totalDrive, 0.01f), 0.25f);
 
     state.inputHistory[state.inputWrite] = safeInput;
     float cabinetInput = 0.0f;
     for (unsigned int phase = 0U; phase < kOversampling; ++phase) {
         float stageSignal = interpolate(channel, phase);
+        const float unshaped = stageSignal;
         for (unsigned int stage = 0U; stage < kNonlinearStageCount; ++stage) {
             const float stageInput = std::clamp(
-                stageSignal * commonStageGain * kStageDrive[stage], -16.0f, 16.0f);
-            const float slope = modelValue(kTriodeSlope, boundedModel) * kStageSlope[stage];
-            const float bias = modelValue(kGridBias, boundedModel) * (0.72f + 0.17f * static_cast<float>(stage));
+                stageSignal * parameters.commonStageGain * kStageDrive[stage], -16.0f, 16.0f);
+            const auto& stageParameters = parameters.stages[stage];
             const float shaped = antialiasedTriode(
-                stageInput, state.previousStageInput[stage], slope, bias);
+                stageInput,
+                state.previousStageInput[stage],
+                stageParameters.slope,
+                stageParameters.bias,
+                stageParameters.biasTanh,
+                stageParameters.biasLogCosh,
+                state.previousAntiderivative[stage],
+                state.antiderivativeValid[stage]);
             state.previousStageInput[stage] = stageInput;
             // Interstage coupling gain and loading. The product remains near
             // unity at low gain while high-gain models drive successive stages.
-            stageSignal = std::clamp(shaped * 1.42f, -8.0f, 8.0f);
+            if (parameters.officialProfile) {
+                const float slopeAtZero = std::max(.2f, stageParameters.slope * (1.0f - stageParameters.biasTanh * stageParameters.biasTanh));
+                stageSignal = std::clamp(shaped / slopeAtZero, -8.0f, 8.0f);
+            } else stageSignal = std::clamp(shaped * 1.42f, -8.0f, 8.0f);
         }
+        if (parameters.officialProfile)
+            stageSignal = unshaped + (stageSignal - unshaped) * parameters.officialBlend;
         const float reconstructed = reconstruct(channel, std::isfinite(stageSignal) ? stageSignal : 0.0f, phase == 0U);
         if (phase == 0U) cabinetInput = reconstructed;
     }
     ++state.inputWrite;
     if (state.inputWrite == kPolyphaseTaps) state.inputWrite = 0U;
 
-    const float lowModelGain = modelValue(kModelBassGain, boundedModel);
-    const float middleModelGain = modelValue(kModelMiddleGain, boundedModel);
-    const float highModelGain = modelValue(kModelTrebleGain, boundedModel);
-    state.toneLowState += toneLowCoefficient_ * (cabinetInput - state.toneLowState);
-    state.toneUpperState += toneUpperCoefficient_ * (cabinetInput - state.toneUpperState);
-    const float lowBand = state.toneLowState;
-    const float middleBand = state.toneUpperState - state.toneLowState;
-    const float highBand = cabinetInput - state.toneUpperState;
-    const float toneOutput = lowBand * bassGain * lowModelGain +
-                             middleBand * middleGain * middleModelGain +
-                             highBand * trebleGain * highModelGain;
+    float cabinetHighPassed = 0.0f;
+    if (parameters.officialProfile) {
+        cabinetHighPassed = cabinetInput * parameters.officialDynamicGain;
+        for (auto& tone : state.officialTone) cabinetHighPassed = tone.process(cabinetHighPassed);
+    } else {
+        state.toneLowState += toneLowCoefficient_ * (cabinetInput - state.toneLowState);
+        state.toneUpperState += toneUpperCoefficient_ * (cabinetInput - state.toneUpperState);
+        const float lowBand = state.toneLowState;
+        const float middleBand = state.toneUpperState - state.toneLowState;
+        const float highBand = cabinetInput - state.toneUpperState;
+        const float toneOutput = lowBand * parameters.bassGain * parameters.lowModelGain +
+                                 middleBand * parameters.middleGain * parameters.middleModelGain +
+                                 highBand * parameters.trebleGain * parameters.highModelGain;
 
-    state.cabinetHighPassState += cabinetHighPassCoefficient_ * (toneOutput - state.cabinetHighPassState);
-    const float cabinetHighPassed = toneOutput - state.cabinetHighPassState;
+        state.cabinetHighPassState += cabinetHighPassCoefficient_ * (toneOutput - state.cabinetHighPassState);
+        cabinetHighPassed = toneOutput - state.cabinetHighPassState;
+    }
     state.cabinetHistory[state.cabinetWrite] = cabinetHighPassed;
-    const auto lowerModel = static_cast<unsigned int>(boundedModel);
-    const auto upperModel = std::min(lowerModel + 1U, kModelCount - 1U);
-    const float modelFraction = boundedModel - static_cast<float>(lowerModel);
     float cabinetOutput = 0.0f;
     unsigned int historyIndex = state.cabinetWrite;
     for (unsigned int tap = 0U; tap < kCabinetIrTaps; ++tap) {
-        const float lowerCoefficient = cabinetImpulseResponses_[lowerModel][tap];
-        const float coefficient = lowerCoefficient +
-            (cabinetImpulseResponses_[upperModel][tap] - lowerCoefficient) * modelFraction;
-        cabinetOutput += coefficient * state.cabinetHistory[historyIndex];
+        cabinetOutput += parameters.cabinetCoefficients[tap] * state.cabinetHistory[historyIndex];
         if (historyIndex == 0U) historyIndex = kCabinetIrTaps - 1U;
         else --historyIndex;
     }
     ++state.cabinetWrite;
     if (state.cabinetWrite == kCabinetIrTaps) state.cabinetWrite = 0U;
 
-    const float output = cabinetOutput * levelGain;
+    if (parameters.officialProfile) {
+        const float delayed = state.officialLatencyHistory[state.officialLatencyWrite];
+        state.officialLatencyHistory[state.officialLatencyWrite] = cabinetOutput;
+        cabinetOutput = delayed;
+        if (++state.officialLatencyWrite == kCabinetIrLatencyFrames) state.officialLatencyWrite = 0U;
+    }
+    const float output = cabinetOutput * parameters.levelGain;
     return std::isfinite(output) ? std::clamp(output, -kMaxFiniteOutput, kMaxFiniteOutput) : 0.0f;
 }
 
@@ -339,12 +549,17 @@ void NativePreampProcessor::clearChannelState() noexcept {
         state.reconstructionHistory.fill(0.0f);
         state.cabinetHistory.fill(0.0f);
         state.previousStageInput.fill(0.0f);
+        state.previousAntiderivative.fill(0.0f);
+        state.antiderivativeValid.fill(false);
         state.inputWrite = 0U;
         state.reconstructionWrite = 0U;
         state.cabinetWrite = 0U;
         state.toneLowState = 0.0f;
         state.toneUpperState = 0.0f;
         state.cabinetHighPassState = 0.0f;
+        for (auto& tone : state.officialTone) tone.reset();
+        state.officialLatencyHistory.fill(0.0f);
+        state.officialLatencyWrite = 0U;
     }
 }
 

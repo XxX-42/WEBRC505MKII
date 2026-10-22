@@ -1,0 +1,22 @@
+--- native-mvp/engine-cpp/src/native_preamp_processor.cpp	2026-10-21 11:29:49.715283902 -0700
++++ /tmp/rc505-native-followup/both-pristine/candidate.cpp	2026-10-21 11:37:09.096659547 -0700
+@@ -158,6 +158,7 @@
+     frameParametersValid_ = false;
+     clearChannelState();
+     rightChannelPristineZero_ = true;
++    leftChannelPristineZero_ = true;
+     modelPosition_.reset(config_.model);
+     gainPercent_.reset(config_.gainPercent);
+     bassGain_.reset(gainForDb(config_.bassDb));
+@@ -187,7 +188,10 @@
+         }
+         const FrameParameters& parameters = cachedFrameParameters_;
+ 
+-        const float left = processSample(0U, finiteBoundedInput(interleaved[offset]), parameters);
++        const float leftInput = finiteBoundedInput(interleaved[offset]);
++        if (leftChannelPristineZero_ && (leftInput != 0.0f || std::signbit(leftInput)))
++            leftChannelPristineZero_ = false;
++        const float left = leftChannelPristineZero_ ? 0.0f : processSample(0U, leftInput, parameters);
+         interleaved[offset] = left;
+         peak = std::max(peak, std::fabs(left));
+ 

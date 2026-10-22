@@ -1,0 +1,11 @@
+--- native-mvp/engine-cpp/include/native_preamp_processor.hpp	2026-10-21 04:30:19.639447681 -0700
++++ /tmp/rc505-next-candidates/preamp-repeat/include/native_preamp_processor.hpp	2026-10-21 05:33:47.311635464 -0700
+@@ -57,6 +57,8 @@
+         std::array<float, kNonlinearStageCount> previousStageInput{};
+         std::array<float, kNonlinearStageCount> previousAntiderivative{};
+         std::array<bool, kNonlinearStageCount> antiderivativeValid{};
++        std::array<float, kNonlinearStageCount> smallMidpoint{}, smallResult{};
++        std::array<bool, kNonlinearStageCount> smallValid{};
+         unsigned int inputWrite = 0U;
+         unsigned int reconstructionWrite = 0U;
+         unsigned int cabinetWrite = 0U;

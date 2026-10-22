@@ -1,4 +1,5 @@
 #include "native_osc_bot_core.hpp"
+#include "native_official_fx.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -144,6 +145,12 @@ bool NativeOscBotCore::prepare(std::uint32_t sampleRate,
     wetMixStep_ = 0.0;
     wetMixRampRemaining_ = 0U;
     updateCarrierBank();
+    official_.prepare(sampleRate_);
+    if (official_.active()) {
+        (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), 0.070f);
+        (void)officialOscillator_.prepare(sampleRate_, 440.0f * std::exp2(
+            (static_cast<float>(officialNote_) - 69.0f) / 12.0f), officialWaveform_);
+    }
     return true;
 }
 
@@ -175,6 +182,8 @@ bool NativeOscBotCore::setConfig(const NativeOscBotConfig& config) noexcept {
     }
 
     config_ = config;
+    if (sampleRate_ != 0U && official_.active())
+        (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), 0.070f);
     if (tempoChanged && sampleRate_ != 0U) {
         const std::uint64_t oldStepFrames = stepFrames_;
         const std::uint64_t elapsed = oldStepFrames > framesUntilStep_
@@ -199,6 +208,32 @@ bool NativeOscBotCore::setConfig(const NativeOscBotConfig& config) noexcept {
 
 bool NativeOscBotCore::setParameter(std::string_view parameterId, float value,
                                     std::uint64_t rampFrames) noexcept {
+    if (parameterId.substr(0U, 9U) == "official_") {
+        if (!official::validParameter("osc_bot", parameterId, value)) return false;
+        if (!official_.active()) {
+            official_.activate("osc_bot");
+            if (sampleRate_ != 0U) (void)officialOscillator_.prepare(sampleRate_,
+                440.0f * std::exp2((static_cast<float>(officialNote_) - 69.0f) / 12.0f), officialWaveform_);
+            constexpr std::string_view keys[]{"official_osc", "official_tone", "official_attack",
+                "official_note", "official_mod_sens", "official_balance"};
+            for (const auto key : keys) {
+                const auto* domain = official::parameterDomain("osc_bot", key);
+                if (domain != nullptr && domain->hasDefault) (void)setParameter(key, domain->defaultValue, 0U);
+            }
+        }
+        if (parameterId == "official_osc") {
+            officialWaveform_ = static_cast<unsigned int>(value);
+            (void)officialOscillator_.setWaveform(officialWaveform_);
+        } else if (parameterId == "official_note") {
+            officialNote_ = static_cast<unsigned int>(value);
+            if (sampleRate_ != 0U) (void)officialOscillator_.setFrequency(
+                440.0f * std::exp2((value - 69.0f) / 12.0f));
+        } else if (parameterId == "official_balance") {
+            return setParameter("mix", value, rampFrames);
+        } else if (!official_.setParameter("osc_bot", parameterId, value)) return false;
+        if (sampleRate_ != 0U) (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), 0.070f);
+        return true;
+    }
     NativeOscBotConfig candidate = config_;
     if (parameterId == "bands") {
         if (!integral(value) || value < 8.0f || value >
@@ -258,6 +293,8 @@ void NativeOscBotCore::reset() noexcept {
     }
     filterBank_.reset();
     toneFilter_.reset();
+    official_.reset();
+    officialOscillator_.reset();
     for (auto& oscillator : oscillators_) {
         oscillator.reset();
     }
@@ -318,6 +355,14 @@ void NativeOscBotCore::updateCarrierBank() noexcept {
 }
 
 float NativeOscBotCore::processWet(float modulator) noexcept {
+    if (official_.active()) {
+        filterBank_.analyzeModulatorSample(official_.modulator(modulator));
+        const float carrier = officialOscillator_.processSample();
+        for (std::size_t band = 0U; band < filterBank_.bandCount(); ++band)
+            bandCarriers_[band] = filterBank_.filterCarrierSample(band, carrier);
+        return boundedOutput(official_.tone(filterBank_.synthesizeSample(
+            bandCarriers_.data(), filterBank_.bandCount())));
+    }
     advanceStepIfDue();
     filterBank_.analyzeModulatorSample(modulator);
     for (std::size_t band = 0U; band < filterBank_.bandCount(); ++band) {

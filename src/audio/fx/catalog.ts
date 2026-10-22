@@ -7,7 +7,7 @@
 export type FxImplementationStatus = 'catalogued' | 'implemented' | 'experimental';
 export type FxRuntimeSupport = 'not-wired' | 'wired' | 'experimental';
 export type FxRuntimeName = 'browser' | 'native';
-export type FxRuntimeTarget = 'input-bank-slot' | 'track-bank-slot' | 'output-master';
+export type FxRuntimeTarget = 'input-bank-slot' | 'track-bank-slot' | 'loop-transport' | 'output-master';
 export type FxParameterCurve = 'linear' | 'logarithmic' | 'exponential' | 'bipolar' | 'stepped';
 export type FxParameterUnit = '%' | 'dB' | 'Hz' | 'ms' | 'seconds' | 'semitones' | 'beats' | 'steps' | 'bits' | 'bands' | 'ratio' | 'channel' | 'choice';
 export type FxEvidenceClassification = 'documented-function-inferred-implementation' | 'explicit-perceptual-inference' | 'published-behavior-reconstruction' | 'functional-reconstruction';
@@ -29,6 +29,8 @@ export interface FxParameterDescriptor {
   curve: FxParameterCurve;
   /** All ranges here are authored clean-room defaults, not manufacturer claims. */
   rangeBasis: 'provisional-clean-room-default';
+  /** Explicit authored mapping for UI units whose DSP input uses another unit. */
+  runtimeMapping?: string;
   options?: readonly FxParameterOption[];
 }
 
@@ -51,7 +53,7 @@ export interface FxCatalogEntry {
     statusNote: string;
     methodology: 'clean-room-reconstruction';
   };
-  /** Exact latency note from the supplied matrix; not a device measurement. */
+  /** Effect-specific latency/evidence note. Distinguishes control duration from measured delay. */
   latencyNote: string;
   implementationStatus: FxImplementationStatus;
   runtimeSupport: FxRuntimeSupport;
@@ -125,7 +127,8 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
         },
         "defaultValue": 15,
         "curve": "linear",
-        "rangeBasis": "provisional-clean-room-default"
+        "rangeBasis": "provisional-clean-room-default",
+        "runtimeMapping": "Browser filterResonancePercent and Native resonance_percent use Q = 0.5 + 11.5 * (percent / 100)^2.117350426267045. This project-authored curve keeps 15% at the prior Q=0.70710678 default and maps 0–100% to Q=0.5–12; it is not a Roland parameter law."
       },
       {
         "id": "lpf.mix",
@@ -277,7 +280,8 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
         },
         "defaultValue": 15,
         "curve": "linear",
-        "rangeBasis": "provisional-clean-room-default"
+        "rangeBasis": "provisional-clean-room-default",
+        "runtimeMapping": "Browser filterResonancePercent and Native resonance_percent use Q = 0.5 + 11.5 * (percent / 100)^2.117350426267045. This project-authored curve keeps 15% at the prior Q=0.70710678 default and maps 0–100% to Q=0.5–12; it is not a Roland parameter law."
       },
       {
         "id": "hpf.mix",
@@ -836,8 +840,8 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     "family": "Modulation",
     "algorithm": {
       "functionalDescription": "Four-quadrant multiplication by sine/triangle carrier",
-      "nativeBalancedChoice": "Quadrature recursive oscillator; optional DC blocking",
-      "browserBalancedChoice": "Same in WASM; AudioParam only supplies smoothed control values",
+      "nativeBalancedChoice": "Sine default plus smoothly crossfaded harmonic-limited triangle wavetable",
+      "browserBalancedChoice": "Sine default plus smoothly crossfaded harmonic-limited triangle wavetable in the AudioWorklet",
       "formulaIds": [
         "F01",
         "F06",
@@ -854,10 +858,10 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     "implementationStatus": "implemented",
     "runtimeSupport": "wired",
     "runtimeImplementations": [
-      { "runtime": "browser", "target": "input-bank-slot", "algorithm": "Clean-room sine ring modulation AudioWorklet" },
-      { "runtime": "browser", "target": "track-bank-slot", "algorithm": "Clean-room sine ring modulation AudioWorklet" },
-      { "runtime": "native", "target": "input-bank-slot", "algorithm": "Clean-room Native quadrature-oscillator ring modulator" },
-      { "runtime": "native", "target": "track-bank-slot", "algorithm": "Clean-room Native quadrature-oscillator ring modulator" }
+      { "runtime": "browser", "target": "input-bank-slot", "algorithm": "Clean-room sine default plus smoothly crossfaded harmonic-limited triangle carrier in the AudioWorklet" },
+      { "runtime": "browser", "target": "track-bank-slot", "algorithm": "Clean-room sine default plus smoothly crossfaded harmonic-limited triangle carrier in the AudioWorklet" },
+      { "runtime": "native", "target": "input-bank-slot", "algorithm": "Clean-room sine default plus smoothly crossfaded harmonic-limited triangle carrier in the Native catalog processor" },
+      { "runtime": "native", "target": "track-bank-slot", "algorithm": "Clean-room sine default plus smoothly crossfaded harmonic-limited triangle carrier in the Native catalog processor" }
     ],
     "implementationNote": "Clean-room ring modulation is wired to Browser input-bank and shared track-bank A-D slots. Native A–D catalog routing is listed separately; per-loop-track processing is not claimed.",
     "parameters": [
@@ -1111,7 +1115,7 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     "runtimeSupport": "experimental",
     "runtimeImplementations": [
       { "runtime": "browser", "target": "input-bank-slot", "algorithm": "Sample-clocked bounded onset/YIN analyzer in the shipped AudioWorklet, with pitch-step commands driving the pinned Signalsmith LIVE_FX shifter in the Browser host" },
-      { "runtime": "browser", "target": "track-bank-slot", "algorithm": "Same sample-clocked analyzer plus Signalsmith LIVE_FX shifter on shared post-mix Browser Track A–D bank" },
+      { "runtime": "browser", "target": "track-bank-slot", "algorithm": "Same sample-clocked analyzer plus Signalsmith LIVE_FX shifter on each private Browser Track A–D pre-mix chain" },
       { "runtime": "native", "target": "input-bank-slot", "algorithm": "Bounded YIN/onset core and sample-clocked scale sequencer driving the pinned Signalsmith FX shifter on Native Input A–D" },
       { "runtime": "native", "target": "track-bank-slot", "algorithm": "Same YIN/scale sequencer and Signalsmith FX shifter on the shared stereo Native Track A–D bus" }
     ],
@@ -3172,9 +3176,10 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     "runtimeImplementations": [
       { "runtime": "browser", "target": "input-bank-slot", "algorithm": "Clean-room equal-power mono panner and smoothed stereo balance AudioWorklet" },
       { "runtime": "browser", "target": "track-bank-slot", "algorithm": "Clean-room equal-power mono panner and smoothed stereo balance AudioWorklet" },
+      { "runtime": "native", "target": "input-bank-slot", "algorithm": "Clean-room Native stereo balance with preallocated mono-to-stereo input expansion before the Input A-D bank" },
       { "runtime": "native", "target": "track-bank-slot", "algorithm": "Clean-room Native stereo manual-pan catalog processor" }
     ],
-    "implementationNote": "Clean-room equal-power mono panning is wired to Browser input and shared post-mix Track A-D slots; stereo input uses a center-preserving balance curve. Native supports only the shared stereo output-bus Track A–D bank; Native Input remains unavailable because its capture path is mono, and per-loop-track processing or Roland hardware fidelity is not claimed.",
+    "implementationNote": "Clean-room manual panning is wired to Browser Input/Track and Native shared Input/Track A-D banks. Native mono capture is duplicated into a preallocated stereo frame before the ordered Input bank when MANUAL PAN is present, so panning affects the recorded/monitored stereo signal; stereo capture uses the balance curve. Per-loop-track processing or Roland hardware fidelity is not claimed.",
     "parameters": [
       {
         "id": "manual-pan.position",
@@ -5472,9 +5477,9 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     },
     "family": "Track-only beat FX",
     "algorithm": {
-      "functionalDescription": "Shift loop read pointer by signed beat/subdivision while preserving click-free continuity",
-      "nativeBalancedChoice": "Modulo pointer offset + equal-power crossfade, optional phase-aligned zero-cross selection",
-      "browserBalancedChoice": "Same in Worklet",
+      "functionalDescription": "Shift a stored loop's source read position by signed beats with wrapped playback and a short transition crossfade",
+      "nativeBalancedChoice": "Per-loop wrapped read-head offset with Lagrange interpolation and bounded transition crossfade",
+      "browserBalancedChoice": "Per-loop wrapped BufferSource offset with short equal-power source retargeting",
       "formulaIds": [
         "F20",
         "F25"
@@ -5483,20 +5488,25 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     "evidence": {
       "source": "data/fx_algorithm_matrix.csv",
       "classification": "functional-reconstruction",
-      "statusNote": "Loop-read-head behavior is incomplete; the current Browser prototype is experimental",
+      "statusNote": "A separate experimental per-loop source-transport route exists in Browser and Native; ordered A–D interleaving and quality acceptance remain open",
       "methodology": "clean-room-reconstruction"
     },
-    "latencyNote": "Crossfade 1–10 ms",
+    "latencyNote": "Browser retarget crossfade control: 1–10 ms (transition duration, not pipeline latency); total algorithm and end-to-end latency are unmeasured",
     "implementationStatus": "experimental",
     "runtimeSupport": "experimental",
     "runtimeImplementations": [
       {
         "runtime": "browser",
-        "target": "track-bank-slot",
-        "algorithm": "signed look-ahead delay prototype; not loop-read-head processing"
+        "target": "loop-transport",
+        "algorithm": "signed stored-loop BufferSource offset with short crossfade; separate from ordered A–D inserts"
+      },
+      {
+        "runtime": "native",
+        "target": "loop-transport",
+        "algorithm": "signed per-loop read-head offset with bounded callback transition; separate from ordered A–D inserts"
       }
     ],
-    "implementationNote": "Experimental Browser shared-postmix look-ahead prototype, explicitly not quality-accepted. It requires a four-beat baseline buffer and adds multi-beat latency that varies with tempo/offset; it starts bypassed. Loop-playback read-head integration and per-loop targeting remain unimplemented. The inactive dry/wet mix parameter is omitted. No Native processor is wired and this is not Roland DSP emulation.",
+    "implementationNote": "Experimental source-transport stage, not a selectable A–D insert and not quality-accepted. Browser shifts the stored-loop BufferSource offset and retargets it with a short crossfade; Native uses a per-loop read-head. The 1–10 ms Browser control is a transition duration, not algorithmic or end-to-end latency. Both runtimes expose per-loop targets, but arbitrary interleaving with ordered A–D inserts remains unsupported. No Roland DSP emulation or hardware-fidelity claim.",
     "parameters": [
       {
         "id": "beat-shift.offset",
@@ -5518,7 +5528,7 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
         "unit": "ms",
         "range": {
           "min": 1,
-          "max": 50
+          "max": 10
         },
         "defaultValue": 5,
         "curve": "logarithmic",
@@ -5536,9 +5546,9 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     },
     "family": "Track-only transport FX",
     "algorithm": {
-      "functionalDescription": "Inertial platter speed model drives a variable-rate resampler; sustained non-unit speed requires a source-aware loop read head",
-      "nativeBalancedChoice": "Bounded stereo history + cubic Lagrange resampler; loop-read-head semantics pending",
-      "browserBalancedChoice": "Four-second bounded history + Lagrange resampler; finite live-stream transients only",
+      "functionalDescription": "In dedicated stored-loop mode, an inertial platter drives a fractional read head and a separate dry/wet control blends canonical and transported playback",
+      "nativeBalancedChoice": "Per-loop wrapped cubic Lagrange read head; legacy A–D route retains its bounded-history processor",
+      "browserBalancedChoice": "Parallel unity-rate and motor-rate BufferSources for stored loops; legacy A–D route retains its bounded-history processor",
       "formulaIds": [
         "F05",
         "F09",
@@ -5548,10 +5558,10 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
     "evidence": {
       "source": "data/fx_algorithm_matrix.csv",
       "classification": "functional-reconstruction",
-      "statusNote": "Experimental clean-room transient prototype; loop-read-head integration remains incomplete",
+      "statusNote": "Experimental clean-room source-transport route is available in both runtimes; sound-quality acceptance remains open",
       "methodology": "clean-room-reconstruction"
     },
-    "latencyNote": "Native 3 frames; Browser 2 frames; bounded-history edge behavior is control-dependent",
+    "latencyNote": "Per-loop source route has no measured added fixed pipeline latency; 1–10 ms control is only a route-transition crossfade duration. Legacy A–D processors have separate alignment behavior. Total algorithm and end-to-end latency are unmeasured",
     "implementationStatus": "experimental",
     "runtimeSupport": "experimental",
     "runtimeImplementations": [
@@ -5561,12 +5571,22 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
         "algorithm": "2-frame-aligned live-stream resampler with 4-second history and phase slips; sustained >1x is not maintained"
       },
       {
+        "runtime": "browser",
+        "target": "loop-transport",
+        "algorithm": "per-loop unity-rate canonical source plus motor-rate wet source; linear dry/wet mix is independent of target speed"
+      },
+      {
         "runtime": "native",
         "target": "track-bank-slot",
         "algorithm": "3-frame-aligned cubic resampler with bounded 131072-frame stereo history; loop-read-head semantics pending"
+      },
+      {
+        "runtime": "native",
+        "target": "loop-transport",
+        "algorithm": "per-loop wrapped Lagrange read head with target speed independent of linear dry/wet mix"
       }
     ],
-    "implementationNote": "Experimental shared-postmix Track A–D prototype only; not quality-accepted. It does not have source-aware per-loop read-head access, so sustained non-unit speed on a live stream is unsupported and finite-history reanchoring may alter continuity. The Browser path cannot sustain >1x; the Native path uses a bounded rolling window, not an actual stored-loop reader. Input is intentionally unavailable. This is a clean-room functional reconstruction, not Roland DSP emulation.",
+    "implementationNote": "Experimental; no sound-quality acceptance. The legacy shared Track A–D processors are separate bounded-history implementations and are not the dedicated per-loop route. In per-loop mode, Browser runs canonical 1x and motor-driven wet loop sources in parallel; Native reads the same stored loop from canonical and fractional transport positions. Both use target rate clamp(1 + speedPercent/100, 0, 2) independently of mix, with linear dry/wet blend. The source stage is before that loop's inserts and is not an ordered A–D slot; arbitrary interleaving remains unsupported. Input is unavailable. Clean-room reconstruction, not Roland DSP emulation.",
     "parameters": [
       {
         "id": "vinyl-flick.speed",
@@ -5577,7 +5597,7 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
           "min": -100,
           "max": 100
         },
-        "defaultValue": -100,
+        "defaultValue": 0,
         "curve": "linear",
         "rangeBasis": "provisional-clean-room-default"
       },
@@ -5590,7 +5610,7 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
           "min": 0.05,
           "max": 10
         },
-        "defaultValue": 1.5,
+        "defaultValue": 1,
         "curve": "logarithmic",
         "rangeBasis": "provisional-clean-room-default"
       },
@@ -5603,14 +5623,14 @@ export const FX_CATALOG: readonly FxCatalogEntry[] = [
           "min": 0,
           "max": 100
         },
-        "defaultValue": 35,
+        "defaultValue": 0,
         "curve": "linear",
         "rangeBasis": "provisional-clean-room-default"
       },
       {
         "id": "vinyl-flick.mix",
         "key": "mix",
-        "label": "Effect mix",
+        "label": "Dry/wet mix",
         "unit": "%",
         "range": {
           "min": 0,
@@ -5648,8 +5668,10 @@ export const FX_CATALOG_AUDIT = Object.freeze({
     native: FX_CATALOG.filter((effect) => effect.implementationStatus === 'experimental' && effect.runtimeImplementations?.some((item) => item.runtime === 'native')).length,
     browserInput: FX_CATALOG.reduce((count, effect) => count + (effect.implementationStatus === 'experimental' && effect.runtimeImplementations?.some((item) => item.runtime === 'browser' && item.target === 'input-bank-slot') ? 1 : 0), 0),
     browserTrack: FX_CATALOG.reduce((count, effect) => count + (effect.implementationStatus === 'experimental' && effect.runtimeImplementations?.some((item) => item.runtime === 'browser' && item.target === 'track-bank-slot') ? 1 : 0), 0),
+    browserLoopTransport: FX_CATALOG.reduce((count, effect) => count + (effect.implementationStatus === 'experimental' && effect.runtimeImplementations?.some((item) => item.runtime === 'browser' && item.target === 'loop-transport') ? 1 : 0), 0),
     nativeInput: FX_CATALOG.reduce((count, effect) => count + (effect.implementationStatus === 'experimental' && effect.runtimeImplementations?.some((item) => item.runtime === 'native' && item.target === 'input-bank-slot') ? 1 : 0), 0),
     nativeTrack: FX_CATALOG.reduce((count, effect) => count + (effect.implementationStatus === 'experimental' && effect.runtimeImplementations?.some((item) => item.runtime === 'native' && item.target === 'track-bank-slot') ? 1 : 0), 0),
+    nativeLoopTransport: FX_CATALOG.reduce((count, effect) => count + (effect.implementationStatus === 'experimental' && effect.runtimeImplementations?.some((item) => item.runtime === 'native' && item.target === 'loop-transport') ? 1 : 0), 0),
   },
   implementationStatusCounts: {
     catalogued: FX_CATALOG.filter((effect) => effect.implementationStatus === 'catalogued').length,

@@ -1,6 +1,7 @@
+import { sameNativeControlSnapshot } from '../audio/nativeFxParameterSnapshots';
 import { computed, reactive, readonly, ref } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
-import { NATIVE_CATALOG_EMPTY_LABEL } from '../audio/nativeFxCatalog';
+import { nativeCatalogEffectId, nativeCatalogMacroParameters, NATIVE_CATALOG_EMPTY_LABEL } from '../audio/nativeFxCatalog';
 import type { FxSlotId } from './usePanelFocus';
 
 export const NATIVE_TRACK_FX_STORAGE_KEY = 'webrc505_native_per_track_fx_v1';
@@ -33,12 +34,69 @@ const warnings = reactive<Record<string, string>>({});
 const statusRevision = ref(0);
 let initialized = false;
 let nativeSynced = false;
+interface PendingNamedParameters {
+  effectId: string;
+  overrides: Record<string, number>;
+  expectedRuntimeParameters: Record<string, number>;
+  previousRevision: number | null;
+  previousError: string;
+}
+const pendingNamedParameters = new Map<string, PendingNamedParameters>();
 
 const validTrack = (trackId: number) => Number.isInteger(trackId) && trackId >= 1 && trackId <= 5;
 const validSlot = (slotIndex: number) => Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex < 4;
 const boundedAmount = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const warningKey = (trackId: number, slotIndex: number) => `${trackId}:${slotIndex}`;
+const runtimeKey = warningKey;
+
+function sameParameters(left: Record<string, number> | null | undefined, right: Record<string, number>): boolean {
+  if (!left) return false;
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) =>
+    key === rightKeys[index] && left[key] === right[key]);
+}
+
+function isDefiniteNamedParameterRejection(message: string): boolean {
+  return /invalid native catalog fx parameter|unsupported discrete native catalog fx value|command queue is full|unable to queue a native catalog fx parameter|control application failed|processor faulted|different or missing per-track slot|host lacks safe official parameter replacement/i.test(message);
+}
+
+function reconcilePendingNamedParameters(engine: AudioEngine) {
+  if (engine.getMode() !== 'native' || pendingNamedParameters.size === 0) return;
+  let changed = false;
+  for (const [key, pending] of pendingNamedParameters) {
+    const [trackText, slotText] = key.split(':');
+    const trackId = Number(trackText);
+    const slotIndex = Number(slotText);
+    if (!validTrack(trackId) || !validSlot(slotIndex)) {
+      pendingNamedParameters.delete(key);
+      continue;
+    }
+    const runtime = engine.getNativeCatalogFxSlotStatus('track', slotIndex, trackId);
+    if (!runtime || runtime.pendingApply || runtime.outcomeUnknown) continue;
+    const slot = state.tracks[trackId - 1]!.slots[slotIndex]!;
+    if (runtime.acknowledged && runtime.acknowledgedEffectId === pending.effectId &&
+        sameNativeControlSnapshot(runtime.acknowledgedParameters, pending.expectedRuntimeParameters, pending.effectId, pending.overrides)) {
+      if (nativeCatalogEffectId(slot.type) === pending.effectId && !sameParameters(slot.namedParameters, pending.overrides)) {
+        slot.namedParameters = { ...pending.overrides };
+        changed = true;
+      }
+      pendingNamedParameters.delete(key);
+      continue;
+    }
+    const revisionChanged = runtime.requestedRevision !== null && runtime.requestedRevision !== pending.previousRevision;
+    const newError = runtime.error && runtime.error !== pending.previousError;
+    if (!runtime.pendingApply && !runtime.acknowledged && !runtime.pendingRestart &&
+        sameNativeControlSnapshot(runtime.requestedParameters, pending.expectedRuntimeParameters, pending.effectId, pending.overrides) &&
+        isDefiniteNamedParameterRejection(runtime.error) && (revisionChanged || newError || !pending.previousError)) {
+      // The request was rejected by the host/callback. Keep the last confirmed
+      // override map in storage; the panel still exposes the runtime error.
+      pendingNamedParameters.delete(key);
+    }
+  }
+  if (changed) persist();
+}
 
 function persist() {
   try {
@@ -111,7 +169,10 @@ export function ensureNativeTrackFxStateInitialized() {
   if (!initialized) {
     initialized = true;
     load();
-    engine.onStatusChange(() => { statusRevision.value += 1; });
+    engine.onStatusChange(() => {
+      reconcilePendingNamedParameters(engine);
+      statusRevision.value += 1;
+    });
   }
   if (engine.getMode() === 'native' && !nativeSynced) {
     nativeSynced = true;
@@ -181,6 +242,7 @@ export function useNativeTrackFxState() {
     }
     return updateSlot(trackId, slotIndex, (slot) => {
       if (slot.type === type) return;
+      pendingNamedParameters.delete(runtimeKey(trackId, slotIndex));
       slot.type = type;
       slot.value = type === 'TRANSPOSE' || type === 'PITCH BEND' ? 50 : 0;
       slot.active = false;
@@ -193,8 +255,17 @@ export function useNativeTrackFxState() {
   function setValue(trackId: number, slotIndex: number, value: number): boolean {
     if (!Number.isFinite(value)) return false;
     return updateSlot(trackId, slotIndex, (slot) => {
+      const key = runtimeKey(trackId, slotIndex);
+      const pending = pendingNamedParameters.get(key);
+      pendingNamedParameters.delete(key); // Avoid comparing a synchronous status with the old amount.
       slot.value = boundedAmount(value);
       engine.setTrackFxParameter(trackId, slotIndex, slot.value);
+      if (pending) {
+        pending.expectedRuntimeParameters = engine.getNativeCatalogFxParameterSnapshot?.('track', slotIndex, trackId, pending.overrides)
+          ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...pending.overrides };
+        pendingNamedParameters.set(key, pending);
+        reconcilePendingNamedParameters(engine);
+      }
     });
   }
 
@@ -204,12 +275,53 @@ export function useNativeTrackFxState() {
       warnings[warningKey(trackId, slotIndex)] = 'Named parameters must have non-empty keys and finite numeric values.';
       return false;
     }
-    return updateSlot(trackId, slotIndex, (slot) => {
-      slot.namedParameters = { ...parameters };
-      delete warnings[warningKey(trackId, slotIndex)];
-      // The Native API stores the complete override map, so send the complete state, not a patch.
-      engine.setTrackFxNamedParameters(trackId, slotIndex, { ...slot.namedParameters });
+    if (engine.getMode() !== 'native') return false;
+    const slot = state.tracks[trackId - 1]!.slots[slotIndex]!;
+    const effectId = nativeCatalogEffectId(slot.type);
+    if (!effectId || slot.type === NATIVE_CATALOG_EMPTY_LABEL) return false;
+    const schema = typeof engine.getNativeCatalogFxParameterSchema === 'function'
+      ? engine.getNativeCatalogFxParameterSchema(slot.type, 'track', trackId, parameters, slotIndex)
+      : null;
+    if (schema) {
+      const descriptors = new Map([...schema.parameters, ...schema.legacyAliases].map((descriptor) => [descriptor.id, descriptor]));
+      for (const [key, value] of Object.entries(parameters)) {
+        const descriptor = descriptors.get(key);
+        if (!descriptor) {
+          warnings[warningKey(trackId, slotIndex)] = `Native ${slot.type} has no parameter named ${key}.`;
+          return false;
+        }
+        if (value < descriptor.minimum || value > descriptor.maximum ||
+            (descriptor.discrete && !descriptor.discreteValues?.includes(value))) {
+          warnings[warningKey(trackId, slotIndex)] = `${descriptor.label} must be ${descriptor.discrete
+            ? `one of ${descriptor.discreteValues?.join(', ')}`
+            : `within ${descriptor.minimum}–${descriptor.maximum}`}.`;
+          return false;
+        }
+      }
+    }
+    const previous = engine.getNativeCatalogFxSlotStatus('track', slotIndex, trackId);
+    if (!previous) {
+      warnings[warningKey(trackId, slotIndex)] = 'Native per-track slot status is unavailable; parameters were not sent.';
+      return false;
+    }
+    const expectedRuntimeParameters = engine.getNativeCatalogFxParameterSnapshot?.('track', slotIndex, trackId, parameters)
+      ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...parameters };
+    pendingNamedParameters.set(runtimeKey(trackId, slotIndex), {
+      effectId,
+      overrides: { ...parameters },
+      expectedRuntimeParameters,
+      previousRevision: previous.requestedRevision,
+      previousError: previous.error,
     });
+    if (!engine.setTrackFxNamedParameters(trackId, slotIndex, { ...parameters })) {
+      pendingNamedParameters.delete(runtimeKey(trackId, slotIndex));
+      warnings[warningKey(trackId, slotIndex)] = 'Native rejected the named parameter request before sending it.';
+      return false;
+    }
+    delete warnings[warningKey(trackId, slotIndex)];
+    reconcilePendingNamedParameters(engine);
+    statusRevision.value += 1;
+    return true;
   }
 
   function setActive(trackId: number, slotIndex: number, active: boolean): boolean {

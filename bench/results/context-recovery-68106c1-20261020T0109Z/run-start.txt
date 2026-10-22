@@ -1,0 +1,156 @@
+started_utc=2026-10-20T01:09:33,486014499+00:00
+repo=/workspace/shared/rc505-recovery-20261018/WEBRC505MKII
+head=68106c18deddb7a49a45b2f9ffb7266b3a78c8f7
+tree=d7c13103a33a752fd505bcc14f5f0e8cef8f67c5
+branch=codex/rc505-recovery-20261018
+tracked_status_begin
+tracked_status_end
+tracked_diff_begin
+tracked_diff_end
+untracked_status_begin
+?? bench/results/browser_distortion_offline_ABBA_20261018T1850Z.json
+?? bench/results/browser_fx_gate_reverb_before_20261018T1854Z.json
+?? bench/results/browser_fx_offline_reverb_localcache_candidate_20261019T0306Z.json
+?? bench/results/browser_fx_profile_20261018T1852Z_auto-pan.json
+?? bench/results/browser_fx_profile_20261018T1852Z_chorus.json
+?? bench/results/browser_fx_profile_20261018T1852Z_delay.json
+?? bench/results/browser_fx_profile_20261018T1852Z_dynamics.json
+?? bench/results/browser_fx_profile_20261018T1852Z_flanger.json
+?? bench/results/browser_fx_profile_20261018T1852Z_gate-reverb.json
+?? bench/results/browser_fx_profile_20261018T1852Z_granular-delay.json
+?? bench/results/browser_fx_profile_20261018T1852Z_lpf.json
+?? bench/results/browser_fx_profile_20261018T1852Z_mod-delay.json
+?? bench/results/browser_fx_profile_20261018T1852Z_panning-delay.json
+?? bench/results/browser_fx_profile_20261018T1852Z_phaser.json
+?? bench/results/browser_fx_profile_20261018T1852Z_preamp.json
+?? bench/results/browser_fx_profile_20261018T1852Z_reverb.json
+?? bench/results/browser_fx_profile_20261018T1852Z_ring-mod.json
+?? bench/results/browser_fx_profile_20261018T1852Z_stereo-enhance.json
+?? bench/results/browser_fx_profile_20261018T1852Z_sustainer.json
+?? bench/results/browser_fx_profile_20261018T1852Z_tape-echo.json
+?? bench/results/browser_fx_profile_20261018T1852Z_tremolo.json
+?? bench/results/browser_fx_profile_20261018T1852Z_vibrato.json
+?? bench/results/browser_fx_reverb_before_20261018T1854Z.json
+?? bench/results/browser_runner_integrity_smoke_20261018T1801Z.status.json
+?? bench/results/browser_stress_a12f169_20261018T1725Z/process-memory.csv
+?? bench/results/browser_stress_a12f169_20261018T1725Z/run.meta.txt
+?? bench/results/browser_worklet_trace_35node_20261018T2347Z.json
+?? bench/results/browser_worklet_trace_35node_20261018T2347Z.json.gz
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/.last-run.json
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-real-Browser-UI-0ea4e-ubs-and-stops-virtual-input/browser-overdub-glow.png
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-real-Browser-UI-0ea4e-ubs-and-stops-virtual-input/browser-playing-glow.png
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-real-Browser-UI-0ea4e-ubs-and-stops-virtual-input/browser-recorded.png
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-real-Browser-UI-0ea4e-ubs-and-stops-virtual-input/browser-recording-glow.png
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-real-Browser-UI-0ea4e-ubs-and-stops-virtual-input/browser-runtime.json
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-replica-keeps-t-87f1c-hable-small-screen-viewport/replica-1366.png
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-replica-keeps-t-87f1c-hable-small-screen-viewport/replica-1920.png
+?? bench/results/context-recovery-68106c1-20261020T0109Z/preexisting-test-results/replica-ui-replica-keeps-t-87f1c-hable-small-screen-viewport/replica-390.png
+?? bench/results/context-recovery-68106c1-20261020T0109Z/run-start.txt
+?? bench/results/distortion_node_vm_abba_A1_20261018T1837Z.json
+?? bench/results/distortion_node_vm_abba_A2_20261018T1837Z.json
+?? bench/results/distortion_node_vm_abba_B1_20261018T1837Z.json
+?? bench/results/distortion_node_vm_abba_B2_20261018T1837Z.json
+?? bench/results/distortion_node_vm_controlled_ABBA_A1_20261018T1847Z.json
+?? bench/results/distortion_node_vm_controlled_ABBA_A2_20261018T1847Z.json
+?? bench/results/distortion_node_vm_controlled_ABBA_B1_20261018T1847Z.json
+?? bench/results/distortion_node_vm_controlled_ABBA_B2_20261018T1847Z.json
+?? bench/results/full_runtime_35node_after_distortion_20261018T1851Z.progress.json
+?? bench/results/full_runtime_35node_current_b78c55d_20261018T2329Z.failure.json
+?? bench/results/full_runtime_35node_current_b78c55d_20261018T2329Z.progress.json
+?? bench/results/full_runtime_35node_current_b78c55d_20261018T2329Z.status.json
+?? bench/results/full_runtime_35node_preflight_diag_20261018T1823Z.progress.json
+?? bench/results/full_runtime_35node_preflight_diag_20261018T1823Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1802Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1804Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1804bZ.status.json
+?? bench/results/full_runtime_smoke_20261018T1807Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1809Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1811Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1814Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1816Z.status.json
+?? bench/results/full_runtime_smoke_20261018T1817Z.status.json
+?? bench/results/full_runtime_start_boundary_20261019T0500Z.json
+?? bench/results/full_runtime_start_boundary_20261019T0500Z.progress.json
+?? bench/results/full_runtime_start_boundary_20261019T0500Z.status.json
+?? bench/results/full_runtime_start_boundary_20261019T0501Z.progress.json
+?? bench/results/full_runtime_start_boundary_20261019T0501Z.status.json
+?? bench/results/full_runtime_start_boundary_20261019T0504Z.failure.json
+?? bench/results/full_runtime_start_boundary_20261019T0504Z.progress.json
+?? bench/results/full_runtime_start_boundary_20261019T0504Z.status.json
+?? bench/results/full_runtime_start_boundary_20261019T0505Z.failure.json
+?? bench/results/full_runtime_start_boundary_20261019T0505Z.progress.json
+?? bench/results/full_runtime_start_boundary_20261019T0505Z.status.json
+?? bench/results/fx_worklet_node_vm_microbench_after_distortion_20261018T1836Z.json
+?? bench/results/gain_cache_35node_30min_58d1142_20261019T0008Z.progress.json
+?? bench/results/gain_cache_35node_30min_58d1142_20261019T0008Z.status.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0011Z.progress.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0011Z.status.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0014Z.failure.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0014Z.progress.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0014Z.status.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0016Z.failure.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0016Z.progress.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0016Z.status.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0020Z.failure.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0020Z.progress.json
+?? bench/results/gain_cache_35node_undo_diagnostic_58d1142_20261019T0020Z.status.json
+?? bench/results/input_lifecycle_e2e_fixture_failure_20261019T1640/error-context.md
+?? bench/results/input_lifecycle_e2e_fixture_failure_20261019T1640/second-test-error-context.md
+?? bench/results/input_lifecycle_e2e_fixture_failure_20261019T1640/test-failed-1.png
+?? bench/results/input_lifecycle_e2e_fixture_failure_20261019T1640/trace.zip
+?? bench/results/native_fx_topology_all_banks_20261019T1456Z/all-banks.json
+?? bench/results/native_fx_topology_all_banks_20261019T1456Z/platform.json
+?? bench/results/native_fx_topology_all_banks_20261019T1456Z/result.json
+?? bench/results/native_fx_topology_all_banks_20261019T1456Z/run.json
+?? bench/results/native_fx_topology_all_banks_20261019T1456Z/time.txt
+?? bench/results/native_pitch_modes_20261019T1327Z/live_poly.json
+?? bench/results/native_pitch_modes_20261019T1327Z/live_poly.meta.json
+?? bench/results/native_pitch_modes_20261019T1327Z/live_poly.stderr
+?? bench/results/native_pitch_modes_20261019T1327Z/live_poly_end.txt
+?? bench/results/native_pitch_modes_20261019T1327Z/live_poly_start.txt
+?? bench/results/native_pitch_modes_20261019T1327Z/no_pitch.json
+?? bench/results/native_pitch_modes_20261019T1327Z/no_pitch.meta.json
+?? bench/results/native_pitch_modes_20261019T1327Z/no_pitch.stderr
+?? bench/results/native_pitch_modes_20261019T1327Z/off_end.txt
+?? bench/results/native_pitch_modes_20261019T1327Z/off_start.txt
+?? bench/results/shared_input_batch512_36node_85adf19_20261019T1236Z.failure.json
+?? bench/results/shared_input_batch512_36node_85adf19_20261019T1236Z.progress.json
+?? bench/results/shared_input_batch512_36node_85adf19_20261019T1236Z.status.json
+?? bench/results/shared_input_batch512_36node_diagnostic_20261019T1238Z.failure.json
+?? bench/results/shared_input_batch512_36node_diagnostic_20261019T1238Z.progress.json
+?? bench/results/shared_input_batch512_36node_diagnostic_20261019T1238Z.status.json
+?? bench/results/shared_input_batch512_controltrace_20261019T1241Z.failure.json
+?? bench/results/shared_input_batch512_controltrace_20261019T1241Z.progress.json
+?? bench/results/shared_input_batch512_controltrace_20261019T1241Z.status.json
+?? bench/results/shared_input_batch512_zero_eval_36node_20261019T1306Z.status.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1034Z.failure.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1034Z.progress.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1034Z.status.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1036Z.failure.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1036Z.progress.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1036Z.status.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1038Z.failure.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1038Z.progress.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1038Z.status.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1040Z.failure.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1040Z.progress.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1040Z.status.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1041Z.failure.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1041Z.progress.json
+?? bench/results/shared_input_capture_multiop_4241e72_20261019T1041Z.status.json
+untracked_status_end
+browser=/tmp/rc505-cft154-restore/extracted/chrome-headless-shell-linux64/chrome-headless-shell
+60c03e8882f4bb47459a905ede1074e1e746c5b765e437c288e460320540a8a3  /tmp/rc505-cft154-restore/extracted/chrome-headless-shell-linux64/chrome-headless-shell
+native_host=/workspace/shared/rc505-recovery-20261018/native-e2e-project-race/native_bridge_host_simulation
+ae564f4715d3375e3e5f695716579fbb8c26d742ade03be099c78d838af2cc88  /workspace/shared/rc505-recovery-20261018/native-e2e-project-race/native_bridge_host_simulation
+v24.19.0
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+11.9.0
+Linux d35b1ec7b921 6.18.55 #1 SMP Wed Oct 14 19:45:18 UTC 2026 x86_64 GNU/Linux
+online_processors=9
+               total        used        free      shared  buff/cache   available
+Mem:     10451439616  6288396288  3960209408  5212880896  5767540736  4163043328
+Swap:              0           0           0
+Filesystem      Size  Used Avail Use% Mounted on
+overlay          32G  2.7G   28G   9% /workspace/shared
+overlay          32G  2.7G   28G   9% /workspace/shared

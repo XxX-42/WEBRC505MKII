@@ -1,0 +1,20 @@
+{
+  "samples": 711,
+  "selfSamples": {
+    "processBlock": 407,
+    "lfoValue": 160,
+    "": 58,
+    "process": 15,
+    "processEffectSample": 11,
+    "(garbage collector)": 10,
+    "Script": 8,
+    "compileForInternalLoader": 6,
+    "__require": 5,
+    "BrowserFxDspCore": 3,
+    "(program)": 2,
+    "internalBinding": 2,
+    "(idle)": 2,
+    "createRingModTriangleTables": 2,
+    "normalizeString": 1
+  }
+}

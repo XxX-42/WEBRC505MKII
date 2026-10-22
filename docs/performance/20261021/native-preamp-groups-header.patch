@@ -1,0 +1,19 @@
+--- /tmp/rc505-next-candidates/preamp-zero/include/native_preamp_processor.hpp	2026-10-21 04:30:19.639447681 -0700
++++ /tmp/rc505-next-candidates/preamp-groups/include/native_preamp_processor.hpp	2026-10-21 05:56:20.430503840 -0700
+@@ -89,14 +89,14 @@
+         float modelFraction = 0.0f;
+     };
+ 
+-    [[nodiscard]] FrameParameters makeFrameParameters(
++    void updateFrameParameters(
+         float modelPosition,
+         float gainPercent,
+         float bassGain,
+         float middleGain,
+         float trebleGain,
+         float levelGain
+-    ) const noexcept;
++    ) noexcept;
+ 
+     [[nodiscard]] float processSample(
+         unsigned int channel,

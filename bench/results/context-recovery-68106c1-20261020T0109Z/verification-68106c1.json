@@ -1,0 +1,31 @@
+{
+  "commit": "68106c18deddb7a49a45b2f9ffb7266b3a78c8f7",
+  "tree": "d7c13103a33a752fd505bcc14f5f0e8cef8f67c5",
+  "environment": {
+    "browser": "Google Chrome for Testing headless shell 154.0.8037.57",
+    "browserBinarySha256": "60c03e8882f4bb47459a905ede1074e1e746c5b765e437c288e460320540a8a3",
+    "nativeE2eHostSha256": "ae564f4715d3375e3e5f695716579fbb8c26d742ade03be099c78d838af2cc88",
+    "hostNote": "Explicit Native simulation host; not physical audio hardware"
+  },
+  "finalTreeValidation": {
+    "build": "PASS: npm run build; vue-tsc, worklet build, Vite production build, and exact license verification (6 files)",
+    "unit": "PASS: 145 test files, 1085 tests",
+    "strictSerialE2e": "PASS: npm run test:e2e:rubberband; 99/99 tests, 4.6 minutes",
+    "suspendedCaptureDiagnostic": "1 post-suspend attempt, 0 forward-gap rejections",
+    "diffCheck": "PASS: git diff --check before commit"
+  },
+  "retainedEarlierFailure": {
+    "run": "Complete strict serial E2E before changing the suspended-capture test to report bounded retries",
+    "result": "98 passed, 1 failed, 4.6 minutes",
+    "test": "tests/e2e/browser-record-stop-timeout.spec.ts: a suspended AudioContext cannot leave a shared recording stuck busy or corrupt a resumed take",
+    "error": "Shared input capture failed: input-frame-discontinuity. Start request R=18560; tap received it at F=18560 (age 0 frames, capacity 8192 frames); retained [10368, 18560), callback=18560→18688 (pre-roll ended 18560), 8192 valid preroll frames, ready=true, generation=1/1, rate=44100 Hz. The previous track audio was kept; recording can be retried.",
+    "interpretation": "One observed 128-frame forward gap between previous callback end 18560 and next callback start 18688. The capture processor explicitly rejected that take; the tested incumbent PCM/history remained unchanged. The cause of the single gap was not established. This is a recorded continuity failure, not a pass."
+  },
+  "postChangeFocusedE2e": "PASS: 2/2 tests; resumed capture retry logged 1 attempt, 0 gaps",
+  "limitations": [
+    "Recovery restores five-track PCM, one-step PCM history, track settings, source-transport configuration, rhythm settings, pitch modes/settings, and input/shared/private/output FX selections and parameters.",
+    "Recovery starts all tracks and rhythm stopped, master and monitor muted, input and MIDI disconnected; output requires a second explicit user gesture. A saved output sink is retried, with visible default-output fallback on failure. Input requires a separate explicit user action.",
+    "Dynamic DSP internal histories, active MIDI voices, running playback/rhythm phase, and effect tails are not captured or restored; recreated algorithms use their saved settings with fresh internal state.",
+    "The browser E2E used Chromium AudioContext and synthetic test sources. It does not establish physical-device/XRUN behavior or overall realtime performance acceptance."
+  ]
+}

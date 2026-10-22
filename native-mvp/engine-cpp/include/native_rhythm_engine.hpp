@@ -47,8 +47,23 @@ struct NativeRhythmConfig {
 // owned by the audio thread.
 class NativeRhythmEngine final {
 public:
+    // Optional event trace for deterministic cross-runtime conformance tests.
+    // The callback runs on the audio thread, so it must be noexcept and must
+    // not allocate, block, or retain the instrument name pointer.
+    using EventTraceCallback = void (*)(
+        void* context,
+        std::uint64_t frame,
+        std::uint8_t instrument,
+        float velocity,
+        std::uint32_t seed
+    ) noexcept;
+
     [[nodiscard]] bool prepare(unsigned int sampleRate) noexcept;
     [[nodiscard]] bool setConfig(const NativeRhythmConfig& config, std::uint64_t startFrame) noexcept;
+    void setEventTraceCallbackForTesting(EventTraceCallback callback, void* context) noexcept {
+        eventTraceCallback_ = callback;
+        eventTraceContext_ = context;
+    }
 
     // Add generated drums to an already-rendered interleaved output block. This
     // operation performs no allocation, locking, I/O, or logging.
@@ -142,6 +157,12 @@ private:
     std::uint64_t timelineOriginFrame_ = 0;
     std::uint64_t stepOrdinal_ = 0;
     std::uint64_t nextStepFrame_ = 0;
+    std::uint32_t patternSeed_ = 0U;
+    std::uint32_t eventOrdinal_ = 0U;
+    std::uint64_t eventSeedBar_ = 0U;
+    bool eventSeedBarInitialized_ = false;
+    EventTraceCallback eventTraceCallback_ = nullptr;
+    void* eventTraceContext_ = nullptr;
 };
 
 [[nodiscard]] const char* nativeRhythmVariationToString(NativeRhythmVariation variation) noexcept;

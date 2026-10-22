@@ -1,0 +1,18 @@
+[ 86%] Built target native_dsp_portable
+[ 91%] Built target native_audio_core_test_support
+[ 95%] Linking CXX executable native_performance_matrix
+[100%] Built target native_performance_matrix
+[ 90%] Built target native_dsp_portable
+[ 95%] Built target native_audio_core_test_support
+[ 95%] Linking CXX executable native_performance_soak
+[100%] Built target native_performance_soak
+[ 95%] Built target native_dsp_portable
+[100%] Building CXX object CMakeFiles/native_preamp_ab_probe.dir/tests/native_preamp_ab_probe.cpp.o
+[100%] Linking CXX executable native_preamp_ab_probe
+[100%] Built target native_preamp_ab_probe
+[ 95%] Built target native_dsp_portable
+[ 95%] Linking CXX executable native_catalog_ab_probe
+[100%] Built target native_catalog_ab_probe
+[ 90%] Built target native_dsp_portable
+[ 95%] Linking CXX executable native_catalog_sanity_sweep
+[100%] Built target native_catalog_sanity_sweep

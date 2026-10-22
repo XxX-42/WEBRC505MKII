@@ -1,0 +1,53 @@
+{
+  "wallSeconds": 4.00016,
+  "processCpuSeconds": 1.79195,
+  "processCpuPercent": 44.7969,
+  "callbacks": 1500,
+  "simulatedSeconds": 4,
+  "commands": 40,
+  "fxChanges": 5,
+  "queueRejected": 0,
+  "stateErrors": 0,
+  "nonfiniteFrames": 0,
+  "stereoDistinctFrames": 106167,
+  "callbackAllocations": 0,
+  "meanNs": 1169820.0,
+  "maxNs": 10398200.0,
+  "p50ApproxUs": 1287,
+  "p95ApproxUs": 2156,
+  "p99ApproxUs": 3086,
+  "cpuBudgetExceedances": 36,
+  "rssInitialBytes": 7290880,
+  "rssSettledBytes": 0,
+  "rssFinalBytes": 7421952,
+  "rssMaxBytes": 7421952,
+  "hardwareStatus": "HARDWARE_BLOCKED",
+  "reverse": "UNSUPPORTED_NATIVE_TRANSPORT",
+  "bridge": "getStatus control polling, not HTTP",
+  "memorySamples": [
+    [
+      0,
+      7352320
+    ]
+  ],
+  "cpuSamplesSeconds": [
+    [
+      0,
+      9.2e-05
+    ]
+  ],
+  "runStartedUtc": "2026-10-21T12:01:28.851418+00:00",
+  "runFinishedUtc": "2026-10-21T12:01:32.858568+00:00",
+  "requestedWallSeconds": 4,
+  "exitCode": 0,
+  "stderr": "",
+  "binarySha256": "4f4e743fe0d759b02f8dc7313019e2e337843fac30e62145fba30428963c4fed",
+  "functionalGate": "PASS",
+  "schedulingScope": "Co-loaded stability run; not isolated performance acceptance",
+  "allocationScope": "C++ operator new/new[] only; malloc/aligned allocations and frees uninstrumented",
+  "hardwareXruns": null,
+  "driverUnderruns": null,
+  "gc": null,
+  "unavailableReason": "Device-free Native callback; no physical driver and no JavaScript GC",
+  "performanceGate": "NOT_APPLICABLE_COLOADED_STABILITY_RUN"
+}

@@ -42,6 +42,7 @@ class NativeOscVocCore final {
 public:
     [[nodiscard]] bool prepare(std::uint32_t sampleRate, std::uint64_t firstFrame = 0U) noexcept;
     [[nodiscard]] bool setConfig(const NativeOscVocConfig& config) noexcept;
+    // Additive manual IDs: official_carrier/tone/attack/octave/mod_sens/release/balance.
     // Discrete IDs: waveform (0..2), channel (0..15), octave (-24..24 semitones),
     // pulseWidth (0.1..0.9), and mix (0..100 percent). Only mix is ramped.
     [[nodiscard]] bool setParameter(std::string_view parameterId, float value,
@@ -122,6 +123,7 @@ private:
     struct Voice final {
         NativeVocoderOscillator oscillatorA{};
         NativeVocoderOscillator oscillatorB{};
+        NativeOfficialVocoderOscillator officialOscillator{};
         std::uint64_t age = 0U;
         float amplitude = 0.0f;
         float targetAmplitude = 0.0f;
@@ -149,6 +151,8 @@ private:
 
     std::uint32_t sampleRate_ = 0U;
     NativeOscVocConfig config_{};
+    NativeVocoderOfficialShaping official_{};
+    unsigned int officialWaveform_ = 0U;
     NativeVocoderFilterBank filterBank_{};
     std::array<Voice, kNativeOscVocMaxVoices> voices_{};
     std::array<float, kNativeVocoderMaxBands> bandCarriers_{};

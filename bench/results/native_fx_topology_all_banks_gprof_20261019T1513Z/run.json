@@ -1,0 +1,23 @@
+{
+  "runId": "native_fx_topology_all_banks_gprof_20261019T1513Z",
+  "sourceCommit": "fd59f403225b62f85ef29dd9ccbf6b5a979e05e3",
+  "command": "native_per_track_fx_bench --topology=all-banks --pitch=off --warmup-callbacks=5000 --measured-callbacks=100000",
+  "buildType": "Release",
+  "compiler": "/usr/bin/c++",
+  "compileFlags": "-O3 -DNDEBUG -pg -fno-omit-frame-pointer -DNATIVE_BENCH_GPROF_CALLBACK_ONLY",
+  "linkFlags": "-pg",
+  "sampleRateHz": 48000,
+  "framesPerCallback": 64,
+  "topology": "20 private FX + 4 Input FX + 4 shared playback FX + rhythm enabled",
+  "pitch": "off",
+  "input": "synthetic mono 330 Hz at 0.1 peak through Input DSP; input monitoring disabled",
+  "scope": "instrumented diagnostic only; gprof enabled only for measured callback loop; not acceptance timing or hardware/XRUN evidence",
+  "finishedUtc": "2026-10-19T15:15:09Z",
+  "cmakeVersion": "4.2.0",
+  "compilerVersion": "GCC 14.2.0",
+  "profileSamplePeriodSeconds": 0.01,
+  "outputChannels": 2,
+  "configuredPerTrackFxSlots": 20,
+  "nativePitchSelectedRoute": "off",
+  "monitoringEnabled": false
+}

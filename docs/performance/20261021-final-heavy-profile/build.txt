@@ -1,0 +1,64 @@
+[  0%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/looper_core.cpp.o
+[  4%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/dsp_primitives.cpp.o
+[  4%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_output_stage.cpp.o
+[  8%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_fdn16_reverb_processor.cpp.o
+[  8%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_distortion_processor.cpp.o
+[ 13%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_preamp_processor.cpp.o
+[ 13%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_beat_repeat_processor.cpp.o
+[ 17%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_roll_processor.cpp.o
+[ 21%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_freeze_processor.cpp.o
+[ 21%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_beat_scatter_processor.cpp.o
+[ 26%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_tape_echo_processor.cpp.o
+[ 26%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_reverse_delay_processor.cpp.o
+[ 30%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_panning_delay_processor.cpp.o
+[ 30%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_mod_delay_processor.cpp.o
+[ 34%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_chorus_processor.cpp.o
+[ 34%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_phaser_processor.cpp.o
+[ 39%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_autopan_processor.cpp.o
+[ 39%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_vinyl_flick_processor.cpp.o
+[ 43%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_dynamics_processor.cpp.o
+[ 43%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_flanger_processor.cpp.o
+[ 47%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_stereo_enhance_processor.cpp.o
+[ 52%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_fx_catalog.cpp.o
+[ 52%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_electric_processor.cpp.o
+[ 56%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_g2b_processor.cpp.o
+[ 56%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_rhythm_engine.cpp.o
+[ 60%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_pitch_processor.cpp.o
+[ 60%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_poly_pitch_processor.cpp.o
+[ 65%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_auto_riff_core.cpp.o
+[ 65%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_hrm_auto_core.cpp.o
+[ 69%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_hrm_auto_processor.cpp.o
+[ 69%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_robot_core.cpp.o
+[ 73%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_vocoder_core.cpp.o
+[ 73%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_osc_voc_core.cpp.o
+[ 78%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_osc_voc_processor.cpp.o
+[ 78%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_osc_bot_core.cpp.o
+[ 82%] Building CXX object CMakeFiles/native_dsp_portable.dir/src/native_osc_bot_processor.cpp.o
+[ 86%] Linking CXX static library libnative_dsp_portable.a
+[ 86%] Built target native_dsp_portable
+[ 86%] Building CXX object CMakeFiles/native_audio_core_test_support.dir/src/native_audio_core.cpp.o
+[ 91%] Linking CXX static library libnative_audio_core_test_support.a
+[ 91%] Built target native_audio_core_test_support
+[ 95%] Building CXX object CMakeFiles/native_performance_matrix.dir/tests/native_performance_matrix.cpp.o
+[ 95%] Building CXX object CMakeFiles/native_performance_matrix.dir/tests/native_alloc_tracker.cpp.o
+[100%] Linking CXX executable native_performance_matrix
+[100%] Built target native_performance_matrix
+[ 90%] Built target native_dsp_portable
+[ 95%] Built target native_audio_core_test_support
+[ 95%] Building CXX object CMakeFiles/native_performance_soak.dir/tests/native_performance_soak.cpp.o
+[100%] Building CXX object CMakeFiles/native_performance_soak.dir/tests/native_alloc_tracker.cpp.o
+[100%] Linking CXX executable native_performance_soak
+[100%] Built target native_performance_soak
+[ 95%] Built target native_dsp_portable
+[100%] Building CXX object CMakeFiles/native_preamp_ab_probe.dir/tests/native_preamp_ab_probe.cpp.o
+[100%] Linking CXX executable native_preamp_ab_probe
+[100%] Built target native_preamp_ab_probe
+[ 95%] Built target native_dsp_portable
+[100%] Building CXX object CMakeFiles/native_catalog_ab_probe.dir/tests/native_catalog_ab_probe.cpp.o
+[100%] Linking CXX executable native_catalog_ab_probe
+[100%] Built target native_catalog_ab_probe
+[ 90%] Built target native_dsp_portable
+[ 95%] Building CXX object CMakeFiles/native_catalog_sanity_sweep.dir/tests/native_catalog_sanity_sweep.cpp.o
+[100%] Linking CXX executable native_catalog_sanity_sweep
+[100%] Built target native_catalog_sanity_sweep
+Verified explicit Native build: /workspace/scratch/2230ee2a4571/rc505-gain-recovery/docs/performance/20261021-final-heavy-profile/build-manifest.json

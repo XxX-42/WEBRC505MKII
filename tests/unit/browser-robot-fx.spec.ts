@@ -88,6 +88,7 @@ function makeEngine(): BrowserAudioEngine {
     inputFxInstances: [null, null, null, null],
     trackFxInstances: [null, null, null, null],
     inputFxTypes: [null, null, null, null],
+    inputFxActive: [false, false, false, false],
     trackFxTypes: [null, null, null, null],
     fxWorkletModuleReady: null,
     lastError: '',
@@ -194,11 +195,14 @@ describe('Browser ROBOT FX adapter', () => {
     const trackNode = makePitchNode();
     pitchHarness.create.mockResolvedValueOnce(inputNode).mockResolvedValueOnce(trackNode);
     const engine = makeEngine();
-    engine.setFxType('input', 1, 'ROBOT');
+    engine.setFxType('input', 1, 'ROBOT (EXPERIMENTAL)');
     engine.setFxType('track', 2, 'ROBOT');
     const inputFx = (engine as unknown as { inputFxInstances: Array<BrowserRobotFX | null> }).inputFxInstances[1]!;
     const trackFx = (engine as unknown as { trackFxInstances: Array<BrowserRobotFX | null> }).trackFxInstances[2]!;
     await Promise.all([inputFx.ready, trackFx.ready]);
+    expect(inputFx).toBeInstanceOf(BrowserRobotFX);
+    expect((engine as unknown as { inputFxTypes: Array<string | null> }).inputFxTypes[1]).toBe('ROBOT (EXPERIMENTAL)');
+    expect((engine as unknown as { lastError: string }).lastError).toBe('');
 
     engine.setFxNamedParameters('input', 1, { pitch_semitones: 12, formant_semitones: -4, mix_percent: 55 });
     engine.setFxNamedParameters('track', 2, { pitch_semitones: -7, formant_semitones: 2, mix_percent: 25 });

@@ -34,6 +34,64 @@ constexpr double kBitCrushQuantizationSteps = 31.0;
 NativeElectricProcessor::NativeElectricProcessor(const NativeEffectDescriptor& descriptor) noexcept
     : NativeEffectProcessor(descriptor) {}
 
+// Authored pitch-corrected resynthesis controls, not measured BOSS transfer
+// curves. FORMANT moves the synthesized harmonic envelope independently of F0.
+void NativeElectricProcessor::updateOfficialResponse() noexcept {
+    if (!officialActive_ || sampleRate() == 0U) return;
+    const double seconds = 0.2 * std::pow(0.005, static_cast<double>(officialSpeed_) / 10.0);
+    oscillatorFrequencyCoefficient_ = 1.0 - std::exp(-1.0 / (sampleRate() * seconds));
+}
+
+float NativeElectricProcessor::officialSnappedFrequency(float frequencyHz) noexcept {
+    const double midi = 69.0 + 12.0 * std::log2(static_cast<double>(frequencyHz) / 440.0);
+    int nearest = static_cast<int>(std::lround(midi));
+    if (officialScale_ != 0U) {
+        constexpr std::array<int, 7U> major{{0, 2, 4, 5, 7, 9, 11}};
+        const int key = static_cast<int>(officialScale_ - 1U);
+        double best = 1.0e9;
+        for (int note = 0; note <= 127; ++note) {
+            const int relative = ((note - key) % 12 + 12) % 12;
+            bool inScale = false;
+            for (int pc : major) inScale = inScale || pc == relative;
+            if (inScale && std::fabs(note - midi) < best) { best = std::fabs(note - midi); nearest = note; }
+        }
+    }
+    const double hysteresis = 0.5 + static_cast<double>(officialStability_) * 0.04;
+    if (officialTargetMidi_ < 0 || std::fabs(midi - officialTargetMidi_) > hysteresis) officialTargetMidi_ = nearest;
+    return static_cast<float>(440.0 * std::pow(2.0, (officialTargetMidi_ + officialShift_ - 69.0) / 12.0));
+}
+
+float NativeElectricProcessor::officialCarrier(double phase, double frequencyHz) noexcept {
+    if ((officialHarmonicCounter_++ & 15U) == 0U) {
+        const double scale = std::pow(2.0, static_cast<double>(officialFormant_) / 50.0);
+        double energy = 0.0;
+        for (unsigned int h = 1U; h <= officialHarmonicWeights_.size(); ++h) {
+            const double frequency = frequencyHz * h;
+            double weight = 0.0;
+            if (frequency < sampleRate() * 0.45) {
+                const double first = std::exp(-0.5 * std::pow((frequency - 600.0 * scale) / (220.0 * scale), 2.0));
+                const double second = 0.65 * std::exp(-0.5 * std::pow((frequency - 1500.0 * scale) / (350.0 * scale), 2.0));
+                const double third = 0.3 * std::exp(-0.5 * std::pow((frequency - 2700.0 * scale) / (450.0 * scale), 2.0));
+                weight = (first + second + third + (h == 1U ? 0.3 : 0.0)) / std::sqrt(static_cast<double>(h));
+            }
+            officialHarmonicWeights_[h - 1U] = static_cast<float>(weight);
+            energy += weight * weight;
+        }
+        officialHarmonicNormalization_ = static_cast<float>(1.0 / std::sqrt(std::max(energy, 1.0e-9)));
+    }
+    double sum = 0.0;
+    double previous = 0.0;
+    double harmonic = std::sin(phase);
+    const double twiceCos = 2.0 * std::cos(phase);
+    for (unsigned int h = 1U; h <= officialHarmonicWeights_.size(); ++h) {
+        sum += harmonic * officialHarmonicWeights_[h - 1U];
+        const double next = twiceCos * harmonic - previous;
+        previous = harmonic;
+        harmonic = next;
+    }
+    return static_cast<float>(sum) * officialHarmonicNormalization_;
+}
+
 unsigned int NativeElectricProcessor::trackingLatencyUpperBoundSamples() const noexcept {
     if (sampleRate() == 0U || decimationFactor_ == 0U) return 0U;
     return static_cast<unsigned int>((kAnalysisWindow + kTrackerHop) * decimationFactor_);
@@ -82,6 +140,8 @@ void NativeElectricProcessor::resetPitchTracker() noexcept {
     effectiveHz_ = 0.0f;
     smoothedOscillatorHz_ = 0.0;
     pitchLocked_ = false;
+    officialTargetMidi_ = -1;
+    officialHarmonicCounter_ = 0U;
     pitchStatus_ = sampleRate() == 0U ? PitchStatus::Unprepared : PitchStatus::InsufficientLevel;
 }
 
@@ -238,6 +298,7 @@ bool NativeElectricProcessor::onPrepare() noexcept {
     envelopeReleaseCoefficient_ = std::exp(-1.0 / (static_cast<double>(sampleRate()) * 0.070));
     oscillatorFrequencyCoefficient_ = 1.0 - std::exp(
         -1.0 / (static_cast<double>(sampleRate()) * kPitchOscillatorSmoothingSeconds));
+    updateOfficialResponse();
     filterUpdateCount_ = 0U;
     envelope_ = 0.0;
     oscillatorPhase_ = 0.0;
@@ -254,6 +315,23 @@ bool NativeElectricProcessor::onPrepare() noexcept {
 
 bool NativeElectricProcessor::onSetParameter(std::string_view parameterId, float value,
                                               std::uint64_t rampFrames) noexcept {
+    if (parameterId.substr(0U, 9U) == "official_") {
+        if (parameterId == "official_shift") officialShift_ = value;
+        else if (parameterId == "official_formant") { officialFormant_ = value; officialHarmonicCounter_ = 0U; }
+        else if (parameterId == "official_speed") officialSpeed_ = value;
+        else if (parameterId == "official_stability") officialStability_ = value;
+        else if (parameterId == "official_scale") { officialScale_ = static_cast<unsigned int>(value); officialTargetMidi_ = -1; }
+        else return false;
+        officialActive_ = true;
+        officialPitchCounter_ = 0U;
+        updateOfficialResponse();
+        return true;
+    }
+    if (officialActive_) {
+        officialActive_ = false;
+        oscillatorFrequencyCoefficient_ = sampleRate() > 0U ? 1.0 - std::exp(
+            -1.0 / (sampleRate() * kPitchOscillatorSmoothingSeconds)) : 0.0;
+    }
     if (parameterId == "character") {
         const auto requested = static_cast<Character>(static_cast<unsigned int>(value));
         if (requested != character_) {
@@ -355,9 +433,10 @@ void NativeElectricProcessor::processEffectFrame(float* frame, unsigned int chan
 
     const float pitchSnap = std::clamp(pitchSnapPercent_.next() * 0.01f, 0.0f, 1.0f);
     if (pitchLocked_ && trackedHz_ > 0.0f) {
-        snappedHz_ = snapToNearestMidi(trackedHz_);
-        const double requestedHz = static_cast<double>(trackedHz_) +
-            (static_cast<double>(snappedHz_ - trackedHz_) * static_cast<double>(pitchSnap));
+        if (!officialActive_) snappedHz_ = snapToNearestMidi(trackedHz_);
+        else if ((officialPitchCounter_++ & 15U) == 0U || snappedHz_ <= 0.0f) snappedHz_ = officialSnappedFrequency(trackedHz_);
+        const double requestedHz = officialActive_ ? static_cast<double>(snappedHz_)
+            : static_cast<double>(trackedHz_) + (static_cast<double>(snappedHz_ - trackedHz_) * static_cast<double>(pitchSnap));
         if (!(smoothedOscillatorHz_ > 0.0)) {
             smoothedOscillatorHz_ = requestedHz;
         } else {
@@ -373,12 +452,13 @@ void NativeElectricProcessor::processEffectFrame(float* frame, unsigned int chan
 
     const float toneCutoffHz = toneHz_.next();
     if ((filterUpdateCount_++ & 15U) == 0U) (void)configureToneFilters(toneCutoffHz);
-    const float mix = std::clamp(mixPercent_.next() * 0.01f, 0.0f, 1.0f);
+    const float legacyMix = std::clamp(mixPercent_.next() * 0.01f, 0.0f, 1.0f);
+    const float mix = officialActive_ ? 1.0f : legacyMix;
 
     float wetLeft = left;
     float wetRight = right;
     bool pitchDependentFallback = false;
-    switch (character_) {
+    switch (officialActive_ ? Character::Classic : character_) {
     case Character::Classic: {
         if (!pitchLocked_ || !(envelope_ > kVoiceGate)) {
             pitchDependentFallback = true;
@@ -386,7 +466,8 @@ void NativeElectricProcessor::processEffectFrame(float* frame, unsigned int chan
         }
         const double frequency = std::clamp(smoothedOscillatorHz_, 20.0,
             static_cast<double>(sampleRate()) * 0.40);
-        const float carrier = static_cast<float>(std::sin(oscillatorPhase_));
+        const float carrier = officialActive_ ? officialCarrier(oscillatorPhase_, frequency)
+            : static_cast<float>(std::sin(oscillatorPhase_));
         oscillatorPhase_ += kTwoPi * frequency / static_cast<double>(sampleRate());
         if (oscillatorPhase_ >= kTwoPi) oscillatorPhase_ -= kTwoPi;
         const float voice = finiteBounded(static_cast<float>(envelope_ * 1.4142135623730951) * carrier,

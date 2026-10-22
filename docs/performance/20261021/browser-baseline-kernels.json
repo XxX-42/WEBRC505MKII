@@ -1,0 +1,585 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_worklet_node_vm_relative_kernel_microbenchmark",
+  "generatedAtUtc": "2026-10-21T11:17:00.064Z",
+  "repositoryHead": null,
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sourcePath": "public/worklets/fx-processor.js",
+  "sourceSha256": "7465f2341349ce918d6c565ebb686ead813ad1ca9d1ac66795c9aacb55d309d0",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 64,
+  "measuredBlocksPerPass": 128,
+  "passes": 3,
+  "timingSource": "Node process.hrtime.bigint() around synchronous worklet process() calls in a Node VM; this is a relative kernel diagnostic only.",
+  "exclusions": [
+    "No browser AudioWorklet scheduler, AudioContext, cross-thread scheduling, or device endpoint.",
+    "No 20-slot graph or five Signalsmith LIVE_POLY processors.",
+    "One synthetic stereo signal and one processor instance per algorithm; not a representative audio-quality suite.",
+    "Results rank relative JavaScript DSP cost in this Node VM and do not pass or replace browser/native realtime acceptance."
+  ],
+  "results": [
+    {
+      "catalogName": "GATE REVERB",
+      "algorithm": "gate-reverb",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 314.253657,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.8458609786193847,
+          "nanosecondsPerInputFrame": 19180.521057128906
+        },
+        {
+          "elapsedMilliseconds": 303.014882,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.8156101255004883,
+          "nanosecondsPerInputFrame": 18494.560668945312
+        },
+        {
+          "elapsedMilliseconds": 295.673381,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.7958493714660645,
+          "nanosecondsPerInputFrame": 18046.47100830078
+        }
+      ],
+      "medianRealtimeRatio": 0.8156101255004883,
+      "finiteOutput": true,
+      "outputRms": 0.13250431793563885
+    },
+    {
+      "catalogName": "PHASER",
+      "algorithm": "phaser",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 292.563806,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.7874794827026367,
+          "nanosecondsPerInputFrame": 17856.677612304688
+        },
+        {
+          "elapsedMilliseconds": 304.431831,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.819424056829834,
+          "nanosecondsPerInputFrame": 18581.044372558594
+        },
+        {
+          "elapsedMilliseconds": 298.682223,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.8039481222106934,
+          "nanosecondsPerInputFrame": 18230.116149902344
+        }
+      ],
+      "medianRealtimeRatio": 0.8039481222106934,
+      "finiteOutput": true,
+      "outputRms": 0.15887216192091738
+    },
+    {
+      "catalogName": "DIST",
+      "algorithm": "distortion",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 249.194832,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6707453668945312,
+          "nanosecondsPerInputFrame": 15209.6455078125
+        },
+        {
+          "elapsedMilliseconds": 267.256444,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.7193609118896485,
+          "nanosecondsPerInputFrame": 16312.038818359375
+        },
+        {
+          "elapsedMilliseconds": 266.763367,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.7180337209899903,
+          "nanosecondsPerInputFrame": 16281.943786621094
+        }
+      ],
+      "medianRealtimeRatio": 0.7180337209899903,
+      "finiteOutput": true,
+      "outputRms": 0.7515036969275055
+    },
+    {
+      "catalogName": "FDN8 REVERB",
+      "algorithm": "reverb",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 248.839213,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6697881648742676,
+          "nanosecondsPerInputFrame": 15187.940246582031
+        },
+        {
+          "elapsedMilliseconds": 256.63724,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6907777272949219,
+          "nanosecondsPerInputFrame": 15663.89404296875
+        },
+        {
+          "elapsedMilliseconds": 243.665527,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6558624109313965,
+          "nanosecondsPerInputFrame": 14872.163513183594
+        }
+      ],
+      "medianRealtimeRatio": 0.6697881648742676,
+      "finiteOutput": true,
+      "outputRms": 0.02781673282588517
+    },
+    {
+      "catalogName": "TAPE ECHO",
+      "algorithm": "tape-echo",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 244.424406,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6579050478881836,
+          "nanosecondsPerInputFrame": 14918.481811523438
+        },
+        {
+          "elapsedMilliseconds": 253.015196,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6810284511474609,
+          "nanosecondsPerInputFrame": 15442.822021484375
+        },
+        {
+          "elapsedMilliseconds": 246.150511,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.6625511190856933,
+          "nanosecondsPerInputFrame": 15023.834899902344
+        }
+      ],
+      "medianRealtimeRatio": 0.6625511190856933,
+      "finiteOutput": true,
+      "outputRms": 0.1332926546504155
+    },
+    {
+      "catalogName": "PREAMP",
+      "algorithm": "preamp",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 200.325743,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.5392068643981933,
+          "nanosecondsPerInputFrame": 12226.913024902344
+        },
+        {
+          "elapsedMilliseconds": 212.245059,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.5712894959655762,
+          "nanosecondsPerInputFrame": 12954.410339355469
+        },
+        {
+          "elapsedMilliseconds": 222.438075,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.5987255314636231,
+          "nanosecondsPerInputFrame": 13576.542663574219
+        }
+      ],
+      "medianRealtimeRatio": 0.5712894959655762,
+      "finiteOutput": true,
+      "outputRms": 0.34329919110509777
+    },
+    {
+      "catalogName": "CHORUS",
+      "algorithm": "chorus",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 163.047037,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.4388656208312988,
+          "nanosecondsPerInputFrame": 9951.601379394531
+        },
+        {
+          "elapsedMilliseconds": 157.622293,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.42426410652465824,
+          "nanosecondsPerInputFrame": 9620.501281738281
+        },
+        {
+          "elapsedMilliseconds": 169.832157,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.4571287917297363,
+          "nanosecondsPerInputFrame": 10365.732238769531
+        }
+      ],
+      "medianRealtimeRatio": 0.4388656208312988,
+      "finiteOutput": true,
+      "outputRms": 0.12891617417580295
+    },
+    {
+      "catalogName": "MOD DELAY",
+      "algorithm": "mod-delay",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 175.875206,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.47339456693115234,
+          "nanosecondsPerInputFrame": 10734.570678710938
+        },
+        {
+          "elapsedMilliseconds": 146.787806,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.3951014553588867,
+          "nanosecondsPerInputFrame": 8959.216674804688
+        },
+        {
+          "elapsedMilliseconds": 150.021117,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.4038043981750488,
+          "nanosecondsPerInputFrame": 9156.562316894531
+        }
+      ],
+      "medianRealtimeRatio": 0.4038043981750488,
+      "finiteOutput": true,
+      "outputRms": 0.13311936865847085
+    },
+    {
+      "catalogName": "VIBRATO",
+      "algorithm": "vibrato",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 110.986258,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2987362046997071,
+          "nanosecondsPerInputFrame": 6774.0635986328125
+        },
+        {
+          "elapsedMilliseconds": 118.102409,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.3178903953186035,
+          "nanosecondsPerInputFrame": 7208.398986816406
+        },
+        {
+          "elapsedMilliseconds": 106.406456,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2864089788574219,
+          "nanosecondsPerInputFrame": 6494.53466796875
+        }
+      ],
+      "medianRealtimeRatio": 0.2987362046997071,
+      "finiteOutput": true,
+      "outputRms": 0.14240776643110714
+    },
+    {
+      "catalogName": "PANNING DELAY",
+      "algorithm": "panning-delay",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 93.830368,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2525585466796875,
+          "nanosecondsPerInputFrame": 5726.951171875
+        },
+        {
+          "elapsedMilliseconds": 98.479804,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2650732029052734,
+          "nanosecondsPerInputFrame": 6010.730224609375
+        },
+        {
+          "elapsedMilliseconds": 112.086482,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.30169762305908204,
+          "nanosecondsPerInputFrame": 6841.2159423828125
+        }
+      ],
+      "medianRealtimeRatio": 0.2650732029052734,
+      "finiteOutput": true,
+      "outputRms": 0.12719187606960863
+    },
+    {
+      "catalogName": "GRANULAR DELAY",
+      "algorithm": "granular-delay",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 98.114108,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.26408887712402346,
+          "nanosecondsPerInputFrame": 5988.409912109375
+        },
+        {
+          "elapsedMilliseconds": 98.041269,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2638928200012207,
+          "nanosecondsPerInputFrame": 5983.964172363281
+        },
+        {
+          "elapsedMilliseconds": 98.220468,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2643751610595703,
+          "nanosecondsPerInputFrame": 5994.901611328125
+        }
+      ],
+      "medianRealtimeRatio": 0.26408887712402346,
+      "finiteOutput": true,
+      "outputRms": 0.1271593463918868
+    },
+    {
+      "catalogName": "FLANGER",
+      "algorithm": "flanger",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 97.194326,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2616131455444336,
+          "nanosecondsPerInputFrame": 5932.2708740234375
+        },
+        {
+          "elapsedMilliseconds": 91.763306,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2469947384399414,
+          "nanosecondsPerInputFrame": 5600.7877197265625
+        },
+        {
+          "elapsedMilliseconds": 99.849357,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.2687595607727051,
+          "nanosecondsPerInputFrame": 6094.321105957031
+        }
+      ],
+      "medianRealtimeRatio": 0.2616131455444336,
+      "finiteOutput": true,
+      "outputRms": 0.12502699013160076
+    },
+    {
+      "catalogName": "DELAY",
+      "algorithm": "delay",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 89.854873,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.24185790401000976,
+          "nanosecondsPerInputFrame": 5484.306213378906
+        },
+        {
+          "elapsedMilliseconds": 91.527196,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.24635921286621096,
+          "nanosecondsPerInputFrame": 5586.376708984375
+        },
+        {
+          "elapsedMilliseconds": 83.105266,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.22369032169189454,
+          "nanosecondsPerInputFrame": 5072.3428955078125
+        }
+      ],
+      "medianRealtimeRatio": 0.24185790401000976,
+      "finiteOutput": true,
+      "outputRms": 0.12019026408784204
+    },
+    {
+      "catalogName": "SUSTAINER",
+      "algorithm": "sustainer",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 68.470497,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.1842986399963379,
+          "nanosecondsPerInputFrame": 4179.107482910156
+        },
+        {
+          "elapsedMilliseconds": 64.079772,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.17248034333496096,
+          "nanosecondsPerInputFrame": 3911.118896484375
+        },
+        {
+          "elapsedMilliseconds": 60.379495,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.16252049130249024,
+          "nanosecondsPerInputFrame": 3685.2719116210938
+        }
+      ],
+      "medianRealtimeRatio": 0.17248034333496096,
+      "finiteOutput": true,
+      "outputRms": 0.06031703098889039
+    },
+    {
+      "catalogName": "DYNAMICS",
+      "algorithm": "dynamics",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 60.184521,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.16199568945922851,
+          "nanosecondsPerInputFrame": 3673.3716430664062
+        },
+        {
+          "elapsedMilliseconds": 58.374981,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.15712504041137695,
+          "nanosecondsPerInputFrame": 3562.9260864257812
+        },
+        {
+          "elapsedMilliseconds": 55.933651,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.15055383356323243,
+          "nanosecondsPerInputFrame": 3413.9191284179688
+        }
+      ],
+      "medianRealtimeRatio": 0.15712504041137695,
+      "finiteOutput": true,
+      "outputRms": 0.10703577477073585
+    },
+    {
+      "catalogName": "AUTO PAN",
+      "algorithm": "auto-pan",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 62.397528,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.16795233061523437,
+          "nanosecondsPerInputFrame": 3808.44287109375
+        },
+        {
+          "elapsedMilliseconds": 57.388228,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.15446904631347655,
+          "nanosecondsPerInputFrame": 3502.699462890625
+        },
+        {
+          "elapsedMilliseconds": 56.496277,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.1520682260559082,
+          "nanosecondsPerInputFrame": 3448.2590942382812
+        }
+      ],
+      "medianRealtimeRatio": 0.15446904631347655,
+      "finiteOutput": true,
+      "outputRms": 0.10712417599517854
+    },
+    {
+      "catalogName": "TREMOLO",
+      "algorithm": "tremolo",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 51.834059,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.1395191651550293,
+          "nanosecondsPerInputFrame": 3163.6998901367188
+        },
+        {
+          "elapsedMilliseconds": 54.072083,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.14554314332885743,
+          "nanosecondsPerInputFrame": 3300.2980346679688
+        },
+        {
+          "elapsedMilliseconds": 47.406753,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.1276024052307129,
+          "nanosecondsPerInputFrame": 2893.4785766601562
+        }
+      ],
+      "medianRealtimeRatio": 0.1395191651550293,
+      "finiteOutput": true,
+      "outputRms": 0.10927493221608141
+    },
+    {
+      "catalogName": "RING.MOD",
+      "algorithm": "ring-mod",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 39.465946,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.10622852896728516,
+          "nanosecondsPerInputFrame": 2408.8101806640625
+        },
+        {
+          "elapsedMilliseconds": 36.30164,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.09771132348632812,
+          "nanosecondsPerInputFrame": 2215.67626953125
+        },
+        {
+          "elapsedMilliseconds": 37.247622,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.10025757630615234,
+          "nanosecondsPerInputFrame": 2273.4144287109375
+        }
+      ],
+      "medianRealtimeRatio": 0.10025757630615234,
+      "finiteOutput": true,
+      "outputRms": 0.10060331070167645
+    },
+    {
+      "catalogName": "STEREO ENHANCE",
+      "algorithm": "stereo-enhance",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 31.36278,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.08441763903808594,
+          "nanosecondsPerInputFrame": 1914.232177734375
+        },
+        {
+          "elapsedMilliseconds": 39.248645,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.10564363064575197,
+          "nanosecondsPerInputFrame": 2395.5471801757812
+        },
+        {
+          "elapsedMilliseconds": 33.748048,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.09083794658203125,
+          "nanosecondsPerInputFrame": 2059.8173828125
+        }
+      ],
+      "medianRealtimeRatio": 0.09083794658203125,
+      "finiteOutput": true,
+      "outputRms": 0.13822104274671454
+    },
+    {
+      "catalogName": "DSP LPF",
+      "algorithm": "lpf",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 28.79807,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.0775143363647461,
+          "nanosecondsPerInputFrame": 1757.6947021484375
+        },
+        {
+          "elapsedMilliseconds": 28.232961,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.0759932605041504,
+          "nanosecondsPerInputFrame": 1723.2031860351562
+        },
+        {
+          "elapsedMilliseconds": 28.09934,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.07563359948730469,
+          "nanosecondsPerInputFrame": 1715.047607421875
+        }
+      ],
+      "medianRealtimeRatio": 0.0759932605041504,
+      "finiteOutput": true,
+      "outputRms": 0.13589910213829776
+    }
+  ]
+}

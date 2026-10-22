@@ -1,0 +1,52 @@
+{
+  "baseline": "eb60b801e3842e72d5584d191b00e68d6fc3caed",
+  "sourceFrozen": true,
+  "browserMeasurement": "Node VM bundled DSP; not real Browser callback",
+  "browserGateGainPercentABBA_BAAB": [
+    6.54,
+    3.86
+  ],
+  "browserTremoloGainPercentABBA_BAAB": [
+    13.9,
+    13.63
+  ],
+  "browserAutoPanGainPercentABBA_BAAB": [
+    4.54,
+    3.79
+  ],
+  "nativeMonoInputPreampMeanGainPercent": 19.53,
+  "nativeMonoInputPreampMeanP50GainPercent": 18.38,
+  "unitPass": 1107,
+  "unitFiles": 151,
+  "nativeUnitPass": 46,
+  "fxSanityCases": 1656,
+  "fxSanityPcmChanges": 0,
+  "nativeAcceptance": {
+    "cells": 216,
+    "functionalPass": 216,
+    "performancePass": 168,
+    "performanceFail": 48,
+    "failureCountsByFxMode": {
+      "1": 39,
+      "0": 3,
+      "2": 6
+    },
+    "failureCountsByTracks": {
+      "1": 4,
+      "5": 44
+    },
+    "trackedCallbackAllocations": 0,
+    "supplementCells": 6,
+    "supplementPerformanceFail": 6,
+    "performanceCriteria": "p99 < 0.5 * callback period AND max < 0.8 * callback period AND cpuBudgetExceedances == 0",
+    "physicalXruns": null,
+    "crossRunComparison": "Fresh acceptance, not paired evidence of regression relative to old failure counts"
+  },
+  "soakWallSeconds": 600,
+  "soakCallbacks": 225001,
+  "soakCoLoadedCpuExceedances": 1424,
+  "overallP0Solved": false,
+  "pushAttempted": false,
+  "userDeviceDeployment": "LOCAL_DEPLOY_BLOCKED",
+  "hardwareXruns": null
+}

@@ -2,6 +2,8 @@ const DEFAULT_CHUNK_SIZE = 16384;
 const DEFAULT_CHUNK_POOL_SIZE = 3;
 const DEFAULT_MAX_RECORDING_CHUNKS = 65536;
 const DEFAULT_MAX_RECORDING_FRAMES = DEFAULT_CHUNK_SIZE * DEFAULT_MAX_RECORDING_CHUNKS;
+const MAX_CAPTURE_CHANNELS = 2;
+const BYTES_PER_SAMPLE = Float32Array.BYTES_PER_ELEMENT;
 
 class LooperProcessor extends AudioWorkletProcessor {
     constructor(options = {}) {
@@ -10,15 +12,19 @@ class LooperProcessor extends AudioWorkletProcessor {
         const processorOptions = options.processorOptions || {};
         this.chunkSize = this.positiveInteger(processorOptions.chunkSize, DEFAULT_CHUNK_SIZE);
         this.chunkPoolSize = this.positiveInteger(processorOptions.chunkPoolSize, DEFAULT_CHUNK_POOL_SIZE);
-        this.maxRecordingFrames = this.positiveInteger(
+        this.configuredMaxRecordingFrames = this.positiveInteger(
             processorOptions.maxRecordingFrames,
             DEFAULT_MAX_RECORDING_FRAMES,
+        );
+        this.maxRecordingBytes = this.positiveInteger(
+            processorOptions.maxRecordingBytes,
+            this.configuredMaxRecordingFrames * BYTES_PER_SAMPLE,
         );
 
         // Fixed pool; a slot is null only while its transferred buffer is on the main thread.
         this.chunkBuffers = new Array(this.chunkPoolSize);
         for (let index = 0; index < this.chunkPoolSize; index += 1) {
-            this.chunkBuffers[index] = new Float32Array(this.chunkSize);
+            this.chunkBuffers[index] = [new Float32Array(this.chunkSize), new Float32Array(this.chunkSize)];
         }
 
         // Reused for every transfer so a full chunk boundary does not create message/list objects.
@@ -27,20 +33,30 @@ class LooperProcessor extends AudioWorkletProcessor {
             chunkIndex: 0,
             sequence: 0,
             validFrames: 0,
+            channelCount: 1,
             samples: null,
+            channels: null,
         };
-        this.chunkTransferList = [null];
+        this.chunkTransferList = [null, null];
         this.completeMessage = {
             type: 'RECORD_COMPLETE',
             framesCaptured: 0,
             droppedFrames: 0,
             overflowEvents: 0,
-            maxRecordingFrames: this.maxRecordingFrames,
+            maxRecordingFrames: 0,
+            maxRecordingBytes: this.maxRecordingBytes,
+            channelCount: 0,
             limitReached: false,
             chunksSent: 0,
         };
 
         this.isRecording = false;
+        // Keep the inserted passthrough alive until capture is explicitly
+        // stopped, then let AudioWorklet retire this one-shot node. Returning
+        // true forever keeps the processor scheduled after TrackAudio disconnects it.
+        this.shouldContinue = true;
+        this.captureChannelCount = 0;
+        this.maxRecordingFrames = this.configuredMaxRecordingFrames;
         this.blocksProcessed = 0;
         this.framesCaptured = 0;
         this.chunksSent = 0;
@@ -60,7 +76,7 @@ class LooperProcessor extends AudioWorkletProcessor {
             } else if (message.type === 'STOP_RECORD') {
                 this.stopRecording();
             } else if (message.type === 'RECYCLE_CHUNK') {
-                this.recycleChunk(message.chunkIndex, message.samples);
+                this.recycleChunk(message.chunkIndex, message.samples, message.channels);
             }
         };
     }
@@ -73,6 +89,8 @@ class LooperProcessor extends AudioWorkletProcessor {
         if (this.isRecording) return;
         this.isRecording = true;
         this.framesCaptured = 0;
+        this.captureChannelCount = 0;
+        this.maxRecordingFrames = this.configuredMaxRecordingFrames;
         this.droppedFrames = 0;
         this.overflowEvents = 0;
         this.limitReached = false;
@@ -84,6 +102,7 @@ class LooperProcessor extends AudioWorkletProcessor {
     stopRecording() {
         if (!this.isRecording) return;
         this.isRecording = false;
+        this.shouldContinue = false;
 
         if (this.activeChunkIndex >= 0 && this.activeChunkOffset > 0) {
             this.sendChunk(this.activeChunkIndex, this.activeChunkOffset);
@@ -94,20 +113,26 @@ class LooperProcessor extends AudioWorkletProcessor {
         this.completeMessage.framesCaptured = this.framesCaptured;
         this.completeMessage.droppedFrames = this.droppedFrames;
         this.completeMessage.overflowEvents = this.overflowEvents;
+        this.completeMessage.maxRecordingFrames = this.maxRecordingFrames;
+        this.completeMessage.maxRecordingBytes = this.maxRecordingBytes;
+        this.completeMessage.channelCount = this.captureChannelCount;
         this.completeMessage.limitReached = this.limitReached;
         this.completeMessage.chunksSent = this.chunksSent;
         this.port.postMessage(this.completeMessage);
     }
 
-    recycleChunk(chunkIndex, samples) {
+    recycleChunk(chunkIndex, samples, channels) {
         if (
             Number.isInteger(chunkIndex) &&
             chunkIndex >= 0 &&
             chunkIndex < this.chunkPoolSize &&
-            samples instanceof Float32Array &&
-            samples.length === this.chunkSize
+            (Array.isArray(channels) || samples instanceof Float32Array)
         ) {
-            this.chunkBuffers[chunkIndex] = samples;
+            const recycled = Array.isArray(channels) ? channels : [samples];
+            if (recycled.length !== this.captureChannelCount || recycled.some((channel) =>
+                !(channel instanceof Float32Array) || channel.length !== this.chunkSize
+            )) return;
+            this.chunkBuffers[chunkIndex] = recycled;
         }
     }
 
@@ -126,7 +151,30 @@ class LooperProcessor extends AudioWorkletProcessor {
         }
     }
 
-    recordSample(sample) {
+    configureCaptureChannels(inputChannelCount) {
+        if (this.captureChannelCount > 0) return;
+        this.captureChannelCount = Math.max(1, Math.min(MAX_CAPTURE_CHANNELS, inputChannelCount));
+        this.maxRecordingFrames = Math.min(
+            this.configuredMaxRecordingFrames,
+            Math.floor(this.maxRecordingBytes / BYTES_PER_SAMPLE / this.captureChannelCount),
+        );
+        if (this.captureChannelCount === 1) {
+            // A mono stream only transfers/retains its left sample array.
+            // Drop the unused right-side pool arrays before capture grows.
+            for (let slot = 0; slot < this.chunkBuffers.length; slot += 1) {
+                this.chunkBuffers[slot].length = 1;
+            }
+        }
+        this.port.postMessage({
+            type: 'RECORD_CONFIGURED',
+            channelCount: this.captureChannelCount,
+            maxRecordingFrames: this.maxRecordingFrames,
+            maxRecordingBytes: this.maxRecordingBytes,
+        });
+    }
+
+    recordFrame(leftSample, rightSample) {
+        if (this.captureChannelCount === 0) return;
         if (this.framesCaptured >= this.maxRecordingFrames) {
             this.limitReached = true;
             this.noteDroppedFrame();
@@ -142,15 +190,16 @@ class LooperProcessor extends AudioWorkletProcessor {
             }
         }
 
-        const chunk = this.chunkBuffers[this.activeChunkIndex];
-        if (!chunk) {
+        const chunkChannels = this.chunkBuffers[this.activeChunkIndex];
+        if (!chunkChannels || chunkChannels.length !== this.captureChannelCount) {
             this.activeChunkIndex = -1;
             this.activeChunkOffset = 0;
             this.noteDroppedFrame();
             return;
         }
 
-        chunk[this.activeChunkOffset] = sample;
+        chunkChannels[0][this.activeChunkOffset] = leftSample;
+        if (this.captureChannelCount > 1) chunkChannels[1][this.activeChunkOffset] = rightSample;
         this.activeChunkOffset += 1;
         this.framesCaptured += 1;
         this.overflowActive = false;
@@ -161,15 +210,20 @@ class LooperProcessor extends AudioWorkletProcessor {
     }
 
     sendChunk(chunkIndex, validFrames) {
-        const samples = this.chunkBuffers[chunkIndex];
-        if (!samples) return;
+        const channels = this.chunkBuffers[chunkIndex];
+        if (!channels) return;
 
         this.chunkBuffers[chunkIndex] = null;
         this.chunkMessage.chunkIndex = chunkIndex;
         this.chunkMessage.sequence = this.chunksSent;
         this.chunkMessage.validFrames = validFrames;
-        this.chunkMessage.samples = samples;
-        this.chunkTransferList[0] = samples.buffer;
+        this.chunkMessage.channelCount = this.captureChannelCount;
+        this.chunkMessage.samples = channels[0];
+        this.chunkMessage.channels = channels;
+        this.chunkTransferList.length = this.captureChannelCount;
+        for (let channel = 0; channel < this.captureChannelCount; channel += 1) {
+            this.chunkTransferList[channel] = channels[channel].buffer;
+        }
         this.port.postMessage(this.chunkMessage, this.chunkTransferList);
         this.chunksSent += 1;
 
@@ -189,7 +243,9 @@ class LooperProcessor extends AudioWorkletProcessor {
             for (let channel = 0; channel < outputChannelCount; channel += 1) {
                 const outputChannel = output[channel];
                 if (!outputChannel) continue;
-                const inputChannel = input && channel < inputChannelCount ? input[channel] : null;
+                const inputChannel = input && channel < inputChannelCount
+                    ? input[channel]
+                    : inputChannelCount === 1 ? input[0] : null;
                 for (let frame = 0; frame < outputChannel.length; frame += 1) {
                     outputChannel[frame] = inputChannel && frame < inputChannel.length
                         ? inputChannel[frame]
@@ -198,15 +254,20 @@ class LooperProcessor extends AudioWorkletProcessor {
             }
         }
 
-        // The existing recording path is mono and captures processed input channel 0.
         const inputChannel0 = input && inputChannelCount > 0 ? input[0] : null;
         if (this.isRecording && inputChannel0) {
+            this.configureCaptureChannels(inputChannelCount);
+            const inputChannel1 = inputChannelCount > 1 ? input[1] : null;
             for (let frame = 0; frame < inputChannel0.length; frame += 1) {
-                this.recordSample(inputChannel0[frame]);
+                const left = inputChannel0[frame] || 0;
+                const right = inputChannel1 && frame < inputChannel1.length
+                    ? inputChannel1[frame] || 0
+                    : left;
+                this.recordFrame(left, right);
             }
         }
 
-        return true;
+        return this.shouldContinue;
     }
 }
 

@@ -1,0 +1,1 @@
+{"runId":"native_fx_topology_all_banks_smoke_20261019T1503Z","head":"9c900304ddd4d206c920a05028b1b91c84651b91","harnessDiffSha256":"350fe8e0829b50dd1621093af18aea3f6d6861834c9369a21bd38d90aec25e64","command":"native_per_track_fx_bench --topology=all-banks --warmup-callbacks=2000 --measured-callbacks=256","scope":"route/fault smoke only, not a performance acceptance run"}

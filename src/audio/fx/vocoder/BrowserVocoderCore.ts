@@ -1,4 +1,5 @@
 import { TptStateVariableFilter } from '../../dsp/TptStateVariableFilter';
+import { validateVoiceControls, voiceAttackSeconds, voiceReleaseSeconds } from '../dsp/BrowserOfficialVoiceDsp';
 
 export type BrowserVocoderCarrier = 0 | 1 | 2;
 
@@ -8,6 +9,12 @@ export interface BrowserVocoderParameters {
   /** 0: input voice, 1: internal polyBLEP saw, 2: internal polyBLEP square. */
   carrier?: number;
 }
+
+export interface BrowserVocoderOfficialParameters { tone?: number; attack?: number; mod_sens?: number }
+/** Shared voice shaping; formant is ELECTRIC's -50..50 spectral-envelope shift. */
+export interface BrowserVocoderShapingParameters extends BrowserVocoderOfficialParameters { release?: number; formant?: number }
+const SHAPING_LIMITS = { tone: [-50, 50], attack: [0, 100], mod_sens: [-50, 50], release: [0, 100], formant: [-50, 50] } as const;
+const OFFICIAL_LIMITS = { tone: [-50, 50], attack: [0, 100], mod_sens: [-50, 50] } as const;
 
 const MIN_SAMPLE_RATE = 8000;
 const MAX_SAMPLE_RATE = 192000;
@@ -74,11 +81,16 @@ export class BrowserVocoderCore {
   private readonly carrierFilters: TptStateVariableFilter[];
   private readonly envelopes: Float64Array;
   private readonly centerFrequenciesHz: Float64Array;
-  private readonly attackCoefficient: number;
-  private readonly releaseCoefficient: number;
+  private attackCoefficient: number;
+  private releaseCoefficient: number;
   private readonly oscillatorStep: number;
   private activeBands: number;
   private carrierMode: BrowserVocoderCarrier;
+  private readonly bandGains = new Float64Array(MAX_BANDS).fill(1);
+  private toneValue = 0;
+  private formantValue = 0;
+  private modulatorGain = 1;
+  private officialActive = false;
   private phase = 0;
   private currentOutput = 0;
 
@@ -148,6 +160,33 @@ export class BrowserVocoderCore {
     this.carrierMode = nextCarrier;
   }
 
+  /** Only real local controls; physical CARRIER routing and CARRIER THRU remain unsupported. */
+  setOfficialParameters(parameters: BrowserVocoderOfficialParameters): void {
+    validateVoiceControls(parameters, OFFICIAL_LIMITS, 'VOCODER');
+    if (!Object.values(parameters).some(value => value !== undefined)) return;
+    if (!this.officialActive) {
+      this.setVoiceShapingParameters({ tone: 0, attack: 50, mod_sens: 0 });
+      this.officialActive = true;
+    }
+    this.setVoiceShapingParameters(parameters);
+  }
+
+  /** Reusable analysis/resynthesis shaping for ELECTRIC and the OSC effects. */
+  setVoiceShapingParameters(parameters: BrowserVocoderShapingParameters): void {
+    validateVoiceControls(parameters, SHAPING_LIMITS, 'Voice shaping');
+    if (parameters.attack !== undefined) this.attackCoefficient = Math.exp(-1 / (voiceAttackSeconds(parameters.attack) * this.sampleRate));
+    if (parameters.release !== undefined) this.releaseCoefficient = Math.exp(-1 / (voiceReleaseSeconds(parameters.release) * this.sampleRate));
+    if (parameters.mod_sens !== undefined) this.modulatorGain = 10 ** (parameters.mod_sens * 0.36 / 20);
+    if (parameters.tone !== undefined) this.toneValue = parameters.tone;
+    if (parameters.formant !== undefined) this.formantValue = parameters.formant;
+    if (parameters.tone !== undefined || parameters.formant !== undefined) this.configureFilterbank(this.activeBands);
+  }
+
+  getCarrierBandCenterFrequencyHz(band: number): number {
+    const center = this.getBandCenterFrequencyHz(band);
+    return center > 0 ? Math.min(this.sampleRate * 0.45, center * 2 ** (this.formantValue / 50)) : 0;
+  }
+
   /** Voice-input carrier or internal anti-aliased saw/square carrier mode. */
   processSample(modulatorLeft: number, modulatorRight: number): void {
     const modulator = boundedSample((boundedSample(modulatorLeft) + boundedSample(modulatorRight)) * 0.5);
@@ -192,7 +231,7 @@ export class BrowserVocoderCore {
       const carrierFilter = this.carrierFilters[band];
       if (!analysis || !carrierFilter) continue;
 
-      analysis.processSample(modulator);
+      analysis.processSample(boundedSample(modulator * this.modulatorGain));
       const carrier = bandCarriers === null
         ? scalarCarrier
         : boundedSample(bandCarriers[band] ?? 0);
@@ -202,7 +241,7 @@ export class BrowserVocoderCore {
       const coefficient = target > previous ? this.attackCoefficient : this.releaseCoefficient;
       const envelope = clamp((coefficient * previous) + ((1 - coefficient) * target), 0, MAX_ENVELOPE);
       this.envelopes[band] = envelope;
-      sum += envelope * carrierFilter.bandpass;
+      sum += envelope * carrierFilter.bandpass * this.bandGains[band]!;
     }
 
     // Power normalization prevents a band-count change from trivially scaling
@@ -254,7 +293,9 @@ export class BrowserVocoderCore {
       const centerHz = inverseErb(lowErb + ((highErb - lowErb) * position));
       this.centerFrequenciesHz[band] = centerHz;
       this.analysisFilters[band]?.setParameters(centerHz, FILTER_Q);
-      this.carrierFilters[band]?.setParameters(centerHz, FILTER_Q);
+      this.carrierFilters[band]?.setParameters(Math.min(this.sampleRate * 0.45, centerHz * 2 ** (this.formantValue / 50)), FILTER_Q);
+      const tiltDb = clamp((this.toneValue / 50) * 6 * Math.log2(centerHz / 1000), -18, 18);
+      this.bandGains[band] = 10 ** (tiltDb / 20);
     }
   }
 

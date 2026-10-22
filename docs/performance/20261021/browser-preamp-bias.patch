@@ -1,0 +1,55 @@
+--- /tmp/rc505-browser-perf/preamp-cache.ts	2026-10-21 04:37:54.485072227 -0700
++++ /tmp/rc505-browser-perf/preamp-cache-bias.ts	2026-10-21 04:37:54.583907252 -0700
+@@ -73,8 +73,8 @@
+   return absolute + Math.log1p(Math.exp(-2 * absolute)) - Math.LN2;
+ }
+ 
+-function antiderivative(shape: number, bias: number, value: number): number {
+-  return logCosh(shape * (value + bias)) / shape - value * Math.tanh(shape * bias);
++function antiderivative(shape: number, bias: number, value: number, biasValue: number): number {
++  return logCosh(shape * (value + bias)) / shape - value * biasValue;
+ }
+ 
+ function directFormBiquad(input: number, coefficients: ReturnType<typeof designRbjBiquad>, state: Float64Array, offset: number): number {
+@@ -155,6 +155,8 @@
+   private readonly antiderivativeValid = new Uint8Array(2);
+   private antiderivativeShape = Number.NaN;
+   private antiderivativeBias = Number.NaN;
++  private biasValue = 0;
++  private slopeAtZero = 1;
+   private readonly cabinetHistory: Float64Array[] = [new Float64Array(CABINET_TAPS), new Float64Array(CABINET_TAPS)];
+   private readonly cabinetWriteIndex = new Int32Array(2);
+ 
+@@ -210,6 +212,8 @@
+       this.antiderivativeValid.fill(0);
+       this.antiderivativeShape = shape;
+       this.antiderivativeBias = bias;
++      this.biasValue = Math.tanh(shape * bias);
++      this.slopeAtZero = Math.max(0.2, shape * (1 - (this.biasValue * this.biasValue)));
+     }
+     const gainPercent = this.gain.next() / 100;
+     const stageDrive = modelDrive * (1 + (gainPercent * gainPercent * 28));
+@@ -248,8 +252,8 @@
+     let upIndex = this.upsampleWriteIndex[channel] ?? 0;
+     let downIndex = this.waveshapedWriteIndex[channel] ?? 0;
+     let output = 0;
+-    const biasValue = Math.tanh(shape * bias);
+-    const slopeAtZero = Math.max(0.2, shape * (1 - (biasValue * biasValue)));
++    const biasValue = this.biasValue;
++    const slopeAtZero = this.slopeAtZero;
+ 
+     for (let phase = 0; phase < 2; phase += 1) {
+       inputHistory[upIndex] = phase === 0 ? input : 0;
+@@ -268,10 +272,10 @@
+         // stale value when the next oversample returns to the ADAA branch.
+         this.antiderivativeValid[channel] = 0;
+       } else {
+-        const currentPrimitive = antiderivative(shape, bias, driven);
++        const currentPrimitive = antiderivative(shape, bias, driven, biasValue);
+         const previousPrimitive = this.antiderivativeValid[channel]
+           ? this.previousAntiderivative[channel]!
+-          : antiderivative(shape, bias, previous);
++          : antiderivative(shape, bias, previous, biasValue);
+         shaped = (currentPrimitive - previousPrimitive) / (difference * slopeAtZero);
+         this.previousAntiderivative[channel] = currentPrimitive;
+         this.antiderivativeValid[channel] = 1;

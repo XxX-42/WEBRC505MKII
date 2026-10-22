@@ -71,6 +71,17 @@ export class BrowserIsolatorDsp {
   private bpm: number;
   private cycleBeatPosition = 0;
   private isGateOpen = true;
+  private officialActive = false;
+  private officialBand = 0;
+  private officialRate = 2;
+  private officialBandLevel = 0.5;
+  private officialDepth = 0.5;
+  private officialStepRate = 0;
+  private officialWaveform = 0;
+  private officialPhase = 0;
+  private officialStepPhase = 1;
+  private officialHeldLfo = 0;
+  private officialBandGain = 1;
 
   constructor(sampleRate: number, parameters: BrowserIsolatorParameters = {}) {
     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8000 ? sampleRate : 48000;
@@ -122,6 +133,16 @@ export class BrowserIsolatorDsp {
     }
   }
 
+  setOfficialParameters(parameters: { band: number; rateHz: number; bandLevel: number; depth: number; stepRateHz: number; waveform: number }): void {
+    this.officialActive = true;
+    this.officialBand = Math.round(clamp(parameters.band, 0, 2));
+    this.officialRate = clamp(parameters.rateHz, 0, 160);
+    this.officialBandLevel = clamp(parameters.bandLevel, 0, 100) / 100;
+    this.officialDepth = clamp(parameters.depth, 0, 100) / 100;
+    this.officialStepRate = clamp(parameters.stepRateHz, 0, 160);
+    this.officialWaveform = parameters.waveform === 1 ? 1 : 0;
+  }
+
   processSample(inputLeft: number, inputRight: number): void {
     const leftLow = this.processLow(inputLeft, 0);
     const rightLow = this.processLow(inputRight, 1);
@@ -145,6 +166,21 @@ export class BrowserIsolatorDsp {
     const gateGain = 1 - (gateDepth * (1 - this.gateEnvelope.next()));
     const leftMid = inputLeft - leftLow - leftHigh;
     const rightMid = inputRight - rightLow - rightHigh;
+    if (this.officialActive) {
+      this.officialPhase = (this.officialPhase + this.officialRate / this.sampleRate) % 1;
+      if (this.officialStepRate === 0 || this.officialStepPhase >= 1) {
+        this.officialHeldLfo = this.officialWaveform === 0 ? 1 - 4 * Math.abs(this.officialPhase - 0.5) : this.officialPhase < 0.5 ? 1 : -1;
+        this.officialStepPhase %= 1;
+      }
+      this.officialStepPhase += this.officialStepRate / this.sampleRate;
+      const target = this.officialBandLevel * (1 - this.officialDepth * (1 - this.officialHeldLfo) * 0.5);
+      this.officialBandGain += (target - this.officialBandGain) * (1 - Math.exp(-1 / (this.sampleRate * 0.002)));
+      const selectedLeft = this.officialBand === 0 ? leftLow : this.officialBand === 1 ? leftMid : leftHigh;
+      const selectedRight = this.officialBand === 0 ? rightLow : this.officialBand === 1 ? rightMid : rightHigh;
+      this.outputLeft = clamp(inputLeft + selectedLeft * (this.officialBandGain - 1), -16, 16);
+      this.outputRight = clamp(inputRight + selectedRight * (this.officialBandGain - 1), -16, 16);
+      return;
+    }
     this.outputLeft = clamp(((leftLow * lowGain) + (leftMid * midGain) + (leftHigh * highGain)) * gateGain, -16, 16);
     this.outputRight = clamp(((rightLow * lowGain) + (rightMid * midGain) + (rightHigh * highGain)) * gateGain, -16, 16);
   }
@@ -162,6 +198,10 @@ export class BrowserIsolatorDsp {
     this.gateDepth.reset();
     this.gateEnvelope.reset(1);
     this.cycleBeatPosition = 0;
+    this.officialPhase = 0;
+    this.officialStepPhase = 1;
+    this.officialHeldLfo = 0;
+    this.officialBandGain = 1;
     this.gateRateBeats = this.pendingGateRateBeats;
     this.isGateOpen = true;
     this.outputLeft = 0;

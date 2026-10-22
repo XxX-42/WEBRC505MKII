@@ -1,0 +1,74 @@
+{
+  "order": "BAAB",
+  "rows": [
+    {
+      "meanNs": 155834,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:50:04.872603+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:05.822476+00:00"
+    },
+    {
+      "meanNs": 149413,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:50:05.822497+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:06.730894+00:00"
+    },
+    {
+      "meanNs": 161029,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:50:06.730918+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:07.700621+00:00"
+    },
+    {
+      "meanNs": 154754,
+      "hash": "6818882372763438525",
+      "signal": "sine",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:50:07.700642+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:08.642865+00:00"
+    },
+    {
+      "meanNs": 52777.7,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:50:08.642887+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:08.970365+00:00"
+    },
+    {
+      "meanNs": 61279.6,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:50:08.970388+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:09.346267+00:00"
+    },
+    {
+      "meanNs": 56839.4,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "A",
+      "runStartedUtc": "2026-10-21T12:50:09.346316+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:09.687122+00:00"
+    },
+    {
+      "meanNs": 52424.5,
+      "hash": "9490657959194882853",
+      "signal": "silence",
+      "variant": "B",
+      "runStartedUtc": "2026-10-21T12:50:09.687143+00:00",
+      "runFinishedUtc": "2026-10-21T12:50:10.001033+00:00"
+    }
+  ],
+  "gainPercent": {
+    "sine": -0.04702971891690222,
+    "silence": 10.935412592385651
+  },
+  "aggregation": "Gain is ratio of arithmetic means of per-run statistics; p99 means mean(run p99), NOT pooled callback quantile. Raw callback timing arrays were not retained."
+}

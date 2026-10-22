@@ -48,7 +48,7 @@ private:
     [[nodiscard]] unsigned int algorithmicLatencySamples() const noexcept override {
         return core_.latencyFrames();
     }
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !core_.officialControlsActive(); }
 };
 
 } // namespace webrc::native

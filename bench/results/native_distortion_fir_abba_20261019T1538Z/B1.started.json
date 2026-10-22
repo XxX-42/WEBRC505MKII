@@ -1,0 +1,1 @@
+{"run":"B1","startedUtc":"2026-10-19T15:40:02Z","binarySha256":"f0db2a7c636e531de38ee2ce27b9bb19abe15c539face55c535d9881cf89b7be","command":"/tmp/rc505-native-profiler-uninstrumented-0ffe10c/native_per_track_fx_bench --topology=all-banks --pitch=off --warmup-callbacks=5000 --measured-callbacks=100000"}

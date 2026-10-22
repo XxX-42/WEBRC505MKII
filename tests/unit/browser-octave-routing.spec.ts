@@ -52,6 +52,7 @@ function makeEngine() {
     inputFxInstances: [null, null, null, null],
     trackFxInstances: [null, null, null, null],
     inputFxTypes: [null, null, null, null],
+    inputFxActive: [false, false, false, false],
     trackFxTypes: [null, null, null, null],
     initialized: false,
     lastError: '',

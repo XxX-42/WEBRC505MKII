@@ -1,3 +1,4 @@
+import { officialPitchDefaults } from './dsp/OfficialPitchParameters';
 import { createLiveInputTransposeNode, type LiveInputTransposeNode } from '../pitch/signalsmith';
 import type { FXBase } from './FXBase';
 
@@ -10,6 +11,7 @@ const MAX_BEND_TIME_MS = 4000;
 /** Connected Signalsmith pitch-bend voice for the Browser Input/Track FX banks. */
 export class BrowserPitchBendFX implements FXBase {
   readonly name = 'PITCH BEND';
+  readonly algorithm = 'pitch-bend';
   readonly input: GainNode;
   readonly output: GainNode;
   readonly ready: Promise<void>;
@@ -24,15 +26,24 @@ export class BrowserPitchBendFX implements FXBase {
   private bypassed = true;
   private disposed = false;
   private failed = false;
+  private unsupportedOfficialMode = false;
   private failureKind: FailureKind = null;
   private recoveryPending = false;
   private recoveryRequested = false;
   private range = 12;
+  private officialPitchOctaves = 4;
+  private officialBendPercent = 50;
+  private officialBendActive = false;
   private timeMs = 500;
   private direction: 0 | 1 = 0;
   private mix = 1;
   private sweepGeneration = 0;
+  private readonly officialParameters: Record<string, number> = {};
+  private officialInitialized = false;
   public error = '';
+
+  /** The private A–D chain waits for this voice before acknowledging it. */
+  get processorReady(): boolean { return this.pitchNode !== null && !this.disposed && !this.error; }
 
   constructor(context: AudioContext, onFailure?: FailureHandler) {
     this.context = context;
@@ -65,6 +76,14 @@ export class BrowserPitchBendFX implements FXBase {
     return this.pitchNode?.latencySamples ?? 0;
   }
 
+  /** Shared macro contract: 0–100 maps linearly to the 0–24 semitone range. */
+  setAmount(value: number): void {
+    if (!Number.isFinite(value)) return;
+    const official = { ...this.officialParameters };
+    this.setParam('range', Math.max(0, Math.min(1, value)) * 24);
+    for (const [key, selected] of Object.entries(official)) this.setParam(key, selected);
+  }
+
   setParam(key: string, value: number): void {
     if (this.disposed) return;
     if (!Number.isFinite(value)) {
@@ -72,7 +91,30 @@ export class BrowserPitchBendFX implements FXBase {
       return;
     }
 
+    if (key === 'official_mode') {
+      this.unsupportedOfficialMode = true;
+      this.failClosed('PITCH BEND official MODE 1/2 algorithms are unsupported; this implementation uses Signalsmith.');
+      return;
+    }
+    if (key === 'official_pitch' || key === 'official_bend') {
+      const valid = Number.isInteger(value) && (key === 'official_pitch' ? value >= -3 && value <= 4 : value >= 0 && value <= 100);
+      if (!valid) {
+        this.failClosed(`PITCH BEND ${key} is outside its official range.`);
+        return;
+      }
+      this.initializeOfficialParameters(key);
+      this.officialParameters[key] = value;
+      this.officialBendActive = true;
+      if (key === 'official_pitch') this.officialPitchOctaves = value;
+      else this.officialBendPercent = value;
+      this.recoverParameterFailureWhileBypassed();
+      this.restartIfActive();
+      this.applyRouting();
+      return;
+    }
+
     if (key === 'range') {
+      this.officialBendActive = false;
       if (value < 0 || value > 24) {
         this.failClosed('PITCH BEND range must be between 0 and 24 semitones.');
         return;
@@ -101,6 +143,7 @@ export class BrowserPitchBendFX implements FXBase {
         this.applyRouting();
         return;
       }
+      this.officialBendActive = false;
       this.timeMs = value;
       this.recoverParameterFailureWhileBypassed();
       this.restartIfActive();
@@ -119,6 +162,7 @@ export class BrowserPitchBendFX implements FXBase {
         this.applyRouting();
         return;
       }
+      this.officialBendActive = false;
       this.direction = value;
       this.recoverParameterFailureWhileBypassed();
       this.restartIfActive();
@@ -139,6 +183,14 @@ export class BrowserPitchBendFX implements FXBase {
     this.failClosed(`PITCH BEND does not support the ${key} parameter.`);
   }
 
+  private initializeOfficialParameters(exceptKey: string): void {
+    if (this.officialInitialized) return;
+    this.officialInitialized = true;
+    for (const [key, value] of Object.entries(officialPitchDefaults(this.name, this.algorithm))) {
+      if (key !== exceptKey) this.setParam(key, value);
+    }
+  }
+
   setBypass(bypass: boolean): void {
     if (this.disposed || this.bypassed === bypass) return;
     this.bypassed = bypass;
@@ -152,6 +204,10 @@ export class BrowserPitchBendFX implements FXBase {
       this.startSweep();
     }
     this.applyRouting();
+  }
+
+  getParameterSnapshot(): Readonly<Record<string, number>> {
+    return Object.freeze({ range: this.range, time_ms: this.timeMs, direction: this.direction, mix_percent: this.mix * 100, ...this.officialParameters });
   }
 
   dispose(): void {
@@ -172,6 +228,7 @@ export class BrowserPitchBendFX implements FXBase {
     try {
       const node = await createLiveInputTransposeNode(this.context, {
         mode: 'LIVE_FX',
+        pitchRange: 'official-bend',
         channels: 2,
         semitones: 0,
       });
@@ -185,11 +242,10 @@ export class BrowserPitchBendFX implements FXBase {
       this.input.connect(node);
       node.connect(this.wetGain);
       this.wetGain.connect(this.output);
-      this.failed = false;
-      this.failureKind = null;
-      this.recoveryPending = false;
-      this.recoveryRequested = false;
-      this.error = '';
+      if (this.failureKind !== 'parameter' && !this.unsupportedOfficialMode) {
+        this.failed = false; this.failureKind = null;
+        this.recoveryPending = false; this.recoveryRequested = false; this.error = '';
+      }
       if (!this.bypassed) this.startSweep();
       this.applyRouting();
     } catch (cause) {
@@ -203,7 +259,7 @@ export class BrowserPitchBendFX implements FXBase {
   }
 
   private restartIfActive(): void {
-    if (!this.pitchNode || this.bypassed) return;
+    if (!this.pitchNode || this.bypassed || this.unsupportedOfficialMode) return;
     if (this.failed) this.recoveryRequested = true;
     this.startSweep();
   }
@@ -218,11 +274,15 @@ export class BrowserPitchBendFX implements FXBase {
     const durationMs = Math.max(20, Math.min(MAX_BEND_TIME_MS, this.timeMs));
     const pointCount = Math.max(1, Math.ceil(durationMs / MAX_PITCH_POINT_INTERVAL_MS));
     const scheduledPoints: Promise<void>[] = [];
+    if (this.officialBendActive) {
+      // BEND is a position, not a timed sweep. OCT units become semitones here.
+      scheduledPoints.push(this.schedulePitch((this.officialPitchOctaves * 12 * this.officialBendPercent / 100) || 0, startOutputTime, generation, true));
+    }
 
     // Points are inserted into the worklet's timeMap up front. The Signalsmith
     // adapter's bounded scheduler patch preserves pending future points until
     // the audio render clock reaches them.
-    for (let index = 0; index <= pointCount; index += 1) {
+    for (let index = 0; !this.officialBendActive && index <= pointCount; index += 1) {
       const elapsedMs = durationMs * (index / pointCount);
       const semitones = index === 0 ? 0 : target * (elapsedMs / durationMs);
       scheduledPoints.push(this.schedulePitch(
@@ -236,11 +296,10 @@ export class BrowserPitchBendFX implements FXBase {
     // been acknowledged, so a partial schedule can't expose a stale trajectory.
     void Promise.all(scheduledPoints).then(() => {
       if (this.disposed || generation !== this.sweepGeneration || !this.recoveryPending) return;
-      this.failed = false;
-      this.failureKind = null;
-      this.recoveryPending = false;
-      this.recoveryRequested = false;
-      this.error = '';
+      if (!this.unsupportedOfficialMode) {
+        this.failed = false; this.failureKind = null;
+        this.recoveryPending = false; this.recoveryRequested = false; this.error = '';
+      }
       this.applyRouting();
     }).catch(() => undefined);
   }
@@ -293,13 +352,12 @@ export class BrowserPitchBendFX implements FXBase {
   }
 
   private recoverParameterFailureWhileBypassed(): void {
-    if (!this.pitchNode) return;
+    if (!this.pitchNode || this.unsupportedOfficialMode) return;
     if (this.bypassed && this.failureKind === 'parameter') {
-      this.failed = false;
-      this.failureKind = null;
-      this.recoveryPending = false;
-      this.recoveryRequested = false;
-      this.error = '';
+      if (!this.unsupportedOfficialMode) {
+        this.failed = false; this.failureKind = null;
+        this.recoveryPending = false; this.recoveryRequested = false; this.error = '';
+      }
     } else if (this.failureKind === 'runtime') {
       this.recoveryRequested = true;
     }

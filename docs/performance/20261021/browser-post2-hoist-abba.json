@@ -1,0 +1,214 @@
+{
+  "generatedAt": "2026-10-21T11:26:42.667Z",
+  "node": "v24.19.0",
+  "blocks": 256,
+  "rounds": 4,
+  "sourceHashes": {
+    "baseline": "4f4efec0c23ffe22c67dbcfe3352563324b82504654edde9e6058c42f37529c7",
+    "candidate": "564567b92f58f39b0b4fe1e61999dafe59a235c491defba3069d70987bc480fa"
+  },
+  "scope": "Synchronous exact-source Node VM kernel only; no browser AudioContext, scheduler, hardware, xrun, or production five-loop acceptance. Tracks are independent FX instances. Reverse-reverb is an effect, not reverse loop playback; KeepPitch not exercised.",
+  "correctness": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+  "scenarios": [
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "baselineMs": 503.926691,
+      "candidateMs": 642.349897,
+      "improvementPercent": -27.468917299322015,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "bdf8102db9afec9a0343dd660756428c15e0360e767cfa9c471c36bd0bdbc4c8",
+        "candidate": "bdf8102db9afec9a0343dd660756428c15e0360e767cfa9c471c36bd0bdbc4c8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 462.896035
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 558.195785
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 520.71059
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 488.047812
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 503.926691
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 630.015421
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 663.190183
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 493.252353
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 533.95147
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 661.284364
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 642.349897
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 530.457209
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 502.139682
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 652.191231
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 626.33185
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 516.777902
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "baselineMs": 570.099681,
+      "candidateMs": 595.723559,
+      "improvementPercent": -4.494631176613484,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4e49597e84820ddd3908376d99efcf4c8fd6568cb421fa05286d82b1f9f619b2",
+        "candidate": "4e49597e84820ddd3908376d99efcf4c8fd6568cb421fa05286d82b1f9f619b2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 555.479715
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 600.06672
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 554.250744
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 551.970103
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 527.240332
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 594.182829
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 551.761489
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 570.099681
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 654.449497
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 632.707799
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 643.531427
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 574.617984
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 571.958646
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 595.723559
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 590.009568
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 547.145496
+        }
+      ]
+    }
+  ],
+  "timingEligible": true,
+  "coordination": "Other workers held compiler, test, and benchmark load; shared cloud scheduling still uncontrolled"
+}

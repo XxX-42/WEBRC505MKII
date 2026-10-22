@@ -82,6 +82,8 @@ export function useTrackStripState(trackId: number) {
   const disabledReason = ref(trackCapabilities.value.availabilityReason || trackAudio.disabledReason);
   const getOverdubDiagnostic = () => 'overdubDiagnostic' in trackAudio ? trackAudio.overdubDiagnostic : null;
   const overdubDiagnostic = ref(getOverdubDiagnostic());
+  const getRecordingDiagnostic = () => 'recordingDiagnostic' in trackAudio ? trackAudio.recordingDiagnostic : null;
+  const recordingDiagnostic = ref(getRecordingDiagnostic());
   const hqPitchSemitones = ref(0);
   const hqPlaybackRate = ref(1);
   const hqWavFormat = ref<WavSampleFormat>('pcm16');
@@ -352,6 +354,7 @@ export function useTrackStripState(trackId: number) {
     trackTransportEnabled.value = trackAudio.transportEnabled && audioStatus.ready;
     disabledReason.value = trackCapabilities.value.availabilityReason || trackAudio.disabledReason || (!audioStatus.ready ? audioStatus.message : '');
     overdubDiagnostic.value = getOverdubDiagnostic();
+    recordingDiagnostic.value = getRecordingDiagnostic();
     restorePersistedLivePitchWhenReady();
   };
 
@@ -608,6 +611,7 @@ export function useTrackStripState(trackId: number) {
     trackTransportEnabled,
     disabledReason,
     overdubDiagnostic,
+    recordingDiagnostic,
     hqPitchSemitones,
     hqPlaybackRate,
     hqWavFormat,

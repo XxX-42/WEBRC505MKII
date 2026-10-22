@@ -267,9 +267,45 @@ bool NativeAutoRiffCore::prepare(unsigned int sampleRate) noexcept {
 
 bool NativeAutoRiffCore::setParameter(std::string_view name, float value) noexcept {
     if (!prepared_ || !std::isfinite(value)) return false;
+    if (name.substr(0U, 9U) == "official_") {
+        if (name == "official_tempo") {
+            bool valid = value >= 0.0f && value <= 100.0f;
+            for (float beat : {16.0f, 8.0f, 4.0f, 2.0f, 1.0f, 0.125f}) valid = valid || value == -beat;
+            if (!valid) return false;
+            officialTempo_ = value;
+            officialTempoActive_ = true;
+            stepPeriodSamples_ = calculateStepPeriod();
+            if (sequenceRunning_) nextStepSample_ = sampleCursor_ + stepPeriodSamples_;
+        } else if (name == "official_hold") {
+            if (value != 0.0f && value != 1.0f) return false;
+            hold_ = value == 1.0f;
+            if (hold_) captureHeldSource();
+            else {
+                heldPeriod_ = 0.0;
+                if (!voiced_) { sequenceRunning_ = false; targetSemitones_ = 0.0f; }
+            }
+        } else if (name == "official_loop") {
+            if (value != 0.0f && value != 1.0f) return false;
+            loopSelected_ = true;
+            loop_ = value == 1.0f;
+        } else if (name == "official_attack") {
+            if (value < 0.0f || value > 100.0f) return false;
+            attack_ = value;
+        } else if (name == "official_key") {
+            if (value < 0.0f || value > 11.0f || std::floor(value) != value) return false;
+            officialKey_ = static_cast<int>(value);
+            updateTargetSemitones();
+        } else if (name == "official_balance") {
+            if (value < 0.0f || value > 100.0f) return false;
+            mix_ = value * 0.01f;
+        } else return false;
+        officialActive_ = true;
+        return true;
+    }
     if (name == "scale" || name == "auto-riff.scale") {
         if (value < 0.0f || value > 4.0f || std::floor(value) != value) return false;
         scale_ = static_cast<unsigned int>(value);
+        officialKey_ = -1;
         if (voiced_ && detectedFrequencyHz_ > 0.0f) {
             const int remappedMidi = quantizeMidiToScale(detectedFrequencyHz_, scale_);
             if (remappedMidi >= 0) rootMidiNote_ = remappedMidi;
@@ -280,6 +316,7 @@ bool NativeAutoRiffCore::setParameter(std::string_view name, float value) noexce
     if (name == "rate" || name == "stepRate" || name == "step-rate" || name == "auto-riff.rate") {
         if (!validStepRate(value)) return false;
         stepRateBeats_ = value;
+        officialTempoActive_ = false;
         stepPeriodSamples_ = calculateStepPeriod();
         if (sequenceRunning_) nextStepSample_ = sampleCursor_ + stepPeriodSamples_;
         return true;
@@ -305,11 +342,22 @@ bool NativeAutoRiffCore::setTempoBpm(float bpm) noexcept {
     return true;
 }
 
+bool NativeAutoRiffCore::setQuarterNotesPerMeasure(float beats) noexcept {
+    if (!prepared_ || !isFiniteRange(beats, 0.125f, 128.0f)) return false;
+    quarterNotesPerMeasure_ = beats;
+    stepPeriodSamples_ = calculateStepPeriod();
+    if (sequenceRunning_) nextStepSample_ = sampleCursor_ + stepPeriodSamples_;
+    return true;
+}
+
 unsigned int NativeAutoRiffCore::calculateStepPeriod() const noexcept {
     if (sampleRate_ == 0U || !isFiniteRange(tempoBpm_, kMinimumTempoBpm, kMaximumTempoBpm) ||
         !validStepRate(stepRateBeats_)) return 0U;
-    const double period = static_cast<double>(sampleRate_) * 60.0 /
-        static_cast<double>(tempoBpm_) * static_cast<double>(stepRateBeats_);
+    const double seconds = officialTempoActive_
+        ? (officialTempo_ < 0.0f ? -static_cast<double>(officialTempo_) * (officialTempo_ <= -4.0f ? quarterNotesPerMeasure_ * 0.25 : 1.0) * 60.0 / tempoBpm_
+                                : 2.0 * std::pow(0.025, static_cast<double>(officialTempo_) / 100.0))
+        : 60.0 / static_cast<double>(tempoBpm_) * static_cast<double>(stepRateBeats_);
+    const double period = static_cast<double>(sampleRate_) * seconds;
     if (!std::isfinite(period) || period < 1.0 || period > static_cast<double>(std::numeric_limits<unsigned int>::max())) {
         return 0U;
     }
@@ -324,6 +372,13 @@ void NativeAutoRiffCore::reset() noexcept {
         resetGeneration_ = 1U;
     }
     detector_.reset();
+    sourceWrite_ = 0U;
+    sourceCount_ = 0U;
+    heldPeriod_ = 0.0;
+    heldRead_ = 0.0;
+    attackEnvelope_ = 0.0f;
+    attackDecay_ = static_cast<float>(std::exp(-1.0 / (0.030 * sampleRate_)));
+    sequenceCompleted_ = false;
     sampleCursor_ = 0U;
     nextStepSample_ = 0U;
     channelCount_ = 0U;
@@ -348,6 +403,8 @@ void NativeAutoRiffCore::reset() noexcept {
 
 void NativeAutoRiffCore::startSequence(std::uint64_t absoluteFrame) noexcept {
     sequenceRunning_ = true;
+    sequenceCompleted_ = false;
+    attackEnvelope_ = 1.0f;
     stepIndex_ = 0U;
     nextStepSample_ = absoluteFrame + stepPeriodSamples_;
     updateTargetSemitones();
@@ -356,7 +413,14 @@ void NativeAutoRiffCore::startSequence(std::uint64_t absoluteFrame) noexcept {
 void NativeAutoRiffCore::advanceSequenceAt(std::uint64_t absoluteFrame) noexcept {
     if (!sequenceRunning_ || stepPeriodSamples_ == 0U) return;
     while (absoluteFrame >= nextStepSample_) {
+        if (stepIndex_ + 1U >= kRiffLength && loopSelected_ && !loop_) {
+            sequenceRunning_ = false;
+            sequenceCompleted_ = true;
+            targetSemitones_ = 0.0f;
+            return;
+        }
         stepIndex_ = (stepIndex_ + 1U) % kRiffLength;
+        if (stepIndex_ == 0U) attackEnvelope_ = 1.0f;
         nextStepSample_ += stepPeriodSamples_;
         updateTargetSemitones();
     }
@@ -364,6 +428,14 @@ void NativeAutoRiffCore::advanceSequenceAt(std::uint64_t absoluteFrame) noexcept
 
 float NativeAutoRiffCore::calculateStepSemitones() const noexcept {
     if (rootMidiNote_ < 0 || scale_ > 4U) return 0.0f;
+    if (officialKey_ >= 0) {
+        const float source = sourceHeld() ? heldMidi_
+            : static_cast<float>(69.0 + 12.0 * std::log2(static_cast<double>(detectedFrequencyHz_) / 440.0));
+        const int tonic = officialKey_ + 12 * static_cast<int>(std::lround(
+            static_cast<double>(rootMidiNote_ - officialKey_) / 12.0));
+        const int target = tonic + scaleDegreeSemitone(1U, kRiffDegrees[stepIndex_ % kRiffLength]);
+        return std::clamp(static_cast<float>(target) - source, -24.0f, 24.0f);
+    }
     const int rootPc = pitchClass(rootMidiNote_);
     const unsigned int degreeCount = scale_ == 0U ? 12U : (scale_ == 4U ? 5U : 7U);
     unsigned int rootDegree = 0U;
@@ -378,11 +450,11 @@ float NativeAutoRiffCore::calculateStepSemitones() const noexcept {
 }
 
 void NativeAutoRiffCore::updateTargetSemitones() noexcept {
-    targetSemitones_ = sequenceRunning_ && voiced_ ? calculateStepSemitones() : 0.0f;
+    targetSemitones_ = sequenceRunning_ && (voiced_ || sourceHeld()) ? calculateStepSemitones() : 0.0f;
 }
 
 void NativeAutoRiffCore::handleOnset(std::uint64_t absoluteFrame) noexcept {
-    if (!voiced_) return;
+    if (!voiced_ || sourceHeld()) return;
     startSequence(absoluteFrame);
 }
 
@@ -391,6 +463,8 @@ void NativeAutoRiffCore::updateVoicing(std::uint64_t absoluteFrame) noexcept {
     confidence_ = detector_.confidence;
     detectedFrequencyHz_ = voiced_ ? detector_.frequencyHz : 0.0f;
     if (!voiced_) {
+        if (sourceHeld()) return;
+        sequenceCompleted_ = false;
         rootMidiNote_ = -1;
         sequenceRunning_ = false;
         stepIndex_ = 0U;
@@ -399,15 +473,26 @@ void NativeAutoRiffCore::updateVoicing(std::uint64_t absoluteFrame) noexcept {
         return;
     }
 
+    if (sourceHeld()) return;
     const int detectedMidi = quantizeMidiToScale(detector_.frequencyHz, scale_);
     if (detectedMidi < 0) return;
     const bool rootChanged = detectedMidi != rootMidiNote_;
     rootMidiNote_ = detectedMidi;
-    if (!sequenceRunning_) {
+    if (!sequenceRunning_ && !sequenceCompleted_) {
         startSequence(absoluteFrame);
     } else if (rootChanged) {
         updateTargetSemitones();
     }
+}
+
+void NativeAutoRiffCore::captureHeldSource() noexcept {
+    if (sourceHeld() || !voiced_ || detectedFrequencyHz_ <= 0.0f) return;
+    const double period = static_cast<double>(sampleRate_) / detectedFrequencyHz_;
+    if (period < 2.0 || period + 2.0 >= 8192.0 || sourceCount_ < static_cast<unsigned int>(std::ceil(period)) + 2U) return;
+    heldPeriod_ = period;
+    heldStart_ = static_cast<double>(sourceWrite_) - period - 1.0;
+    heldRead_ = 0.0;
+    heldMidi_ = static_cast<float>(69.0 + 12.0 * std::log2(static_cast<double>(detectedFrequencyHz_) / 440.0));
 }
 
 void NativeAutoRiffCore::processDetectorSample(float mono, std::uint64_t absoluteFrame) noexcept {
@@ -483,8 +568,34 @@ bool NativeAutoRiffCore::processInterleaved(float* interleaved, unsigned int fra
             dryRing_[static_cast<std::size_t>(drySlot) * kMaximumChannels] = left;
             dryRing_[static_cast<std::size_t>(drySlot) * kMaximumChannels + 1U] = right;
             dryGeneration_[drySlot] = resetGeneration_;
+            if (!sourceHeld()) {
+                sourceRing_[sourceWrite_ * 2U] = left;
+                sourceRing_[sourceWrite_ * 2U + 1U] = right;
+                sourceWrite_ = (sourceWrite_ + 1U) & 8191U;
+                sourceCount_ = std::min(8192U, sourceCount_ + 1U);
+            }
             const float mono = channels > 1U ? 0.5f * (left + right) : left;
             processDetectorSample(mono, absoluteFrame);
+            if (hold_ && !sourceHeld()) captureHeldSource();
+            const float accent = 1.0f + attack_ * 0.01f * attackEnvelope_;
+            attackEnvelope_ *= attackDecay_;
+            if (sourceHeld()) {
+                const double position = heldStart_ + heldRead_;
+                const auto base = static_cast<std::int64_t>(std::floor(position));
+                const unsigned int slot = static_cast<unsigned int>(base) & 8191U;
+                const unsigned int next = (slot + 1U) & 8191U;
+                const float fraction = static_cast<float>(position - static_cast<double>(base));
+                for (unsigned int channel = 0U; channel < channels; ++channel) {
+                    const float a = sourceRing_[slot * 2U + channel];
+                    const float b = sourceRing_[next * 2U + channel];
+                    segment[offset + channel] = (a + fraction * (b - a)) * accent;
+                }
+                heldRead_ += 1.0;
+                if (heldRead_ >= heldPeriod_) heldRead_ -= heldPeriod_;
+            } else {
+                segment[offset] *= accent;
+                if (channels > 1U) segment[offset + 1U] *= accent;
+            }
             if (std::fabs(targetSemitones_ - priorTargetSemitones) > 1.0e-6f) {
                 recordChange(frame, targetSemitones_);
             }

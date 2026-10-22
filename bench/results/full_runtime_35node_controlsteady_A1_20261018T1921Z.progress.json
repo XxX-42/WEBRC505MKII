@@ -1,0 +1,584 @@
+{
+  "generatedAtUtc": "2026-10-18T19:22:04.877Z",
+  "state": "failed",
+  "elapsedWallSeconds": 10.049724999997764,
+  "actualSampleRateHz": 44100,
+  "audioContextCurrentTimeSeconds": 12.962539682539683,
+  "audioContextAdvanceDuringMeasurementSeconds": 6.997913832199547,
+  "instrumentedNodeCount": 35,
+  "readySlotCount": 35,
+  "nodeCounts": {
+    "rc505-browser-block-meter": 1,
+    "rc505-fx-processor": 28,
+    "signalsmith-stretch": 5,
+    "rc505-rhythm-processor": 1
+  },
+  "callbackErrors": 0,
+  "estimatedMissingCallbacks": 0,
+  "nodes": [
+    {
+      "slot": 0,
+      "label": "rc505-browser-block-meter#1",
+      "processorName": "rc505-browser-block-meter",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 1,
+      "label": "rc505-fx-processor#2",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 2,
+      "label": "rc505-fx-processor#3",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 3,
+      "label": "rc505-fx-processor#4",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 4,
+      "label": "rc505-fx-processor#5",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 5,
+      "label": "rc505-fx-processor#6",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 6,
+      "label": "rc505-fx-processor#7",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 7,
+      "label": "rc505-fx-processor#8",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 8,
+      "label": "rc505-fx-processor#9",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 9,
+      "label": "rc505-fx-processor#10",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 10,
+      "label": "rc505-fx-processor#11",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 11,
+      "label": "rc505-fx-processor#12",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 12,
+      "label": "rc505-fx-processor#13",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 13,
+      "label": "rc505-fx-processor#14",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 14,
+      "label": "rc505-fx-processor#15",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 15,
+      "label": "rc505-fx-processor#16",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 16,
+      "label": "rc505-fx-processor#17",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 17,
+      "label": "rc505-fx-processor#18",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 18,
+      "label": "rc505-fx-processor#19",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 19,
+      "label": "rc505-fx-processor#20",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 20,
+      "label": "rc505-fx-processor#21",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 21,
+      "label": "rc505-fx-processor#22",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 22,
+      "label": "rc505-fx-processor#23",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 23,
+      "label": "rc505-fx-processor#24",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 24,
+      "label": "rc505-fx-processor#25",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 25,
+      "label": "rc505-fx-processor#26",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 26,
+      "label": "rc505-fx-processor#27",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 27,
+      "label": "rc505-fx-processor#28",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 28,
+      "label": "rc505-fx-processor#29",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 29,
+      "label": "signalsmith-stretch#30",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 30,
+      "label": "signalsmith-stretch#31",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 31,
+      "label": "signalsmith-stretch#32",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 32,
+      "label": "signalsmith-stretch#33",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 33,
+      "label": "signalsmith-stretch#34",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 34,
+      "label": "rc505-rhythm-processor#35",
+      "processorName": "rc505-rhythm-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    }
+  ],
+  "workload": {
+    "profile": "browser-application-full-private-track-fx",
+    "appEngine": "production BrowserAudioEngine + TrackAudio + BrowserTrackFxChain + RhythmEngine",
+    "sampleRateHz": 44100,
+    "activeTrackCount": 5,
+    "activePrivateTrackFxCount": 20,
+    "privateTrackFxMatrix": [
+      {
+        "trackId": 1,
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "trackId": 1,
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "trackId": 1,
+        "slot": "C",
+        "type": "CHORUS"
+      },
+      {
+        "trackId": 1,
+        "slot": "D",
+        "type": "DELAY"
+      },
+      {
+        "trackId": 2,
+        "slot": "A",
+        "type": "PHASER"
+      },
+      {
+        "trackId": 2,
+        "slot": "B",
+        "type": "TREMOLO"
+      },
+      {
+        "trackId": 2,
+        "slot": "C",
+        "type": "AUTO PAN"
+      },
+      {
+        "trackId": 2,
+        "slot": "D",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "trackId": 3,
+        "slot": "A",
+        "type": "FLANGER"
+      },
+      {
+        "trackId": 3,
+        "slot": "B",
+        "type": "RING.MOD"
+      },
+      {
+        "trackId": 3,
+        "slot": "C",
+        "type": "MOD DELAY"
+      },
+      {
+        "trackId": 3,
+        "slot": "D",
+        "type": "PANNING DELAY"
+      },
+      {
+        "trackId": 4,
+        "slot": "A",
+        "type": "DYNAMICS"
+      },
+      {
+        "trackId": 4,
+        "slot": "B",
+        "type": "SUSTAINER"
+      },
+      {
+        "trackId": 4,
+        "slot": "C",
+        "type": "TAPE ECHO"
+      },
+      {
+        "trackId": 4,
+        "slot": "D",
+        "type": "GRANULAR DELAY"
+      },
+      {
+        "trackId": 5,
+        "slot": "A",
+        "type": "PREAMP"
+      },
+      {
+        "trackId": 5,
+        "slot": "B",
+        "type": "GATE REVERB"
+      },
+      {
+        "trackId": 5,
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "trackId": 5,
+        "slot": "D",
+        "type": "STEREO ENHANCE"
+      }
+    ],
+    "activeInputFx": [
+      {
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "slot": "D",
+        "type": "SUSTAINER"
+      }
+    ],
+    "activeSharedTrackFx": [
+      {
+        "slot": "A",
+        "type": "CHORUS"
+      },
+      {
+        "slot": "B",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "slot": "C",
+        "type": "DELAY"
+      },
+      {
+        "slot": "D",
+        "type": "AUTO PAN"
+      }
+    ],
+    "activeLivePolyTracks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "diagnosticIsolation": null,
+    "rhythm": {
+      "adapter": "production Browser RhythmEngine + rc505-rhythm-processor",
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "provenance": "clean-room-generated"
+    },
+    "pcmSeed": "deterministic stereo PCM installed through TrackAudio.restoreProjectBuffersAtomically before measurement; real Browser recording/overdub operations execute during measurement",
+    "dynamicOperationsDuringMeasurement": [],
+    "persistentWorkletSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34
+    ],
+    "measurementStartUtc": "2026-10-18T19:21:54.713Z",
+    "measurementEndUtc": "2026-10-18T19:22:04.763Z"
+  },
+  "outputSampler": {
+    "inspectedValues": 1654784,
+    "nonSilentValues": 1638124,
+    "nonFiniteValues": 0,
+    "peakLinear": 2.220893621444702,
+    "pollCount": 202,
+    "nonSilentPolls": 202,
+    "changedWindowPolls": 200,
+    "changedValues": 1628416,
+    "audioTimeAdvancePolls": 201
+  },
+  "processorErrors": [],
+  "error": "Error: AudioContext did not remain live for measurement: state=running, audioAdvance=6.986s, wall=10.050s, minimum=9.548s"
+}

@@ -1,0 +1,1 @@
+native_official_fx_parameters_tests: /workspace/scratch/2230ee2a4571/rc505-fx-parameters-20261022/native-mvp/engine-cpp/tests/native_official_fx_parameters_tests.cpp:473: void {anonymous}::testScatterLengthOwnsLegacyMacroReplay(): Assertion `difference(expected, replayed) < 1.0e-7' failed.

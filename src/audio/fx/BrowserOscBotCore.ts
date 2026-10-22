@@ -1,5 +1,6 @@
 import { TptStateVariableFilter } from '../dsp/TptStateVariableFilter';
 import { BrowserVocoderCore } from './vocoder/BrowserVocoderCore';
+import { BrowserOfficialVoiceOscillator, validateVoiceControls, type OfficialVoiceWaveform } from './dsp/BrowserOfficialVoiceDsp';
 
 export type BrowserOscBotWaveform = 0 | 1 | 2;
 
@@ -12,6 +13,9 @@ export interface BrowserOscBotParameters {
   /** Project tempo, supplied by the host. Each pattern step is a sixteenth note. */
   tempoBpm?: number;
 }
+
+export interface BrowserOscBotOfficialParameters { osc?: number; tone?: number; attack?: number; note?: number; mod_sens?: number }
+const OFFICIAL_LIMITS = { osc: [0, 4], tone: [-50, 50], attack: [0, 100], note: [24, 127], mod_sens: [-50, 50] } as const;
 
 const MIN_SAMPLE_RATE = 8000;
 const MAX_SAMPLE_RATE = 192000;
@@ -120,6 +124,10 @@ export class BrowserOscBotCore {
   private readonly oscillators: Oscillator[];
   private readonly bandCarriers: Float32Array;
   private readonly toneFilter: TptStateVariableFilter;
+  private readonly officialOscillator: BrowserOfficialVoiceOscillator;
+  private officialEnabled = false;
+  private officialNote = 36;
+  private officialWaveform = 0;
   private activeBands: number;
   private waveform: BrowserOscBotWaveform;
   private patternIndex: number;
@@ -138,6 +146,7 @@ export class BrowserOscBotCore {
     }
     BrowserOscBotCore.validateFrame(initialFrame);
     this.sampleRate = sampleRate;
+    this.officialOscillator = new BrowserOfficialVoiceOscillator(sampleRate);
     this.activeBands = BrowserOscBotCore.validateBands(parameters.bands ?? DEFAULT_BANDS);
     this.waveform = BrowserOscBotCore.validateWaveform(parameters.waveform ?? 1);
     this.patternIndex = BrowserOscBotCore.validatePattern(parameters.pattern ?? 0);
@@ -199,6 +208,28 @@ export class BrowserOscBotCore {
     this.updateCarrierBank();
   }
 
+  /** Official NOTE is a fixed carrier pitch, not the provisional legacy pattern bank. */
+  setOfficialParameters(parameters: BrowserOscBotOfficialParameters): void {
+    validateVoiceControls(parameters, OFFICIAL_LIMITS, 'OSC BOT');
+    if (!Object.values(parameters).some(value => value !== undefined)) return;
+    if (!this.officialEnabled) {
+      this.vocoder.setVoiceShapingParameters({ tone: 0, attack: 50, mod_sens: 0 });
+      this.officialEnabled = true;
+    }
+    if (parameters.note !== undefined) this.officialNote = parameters.note;
+    if (parameters.osc !== undefined) this.officialWaveform = parameters.osc;
+    this.officialOscillator.setWaveform(this.officialWaveform as OfficialVoiceWaveform);
+    this.officialOscillator.setFrequency(this.targetFrequencyHz);
+    const shaping: { tone?: number; attack?: number; mod_sens?: number } = {};
+    if (parameters.tone !== undefined) shaping.tone = parameters.tone;
+    if (parameters.attack !== undefined) shaping.attack = parameters.attack;
+    if (parameters.mod_sens !== undefined) shaping.mod_sens = parameters.mod_sens;
+    this.vocoder.setVoiceShapingParameters(shaping);
+  }
+
+  /** Software convention: C4 = MIDI 60; hardware octave-label parity is not claimed. */
+  get targetFrequencyHz(): number { return Math.min(this.sampleRate * 0.44, 440 * 2 ** ((this.officialNote - 69) / 12)); }
+
   setTempoBpm(tempoBpm: number): void {
     this.setParameters({ tempoBpm });
   }
@@ -211,6 +242,10 @@ export class BrowserOscBotCore {
   }
 
   private processWet(modulator: number): number {
+    if (this.officialEnabled) {
+      this.frame += 1;
+      return this.vocoder.processWithCarrier(modulator, this.officialOscillator.processSample());
+    }
     if (this.framesUntilStep <= 0) {
       this.activeStep = (this.activeStep + 1) & 7;
       this.framesUntilStep = this.stepFrames;
@@ -254,6 +289,7 @@ export class BrowserOscBotCore {
     this.framesUntilStep = this.currentStepFrames;
     this.currentOutput = 0;
     this.vocoder.reset();
+    this.officialOscillator.reset();
     this.toneFilter.reset();
     for (const oscillator of this.oscillators) oscillator.reset();
     this.updateCarrierBank();

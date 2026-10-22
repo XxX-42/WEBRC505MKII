@@ -1,8 +1,11 @@
 #include "dsp_primitives.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 
 using namespace webrc::native::dsp;
@@ -35,6 +38,96 @@ void testParameterSmoother() {
     expectNear(smoother.current(), 0.5);
     smoother.setTarget(std::numeric_limits<float>::quiet_NaN(), 5);
     expectNear(smoother.target(), 0.0);
+}
+
+void testParameterSmootherPerSampleIsBitExactToPreviousContract() {
+    struct ReferenceSmoother {
+        float current = 0.0f;
+        float target = 0.0f;
+        double step = 0.0;
+        std::uint64_t remaining = 0U;
+
+        void reset(float value) {
+            current = std::isfinite(value) ? value : 0.0f;
+            target = current;
+            step = 0.0;
+            remaining = 0U;
+        }
+
+        void setTarget(float value, std::uint64_t rampFrames) {
+            const float finiteTarget = std::isfinite(value) ? value : 0.0f;
+            if (rampFrames == 0U || finiteTarget == current) {
+                reset(finiteTarget);
+                return;
+            }
+            target = finiteTarget;
+            remaining = rampFrames;
+            step = (static_cast<double>(target) - static_cast<double>(current)) /
+                   static_cast<double>(remaining);
+        }
+
+        float next() {
+            if (remaining != 0U) {
+                current = static_cast<float>(static_cast<double>(current) + step);
+                --remaining;
+                if (remaining == 0U) {
+                    current = target;
+                    step = 0.0;
+                }
+            }
+            return current;
+        }
+
+        void skip(std::uint64_t frames) {
+            if (frames == 0U || remaining == 0U) return;
+            if (frames >= remaining) {
+                current = target;
+                step = 0.0;
+                remaining = 0U;
+                return;
+            }
+            current = static_cast<float>(static_cast<double>(current) + step * static_cast<double>(frames));
+            remaining -= frames;
+        }
+    } reference;
+
+    constexpr float targets[] = {
+        0.33333334f, -0.875f, 0.0f, 1.0e-20f, -1.0e-30f,
+        std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN(), 0.99999994f,
+    };
+    constexpr std::uint64_t ramps[] = {0U, 1U, 2U, 3U, 5U, 17U, 64U, 127U, 1024U, 4097U};
+    ParameterSmoother candidate(-0.125f);
+    reference.reset(-0.125f);
+
+    for (std::uint64_t frame = 0U; frame < 50000U; ++frame) {
+        if (frame % 997U == 0U) {
+            const float value = targets[(frame / 997U) % (sizeof(targets) / sizeof(targets[0]))];
+            candidate.reset(value);
+            reference.reset(value);
+        }
+        if (frame % 113U == 0U) {
+            const auto event = frame / 113U;
+            const float value = targets[event % (sizeof(targets) / sizeof(targets[0]))];
+            const auto ramp = ramps[event % (sizeof(ramps) / sizeof(ramps[0]))];
+            candidate.setTarget(value, ramp);
+            reference.setTarget(value, ramp);
+        }
+        if (frame % 431U == 0U) {
+            const std::uint64_t skipFrames = (frame / 431U) % 3U == 0U ? 0U : ((frame / 431U) % 17U);
+            candidate.skip(skipFrames);
+            reference.skip(skipFrames);
+        }
+
+        const float actual = candidate.next();
+        const float expected = reference.next();
+        const float actualCurrent = candidate.current();
+        const float actualTarget = candidate.target();
+        assert(std::memcmp(&actual, &expected, sizeof(actual)) == 0);
+        assert(std::memcmp(&actualCurrent, &reference.current, sizeof(float)) == 0);
+        assert(std::memcmp(&actualTarget, &reference.target, sizeof(float)) == 0);
+        assert(candidate.remainingFrames() == reference.remaining);
+        assert(candidate.isSmoothing() == (reference.remaining != 0U));
+    }
 }
 
 void testEqualPowerCrossfade() {
@@ -139,6 +232,49 @@ void testLagrangeDelay() {
     expectNear(delay.process(2.0f, std::numeric_limits<float>::quiet_NaN()), 2.0);
 }
 
+void testLagrange4IsBitExactToPreviousContract() {
+    const auto reference = [](float xMinus1, float x0, float xPlus1, float xPlus2, float fraction) {
+        const float finiteFraction = std::isfinite(fraction) ? fraction : 0.0f;
+        const double mu = std::clamp(static_cast<double>(finiteFraction), 0.0, 1.0);
+        const double weightMinus1 = -(mu * (mu - 1.0) * (mu - 2.0)) / 6.0;
+        const double weight0 = ((mu + 1.0) * (mu - 1.0) * (mu - 2.0)) / 2.0;
+        const double weightPlus1 = -((mu + 1.0) * mu * (mu - 2.0)) / 2.0;
+        const double weightPlus2 = ((mu + 1.0) * mu * (mu - 1.0)) / 6.0;
+        return static_cast<float>(weightMinus1 * xMinus1 + weight0 * x0 + weightPlus1 * xPlus1 + weightPlus2 * xPlus2);
+    };
+    const std::array<float, 11U> samples{{
+        0.0f,
+        -0.0f,
+        0.125f,
+        -0.25f,
+        1.0f,
+        -1.0f,
+        0.99999994f,
+        1.0e-30f,
+        -1.0e30f,
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::lowest(),
+    }};
+    const std::array<float, 12U> fractions{{
+        -std::numeric_limits<float>::infinity(), -2.0f, -1.0f, -0.0f, 0.0f, 0.125f,
+        0.25f, 0.5f, 0.875f, 1.0f, 2.0f, std::numeric_limits<float>::quiet_NaN(),
+    }};
+
+    for (const float xMinus1 : samples) {
+        for (const float x0 : samples) {
+            for (const float xPlus1 : samples) {
+                for (const float xPlus2 : samples) {
+                    for (const float fraction : fractions) {
+                        const float actual = lagrange4(xMinus1, x0, xPlus1, xPlus2, fraction);
+                        const float expected = reference(xMinus1, x0, xPlus1, xPlus2, fraction);
+                        assert(std::memcmp(&actual, &expected, sizeof(actual)) == 0);
+                    }
+                }
+            }
+        }
+    }
+}
+
 void testDeterministicRng() {
     DeterministicRng golden(0);
     assert(golden.nextUInt32() == 0xe220a839U);
@@ -182,10 +318,12 @@ void testAbsoluteBeatClock() {
 
 int main() {
     testParameterSmoother();
+    testParameterSmootherPerSampleIsBitExactToPreviousContract();
     testEqualPowerCrossfade();
     testBiquad();
     testTptStateVariableFilter();
     testLagrangeDelay();
+    testLagrange4IsBitExactToPreviousContract();
     testDeterministicRng();
     testAbsoluteBeatClock();
     return 0;

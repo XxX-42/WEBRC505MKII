@@ -603,9 +603,34 @@ void testStereoAndCallbackNoAllocations() {
     assert(!core.processInterleaved(block.data(), 1U, 1U)); // prepared channel count is strict
 }
 
+void testOfficialFixedNote() {
+    NativeRobotCore core;
+    NativeRobotCore::Config config{};
+    config.sampleRate = 16000U; config.channels = 1U; config.mixPercent = 100.0f;
+    assert(core.prepare(config));
+    assert(!core.setFixedMidiNote(59U));
+    assert(!core.setFixedMidiNote(72U));
+    assert(core.setFixedMidiNote(60U));
+    for (double frequency : {220.0, 330.0}) {
+        auto tone = makeTone(16000U, 1U, 16000U, frequency);
+        for (unsigned int f = 0U; f < 16000U; f += 64U) assert(core.processInterleaved(tone.data() + f, 64U, 1U));
+        assert(core.targetMidiNote() == 60);
+        assert(std::fabs(core.sourceMidiNote() + core.appliedPitchSemitones() - 60.0f) < 0.01f);
+    }
+    test_alloc::beginTracking();
+    assert(core.setFixedMidiNote(71U));
+    assert(core.setFormantSemitones(12.0f));
+    test_alloc::endTracking();
+    assert(test_alloc::count() == 0U);
+    assert(core.targetMidiNote() == 71);
+    assert(core.setPitchSemitones(0.0f)); // Existing legacy control resumes nearest-note behavior.
+    assert(core.targetMidiNote() == 64);
+}
+
 } // namespace
 
 int main() {
+    testOfficialFixedNote();
     testConfigAndExplicitFormantPolicies();
     testFixedPitchShiftUsesSignalsmithAndLatencyAlignedDry();
     testNearestSemitoneTargetAndOffset();

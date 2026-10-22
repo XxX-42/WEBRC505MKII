@@ -2,12 +2,15 @@
 """No-hardware HTTP contract test for the explicit simulation host target."""
 
 import json
+import http.client
+import hashlib
 import math
 import struct
 import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 
@@ -64,6 +67,74 @@ def request_binary(path, method, body):
             return response.status, response.headers, response.read()
     except urllib.error.HTTPError as error:
         return error.code, error.headers, error.read()
+
+
+def request_project_archive(path, method="POST", body=None, content_type=None):
+    headers = {"Origin": "http://localhost:5173"}
+    if content_type is not None:
+        headers["Content-Type"] = content_type
+    # Header validation may reject an invalid import before consuming its large
+    # body. urllib closes its connection on sendall's BrokenPipeError and loses
+    # the valid HTTP error response. Keep the socket long enough to assert that
+    # response; do not retry the mutation or suppress any response assertion.
+    address = urllib.parse.urlsplit(HOST_URL)
+    connection = http.client.HTTPConnection(address.hostname, address.port, timeout=15)
+    try:
+        try:
+            connection.request(method, path, body=body, headers=headers)
+        except BrokenPipeError:
+            pass  # getresponse must still succeed, otherwise the test fails.
+        response = connection.getresponse()
+        payload = response.read()
+        return response.status, json.loads(payload.decode("utf-8")) if payload else {}
+    finally:
+        connection.close()
+
+
+def build_project_archive(tracks, name="HTTP import test", bpm=120.0):
+    payload = bytearray()
+    track_manifest = []
+    for track in tracks:
+        if track is None:
+            track_manifest.append(None)
+            continue
+        channels = track["channels"]
+        samples = track["samples"]
+        pcm = struct.pack("<" + "f" * len(samples), *samples)
+        track_manifest.append({
+            "sampleRate": track.get("sampleRate", 48000),
+            "frameCount": len(samples) // channels,
+            "channels": channels,
+            "payloadOffset": len(payload),
+            "byteLength": len(pcm),
+            "sha256": hashlib.sha256(pcm).hexdigest(),
+        })
+        payload.extend(pcm)
+
+    manifest = {
+        "format": "rc505-project-archive",
+        "version": 1,
+        "project": {
+            "name": name,
+            "bpm": bpm,
+            "transport": {
+                "masterTrackId": None,
+                "measureLengthSeconds": 0,
+                "masterLoopLengthSamples": 0,
+                "timeSignatureNumerator": 4,
+                "timeSignatureDenominator": 4,
+            },
+        },
+        "tracks": track_manifest,
+    }
+    manifest_bytes = json.dumps(manifest, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return b"RC505PA\x00" + struct.pack("<I", len(manifest_bytes)) + manifest_bytes + payload
+
+
+def request_project_import_cancel(generation):
+    body = json.dumps({"generation": generation}, separators=(",", ":")).encode("utf-8")
+    return request_project_archive(
+        "/v1/project/import/cancel", "POST", body, "text/plain")
 
 
 def require(condition, message):
@@ -433,12 +504,32 @@ def main():
             "beat_repeat", "beat_scatter", "roll", "freeze", "warp", "tape_echo", "reverse_delay", "reverse_reverb", "fractional_delay", "mod_delay", "panning_delay", "twist", "granular_delay", "auto_pan",
             "manual_pan", "chorus", "tremolo", "ring_mod", "eq", "isolator", "stereo_enhance", "lo_fi", "radio",
             "sustainer", "vibrato", "slow_gear", "pattern_slicer", "step_slicer", "vinyl_flick", "preamp", "synth", "g2b",
-            "transpose", "pitch_bend", "hrm_manual", "octave", "vocoder", "osc_voc_m", "osc_bot", "auto_riff", "hrm_auto_m", "robot", "electric",
+            "transpose", "pitch_bend", "hrm_manual", "octave", "vocoder", "osc_voc_m", "osc_bot", "auto_riff", "hrm_auto_m", "robot", "electric", "beat_shift",
         ]
         actual_catalog_ids = fx.get("implementedCatalogEffects")
         require(actual_catalog_ids == expected_catalog_ids,
                 f"Native catalog capability list mismatch: expected={expected_catalog_ids!r}; actual={actual_catalog_ids!r}")
         availability = {item.get("effectId"): item for item in fx.get("catalogEffectAvailability", [])}
+        require(fx.get("parameterSchemaVersion") == 1,
+                "Native parameter descriptor schema version was not published")
+        require(len(availability) == 53, f"Native parameter schema should describe 53 catalog effects; got {len(availability)}")
+        canonical_parameter_count = sum(len(item.get("parameters", [])) for item in availability.values())
+        legacy_alias_count = sum(len(item.get("legacyParameterAliases", [])) for item in availability.values())
+        require(canonical_parameter_count == 252 and legacy_alias_count == 2,
+                f"Native parameter schema field count mismatch: canonical={canonical_parameter_count}, legacy={legacy_alias_count}")
+        phaser_parameters = {item["id"]: item for item in availability["phaser"].get("parameters", [])}
+        stages = phaser_parameters.get("stages", {})
+        require(stages.get("minimum") == 4.0 and stages.get("maximum") == 12.0 and
+                stages.get("defaultValue") == 8.0 and stages.get("discrete") is True and
+                stages.get("discreteValues") == [4.0, 8.0, 12.0],
+                f"Native PHASER stages descriptor missing exact bounds/choices: {stages}")
+        lpf_parameters = {item["id"]: item for item in availability["filter.lpf"].get("parameters", [])}
+        q_aliases = {item["id"]: item for item in availability["filter.lpf"].get("legacyParameterAliases", [])}
+        require("q" not in lpf_parameters and q_aliases.get("q", {}).get("legacyAlias") is True and
+                q_aliases["q"].get("minimum") == 0.5 and q_aliases["q"].get("maximum") == 12.0,
+                f"LPF canonical controls or legacy q compatibility alias is wrong: {lpf_parameters}, {q_aliases}")
+        require(availability["filter.lpf"].get("parameters") and availability["filter.lpf"].get("track") is True,
+                "Native catalog parameter fields were not linked to their route availability")
         require(availability.get("warp", {}).get("sourceIndex") == 42 and
                 availability.get("warp", {}).get("input") is True and
                 availability.get("warp", {}).get("track") is True and
@@ -966,7 +1057,8 @@ def main():
                     "snapshot route emitted duplicate Access-Control-Allow-Origin values")
             require(header_values.get("x-native-loop-sample-rate") == "48000" and
                     header_values.get("x-native-loop-sample-format") == "float32le" and
-                    header_values.get("x-native-loop-channels") == "2",
+                    header_values.get("x-native-loop-channels") == "2" and
+                    header_values.get("x-native-loop-revision", "").isdigit(),
                     "snapshot metadata headers did not report stereo sample rate/format")
             frame_count = int(header_values.get("x-native-loop-frame-count", "0"))
             require(frame_count > 0 and len(snapshot) == frame_count * 2 * 4,
@@ -981,6 +1073,46 @@ def main():
             selected_state = next((track.get("state") for track in reported_tracks
                                    if track.get("trackId") == track_id), None)
             require(selected_state == "Stopped", f"Track {track_id} state did not persist after recording: {selected_state}")
+            selected_track = next((track for track in reported_tracks if track.get("trackId") == track_id), {})
+            require(selected_track.get("contentRevision") == int(header_values["x-native-loop-revision"]),
+                    f"Track {track_id} snapshot revision did not match its callback-published status: {selected_track}")
+
+            if track_id == 1:
+                track_one = next((track for track in reported_tracks if track.get("trackId") == 1), {})
+                history = track_one.get("history", {})
+                require(history.get("canUndo") is True and history.get("canRedo") is False,
+                        f"Native Track 1 did not publish an undoable PCM history step: {history}")
+                original_pcm_digest = hashlib.sha256(snapshot).hexdigest()
+                status, undone = request("/v1/transport/undo", "POST", {})
+                undone_track = next((track for track in undone.get("nativeTracks", []) if track.get("trackId") == 1), {})
+                require(status == 200 and undone_track.get("state") == "Empty" and
+                        undone_track.get("contentRevision", 0) > selected_track.get("contentRevision", 0) and
+                        undone_track.get("history", {}).get("canUndo") is False and
+                        undone_track.get("history", {}).get("canRedo") is True,
+                        f"Native Track 1 PCM undo did not restore the prior empty state: {undone_track}")
+                status, rejected_undo = request("/v1/transport/undo", "POST", {})
+                require(status == 409 and "No Native undo step" in rejected_undo.get("error", ""),
+                        f"Native host did not visibly reject a second undo without history: {rejected_undo}")
+                status, after_rejected_undo = request("/v1/status")
+                still_undone = next((track for track in after_rejected_undo.get("nativeTracks", []) if track.get("trackId") == 1), {})
+                require(status == 200 and still_undone.get("state") == "Empty" and
+                        still_undone.get("history", {}).get("canRedo") is True,
+                        f"A rejected repeated undo changed the acknowledged track state: {still_undone}")
+                status, empty_metadata = request("/v1/export/track-metadata")
+                require(status == 409 and "finalized, non-empty loop" in empty_metadata.get("error", ""),
+                        "Native PCM undo left loop data addressable through the export metadata route")
+                status, redone = request("/v1/transport/redo", "POST", {})
+                redone_track = next((track for track in redone.get("nativeTracks", []) if track.get("trackId") == 1), {})
+                require(status == 200 and redone_track.get("state") == "Stopped" and
+                        redone_track.get("contentRevision", 0) > undone_track.get("contentRevision", 0) and
+                        redone_track.get("history", {}).get("canUndo") is True and
+                        redone_track.get("history", {}).get("canRedo") is False,
+                        f"Native Track 1 PCM redo did not restore the completed loop: {redone_track}")
+                status, redone_headers, redone_pcm = request_raw("/v1/export/loop-snapshot")
+                redone_header_values = {key.lower(): value for key, value in redone_headers.items()}
+                require(status == 200 and hashlib.sha256(redone_pcm).hexdigest() == original_pcm_digest and
+                        redone_header_values.get("x-native-loop-revision") == str(redone_track.get("contentRevision")),
+                        "Native PCM redo did not restore the exact original stereo sample bytes")
 
             if track_id == 2:
                 status, playing = request("/v1/transport/play?trackId=2", "POST", {})
@@ -1195,6 +1327,155 @@ def main():
         require(status == 200 and input_a.get("lateEventCount", 0) >= 1,
                 f"late MIDI event diagnostic counter was not published: {input_a}")
 
+        # Project archives are sent as raw bounded v1 bytes. Verify that a
+        # rejected archive cannot change revisions, that accepted PCM is not
+        # silently skipped, and that the generation is acknowledged only
+        # after the callback-boundary full-bank swap.
+        status, project_before = request("/v1/status")
+        require(status == 200 and project_before.get("engineRunning") is True,
+                "project-import route test requires the simulated engine to be running")
+        project_revision = project_before.get("projectContentRevision")
+        require(isinstance(project_revision, int) and project_revision >= 0 and
+                project_before.get("projectContentRevisionSnapshotStable") is True,
+                "project-import route did not publish a stable operation-start host revision snapshot")
+        project_import_path = f"/v1/project/import?expectedContentRevision={project_revision}"
+        revisions_before = {
+            track["trackId"]: track["contentRevision"]
+            for track in project_before.get("nativeTracks", [])
+        }
+        mono_frame_count = 262145
+        mono_samples = [0.25, -0.5, 0.75] + [0.0] * (mono_frame_count - 3)
+        valid_archive = build_project_archive([
+            {"channels": 1, "samples": mono_samples},
+            {"channels": 2, "samples": [0.125, -0.25, 0.5, 0.75]},
+            None, None, None,
+        ])
+        require(len(valid_archive) > 1024 * 1024,
+                "valid project-import fixture must exceed the small control-body cap")
+        invalid_archive = valid_archive[:-1] + bytes([valid_archive[-1] ^ 1])
+        status, missing_revision = request_project_archive(
+            "/v1/project/import", "POST", invalid_archive, "application/octet-stream")
+        require(status == 400 and "expectedContentRevision" in missing_revision.get("error", ""),
+                f"Native project import accepted a request without its start revision: {missing_revision}")
+        status, malformed_revision = request_project_archive(
+            "/v1/project/import?expectedContentRevision=stale", "POST", invalid_archive, "application/octet-stream")
+        require(status == 400 and "expectedContentRevision" in malformed_revision.get("error", ""),
+                f"Native project import accepted a malformed start revision: {malformed_revision}")
+        status, duplicate_revision = request_project_archive(
+            f"{project_import_path}&expectedContentRevision={project_revision}",
+            "POST", invalid_archive, "application/octet-stream")
+        require(status == 400 and "expectedContentRevision" in duplicate_revision.get("error", ""),
+                f"Native project import accepted duplicate start revisions: {duplicate_revision}")
+        status, rejected_archive = request_project_archive(
+            project_import_path, "POST", invalid_archive, "application/octet-stream")
+        require(status == 400 and rejected_archive.get("ok") is False and
+                "hash" in rejected_archive.get("error", "").lower(),
+                f"tampered archive was not explicitly rejected: HTTP {status} {rejected_archive}")
+        status, after_invalid_archive = request("/v1/status")
+        revisions_after_reject = {
+            track["trackId"]: track["contentRevision"]
+            for track in after_invalid_archive.get("nativeTracks", [])
+        }
+        require(status == 200 and revisions_after_reject == revisions_before,
+                "invalid archive changed Native track revisions")
+
+        status, headers, _ = request_with_headers("/v1/project/import", "OPTIONS", {
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        })
+        require(status == 204 and headers.get("Access-Control-Allow-Origin") == "http://localhost:5173" and
+                headers.get("Access-Control-Allow-Methods") == "GET, POST" and
+                "content-type" in headers.get("Access-Control-Allow-Headers", "").lower(),
+                "raw archive POST did not receive the existing allowlisted loopback CORS policy")
+
+        status, accepted = request_project_archive(
+            project_import_path, "POST", valid_archive, "application/octet-stream")
+        require(status == 202 and accepted.get("ok") is True and accepted.get("generation", 0) > 0,
+                f"valid archive was not staged as a generation: HTTP {status} {accepted}")
+        generation = accepted["generation"]
+        status, pending = request_project_archive(
+            f"/v1/project/import/status?generation={generation}", "GET")
+        require(status == 200 and pending.get("ok") is True and pending.get("generation") == generation and
+                pending.get("state") in ("pending", "claimed", "committed"),
+                f"project import status route returned an invalid generation state: {pending}")
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline and pending.get("state") not in ("committed", "cancelled"):
+            time.sleep(0.005)
+            status, pending = request_project_archive(
+                f"/v1/project/import/status?generation={generation}", "GET")
+        require(status == 200 and pending.get("state") == "committed",
+                f"valid project import was not acknowledged as committed: {pending}")
+
+        status, track_one_headers, imported_track = request_raw(
+            "/v1/export/loop-snapshot?trackId=1", {"Origin": "http://localhost:5173"})
+        require(status == 200 and int(track_one_headers.get("X-Native-Loop-Frame-Count", "0")) == mono_frame_count and
+                len(imported_track) == mono_frame_count * 2 * 4,
+                "accepted Mono archive track was silently skipped or had the wrong frame count")
+        track_one_samples = struct.unpack_from("<6f", imported_track)
+        expected_track_one = (0.25, 0.25, -0.5, -0.5, 0.75, 0.75)
+        require(all(abs(actual - expected) < 1e-6 for actual, expected in zip(track_one_samples, expected_track_one)),
+                f"committed Mono archive PCM did not survive callback import: {track_one_samples}")
+        require(struct.unpack_from("<2f", imported_track, len(imported_track) - 8) == (0.0, 0.0),
+                "large Mono archive tail samples were not imported")
+        status, track_two_headers, imported_track = request_raw(
+            "/v1/export/loop-snapshot?trackId=2", {"Origin": "http://localhost:5173"})
+        require(status == 200 and int(track_two_headers.get("X-Native-Loop-Frame-Count", "0")) == 2,
+                "accepted Stereo archive track was silently skipped or had the wrong frame count")
+        track_two_samples = struct.unpack("<4f", imported_track)
+        expected_track_two = (0.125, -0.25, 0.5, 0.75)
+        require(all(abs(actual - expected) < 1e-6 for actual, expected in zip(track_two_samples, expected_track_two)),
+                f"committed Stereo archive PCM did not survive callback import: {track_two_samples}")
+        status, after_commit = request("/v1/status")
+        revisions_after_commit = {
+            track["trackId"]: track["contentRevision"]
+            for track in after_commit.get("nativeTracks", [])
+        }
+        require(status == 200 and revisions_after_commit[1] > revisions_before[1] and
+                revisions_after_commit[2] > revisions_before[2],
+                "callback-acknowledged import did not increment the imported track content revisions")
+
+        # Cancellation races the 1 ms synthetic callback. Either a pre-claim
+        # cancellation is acknowledged, or a claimed/committed generation is
+        # explicitly returned as a conflict; neither may be reported as
+        # cancelled after the callback has committed.
+        empty_archive = build_project_archive([None, None, None, None, None], name="Cancelled HTTP import")
+        status, before_cancel_import = request("/v1/status")
+        require(status == 200 and isinstance(before_cancel_import.get("projectContentRevision"), int),
+                "project-import cancellation route could not read the current start revision")
+        status, cancel_candidate = request_project_archive(
+            f"/v1/project/import?expectedContentRevision={before_cancel_import['projectContentRevision']}",
+            "POST", empty_archive, "application/octet-stream")
+        require(status == 202 and cancel_candidate.get("ok") is True,
+                f"empty project for cancellation route was not staged: {cancel_candidate}")
+        cancel_generation = cancel_candidate["generation"]
+        cancel_status, cancel_result = request_project_import_cancel(cancel_generation)
+        require((cancel_status == 200 and cancel_result.get("state") == "cancelled") or
+                (cancel_status == 409 and cancel_result.get("state") in ("claimed", "committed")),
+                f"import cancellation did not report its callback race explicitly: HTTP {cancel_status} {cancel_result}")
+        status, cancel_terminal = request_project_archive(
+            f"/v1/project/import/status?generation={cancel_generation}", "GET")
+        if cancel_terminal.get("state") in ("pending", "claimed"):
+            deadline = time.monotonic() + 5.0
+            while time.monotonic() < deadline and cancel_terminal.get("state") not in ("committed", "cancelled"):
+                time.sleep(0.005)
+                status, cancel_terminal = request_project_archive(
+                    f"/v1/project/import/status?generation={cancel_generation}", "GET")
+        require(status == 200 and cancel_terminal.get("state") in ("cancelled", "committed"),
+                f"cancelled/claimed project generation never reached a terminal status: {cancel_terminal}")
+        if cancel_status == 200:
+            require(cancel_terminal.get("state") == "cancelled",
+                    f"successful cancellation did not remain terminal: {cancel_terminal}")
+
+        status, unknown_generation = request_project_archive(
+            "/v1/project/import/status?generation=18446744073709551615", "GET")
+        require(status == 404 and unknown_generation.get("ok") is False,
+                "unknown import generation was not explicitly rejected")
+        status, malformed_generation = request_project_archive(
+            "/v1/project/import/status?generation=0", "GET")
+        require(status == 400 and malformed_generation.get("ok") is False,
+                "zero import generation was not explicitly rejected")
+
         status, stopped = request("/v1/engine/stop", "POST", {})
         require(status == 200 and stopped.get("engineRunning") is False,
                 "engine stop before HRM AUTO catalog selection failed")
@@ -1242,7 +1523,7 @@ def main():
         require(status == 409 and "not selected" in error.get("error", ""),
                 f"HRM AUTO MIDI was not restricted to its exact selected slot: {error}")
 
-        print("Native bridge HTTP simulation passed, including five-track status, selector validation, per-track recording, stereo snapshots, OSC VOC absolute-frame MIDI routing/status, and HRM AUTO exact-slot MIDI route/status. The fake RtAudio callback source is synthetic and is not device, timing, XRUN, or audio-quality evidence.")
+        print("Native bridge HTTP simulation passed, including five-track status, selector validation, per-track recording, stereo snapshots, callback-acknowledged project archive import/cancel/status routes, OSC VOC absolute-frame MIDI routing/status, and HRM AUTO exact-slot MIDI route/status. The fake RtAudio callback source is synthetic and is not device, timing, XRUN, or audio-quality evidence.")
     finally:
         process.terminate()
         try:

@@ -220,18 +220,113 @@ bool LooperCore::setLoopTransportConfig(const LoopTransportConfig& config) noexc
     return true;
 }
 
+LooperCore::PlaybackCursor LooperCore::playbackCursor() const noexcept {
+    return {playhead_, transportFadeRemaining_, vinylReadPosition_, vinylSpeedRatio_, vinylAcceleration_};
+}
+
+void LooperCore::commitPlaybackCursor(const PlaybackCursor& cursor) noexcept {
+    playhead_ = cursor.playhead; transportFadeRemaining_ = cursor.fadeRemaining;
+    vinylReadPosition_ = cursor.vinylPosition; vinylSpeedRatio_ = cursor.vinylSpeed;
+    vinylAcceleration_ = cursor.vinylAcceleration;
+}
+
+void LooperCore::readPlayingFrame(PlaybackCursor& cursor, float& left, float& right) const noexcept {
+    left = right = 0.0f;
+    if (finalizedFrames_ == 0U || cursor.playhead >= finalizedFrames_) return;
+    const auto offset = cursor.playhead * channels_;
+    left = loopBuffer_[offset]; right = channels_ == 2U ? loopBuffer_[offset + 1U] : left;
+    if (loopTransportConfig_.mode == LoopTransportMode::BeatShift ||
+         loopTransportConfig_.mode == LoopTransportMode::VinylFlick ||
+         (cursor.fadeRemaining > 0U && previousLoopTransportConfig_.mode != LoopTransportMode::Off)) {
+        const double canonicalPosition = static_cast<double>(cursor.playhead);
+        double transportedPosition = canonicalPosition;
+        bool transportedLagrange = false;
+        if (loopTransportConfig_.mode == LoopTransportMode::BeatShift) {
+            transportedPosition = beatShiftPosition(canonicalPosition, beatShiftOffsetSamples_);
+            transportedLagrange = true;
+        } else if (loopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
+            transportedPosition = cursor.vinylPosition;
+            transportedLagrange = true;
+        }
+
+        float transportedLeft = 0.0f;
+        float transportedRight = 0.0f;
+        readLoopAt(transportedPosition, transportedLagrange, transportedLeft, transportedRight);
+        if (loopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
+            const float wet = std::clamp(loopTransportConfig_.vinylMixPercent * 0.01f, 0.0f, 1.0f);
+            transportedLeft = left + ((transportedLeft - left) * wet);
+            transportedRight = right + ((transportedRight - right) * wet);
+        }
+
+        if (cursor.fadeRemaining > 0U) {
+            const std::size_t elapsed = transportFadeFrames_ - cursor.fadeRemaining;
+            double previousPosition = canonicalPosition;
+            bool previousLagrange = false;
+            if (previousLoopTransportConfig_.mode == LoopTransportMode::BeatShift) {
+                previousPosition = beatShiftPosition(canonicalPosition, previousBeatShiftOffsetSamples_);
+                previousLagrange = true;
+            } else if (previousLoopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
+                previousPosition = fadeStartVinylPosition_ +
+                    static_cast<double>(elapsed) * std::clamp(fadeStartVinylSpeed_, 0.0, 2.0);
+                previousLagrange = true;
+            }
+            float previousLeft = 0.0f;
+            float previousRight = 0.0f;
+            readLoopAt(previousPosition, previousLagrange, previousLeft, previousRight);
+            if (previousLoopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
+                const float previousWet = std::clamp(previousLoopTransportConfig_.vinylMixPercent * 0.01f, 0.0f, 1.0f);
+                previousLeft = left + ((previousLeft - left) * previousWet);
+                previousRight = right + ((previousRight - right) * previousWet);
+            }
+            const double progress = transportFadeFrames_ <= 1U ? 1.0 :
+                static_cast<double>(elapsed) / static_cast<double>(transportFadeFrames_ - 1U);
+            double oldGain = 0.0;
+            double newGain = 0.0;
+            getTransportCrossfadeGains(progress, oldGain, newGain);
+            transportedLeft = static_cast<float>(previousLeft * oldGain + transportedLeft * newGain);
+            transportedRight = static_cast<float>(previousRight * oldGain + transportedRight * newGain);
+            --cursor.fadeRemaining;
+        }
+        left = transportedLeft;
+        right = transportedRight;
+    }
+
+    if (loopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
+        advanceVinylPlatter(cursor);
+        cursor.vinylPosition = wrappedLoopPosition(cursor.vinylPosition + cursor.vinylSpeed);
+    }
+    cursor.playhead = (cursor.playhead + 1U) % finalizedFrames_;
+}
+
+bool LooperCore::previewPlayback(float* destination, unsigned int frames,
+    unsigned int outputChannels, unsigned int capacityFrames) const noexcept {
+    if (destination == nullptr || frames > capacityFrames || frames > 4096U ||
+        outputChannels == 0U || outputChannels > 2U) return false;
+    std::fill_n(destination, static_cast<std::size_t>(frames) * outputChannels, 0.0f);
+    if (state_ != LooperState::Playing || finalizedFrames_ == 0U) return false;
+    auto cursor = playbackCursor();
+    for (unsigned int frame = 0U; frame < frames; ++frame) {
+        float left, right; readPlayingFrame(cursor, left, right);
+        destination[static_cast<std::size_t>(frame) * outputChannels] = left;
+        if (outputChannels == 2U) destination[static_cast<std::size_t>(frame) * 2U + 1U] = right;
+    }
+    return true;
+}
+
 ProcessStats LooperCore::process(
     const float* inputInterleaved,
     float* outputInterleaved,
     unsigned int frames,
     unsigned int inputChannels,
     unsigned int outputChannels,
-    float* playbackOnlyInterleaved
+    float* playbackOnlyInterleaved,
+    bool measureOutputPeak
 ) {
     ProcessStats stats;
     stats.state = state_;
     stats.loopTransportStatus = transportStatusForState();
 
+    auto cursor = playbackCursor();
     for (unsigned int frame = 0; frame < frames; ++frame) {
         const std::size_t inputOffset = static_cast<std::size_t>(frame) * inputChannels;
         const float inputLeft = inputInterleaved != nullptr && inputChannels > 0U
@@ -243,69 +338,12 @@ ProcessStats LooperCore::process(
 
         float playbackLeft = 0.0f;
         float playbackRight = 0.0f;
-        if (finalizedFrames_ > 0 &&
-            (state_ == LooperState::Playing || state_ == LooperState::Overdubbing) &&
-            playhead_ < finalizedFrames_) {
-            const std::size_t loopOffset = playhead_ * channels_;
+        if (state_ == LooperState::Playing) {
+            readPlayingFrame(cursor, playbackLeft, playbackRight);
+        } else if (state_ == LooperState::Overdubbing && finalizedFrames_ > 0U && playhead_ < finalizedFrames_) {
+            const auto loopOffset = playhead_ * channels_;
             playbackLeft = loopBuffer_[loopOffset];
             playbackRight = channels_ == 2U ? loopBuffer_[loopOffset + 1U] : playbackLeft;
-        }
-
-        if (state_ == LooperState::Playing && finalizedFrames_ > 0U &&
-            (loopTransportConfig_.mode == LoopTransportMode::BeatShift ||
-             loopTransportConfig_.mode == LoopTransportMode::VinylFlick ||
-             (transportFadeRemaining_ > 0U && previousLoopTransportConfig_.mode != LoopTransportMode::Off))) {
-            const double canonicalPosition = static_cast<double>(playhead_);
-            double transportedPosition = canonicalPosition;
-            bool transportedLagrange = false;
-            if (loopTransportConfig_.mode == LoopTransportMode::BeatShift) {
-                transportedPosition = beatShiftPosition(canonicalPosition, beatShiftOffsetSamples_);
-                transportedLagrange = true;
-            } else if (loopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
-                transportedPosition = vinylReadPosition_;
-                transportedLagrange = true;
-            }
-
-            float transportedLeft = 0.0f;
-            float transportedRight = 0.0f;
-            readLoopAt(transportedPosition, transportedLagrange, transportedLeft, transportedRight);
-            if (loopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
-                const float wet = std::clamp(loopTransportConfig_.vinylMixPercent * 0.01f, 0.0f, 1.0f);
-                transportedLeft = playbackLeft + ((transportedLeft - playbackLeft) * wet);
-                transportedRight = playbackRight + ((transportedRight - playbackRight) * wet);
-            }
-
-            if (transportFadeRemaining_ > 0U) {
-                const std::size_t elapsed = transportFadeFrames_ - transportFadeRemaining_;
-                double previousPosition = canonicalPosition;
-                bool previousLagrange = false;
-                if (previousLoopTransportConfig_.mode == LoopTransportMode::BeatShift) {
-                    previousPosition = beatShiftPosition(canonicalPosition, previousBeatShiftOffsetSamples_);
-                    previousLagrange = true;
-                } else if (previousLoopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
-                    previousPosition = fadeStartVinylPosition_ +
-                        static_cast<double>(elapsed) * std::clamp(fadeStartVinylSpeed_, 0.0, 2.0);
-                    previousLagrange = true;
-                }
-                float previousLeft = 0.0f;
-                float previousRight = 0.0f;
-                readLoopAt(previousPosition, previousLagrange, previousLeft, previousRight);
-                if (previousLoopTransportConfig_.mode == LoopTransportMode::VinylFlick) {
-                    const float previousWet = std::clamp(previousLoopTransportConfig_.vinylMixPercent * 0.01f, 0.0f, 1.0f);
-                    previousLeft = playbackLeft + ((previousLeft - playbackLeft) * previousWet);
-                    previousRight = playbackRight + ((previousRight - playbackRight) * previousWet);
-                }
-                const double progress = transportFadeFrames_ <= 1U ? 1.0 :
-                    static_cast<double>(elapsed) / static_cast<double>(transportFadeFrames_ - 1U);
-                double oldGain = 0.0;
-                double newGain = 0.0;
-                getTransportCrossfadeGains(progress, oldGain, newGain);
-                transportedLeft = static_cast<float>(previousLeft * oldGain + transportedLeft * newGain);
-                transportedRight = static_cast<float>(previousRight * oldGain + transportedRight * newGain);
-                --transportFadeRemaining_;
-            }
-            playbackLeft = transportedLeft;
-            playbackRight = transportedRight;
         }
 
         float outputLeft = 0.0f;
@@ -324,13 +362,6 @@ ProcessStats LooperCore::process(
         } else if (state_ == LooperState::Playing) {
             outputLeft = playbackLeft + (monitoringEnabled_ ? inputLeft : 0.0f);
             outputRight = playbackRight + (monitoringEnabled_ ? inputRight : 0.0f);
-            if (loopTransportConfig_.mode == LoopTransportMode::VinylFlick && finalizedFrames_ > 0U) {
-                advanceVinylPlatter();
-                vinylReadPosition_ = wrappedLoopPosition(vinylReadPosition_ + vinylSpeedRatio_);
-            }
-            if (finalizedFrames_ > 0) {
-                playhead_ = (playhead_ + 1) % finalizedFrames_;
-            }
         } else if (state_ == LooperState::Overdubbing) {
             const float mixedLeft = clampSample(playbackLeft + inputLeft);
             const float mixedRight = clampSample(playbackRight + inputRight);
@@ -350,7 +381,9 @@ ProcessStats LooperCore::process(
         outputLeft = clampSample(outputLeft);
         outputRight = clampSample(outputRight);
         stats.inputPeak = std::max(stats.inputPeak, std::max(std::fabs(inputLeft), std::fabs(inputRight)));
-        stats.outputPeak = std::max(stats.outputPeak, std::max(std::fabs(outputLeft), std::fabs(outputRight)));
+        if (measureOutputPeak) {
+            stats.outputPeak = std::max(stats.outputPeak, std::max(std::fabs(outputLeft), std::fabs(outputRight)));
+        }
 
         if (outputInterleaved != nullptr && outputChannels > 0) {
             const std::size_t offset = static_cast<std::size_t>(frame) * outputChannels;
@@ -371,6 +404,7 @@ ProcessStats LooperCore::process(
         }
     }
 
+    if (state_ == LooperState::Playing) commitPlaybackCursor(cursor);
     stats.state = state_;
     stats.loopTransportStatus = transportStatusForState();
     if (finalizedFrames_ > 0 && (state_ == LooperState::Playing || state_ == LooperState::Overdubbing)) {
@@ -466,19 +500,19 @@ void LooperCore::getTransportCrossfadeGains(double progress, double& oldGain, do
         (transportFadeNewGainLut_[next] - transportFadeNewGainLut_[index]) * fraction;
 }
 
-void LooperCore::advanceVinylPlatter() noexcept {
+void LooperCore::advanceVinylPlatter(PlaybackCursor& cursor) const noexcept {
     const double target = std::clamp(1.0 + static_cast<double>(loopTransportConfig_.vinylSpeedPercent) * 0.01, 0.0, 2.0);
     const double tau = std::clamp(static_cast<double>(loopTransportConfig_.motorReturnSeconds), 0.05, 10.0);
     const double brake = std::clamp(static_cast<double>(loopTransportConfig_.brakePercent) * 0.01, 0.0, 1.0);
     const double omega = 2.0 / tau;
     const double dampingRatio = 0.7 + (1.2 * brake);
-    const double accelerationDerivative = (omega * omega * (target - vinylSpeedRatio_)) -
-        (2.0 * dampingRatio * omega * vinylAcceleration_);
+    const double accelerationDerivative = (omega * omega * (target - cursor.vinylSpeed)) -
+        (2.0 * dampingRatio * omega * cursor.vinylAcceleration);
     const double dt = sampleRate_ == 0U ? 0.0 : 1.0 / static_cast<double>(sampleRate_);
-    vinylAcceleration_ = std::clamp(vinylAcceleration_ + (accelerationDerivative * dt), -100.0, 100.0);
-    const double nextSpeed = vinylSpeedRatio_ + (vinylAcceleration_ * dt);
-    if (nextSpeed <= 0.0 || nextSpeed >= 2.0) vinylAcceleration_ = 0.0;
-    vinylSpeedRatio_ = std::clamp(nextSpeed, 0.0, 2.0);
+    cursor.vinylAcceleration = std::clamp(cursor.vinylAcceleration + (accelerationDerivative * dt), -100.0, 100.0);
+    const double nextSpeed = cursor.vinylSpeed + (cursor.vinylAcceleration * dt);
+    if (nextSpeed <= 0.0 || nextSpeed >= 2.0) cursor.vinylAcceleration = 0.0;
+    cursor.vinylSpeed = std::clamp(nextSpeed, 0.0, 2.0);
 }
 
 LoopTransportStatus LooperCore::transportStatusForState() const noexcept {
@@ -516,6 +550,58 @@ std::size_t LooperCore::capacityFrames() const noexcept {
 
 unsigned int LooperCore::channels() const noexcept {
     return channels_;
+}
+
+LoopMetadata LooperCore::metadata() const noexcept {
+    return {state_, recordedFrames_, finalizedFrames_, playhead_};
+}
+
+void LooperCore::restoreMetadata(const LoopMetadata& metadata) noexcept {
+    state_ = metadata.state;
+    recordedFrames_ = std::min(metadata.recordedFrames, capacityFrames_);
+    finalizedFrames_ = std::min(metadata.finalizedFrames, capacityFrames_);
+    playhead_ = finalizedFrames_ == 0U ? 0U : metadata.playhead % finalizedFrames_;
+    updateBeatShiftOffsets();
+}
+
+bool LooperCore::exchangeFinalizedStereoSamples(float* samples, std::size_t frames) noexcept {
+    if (samples == nullptr || frames == 0U || frames != finalizedFrames_ || frames > capacityFrames_) return false;
+    for (std::size_t frame = 0U; frame < frames; ++frame) {
+        const std::size_t loopOffset = frame * channels_;
+        const float oldLeft = loopBuffer_[loopOffset];
+        const float oldRight = channels_ == 2U ? loopBuffer_[loopOffset + 1U] : oldLeft;
+        loopBuffer_[loopOffset] = samples[frame * 2U];
+        if (channels_ == 2U) loopBuffer_[loopOffset + 1U] = samples[frame * 2U + 1U];
+        samples[frame * 2U] = oldLeft;
+        samples[frame * 2U + 1U] = oldRight;
+    }
+    return true;
+}
+
+bool LooperCore::swapImportedStereoStorage(
+    std::vector<float>& fullCapacitySamples,
+    std::size_t frames
+) noexcept {
+    const auto expectedSamples = capacityFrames_ * 2U;
+    if (channels_ != 2U || fullCapacitySamples.size() != expectedSamples ||
+        frames > capacityFrames_ || (frames > 0U && fullCapacitySamples.empty())) {
+        return false;
+    }
+
+    // std::vector::swap with the standard allocator is noexcept and leaves
+    // the old full-capacity store in the staging transaction for control-side
+    // reclamation after this callback acknowledges the commit.
+    loopBuffer_.swap(fullCapacitySamples);
+    state_ = frames == 0U ? LooperState::Empty : LooperState::Stopped;
+    recordedFrames_ = frames;
+    finalizedFrames_ = frames;
+    playhead_ = 0U;
+    transportFadeRemaining_ = 0U;
+    vinylReadPosition_ = 0.0;
+    vinylSpeedRatio_ = 1.0;
+    vinylAcceleration_ = 0.0;
+    updateBeatShiftOffsets();
+    return true;
 }
 
 bool LooperCore::copyFinalizedLoopSnapshot(

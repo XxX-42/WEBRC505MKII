@@ -1,0 +1,23 @@
+--- /tmp/rc505-browser-perf/core-baseline.ts	2026-10-21 04:16:19.187050601 -0700
++++ /tmp/rc505-browser-perf/core-round2.ts	2026-10-21 04:18:04.218372356 -0700
+@@ -3576,14 +3576,18 @@
+       outputSum += dampedState * (line % 2 === 0 ? 1 : -1);
+     }
+ 
++    // These are invariant across the eight lines; preserve the original
++    // multiply order so feedback, decay, and stereo remain sample-identical.
++    const householderSum = HOUSEHOLDER_ROW_SUM_FACTOR * feedbackSum;
++    const injectedInput = input * FDN_INJECTION_GAIN;
+     for (let line = 0; line < 8; line += 1) {
+       const index = lineStart + line;
+       const buffer = this.fdnBuffers[index];
+       if (!buffer) continue;
+       const feedback = this.delayReadScratch[index] ?? 0;
+-      const householderOutput = feedback - HOUSEHOLDER_ROW_SUM_FACTOR * feedbackSum;
++      const householderOutput = feedback - householderSum;
+       const injectionSign = (line & 1) === 0 ? 1 : -1;
+-      let next = householderOutput + input * FDN_INJECTION_GAIN * injectionSign;
++      let next = householderOutput + injectedInput * injectionSign;
+       if (!Number.isFinite(next) || Math.abs(next) < MIN_STATE_MAGNITUDE) next = 0;
+       const writeIndex = this.fdnWriteIndices[index] ?? 0;
+       buffer[writeIndex] = next;

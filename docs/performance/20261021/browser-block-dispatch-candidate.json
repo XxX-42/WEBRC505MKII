@@ -1,0 +1,13 @@
+{
+  "baseSourceHash": "be1443192068a2cbcad0d85becdba4ff6066342aacdd1a52ab6322e77a436498",
+  "candidateSourceHash": "0779c969950c1610e34fec2e646a3be6c30bef0bdc491add2e59b686d2288e51",
+  "candidateBundleHash": "808609880fd58006a523122d51444850b8e9f8c2465cbf70cfd8d394b6c01be0",
+  "specializedAlgorithms": [
+    "reverb",
+    "gate-reverb",
+    "phaser",
+    "distortion"
+  ],
+  "sourceLinesAdded": 1405,
+  "risk": "Mechanically duplicates block body; maintenance/code-size risk. Candidate only, not production."
+}

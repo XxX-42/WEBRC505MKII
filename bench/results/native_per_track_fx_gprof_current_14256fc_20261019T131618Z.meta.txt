@@ -1,0 +1,16 @@
+run=native_per_track_fx_gprof_current_14256fc_20261019T131618Z
+head=14256fcf2ad540a9aacea215c31c632fd4b395a2
+binary_sha256=5103cd648a79a2cee2b1456679df4c2d6c9b2f14aba597a5d73e65d80736115e
+binary=/tmp/rc505-native-gprof-14256fc/native_per_track_fx_bench
+start_utc=2026-10-19T13:16:18+00:00
+
+compiler=c++ (Debian 14.2.0-19) 14.2.0
+flags=CXX_FLAGS = -pg -fno-omit-frame-pointer -O3 -DNDEBUG -std=c++17 -Wall -Wextra -Wpedantic -Werror
+link_flags=CMAKE_EXE_LINKER_FLAGS:STRING=-pg
+cpu=model name	: AMD EPYC 9V74 80-Core Processor
+loadavg_before=0.52 0.73 0.80 1/392 18
+profiler_scope=GNU gprof (-pg); instrumented profile; not callback timing acceptance
+end_utc=2026-10-19T13:18:04+00:00
+loadavg_after=0.92 0.82 0.82 1/389 22
+gmon_size=344502
+profile_sha256=ff6d1f7c91d1b0143a5ca7bd1a86e30a1cbd7cb57b653696c1865d4e29c3240b

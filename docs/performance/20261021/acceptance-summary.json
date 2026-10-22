@@ -1,0 +1,2553 @@
+{
+  "generatedUtc": "2026-10-21T13:57:58.528292+00:00",
+  "branch": "perf/rc505-20261021",
+  "capturedHead": "b12d5b6d94f94fd111cc45765acdf3b36c9e3f9c",
+  "capturedHeadScope": "Evidence was measured on baseline HEAD plus hashed candidate worktree; final report commit is a later packaging action.",
+  "baseline": "dd7dbea3502993d9167c4af16aef5dce98577c9e",
+  "nativeEvidenceDirectory": "final-v2",
+  "productionHashes": {
+    "public/worklets/fx-processor.js": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "src/audio/fx/dsp/BrowserFreezeDsp.ts": "15b4bae76b43b651ddf0f39c9c68481e3f1ca0b5a129f118b6d9cd717bf7db93",
+    "src/audio/fx/dsp/BrowserG2bDsp.ts": "cfb483d1c28f42da1ba8335aceb63c6943ba17038523cd854c8b5874ac59a0c0",
+    "src/audio/fx/dsp/BrowserSynthDsp.ts": "6e71d9c1db6f7e2395238c0f2bd3552709feccb9e707ce9306931d9fe19b4767",
+    "src/audio/fx/dsp/BrowserElectricDsp.ts": "e8f90415bec3dcda18fcf07fa164fd1828bc4ba16a14bd5ebd0bff9b2261497c",
+    "src/audio/fx/dsp/BrowserTwistDsp.ts": "2e3eb25abbd837f0a17b34b0d0335367b832832c3335f4dbf9dda2d11992e78c",
+    "src/audio/fx/dsp/BrowserBeatScatterDsp.ts": "2e20ef0926151723f423285e5b2cdeb6e36f0acea0a2ded01c27cb154aaf87e6",
+    "src/audio/fx/dsp/BrowserSustainerDsp.ts": "2835b97ded26989661e89510bc13fb10a70b10d332dd43bc08e7201b18e6615b",
+    "src/audio/fx/dsp/BrowserFxDspCore.ts": "be1443192068a2cbcad0d85becdba4ff6066342aacdd1a52ab6322e77a436498",
+    "src/audio/fx/dsp/BrowserRollDsp.ts": "8152fcc0708f747dbd91e395b94f88dd67de1f791e05902a7678ae54d04042af",
+    "src/audio/fx/dsp/BrowserWarpDsp.ts": "e41b704a30a034b5c6703931bd5ba0e53241157740e9b87f4dd3cca3b574805d",
+    "src/audio/fx/dsp/BrowserSlowGearDsp.ts": "fe2d218bc44f1d6c2d9b7cfc5a0bfaa9154c36f4896b7faf92004d950d4027b6",
+    "src/audio/fx/dsp/BrowserReverseReverbDsp.ts": "5a91e2975d22fc594b999517d3319e82f74f6b97bb4b96fc28db0a97c87e1fac",
+    "src/audio/fx/dsp/BrowserPatternSlicerDsp.ts": "05811fc6ae79e6512117be1bf7b4e8ceafe62af4f111f8de17bdfbb591803eee",
+    "src/audio/fx/dsp/BrowserModDelayDsp.ts": "6708f039a2025579171dc2b8c1ae95ee86e0d8b8ef67e8f43c03498edb515c57",
+    "src/audio/fx/dsp/BrowserAutoRiffDsp.ts": "354aea8753dc924bd462c1d6e1a5235ee97f5afb1690e492e25a7cea14a3b17b",
+    "src/audio/fx/dsp/BrowserRadioDsp.ts": "ca07b034281e53f9824bfede5d63cd01000f17c9065c0fa44c2c5c4d1d7059b9",
+    "src/audio/fx/dsp/BrowserReverseDelayDsp.ts": "9ac9cb2dd43257bab5d275f6b45c58086ece9643669e7da43054629fd0975c1c",
+    "src/audio/fx/dsp/BrowserRobotDsp.ts": "d1d46201e8d703fd72aa40965a0839bf40bd506dad6a543e1652ae1623d17888",
+    "src/audio/fx/dsp/BrowserTapeEchoDsp.ts": "c11bea7c0a0f3c9700a16e1790fd85a9502a3235220f3c656a908ff1c883f82c",
+    "src/audio/fx/dsp/BrowserVinylFlickDsp.ts": "139395ed16f8696511aa93f02ce1070efcf52eba5ad125f5cc3561ca63a1b26b",
+    "src/audio/fx/dsp/BrowserGranularDelayDsp.ts": "63e6c6103dff2415d7b6b2aa75ed7144e68a765927775bc41b9d0390728e1c96",
+    "src/audio/fx/dsp/BrowserPreampDsp.ts": "ad7f0c611c2917ee1bba6cc8cdd399d0df326fb31a900409a08b05332ee90543",
+    "src/audio/fx/dsp/BrowserHrmAutoDsp.ts": "2b975cc8f7c144764a0d7dbf069d9c97b693e787bf818ab795372aefbb956838",
+    "src/audio/fx/dsp/BrowserPanningDelayDsp.ts": "33d3cdbfa078d6bf2a31bca29ece7cd9a5de6edd4d81fd9c009df3a3a3dfb3cd",
+    "src/audio/fx/dsp/BrowserStepSlicerDsp.ts": "6394c047b141c18356a1e65391e8974a42d4c4d26021e7c4b49a756faf59335f",
+    "src/audio/fx/dsp/BrowserIsolatorDsp.ts": "a0d73adc4b992162759d61a9a7fb7cbfa14e3ae0ac3d8ef8c1acedfded1b59d3",
+    "src/audio/fx/dsp/BrowserVibratoDsp.ts": "7fc3aeb44f910c59dc04280518e22abb3298e169f625d33d5c46e175b9161225",
+    "src/audio/fx/dsp/BrowserBeatShiftDsp.ts": "92ac61112a54800fbe156645a8a275abf6e5cfd39457d411b42443707161d7bc",
+    "native-mvp/engine-cpp/src/native_preamp_processor.cpp": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8"
+  },
+  "gates": {
+    "productionBuild": "PASS",
+    "unit": {
+      "files": 150,
+      "testsPassed": 1103
+    },
+    "nativeRelease": {
+      "passed": 46,
+      "total": 46
+    },
+    "fullE2e": {
+      "status": "E2E_ENVIRONMENT_BLOCKED",
+      "casesAttempted": 101,
+      "assertionsExecuted": 0
+    },
+    "browserFullPcm": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+    "browserFxSanity": {
+      "status": "PASS_SOFTWARE_FINITE_AND_BYPASS_ONLY",
+      "effects": 46,
+      "cases": 1656,
+      "baselineComparison": {
+        "compared": 1656,
+        "changedPcm": []
+      },
+      "diagnosticThresholds": {
+        "peakAbove": 1,
+        "absoluteShortWindowDcAbove": 0.02,
+        "meaning": "Review flags, not product quality thresholds: nonlinear/gain FX can intentionally exceed full scale internally; 0.25s DC estimates include startup transients."
+      }
+    },
+    "browserLongTail": {
+      "status": "PASS_SOFTWARE_FINITE_AND_BYPASS_ONLY",
+      "effects": 8,
+      "cases": 16,
+      "durationSeconds": 10,
+      "baselineComparison": {
+        "compared": 16,
+        "changedPcm": []
+      }
+    },
+    "nativeMatrix": {
+      "functional": {
+        "PASS": 216
+      },
+      "performance": {
+        "PASS": 170,
+        "FAIL": 46
+      }
+    },
+    "nativeSupplements": {
+      "functional": {
+        "PASS": 6
+      },
+      "performance": {
+        "FAIL": 6
+      }
+    },
+    "nativeCatalog": {
+      "cells": 1872,
+      "effectCount": 52,
+      "signalMap": [
+        "silence",
+        "impulse",
+        "stereo matched sine",
+        "L-only",
+        "R-only",
+        "asymmetric stereo"
+      ],
+      "parameterVectors": [
+        "defaults",
+        "all descriptor minima",
+        "all descriptor maxima"
+      ],
+      "catalogIdMapping": "Hyphens/underscores normalized; filter. prefix removed; Browser delay corresponds to Native fractional_delay. Some Native sourceIndex values are intentionally unknown.",
+      "factoryCoverageFormula": "52 factories × 2 sample rates × 3 parameter vectors × 6 signals = 1872",
+      "missingSourceCatalogEffects": [
+        {
+          "id": "beat-shift",
+          "sourceIndex": 52
+        }
+      ],
+      "missingReason": "BEAT SHIFT uses source-aware loop transport, not an insert processor factory; the generic factory sweep cannot activate it",
+      "parameterRejectionReason": "FREEZE descriptor maximum mode=1 is outside its supported discrete values [0]; not a hardware limitation",
+      "gates": {
+        "PASS": 1860,
+        "PARAMETER_REJECTED": 12
+      },
+      "nonfiniteFrames": 0,
+      "processingFaults": 0,
+      "maximumObservedPeak": 4,
+      "sourceSha256": "6386f952811bb472d5bac9d44b7e88bb44b65119a3dd4304b2d8fcdafc090725",
+      "binarySha256": "59599249bfe17d75e2113cbd1766f144de908ba730afd9e77a9c4902d5311e39",
+      "topPeakCases": [
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 44100,
+          "parameterVector": 2,
+          "signal": 2,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 3.53726,
+          "dc": 0.00163924,
+          "lrCorrelation": 1,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 44100,
+          "parameterVector": 2,
+          "signal": 3,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 2.50122,
+          "dc": 0.00081962,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 44100,
+          "parameterVector": 2,
+          "signal": 4,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 2.50122,
+          "dc": 0.00081962,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 44100,
+          "parameterVector": 2,
+          "signal": 5,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 3.42679,
+          "dc": 0.0184455,
+          "lrCorrelation": -0.0120106,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 48000,
+          "parameterVector": 2,
+          "signal": 2,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 3.5344,
+          "dc": 0.0239011,
+          "lrCorrelation": 1,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 48000,
+          "parameterVector": 2,
+          "signal": 3,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 2.4992,
+          "dc": 0.0119505,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 48000,
+          "parameterVector": 2,
+          "signal": 4,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 2.4992,
+          "dc": 0.0119505,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 48000,
+          "parameterVector": 2,
+          "signal": 5,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 3.42817,
+          "dc": 0.0285722,
+          "lrCorrelation": -0.0120806,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "dist",
+          "sourceIndex": -1,
+          "sampleRate": 44100,
+          "parameterVector": 2,
+          "signal": 2,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 1.00007,
+          "rms": 0.934929,
+          "dc": 0.00531405,
+          "lrCorrelation": 1,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "dist",
+          "sourceIndex": -1,
+          "sampleRate": 44100,
+          "parameterVector": 2,
+          "signal": 3,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 1.00007,
+          "rms": 0.661094,
+          "dc": 0.00265702,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        }
+      ],
+      "topAbsoluteDcCases": [
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 44100,
+          "parameterVector": 0,
+          "signal": 2,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0613151,
+          "dc": 0.0500901,
+          "lrCorrelation": 1,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 48000,
+          "parameterVector": 0,
+          "signal": 2,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0611993,
+          "dc": 0.0499404,
+          "lrCorrelation": 1,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 48000,
+          "parameterVector": 2,
+          "signal": 5,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 3.42817,
+          "dc": 0.0285722,
+          "lrCorrelation": -0.0120806,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 44100,
+          "parameterVector": 0,
+          "signal": 5,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0499238,
+          "dc": 0.0250695,
+          "lrCorrelation": -0.00288169,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 44100,
+          "parameterVector": 0,
+          "signal": 3,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0433563,
+          "dc": 0.025045,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 44100,
+          "parameterVector": 0,
+          "signal": 4,
+          "signalSeconds": 0.0928798,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0433563,
+          "dc": 0.025045,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 48000,
+          "parameterVector": 0,
+          "signal": 3,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0432744,
+          "dc": 0.0249702,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 48000,
+          "parameterVector": 0,
+          "signal": 4,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0432744,
+          "dc": 0.0249702,
+          "lrCorrelation": 0,
+          "correlationDefined": false,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "ring_mod",
+          "sourceIndex": -1,
+          "sampleRate": 48000,
+          "parameterVector": 0,
+          "signal": 5,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 0.1,
+          "rms": 0.0498468,
+          "dc": 0.0249154,
+          "lrCorrelation": -0.00452342,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        },
+        {
+          "effect": "preamp",
+          "sourceIndex": 23,
+          "sampleRate": 48000,
+          "parameterVector": 2,
+          "signal": 2,
+          "signalSeconds": 0.0853333,
+          "frames": 4096,
+          "rejectedParameters": 0,
+          "processingFault": false,
+          "nonfiniteFrames": 0,
+          "peak": 4,
+          "rms": 3.5344,
+          "dc": 0.0239011,
+          "lrCorrelation": 1,
+          "correlationDefined": true,
+          "declaredLatencyFrames": 0,
+          "bypassExact": true,
+          "functionalGate": "PASS",
+          "activationCoverage": "parameter API; FREEZE prewarmed 2s; external MIDI/source transport UNEXERCISED_ACTIVE_PATH"
+        }
+      ],
+      "qualityGate": "NOT_ESTABLISHED: finite processing is not a clipping, DC, listening or long-tail acceptance test",
+      "baselineBoundary": "Only PREAMP production source changed, with exact baseline/final PCM probes; this broader sweep is final-only, not a full-catalog baseline/final audio comparison",
+      "legalFreezeSupplement": {
+        "cells": 12,
+        "gates": {
+          "PASS": 12
+        },
+        "sourceSha256": "6386f952811bb472d5bac9d44b7e88bb44b65119a3dd4304b2d8fcdafc090725",
+        "binarySha256": "59599249bfe17d75e2113cbd1766f144de908ba730afd9e77a9c4902d5311e39",
+        "scope": "Two rates, six signals, legal implemented discrete maximum; 2-second capture prewarm"
+      },
+      "coLoadStartedUtc": "2026-10-21T13:23:43.873256398Z",
+      "coLoadFinishedUtc": "2026-10-21T13:23:47.545885155Z",
+      "productionPreampSourceSha256": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8"
+    },
+    "browserFunctionalStress": {
+      "schema": "rc505-browser-cpu-functional-simulation-v1",
+      "status": "passed-functional-simulation",
+      "explicitlyNotEvidenceFor": [
+        "browser AudioWorklet execution",
+        "physical device audio",
+        "XRUN/dropout acceptance",
+        "P99/P99.9/deadline compliance",
+        "acoustic latency",
+        "whole-app CPU admission",
+        "30-minute hardware acceptance"
+      ],
+      "environment": {
+        "platform": "linux",
+        "arch": "x64",
+        "node": "v24.19.0",
+        "sampleRate": 48000,
+        "channels": 2,
+        "blockPatternFrames": [
+          64,
+          96,
+          128,
+          192,
+          256
+        ],
+        "actualElapsedSeconds": 317.385783636
+      },
+      "workload": {
+        "simulatedAudioSeconds": 1800,
+        "simulatedFrames": 86400000,
+        "callbackBlocks": 586958,
+        "fiveTrackPlaybackMix": true,
+        "inputFxBank": [
+          "lpf",
+          "distortion",
+          "vibrato",
+          "sustainer"
+        ],
+        "trackFxBank": [
+          "chorus",
+          "reverb",
+          "delay",
+          "auto-pan"
+        ],
+        "pitch": {
+          "mode": "LIVE_MONO clean-room YIN/PSOLA",
+          "semitones": 5,
+          "minimumFrequencyHz": 110,
+          "maximumFrequencyHz": 700,
+          "latencySamples": 1585
+        },
+        "rhythm": {
+          "patternId": "rhythm-001",
+          "patternName": "SIDE STICK",
+          "kitIndex": 1,
+          "voicesPeak": 2,
+          "voicesStolen": 0
+        },
+        "recording": {
+          "framesCaptured": 86400000,
+          "chunks": 5274,
+          "droppedFrames": 0,
+          "sequenceError": false
+        },
+        "overdub": {
+          "stopAcknowledged": true,
+          "processorOverflowFrames": 0,
+          "patches": 586958,
+          "patchFrames": 86400000,
+          "overflowFrames": 0,
+          "sequenceError": false
+        },
+        "parameterAutomationUpdates": 181
+      },
+      "functionalChecks": {
+        "activePathGate": true,
+        "internalFiniteGate": true,
+        "internalNonFinite": [
+          {
+            "algorithm": "lpf",
+            "input": 0,
+            "output": 0
+          },
+          {
+            "algorithm": "distortion",
+            "input": 0,
+            "output": 0
+          },
+          {
+            "algorithm": "vibrato",
+            "input": 0,
+            "output": 0
+          },
+          {
+            "algorithm": "sustainer",
+            "input": 0,
+            "output": 0
+          },
+          {
+            "algorithm": "chorus",
+            "input": 0,
+            "output": 0
+          },
+          {
+            "algorithm": "reverb",
+            "input": 0,
+            "output": 0
+          },
+          {
+            "algorithm": "delay",
+            "input": 0,
+            "output": 0
+          },
+          {
+            "algorithm": "auto-pan",
+            "input": 0,
+            "output": 0
+          }
+        ],
+        "nonFiniteOutputSamples": 0,
+        "outputPeak": 0.9424946308135986,
+        "checksum": 9108046.708897654,
+        "rhythmProgressCheckpoints": 29
+      },
+      "cpuUsageMicros": {
+        "user": 317618016,
+        "system": 183136
+      },
+      "simulatedPortTraffic": {
+        "byMessageType": {
+          "RECORD_CONFIGURED": {
+            "messages": 1,
+            "typedArrayPayloadBytes": 0
+          },
+          "OVERDUB_PATCH": {
+            "messages": 586958,
+            "typedArrayPayloadBytes": 115400638464
+          },
+          "RECORD_CHUNK": {
+            "messages": 5274,
+            "typedArrayPayloadBytes": 691273728
+          },
+          "RECORD_COMPLETE": {
+            "messages": 1,
+            "typedArrayPayloadBytes": 0
+          },
+          "OVERDUB_STOPPED": {
+            "messages": 1,
+            "typedArrayPayloadBytes": 0
+          }
+        },
+        "scope": "Production source postMessage calls into same-process mock port; typed-array payload bytes, not actual browser IPC/structured-clone wire bytes."
+      },
+      "resourceCheckpoints": [
+        {
+          "simulatedSeconds": 60.00066666666667,
+          "wallTimeMs": 10985.436078,
+          "rss": 305983488,
+          "heapUsed": 121269528,
+          "cpuUserMicros": 12612550,
+          "cpuSystemMicros": 231317
+        },
+        {
+          "simulatedSeconds": 120.002,
+          "wallTimeMs": 21507.278489999997,
+          "rss": 306880512,
+          "heapUsed": 76036360,
+          "cpuUserMicros": 23145080,
+          "cpuSystemMicros": 241318
+        },
+        {
+          "simulatedSeconds": 180.004,
+          "wallTimeMs": 31677.575252,
+          "rss": 306880512,
+          "heapUsed": 91588992,
+          "cpuUserMicros": 33310841,
+          "cpuSystemMicros": 250526
+        },
+        {
+          "simulatedSeconds": 240.00733333333332,
+          "wallTimeMs": 42474.95091,
+          "rss": 306880512,
+          "heapUsed": 99969920,
+          "cpuUserMicros": 44102904,
+          "cpuSystemMicros": 256143
+        },
+        {
+          "simulatedSeconds": 300.012,
+          "wallTimeMs": 53401.831399,
+          "rss": 306880512,
+          "heapUsed": 123690136,
+          "cpuUserMicros": 55024301,
+          "cpuSystemMicros": 260740
+        },
+        {
+          "simulatedSeconds": 360.0126666666667,
+          "wallTimeMs": 64465.290208,
+          "rss": 306880512,
+          "heapUsed": 139503200,
+          "cpuUserMicros": 66088823,
+          "cpuSystemMicros": 265926
+        },
+        {
+          "simulatedSeconds": 420.014,
+          "wallTimeMs": 75685.774706,
+          "rss": 307589120,
+          "heapUsed": 93820952,
+          "cpuUserMicros": 77338101,
+          "cpuSystemMicros": 270818
+        },
+        {
+          "simulatedSeconds": 480.016,
+          "wallTimeMs": 86218.782985,
+          "rss": 307589120,
+          "heapUsed": 101879760,
+          "cpuUserMicros": 87870803,
+          "cpuSystemMicros": 274258
+        },
+        {
+          "simulatedSeconds": 540.0193333333333,
+          "wallTimeMs": 96943.65664,
+          "rss": 307589120,
+          "heapUsed": 125401792,
+          "cpuUserMicros": 98582776,
+          "cpuSystemMicros": 280966
+        },
+        {
+          "simulatedSeconds": 600.024,
+          "wallTimeMs": 107928.29469899999,
+          "rss": 307589120,
+          "heapUsed": 74441328,
+          "cpuUserMicros": 109563223,
+          "cpuSystemMicros": 285727
+        },
+        {
+          "simulatedSeconds": 660.0246666666667,
+          "wallTimeMs": 118406.38872199999,
+          "rss": 307589120,
+          "heapUsed": 89911384,
+          "cpuUserMicros": 120043681,
+          "cpuSystemMicros": 285727
+        },
+        {
+          "simulatedSeconds": 720.026,
+          "wallTimeMs": 128494.584255,
+          "rss": 307589120,
+          "heapUsed": 97940480,
+          "cpuUserMicros": 130126491,
+          "cpuSystemMicros": 293825
+        },
+        {
+          "simulatedSeconds": 780.028,
+          "wallTimeMs": 138895.00411500002,
+          "rss": 307589120,
+          "heapUsed": 121345040,
+          "cpuUserMicros": 140529106,
+          "cpuSystemMicros": 293825
+        },
+        {
+          "simulatedSeconds": 840.0313333333334,
+          "wallTimeMs": 150149.01446,
+          "rss": 307589120,
+          "heapUsed": 137444480,
+          "cpuUserMicros": 151779576,
+          "cpuSystemMicros": 299243
+        },
+        {
+          "simulatedSeconds": 900.036,
+          "wallTimeMs": 161243.092355,
+          "rss": 307589120,
+          "heapUsed": 86417520,
+          "cpuUserMicros": 162875106,
+          "cpuSystemMicros": 299833
+        },
+        {
+          "simulatedSeconds": 960.0366666666666,
+          "wallTimeMs": 171248.53291100002,
+          "rss": 307589120,
+          "heapUsed": 94398592,
+          "cpuUserMicros": 172881755,
+          "cpuSystemMicros": 300821
+        },
+        {
+          "simulatedSeconds": 1020.038,
+          "wallTimeMs": 181520.889674,
+          "rss": 307589120,
+          "heapUsed": 117631632,
+          "cpuUserMicros": 183149957,
+          "cpuSystemMicros": 304487
+        },
+        {
+          "simulatedSeconds": 1080.04,
+          "wallTimeMs": 192198.943493,
+          "rss": 307589120,
+          "heapUsed": 133729296,
+          "cpuUserMicros": 193814464,
+          "cpuSystemMicros": 320159
+        },
+        {
+          "simulatedSeconds": 1140.0433333333333,
+          "wallTimeMs": 204053.483652,
+          "rss": 307589120,
+          "heapUsed": 82539592,
+          "cpuUserMicros": 205663339,
+          "cpuSystemMicros": 324246
+        },
+        {
+          "simulatedSeconds": 1200.048,
+          "wallTimeMs": 214903.266803,
+          "rss": 307720192,
+          "heapUsed": 90904008,
+          "cpuUserMicros": 216505635,
+          "cpuSystemMicros": 332218
+        },
+        {
+          "simulatedSeconds": 1260.0486666666666,
+          "wallTimeMs": 225472.876598,
+          "rss": 307720192,
+          "heapUsed": 113996624,
+          "cpuUserMicros": 227076948,
+          "cpuSystemMicros": 336179
+        },
+        {
+          "simulatedSeconds": 1320.05,
+          "wallTimeMs": 235691.02867600002,
+          "rss": 307720192,
+          "heapUsed": 129929720,
+          "cpuUserMicros": 237288745,
+          "cpuSystemMicros": 346535
+        },
+        {
+          "simulatedSeconds": 1380.052,
+          "wallTimeMs": 245423.404044,
+          "rss": 307720192,
+          "heapUsed": 78292136,
+          "cpuUserMicros": 247015598,
+          "cpuSystemMicros": 354220
+        },
+        {
+          "simulatedSeconds": 1440.0553333333332,
+          "wallTimeMs": 254472.746748,
+          "rss": 307720192,
+          "heapUsed": 86539280,
+          "cpuUserMicros": 256061916,
+          "cpuSystemMicros": 366361
+        },
+        {
+          "simulatedSeconds": 1500.06,
+          "wallTimeMs": 264662.999142,
+          "rss": 307720192,
+          "heapUsed": 109924448,
+          "cpuUserMicros": 266254072,
+          "cpuSystemMicros": 366361
+        },
+        {
+          "simulatedSeconds": 1560.0606666666667,
+          "wallTimeMs": 275338.085882,
+          "rss": 307720192,
+          "heapUsed": 125588928,
+          "cpuUserMicros": 276924215,
+          "cpuSystemMicros": 374503
+        },
+        {
+          "simulatedSeconds": 1620.062,
+          "wallTimeMs": 285987.08252299996,
+          "rss": 307720192,
+          "heapUsed": 141009104,
+          "cpuUserMicros": 287574165,
+          "cpuSystemMicros": 374836
+        },
+        {
+          "simulatedSeconds": 1680.064,
+          "wallTimeMs": 296560.313651,
+          "rss": 307720192,
+          "heapUsed": 81921704,
+          "cpuUserMicros": 298150003,
+          "cpuSystemMicros": 374974
+        },
+        {
+          "simulatedSeconds": 1740.0673333333334,
+          "wallTimeMs": 307063.72422599996,
+          "rss": 307720192,
+          "heapUsed": 105329208,
+          "cpuUserMicros": 308653191,
+          "cpuSystemMicros": 379241
+        }
+      ],
+      "unavailableMetrics": {
+        "browserCallbackPercentiles": null,
+        "hardwareXruns": null,
+        "mainThreadLongTasks": null,
+        "workletAllocations": null,
+        "actualIpcBytes": null,
+        "gcPauseMs": null,
+        "reason": "Node-hosted synchronous simulation; not browser/driver instrumentation. Resource checkpoints are host process snapshots only."
+      },
+      "memoryBytes": {
+        "startRss": 230744064,
+        "endRss": 307720192,
+        "startHeapUsed": 100501424,
+        "endHeapUsed": 115735584,
+        "processLifetimePeakRss": 310812672,
+        "peakScope": "OS process lifetime high-water RSS, including harness/startup; not audio-worklet-only memory"
+      },
+      "notes": [
+        "Loop data, input, rhythm, and kit timbres are synthetic and clean-room; this is a software simulation only.",
+        "The workload executes production BrowserFxDspCore, LiveMonoPitchProcessor, RhythmWorkletCore, and source recording/overdub AudioWorklet processor code in a Node VM with a same-process simulated MessagePort.",
+        "The actual audio callback worklet thread, structured-clone timing, browser scheduling, UI, browser memory, and audio hardware are not exercised.",
+        "No callback timing percentile, XRUN, latency, fidelity or acoustic claim is reported."
+      ]
+    },
+    "nativeWallCheckpoint600": {
+      "wallSeconds": 600.003,
+      "callbacks": 225001,
+      "commands": 6000,
+      "fxChanges": 750,
+      "queueRejected": 0,
+      "stateErrors": 0,
+      "nonfiniteFrames": 0,
+      "stereoDistinctFrames": 15843363,
+      "callbackAllocations": 0,
+      "rssBytes": 7655424,
+      "functionalGate": "PASS",
+      "scope": "600-second checkpoint in continuing co-loaded device-free soak"
+    },
+    "nativeWallSoak1800": {
+      "wallSeconds": 1800,
+      "processCpuSeconds": 421.971,
+      "processCpuPercent": 23.4428,
+      "callbacks": 675001,
+      "simulatedSeconds": 1800,
+      "commands": 18000,
+      "fxChanges": 2250,
+      "queueRejected": 0,
+      "stateErrors": 0,
+      "nonfiniteFrames": 0,
+      "stereoDistinctFrames": 47345957,
+      "callbackAllocations": 0,
+      "meanNs": 599536,
+      "maxNs": 42217500.0,
+      "p50ApproxUs": 440,
+      "p95ApproxUs": 1651,
+      "p99ApproxUs": 2477,
+      "cpuBudgetExceedances": 5336,
+      "rssInitialBytes": 7315456,
+      "rssSettledBytes": 7585792,
+      "rssFinalBytes": 7688192,
+      "rssMaxBytes": 7757824,
+      "hardwareStatus": "HARDWARE_BLOCKED",
+      "reverse": "UNSUPPORTED_NATIVE_TRANSPORT",
+      "bridge": "getStatus control polling, not HTTP",
+      "memorySamples": [
+        [
+          0,
+          7376896
+        ],
+        [
+          10,
+          7565312
+        ],
+        [
+          20,
+          7561216
+        ],
+        [
+          30,
+          7585792
+        ],
+        [
+          40,
+          7589888
+        ],
+        [
+          50,
+          7561216
+        ],
+        [
+          60,
+          7585792
+        ],
+        [
+          70,
+          7589888
+        ],
+        [
+          80,
+          7589888
+        ],
+        [
+          90,
+          7585792
+        ],
+        [
+          100,
+          7589888
+        ],
+        [
+          110,
+          7589888
+        ],
+        [
+          120,
+          7561216
+        ],
+        [
+          130,
+          7589888
+        ],
+        [
+          140,
+          7589888
+        ],
+        [
+          150,
+          7561216
+        ],
+        [
+          160,
+          7585792
+        ],
+        [
+          170,
+          7589888
+        ],
+        [
+          180,
+          7561216
+        ],
+        [
+          190,
+          7585792
+        ],
+        [
+          200,
+          7589888
+        ],
+        [
+          210,
+          7561216
+        ],
+        [
+          220,
+          7585792
+        ],
+        [
+          230,
+          7589888
+        ],
+        [
+          240,
+          7589888
+        ],
+        [
+          250,
+          7585792
+        ],
+        [
+          260,
+          7589888
+        ],
+        [
+          270,
+          7589888
+        ],
+        [
+          280,
+          7561216
+        ],
+        [
+          290,
+          7589888
+        ],
+        [
+          300,
+          7589888
+        ],
+        [
+          310,
+          7561216
+        ],
+        [
+          320,
+          7585792
+        ],
+        [
+          330,
+          7589888
+        ],
+        [
+          340,
+          7561216
+        ],
+        [
+          350,
+          7585792
+        ],
+        [
+          360,
+          7589888
+        ],
+        [
+          370,
+          7561216
+        ],
+        [
+          380,
+          7585792
+        ],
+        [
+          390,
+          7589888
+        ],
+        [
+          400,
+          7589888
+        ],
+        [
+          410,
+          7585792
+        ],
+        [
+          420,
+          7589888
+        ],
+        [
+          430,
+          7589888
+        ],
+        [
+          440,
+          7561216
+        ],
+        [
+          450,
+          7589888
+        ],
+        [
+          460,
+          7589888
+        ],
+        [
+          470,
+          7561216
+        ],
+        [
+          480,
+          7585792
+        ],
+        [
+          490,
+          7589888
+        ],
+        [
+          500,
+          7561216
+        ],
+        [
+          510,
+          7585792
+        ],
+        [
+          520,
+          7589888
+        ],
+        [
+          530,
+          7561216
+        ],
+        [
+          540,
+          7585792
+        ],
+        [
+          550,
+          7589888
+        ],
+        [
+          560,
+          7589888
+        ],
+        [
+          570,
+          7585792
+        ],
+        [
+          580,
+          7589888
+        ],
+        [
+          590,
+          7589888
+        ],
+        [
+          600,
+          7655424
+        ],
+        [
+          610,
+          7757824
+        ],
+        [
+          620,
+          7757824
+        ],
+        [
+          630,
+          7692288
+        ],
+        [
+          640,
+          7737344
+        ],
+        [
+          650,
+          7737344
+        ],
+        [
+          660,
+          7725056
+        ],
+        [
+          670,
+          7696384
+        ],
+        [
+          680,
+          7696384
+        ],
+        [
+          690,
+          7696384
+        ],
+        [
+          700,
+          7688192
+        ],
+        [
+          710,
+          7688192
+        ],
+        [
+          720,
+          7688192
+        ],
+        [
+          730,
+          7688192
+        ],
+        [
+          740,
+          7696384
+        ],
+        [
+          750,
+          7688192
+        ],
+        [
+          760,
+          7688192
+        ],
+        [
+          770,
+          7696384
+        ],
+        [
+          780,
+          7688192
+        ],
+        [
+          790,
+          7688192
+        ],
+        [
+          800,
+          7688192
+        ],
+        [
+          810,
+          7688192
+        ],
+        [
+          820,
+          7696384
+        ],
+        [
+          830,
+          7688192
+        ],
+        [
+          840,
+          7688192
+        ],
+        [
+          850,
+          7696384
+        ],
+        [
+          860,
+          7688192
+        ],
+        [
+          870,
+          7688192
+        ],
+        [
+          880,
+          7688192
+        ],
+        [
+          890,
+          7688192
+        ],
+        [
+          900,
+          7696384
+        ],
+        [
+          910,
+          7688192
+        ],
+        [
+          920,
+          7688192
+        ],
+        [
+          930,
+          7696384
+        ],
+        [
+          940,
+          7688192
+        ],
+        [
+          950,
+          7688192
+        ],
+        [
+          960,
+          7688192
+        ],
+        [
+          970,
+          7688192
+        ],
+        [
+          980,
+          7696384
+        ],
+        [
+          990,
+          7688192
+        ],
+        [
+          1000,
+          7688192
+        ],
+        [
+          1010,
+          7696384
+        ],
+        [
+          1020,
+          7688192
+        ],
+        [
+          1030,
+          7688192
+        ],
+        [
+          1040,
+          7688192
+        ],
+        [
+          1050,
+          7688192
+        ],
+        [
+          1060,
+          7696384
+        ],
+        [
+          1070,
+          7688192
+        ],
+        [
+          1080,
+          7688192
+        ],
+        [
+          1090,
+          7696384
+        ],
+        [
+          1100,
+          7688192
+        ],
+        [
+          1110,
+          7688192
+        ],
+        [
+          1120,
+          7688192
+        ],
+        [
+          1130,
+          7688192
+        ],
+        [
+          1140,
+          7696384
+        ],
+        [
+          1150,
+          7688192
+        ],
+        [
+          1160,
+          7688192
+        ],
+        [
+          1170,
+          7696384
+        ],
+        [
+          1180,
+          7688192
+        ],
+        [
+          1190,
+          7688192
+        ],
+        [
+          1200,
+          7688192
+        ],
+        [
+          1210,
+          7688192
+        ],
+        [
+          1220,
+          7696384
+        ],
+        [
+          1230,
+          7688192
+        ],
+        [
+          1240,
+          7688192
+        ],
+        [
+          1250,
+          7696384
+        ],
+        [
+          1260,
+          7688192
+        ],
+        [
+          1270,
+          7688192
+        ],
+        [
+          1280,
+          7688192
+        ],
+        [
+          1290,
+          7688192
+        ],
+        [
+          1300,
+          7696384
+        ],
+        [
+          1310,
+          7688192
+        ],
+        [
+          1320,
+          7688192
+        ],
+        [
+          1330,
+          7696384
+        ],
+        [
+          1340,
+          7688192
+        ],
+        [
+          1350,
+          7688192
+        ],
+        [
+          1360,
+          7688192
+        ],
+        [
+          1370,
+          7688192
+        ],
+        [
+          1380,
+          7696384
+        ],
+        [
+          1390,
+          7688192
+        ],
+        [
+          1400,
+          7688192
+        ],
+        [
+          1410,
+          7696384
+        ],
+        [
+          1420,
+          7688192
+        ],
+        [
+          1430,
+          7688192
+        ],
+        [
+          1440,
+          7688192
+        ],
+        [
+          1450,
+          7688192
+        ],
+        [
+          1460,
+          7696384
+        ],
+        [
+          1470,
+          7688192
+        ],
+        [
+          1480,
+          7688192
+        ],
+        [
+          1490,
+          7696384
+        ],
+        [
+          1500,
+          7688192
+        ],
+        [
+          1510,
+          7688192
+        ],
+        [
+          1520,
+          7688192
+        ],
+        [
+          1530,
+          7688192
+        ],
+        [
+          1540,
+          7696384
+        ],
+        [
+          1550,
+          7688192
+        ],
+        [
+          1560,
+          7688192
+        ],
+        [
+          1570,
+          7696384
+        ],
+        [
+          1580,
+          7688192
+        ],
+        [
+          1590,
+          7688192
+        ],
+        [
+          1600,
+          7688192
+        ],
+        [
+          1610,
+          7688192
+        ],
+        [
+          1620,
+          7696384
+        ],
+        [
+          1630,
+          7688192
+        ],
+        [
+          1640,
+          7688192
+        ],
+        [
+          1650,
+          7696384
+        ],
+        [
+          1660,
+          7688192
+        ],
+        [
+          1670,
+          7688192
+        ],
+        [
+          1680,
+          7688192
+        ],
+        [
+          1690,
+          7688192
+        ],
+        [
+          1700,
+          7696384
+        ],
+        [
+          1710,
+          7688192
+        ],
+        [
+          1720,
+          7688192
+        ],
+        [
+          1730,
+          7696384
+        ],
+        [
+          1740,
+          7688192
+        ],
+        [
+          1750,
+          7688192
+        ],
+        [
+          1760,
+          7688192
+        ],
+        [
+          1770,
+          7688192
+        ],
+        [
+          1780,
+          7696384
+        ],
+        [
+          1790,
+          7688192
+        ]
+      ],
+      "cpuSamplesSeconds": [
+        [
+          0,
+          0.000127
+        ],
+        [
+          10,
+          2.47572
+        ],
+        [
+          20,
+          5.24059
+        ],
+        [
+          30,
+          7.19909
+        ],
+        [
+          40,
+          9.20895
+        ],
+        [
+          50,
+          11.5946
+        ],
+        [
+          60,
+          14.3102
+        ],
+        [
+          70,
+          16.307
+        ],
+        [
+          80,
+          18.3242
+        ],
+        [
+          90,
+          20.9941
+        ],
+        [
+          100,
+          24.098
+        ],
+        [
+          110,
+          25.9974
+        ],
+        [
+          120,
+          27.9541
+        ],
+        [
+          130,
+          30.4693
+        ],
+        [
+          140,
+          33.2211
+        ],
+        [
+          150,
+          35.2931
+        ],
+        [
+          160,
+          37.6469
+        ],
+        [
+          170,
+          40.3805
+        ],
+        [
+          180,
+          43.5672
+        ],
+        [
+          190,
+          45.6966
+        ],
+        [
+          200,
+          47.6625
+        ],
+        [
+          210,
+          50.162
+        ],
+        [
+          220,
+          53.142
+        ],
+        [
+          230,
+          55.0861
+        ],
+        [
+          240,
+          57.0639
+        ],
+        [
+          250,
+          59.681
+        ],
+        [
+          260,
+          62.4814
+        ],
+        [
+          270,
+          64.6975
+        ],
+        [
+          280,
+          66.8167
+        ],
+        [
+          290,
+          69.5179
+        ],
+        [
+          300,
+          72.5275
+        ],
+        [
+          310,
+          74.6678
+        ],
+        [
+          320,
+          76.7317
+        ],
+        [
+          330,
+          79.1822
+        ],
+        [
+          340,
+          81.8585
+        ],
+        [
+          350,
+          83.7942
+        ],
+        [
+          360,
+          85.747
+        ],
+        [
+          370,
+          88.0982
+        ],
+        [
+          380,
+          91.1556
+        ],
+        [
+          390,
+          93.1586
+        ],
+        [
+          400,
+          95.3198
+        ],
+        [
+          410,
+          97.873
+        ],
+        [
+          420,
+          100.657
+        ],
+        [
+          430,
+          102.504
+        ],
+        [
+          440,
+          104.347
+        ],
+        [
+          450,
+          106.757
+        ],
+        [
+          460,
+          109.451
+        ],
+        [
+          470,
+          111.473
+        ],
+        [
+          480,
+          113.692
+        ],
+        [
+          490,
+          116.324
+        ],
+        [
+          500,
+          118.96
+        ],
+        [
+          510,
+          121.001
+        ],
+        [
+          520,
+          123.038
+        ],
+        [
+          530,
+          125.653
+        ],
+        [
+          540,
+          128.462
+        ],
+        [
+          550,
+          130.529
+        ],
+        [
+          560,
+          132.389
+        ],
+        [
+          570,
+          134.8
+        ],
+        [
+          580,
+          137.565
+        ],
+        [
+          590,
+          139.476
+        ],
+        [
+          600,
+          141.477
+        ],
+        [
+          610,
+          144.039
+        ],
+        [
+          620,
+          147.084
+        ],
+        [
+          630,
+          148.995
+        ],
+        [
+          640,
+          150.92
+        ],
+        [
+          650,
+          153.603
+        ],
+        [
+          660,
+          156.471
+        ],
+        [
+          670,
+          158.39
+        ],
+        [
+          680,
+          160.408
+        ],
+        [
+          690,
+          162.963
+        ],
+        [
+          700,
+          165.837
+        ],
+        [
+          710,
+          167.772
+        ],
+        [
+          720,
+          169.653
+        ],
+        [
+          730,
+          172.135
+        ],
+        [
+          740,
+          175.158
+        ],
+        [
+          750,
+          177.348
+        ],
+        [
+          760,
+          179.31
+        ],
+        [
+          770,
+          181.884
+        ],
+        [
+          780,
+          184.837
+        ],
+        [
+          790,
+          186.864
+        ],
+        [
+          800,
+          188.932
+        ],
+        [
+          810,
+          191.273
+        ],
+        [
+          820,
+          193.776
+        ],
+        [
+          830,
+          195.554
+        ],
+        [
+          840,
+          197.443
+        ],
+        [
+          850,
+          199.931
+        ],
+        [
+          860,
+          202.492
+        ],
+        [
+          870,
+          204.442
+        ],
+        [
+          880,
+          206.397
+        ],
+        [
+          890,
+          208.961
+        ],
+        [
+          900,
+          211.812
+        ],
+        [
+          910,
+          213.769
+        ],
+        [
+          920,
+          215.591
+        ],
+        [
+          930,
+          218.07
+        ],
+        [
+          940,
+          220.726
+        ],
+        [
+          950,
+          222.694
+        ],
+        [
+          960,
+          224.51
+        ],
+        [
+          970,
+          226.875
+        ],
+        [
+          980,
+          229.515
+        ],
+        [
+          990,
+          231.235
+        ],
+        [
+          1000,
+          233.086
+        ],
+        [
+          1010,
+          235.398
+        ],
+        [
+          1020,
+          238.13
+        ],
+        [
+          1030,
+          239.96
+        ],
+        [
+          1040,
+          241.99
+        ],
+        [
+          1050,
+          244.673
+        ],
+        [
+          1060,
+          247.713
+        ],
+        [
+          1070,
+          249.73
+        ],
+        [
+          1080,
+          251.58
+        ],
+        [
+          1090,
+          254.066
+        ],
+        [
+          1100,
+          256.885
+        ],
+        [
+          1110,
+          258.734
+        ],
+        [
+          1120,
+          260.762
+        ],
+        [
+          1130,
+          263.284
+        ],
+        [
+          1140,
+          266.006
+        ],
+        [
+          1150,
+          267.951
+        ],
+        [
+          1160,
+          270.074
+        ],
+        [
+          1170,
+          272.68
+        ],
+        [
+          1180,
+          275.634
+        ],
+        [
+          1190,
+          277.629
+        ],
+        [
+          1200,
+          279.902
+        ],
+        [
+          1210,
+          282.445
+        ],
+        [
+          1220,
+          285.379
+        ],
+        [
+          1230,
+          287.459
+        ],
+        [
+          1240,
+          289.547
+        ],
+        [
+          1250,
+          291.984
+        ],
+        [
+          1260,
+          294.711
+        ],
+        [
+          1270,
+          296.59
+        ],
+        [
+          1280,
+          298.477
+        ],
+        [
+          1290,
+          300.842
+        ],
+        [
+          1300,
+          303.658
+        ],
+        [
+          1310,
+          305.701
+        ],
+        [
+          1320,
+          307.6
+        ],
+        [
+          1330,
+          310.082
+        ],
+        [
+          1340,
+          312.978
+        ],
+        [
+          1350,
+          314.895
+        ],
+        [
+          1360,
+          316.936
+        ],
+        [
+          1370,
+          319.492
+        ],
+        [
+          1380,
+          322.452
+        ],
+        [
+          1390,
+          324.512
+        ],
+        [
+          1400,
+          326.49
+        ],
+        [
+          1410,
+          329.314
+        ],
+        [
+          1420,
+          332.187
+        ],
+        [
+          1430,
+          334.294
+        ],
+        [
+          1440,
+          336.355
+        ],
+        [
+          1450,
+          338.74
+        ],
+        [
+          1460,
+          341.467
+        ],
+        [
+          1470,
+          343.408
+        ],
+        [
+          1480,
+          345.443
+        ],
+        [
+          1490,
+          347.961
+        ],
+        [
+          1500,
+          350.962
+        ],
+        [
+          1510,
+          353.013
+        ],
+        [
+          1520,
+          354.847
+        ],
+        [
+          1530,
+          357.397
+        ],
+        [
+          1540,
+          360.484
+        ],
+        [
+          1550,
+          362.458
+        ],
+        [
+          1560,
+          364.343
+        ],
+        [
+          1570,
+          366.861
+        ],
+        [
+          1580,
+          369.623
+        ],
+        [
+          1590,
+          371.463
+        ],
+        [
+          1600,
+          373.568
+        ],
+        [
+          1610,
+          376.046
+        ],
+        [
+          1620,
+          378.907
+        ],
+        [
+          1630,
+          381.062
+        ],
+        [
+          1640,
+          382.952
+        ],
+        [
+          1650,
+          385.649
+        ],
+        [
+          1660,
+          388.726
+        ],
+        [
+          1670,
+          390.653
+        ],
+        [
+          1680,
+          392.985
+        ],
+        [
+          1690,
+          395.884
+        ],
+        [
+          1700,
+          398.833
+        ],
+        [
+          1710,
+          400.75
+        ],
+        [
+          1720,
+          402.872
+        ],
+        [
+          1730,
+          405.702
+        ],
+        [
+          1740,
+          408.685
+        ],
+        [
+          1750,
+          410.778
+        ],
+        [
+          1760,
+          412.747
+        ],
+        [
+          1770,
+          415.126
+        ],
+        [
+          1780,
+          418.024
+        ],
+        [
+          1790,
+          420.05
+        ]
+      ],
+      "runStartedUtc": "2026-10-21T13:23:43.900997+00:00",
+      "runFinishedUtc": "2026-10-21T13:53:43.911419+00:00",
+      "productionPreampSourceSha256": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8",
+      "requestedWallSeconds": 1800,
+      "exitCode": 0,
+      "stderr": "",
+      "binarySha256": "8433c2e8117b75fa5e4224f3c41995f9503d3b5b27d9f336a32e3b41f841985a",
+      "functionalGate": "PASS",
+      "schedulingScope": "Co-loaded stability run; not isolated performance acceptance",
+      "allocationScope": "C++ operator new/new[] only; malloc/aligned allocations and frees uninstrumented",
+      "hardwareXruns": null,
+      "driverUnderruns": null,
+      "gc": null,
+      "unavailableReason": "Device-free Native callback; no physical driver and no JavaScript GC",
+      "performanceGate": "NOT_APPLICABLE_COLOADED_STABILITY_RUN"
+    },
+    "cloudStartup": {
+      "startedAt": "2026-10-21T12:16:09.817Z",
+      "command": "node bench/verify_cloud_preview.mjs",
+      "head": "dd7dbea3502993d9167c4af16aef5dce98577c9e",
+      "scope": "cloud executor production Vite preview; not user Windows deployment or browser UI validation",
+      "localDeploymentStatus": "LOCAL_DEPLOY_BLOCKED",
+      "localDeploymentReason": "No user device is used under the approved cloud-only scope.",
+      "browserUiVerified": false,
+      "requests": [
+        {
+          "path": "/",
+          "status": 200,
+          "bytes": 544
+        },
+        {
+          "path": "/rc-loop.svg",
+          "status": 200,
+          "bytes": 423,
+          "sha256": "231bae38289f72fc2fa18607dbda3fb6c6016869cc5956bca1de0fa4ada0d782"
+        },
+        {
+          "path": "/assets/app-DvAApMkb.js",
+          "status": 200,
+          "bytes": 1158799,
+          "sha256": "1b1cdab31fdbba136a0e0e545628570c7ba2f8379007118d2762ae48b6f1c6e7"
+        },
+        {
+          "path": "/assets/liveMonoNode-CuPDpK_M.js",
+          "status": 200,
+          "bytes": 2929,
+          "sha256": "198df7a378fc38aa07f2d8864a1fa845f8a8f26c622a21fe7e972375d7dbf0aa"
+        },
+        {
+          "path": "/assets/app-9cdsb99p.css",
+          "status": 200,
+          "bytes": 115856,
+          "sha256": "b2fff8e331292ea9428848082cfcf9061052f5ce89689b8003f0466f41fa72b5"
+        }
+      ],
+      "errors": [],
+      "worktreeDirty": true,
+      "candidateWorkletSourceSha256": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+      "url": "http://127.0.0.1:4177",
+      "distIndexSha256": "bd0e2771850b44bc69e076a7f20a298e6d7a19b5ee69f65195c95d93ad9a78a9",
+      "httpSmokeStatus": "PASS",
+      "cloudStartupAndAssetFetchMs": 384.226096,
+      "startupMetricScope": "Vite preview listen through entry and asset HTTP retrieval, not browser UI/audio startup",
+      "serverClosed": true,
+      "finishedAt": "2026-10-21T12:16:10.215Z"
+    }
+  },
+  "unavailable": {
+    "browserCallbackBudget": null,
+    "hardwareXruns": null,
+    "actualBrowserIpcBytes": null,
+    "mainThreadLongTasks": null,
+    "workletGcPauseMs": null,
+    "reason": "No functioning actual-browser execution or physical audio device in approved cloud scope."
+  },
+  "publication": {
+    "push": "PUSH_BLOCKED",
+    "reason": "Execution authorization gate rejected dry-run; pending direct user confirmation; no alternate route attempted.",
+    "userDeviceDeployment": "LOCAL_DEPLOY_BLOCKED",
+    "cloudStartup": "PASS_HTTP_ONLY"
+  },
+  "stopCondition": {
+    "globalA": false,
+    "globalB": "NOT_ESTABLISHED; bounded measured exact-DSP candidates converged only",
+    "globalC": false,
+    "reason": "Software timing failures, real-browser environment gaps and unsupported software features remain; not hardware-only."
+  }
+}

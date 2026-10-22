@@ -1,0 +1,1421 @@
+--- a/src/audio/fx/dsp/BrowserFxDspCore.ts
++++ b/src/audio/fx/dsp/BrowserFxDspCore.ts
+@@ -2343,6 +2343,23 @@
+     frameCount?: number,
+     inputIsMono = inputRight === null,
+   ): void {
++    switch (this.algorithm) {
++      case 'reverb': return this.processBlockReverb(inputLeft, inputRight, outputLeft, outputRight, frameCount, inputIsMono);
++      case 'gate-reverb': return this.processBlockGateReverb(inputLeft, inputRight, outputLeft, outputRight, frameCount, inputIsMono);
++      case 'phaser': return this.processBlockPhaser(inputLeft, inputRight, outputLeft, outputRight, frameCount, inputIsMono);
++      case 'distortion': return this.processBlockDistortion(inputLeft, inputRight, outputLeft, outputRight, frameCount, inputIsMono);
++      default: return this.processBlockGeneric(inputLeft, inputRight, outputLeft, outputRight, frameCount, inputIsMono);
++    }
++  }
++
++  private processBlockGeneric(
++    inputLeft: Float32Array | null,
++    inputRight: Float32Array | null,
++    outputLeft: Float32Array | null,
++    outputRight: Float32Array | null,
++    frameCount?: number,
++    inputIsMono = inputRight === null,
++  ): void {
+     this.blocksProcessed += 1;
+     const frames = Math.max(0, Math.floor(frameCount ?? Math.max(outputLeft?.length ?? 0, outputRight?.length ?? 0)));
+     const inputLeftLength = inputLeft?.length ?? 0;
+@@ -2681,6 +2698,1394 @@
+     this.currentAudioFrame += frames;
+   }
+ 
++
++  private processBlockReverb(
++    inputLeft: Float32Array | null,
++    inputRight: Float32Array | null,
++    outputLeft: Float32Array | null,
++    outputRight: Float32Array | null,
++    frameCount?: number,
++    inputIsMono = inputRight === null,
++  ): void {
++    this.blocksProcessed += 1;
++    const frames = Math.max(0, Math.floor(frameCount ?? Math.max(outputLeft?.length ?? 0, outputRight?.length ?? 0)));
++    const inputLeftLength = inputLeft?.length ?? 0;
++    const inputRightLength = inputRight?.length ?? 0;
++    const outputLeftLength = outputLeft?.length ?? 0;
++    const outputRightLength = outputRight?.length ?? 0;
++
++    const monoAutoPanInput = false && (!inputRight || inputRightLength === 0);
++    const monoStereoEnhanceInput = false && (!inputRight || inputRightLength === 0);
++    const monoManualPanInput = false && inputIsMono;
++    // BEAT SHIFT, REVERSE DELAY, REVERSE REVERB, VINYL FLICK, and FREEZE keep bounded histories
++    // warm while bypassed. Output still stays exact-dry, so a later activation
++    // or capture edge has the input history it needs.
++    if (this.fullyBypassed && true && true && true && true && true && true && true) {
++      // Web Audio's usual equal-size channels can use a native copy without
++      // subarray views or per-sample bounds checks. Keep the general path for
++      // partial blocks, missing inputs, and deliberately mismatched arrays.
++      const bypassRightInput = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput
++        ? inputLeft : inputRight;
++      if (outputLeft && inputLeft && outputLeftLength === frames && inputLeftLength === frames
++        && outputLeft.buffer !== inputLeft.buffer
++        && (!outputRight || outputLeft.buffer !== outputRight.buffer)
++        && (!bypassRightInput || outputLeft.buffer !== bypassRightInput.buffer)
++        && (!outputRight || (outputRight.buffer !== inputLeft.buffer && outputRight.buffer !== bypassRightInput?.buffer))
++        && ((!outputRight) || (bypassRightInput && outputRightLength === frames && bypassRightInput.length === frames))) {
++        outputLeft.set(inputLeft);
++        if (outputRight && bypassRightInput) outputRight.set(bypassRightInput);
++        this.framesProcessed += frames;
++        this.currentAudioFrame += frames;
++        return;
++      }
++      for (let frame = 0; frame < frames; frame += 1) {
++        if (frame < outputLeftLength && outputLeft) outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : monoStereoEnhanceInput
++              ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++      }
++      this.framesProcessed += frames;
++      this.currentAudioFrame += frames;
++      return;
++    }
++
++    for (let frame = 0; frame < frames; frame += 1) {
++      let dryLeft = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++      let dryRight = monoAutoPanInput || monoStereoEnhanceInput || monoManualPanInput
++        ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++        : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++      if (!Number.isFinite(dryLeft)) {
++        dryLeft = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (!Number.isFinite(dryRight)) {
++        dryRight = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (Math.abs(dryLeft) < MIN_STATE_MAGNITUDE) dryLeft = 0;
++      if (Math.abs(dryRight) < MIN_STATE_MAGNITUDE) dryRight = 0;
++
++      this.advanceControls();
++      if (false) this.updateDynamicsDetector(dryLeft, dryRight);
++      if (false) this.updateGateReverbEnvelope(dryLeft, dryRight);
++      const wetPosition = false && this.electric?.requiresVoicedInput && !this.electric.isVoiced
++        ? 0
++        : false || false || false
++        ? 1
++        : (false && !this.beatRepeat?.hasCapturedSlice)
++        || (false && !this.roll?.hasCapturedSlice)
++        || (false && !this.beatScatter?.hasCapturedSlice)
++        || (false && !this.reverseDelay?.hasCaptured)
++        ? 0
++        : false
++          // This is a read-head position effect, not a delay/effect-send blend.
++          // Keep the active output on the shifted head only; bypass remains an
++          // explicit click-safe host transition and the prototype has no mix control.
++          ? (this.beatShift?.mixAvailability ?? 0)
++          : false || false
++            ? 1
++          : (this.currentControls[2] ?? 1);
++      if (wetPosition !== this.cachedWetPosition) {
++        this.cachedWetPosition = wetPosition;
++        this.cachedWetDryGain = equalPowerFadeOutGain(wetPosition);
++        this.cachedWetGain = equalPowerFadeInGain(wetPosition);
++      }
++      const wetDryGain = this.cachedWetDryGain;
++      const wetGain = this.cachedWetGain;
++      let mixDryLeft = false ? this.processDistortionDryDelay(dryLeft, 0) : dryLeft;
++      let mixDryRight = false ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
++      let wetLeft: number;
++      let wetRight: number;
++      if (false) {
++        this.vinylFlick?.processSample(dryLeft, dryRight);
++        wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
++        wetRight = this.vinylFlick?.wetRight ?? dryRight;
++        mixDryLeft = this.vinylFlick?.dryLeft ?? dryLeft;
++        mixDryRight = this.vinylFlick?.dryRight ?? dryRight;
++      } else if (false) {
++        this.processAutoPan(dryLeft, dryRight, monoAutoPanInput);
++        wetLeft = this.autoPanWetLeft;
++        wetRight = this.autoPanWetRight;
++      } else if (false) {
++        this.beatRepeat?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatRepeat?.wetLeft ?? 0;
++        wetRight = this.beatRepeat?.wetRight ?? 0;
++      } else if (false) {
++        this.roll?.processSample(dryLeft, dryRight);
++        wetLeft = this.roll?.wetLeft ?? 0;
++        wetRight = this.roll?.wetRight ?? 0;
++      } else if (false) {
++        this.freeze?.processSample(dryLeft, dryRight);
++        wetLeft = this.freeze?.outputLeft ?? dryLeft;
++        wetRight = this.freeze?.outputRight ?? dryRight;
++      } else if (false) {
++        this.warp?.processSample(dryLeft, dryRight);
++        wetLeft = this.warp?.wetLeft ?? 0;
++        wetRight = this.warp?.wetRight ?? 0;
++      } else if (false) {
++        this.beatScatter?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatScatter?.wetLeft ?? 0;
++        wetRight = this.beatScatter?.wetRight ?? 0;
++      } else if (false) {
++        this.beatShift?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatShift?.wetLeft ?? dryLeft;
++        wetRight = this.beatShift?.wetRight ?? dryRight;
++      } else if (false) {
++        this.reverseDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseDelay?.wetLeft ?? 0;
++        wetRight = this.reverseDelay?.wetRight ?? 0;
++      } else if (false) {
++        this.reverseReverb?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseReverb?.wetLeft ?? 0;
++        wetRight = this.reverseReverb?.wetRight ?? 0;
++      } else if (false) {
++        this.autoRiff?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // The worklet analyzes and sequences only. The host's Signalsmith
++        // LIVE_FX node immediately downstream performs actual resynthesis.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.hrmAuto?.processSample((dryLeft + dryRight) * 0.5, this.currentAudioFrame + frame);
++        // Analysis and MIDI voicing only. Host-pinned Signalsmith LIVE_FX
++        // nodes perform the actual interval shifts downstream.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.robot?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // Stable voiced monophonic material is synthesized by the bounded
++        // fixed-latency PSOLA-lite path. The adapter selects Signalsmith for
++        // unstable/polyphonic, unvoiced, out-of-range, and formant-control cases.
++        wetLeft = this.robot?.psolaOutputSample ?? 0;
++        wetRight = wetLeft;
++      } else if (false) {
++        this.patternSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.patternSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.patternSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.stepSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.stepSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.stepSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.processStereoEnhance(dryLeft, dryRight);
++        wetLeft = this.stereoWetLeft;
++        wetRight = this.stereoWetRight;
++      } else if (false) {
++        this.loFi?.process(dryLeft, dryRight);
++        wetLeft = this.loFi?.wetLeft ?? 0;
++        wetRight = this.loFi?.wetRight ?? 0;
++      } else if (false) {
++        this.equalizer?.process(dryLeft, dryRight);
++        wetLeft = this.equalizer?.outputLeft ?? dryLeft;
++        wetRight = this.equalizer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.processManualPan(dryLeft, dryRight, monoManualPanInput);
++        wetLeft = this.manualPanWetLeft;
++        wetRight = this.manualPanWetRight;
++      } else if (false) {
++        this.tapeEcho?.processSample(dryLeft, dryRight);
++        wetLeft = this.tapeEcho?.wetOutputLeft ?? dryLeft;
++        wetRight = this.tapeEcho?.wetOutputRight ?? dryRight;
++      } else if (false) {
++        this.twist?.processSample(dryLeft, dryRight);
++        wetLeft = this.twist?.wetOutputLeft ?? 0;
++        wetRight = this.twist?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.granularDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.granularDelay?.wetOutputLeft ?? 0;
++        wetRight = this.granularDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.radio?.processSample(dryLeft, dryRight);
++        wetLeft = this.radio?.wetLeft ?? dryLeft;
++        wetRight = this.radio?.wetRight ?? dryRight;
++      } else if (false) {
++        this.vibrato?.processSample(dryLeft, dryRight);
++        wetLeft = this.vibrato?.wetLeft ?? 0;
++        wetRight = this.vibrato?.wetRight ?? 0;
++      } else if (false) {
++        this.sustainer?.processSample(dryLeft, dryRight);
++        wetLeft = this.sustainer?.outputLeft ?? dryLeft;
++        wetRight = this.sustainer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.preamp?.processSample(dryLeft, dryRight);
++        wetLeft = this.preamp?.outputLeft ?? dryLeft;
++        wetRight = this.preamp?.outputRight ?? dryRight;
++      } else if (false) {
++        this.synth?.processSample(dryLeft, dryRight);
++        wetLeft = this.synth?.outputLeft ?? dryLeft;
++        wetRight = this.synth?.outputRight ?? dryRight;
++      } else if (false) {
++        this.g2b?.processSample(dryLeft, dryRight);
++        wetLeft = this.g2b?.outputLeft ?? dryLeft;
++        wetRight = this.g2b?.outputRight ?? dryRight;
++      } else if (false) {
++        this.vocoder?.processSample(dryLeft, dryRight);
++        wetLeft = this.vocoder?.outputLeft ?? 0;
++        wetRight = this.vocoder?.outputRight ?? 0;
++      } else if (false) {
++        this.electric?.processSample(dryLeft, dryRight);
++        wetLeft = this.electric?.outputLeft ?? dryLeft;
++        wetRight = this.electric?.outputRight ?? dryRight;
++      } else if (false) {
++        this.oscVoc?.processSample(dryLeft, dryRight);
++        wetLeft = this.oscVoc?.outputLeft ?? 0;
++        wetRight = this.oscVoc?.outputRight ?? 0;
++      } else if (false) {
++        const modulator = (dryLeft + dryRight) * 0.5;
++        const wet = this.oscBot?.processSample(modulator) ?? 0;
++        wetLeft = wet;
++        wetRight = wet;
++      } else if (false) {
++        const envelope = this.slowGear?.processSample(dryLeft, dryRight) ?? 1;
++        wetLeft = dryLeft * envelope;
++        wetRight = dryRight * envelope;
++      } else if (false) {
++        this.isolator?.processSample(dryLeft, dryRight);
++        wetLeft = this.isolator?.outputLeft ?? dryLeft;
++        wetRight = this.isolator?.outputRight ?? dryRight;
++      } else if (false) {
++        this.panningDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.panningDelay?.wetOutputLeft ?? 0;
++        wetRight = this.panningDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.modDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.modDelay?.wetLeft ?? 0;
++        wetRight = this.modDelay?.wetRight ?? 0;
++      } else {
++        wetLeft = this.processReverb(dryLeft, 0);
++        wetRight = this.processReverb(dryRight, 1);
++      }
++      if (!Number.isFinite(wetLeft)) {
++        wetLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(wetRight)) {
++        wetRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (false) {
++        wetLeft *= this.gateGain;
++        wetRight *= this.gateGain;
++      }
++
++      let mixedLeft = mixDryLeft * wetDryGain + wetLeft * wetGain;
++      let mixedRight = mixDryRight * wetDryGain + wetRight * wetGain;
++      const bypassPosition = this.bypassMix.next();
++      if (bypassPosition >= 1) {
++        // Preserve bit-exact identity at the bypass endpoint.
++        mixedLeft = dryLeft;
++        mixedRight = dryRight;
++      } else {
++        if (bypassPosition !== this.cachedBypassPosition) {
++          this.cachedBypassPosition = bypassPosition;
++          this.cachedBypassActiveGain = equalPowerFadeOutGain(bypassPosition);
++          this.cachedBypassGain = equalPowerFadeInGain(bypassPosition);
++        }
++        const activeGain = this.cachedBypassActiveGain;
++        const bypassGain = this.cachedBypassGain;
++        mixedLeft = mixedLeft * activeGain + dryLeft * bypassGain;
++        mixedRight = mixedRight * activeGain + dryRight * bypassGain;
++      }
++      if ((false || false) && bypassPosition >= 1) {
++        // The beat-shift ring still warms while bypassed, but the dry endpoint
++        // bypasses the core's denormal clamp/sanitization for true wire-through.
++        if (frame < outputLeftLength && outputLeft) {
++          outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        }
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput || inputIsMono
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++        continue;
++      }
++      if (false) {
++        this.phase += this.phaseStep;
++        if (this.phase >= TWO_PI) this.phase -= TWO_PI;
++      }
++      if (false) {
++        this.chorusPhase += this.chorusPhaseStep;
++        if (this.chorusPhase >= TWO_PI) this.chorusPhase -= TWO_PI;
++      }
++      if (false) {
++        this.phaserPhase += this.phaserPhaseStep;
++        if (this.phaserPhase >= TWO_PI) this.phaserPhase -= TWO_PI;
++      }
++      if (false) {
++        this.tremoloPhase += this.tremoloPhaseStep;
++        if (this.tremoloPhase >= 1) this.tremoloPhase -= 1;
++      }
++      if (false) {
++        this.autoPanPhase += this.autoPanPhaseStep;
++        if (this.autoPanPhase >= 1) this.autoPanPhase -= 1;
++      }
++
++      if (false) {
++        mixedLeft = clamp(mixedLeft, -4, 4);
++        mixedRight = clamp(mixedRight, -4, 4);
++      }
++
++      if (!Number.isFinite(mixedLeft)) {
++        mixedLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(mixedRight)) {
++        mixedRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (Math.abs(mixedLeft) < MIN_STATE_MAGNITUDE) mixedLeft = 0;
++      if (Math.abs(mixedRight) < MIN_STATE_MAGNITUDE) mixedRight = 0;
++      if (frame < outputLeftLength && outputLeft) outputLeft[frame] = mixedLeft;
++      if (frame < outputRightLength && outputRight) outputRight[frame] = mixedRight;
++    }
++    this.framesProcessed += frames;
++    this.currentAudioFrame += frames;
++  }
++
++
++  private processBlockGateReverb(
++    inputLeft: Float32Array | null,
++    inputRight: Float32Array | null,
++    outputLeft: Float32Array | null,
++    outputRight: Float32Array | null,
++    frameCount?: number,
++    inputIsMono = inputRight === null,
++  ): void {
++    this.blocksProcessed += 1;
++    const frames = Math.max(0, Math.floor(frameCount ?? Math.max(outputLeft?.length ?? 0, outputRight?.length ?? 0)));
++    const inputLeftLength = inputLeft?.length ?? 0;
++    const inputRightLength = inputRight?.length ?? 0;
++    const outputLeftLength = outputLeft?.length ?? 0;
++    const outputRightLength = outputRight?.length ?? 0;
++
++    const monoAutoPanInput = false && (!inputRight || inputRightLength === 0);
++    const monoStereoEnhanceInput = false && (!inputRight || inputRightLength === 0);
++    const monoManualPanInput = false && inputIsMono;
++    // BEAT SHIFT, REVERSE DELAY, REVERSE REVERB, VINYL FLICK, and FREEZE keep bounded histories
++    // warm while bypassed. Output still stays exact-dry, so a later activation
++    // or capture edge has the input history it needs.
++    if (this.fullyBypassed && true && true && true && true && true && true && true) {
++      // Web Audio's usual equal-size channels can use a native copy without
++      // subarray views or per-sample bounds checks. Keep the general path for
++      // partial blocks, missing inputs, and deliberately mismatched arrays.
++      const bypassRightInput = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput
++        ? inputLeft : inputRight;
++      if (outputLeft && inputLeft && outputLeftLength === frames && inputLeftLength === frames
++        && outputLeft.buffer !== inputLeft.buffer
++        && (!outputRight || outputLeft.buffer !== outputRight.buffer)
++        && (!bypassRightInput || outputLeft.buffer !== bypassRightInput.buffer)
++        && (!outputRight || (outputRight.buffer !== inputLeft.buffer && outputRight.buffer !== bypassRightInput?.buffer))
++        && ((!outputRight) || (bypassRightInput && outputRightLength === frames && bypassRightInput.length === frames))) {
++        outputLeft.set(inputLeft);
++        if (outputRight && bypassRightInput) outputRight.set(bypassRightInput);
++        this.framesProcessed += frames;
++        this.currentAudioFrame += frames;
++        return;
++      }
++      for (let frame = 0; frame < frames; frame += 1) {
++        if (frame < outputLeftLength && outputLeft) outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : monoStereoEnhanceInput
++              ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++      }
++      this.framesProcessed += frames;
++      this.currentAudioFrame += frames;
++      return;
++    }
++
++    for (let frame = 0; frame < frames; frame += 1) {
++      let dryLeft = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++      let dryRight = monoAutoPanInput || monoStereoEnhanceInput || monoManualPanInput
++        ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++        : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++      if (!Number.isFinite(dryLeft)) {
++        dryLeft = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (!Number.isFinite(dryRight)) {
++        dryRight = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (Math.abs(dryLeft) < MIN_STATE_MAGNITUDE) dryLeft = 0;
++      if (Math.abs(dryRight) < MIN_STATE_MAGNITUDE) dryRight = 0;
++
++      this.advanceControls();
++      if (false) this.updateDynamicsDetector(dryLeft, dryRight);
++      if (true) this.updateGateReverbEnvelope(dryLeft, dryRight);
++      const wetPosition = false && this.electric?.requiresVoicedInput && !this.electric.isVoiced
++        ? 0
++        : false || false || false
++        ? 1
++        : (false && !this.beatRepeat?.hasCapturedSlice)
++        || (false && !this.roll?.hasCapturedSlice)
++        || (false && !this.beatScatter?.hasCapturedSlice)
++        || (false && !this.reverseDelay?.hasCaptured)
++        ? 0
++        : false
++          // This is a read-head position effect, not a delay/effect-send blend.
++          // Keep the active output on the shifted head only; bypass remains an
++          // explicit click-safe host transition and the prototype has no mix control.
++          ? (this.beatShift?.mixAvailability ?? 0)
++          : false || false
++            ? 1
++          : (this.currentControls[2] ?? 1);
++      if (wetPosition !== this.cachedWetPosition) {
++        this.cachedWetPosition = wetPosition;
++        this.cachedWetDryGain = equalPowerFadeOutGain(wetPosition);
++        this.cachedWetGain = equalPowerFadeInGain(wetPosition);
++      }
++      const wetDryGain = this.cachedWetDryGain;
++      const wetGain = this.cachedWetGain;
++      let mixDryLeft = false ? this.processDistortionDryDelay(dryLeft, 0) : dryLeft;
++      let mixDryRight = false ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
++      let wetLeft: number;
++      let wetRight: number;
++      if (false) {
++        this.vinylFlick?.processSample(dryLeft, dryRight);
++        wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
++        wetRight = this.vinylFlick?.wetRight ?? dryRight;
++        mixDryLeft = this.vinylFlick?.dryLeft ?? dryLeft;
++        mixDryRight = this.vinylFlick?.dryRight ?? dryRight;
++      } else if (false) {
++        this.processAutoPan(dryLeft, dryRight, monoAutoPanInput);
++        wetLeft = this.autoPanWetLeft;
++        wetRight = this.autoPanWetRight;
++      } else if (false) {
++        this.beatRepeat?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatRepeat?.wetLeft ?? 0;
++        wetRight = this.beatRepeat?.wetRight ?? 0;
++      } else if (false) {
++        this.roll?.processSample(dryLeft, dryRight);
++        wetLeft = this.roll?.wetLeft ?? 0;
++        wetRight = this.roll?.wetRight ?? 0;
++      } else if (false) {
++        this.freeze?.processSample(dryLeft, dryRight);
++        wetLeft = this.freeze?.outputLeft ?? dryLeft;
++        wetRight = this.freeze?.outputRight ?? dryRight;
++      } else if (false) {
++        this.warp?.processSample(dryLeft, dryRight);
++        wetLeft = this.warp?.wetLeft ?? 0;
++        wetRight = this.warp?.wetRight ?? 0;
++      } else if (false) {
++        this.beatScatter?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatScatter?.wetLeft ?? 0;
++        wetRight = this.beatScatter?.wetRight ?? 0;
++      } else if (false) {
++        this.beatShift?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatShift?.wetLeft ?? dryLeft;
++        wetRight = this.beatShift?.wetRight ?? dryRight;
++      } else if (false) {
++        this.reverseDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseDelay?.wetLeft ?? 0;
++        wetRight = this.reverseDelay?.wetRight ?? 0;
++      } else if (false) {
++        this.reverseReverb?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseReverb?.wetLeft ?? 0;
++        wetRight = this.reverseReverb?.wetRight ?? 0;
++      } else if (false) {
++        this.autoRiff?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // The worklet analyzes and sequences only. The host's Signalsmith
++        // LIVE_FX node immediately downstream performs actual resynthesis.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.hrmAuto?.processSample((dryLeft + dryRight) * 0.5, this.currentAudioFrame + frame);
++        // Analysis and MIDI voicing only. Host-pinned Signalsmith LIVE_FX
++        // nodes perform the actual interval shifts downstream.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.robot?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // Stable voiced monophonic material is synthesized by the bounded
++        // fixed-latency PSOLA-lite path. The adapter selects Signalsmith for
++        // unstable/polyphonic, unvoiced, out-of-range, and formant-control cases.
++        wetLeft = this.robot?.psolaOutputSample ?? 0;
++        wetRight = wetLeft;
++      } else if (false) {
++        this.patternSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.patternSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.patternSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.stepSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.stepSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.stepSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.processStereoEnhance(dryLeft, dryRight);
++        wetLeft = this.stereoWetLeft;
++        wetRight = this.stereoWetRight;
++      } else if (false) {
++        this.loFi?.process(dryLeft, dryRight);
++        wetLeft = this.loFi?.wetLeft ?? 0;
++        wetRight = this.loFi?.wetRight ?? 0;
++      } else if (false) {
++        this.equalizer?.process(dryLeft, dryRight);
++        wetLeft = this.equalizer?.outputLeft ?? dryLeft;
++        wetRight = this.equalizer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.processManualPan(dryLeft, dryRight, monoManualPanInput);
++        wetLeft = this.manualPanWetLeft;
++        wetRight = this.manualPanWetRight;
++      } else if (false) {
++        this.tapeEcho?.processSample(dryLeft, dryRight);
++        wetLeft = this.tapeEcho?.wetOutputLeft ?? dryLeft;
++        wetRight = this.tapeEcho?.wetOutputRight ?? dryRight;
++      } else if (false) {
++        this.twist?.processSample(dryLeft, dryRight);
++        wetLeft = this.twist?.wetOutputLeft ?? 0;
++        wetRight = this.twist?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.granularDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.granularDelay?.wetOutputLeft ?? 0;
++        wetRight = this.granularDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.radio?.processSample(dryLeft, dryRight);
++        wetLeft = this.radio?.wetLeft ?? dryLeft;
++        wetRight = this.radio?.wetRight ?? dryRight;
++      } else if (false) {
++        this.vibrato?.processSample(dryLeft, dryRight);
++        wetLeft = this.vibrato?.wetLeft ?? 0;
++        wetRight = this.vibrato?.wetRight ?? 0;
++      } else if (false) {
++        this.sustainer?.processSample(dryLeft, dryRight);
++        wetLeft = this.sustainer?.outputLeft ?? dryLeft;
++        wetRight = this.sustainer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.preamp?.processSample(dryLeft, dryRight);
++        wetLeft = this.preamp?.outputLeft ?? dryLeft;
++        wetRight = this.preamp?.outputRight ?? dryRight;
++      } else if (false) {
++        this.synth?.processSample(dryLeft, dryRight);
++        wetLeft = this.synth?.outputLeft ?? dryLeft;
++        wetRight = this.synth?.outputRight ?? dryRight;
++      } else if (false) {
++        this.g2b?.processSample(dryLeft, dryRight);
++        wetLeft = this.g2b?.outputLeft ?? dryLeft;
++        wetRight = this.g2b?.outputRight ?? dryRight;
++      } else if (false) {
++        this.vocoder?.processSample(dryLeft, dryRight);
++        wetLeft = this.vocoder?.outputLeft ?? 0;
++        wetRight = this.vocoder?.outputRight ?? 0;
++      } else if (false) {
++        this.electric?.processSample(dryLeft, dryRight);
++        wetLeft = this.electric?.outputLeft ?? dryLeft;
++        wetRight = this.electric?.outputRight ?? dryRight;
++      } else if (false) {
++        this.oscVoc?.processSample(dryLeft, dryRight);
++        wetLeft = this.oscVoc?.outputLeft ?? 0;
++        wetRight = this.oscVoc?.outputRight ?? 0;
++      } else if (false) {
++        const modulator = (dryLeft + dryRight) * 0.5;
++        const wet = this.oscBot?.processSample(modulator) ?? 0;
++        wetLeft = wet;
++        wetRight = wet;
++      } else if (false) {
++        const envelope = this.slowGear?.processSample(dryLeft, dryRight) ?? 1;
++        wetLeft = dryLeft * envelope;
++        wetRight = dryRight * envelope;
++      } else if (false) {
++        this.isolator?.processSample(dryLeft, dryRight);
++        wetLeft = this.isolator?.outputLeft ?? dryLeft;
++        wetRight = this.isolator?.outputRight ?? dryRight;
++      } else if (false) {
++        this.panningDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.panningDelay?.wetOutputLeft ?? 0;
++        wetRight = this.panningDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.modDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.modDelay?.wetLeft ?? 0;
++        wetRight = this.modDelay?.wetRight ?? 0;
++      } else {
++        wetLeft = this.processReverb(dryLeft, 0);
++        wetRight = this.processReverb(dryRight, 1);
++      }
++      if (!Number.isFinite(wetLeft)) {
++        wetLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(wetRight)) {
++        wetRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (true) {
++        wetLeft *= this.gateGain;
++        wetRight *= this.gateGain;
++      }
++
++      let mixedLeft = mixDryLeft * wetDryGain + wetLeft * wetGain;
++      let mixedRight = mixDryRight * wetDryGain + wetRight * wetGain;
++      const bypassPosition = this.bypassMix.next();
++      if (bypassPosition >= 1) {
++        // Preserve bit-exact identity at the bypass endpoint.
++        mixedLeft = dryLeft;
++        mixedRight = dryRight;
++      } else {
++        if (bypassPosition !== this.cachedBypassPosition) {
++          this.cachedBypassPosition = bypassPosition;
++          this.cachedBypassActiveGain = equalPowerFadeOutGain(bypassPosition);
++          this.cachedBypassGain = equalPowerFadeInGain(bypassPosition);
++        }
++        const activeGain = this.cachedBypassActiveGain;
++        const bypassGain = this.cachedBypassGain;
++        mixedLeft = mixedLeft * activeGain + dryLeft * bypassGain;
++        mixedRight = mixedRight * activeGain + dryRight * bypassGain;
++      }
++      if ((false || false) && bypassPosition >= 1) {
++        // The beat-shift ring still warms while bypassed, but the dry endpoint
++        // bypasses the core's denormal clamp/sanitization for true wire-through.
++        if (frame < outputLeftLength && outputLeft) {
++          outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        }
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput || inputIsMono
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++        continue;
++      }
++      if (false) {
++        this.phase += this.phaseStep;
++        if (this.phase >= TWO_PI) this.phase -= TWO_PI;
++      }
++      if (false) {
++        this.chorusPhase += this.chorusPhaseStep;
++        if (this.chorusPhase >= TWO_PI) this.chorusPhase -= TWO_PI;
++      }
++      if (false) {
++        this.phaserPhase += this.phaserPhaseStep;
++        if (this.phaserPhase >= TWO_PI) this.phaserPhase -= TWO_PI;
++      }
++      if (false) {
++        this.tremoloPhase += this.tremoloPhaseStep;
++        if (this.tremoloPhase >= 1) this.tremoloPhase -= 1;
++      }
++      if (false) {
++        this.autoPanPhase += this.autoPanPhaseStep;
++        if (this.autoPanPhase >= 1) this.autoPanPhase -= 1;
++      }
++
++      if (false) {
++        mixedLeft = clamp(mixedLeft, -4, 4);
++        mixedRight = clamp(mixedRight, -4, 4);
++      }
++
++      if (!Number.isFinite(mixedLeft)) {
++        mixedLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(mixedRight)) {
++        mixedRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (Math.abs(mixedLeft) < MIN_STATE_MAGNITUDE) mixedLeft = 0;
++      if (Math.abs(mixedRight) < MIN_STATE_MAGNITUDE) mixedRight = 0;
++      if (frame < outputLeftLength && outputLeft) outputLeft[frame] = mixedLeft;
++      if (frame < outputRightLength && outputRight) outputRight[frame] = mixedRight;
++    }
++    this.framesProcessed += frames;
++    this.currentAudioFrame += frames;
++  }
++
++
++  private processBlockPhaser(
++    inputLeft: Float32Array | null,
++    inputRight: Float32Array | null,
++    outputLeft: Float32Array | null,
++    outputRight: Float32Array | null,
++    frameCount?: number,
++    inputIsMono = inputRight === null,
++  ): void {
++    this.blocksProcessed += 1;
++    const frames = Math.max(0, Math.floor(frameCount ?? Math.max(outputLeft?.length ?? 0, outputRight?.length ?? 0)));
++    const inputLeftLength = inputLeft?.length ?? 0;
++    const inputRightLength = inputRight?.length ?? 0;
++    const outputLeftLength = outputLeft?.length ?? 0;
++    const outputRightLength = outputRight?.length ?? 0;
++
++    const monoAutoPanInput = false && (!inputRight || inputRightLength === 0);
++    const monoStereoEnhanceInput = false && (!inputRight || inputRightLength === 0);
++    const monoManualPanInput = false && inputIsMono;
++    // BEAT SHIFT, REVERSE DELAY, REVERSE REVERB, VINYL FLICK, and FREEZE keep bounded histories
++    // warm while bypassed. Output still stays exact-dry, so a later activation
++    // or capture edge has the input history it needs.
++    if (this.fullyBypassed && true && true && true && true && true && true && true) {
++      // Web Audio's usual equal-size channels can use a native copy without
++      // subarray views or per-sample bounds checks. Keep the general path for
++      // partial blocks, missing inputs, and deliberately mismatched arrays.
++      const bypassRightInput = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput
++        ? inputLeft : inputRight;
++      if (outputLeft && inputLeft && outputLeftLength === frames && inputLeftLength === frames
++        && outputLeft.buffer !== inputLeft.buffer
++        && (!outputRight || outputLeft.buffer !== outputRight.buffer)
++        && (!bypassRightInput || outputLeft.buffer !== bypassRightInput.buffer)
++        && (!outputRight || (outputRight.buffer !== inputLeft.buffer && outputRight.buffer !== bypassRightInput?.buffer))
++        && ((!outputRight) || (bypassRightInput && outputRightLength === frames && bypassRightInput.length === frames))) {
++        outputLeft.set(inputLeft);
++        if (outputRight && bypassRightInput) outputRight.set(bypassRightInput);
++        this.framesProcessed += frames;
++        this.currentAudioFrame += frames;
++        return;
++      }
++      for (let frame = 0; frame < frames; frame += 1) {
++        if (frame < outputLeftLength && outputLeft) outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : monoStereoEnhanceInput
++              ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++      }
++      this.framesProcessed += frames;
++      this.currentAudioFrame += frames;
++      return;
++    }
++
++    for (let frame = 0; frame < frames; frame += 1) {
++      let dryLeft = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++      let dryRight = monoAutoPanInput || monoStereoEnhanceInput || monoManualPanInput
++        ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++        : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++      if (!Number.isFinite(dryLeft)) {
++        dryLeft = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (!Number.isFinite(dryRight)) {
++        dryRight = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (Math.abs(dryLeft) < MIN_STATE_MAGNITUDE) dryLeft = 0;
++      if (Math.abs(dryRight) < MIN_STATE_MAGNITUDE) dryRight = 0;
++
++      this.advanceControls();
++      if (false) this.updateDynamicsDetector(dryLeft, dryRight);
++      if (false) this.updateGateReverbEnvelope(dryLeft, dryRight);
++      const wetPosition = false && this.electric?.requiresVoicedInput && !this.electric.isVoiced
++        ? 0
++        : false || false || false
++        ? 1
++        : (false && !this.beatRepeat?.hasCapturedSlice)
++        || (false && !this.roll?.hasCapturedSlice)
++        || (false && !this.beatScatter?.hasCapturedSlice)
++        || (false && !this.reverseDelay?.hasCaptured)
++        ? 0
++        : false
++          // This is a read-head position effect, not a delay/effect-send blend.
++          // Keep the active output on the shifted head only; bypass remains an
++          // explicit click-safe host transition and the prototype has no mix control.
++          ? (this.beatShift?.mixAvailability ?? 0)
++          : false || false
++            ? 1
++          : (this.currentControls[2] ?? 1);
++      if (wetPosition !== this.cachedWetPosition) {
++        this.cachedWetPosition = wetPosition;
++        this.cachedWetDryGain = equalPowerFadeOutGain(wetPosition);
++        this.cachedWetGain = equalPowerFadeInGain(wetPosition);
++      }
++      const wetDryGain = this.cachedWetDryGain;
++      const wetGain = this.cachedWetGain;
++      let mixDryLeft = false ? this.processDistortionDryDelay(dryLeft, 0) : dryLeft;
++      let mixDryRight = false ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
++      let wetLeft: number;
++      let wetRight: number;
++      if (false) {
++        this.vinylFlick?.processSample(dryLeft, dryRight);
++        wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
++        wetRight = this.vinylFlick?.wetRight ?? dryRight;
++        mixDryLeft = this.vinylFlick?.dryLeft ?? dryLeft;
++        mixDryRight = this.vinylFlick?.dryRight ?? dryRight;
++      } else if (false) {
++        this.processAutoPan(dryLeft, dryRight, monoAutoPanInput);
++        wetLeft = this.autoPanWetLeft;
++        wetRight = this.autoPanWetRight;
++      } else if (false) {
++        this.beatRepeat?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatRepeat?.wetLeft ?? 0;
++        wetRight = this.beatRepeat?.wetRight ?? 0;
++      } else if (false) {
++        this.roll?.processSample(dryLeft, dryRight);
++        wetLeft = this.roll?.wetLeft ?? 0;
++        wetRight = this.roll?.wetRight ?? 0;
++      } else if (false) {
++        this.freeze?.processSample(dryLeft, dryRight);
++        wetLeft = this.freeze?.outputLeft ?? dryLeft;
++        wetRight = this.freeze?.outputRight ?? dryRight;
++      } else if (false) {
++        this.warp?.processSample(dryLeft, dryRight);
++        wetLeft = this.warp?.wetLeft ?? 0;
++        wetRight = this.warp?.wetRight ?? 0;
++      } else if (false) {
++        this.beatScatter?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatScatter?.wetLeft ?? 0;
++        wetRight = this.beatScatter?.wetRight ?? 0;
++      } else if (false) {
++        this.beatShift?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatShift?.wetLeft ?? dryLeft;
++        wetRight = this.beatShift?.wetRight ?? dryRight;
++      } else if (false) {
++        this.reverseDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseDelay?.wetLeft ?? 0;
++        wetRight = this.reverseDelay?.wetRight ?? 0;
++      } else if (false) {
++        this.reverseReverb?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseReverb?.wetLeft ?? 0;
++        wetRight = this.reverseReverb?.wetRight ?? 0;
++      } else if (false) {
++        this.autoRiff?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // The worklet analyzes and sequences only. The host's Signalsmith
++        // LIVE_FX node immediately downstream performs actual resynthesis.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.hrmAuto?.processSample((dryLeft + dryRight) * 0.5, this.currentAudioFrame + frame);
++        // Analysis and MIDI voicing only. Host-pinned Signalsmith LIVE_FX
++        // nodes perform the actual interval shifts downstream.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.robot?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // Stable voiced monophonic material is synthesized by the bounded
++        // fixed-latency PSOLA-lite path. The adapter selects Signalsmith for
++        // unstable/polyphonic, unvoiced, out-of-range, and formant-control cases.
++        wetLeft = this.robot?.psolaOutputSample ?? 0;
++        wetRight = wetLeft;
++      } else if (false) {
++        this.patternSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.patternSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.patternSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.stepSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.stepSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.stepSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.processStereoEnhance(dryLeft, dryRight);
++        wetLeft = this.stereoWetLeft;
++        wetRight = this.stereoWetRight;
++      } else if (false) {
++        this.loFi?.process(dryLeft, dryRight);
++        wetLeft = this.loFi?.wetLeft ?? 0;
++        wetRight = this.loFi?.wetRight ?? 0;
++      } else if (false) {
++        this.equalizer?.process(dryLeft, dryRight);
++        wetLeft = this.equalizer?.outputLeft ?? dryLeft;
++        wetRight = this.equalizer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.processManualPan(dryLeft, dryRight, monoManualPanInput);
++        wetLeft = this.manualPanWetLeft;
++        wetRight = this.manualPanWetRight;
++      } else if (false) {
++        this.tapeEcho?.processSample(dryLeft, dryRight);
++        wetLeft = this.tapeEcho?.wetOutputLeft ?? dryLeft;
++        wetRight = this.tapeEcho?.wetOutputRight ?? dryRight;
++      } else if (false) {
++        this.twist?.processSample(dryLeft, dryRight);
++        wetLeft = this.twist?.wetOutputLeft ?? 0;
++        wetRight = this.twist?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.granularDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.granularDelay?.wetOutputLeft ?? 0;
++        wetRight = this.granularDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.radio?.processSample(dryLeft, dryRight);
++        wetLeft = this.radio?.wetLeft ?? dryLeft;
++        wetRight = this.radio?.wetRight ?? dryRight;
++      } else if (false) {
++        this.vibrato?.processSample(dryLeft, dryRight);
++        wetLeft = this.vibrato?.wetLeft ?? 0;
++        wetRight = this.vibrato?.wetRight ?? 0;
++      } else if (false) {
++        this.sustainer?.processSample(dryLeft, dryRight);
++        wetLeft = this.sustainer?.outputLeft ?? dryLeft;
++        wetRight = this.sustainer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.preamp?.processSample(dryLeft, dryRight);
++        wetLeft = this.preamp?.outputLeft ?? dryLeft;
++        wetRight = this.preamp?.outputRight ?? dryRight;
++      } else if (false) {
++        this.synth?.processSample(dryLeft, dryRight);
++        wetLeft = this.synth?.outputLeft ?? dryLeft;
++        wetRight = this.synth?.outputRight ?? dryRight;
++      } else if (false) {
++        this.g2b?.processSample(dryLeft, dryRight);
++        wetLeft = this.g2b?.outputLeft ?? dryLeft;
++        wetRight = this.g2b?.outputRight ?? dryRight;
++      } else if (false) {
++        this.vocoder?.processSample(dryLeft, dryRight);
++        wetLeft = this.vocoder?.outputLeft ?? 0;
++        wetRight = this.vocoder?.outputRight ?? 0;
++      } else if (false) {
++        this.electric?.processSample(dryLeft, dryRight);
++        wetLeft = this.electric?.outputLeft ?? dryLeft;
++        wetRight = this.electric?.outputRight ?? dryRight;
++      } else if (false) {
++        this.oscVoc?.processSample(dryLeft, dryRight);
++        wetLeft = this.oscVoc?.outputLeft ?? 0;
++        wetRight = this.oscVoc?.outputRight ?? 0;
++      } else if (false) {
++        const modulator = (dryLeft + dryRight) * 0.5;
++        const wet = this.oscBot?.processSample(modulator) ?? 0;
++        wetLeft = wet;
++        wetRight = wet;
++      } else if (false) {
++        const envelope = this.slowGear?.processSample(dryLeft, dryRight) ?? 1;
++        wetLeft = dryLeft * envelope;
++        wetRight = dryRight * envelope;
++      } else if (false) {
++        this.isolator?.processSample(dryLeft, dryRight);
++        wetLeft = this.isolator?.outputLeft ?? dryLeft;
++        wetRight = this.isolator?.outputRight ?? dryRight;
++      } else if (false) {
++        this.panningDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.panningDelay?.wetOutputLeft ?? 0;
++        wetRight = this.panningDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.modDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.modDelay?.wetLeft ?? 0;
++        wetRight = this.modDelay?.wetRight ?? 0;
++      } else {
++        wetLeft = this.processPhaser(dryLeft, 0);
++        wetRight = this.processPhaser(dryRight, 1);
++      }
++      if (!Number.isFinite(wetLeft)) {
++        wetLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(wetRight)) {
++        wetRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (false) {
++        wetLeft *= this.gateGain;
++        wetRight *= this.gateGain;
++      }
++
++      let mixedLeft = mixDryLeft * wetDryGain + wetLeft * wetGain;
++      let mixedRight = mixDryRight * wetDryGain + wetRight * wetGain;
++      const bypassPosition = this.bypassMix.next();
++      if (bypassPosition >= 1) {
++        // Preserve bit-exact identity at the bypass endpoint.
++        mixedLeft = dryLeft;
++        mixedRight = dryRight;
++      } else {
++        if (bypassPosition !== this.cachedBypassPosition) {
++          this.cachedBypassPosition = bypassPosition;
++          this.cachedBypassActiveGain = equalPowerFadeOutGain(bypassPosition);
++          this.cachedBypassGain = equalPowerFadeInGain(bypassPosition);
++        }
++        const activeGain = this.cachedBypassActiveGain;
++        const bypassGain = this.cachedBypassGain;
++        mixedLeft = mixedLeft * activeGain + dryLeft * bypassGain;
++        mixedRight = mixedRight * activeGain + dryRight * bypassGain;
++      }
++      if ((false || false) && bypassPosition >= 1) {
++        // The beat-shift ring still warms while bypassed, but the dry endpoint
++        // bypasses the core's denormal clamp/sanitization for true wire-through.
++        if (frame < outputLeftLength && outputLeft) {
++          outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        }
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput || inputIsMono
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++        continue;
++      }
++      if (false) {
++        this.phase += this.phaseStep;
++        if (this.phase >= TWO_PI) this.phase -= TWO_PI;
++      }
++      if (false) {
++        this.chorusPhase += this.chorusPhaseStep;
++        if (this.chorusPhase >= TWO_PI) this.chorusPhase -= TWO_PI;
++      }
++      if (true) {
++        this.phaserPhase += this.phaserPhaseStep;
++        if (this.phaserPhase >= TWO_PI) this.phaserPhase -= TWO_PI;
++      }
++      if (false) {
++        this.tremoloPhase += this.tremoloPhaseStep;
++        if (this.tremoloPhase >= 1) this.tremoloPhase -= 1;
++      }
++      if (false) {
++        this.autoPanPhase += this.autoPanPhaseStep;
++        if (this.autoPanPhase >= 1) this.autoPanPhase -= 1;
++      }
++
++      if (false) {
++        mixedLeft = clamp(mixedLeft, -4, 4);
++        mixedRight = clamp(mixedRight, -4, 4);
++      }
++
++      if (!Number.isFinite(mixedLeft)) {
++        mixedLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(mixedRight)) {
++        mixedRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (Math.abs(mixedLeft) < MIN_STATE_MAGNITUDE) mixedLeft = 0;
++      if (Math.abs(mixedRight) < MIN_STATE_MAGNITUDE) mixedRight = 0;
++      if (frame < outputLeftLength && outputLeft) outputLeft[frame] = mixedLeft;
++      if (frame < outputRightLength && outputRight) outputRight[frame] = mixedRight;
++    }
++    this.framesProcessed += frames;
++    this.currentAudioFrame += frames;
++  }
++
++
++  private processBlockDistortion(
++    inputLeft: Float32Array | null,
++    inputRight: Float32Array | null,
++    outputLeft: Float32Array | null,
++    outputRight: Float32Array | null,
++    frameCount?: number,
++    inputIsMono = inputRight === null,
++  ): void {
++    this.blocksProcessed += 1;
++    const frames = Math.max(0, Math.floor(frameCount ?? Math.max(outputLeft?.length ?? 0, outputRight?.length ?? 0)));
++    const inputLeftLength = inputLeft?.length ?? 0;
++    const inputRightLength = inputRight?.length ?? 0;
++    const outputLeftLength = outputLeft?.length ?? 0;
++    const outputRightLength = outputRight?.length ?? 0;
++
++    const monoAutoPanInput = false && (!inputRight || inputRightLength === 0);
++    const monoStereoEnhanceInput = false && (!inputRight || inputRightLength === 0);
++    const monoManualPanInput = false && inputIsMono;
++    // BEAT SHIFT, REVERSE DELAY, REVERSE REVERB, VINYL FLICK, and FREEZE keep bounded histories
++    // warm while bypassed. Output still stays exact-dry, so a later activation
++    // or capture edge has the input history it needs.
++    if (this.fullyBypassed && true && true && true && true && true && true && true) {
++      // Web Audio's usual equal-size channels can use a native copy without
++      // subarray views or per-sample bounds checks. Keep the general path for
++      // partial blocks, missing inputs, and deliberately mismatched arrays.
++      const bypassRightInput = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput
++        ? inputLeft : inputRight;
++      if (outputLeft && inputLeft && outputLeftLength === frames && inputLeftLength === frames
++        && outputLeft.buffer !== inputLeft.buffer
++        && (!outputRight || outputLeft.buffer !== outputRight.buffer)
++        && (!bypassRightInput || outputLeft.buffer !== bypassRightInput.buffer)
++        && (!outputRight || (outputRight.buffer !== inputLeft.buffer && outputRight.buffer !== bypassRightInput?.buffer))
++        && ((!outputRight) || (bypassRightInput && outputRightLength === frames && bypassRightInput.length === frames))) {
++        outputLeft.set(inputLeft);
++        if (outputRight && bypassRightInput) outputRight.set(bypassRightInput);
++        this.framesProcessed += frames;
++        this.currentAudioFrame += frames;
++        return;
++      }
++      for (let frame = 0; frame < frames; frame += 1) {
++        if (frame < outputLeftLength && outputLeft) outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : monoStereoEnhanceInput
++              ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++      }
++      this.framesProcessed += frames;
++      this.currentAudioFrame += frames;
++      return;
++    }
++
++    for (let frame = 0; frame < frames; frame += 1) {
++      let dryLeft = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++      let dryRight = monoAutoPanInput || monoStereoEnhanceInput || monoManualPanInput
++        ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++        : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++      if (!Number.isFinite(dryLeft)) {
++        dryLeft = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (!Number.isFinite(dryRight)) {
++        dryRight = 0;
++        this.nonFiniteInputSamples += 1;
++      }
++      if (Math.abs(dryLeft) < MIN_STATE_MAGNITUDE) dryLeft = 0;
++      if (Math.abs(dryRight) < MIN_STATE_MAGNITUDE) dryRight = 0;
++
++      this.advanceControls();
++      if (false) this.updateDynamicsDetector(dryLeft, dryRight);
++      if (false) this.updateGateReverbEnvelope(dryLeft, dryRight);
++      const wetPosition = false && this.electric?.requiresVoicedInput && !this.electric.isVoiced
++        ? 0
++        : false || false || false
++        ? 1
++        : (false && !this.beatRepeat?.hasCapturedSlice)
++        || (false && !this.roll?.hasCapturedSlice)
++        || (false && !this.beatScatter?.hasCapturedSlice)
++        || (false && !this.reverseDelay?.hasCaptured)
++        ? 0
++        : false
++          // This is a read-head position effect, not a delay/effect-send blend.
++          // Keep the active output on the shifted head only; bypass remains an
++          // explicit click-safe host transition and the prototype has no mix control.
++          ? (this.beatShift?.mixAvailability ?? 0)
++          : false || false
++            ? 1
++          : (this.currentControls[2] ?? 1);
++      if (wetPosition !== this.cachedWetPosition) {
++        this.cachedWetPosition = wetPosition;
++        this.cachedWetDryGain = equalPowerFadeOutGain(wetPosition);
++        this.cachedWetGain = equalPowerFadeInGain(wetPosition);
++      }
++      const wetDryGain = this.cachedWetDryGain;
++      const wetGain = this.cachedWetGain;
++      let mixDryLeft = true ? this.processDistortionDryDelay(dryLeft, 0) : dryLeft;
++      let mixDryRight = true ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
++      let wetLeft: number;
++      let wetRight: number;
++      if (false) {
++        this.vinylFlick?.processSample(dryLeft, dryRight);
++        wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
++        wetRight = this.vinylFlick?.wetRight ?? dryRight;
++        mixDryLeft = this.vinylFlick?.dryLeft ?? dryLeft;
++        mixDryRight = this.vinylFlick?.dryRight ?? dryRight;
++      } else if (false) {
++        this.processAutoPan(dryLeft, dryRight, monoAutoPanInput);
++        wetLeft = this.autoPanWetLeft;
++        wetRight = this.autoPanWetRight;
++      } else if (false) {
++        this.beatRepeat?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatRepeat?.wetLeft ?? 0;
++        wetRight = this.beatRepeat?.wetRight ?? 0;
++      } else if (false) {
++        this.roll?.processSample(dryLeft, dryRight);
++        wetLeft = this.roll?.wetLeft ?? 0;
++        wetRight = this.roll?.wetRight ?? 0;
++      } else if (false) {
++        this.freeze?.processSample(dryLeft, dryRight);
++        wetLeft = this.freeze?.outputLeft ?? dryLeft;
++        wetRight = this.freeze?.outputRight ?? dryRight;
++      } else if (false) {
++        this.warp?.processSample(dryLeft, dryRight);
++        wetLeft = this.warp?.wetLeft ?? 0;
++        wetRight = this.warp?.wetRight ?? 0;
++      } else if (false) {
++        this.beatScatter?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatScatter?.wetLeft ?? 0;
++        wetRight = this.beatScatter?.wetRight ?? 0;
++      } else if (false) {
++        this.beatShift?.processSample(dryLeft, dryRight);
++        wetLeft = this.beatShift?.wetLeft ?? dryLeft;
++        wetRight = this.beatShift?.wetRight ?? dryRight;
++      } else if (false) {
++        this.reverseDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseDelay?.wetLeft ?? 0;
++        wetRight = this.reverseDelay?.wetRight ?? 0;
++      } else if (false) {
++        this.reverseReverb?.processSample(dryLeft, dryRight);
++        wetLeft = this.reverseReverb?.wetLeft ?? 0;
++        wetRight = this.reverseReverb?.wetRight ?? 0;
++      } else if (false) {
++        this.autoRiff?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // The worklet analyzes and sequences only. The host's Signalsmith
++        // LIVE_FX node immediately downstream performs actual resynthesis.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.hrmAuto?.processSample((dryLeft + dryRight) * 0.5, this.currentAudioFrame + frame);
++        // Analysis and MIDI voicing only. Host-pinned Signalsmith LIVE_FX
++        // nodes perform the actual interval shifts downstream.
++        wetLeft = dryLeft;
++        wetRight = dryRight;
++      } else if (false) {
++        this.robot?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
++        // Stable voiced monophonic material is synthesized by the bounded
++        // fixed-latency PSOLA-lite path. The adapter selects Signalsmith for
++        // unstable/polyphonic, unvoiced, out-of-range, and formant-control cases.
++        wetLeft = this.robot?.psolaOutputSample ?? 0;
++        wetRight = wetLeft;
++      } else if (false) {
++        this.patternSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.patternSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.patternSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.stepSlicer?.processSample(dryLeft, dryRight);
++        wetLeft = this.stepSlicer?.wetLeft ?? dryLeft;
++        wetRight = this.stepSlicer?.wetRight ?? dryRight;
++      } else if (false) {
++        this.processStereoEnhance(dryLeft, dryRight);
++        wetLeft = this.stereoWetLeft;
++        wetRight = this.stereoWetRight;
++      } else if (false) {
++        this.loFi?.process(dryLeft, dryRight);
++        wetLeft = this.loFi?.wetLeft ?? 0;
++        wetRight = this.loFi?.wetRight ?? 0;
++      } else if (false) {
++        this.equalizer?.process(dryLeft, dryRight);
++        wetLeft = this.equalizer?.outputLeft ?? dryLeft;
++        wetRight = this.equalizer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.processManualPan(dryLeft, dryRight, monoManualPanInput);
++        wetLeft = this.manualPanWetLeft;
++        wetRight = this.manualPanWetRight;
++      } else if (false) {
++        this.tapeEcho?.processSample(dryLeft, dryRight);
++        wetLeft = this.tapeEcho?.wetOutputLeft ?? dryLeft;
++        wetRight = this.tapeEcho?.wetOutputRight ?? dryRight;
++      } else if (false) {
++        this.twist?.processSample(dryLeft, dryRight);
++        wetLeft = this.twist?.wetOutputLeft ?? 0;
++        wetRight = this.twist?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.granularDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.granularDelay?.wetOutputLeft ?? 0;
++        wetRight = this.granularDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.radio?.processSample(dryLeft, dryRight);
++        wetLeft = this.radio?.wetLeft ?? dryLeft;
++        wetRight = this.radio?.wetRight ?? dryRight;
++      } else if (false) {
++        this.vibrato?.processSample(dryLeft, dryRight);
++        wetLeft = this.vibrato?.wetLeft ?? 0;
++        wetRight = this.vibrato?.wetRight ?? 0;
++      } else if (false) {
++        this.sustainer?.processSample(dryLeft, dryRight);
++        wetLeft = this.sustainer?.outputLeft ?? dryLeft;
++        wetRight = this.sustainer?.outputRight ?? dryRight;
++      } else if (false) {
++        this.preamp?.processSample(dryLeft, dryRight);
++        wetLeft = this.preamp?.outputLeft ?? dryLeft;
++        wetRight = this.preamp?.outputRight ?? dryRight;
++      } else if (false) {
++        this.synth?.processSample(dryLeft, dryRight);
++        wetLeft = this.synth?.outputLeft ?? dryLeft;
++        wetRight = this.synth?.outputRight ?? dryRight;
++      } else if (false) {
++        this.g2b?.processSample(dryLeft, dryRight);
++        wetLeft = this.g2b?.outputLeft ?? dryLeft;
++        wetRight = this.g2b?.outputRight ?? dryRight;
++      } else if (false) {
++        this.vocoder?.processSample(dryLeft, dryRight);
++        wetLeft = this.vocoder?.outputLeft ?? 0;
++        wetRight = this.vocoder?.outputRight ?? 0;
++      } else if (false) {
++        this.electric?.processSample(dryLeft, dryRight);
++        wetLeft = this.electric?.outputLeft ?? dryLeft;
++        wetRight = this.electric?.outputRight ?? dryRight;
++      } else if (false) {
++        this.oscVoc?.processSample(dryLeft, dryRight);
++        wetLeft = this.oscVoc?.outputLeft ?? 0;
++        wetRight = this.oscVoc?.outputRight ?? 0;
++      } else if (false) {
++        const modulator = (dryLeft + dryRight) * 0.5;
++        const wet = this.oscBot?.processSample(modulator) ?? 0;
++        wetLeft = wet;
++        wetRight = wet;
++      } else if (false) {
++        const envelope = this.slowGear?.processSample(dryLeft, dryRight) ?? 1;
++        wetLeft = dryLeft * envelope;
++        wetRight = dryRight * envelope;
++      } else if (false) {
++        this.isolator?.processSample(dryLeft, dryRight);
++        wetLeft = this.isolator?.outputLeft ?? dryLeft;
++        wetRight = this.isolator?.outputRight ?? dryRight;
++      } else if (false) {
++        this.panningDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.panningDelay?.wetOutputLeft ?? 0;
++        wetRight = this.panningDelay?.wetOutputRight ?? 0;
++      } else if (false) {
++        this.modDelay?.processSample(dryLeft, dryRight);
++        wetLeft = this.modDelay?.wetLeft ?? 0;
++        wetRight = this.modDelay?.wetRight ?? 0;
++      } else {
++        wetLeft = this.processDistortionSample(dryLeft, 0);
++        wetRight = this.processDistortionSample(dryRight, 1);
++      }
++      if (!Number.isFinite(wetLeft)) {
++        wetLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(wetRight)) {
++        wetRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (false) {
++        wetLeft *= this.gateGain;
++        wetRight *= this.gateGain;
++      }
++
++      let mixedLeft = mixDryLeft * wetDryGain + wetLeft * wetGain;
++      let mixedRight = mixDryRight * wetDryGain + wetRight * wetGain;
++      const bypassPosition = this.bypassMix.next();
++      if (bypassPosition >= 1) {
++        // Preserve bit-exact identity at the bypass endpoint.
++        mixedLeft = dryLeft;
++        mixedRight = dryRight;
++      } else {
++        if (bypassPosition !== this.cachedBypassPosition) {
++          this.cachedBypassPosition = bypassPosition;
++          this.cachedBypassActiveGain = equalPowerFadeOutGain(bypassPosition);
++          this.cachedBypassGain = equalPowerFadeInGain(bypassPosition);
++        }
++        const activeGain = this.cachedBypassActiveGain;
++        const bypassGain = this.cachedBypassGain;
++        mixedLeft = mixedLeft * activeGain + dryLeft * bypassGain;
++        mixedRight = mixedRight * activeGain + dryRight * bypassGain;
++      }
++      if ((false || false) && bypassPosition >= 1) {
++        // The beat-shift ring still warms while bypassed, but the dry endpoint
++        // bypasses the core's denormal clamp/sanitization for true wire-through.
++        if (frame < outputLeftLength && outputLeft) {
++          outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
++        }
++        if (frame < outputRightLength && outputRight) {
++          outputRight[frame] = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput || inputIsMono
++            ? (frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0)
++            : (frame < inputRightLength ? (inputRight?.[frame] ?? 0) : 0);
++        }
++        continue;
++      }
++      if (false) {
++        this.phase += this.phaseStep;
++        if (this.phase >= TWO_PI) this.phase -= TWO_PI;
++      }
++      if (false) {
++        this.chorusPhase += this.chorusPhaseStep;
++        if (this.chorusPhase >= TWO_PI) this.chorusPhase -= TWO_PI;
++      }
++      if (false) {
++        this.phaserPhase += this.phaserPhaseStep;
++        if (this.phaserPhase >= TWO_PI) this.phaserPhase -= TWO_PI;
++      }
++      if (false) {
++        this.tremoloPhase += this.tremoloPhaseStep;
++        if (this.tremoloPhase >= 1) this.tremoloPhase -= 1;
++      }
++      if (false) {
++        this.autoPanPhase += this.autoPanPhaseStep;
++        if (this.autoPanPhase >= 1) this.autoPanPhase -= 1;
++      }
++
++      if (false) {
++        mixedLeft = clamp(mixedLeft, -4, 4);
++        mixedRight = clamp(mixedRight, -4, 4);
++      }
++
++      if (!Number.isFinite(mixedLeft)) {
++        mixedLeft = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (!Number.isFinite(mixedRight)) {
++        mixedRight = 0;
++        this.nonFiniteOutputSamples += 1;
++      }
++      if (Math.abs(mixedLeft) < MIN_STATE_MAGNITUDE) mixedLeft = 0;
++      if (Math.abs(mixedRight) < MIN_STATE_MAGNITUDE) mixedRight = 0;
++      if (frame < outputLeftLength && outputLeft) outputLeft[frame] = mixedLeft;
++      if (frame < outputRightLength && outputRight) outputRight[frame] = mixedRight;
++    }
++    this.framesProcessed += frames;
++    this.currentAudioFrame += frames;
++  }
++
+   reset(): void {
+     this.controlsSteady = false;
+     this.controlSmoothersSettled = false;

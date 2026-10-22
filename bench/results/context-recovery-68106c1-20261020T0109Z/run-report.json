@@ -1,0 +1,68 @@
+{
+  "runId": "context-recovery-68106c1-20261020T0109Z",
+  "startUtc": "2026-10-20T01:09:33,486014499+00:00",
+  "endUtc": "2026-10-20T01:15:30,036450949+00:00",
+  "source": {
+    "commit": "68106c18deddb7a49a45b2f9ffb7266b3a78c8f7",
+    "tree": "d7c13103a33a752fd505bcc14f5f0e8cef8f67c5",
+    "branch": "codex/rc505-recovery-20261018",
+    "trackedDiffAtStartEmpty": true,
+    "trackedDiffAtEndEmpty": true,
+    "headUnchanged": true,
+    "treeUnchanged": true
+  },
+  "environment": {
+    "browserPath": "/tmp/rc505-cft154-restore/extracted/chrome-headless-shell-linux64/chrome-headless-shell",
+    "browserSha256": "60c03e8882f4bb47459a905ede1074e1e746c5b765e437c288e460320540a8a3",
+    "nativeSimulationHostPath": "/workspace/shared/rc505-recovery-20261018/native-e2e-project-race/native_bridge_host_simulation",
+    "nativeSimulationHostSha256": "ae564f4715d3375e3e5f695716579fbb8c26d742ade03be099c78d838af2cc88",
+    "tmpdir": "/workspace/shared/.tmp-rc505",
+    "physicalAudioHardwareUsed": false
+  },
+  "commands": [
+    {
+      "command": "npm run build",
+      "exitCode": 0
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "summary": "145 test files, 1085 tests"
+    },
+    {
+      "command": "npm run test:e2e:rubberband",
+      "exitCode": 0,
+      "summary": "99 passed (4.6m)"
+    }
+  ],
+  "resumedCapture": {
+    "attempts": 1,
+    "rejectedForwardGaps": 0,
+    "diagnostics": []
+  },
+  "interpretation": {
+    "currentRunForwardGapRejects": 0,
+    "continuityAcceptance": "Not established by a single successful resumed attempt; no forward gap was observed in this run.",
+    "prior128FrameGap": "Only preserved in the earlier verification summary; no independently matching raw runner log/trace is present.",
+    "prior9899RawLogs": "The available timestamped 98/99 log belongs to the earlier e48305a readiness batch and is not evidence for this run."
+  },
+  "evidence": {
+    "verificationSummaryFile": "verification-68106c1.json",
+    "stdoutFiles": [
+      "build.stdout.log",
+      "unit.stdout.log",
+      "strict-e2e.stdout.log"
+    ],
+    "stderrFiles": [
+      "build.stderr.log",
+      "unit.stderr.log",
+      "strict-e2e.stderr.log"
+    ],
+    "exitCodeFiles": [
+      "build.exitcode",
+      "unit.exitcode",
+      "strict-e2e.exitcode"
+    ],
+    "browserAttemptGapLinePresent": true
+  }
+}

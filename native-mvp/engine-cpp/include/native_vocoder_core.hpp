@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace webrc::native {
 
@@ -53,6 +54,53 @@ private:
     NativeVocoderWaveform waveform_ = NativeVocoderWaveform::Saw;
 };
 
+// Authored, control-compatible oscillator colors. These five algorithms are
+// clean-room choices, not models of the manufacturer's factory waveforms.
+// The legacy oscillator and its enum remain unchanged.
+class NativeOfficialVocoderOscillator final {
+public:
+    [[nodiscard]] bool prepare(std::uint32_t sampleRate, float frequencyHz,
+                               unsigned int waveform) noexcept;
+    [[nodiscard]] bool setFrequency(float frequencyHz) noexcept;
+    [[nodiscard]] bool setWaveform(unsigned int waveform) noexcept;
+    void reset() noexcept;
+    [[nodiscard]] float processSample() noexcept;
+private:
+    NativeVocoderOscillator first_{};
+    NativeVocoderOscillator second_{};
+    std::uint32_t sampleRate_ = 0U;
+    unsigned int waveform_ = 0U;
+    float frequencyHz_ = 0.0f;
+    double vintageLow_ = 0.0;
+    double vintageCoefficient_ = 0.0;
+};
+
+// Shared authored tone tilt, modulator input gain and envelope-time laws.
+// Constructing/preparing this object never opts an old project into new DSP.
+class NativeVocoderOfficialShaping final {
+public:
+    void prepare(std::uint32_t sampleRate) noexcept;
+    void activate(std::string_view effect) noexcept;
+    [[nodiscard]] bool setParameter(std::string_view effect,
+                                    std::string_view key, float value) noexcept;
+    void reset() noexcept { toneLow_ = 0.0; }
+    [[nodiscard]] bool active() const noexcept { return active_; }
+    [[nodiscard]] float modulator(float sample) const noexcept;
+    [[nodiscard]] float tone(float sample) noexcept;
+    [[nodiscard]] float attackSeconds() const noexcept;
+    [[nodiscard]] float releaseSeconds() const noexcept;
+private:
+    bool active_ = false;
+    float tone_ = 0.0f;
+    float attack_ = 50.0f;
+    float release_ = 50.0f;
+    float sensitivityGain_ = 1.0f;
+    double toneCoefficient_ = 0.0;
+    double toneLow_ = 0.0;
+    double lowGain_ = 1.0;
+    double highGain_ = 1.0;
+};
+
 // Reusable analysis and carrier filterbank. Analyze one modulator sample, then
 // use its envelopes with an external per-band carrier (e.g. MIDI oscillators),
 // or filter a voice carrier through matching bands before synthesis. No method
@@ -63,6 +111,7 @@ public:
                                std::size_t bandCount = kNativeVocoderDefaultBands) noexcept;
     void reset() noexcept;
     void analyzeModulatorSample(float sample) noexcept;
+    [[nodiscard]] bool setEnvelopeTimes(float attackSeconds, float releaseSeconds) noexcept;
     [[nodiscard]] float filterCarrierSample(std::size_t band, float sample) noexcept;
     [[nodiscard]] float synthesizeSample(const float* bandCarriers,
                                          std::size_t carrierCount) const noexcept;
@@ -109,6 +158,10 @@ class NativeVocoderCore final {
 public:
     [[nodiscard]] bool prepare(std::uint32_t sampleRate) noexcept;
     [[nodiscard]] bool setConfig(const NativeVocoderConfig& config) noexcept;
+    // Supported manual controls: tone, attack, mod_sens and balance. Carrier
+    // bus selection/thru deliberately remain unsupported until real buses exist.
+    [[nodiscard]] bool setParameter(std::string_view parameterId, float value) noexcept;
+    [[nodiscard]] bool officialControlsActive() const noexcept { return official_.active(); }
     void reset() noexcept;
     [[nodiscard]] bool process(const float* modulator,
                                const float* voiceCarrier,
@@ -126,6 +179,7 @@ private:
 
     std::uint32_t sampleRate_ = 0U;
     NativeVocoderConfig config_{};
+    NativeVocoderOfficialShaping official_{};
     NativeVocoderFilterBank filterBank_{};
     std::array<NativeVocoderOscillator, kNativeVocoderMaxBands> oscillators_{};
     std::array<float, kNativeVocoderMaxBands> bandCarriers_{};

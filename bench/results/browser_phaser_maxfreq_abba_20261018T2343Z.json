@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_dispatch_same_process_abba",
+  "generatedAtUtc": "2026-10-18T23:43:26.180Z",
+  "repositoryHead": "b78c55d6bcbe95974cbf21afa86ef18f8761381a",
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 64,
+  "measuredBlocks": 2048,
+  "baselineSourcePath": "/tmp/rc505_fx_processor_b78c55d_9f44d47a.js",
+  "baselineSourceSha256": "9f44d47aa7a2989abd4c9d460c3255408e16278185ecae2a29e1df5b58b3d267",
+  "candidateSourcePath": "/workspace/shared/rc505-recovery-20261018/WEBRC505MKII/public/worklets/fx-processor.js",
+  "candidateSourceSha256": "cb3bbe30f5a9099c5756eaa215f24e3dd0451422516ff3e73f44ccd400497b6c",
+  "timingSource": "process.hrtime.bigint() around synchronous worklet process() in a Node VM; per-algorithm A/B/B/A run order.",
+  "exclusions": [
+    "No AudioWorklet scheduler, AudioContext, cross-thread scheduling, or physical endpoint.",
+    "One FX processor at a time; no 20-slot graph, LIVE_POLY nodes, rhythm engine, recording, or host scheduling.",
+    "Output exact-equivalence is asserted by tests/unit/browser-fx-scalar-dispatch.spec.ts, not inferred from benchmark RMS.",
+    "Results are diagnostic and cannot pass the Browser/native realtime, XRUN, quality, or hardware gates."
+  ],
+  "results": [
+    {
+      "algorithm": "phaser",
+      "order": [
+        "A1",
+        "B1",
+        "B2",
+        "A2"
+      ],
+      "baselineA1": {
+        "elapsedMilliseconds": 5234.410905,
+        "realtimeRatio": 0.8805752598209381,
+        "nanosecondsPerInputFrame": 19967.69296646118,
+        "finite": true,
+        "outputRms": 0.16005524770192014
+      },
+      "candidateB1": {
+        "elapsedMilliseconds": 5644.90678,
+        "realtimeRatio": 0.9496322212142945,
+        "nanosecondsPerInputFrame": 21533.610458374023,
+        "finite": true,
+        "outputRms": 0.16005524770192014
+      },
+      "candidateB2": {
+        "elapsedMilliseconds": 5522.860909,
+        "realtimeRatio": 0.9291006701923371,
+        "nanosecondsPerInputFrame": 21068.042407989502,
+        "finite": true,
+        "outputRms": 0.16005524770192014
+      },
+      "baselineA2": {
+        "elapsedMilliseconds": 5171.722312,
+        "realtimeRatio": 0.8700292738311768,
+        "nanosecondsPerInputFrame": 19728.554962158203,
+        "finite": true,
+        "outputRms": 0.16005524770192014
+      },
+      "baselineMeanRealtimeRatio": 0.8753022668260575,
+      "candidateMeanRealtimeRatio": 0.9393664457033157,
+      "relativeKernelTimeReductionPercent": -7.319092078849746,
+      "allRunsFinite": true
+    }
+  ]
+}

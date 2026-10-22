@@ -1,0 +1,220 @@
+{
+  "requestedBlocks": "512",
+  "generatedAt": "2026-10-21T18:30:22.356Z",
+  "scope": "Exact bundled worklet synchronous Node VM parity, not browser callback or hardware acceptance",
+  "sourceHashes": [
+    "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "a639965805e13daa6ee93d1d8ef2a5beaaa59b9c1c2ccf658707674683a6c0c8"
+  ],
+  "cases": [
+    {
+      "rate": 8000,
+      "channels": 1,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "b357efe5efbdbe75f2b4dd8ceb0b626dcbd3b798f3ec1ad2aa2a5c5a47b1728f",
+        "b357efe5efbdbe75f2b4dd8ceb0b626dcbd3b798f3ec1ad2aa2a5c5a47b1728f"
+      ]
+    },
+    {
+      "rate": 8000,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "b357efe5efbdbe75f2b4dd8ceb0b626dcbd3b798f3ec1ad2aa2a5c5a47b1728f",
+        "b357efe5efbdbe75f2b4dd8ceb0b626dcbd3b798f3ec1ad2aa2a5c5a47b1728f"
+      ]
+    },
+    {
+      "rate": 8000,
+      "channels": 2,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "1b0e6fbd6a684f4775738966272634291b1710baa933a87f87e87eb9c40d2800",
+        "1b0e6fbd6a684f4775738966272634291b1710baa933a87f87e87eb9c40d2800"
+      ]
+    },
+    {
+      "rate": 8000,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "1b0e6fbd6a684f4775738966272634291b1710baa933a87f87e87eb9c40d2800",
+        "1b0e6fbd6a684f4775738966272634291b1710baa933a87f87e87eb9c40d2800"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "3f7167b88befa3705f6657002a91261f17f4e52f764007d1d6ecc3560a27c046",
+        "3f7167b88befa3705f6657002a91261f17f4e52f764007d1d6ecc3560a27c046"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "3f7167b88befa3705f6657002a91261f17f4e52f764007d1d6ecc3560a27c046",
+        "3f7167b88befa3705f6657002a91261f17f4e52f764007d1d6ecc3560a27c046"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "b5f4ccf191e88bbbdf10db8c4cb6ce3cc86e2c6d76c364177a6f5db7a2dd8b61",
+        "b5f4ccf191e88bbbdf10db8c4cb6ce3cc86e2c6d76c364177a6f5db7a2dd8b61"
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "b5f4ccf191e88bbbdf10db8c4cb6ce3cc86e2c6d76c364177a6f5db7a2dd8b61",
+        "b5f4ccf191e88bbbdf10db8c4cb6ce3cc86e2c6d76c364177a6f5db7a2dd8b61"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "daa7e45fce658a8bb65cb540fe35210dc19aa491467c1a59a4fa86a514bb61c2",
+        "daa7e45fce658a8bb65cb540fe35210dc19aa491467c1a59a4fa86a514bb61c2"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "daa7e45fce658a8bb65cb540fe35210dc19aa491467c1a59a4fa86a514bb61c2",
+        "daa7e45fce658a8bb65cb540fe35210dc19aa491467c1a59a4fa86a514bb61c2"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "498edbe931a3fde9e88f77323bd3e056ae1feb153d1af8bafb17fd876632777d",
+        "498edbe931a3fde9e88f77323bd3e056ae1feb153d1af8bafb17fd876632777d"
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "498edbe931a3fde9e88f77323bd3e056ae1feb153d1af8bafb17fd876632777d",
+        "498edbe931a3fde9e88f77323bd3e056ae1feb153d1af8bafb17fd876632777d"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 1,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "ba151c984881afca189d8706832717fbc11b618bcaa3d45705d6d222fe13fb7b",
+        "ba151c984881afca189d8706832717fbc11b618bcaa3d45705d6d222fe13fb7b"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 1,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "ba151c984881afca189d8706832717fbc11b618bcaa3d45705d6d222fe13fb7b",
+        "ba151c984881afca189d8706832717fbc11b618bcaa3d45705d6d222fe13fb7b"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 2,
+      "mode": "default",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "493109399f9b19284e48bc1cde57d86a8767356a5c72f7ed1ac3f08b069e2c55",
+        "493109399f9b19284e48bc1cde57d86a8767356a5c72f7ed1ac3f08b069e2c55"
+      ]
+    },
+    {
+      "rate": 96000,
+      "channels": 2,
+      "mode": "extreme",
+      "frames": 65536,
+      "finite": true,
+      "maxDiff": 0,
+      "bitExact": true,
+      "hashes": [
+        "493109399f9b19284e48bc1cde57d86a8767356a5c72f7ed1ac3f08b069e2c55",
+        "493109399f9b19284e48bc1cde57d86a8767356a5c72f7ed1ac3f08b069e2c55"
+      ]
+    }
+  ],
+  "pass": true
+}

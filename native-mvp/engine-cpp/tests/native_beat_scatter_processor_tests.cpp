@@ -30,6 +30,18 @@ void fillStereoSignal(std::vector<float>& samples) {
     }
 }
 
+void testOfficialThirtySecondDomainIsExactAndOptIn() {
+    for (const unsigned int rate : {8000U, 48000U, 192000U}) {
+        NativeBeatScatterProcessor processor; assert(processor.prepare(rate));
+        NativeBeatScatterConfig config; config.bpm = 120.0f; config.sliceBeats = 0.125f;
+        assert(!processor.setConfig(config, 1U)); // unchanged legacy domain
+        config.allowThirtySecond = true; assert(processor.setConfig(config, 1U));
+        assert(processor.remainingFramesToBoundary() == rate / 16U);
+        config.bpm = 40.0f; config.sliceBeats = 4.0f;
+        assert(processor.setConfig(config, 1U)); assert(processor.remainingFramesToBoundary() == rate * 6U);
+    }
+}
+
 void testPrepareConfigRangesAndTempoBoundaries() {
     NativeBeatScatterProcessor processor;
     assert(!processor.prepare(7999U));
@@ -281,6 +293,7 @@ void testAllocationFreeVariableBlocksAndDeterminism() {
 } // namespace
 
 int main() {
+    testOfficialThirtySecondDomainIsExactAndOptIn();
     testPrepareConfigRangesAndTempoBoundaries();
     testSliceCaptureAndRepeatSegmentsChangeAudio();
     testControlsLatchAtBoundaryAndPitchIsAudible();

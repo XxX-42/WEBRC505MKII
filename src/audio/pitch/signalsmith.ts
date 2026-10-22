@@ -1,5 +1,9 @@
 import type { PitchMode } from './contracts';
 import createSignalsmithStretchWasm from './vendor/SignalsmithStretchWasm.mjs';
+import {
+  signalsmithLiveWasmLedger,
+  type SignalsmithLiveWasmLease,
+} from './signalsmithWasmBudget';
 
 export interface OfflinePitchOptions {
   readonly mode: 'HQ_RENDER';
@@ -40,6 +44,8 @@ export interface LivePolyPitchOptions {
 /** Options for a connected, streaming Signalsmith transpose effect. */
 export interface LiveInputTransposeOptions {
   readonly mode: 'LIVE_FX';
+  /** Opt-in extended bend endpoints; existing adapters retain their ±24 range. */
+  readonly pitchRange?: 'official-bend';
   readonly channels: 1 | 2;
   readonly semitones?: number;
   readonly tonalityLimitHz?: number;
@@ -49,6 +55,12 @@ export interface LiveInputTransposeNode extends AudioWorkletNode {
   readonly mode: 'LIVE_FX';
   readonly latencySamples: number;
   readonly latencySeconds: number;
+  /** Current reserved linear-memory capacity reported by this Worklet's WASM instance. */
+  readonly wasmHeapBytes: number;
+  /** Query the live instance; never treat this as browser RSS or allocator-used bytes. */
+  getWasmHeapBytes(): Promise<number>;
+  /** Disconnect and release the bounded Worklet lease after its disposal ACK. */
+  releaseWasmMemory(): Promise<void>;
   /** Schedule a validated input-pitch target in the output time domain. */
   /** Immediate retunes replace pending events by default; ordered queues pass false. */
   /**
@@ -82,6 +94,9 @@ export interface LivePolyPitchNode extends AudioWorkletNode {
   readonly mode: 'LIVE_POLY';
   readonly latencySamples: number;
   readonly latencySeconds: number;
+  readonly wasmHeapBytes: number;
+  getWasmHeapBytes(): Promise<number>;
+  releaseWasmMemory(): Promise<void>;
   /** Copies one mono or stereo loop into the Worklet-owned buffer queue. */
   loadBuffer(channels: readonly Float32Array[]): Promise<number>;
   /** Clears all buffered audio from the Worklet. */
@@ -94,6 +109,168 @@ export interface LivePolyPitchNode extends AudioWorkletNode {
 }
 
 const DEFAULT_CHUNK_FRAMES = 128;
+
+type ManagedSignalsmithNode = AudioWorkletNode & {
+  wasmHeapBytes(): Promise<unknown>;
+  disposeWasmMemory(): Promise<unknown>;
+  configure(config: { preset?: 'cheaper'; blockMs?: number; intervalMs?: number; splitComputation?: boolean }): Promise<unknown>;
+  latency(): Promise<unknown>;
+  start(when?: number, offset?: number, duration?: number, rate?: number, semitones?: number): Promise<unknown>;
+  stop(when?: number): Promise<unknown>;
+  schedule(change: Record<string, unknown>): Promise<unknown>;
+  addBuffers(buffers: Float32Array[], transfer?: Transferable[]): Promise<number>;
+  dropBuffers(toSeconds?: number): Promise<unknown>;
+};
+
+type BudgetedSignalsmithNode = Omit<ManagedSignalsmithNode, 'wasmHeapBytes'> & {
+  readonly wasmHeapBytes: number;
+  getWasmHeapBytes(): Promise<number>;
+  releaseWasmMemory(): Promise<void>;
+};
+
+function unwrapSignalsmithResult<T>(result: unknown, operation: string): T {
+  if (
+    result && typeof result === 'object' && '__signalsmithError' in result &&
+    typeof (result as { __signalsmithError?: unknown }).__signalsmithError === 'string'
+  ) {
+    throw new Error(`Signalsmith ${operation} failed: ${(result as { __signalsmithError: string }).__signalsmithError}`);
+  }
+  return result as T;
+}
+
+function attachWasmLease<Node extends ManagedSignalsmithNode>(
+  node: Node,
+  context: BaseAudioContext,
+  lease: SignalsmithLiveWasmLease,
+): Omit<Node, 'wasmHeapBytes'> & {
+  readonly wasmHeapBytes: number;
+  getWasmHeapBytes(): Promise<number>;
+  releaseWasmMemory(): Promise<void>;
+} {
+  let observedHeapBytes = 0;
+  let releasePromise: Promise<void> | null = null;
+  const remoteHeapQuery = node.wasmHeapBytes.bind(node);
+  const nativeDisconnect = node.disconnect.bind(node) as (...args: unknown[]) => void;
+  const releaseAfterClosedContext = () => {
+    if (context.state !== 'closed') return;
+    lease.release();
+    node.port.close();
+    context.removeEventListener('statechange', releaseAfterClosedContext);
+  };
+  context.addEventListener('statechange', releaseAfterClosedContext);
+
+  const getWasmHeapBytes = async (): Promise<number> => {
+    const reported = unwrapSignalsmithResult<number>(await remoteHeapQuery(), 'heap query');
+    if (observedHeapBytes === 0) lease.confirm(reported);
+    else lease.observe(reported);
+    observedHeapBytes = reported;
+    return reported;
+  };
+  const releaseWasmMemory = (): Promise<void> => {
+    if (releasePromise) return releasePromise;
+    nativeDisconnect();
+    if (context.state === 'closed') {
+      lease.release();
+      node.port.close();
+      context.removeEventListener('statechange', releaseAfterClosedContext);
+      releasePromise = Promise.resolve();
+      return releasePromise;
+    }
+    releasePromise = (async () => {
+      try {
+        const reported = unwrapSignalsmithResult<number>(await node.disposeWasmMemory(), 'dispose');
+        if (!Number.isSafeInteger(reported) || reported <= 0 || reported % 65536 !== 0) {
+          throw new RangeError(`Signalsmith dispose ACK returned invalid memory size: ${reported}`);
+        }
+        if (observedHeapBytes > 0 && reported < observedHeapBytes) {
+          throw new RangeError('Signalsmith dispose ACK reported a shrinking WASM memory capacity');
+        }
+        // The ACK confirms the processor dropped its instance. No new memory
+        // reservation is needed while retiring it, even if a bad module
+        // reported a capacity above its role ceiling before disposal.
+        lease.release();
+        node.port.close();
+        context.removeEventListener('statechange', releaseAfterClosedContext);
+      } catch (cause) {
+        // Do not free aggregate capacity until the processor confirms disposal.
+        // A closed AudioContext is the other reliable lifetime boundary.
+        const detail = cause instanceof Error ? cause.message : String(cause);
+        lease.markReleaseUnconfirmed(detail);
+        releaseAfterClosedContext();
+      }
+    })();
+    return releasePromise;
+  };
+
+  Object.defineProperties(node, {
+    wasmHeapBytes: { enumerable: true, get: () => observedHeapBytes },
+    getWasmHeapBytes: { enumerable: true, value: getWasmHeapBytes },
+    releaseWasmMemory: { enumerable: true, value: releaseWasmMemory },
+    disconnect: {
+      configurable: true,
+      value: (...args: unknown[]) => {
+        // All project call sites use disconnect() only when retiring a node.
+        // Targeted disconnects are graph edits and keep the WASM lease resident.
+        if (args.length === 0) void releaseWasmMemory();
+        else nativeDisconnect(...args);
+      },
+    },
+  });
+  node.addEventListener('processorerror', () => {
+    lease.markReleaseUnconfirmed('AudioWorklet processorerror; reservation held until dispose ACK or context close');
+  }, { once: true });
+  return node as unknown as Omit<Node, 'wasmHeapBytes'> & {
+    readonly wasmHeapBytes: number;
+    getWasmHeapBytes(): Promise<number>;
+    releaseWasmMemory(): Promise<void>;
+  };
+}
+
+async function createBudgetedSignalsmithNode(
+  context: BaseAudioContext,
+  role: 'LIVE_FX' | 'LIVE_POLY',
+  channels: number,
+  initialConfig: { preset?: 'cheaper'; blockMs?: number; intervalMs?: number; splitComputation?: boolean },
+): Promise<BudgetedSignalsmithNode> {
+  if (context.state === 'closed') throw new Error('Cannot allocate a Signalsmith pitch node on a closed AudioContext');
+  const lease = signalsmithLiveWasmLedger(context).reserve(role);
+  let managedNode: BudgetedSignalsmithNode | null = null;
+  try {
+    const { default: createNode } = await import('./vendor/SignalsmithStretch.mjs');
+    const rawNode = await createNode(context, {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [channels],
+      channelCount: channels,
+      channelCountMode: 'explicit',
+      ...(role === 'LIVE_FX' ? { channelInterpretation: 'speakers' as const } : {}),
+      processorOptions: {
+        signalsmithMaxWasmHeapBytes: lease.ceilingBytes,
+        signalsmithInitialConfig: initialConfig,
+      },
+    });
+    managedNode = attachWasmLease(rawNode as ManagedSignalsmithNode, context, lease);
+    await managedNode.getWasmHeapBytes();
+    return managedNode;
+  } catch (cause) {
+    if (managedNode) {
+      await managedNode.releaseWasmMemory();
+    } else {
+      // Worklet bootstrap failures before an AudioWorkletNode is returned do
+      // not expose an RPC handle. Keep the reservation until context shutdown
+      // rather than assume that a timed-out processor released its instance.
+      const message = cause instanceof Error ? cause.message : String(cause);
+      const releaseConfirmed = Boolean(cause && typeof cause === 'object' && 'wasmMemoryReleased' in cause && (cause as { wasmMemoryReleased?: unknown }).wasmMemoryReleased === true);
+      const releaseUnconfirmed = Boolean(cause && typeof cause === 'object' && 'wasmMemoryReleased' in cause && (cause as { wasmMemoryReleased?: unknown }).wasmMemoryReleased === false);
+      if (releaseConfirmed || !releaseUnconfirmed) {
+        lease.release();
+      } else {
+        lease.markReleaseUnconfirmed(`Worklet startup could not be confirmed: ${message}`);
+      }
+    }
+    throw cause;
+  }
+}
 
 function validateChannels(input: readonly Float32Array[]): number {
   if (input.length < 1 || input.length > 2) {
@@ -115,6 +292,12 @@ function validateRate(value: number): void {
 function validateSemitones(value: number): void {
   if (!Number.isFinite(value) || value < -24 || value > 24) {
     throw new RangeError('semitones must be between -24 and +24');
+  }
+}
+
+function validateContextSampleRate(context: BaseAudioContext): void {
+  if (!Number.isFinite(context.sampleRate) || context.sampleRate < 8000 || context.sampleRate > 192000) {
+    throw new RangeError('Signalsmith live sample rate must be between 8 kHz and 192 kHz');
   }
 }
 
@@ -218,24 +401,27 @@ export async function createLivePolyPitchNode(
   if ((options.mode as PitchMode) !== 'LIVE_POLY') {
     throw new Error('The live Worklet adapter only implements LIVE_POLY');
   }
+  validateContextSampleRate(context);
   validateRate(options.playbackRate ?? 1);
   const semitones = options.semitones ?? 0;
   validateSemitones(semitones);
+  const tonalityLimitHz = options.tonalityLimitHz ?? Math.min(8000, context.sampleRate * 0.45);
+  if (!Number.isFinite(tonalityLimitHz) || tonalityLimitHz <= 0 || tonalityLimitHz > context.sampleRate / 2) {
+    throw new RangeError('tonalityLimitHz must be positive, finite, and no greater than Nyquist');
+  }
 
-  const { default: createNode } = await import('./vendor/SignalsmithStretch.mjs');
-  const node = await createNode(context, {
-    numberOfInputs: 1,
-    numberOfOutputs: 1,
-    outputChannelCount: [options.channels],
-    channelCount: options.channels,
-    channelCountMode: 'explicit',
-  });
-  await node.configure({ preset: 'cheaper' });
-  const latencySeconds = await node.latency();
+  const node = await createBudgetedSignalsmithNode(context, 'LIVE_POLY', options.channels, { preset: 'cheaper' });
+  let latencySeconds: number;
+  try {
+    latencySeconds = unwrapSignalsmithResult<number>(await node.latency(), 'latency query');
+    if (!Number.isFinite(latencySeconds) || latencySeconds < 0) throw new RangeError('Signalsmith returned invalid LIVE_POLY latency');
+  } catch (cause) {
+    await node.releaseWasmMemory();
+    throw cause;
+  }
   const latencySamples = Math.round(latencySeconds * context.sampleRate);
   const initialSemitones = options.semitones ?? 0;
   const initialPlaybackRate = options.playbackRate ?? 1;
-  const tonalityLimitHz = options.tonalityLimitHz ?? 8000;
   let activeLoop: {
     readonly loopStartSeconds: number;
     readonly loopEndSeconds: number;
@@ -275,8 +461,8 @@ export async function createLivePolyPitchNode(
           throw new RangeError('semitones must be between -24 and +24');
         }
         const currentTonalityLimitHz = loop.tonalityLimitHz ?? tonalityLimitHz;
-        if (!Number.isFinite(currentTonalityLimitHz) || currentTonalityLimitHz <= 0) {
-          throw new RangeError('tonalityLimitHz must be positive and finite');
+        if (!Number.isFinite(currentTonalityLimitHz) || currentTonalityLimitHz <= 0 || currentTonalityLimitHz > context.sampleRate / 2) {
+          throw new RangeError('tonalityLimitHz must be positive, finite, and no greater than Nyquist');
         }
         const { inputOffsetSeconds, loopStartSeconds, loopEndSeconds } = loop;
         if (
@@ -352,32 +538,40 @@ export async function createLiveInputTransposeNode(
   options: LiveInputTransposeOptions,
 ): Promise<LiveInputTransposeNode> {
   if (options.mode !== 'LIVE_FX') throw new Error('Connected input transposition requires LIVE_FX mode');
+  validateContextSampleRate(context);
   if (options.channels !== 1 && options.channels !== 2) {
     throw new RangeError('Signalsmith pitch supports one or two live channels');
   }
   const semitones = options.semitones ?? 0;
-  validateSemitones(semitones);
+  const validateLiveSemitones = (value: number): void => {
+    if (options.pitchRange !== 'official-bend') return validateSemitones(value);
+    if (!Number.isFinite(value) || value < -36 || value > 48) {
+      throw new RangeError('official bend semitones must be between -36 and +48');
+    }
+  };
+  validateLiveSemitones(semitones);
   const tonalityLimitHz = options.tonalityLimitHz ?? Math.min(8000, context.sampleRate * 0.45);
   if (!Number.isFinite(tonalityLimitHz) || tonalityLimitHz <= 0 || tonalityLimitHz > context.sampleRate / 2) {
     throw new RangeError('tonalityLimitHz must be positive, finite, and no greater than Nyquist');
   }
 
-  const { default: createNode } = await import('./vendor/SignalsmithStretch.mjs');
-  const node = await createNode(context, {
-    numberOfInputs: 1,
-    numberOfOutputs: 1,
-    outputChannelCount: [options.channels],
-    channelCount: options.channels,
-    channelCountMode: 'explicit',
-    channelInterpretation: 'speakers',
-  });
   // The default/cheaper presets use 120–140 ms of processing latency. A 24 ms
   // STFT block with quarter-block hops stays responsive while preserving
   // pitch accuracy at both ends of the supported ±24-semitone range.
-  await node.configure({ blockMs: 24, intervalMs: 6, splitComputation: false });
-  const latencySeconds = await node.latency();
+  const node = await createBudgetedSignalsmithNode(context, 'LIVE_FX', options.channels, {
+    blockMs: 24,
+    intervalMs: 6,
+    splitComputation: false,
+  });
+  let latencySeconds: number;
+  try {
+    latencySeconds = unwrapSignalsmithResult<number>(await node.latency(), 'latency query');
+  } catch (cause) {
+    await node.releaseWasmMemory();
+    throw cause;
+  }
   if (!Number.isFinite(latencySeconds) || latencySeconds < 0 || latencySeconds > 0.025) {
-    node.disconnect();
+    await node.releaseWasmMemory();
     throw new Error('Signalsmith returned an unsupported live-FX latency');
   }
   const latencySamples = Math.round(latencySeconds * context.sampleRate);
@@ -401,7 +595,7 @@ export async function createLiveInputTransposeNode(
         nextFormantBaseHz = currentFormantBaseHz,
         nextFormantCompensation = currentFormantCompensation,
       ) => {
-        validateSemitones(nextSemitones);
+        validateLiveSemitones(nextSemitones);
         if (!Number.isFinite(nextFormantSemitones) || nextFormantSemitones < -12 || nextFormantSemitones > 12) {
           throw new RangeError('formantSemitones must be between -12 and +12');
         }
@@ -461,6 +655,11 @@ export async function createLiveInputTransposeNode(
     },
   });
 
-  await liveNode.setPitch(semitones);
-  return liveNode;
+  try {
+    await liveNode.setPitch(semitones);
+    return liveNode;
+  } catch (cause) {
+    await liveNode.releaseWasmMemory();
+    throw cause;
+  }
 }

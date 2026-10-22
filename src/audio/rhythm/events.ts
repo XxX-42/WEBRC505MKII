@@ -132,7 +132,7 @@ export function createCleanRoomPatternEvents(
   };
 
   const style = `${metadata.genre} ${metadata.pattern}`.toUpperCase();
-  const electronic = /TECHNO|DANCE|ELCTRO|DRUM&BASS|808|HIPHOP|ELECTRO/.test(style);
+  const electronic = /TECHNO|DANCE|ELCTRO|DRUM&BASS|808|HIPHOP|ELECTRO|METAL/.test(style);
   const world = /CONGA|BOSSA|CAJON|WORLD|TRAD/.test(style);
   const hatsPerBeat = variation === "C" ? 1 : variation === "D" ? 4 : 2;
 
@@ -182,6 +182,32 @@ export function createCleanRoomPatternEvents(
   }
 
   return events.sort((left, right) => left.frame - right.frame || left.bar - right.bar || left.step - right.step || left.instrument.localeCompare(right.instrument));
+}
+
+/**
+ * Build the one-bar event template shared by Browser playback and parity tools.
+ * The legacy GUIDE row 210 is intentionally rendered as the existing clean-room
+ * kick/snare click, regardless of the selected variation/section.
+ */
+export function createRhythmRuntimeEventTemplate(
+  pattern: RhythmPatternMetadata | number | string,
+  options: CleanRoomPatternOptions,
+): CleanRoomDrumEvent[] {
+  const metadata = resolvePattern(pattern);
+  const isGuideClick = metadata.globalIndex === 210;
+  const events = createCleanRoomPatternEvents(metadata, {
+    ...options,
+    variation: isGuideClick ? "A" : options.variation,
+    section: isGuideClick ? "main" : options.section,
+  });
+  if (!isGuideClick) return events;
+
+  const beatTicks = events.filter((event) => event.instrument === "closedHat" && event.step % 4 === 0);
+  return beatTicks.map((event, index) => ({
+    ...event,
+    instrument: index === 0 ? "kick" : "snare",
+    velocity: index === 0 ? 112 : 86,
+  }));
 }
 
 function resolvePattern(pattern: RhythmPatternMetadata | number | string): RhythmPatternMetadata {

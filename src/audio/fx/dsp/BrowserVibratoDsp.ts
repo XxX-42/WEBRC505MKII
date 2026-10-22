@@ -69,6 +69,8 @@ export class BrowserVibratoDsp {
   private readonly delayMs: LinearParameterSmoother;
   private readonly parameterRampFrames: number;
   private phase = 0;
+  private officialColor = 0;
+  private officialRateActive = false;
   private outputLeft = 0;
   private outputRight = 0;
 
@@ -103,7 +105,7 @@ export class BrowserVibratoDsp {
   }
 
   processSample(inputLeft: number, inputRight: number): void {
-    const rate = clamp(this.rateHz.next(), MIN_RATE_HZ, MAX_RATE_HZ);
+    const rate = clamp(this.rateHz.next(), this.officialRateActive ? 0 : MIN_RATE_HZ, this.officialRateActive ? 160 : MAX_RATE_HZ);
     const depth = clamp(this.depthPercent.next() / 100, 0, 1) * MAX_MODULATION_FACTOR;
     const baseDelaySamples = clamp(this.delayMs.next(), MIN_DELAY_MS, MAX_DELAY_MS) * this.sampleRate / 1000;
     const left = this.processChannel(inputLeft, 0, this.phase, baseDelaySamples, depth);
@@ -112,6 +114,11 @@ export class BrowserVibratoDsp {
     this.outputRight = right;
     this.phase += TWO_PI * rate / this.sampleRate;
     if (this.phase >= TWO_PI) this.phase -= TWO_PI;
+  }
+
+  setOfficialParameters(parameters: { color?: number; rateHz?: number }): void {
+    if (Number.isFinite(parameters.color)) this.officialColor = clamp(parameters.color as number, 0, 100) / 100;
+    if (Number.isFinite(parameters.rateHz)) { this.officialRateActive = true; this.rateHz.setTarget(clamp(parameters.rateHz as number, 0, 160), this.parameterRampFrames); }
   }
 
   reset(): void {
@@ -130,7 +137,8 @@ export class BrowserVibratoDsp {
     const buffer = this.buffers[channel];
     const writeIndex = this.writeIndices[channel] ?? 0;
     const delaySamples = clamp(
-      baseDelaySamples * (1 + depth * Math.sin(phase)),
+      baseDelaySamples * (1 + depth * ((1 - this.officialColor * 0.5) * Math.sin(phase)
+        + this.officialColor * 0.3 * Math.sin(2 * phase + 0.4) + this.officialColor * 0.2 * Math.sin(3 * phase + 0.8))),
       2,
       buffer.length - 6,
     );

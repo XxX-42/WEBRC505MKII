@@ -1,0 +1,20 @@
+--- /tmp/rc505-browser-perf/clamp-core-base.ts	2026-10-21 04:51:07.074993795 -0700
++++ /tmp/rc505-browser-perf/clamp-core-fast.ts	2026-10-21 04:51:52.880945772 -0700
+@@ -914,6 +914,10 @@
+ }
+ 
+ function clamp(value: number, minimum: number, maximum: number): number {
++  // The common in-range path is already its own clamped value. Keep zero on
++  // the original path to preserve Math.min/max signed-zero behavior; NaN,
++  // reversed bounds and out-of-range values also take that exact fallback.
++  if (value !== 0 && value >= minimum && value <= maximum) return value;
+   return Math.max(minimum, Math.min(maximum, value));
+ }
+ 
+@@ -3639,3 +3643,6 @@
+     return wet;
+   }
+ }
++
++// Export the numerical contract for direct exceptional-value regression tests.
++export { clamp as clampBrowserFxValue };

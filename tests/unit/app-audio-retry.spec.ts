@@ -12,8 +12,14 @@ describe('App audio startup', () => {
     const status = { mode, bridgeAvailable: mode === 'browser', engineRunning: false, ready: false,
       message: mode.toUpperCase() + ' AUDIO NOT INITIALIZED', lastError: '', inputReady: false, inputError: '' };
     let listener: ((value: typeof status) => void) | undefined;
+    let recoveryPending = false;
+    let contextClosed = false;
     const engine = {
       getMode: () => mode, getUiStatus: () => ({ ...status }),
+      isBrowserRecoveryAwaitingUserResume: () => recoveryPending,
+      isBrowserContextClosed: () => contextClosed,
+      recoverClosedBrowserAudioContext: vi.fn(async () => undefined),
+      resumeRecoveredBrowserOutputFromUserActivation: vi.fn(async () => undefined),
       getCapabilities: () => ({ modeSummary: 'TEST AUDIO CAPABILITIES' }),
       onStatusChange: (callback: typeof listener) => { listener = callback; return () => undefined; },
       init: vi.fn(async () => { status.ready = true; status.engineRunning = true; status.message = mode.toUpperCase() + ' AUDIO READY'; listener?.({ ...status }); }),
@@ -25,7 +31,12 @@ describe('App audio startup', () => {
     const App = (await import('../../src/App.vue')).default;
     wrapper = mount(App, { global: { stubs: { Teleport: true, WebToolLayer: true, ClassicShell: true, TechShell: true } } });
     await flushPromises();
-    return { engine, status, emitStatus: () => listener?.({ ...status }) };
+    return {
+      engine, status,
+      emitStatus: () => listener?.({ ...status }),
+      setRecoveryPending: (value: boolean) => { recoveryPending = value; },
+      setContextClosed: (value: boolean) => { contextClosed = value; },
+    };
   }
 
   it('waits for a user gesture before Browser initialization and connects its input', async () => {
@@ -62,6 +73,42 @@ describe('App audio startup', () => {
     await wrapper!.get('[data-testid="start-audio"]').trigger('click'); await flushPromises();
     expect(engine.prepareInputFromUserActivation).toHaveBeenCalledTimes(2);
     expect(wrapper!.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it('keeps retries output-only after recovered context resumes but output setup fails', async () => {
+    const { engine, status, setRecoveryPending } = await setup();
+    setRecoveryPending(true);
+    engine.resumeRecoveredBrowserOutputFromUserActivation
+      .mockRejectedValueOnce(new Error('Recovered output worklet setup failed'));
+
+    await wrapper!.get('[data-testid="start-audio"]').trigger('click'); await flushPromises();
+    expect(engine.resumeRecoveredBrowserOutputFromUserActivation).toHaveBeenCalledTimes(1);
+    expect(engine.init).not.toHaveBeenCalled();
+    expect(engine.prepareInputFromUserActivation).not.toHaveBeenCalled();
+    expect(wrapper!.get('[role="alert"]').text()).toContain('Recovered output worklet setup failed');
+
+    // The output-only recovery marker remains active until initialization
+    // succeeds, so another click cannot take the ordinary microphone path.
+    setRecoveryPending(true);
+    engine.resumeRecoveredBrowserOutputFromUserActivation.mockImplementationOnce(async () => {
+      setRecoveryPending(false);
+      status.ready = true;
+      status.engineRunning = true;
+    });
+    await wrapper!.get('[data-testid="start-audio"]').trigger('click'); await flushPromises();
+    expect(engine.resumeRecoveredBrowserOutputFromUserActivation).toHaveBeenCalledTimes(2);
+    expect(engine.init).not.toHaveBeenCalled();
+    expect(engine.prepareInputFromUserActivation).not.toHaveBeenCalled();
+    expect(wrapper!.find('[role="alert"]').exists()).toBe(false);
+  });
+
+  it('routes a closed recovered candidate to the recovery factory, not ordinary init', async () => {
+    const { engine, setContextClosed } = await setup();
+    setContextClosed(true);
+    await wrapper!.get('[data-testid="start-audio"]').trigger('click'); await flushPromises();
+    expect(engine.recoverClosedBrowserAudioContext).toHaveBeenCalledTimes(1);
+    expect(engine.init).not.toHaveBeenCalled();
+    expect(engine.prepareInputFromUserActivation).not.toHaveBeenCalled();
   });
 
   it('initializes Native without requesting browser microphone access', async () => {

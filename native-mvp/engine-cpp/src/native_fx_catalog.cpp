@@ -1,4 +1,11 @@
 #include "native_fx_catalog.hpp"
+#include "native_official_fx.hpp"
+#include "native_official_wet_path.hpp"
+#include "native_official_counted_delay.hpp"
+#include "native_official_reverse_reverb.hpp"
+#include "native_official_envelope.hpp"
+#include "native_official_slicer.hpp"
+#include "native_official_tape_roll.hpp"
 
 #include "native_autopan_processor.hpp"
 #include "native_chorus_processor.hpp"
@@ -19,6 +26,7 @@
 #include "native_tape_echo_processor.hpp"
 #include "native_reverse_delay_processor.hpp"
 #include "native_vinyl_flick_processor.hpp"
+#include "looper_core.hpp"
 #include "native_poly_pitch_processor.hpp"
 #include "native_auto_riff_core.hpp"
 #include "native_hrm_auto_processor.hpp"
@@ -75,6 +83,7 @@ constexpr std::string_view kSlowGearId{"slow_gear"};
 constexpr std::string_view kPatternSlicerId{"pattern_slicer"};
 constexpr std::string_view kStepSlicerId{"step_slicer"};
 constexpr std::string_view kVinylFlickId{"vinyl_flick"};
+constexpr std::string_view kBeatShiftId{"beat_shift"};
 constexpr std::string_view kSynthId{"synth"};
 constexpr std::string_view kG2BId{"g2b"};
 constexpr std::string_view kTransposeId{"transpose"};
@@ -89,10 +98,78 @@ constexpr std::string_view kHrmAutoMId{"hrm_auto_m"};
 constexpr std::string_view kRobotId{"robot"};
 constexpr std::string_view kElectricId{"electric"};
 constexpr double kTwoPi = 6.28318530717958647692;
+constexpr double kFilterResonancePercentCurveExponent = 2.117350426267045;
+
+[[nodiscard]] float filterResonancePercentToQ(float percent) noexcept {
+    const double normalized = static_cast<double>(std::clamp(percent, 0.0f, 100.0f)) / 100.0;
+    if (percent == 15.0f) return 0.70710678f;
+    return static_cast<float>(0.5 + 11.5 * std::pow(normalized, kFilterResonancePercentCurveExponent));
+}
+
+constexpr std::size_t kRingModTriangleTableSize = 2048U;
+constexpr std::array<unsigned int, 6U> kRingModTriangleHarmonicTiers{{63U, 31U, 15U, 7U, 3U, 1U}};
+
+struct RingModTriangleTables final {
+    std::array<std::array<float, kRingModTriangleTableSize>, kRingModTriangleHarmonicTiers.size()> tables{};
+
+    RingModTriangleTables() noexcept {
+        for (std::size_t tier = 0U; tier < tables.size(); ++tier) {
+            auto& table = tables[tier];
+            const unsigned int maximumHarmonic = kRingModTriangleHarmonicTiers[tier];
+            float peak = 0.0f;
+            for (std::size_t sample = 0U; sample < table.size(); ++sample) {
+                const double phase = kTwoPi * static_cast<double>(sample) / static_cast<double>(table.size());
+                double value = 0.0;
+                for (unsigned int harmonic = 1U; harmonic <= maximumHarmonic; harmonic += 2U) {
+                    const double alternating = (((harmonic - 1U) / 2U) % 2U) == 0U ? 1.0 : -1.0;
+                    value += alternating * std::sin(static_cast<double>(harmonic) * phase) /
+                        (static_cast<double>(harmonic) * static_cast<double>(harmonic));
+                }
+                table[sample] = static_cast<float>(value);
+                peak = std::max(peak, std::fabs(table[sample]));
+            }
+            if (peak > 0.0f) {
+                for (float& sample : table) sample /= peak;
+            }
+        }
+    }
+};
+
+// Fixed-storage tables are generated during program initialization, never in
+// the Native audio callback. Each tier is the triangle Fourier series truncated
+// so its highest partial stays below 0.45 of the actual sample rate.
+const RingModTriangleTables kRingModTriangleTables{};
+
+[[nodiscard]] float ringModTriangle(double phase, double sampleRate, float carrierHz) noexcept {
+    const double harmonicBudget = (sampleRate * 0.45) / std::max(static_cast<double>(carrierHz), 1.0e-9);
+    std::size_t tier = kRingModTriangleHarmonicTiers.size() - 1U;
+    for (std::size_t index = 0U; index < kRingModTriangleHarmonicTiers.size(); ++index) {
+        if (static_cast<double>(kRingModTriangleHarmonicTiers[index]) <= harmonicBudget) {
+            tier = index;
+            break;
+        }
+    }
+    const auto& table = kRingModTriangleTables.tables[tier];
+    const double wrappedPhase = phase - std::floor(phase / kTwoPi) * kTwoPi;
+    const double position = wrappedPhase / kTwoPi * static_cast<double>(table.size());
+    const auto baseIndex = static_cast<std::size_t>(position);
+    const double fraction = position - static_cast<double>(baseIndex);
+    const float first = table[baseIndex % table.size()];
+    const float second = table[(baseIndex + 1U) % table.size()];
+    return static_cast<float>(static_cast<double>(first) +
+        (static_cast<double>(second) - static_cast<double>(first)) * fraction);
+}
 
 constexpr NativeEffectParameterDescriptor kFilterParameters[] = {
     {"cutoff_hz", "Cutoff", 20.0f, 20000.0f, 1000.0f, 15U, false},
     {"q", "Resonance", 0.5f, 12.0f, 0.70710678f, 15U, false},
+};
+constexpr NativeEffectParameterDescriptor kLowHighFilterParameters[] = {
+    {"cutoff_hz", "Cutoff", 20.0f, 20000.0f, 1000.0f, 15U, false},
+    {"resonance_percent", "Resonance (%)", 0.0f, 100.0f, 15.0f, 15U, false},
+};
+constexpr NativeEffectParameterDescriptor kLegacyFilterQAliases[] = {
+    {"q", "Legacy Q compatibility alias", 0.5f, 12.0f, 0.70710678f, 15U, false},
 };
 constexpr float kPhaserStageValues[] = {4.0f, 8.0f, 12.0f};
 constexpr NativeEffectParameterDescriptor kPhaserParameters[] = {
@@ -293,8 +370,11 @@ constexpr NativeEffectParameterDescriptor kTremoloParameters[] = {
         sizeof(kTremoloWaveformValues) / sizeof(kTremoloWaveformValues[0])},
     {"wet_mix", "Wet", 0.0f, 1.0f, 1.0f, 10U, false},
 };
+constexpr float kRingModWaveformValues[] = {0.0f, 1.0f};
 constexpr NativeEffectParameterDescriptor kRingModParameters[] = {
-    {"carrier_hz", "Carrier", 20.0f, 20000.0f, 440.0f, 20U, false},
+    {"carrier_hz", "Carrier", 20.0f, 8000.0f, 440.0f, 20U, false},
+    {"waveform", "Waveform", 0.0f, 1.0f, 0.0f, 20U, true, kRingModWaveformValues,
+        sizeof(kRingModWaveformValues) / sizeof(kRingModWaveformValues[0])},
     {"depth", "Depth", 0.0f, 1.0f, 1.0f, 20U, false},
     {"wet_mix", "Wet", 0.0f, 1.0f, 1.0f, 10U, false},
 };
@@ -534,9 +614,9 @@ constexpr NativeEffectParameterDescriptor kOscBotParameters[] = {
     {"mix", "Effect mix", 0.0f, 100.0f, 70.0f, 10U, false},
 };
 const NativeEffectDescriptor kCatalog[] = {
-    {kLowPassId, "Low-pass filter", kFilterParameters, sizeof(kFilterParameters) / sizeof(kFilterParameters[0])},
+    {kLowPassId, "Low-pass filter", kLowHighFilterParameters, sizeof(kLowHighFilterParameters) / sizeof(kLowHighFilterParameters[0])},
     {kBandPassId, "Band-pass filter", kFilterParameters, sizeof(kFilterParameters) / sizeof(kFilterParameters[0])},
-    {kHighPassId, "High-pass filter", kFilterParameters, sizeof(kFilterParameters) / sizeof(kFilterParameters[0])},
+    {kHighPassId, "High-pass filter", kLowHighFilterParameters, sizeof(kLowHighFilterParameters) / sizeof(kLowHighFilterParameters[0])},
     {kPhaserId, "Phaser", kPhaserParameters, sizeof(kPhaserParameters) / sizeof(kPhaserParameters[0])},
     {kFlangerId, "FLANGER", kFlangerParameters, sizeof(kFlangerParameters) / sizeof(kFlangerParameters[0])},
     {kDynamicsId, "DYNAMICS", kDynamicsParameters, sizeof(kDynamicsParameters) / sizeof(kDynamicsParameters[0])},
@@ -573,7 +653,7 @@ const NativeEffectDescriptor kCatalog[] = {
     {kAutoPanId, "AUTO PAN", kAutoPanParameters,
         sizeof(kAutoPanParameters) / sizeof(kAutoPanParameters[0])},
     {kManualPanId, "MANUAL PAN", kManualPanParameters,
-        sizeof(kManualPanParameters) / sizeof(kManualPanParameters[0]), false, true, 30},
+        sizeof(kManualPanParameters) / sizeof(kManualPanParameters[0]), true, true, 30},
     {kChorusId, "Chorus", kChorusParameters,
         sizeof(kChorusParameters) / sizeof(kChorusParameters[0])},
     {kTremoloId, "Tremolo", kTremoloParameters,
@@ -630,6 +710,368 @@ const NativeEffectDescriptor kCatalog[] = {
         sizeof(kRobotParameters) / sizeof(kRobotParameters[0]), true, true, 16},
     {kElectricId, "ELECTRIC (clean-room voice character)", kElectricParameters,
         sizeof(kElectricParameters) / sizeof(kElectricParameters[0]), true, true, 17},
+    {kBeatShiftId, "BEAT SHIFT (source-aware)", nullptr, 0U, false, true, 52},
+};
+
+// Verified manual-interface controls; clean-room DSP, hardware parity unverified.
+constexpr NativeEffectParameterDescriptor kOfficialBeatRepeatParameters[] = {
+    {"official_type", "TYPE", 0, 2, 0, 10U, false},
+    {"official_length", "LENGTH", -1000, -0.25f, -1, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialBeatScatterParameters[] = {
+    {"official_length", "LENGTH", -1000, -0.125f, -1, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialBeatShiftParameters[] = {
+    {"official_type", "TYPE", 0, 1, 0, 5U, false},
+    {"official_shift", "SHIFT", -1000, -0.25f, -1, 5U, false},
+};
+// Unknown PDF defaults (STEP RATE and
+// DIST TYPE) use documented application defaults, OFF and VOCAL respectively.
+constexpr NativeEffectParameterDescriptor kOfficialFilterParameters[] = {
+    {"official_rate", "RATE", -16.0f, 100.0f, -1.0f, 20U, false},
+    {"official_depth", "DEPTH", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_resonance", "RESONANCE", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_cutoff", "CUTOFF", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_step_rate", "STEP RATE", -1000.0f, 100.0f, -1000.0f, 20U, false},
+};
+constexpr float kOfficialPhaserStages[] = {4.0f, 8.0f, 12.0f, -1.0f};
+constexpr NativeEffectParameterDescriptor kOfficialPhaserParameters[] = {
+    {"official_rate", "RATE", -16.0f, 100.0f, -1.0f, 20U, false},
+    {"official_depth", "DEPTH", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_resonance", "RESONANCE", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_manual", "MANUAL", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_step_rate", "STEP RATE", -1000.0f, 100.0f, -1000.0f, 20U, false},
+    {"official_d_level", "D.LEVEL", 0.0f, 100.0f, 100.0f, 10U, false},
+    {"official_e_level", "E.LEVEL", 0.0f, 100.0f, 50.0f, 10U, false},
+    {"official_stage", "STAGE", -1.0f, 12.0f, 8.0f, 40U, true, kOfficialPhaserStages, 4U},
+};
+constexpr NativeEffectParameterDescriptor kOfficialFlangerParameters[] = {
+    {"official_rate", "RATE", -16.0f, 100.0f, -1.0f, 20U, false},
+    {"official_depth", "DEPTH", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_resonance", "RESONANCE", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_manual", "MANUAL", 0.0f, 100.0f, 50.0f, 20U, false},
+    {"official_step_rate", "STEP RATE", -1000.0f, 100.0f, -1000.0f, 20U, false},
+    {"official_d_level", "D.LEVEL", 0.0f, 100.0f, 100.0f, 10U, false},
+    {"official_e_level", "E.LEVEL", 0.0f, 100.0f, 50.0f, 10U, false},
+    {"official_separation", "SEPARATION", 0.0f, 100.0f, 0.0f, 20U, false},
+};
+constexpr float kOfficialDistTypes[] = {0, 1, 2, 3, 4, 5};
+constexpr NativeEffectParameterDescriptor kOfficialDistParameters[] = {
+    {"official_type", "TYPE", 0, 5, 0, 20U, true, kOfficialDistTypes, 6U},
+    {"official_tone", "TONE", -50, 50, 0, 20U, false},
+    {"official_dist", "DIST", 0, 100, 50, 20U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 0, 10U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 100, 10U, false},
+};
+constexpr float kOfficialEqQValues[] = {0.5f, 1, 2, 4, 8, 16};
+constexpr NativeEffectParameterDescriptor kOfficialEqParameters[] = {
+    {"official_lo", "LO", -20, 20, 0, 20U, false},
+    {"official_lo_mid", "LO-MID", -20, 20, 0, 20U, false},
+    {"official_lo_mid_freq", "LO-MID FREQ", 20, 10000, 800, 20U, false},
+    {"official_lo_mid_q", "LO-MID Q", 0.5f, 16, 1, 20U, true, kOfficialEqQValues, 6U},
+    {"official_hi_mid", "HI-MID", -20, 20, 0, 20U, false},
+    {"official_hi_mid_freq", "HI-MID FREQ", 20, 10000, 3150, 20U, false},
+    {"official_hi_mid_q", "HI-MID Q", 0.5f, 16, 1, 20U, true, kOfficialEqQValues, 6U},
+    {"official_high", "HIGH", -20, 20, 0, 20U, false},
+    {"official_level", "LEVEL", 0, 100, 50, 10U, false},
+};
+
+constexpr float kOfficialLoFiBits[] = {-1000, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+constexpr float kOfficialLoFiDivisors[] = {-1000, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
+constexpr NativeEffectParameterDescriptor kOfficialLoFiParameters[] = {
+    {"official_bitdepth", "BITDEPTH", -1000, 31, 8, 20U, true, kOfficialLoFiBits, 32U},
+    {"official_samplerate", "SAMPLERATE", -1000, 32, 4, 20U, true, kOfficialLoFiDivisors, 32U},
+    {"official_balance", "BALANCE", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialRadioParameters[] = {
+    {"official_lo_fi", "LO-FI", 1, 10, 5, 20U, false},
+    {"official_level", "LEVEL", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialRingParameters[] = {
+    {"official_frequency", "FREQUENCY", 0, 100, 50, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialSustainerParameters[] = {
+    {"official_attack", "ATTACK", 0, 100, 50, 20U, false},
+    {"official_release", "RELEASE", 0, 100, 50, 20U, false},
+    {"official_level", "LEVEL", 0, 100, 50, 10U, false},
+    {"official_low_gain", "LOW GAIN", -20, 20, 0, 20U, false},
+    {"official_hi_gain", "HI GAIN", -20, 20, 0, 20U, false},
+    {"official_sustain", "SUSTAIN", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialSlowGearParameters[] = {
+    {"official_sens", "SENS", 0, 100, 50, 20U, false},
+    {"official_rise_time", "RISE TIME", 0, 100, 50, 20U, false},
+    {"official_level", "LEVEL", 0, 100, 50, 10U, false},
+};
+
+constexpr NativeEffectParameterDescriptor kOfficialTremoloParameters[] = {
+    {"official_rate", "RATE", -16, 100, 85, 20U, false},
+    {"official_depth", "DEPTH", 0, 100, 50, 20U, false},
+    {"official_waveform", "WAVEFORM", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialAutoPanParameters[] = {
+    {"official_rate", "RATE", -16, 100, -1, 20U, false},
+    {"official_depth", "DEPTH", 0, 100, 50, 20U, false},
+    {"official_waveform", "WAVEFORM", 0, 100, 50, 20U, false},
+    {"official_init_phase", "INIT PHASE", 0, 180, 0, 20U, false},
+    {"official_step_rate", "STEP RATE", -1000, 100, -1000, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialManualPanParameters[] = {
+    {"official_position", "POSITION", -50, 50, 0, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialVibratoParameters[] = {
+    {"official_rate", "RATE", -16, 100, 50, 20U, false},
+    {"official_depth", "DEPTH", 0, 100, 50, 20U, false},
+    {"official_color", "COLOR", 0, 100, 50, 20U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 50, 10U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialReverbParameters[] = {
+    {"official_time", "TIME", 0.1f, 10, 3, 40U, false},
+    {"official_pre_delay", "PRE DELAY", 0, 500, 500, 20U, false},
+    {"official_density", "DENSITY", 1, 10, 5, 20U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 100, 10U, false},
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialGateReverbParameters[] = {
+    {"official_time", "TIME", 0.1f, 10, 3, 40U, false},
+    {"official_pre_delay", "PRE DELAY", 0, 500, 500, 20U, false},
+    {"official_threshold", "THRESHOLD", 0, 100, 50, 20U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 100, 10U, false},
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 50, 10U, false},
+};
+
+constexpr NativeEffectParameterDescriptor kOfficialCountedDelayParameters[] = {
+    {"official_time", "TIME", -2, 2000, 200, 15U, false},
+    {"official_feedback", "FEEDBACK (repeat count)", 1, 16, 16, 0U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 100, 10U, false},
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 120, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialModDelayParameters[] = {
+    {"official_time", "TIME", -2, 2000, 200, 15U, false},
+    {"official_feedback", "FEEDBACK (repeat count)", 1, 16, 16, 0U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 100, 10U, false},
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 120, 50, 10U, false},
+    {"official_mod_depth", "MOD DEPTH", 0, 100, 50, 20U, false},
+};
+
+constexpr float kOfficialVariantValues[] = {1.0f, 2.0f};
+constexpr NativeEffectParameterDescriptor kOfficialTapeEchoParameters[] = {
+    {"official_variant", "Algorithm variant (routing)", 1, 2, 1, 0U, true, kOfficialVariantValues, 2U},
+    {"official_repeat_rate", "REPEAT RATE", -2, 2000, 50, 20U, false},
+    {"official_intensity", "INTENSITY", 0, 100, 50, 20U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 100, 10U, false},
+    {"official_bass", "BASS", -50, 50, 0, 20U, false},
+    {"official_treble", "TREBLE", -50, 50, 0, 20U, false},
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 120, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialRollParameters[] = {
+    {"official_variant", "Algorithm variant (routing)", 1, 2, 1, 0U, true, kOfficialVariantValues, 2U},
+    {"official_time", "TIME", -2, 1000, -1, 20U, false},
+    {"official_feedback", "FEEDBACK (repeat count)", 1, 100, 50, 20U, false},
+    {"official_repeat", "REPEAT", -1000, 100, 50, 20U, false},
+    {"official_roll", "ROLL (software fallback)", 0, 4, 0, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialPatternSlicerParameters[] = {
+    {"official_rate", "RATE", -16, 100, -1, 20U, false},
+    {"official_duty", "DUTY", 1, 99, 50, 20U, false},
+    {"official_attack", "ATTACK", 0, 100, 35, 20U, false},
+    {"official_depth", "DEPTH", 0, 100, 100, 20U, false},
+    {"official_comp_threshold", "COMP THRESHOLD", -30, 0, -30, 20U, false},
+    {"official_comp_gain", "COMP GAIN", 0, 20, 2, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialStepSlicerParameters[] = {
+    {"official_rate", "RATE", -16, 100, -1, 20U, false},
+    {"official_step_max", "STEP MAX", 1, 16, 16, 20U, false},
+    {"official_step_length", "STEP LENGTH", 1, 100, 50, 20U, false},
+    {"official_depth", "DEPTH", 0, 100, 100, 20U, false},
+    {"official_comp_threshold", "COMP THRESHOLD", -30, 0, -30, 20U, false},
+    {"official_comp_gain", "COMP GAIN", 0, 20, 6, 20U, false},
+    {"official_step_level_1", "STEP 1 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_2", "STEP 2 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_3", "STEP 3 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_4", "STEP 4 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_5", "STEP 5 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_6", "STEP 6 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_7", "STEP 7 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_8", "STEP 8 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_9", "STEP 9 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_10", "STEP 10 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_11", "STEP 11 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_12", "STEP 12 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_13", "STEP 13 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_14", "STEP 14 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_15", "STEP 15 LEVEL", 0, 100, 100, 20U, false},
+    {"official_step_level_16", "STEP 16 LEVEL", 0, 100, 100, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialFreezeParameters[] = {
+    {"official_attack", "ATTACK", 0, 100, 30, 20U, false},
+    {"official_release", "RELEASE", 0, 100, 30, 20U, false},
+    {"official_decay", "DECAY", 0, 100, 30, 20U, false},
+    {"official_sustain", "SUSTAIN", 0, 100, 30, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialTwistParameters[] = {
+    {"official_release", "RELEASE (software fallback)", 0, 1, 0, 20U, false},
+    {"official_rise", "RISE", 0, 100, 50, 20U, false},
+    {"official_fall", "FALL", 0, 100, 50, 20U, false},
+    {"official_level", "LEVEL", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialPreampParameters[] = {
+    {"official_amp_type", "AMP TYPE", 0, 8, 3, 20U, false},
+    {"official_spk_type", "SPK TYPE", 0, 8, 1, 20U, false},
+    {"official_gain", "GAIN", 0, 120, 50, 20U, false},
+    {"official_t_comp", "T-COMP", -10, 10, 0, 20U, false},
+    {"official_bass", "BASS", 0, 100, 50, 20U, false},
+    {"official_middle", "MIDDLE", 0, 100, 50, 20U, false},
+    {"official_treble", "TREBLE", 0, 100, 50, 20U, false},
+    {"official_presence", "PRESENCE", 0, 100, 50, 20U, false},
+    {"official_mic_type", "MIC TYPE", 0, 4, 0, 20U, false},
+    {"official_mic_dis", "MIC DIS", 0, 1, 0, 20U, false},
+    {"official_mic_pos", "MIC POS", 0, 10, 0, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialDynamicsParameters[] = {
+    {"official_type", "TYPE (software fallback)", 0, 18, 0, 20U, false},
+    {"official_dynamics", "DYNAMICS", -20, 20, 0, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialReverseReverbParameters[] = {
+    {"official_time", "TIME", 0.1f, 10, 3, 40U, false},
+    {"official_pre_delay", "PRE DELAY", 0, 500, 500, 20U, false},
+    {"official_gate_time", "GATE TIME", 0.1f, 1, 0.5f, 20U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 100, 10U, false},
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialWarpParameters[] = {
+    {"official_level", "LEVEL", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialGranularDelayParameters[] = {
+    {"official_time", "TIME", 0, 100, 50, 20U, false},
+    {"official_feedback", "FEEDBACK (grain length)", 0, 100, 70, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialVinylFlickParameters[] = {
+    {"official_flick", "FLICK", 0, 100, 50, 0U, false},
+};
+constexpr float kOfficialVocoderTrackCarriers[] = {6, 7, 8, 9, 10};
+constexpr NativeEffectParameterDescriptor kOfficialVocoderParameters[] = {
+    {"official_carrier", "CARRIER", 6, 10, 6, 0U, true, kOfficialVocoderTrackCarriers, 5U},
+    {"official_tone", "TONE", -50, 50, 0, 20U, false},
+    {"official_attack", "ATTACK", 0, 100, 50, 20U, false},
+    {"official_mod_sens", "MOD SENS", -50, 50, 0, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialOscVocMParameters[] = {
+    {"official_tone", "TONE", -50, 50, 0, 20U, false},
+    {"official_attack", "ATTACK", 0, 100, 50, 20U, false},
+    {"official_mod_sens", "MOD SENS", -50, 50, 0, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 10U, false},
+    {"official_carrier", "CARRIER", 0, 4, 0, 20U, false},
+    {"official_octave", "OCTAVE", 0, 3, 2, 20U, false},
+    {"official_release", "RELEASE", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialOscBotParameters[] = {
+    {"official_tone", "TONE", -50, 50, 0, 20U, false},
+    {"official_attack", "ATTACK", 0, 100, 50, 20U, false},
+    {"official_mod_sens", "MOD SENS", -50, 50, 0, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 10U, false},
+    {"official_osc", "OSC", 0, 4, 0, 20U, false},
+    {"official_note", "NOTE", 24, 127, 36, 20U, false},
+};
+
+constexpr NativeEffectParameterDescriptor kOfficialChorusParameters[] = {
+    {"official_rate", "RATE", -2, 100, 50, 20U, false},
+    {"official_depth", "DEPTH", 0, 100, 50, 20U, false},
+    {"official_d_level", "D.LEVEL", 0, 100, 100, 10U, false},
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_e_level", "E.LEVEL", 0, 100, 50, 10U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialStereoEnhanceParameters[] = {
+    {"official_low_cut", "LOW CUT", -1000, 12500, -1000, 20U, false},
+    {"official_high_cut", "HIGH CUT", -1000, 12500, -1000, 20U, false},
+    {"official_enhance", "ENHANCE", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialSynthParameters[] = {
+    {"official_frequency", "FREQUENCY", 0, 100, 50, 20U, false},
+    {"official_resonance", "RESONANCE", 0, 100, 50, 20U, false},
+    {"official_decay", "DECAY", 0, 100, 50, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialG2BParameters[] = {
+    {"official_balance", "BALANCE", 0, 100, 50, 20U, false},
+};
+constexpr float kOfficialBandValues[] = {0, 1, 2};
+constexpr float kOfficialWaveValues[] = {0, 1};
+constexpr NativeEffectParameterDescriptor kOfficialIsolatorParameters[] = {
+    {"official_band", "BAND", 0, 2, 0, 20U, true, kOfficialBandValues, 3U},
+    {"official_rate", "RATE", -16, 100, -1, 20U, false},
+    {"official_band_level", "BAND LEVEL", 0, 100, 50, 20U, false},
+    {"official_depth", "DEPTH", 0, 100, 50, 20U, false},
+    {"official_step_rate", "STEP RATE", -1000, 100, -1000, 20U, false},
+    {"official_waveform", "WAVEFORM", 0, 1, 0, 20U, true, kOfficialWaveValues, 2U},
+};
+
+constexpr NativeEffectParameterDescriptor kOfficialTransposeParameters[] = {
+    {"official_trans", "TRANS", -12, 12, 0, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialPitchBendParameters[] = {
+    {"official_pitch", "PITCH", -3, 4, 4, 20U, false},
+    {"official_bend", "BEND", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialRobotParameters[] = {
+    {"official_note", "NOTE", 0, 11, 0, 20U, false},
+    {"official_formant", "FORMANT", -50, 50, 0, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialManualHarmonistParameters[] = {
+    {"official_voice", "VOICE", 0, 10, 6, 20U, false},
+    {"official_formant", "FORMANT", -50, 50, 0, 20U, false},
+    {"official_pan", "PAN", -50, 50, 0, 20U, false},
+    {"official_key", "KEY", 0, 11, 0, 20U, false},
+    {"official_d_level", "D LEVEL", 0, 100, 100, 20U, false},
+    {"official_hrm_level", "HRM LEVEL", 0, 100, 80, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialHrmAutoMParameters[] = {
+    {"official_voice", "VOICE", 0, 6, 4, 20U, false},
+    {"official_formant", "FORMANT", -50, 50, 0, 20U, false},
+    {"official_pan", "PAN", -50, 50, 0, 20U, false},
+    {"official_hrm_mode", "HRM MODE", 0, 1, 1, 20U, false},
+    {"official_key", "KEY", 0, 11, 0, 20U, false},
+    {"official_d_level", "D LEVEL", 0, 100, 100, 20U, false},
+    {"official_hrm_level", "HRM LEVEL", 0, 100, 80, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialOctaveParameters[] = {
+    {"official_octave", "OCTAVE", 0, 2, 0, 20U, false},
+    {"official_oct_level", "OCT LEVEL", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialAutoRiffParameters[] = {
+    {"official_tempo", "TEMPO", -16, 100, -1, 20U, false},
+    {"official_hold", "HOLD", 0, 1, 0, 20U, false},
+    {"official_attack", "ATTACK", 0, 100, 50, 20U, false},
+    {"official_loop", "LOOP", 0, 1, 0, 20U, false},
+    {"official_key", "KEY", 0, 11, 0, 20U, false},
+    {"official_balance", "BALANCE", 0, 100, 50, 20U, false},
+};
+constexpr NativeEffectParameterDescriptor kOfficialElectricParameters[] = {
+    {"official_shift", "SHIFT", -12, 12, 0, 20U, false},
+    {"official_formant", "FORMANT", -50, 50, 0, 20U, false},
+    {"official_speed", "SPEED", 0, 10, 5, 20U, false},
+    {"official_stability", "STABILITY", -10, 10, 0, 20U, false},
+    {"official_scale", "SCALE", 0, 12, 0, 20U, false},
 };
 
 enum class FilterOutput : std::uint8_t { LowPass, BandPass, HighPass };
@@ -645,6 +1087,13 @@ private:
     dsp::ParameterSmoother cutoffHz_{1000.0f};
     dsp::ParameterSmoother q_{0.70710678f};
     FilterOutput output_{};
+    bool officialControls_ = false;
+    float officialRate_ = -1.0f;
+    float officialStepRate_ = official::kStepOff;
+    dsp::ParameterSmoother modulationDepth_{0.0f};
+    double modulationPhase_ = 0.0;
+    double stepPhase_ = 1.0;
+    float heldModulation_ = 0.0f;
     std::uint64_t processedFrames_ = 0U;
 
     [[nodiscard]] bool configure(float cutoffHz, float q) noexcept {
@@ -667,10 +1116,29 @@ private:
         cutoffHz_.reset(cutoffHz_.target());
         q_.reset(q_.target());
         processedFrames_ = 0U;
+        modulationPhase_ = 0.0;
+        stepPhase_ = 1.0;
+        heldModulation_ = 0.0f;
+        modulationDepth_.reset(modulationDepth_.target());
         return configure(cutoffHz_.target(), q_.target());
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true;
+                cutoffHz_.setTarget(official::cutoffHz(50.0f), rampFrames);
+                q_.setTarget(0.5f * std::pow(40.0f, 0.5f), rampFrames);
+                modulationDepth_.setTarget(0.5f, rampFrames);
+            }
+            if (parameterId == "official_rate") officialRate_ = value;
+            else if (parameterId == "official_step_rate") officialStepRate_ = value;
+            else if (parameterId == "official_depth") modulationDepth_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_cutoff") cutoffHz_.setTarget(official::cutoffHz(value), rampFrames);
+            else if (parameterId == "official_resonance") q_.setTarget(0.5f * std::pow(40.0f, value * 0.01f), rampFrames);
+            else return false;
+            return true;
+        }
         if (parameterId == "cutoff_hz") {
             cutoffHz_.setTarget(value, rampFrames);
             if (!cutoffHz_.isSmoothing()) return configure(value, q_.target());
@@ -681,6 +1149,12 @@ private:
             if (!q_.isSmoothing()) return configure(cutoffHz_.target(), value);
             return true;
         }
+        if (parameterId == "resonance_percent") {
+            const float mappedQ = filterResonancePercentToQ(value);
+            q_.setTarget(mappedQ, rampFrames);
+            if (!q_.isSmoothing()) return configure(cutoffHz_.target(), mappedQ);
+            return true;
+        }
         return false;
     }
 
@@ -689,11 +1163,28 @@ private:
         cutoffHz_.reset(cutoffHz_.target());
         q_.reset(q_.target());
         processedFrames_ = 0U;
+        modulationPhase_ = 0.0;
+        stepPhase_ = 1.0;
+        heldModulation_ = 0.0f;
+        modulationDepth_.reset(modulationDepth_.target());
         (void)configure(cutoffHz_.target(), q_.target());
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
-        const float cutoff = cutoffHz_.next();
+        float cutoff = cutoffHz_.next();
+        const float depth = modulationDepth_.next();
+        if (officialControls_) {
+            const float wave = static_cast<float>(std::sin(modulationPhase_));
+            const float stepHz = official::rateHz(officialStepRate_, tempoBpm(), quarterNotesPerMeasure());
+            if (stepHz <= 0.0f) heldModulation_ = wave;
+            else {
+                if (stepPhase_ >= 1.0) { heldModulation_ = wave; stepPhase_ -= std::floor(stepPhase_); }
+                stepPhase_ += static_cast<double>(stepHz) / sampleRate();
+            }
+            cutoff *= std::exp2(5.0f * depth * heldModulation_);
+            modulationPhase_ += 6.28318530717958647692 * official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure()) / sampleRate();
+            if (modulationPhase_ >= 6.28318530717958647692) modulationPhase_ -= 6.28318530717958647692;
+        }
         const float q = q_.next();
         // Parameter ramps stay sample-accurate; only the comparatively
         // expensive coefficient design is quantized to an absolute per-effect
@@ -739,6 +1230,8 @@ private:
     float filterAlpha_ = 1.0f;
     std::uint64_t processedFrames_ = 0U;
     bool hasHeldSample_ = false;
+    bool officialControls_ = false;
+    bool bitDepthOff_ = false;
 
     void resetRandom() noexcept {
         random_[0].seed(0x9e3779b97f4a7c15ULL);
@@ -780,6 +1273,23 @@ private:
     [[nodiscard]] bool onSetParameter(
         std::string_view parameterId, float value, std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true;
+                bitDepth_.setTarget(8.0f, rampFrames);
+                sampleRateHz_.setTarget(static_cast<float>(sampleRate()) * 0.25f, rampFrames);
+                mixPercent_.setTarget(50.0f, rampFrames);
+            }
+            if (parameterId == "official_bitdepth") {
+                bitDepthOff_ = value == official::kStepOff;
+                if (!bitDepthOff_) bitDepth_.setTarget(value, rampFrames);
+            } else if (parameterId == "official_samplerate") {
+                sampleRateHz_.setTarget(static_cast<float>(sampleRate()) /
+                    (value == official::kStepOff ? 1.0f : value), rampFrames);
+            } else if (parameterId == "official_balance") mixPercent_.setTarget(value, rampFrames);
+            else return false;
+            return true;
+        }
         if (parameterId == "bit_depth") bitDepth_.setTarget(value, rampFrames);
         else if (parameterId == "sample_rate_hz") sampleRateHz_.setTarget(value, rampFrames);
         else if (parameterId == "filter_hz") filterHz_.setTarget(value, rampFrames);
@@ -803,8 +1313,8 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
-        const float bits = std::clamp(std::round(bitDepth_.next()), 4.0f, 24.0f);
-        const float targetRate = std::clamp(sampleRateHz_.next(), 500.0f, static_cast<float>(sampleRate()));
+        const float bits = std::clamp(std::round(bitDepth_.next()), officialControls_ ? 1.0f : 4.0f, officialControls_ ? 31.0f : 24.0f);
+        const float targetRate = std::clamp(sampleRateHz_.next(), officialControls_ ? 1.0f : 500.0f, static_cast<float>(sampleRate()));
         const float cutoff = filterHz_.next();
         const auto gains = dsp::equalPowerCrossfadeGains(std::clamp(mixPercent_.next() / 100.0f, 0.0f, 1.0f));
         if ((processedFrames_ % kFilterCoefficientUpdateInterval) == 0U) updateFilterCoefficient(cutoff);
@@ -823,7 +1333,7 @@ private:
         if (capture) {
             for (unsigned int channel = 0U; channel < count; ++channel) {
                 const float input = std::isfinite(frame[channel]) ? frame[channel] : 0.0f;
-                heldSamples_[channel] = quantize(input, channel, bits);
+                heldSamples_[channel] = officialControls_ && bitDepthOff_ ? input : quantize(input, channel, bits);
             }
             hasHeldSample_ = true;
         }
@@ -831,7 +1341,7 @@ private:
         for (unsigned int channel = 0U; channel < count; ++channel) {
             const float dry = std::isfinite(frame[channel]) ? frame[channel] : 0.0f;
             filterState_[channel] += filterAlpha_ * (heldSamples_[channel] - filterState_[channel]);
-            frame[channel] = dry * gains.first + filterState_[channel] * gains.second;
+            frame[channel] = dry * gains.first + (officialControls_ ? heldSamples_[channel] : filterState_[channel]) * gains.second;
         }
     }
 };
@@ -845,6 +1355,16 @@ private:
     NativePhaserProcessor phaser_{};
     PhaserProcessorConfig config_{true, 8U, 0.5f, 0.65f, 0.0f, 0.5f};
 
+    float officialRate_ = -1.0f;
+    float officialStepRate_ = official::kStepOff;
+
+    void onTempoChanged() noexcept override {
+        if (!config_.officialControls) return;
+        config_.rateHz = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure());
+        config_.stepRateHz = official::rateHz(officialStepRate_, tempoBpm(), quarterNotesPerMeasure());
+        (void)apply(defaultRampFrames(20U));
+    }
+
     [[nodiscard]] bool apply(std::uint64_t rampFrames) noexcept {
         return phaser_.setConfig(config_, rampFrames);
     }
@@ -854,6 +1374,28 @@ private:
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!config_.officialControls) {
+                config_.officialControls = true;
+                config_.depth = 0.5f; config_.feedback = 0.45f;
+                config_.manual = 0.5f; config_.stages = 8U;
+                config_.directLevel = 1.0f; config_.effectLevel = 0.5f;
+            }
+            if (parameterId == "official_rate") officialRate_ = value;
+            else if (parameterId == "official_step_rate") officialStepRate_ = value;
+            else if (parameterId == "official_depth") config_.depth = value * 0.01f;
+            else if (parameterId == "official_resonance") config_.feedback = value * 0.009f;
+            else if (parameterId == "official_manual") config_.manual = value * 0.01f;
+            else if (parameterId == "official_d_level") config_.directLevel = value * 0.01f;
+            else if (parameterId == "official_e_level") config_.effectLevel = value * 0.01f;
+            else if (parameterId == "official_stage") {
+                config_.biPhase = value == -1.0f;
+                config_.stages = config_.biPhase ? 12U : static_cast<unsigned int>(value);
+            } else return false;
+            config_.rateHz = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure());
+            config_.stepRateHz = official::rateHz(officialStepRate_, tempoBpm(), quarterNotesPerMeasure());
+            return apply(rampFrames);
+        }
         if (parameterId == "stages") {
             if (value != 4.0f && value != 8.0f && value != 12.0f) return false;
             config_.stages = static_cast<unsigned int>(value);
@@ -894,6 +1436,16 @@ private:
     NativeFlangerProcessor flanger_{};
     NativeFlangerProcessorConfig config_{};
 
+    float officialRate_ = -1.0f;
+    float officialStepRate_ = official::kStepOff;
+
+    void onTempoChanged() noexcept override {
+        if (!config_.officialControls) return;
+        config_.rateHz = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure());
+        config_.stepRateHz = official::rateHz(officialStepRate_, tempoBpm(), quarterNotesPerMeasure());
+        (void)apply(defaultRampFrames(20U));
+    }
+
     [[nodiscard]] bool apply(std::uint64_t rampFrames) noexcept {
         return flanger_.setConfig(config_, rampFrames);
     }
@@ -907,6 +1459,26 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!config_.officialControls) {
+                config_.officialControls = true;
+                config_.depth = 0.5f; config_.feedback = 0.475f;
+                config_.delayMs = 5.1f; config_.separation = 0.0f;
+                config_.directLevel = 1.0f; config_.effectLevel = 0.5f;
+            }
+            if (parameterId == "official_rate") officialRate_ = value;
+            else if (parameterId == "official_step_rate") officialStepRate_ = value;
+            else if (parameterId == "official_depth") config_.depth = value * 0.01f;
+            else if (parameterId == "official_resonance") config_.feedback = value * 0.0095f;
+            else if (parameterId == "official_manual") config_.delayMs = 0.2f + value * 0.098f;
+            else if (parameterId == "official_d_level") config_.directLevel = value * 0.01f;
+            else if (parameterId == "official_e_level") config_.effectLevel = value * 0.01f;
+            else if (parameterId == "official_separation") config_.separation = value * 0.01f;
+            else return false;
+            config_.rateHz = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure());
+            config_.stepRateHz = official::rateHz(officialStepRate_, tempoBpm(), quarterNotesPerMeasure());
+            return apply(rampFrames);
+        }
         if (parameterId == "delay_ms") {
             config_.delayMs = value;
         } else if (parameterId == "rate_hz") {
@@ -953,6 +1525,12 @@ private:
     dsp::ParameterSmoother mixPercent_{100.0f};
     std::size_t writeIndex_ = 0U;
     double phase_ = 0.0;
+    bool officialControls_ = false;
+    float officialRate_ = 50.0f;
+    dsp::ParameterSmoother color_{0.5f}, directLevel_{0.5f}, effectLevel_{0.5f};
+    void onTempoChanged() noexcept override {
+        if (officialControls_) rateHz_.setTarget(official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure()), defaultRampFrames(20U));
+    }
 
     [[nodiscard]] static std::size_t wrapIndex(std::int64_t index) noexcept {
         // Buffer capacity is a power of two, so the unsigned low bits provide
@@ -988,6 +1566,7 @@ private:
         delayMs_.reset(delayMs_.target());
         mixPercent_.reset(mixPercent_.target());
         writeIndex_ = 0U;
+        color_.reset(color_.target()); directLevel_.reset(directLevel_.target()); effectLevel_.reset(effectLevel_.target());
         phase_ = 0.0;
         return true;
     }
@@ -997,6 +1576,16 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            officialControls_ = true;
+            if (parameterId == "official_rate") { officialRate_ = value; rateHz_.setTarget(official::rateHz(value, tempoBpm(), quarterNotesPerMeasure()), rampFrames); }
+            else if (parameterId == "official_depth") depthPercent_.setTarget(value, rampFrames);
+            else if (parameterId == "official_color") color_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_d_level") directLevel_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_e_level") effectLevel_.setTarget(value * 0.01f, rampFrames);
+            else return false;
+            return true;
+        }
         if (parameterId == "rate_hz") {
             rateHz_.setTarget(value, rampFrames);
         } else if (parameterId == "depth") {
@@ -1018,6 +1607,7 @@ private:
         delayMs_.reset(delayMs_.target());
         mixPercent_.reset(mixPercent_.target());
         writeIndex_ = 0U;
+        color_.reset(color_.target()); directLevel_.reset(directLevel_.target()); effectLevel_.reset(effectLevel_.target());
         phase_ = 0.0;
     }
 
@@ -1038,8 +1628,15 @@ private:
         }
 
         const double radians = phase_ * kTwoPi;
-        const double sine = std::sin(radians);
-        const double cosine = std::cos(radians);
+        const float color = color_.next();
+        const float direct = directLevel_.next();
+        const float effect = effectLevel_.next();
+        const auto shape = [&](double angle) noexcept {
+            return officialControls_ ? (1.0 - 0.5 * color) * std::sin(angle) +
+                0.3 * color * std::sin(2.0 * angle) + 0.2 * color * std::sin(3.0 * angle) : std::sin(angle);
+        };
+        const double sine = shape(radians);
+        const double cosine = officialControls_ ? shape(radians + kTwoPi * 0.25) : std::cos(radians);
         const std::array<std::array<double, 2U>, 2U> lfo{{
             {{sine, cosine}},
             {{cosine, -sine}},
@@ -1055,7 +1652,8 @@ private:
             );
             const double wet = (static_cast<double>(readFractional(channel, firstDelay)) +
                 static_cast<double>(readFractional(channel, secondDelay))) * 0.5;
-            frame[channel] = static_cast<float>((static_cast<double>(frame[channel]) * dryMix) + (wet * wetMix));
+            frame[channel] = officialControls_ ? static_cast<float>(frame[channel] * direct + wet * effect)
+                : static_cast<float>((static_cast<double>(frame[channel]) * dryMix) + (wet * wetMix));
         }
 
         phase_ += static_cast<double>(rate) / static_cast<double>(sampleRate());
@@ -1117,6 +1715,7 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") return processor_.setOfficialParameter(parameterId, value);
         if (parameterId == "threshold_db") {
             targetConfig_.thresholdDb = value;
             thresholdDb_.setTarget(value, rampFrames);
@@ -1152,7 +1751,7 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
-        updateSmoothedConfig();
+        if (!processor_.officialControlsActive()) updateSmoothedConfig();
         (void)processor_.processInPlace(frame, 1U, channels);
     }
 };
@@ -1179,11 +1778,23 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!config_.officialControls) { config_.officialControls = true; config_.driveDb = 18.0f; }
+            if (parameterId == "official_type") config_.type = static_cast<unsigned int>(value);
+            else if (parameterId == "official_tone") config_.tone = value;
+            else if (parameterId == "official_dist") config_.driveDb = value * 0.36f;
+            else if (parameterId == "official_d_level") config_.directLevel = value * 0.01f;
+            else if (parameterId == "official_e_level") config_.effectLevel = value * 0.01f;
+            else return false;
+            return apply(rampFrames);
+        }
         if (parameterId == "drive_db") config_.driveDb = value;
         else if (parameterId == "mix_percent") config_.mixPercent = value;
         else return false;
         return apply(rampFrames);
     }
+
+    [[nodiscard]] unsigned int algorithmicLatencySamples() const noexcept override { return processor_.latencyFrames(); }
 
     void onResetState() noexcept override {
         processor_.reset();
@@ -1217,6 +1828,7 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") return processor_.setOfficialParameter(parameterId, value);
         if (parameterId == "model") config_.model = value;
         else if (parameterId == "gain") config_.gainPercent = value;
         else if (parameterId == "bass") config_.bassDb = value;
@@ -1262,6 +1874,8 @@ private:
     dsp::ParameterSmoother noisePercent_{8.0f};
     dsp::ParameterSmoother mixPercent_{70.0f};
     float drivePercentTarget_ = 35.0f;
+    dsp::ParameterSmoother outputLevel_{1.0f};
+    bool officialControls_ = false;
     std::array<dsp::DeterministicRng, 2U> random_{{
         dsp::DeterministicRng{kRandomSeeds[0]}, dsp::DeterministicRng{kRandomSeeds[1]}
     }};
@@ -1316,6 +1930,7 @@ private:
         lowPassHz_.reset(lowPassHz_.target());
         noisePercent_.reset(noisePercent_.target());
         mixPercent_.reset(mixPercent_.target());
+        outputLevel_.reset(outputLevel_.target());
         saturationConfig_ = {driveDbForPercent(drivePercentTarget_), 100.0f};
         if (!saturation_.prepare(sampleRate()) || !saturation_.setConfig(saturationConfig_, 0U)) return false;
 
@@ -1339,6 +1954,23 @@ private:
     [[nodiscard]] bool onSetParameter(
         std::string_view parameterId, float value, std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true;
+                outputLevel_.setTarget(0.5f, rampFrames);
+                mixPercent_.setTarget(100.0f, rampFrames);
+            }
+            if (parameterId == "official_level") { outputLevel_.setTarget(value * 0.01f, rampFrames); return true; }
+            if (parameterId != "official_lo_fi") return false;
+            const float amount = (value - 1.0f) / 9.0f;
+            const std::size_t band = amount < 0.34f ? 2U : amount < 0.67f ? 1U : 0U;
+            highPassHz_.setTarget(kBandHighPassHz[band], rampFrames);
+            lowPassHz_.setTarget(kBandLowPassHz[band], rampFrames);
+            noisePercent_.setTarget(amount * 30.0f, rampFrames);
+            drivePercentTarget_ = 5.0f + amount * 90.0f;
+            saturationConfig_.driveDb = driveDbForPercent(drivePercentTarget_);
+            return saturation_.setConfig(saturationConfig_, rampFrames);
+        }
         if (parameterId == "band") {
             const std::size_t band = static_cast<std::size_t>(value);
             highPassHz_.setTarget(kBandHighPassHz[band], rampFrames);
@@ -1370,6 +2002,7 @@ private:
         lowPassHz_.reset(lowPassHz_.target());
         noisePercent_.reset(noisePercent_.target());
         mixPercent_.reset(mixPercent_.target());
+        outputLevel_.reset(outputLevel_.target());
         for (auto& filter : highPass_) filter.reset();
         for (auto& filter : lowPass_) filter.reset();
         dryDelay_ = {};
@@ -1386,6 +2019,7 @@ private:
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
         const unsigned int count = std::min<unsigned int>(channels, 2U);
+        const float outputLevel = outputLevel_.next();
         const float highPassHz = highPassHz_.next();
         const float lowPassHz = lowPassHz_.next();
         const float noise = noisePercent_.next() * 0.01f;
@@ -1437,7 +2071,7 @@ private:
             const float saturated = std::isfinite(frame[channel]) ? frame[channel] : 0.0f;
             const float wet = saturated * delayedDropoutEnvelope[channel] + delayedNoise[channel];
             frame[channel] = std::clamp(delayedDry[channel] * mixGains.first + wet * mixGains.second,
-                                         -4.0f, 4.0f);
+                                         -4.0f, 4.0f) * outputLevel;
         }
         ++delayWrite_;
         if (delayWrite_ == kSaturationLatencyFrames) delayWrite_ = 0U;
@@ -1483,6 +2117,7 @@ private:
     bool onsetArmed_ = true;
     bool hasTriggered_ = false;
     bool rampActive_ = false;
+    dsp::ParameterSmoother outputLevel_{1.0f};
 
     [[nodiscard]] static double onePoleCoefficient(double timeSeconds, unsigned int rate) noexcept {
         return 1.0 - std::exp(-1.0 / (timeSeconds * static_cast<double>(rate)));
@@ -1510,6 +2145,7 @@ private:
         slowCoefficient_ = onePoleCoefficient(kSlowTimeSeconds, rate);
         minimumRetriggerFrames_ = std::max<std::uint64_t>(1U, static_cast<std::uint64_t>(rate / 30U));
         for (auto& control : controls_) control.reset(control.target());
+        outputLevel_.reset(outputLevel_.target());
         clearDetector();
         return true;
     }
@@ -1519,6 +2155,9 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId == "official_sens") { controls_[1].setTarget(value, rampFrames); controls_[2].setTarget(100.0f, rampFrames); return true; }
+        if (parameterId == "official_rise_time") { controls_[0].setTarget(5.0f * std::pow(400.0f, value * 0.01f), rampFrames); return true; }
+        if (parameterId == "official_level") { outputLevel_.setTarget(value * 0.01f, rampFrames); return true; }
         if (parameterId == "attack_ms") {
             controls_[0].setTarget(value, rampFrames);
         } else if (parameterId == "sensitivity_percent") {
@@ -1533,6 +2172,7 @@ private:
 
     void onResetState() noexcept override {
         for (auto& control : controls_) control.reset(control.target());
+        outputLevel_.reset(outputLevel_.target());
         clearDetector();
     }
 
@@ -1613,10 +2253,11 @@ private:
         }
         if (hasTriggered_ && framesSinceOnset_ < minimumRetriggerFrames_) ++framesSinceOnset_;
 
+        const float outputLevel = outputLevel_.next();
         const float envelopeGain = nextEnvelopeGain();
         const float wetGain = 1.0f + (envelopeGain - 1.0f) * mix;
         for (unsigned int channel = 0U; channel < count; ++channel) {
-            frame[channel] *= wetGain;
+            frame[channel] *= wetGain * outputLevel;
         }
     }
 };
@@ -1651,6 +2292,13 @@ private:
     std::size_t peakCount_ = 0U;
     std::size_t delayWrite_ = 0U;
     std::size_t lookaheadFrames_ = 48U;
+    dsp::ParameterSmoother attackMs_{2.0f};
+    dsp::ParameterSmoother lowGainDb_{0.0f};
+    dsp::ParameterSmoother highGainDb_{0.0f};
+    dsp::ParameterSmoother outputLevel_{1.0f};
+    std::array<dsp::Biquad, 2U> lowShelves_{};
+    std::array<dsp::Biquad, 2U> highShelves_{};
+    bool officialControls_ = false;
     double compressorEnvelope_ = 0.0;
     double gateEnvelope_ = 0.0;
     float gateGain_ = 0.0f;
@@ -1691,9 +2339,15 @@ private:
 
     [[nodiscard]] bool onPrepare() noexcept override {
         for (auto& control : controls_) control.reset(control.target());
+        attackMs_.reset(attackMs_.target());
+        lowGainDb_.reset(lowGainDb_.target());
+        highGainDb_.reset(highGainDb_.target());
+        outputLevel_.reset(outputLevel_.target());
+        for (auto& filter : lowShelves_) filter.reset();
+        for (auto& filter : highShelves_) filter.reset();
         const unsigned int rate = sampleRate();
         lookaheadFrames_ = std::clamp<std::size_t>(rate / 1000U, 1U, kMaximumLookaheadFrames);
-        compressorAttackCoefficient_ = onePoleCoefficient(2.0, rate);
+        compressorAttackCoefficient_ = onePoleCoefficient(attackMs_.target(), rate);
         updateReleaseCoefficient(controls_[2U].target());
         gateEnvelopeAttackCoefficient_ = onePoleCoefficient(1.0, rate);
         gateEnvelopeReleaseCoefficient_ = onePoleCoefficient(60.0, rate);
@@ -1711,6 +2365,19 @@ private:
     [[nodiscard]] bool onSetParameter(
         std::string_view parameterId, float value, std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            officialControls_ = true;
+            if (parameterId == "official_attack") attackMs_.setTarget(0.1f + 99.9f * std::pow(value * 0.01f, 2.0f), rampFrames);
+            else if (parameterId == "official_release") controls_[2U].setTarget(10.0f * std::pow(100.0f, value * 0.01f), rampFrames);
+            else if (parameterId == "official_level") outputLevel_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_low_gain") lowGainDb_.setTarget(value, rampFrames);
+            else if (parameterId == "official_hi_gain") highGainDb_.setTarget(value, rampFrames);
+            else if (parameterId == "official_sustain") {
+                controls_[0U].setTarget(-12.0f - value * 0.36f, rampFrames);
+                controls_[1U].setTarget(1.0f + value * 0.19f, rampFrames);
+            } else return false;
+            return true;
+        }
         if (parameterId == "threshold_db") controls_[0U].setTarget(value, rampFrames);
         else if (parameterId == "ratio") controls_[1U].setTarget(value, rampFrames);
         else if (parameterId == "release_ms") controls_[2U].setTarget(value, rampFrames);
@@ -1721,6 +2388,12 @@ private:
 
     void onResetState() noexcept override {
         for (auto& control : controls_) control.reset(control.target());
+        attackMs_.reset(attackMs_.target());
+        lowGainDb_.reset(lowGainDb_.target());
+        highGainDb_.reset(highGainDb_.target());
+        outputLevel_.reset(outputLevel_.target());
+        for (auto& filter : lowShelves_) filter.reset();
+        for (auto& filter : highShelves_) filter.reset();
         compressorEnvelope_ = 0.0;
         gateEnvelope_ = 0.0;
         gateGain_ = 0.0f;
@@ -1753,8 +2426,20 @@ private:
         const float ratio = std::max(1.0f, controls_[1U].next());
         const float releaseMs = controls_[2U].next();
         const float outputDb = controls_[3U].next();
+        const float attack = attackMs_.next();
+        const float lowGain = lowGainDb_.next();
+        const float highGain = highGainDb_.next();
+        const float outputLevel = outputLevel_.next();
         if ((processedFrames_ % kReleaseCoefficientUpdateInterval) == 0U) {
             updateReleaseCoefficient(releaseMs);
+            compressorAttackCoefficient_ = onePoleCoefficient(attack, sampleRate());
+            if (officialControls_) {
+                for (unsigned int channel = 0U; channel < 2U; ++channel) {
+                    (void)lowShelves_[channel].setParameters(dsp::BiquadType::LowShelf, sampleRate(), 200.0, 0.70710678, lowGain, 1.0);
+                    (void)highShelves_[channel].setParameters(dsp::BiquadType::HighShelf, sampleRate(),
+                        std::min(4000.0, static_cast<double>(sampleRate()) * 0.4), 0.70710678, highGain, 1.0);
+                }
+            }
         }
 
         std::array<float, 2U> input{};
@@ -1797,8 +2482,10 @@ private:
         std::array<float, 2U> preLimited{};
         float preLimitedPeak = 0.0f;
         for (unsigned int channel = 0U; channel < count; ++channel) {
+            const float shapedInput = officialControls_
+                ? highShelves_[channel].process(lowShelves_[channel].process(input[channel])) : input[channel];
             preLimited[channel] = static_cast<float>(std::clamp(
-                static_cast<double>(input[channel]) * gain, -64.0, 64.0));
+                static_cast<double>(shapedInput) * gain, -64.0, 64.0));
             preLimitedPeak = std::max(preLimitedPeak, std::fabs(preLimited[channel]));
         }
 
@@ -1814,7 +2501,7 @@ private:
             const std::size_t readIndex = (delayWrite_ + kDelayCapacity - lookaheadFrames_) % kDelayCapacity;
             const float delayed = processedFrames_ < lookaheadFrames_ ? 0.0f : audioDelay_[channel][readIndex];
             const float output = std::clamp(delayed * limiterGain_, -kLimiterCeiling, kLimiterCeiling);
-            frame[channel] = std::isfinite(output) ? output : 0.0f;
+            frame[channel] = std::isfinite(output) ? output * outputLevel : 0.0f;
         }
 
         ++delayWrite_;
@@ -1835,6 +2522,8 @@ public:
 
 private:
     NativeFdn16ReverbProcessor processor_{};
+    NativeOfficialWetPath wetPath_{};
+    bool officialControls_ = false;
     NativeFdn16ReverbConfig config_{true, 0.25f, 2.5f, 8000.0f};
 
     [[nodiscard]] bool apply(std::uint64_t rampFrames) noexcept {
@@ -1842,7 +2531,7 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        return processor_.prepare(sampleRate()) && apply(0U);
+        return processor_.prepare(sampleRate()) && wetPath_.prepare(sampleRate(), true) && apply(0U);
     }
 
     [[nodiscard]] bool onSetParameter(
@@ -1850,6 +2539,17 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true; config_.wetMix = 1.0f; config_.rt60Seconds = 3.0f;
+                config_.density = 4.0f / 9.0f;
+                (void)wetPath_.set("official_pre_delay", 500.0f, 0U);
+            }
+            if (parameterId == "official_time") config_.rt60Seconds = value;
+            else if (parameterId == "official_density") config_.density = (value - 1.0f) / 9.0f;
+            else if (!wetPath_.set(parameterId, value, rampFrames)) return false;
+            return apply(rampFrames);
+        }
         if (parameterId == "decay_seconds") config_.rt60Seconds = value;
         else if (parameterId == "damping_cutoff_hz") config_.dampingCutoffHz = value;
         else if (parameterId == "wet_mix") config_.wetMix = value;
@@ -1858,12 +2558,15 @@ private:
     }
 
     void onResetState() noexcept override {
-        processor_.resetState();
+        processor_.resetState(); wetPath_.reset();
         (void)apply(0U);
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : 0.0f}};
+        if (officialControls_) wetPath_.delayInput(frame, channels);
         (void)processor_.processInPlace(frame, 1U, channels);
+        if (officialControls_) wetPath_.mix(frame, dry, channels);
     }
 };
 
@@ -1887,6 +2590,8 @@ private:
     static constexpr double kAttackMs = 1.0;
 
     NativeFdn16ReverbProcessor reverb_{};
+    NativeOfficialWetPath wetPath_{};
+    bool officialControls_ = false;
     NativeFdn16ReverbConfig reverbConfig_{true, 1.0f, 2.5f, 8000.0f};
     dsp::ParameterSmoother wetMix_{0.35f};
     dsp::ParameterSmoother thresholdDb_{-24.0f};
@@ -1913,7 +2618,7 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        if (!reverb_.prepare(sampleRate())) return false;
+        if (!reverb_.prepare(sampleRate()) || !wetPath_.prepare(sampleRate(), true)) return false;
         resetGate();
         return applyReverb(0U);
     }
@@ -1923,6 +2628,17 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true; reverbConfig_.rt60Seconds = 3.0f;
+                thresholdDb_.setTarget(-30.0f, rampFrames);
+                (void)wetPath_.set("official_pre_delay", 500.0f, 0U);
+            }
+            if (parameterId == "official_time") reverbConfig_.rt60Seconds = value;
+            else if (parameterId == "official_threshold") thresholdDb_.setTarget(-60.0f + value * 0.6f, rampFrames);
+            else if (!wetPath_.set(parameterId, value, rampFrames)) return false;
+            return applyReverb(rampFrames);
+        }
         if (parameterId == "decay_seconds") {
             reverbConfig_.rt60Seconds = value;
             return applyReverb(rampFrames);
@@ -1941,7 +2657,7 @@ private:
     }
 
     void onResetState() noexcept override {
-        reverb_.resetState();
+        reverb_.resetState(); wetPath_.reset();
         resetGate();
         (void)applyReverb(0U);
     }
@@ -1950,7 +2666,12 @@ private:
         const unsigned int count = std::min<unsigned int>(channels, 2U);
         const float dryLeft = count > 0U && std::isfinite(frame[0]) ? frame[0] : 0.0f;
         const float dryRight = count > 1U && std::isfinite(frame[1]) ? frame[1] : 0.0f;
-        const float detector = std::max(std::fabs(dryLeft), std::fabs(dryRight));
+        float detector = std::max(std::fabs(dryLeft), std::fabs(dryRight));
+        if (officialControls_) {
+            wetPath_.delayInput(frame, channels);
+            (void)reverb_.processInPlace(frame, 1U, channels);
+            detector = std::max(std::fabs(frame[0]), count > 1U ? std::fabs(frame[1]) : 0.0f);
+        }
         const float thresholdDb = thresholdDb_.next();
         const float hysteresisDb = hysteresisDb_.next();
         const float holdMs = holdMs_.next();
@@ -1988,9 +2709,15 @@ private:
         }
         gateGain_ = std::clamp(gateGain_, 0.0f, 1.0f);
 
-        if (count > 0U) frame[0] = dryLeft;
-        if (count > 1U) frame[1] = dryRight;
-        (void)reverb_.processInPlace(frame, 1U, channels);
+        if (!officialControls_) {
+            if (count > 0U) frame[0] = dryLeft;
+            if (count > 1U) frame[1] = dryRight;
+            (void)reverb_.processInPlace(frame, 1U, channels);
+        }
+        if (officialControls_) {
+            wetPath_.mix(frame, {{dryLeft, dryRight}}, channels, gateGain_);
+            return;
+        }
         const float wetGain = wetMix * gateGain_;
         if (count > 0U) {
             const float mixed = dryLeft + (frame[0] * wetGain);
@@ -2011,6 +2738,10 @@ public:
 private:
     NativeBeatRepeatProcessor processor_{};
     NativeBeatRepeatConfig config_{};
+    bool officialControls_ = false;
+    void onTempoChanged() noexcept override {
+        if (officialControls_) { config_.bpm = tempoBpm(); (void)processor_.setConfig(config_, defaultRampFrames(20U)); }
+    }
 
     [[nodiscard]] bool onPrepare() noexcept override {
         return processor_.prepare(sampleRate()) && processor_.setConfig(config_, 0U);
@@ -2021,6 +2752,15 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!officialControls_) { officialControls_ = true; config_.bpm = tempoBpm(); config_.wetMix = 1.0f; }
+            if (parameterId == "official_length") {
+                config_.wetMix = value == -1000.0f ? 0.0f : 1.0f;
+                if (value != -1000.0f) config_.division = -value;
+            } else if (parameterId == "official_type") config_.direction = static_cast<NativeBeatRepeatDirection>(static_cast<unsigned int>(value)); else return false;
+            return processor_.setConfig(config_, rampFrames);
+        }
+        if (officialControls_ && (parameterId == "bpm" || parameterId == "mix_percent" || parameterId == "division" || parameterId == "direction")) return true;
         if (parameterId == "bpm") config_.bpm = value;
         else if (parameterId == "division") config_.division = value;
         else if (parameterId == "decay") config_.decay = value;
@@ -2048,6 +2788,10 @@ public:
 private:
     NativeBeatScatterProcessor processor_{};
     NativeBeatScatterConfig config_{};
+    bool officialControls_ = false;
+    void onTempoChanged() noexcept override {
+        if (officialControls_) { config_.bpm = tempoBpm(); (void)processor_.setConfig(config_, defaultRampFrames(20U)); }
+    }
 
     [[nodiscard]] bool onPrepare() noexcept override {
         return processor_.prepare(sampleRate()) && processor_.setConfig(config_, 0U);
@@ -2058,6 +2802,15 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!officialControls_) { officialControls_ = true; config_.bpm = tempoBpm(); config_.wetMix = 1.0f; config_.allowThirtySecond = true; }
+            if (parameterId == "official_length") {
+                config_.wetMix = value == -1000.0f ? 0.0f : 1.0f;
+                if (value != -1000.0f) config_.sliceBeats = -value;
+            } else return false;
+            return processor_.setConfig(config_, rampFrames);
+        }
+        if (officialControls_ && (parameterId == "bpm" || parameterId == "mix_percent" || parameterId == "slice_beats")) return true;
         if (parameterId == "bpm") config_.bpm = value;
         else if (parameterId == "slice_beats") config_.sliceBeats = value;
         else if (parameterId == "scatter_percent") config_.scatterPercent = value;
@@ -2088,18 +2841,22 @@ public:
     }
 
 private:
+    NativeOfficialRoll official_{};
+    void onTempoChanged() noexcept override { (void)official_.setTempo(tempoBpm()); }
     NativeRollProcessor processor_{};
     NativeRollConfig config_{};
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        return processor_.prepare(sampleRate()) && processor_.setConfig(config_);
+        return official_.prepare(sampleRate()) && processor_.prepare(sampleRate()) && processor_.setConfig(config_);
     }
 
     [[nodiscard]] bool onSetParameter(
         std::string_view parameterId,
         float value,
-        std::uint64_t
+        std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId == "official_variant") return official_.setVariant(static_cast<unsigned int>(value));
+        if (parameterId.substr(0U, 9U) == "official_") return official_.setParameter(parameterId, value, rampFrames);
         if (parameterId == "bpm") config_.bpm = value;
         else if (parameterId == "slice_beats") config_.sliceBeats = value;
         else if (parameterId == "decay_percent") config_.decayPercent = value;
@@ -2113,11 +2870,13 @@ private:
     }
 
     void onResetState() noexcept override {
+        official_.reset();
         processor_.reset();
         (void)processor_.setConfig(config_);
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (officialVariant() != 0U) { official_.process(frame, channels); return; }
         (void)processor_.processInPlace(frame, 1U, channels);
     }
 };
@@ -2137,6 +2896,9 @@ private:
     NativeFreezeProcessor processor_{};
     NativeFreezeConfig config_{};
     bool freezePending_ = false;
+    bool officialControls_ = false;
+    bool officialRequested_ = false;
+    NativeOfficialFreezeEnvelope envelope_{};
 
     [[nodiscard]] bool applyConfig() noexcept {
         const auto result = processor_.setConfig(config_);
@@ -2155,6 +2917,7 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        envelope_.prepare(sampleRate());
         const bool requestedFreeze = config_.frozen;
         config_.mode = NativeFreezeMode::MicroLoop;
         config_.frozen = false;
@@ -2167,8 +2930,20 @@ private:
     [[nodiscard]] bool onSetParameter(
         std::string_view parameterId,
         float value,
-        std::uint64_t
+        std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!envelope_.set(parameterId, value, rampFrames)) return false;
+            if (!officialControls_) {
+                officialControls_ = true; config_.wetMix = 1.0f;
+                setOfficialRequested(!isBypassed());
+            }
+            return true;
+        }
+        // Native frontend legacy macros may accompany every complete official
+        // payload. Official activation/bypass and BALANCE own these two axes;
+        // synthesized freeze:0/mix_percent must not release or re-mix a hold.
+        if (officialControls_ && (parameterId == "freeze" || parameterId == "mix_percent")) return true;
         if (parameterId == "capture_ms") {
             config_.captureLengthMs = value;
         } else if (parameterId == "mode") {
@@ -2186,18 +2961,48 @@ private:
         return applyConfig();
     }
 
+    void setOfficialRequested(bool requested) noexcept {
+        officialRequested_ = requested;
+        if (requested) {
+            config_.frozen = true;
+            if (applyConfig() && !freezePending_) envelope_.attack();
+        } else {
+            envelope_.release();
+            // Retain an already captured loop throughout the actual release.
+            if (!processor_.isFrozen()) { config_.frozen = false; (void)applyConfig(); }
+        }
+    }
+    void onBypassChanged(bool bypassed) noexcept override {
+        if (officialControls_) setOfficialRequested(!bypassed);
+    }
+    std::uint64_t bypassRampFrames(bool bypassed, std::uint64_t requested) const noexcept override {
+        return officialControls_ && bypassed ? envelope_.releaseFrames() : requested;
+    }
     void onResetState() noexcept override {
+        envelope_.reset();
         config_.frozen = false;
         freezePending_ = false;
         processor_.reset();
         (void)processor_.setConfig(config_);
+        if (officialControls_) setOfficialRequested(!isBypassed());
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
         // NativeEffectProcessor calls this while bypassed too, then its outer
         // bypass mixer selects dry audio. Keeping this processor running here
         // preserves FREEZE pre-roll and loop phase without special core hooks.
+        const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : frame[0]}};
         (void)processor_.processInPlace(frame, 1U, channels, false);
+        if (officialControls_) {
+            const float gain = envelope_.next();
+            const float balance = envelope_.balance();
+            const bool held = processor_.isFrozen();
+            for (unsigned int ch = 0U; ch < std::min(channels, 2U); ++ch)
+                frame[ch] = dry[ch] * (1.0f - balance) + (held ? frame[ch] * balance * gain : 0.0f);
+            if (!officialRequested_ && envelope_.idle() && held) {
+                config_.frozen = false; (void)applyConfig();
+            }
+        }
         if (!freezePending_) return;
 
         const auto state = processor_.status();
@@ -2205,6 +3010,7 @@ private:
             // The input frame that completed pre-roll remains live-through;
             // playback begins on the next frame.
             freezePending_ = false;
+            if (officialControls_ && officialRequested_) envelope_.attack();
         }
     }
 };
@@ -2219,6 +3025,8 @@ public:
         : NativeEffectProcessor(descriptor) {}
 
 private:
+    bool officialControls_ = false;
+    dsp::ParameterSmoother officialLevel_{0.5f};
     static constexpr std::size_t kGrainCount = 8U;
     static constexpr std::size_t kWindowSize = 1024U;
     static constexpr float kMaximumState = 8.0f;
@@ -2342,6 +3150,7 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId == "official_level") { officialControls_ = true; officialLevel_.setTarget(value * 0.01f, rampFrames); return true; }
         if (parameterId == "bpm") bpm_.setTarget(value, rampFrames);
         else if (parameterId == "capture_beats") captureBeats_.setTarget(value, rampFrames);
         else if (parameterId == "smear_percent") smearPercent_.setTarget(value, rampFrames);
@@ -2386,6 +3195,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialLevel_.reset(officialLevel_.target());
         bpm_.reset(bpm_.target());
         captureBeats_.reset(captureBeats_.target());
         smearPercent_.reset(smearPercent_.target());
@@ -2394,7 +3204,7 @@ private:
         clearState();
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !officialControls_; }
 
     void tryCapture() noexcept {
         const std::size_t length = requestedCaptureFrames();
@@ -2577,6 +3387,11 @@ private:
         processFdn(grainLeft, grainRight, feedback);
         frame[0U] = std::clamp(grainLeft + lastFdnLeft_, -kMaximumState, kMaximumState);
         if (channels > 1U) frame[1U] = std::clamp(grainRight + lastFdnRight_, -kMaximumState, kMaximumState);
+        if (officialControls_) {
+            const float gain = officialLevel_.next();
+            frame[0U] = inputLeft + frame[0U] * gain;
+            if (channels > 1U) frame[1U] = inputRight + frame[1U] * gain;
+        }
         ++frameCounter_;
     }
 };
@@ -2589,6 +3404,8 @@ public:
     }
 
 private:
+    NativeOfficialTapeEcho official_{};
+    void onTempoChanged() noexcept override { (void)official_.setTempo(tempoBpm()); }
     NativeTapeEchoProcessor processor_{};
     NativeTapeEchoProcessorConfig config_{};
 
@@ -2597,7 +3414,7 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        return processor_.prepare(sampleRate()) && apply(0U);
+        return official_.prepare(sampleRate()) && processor_.prepare(sampleRate()) && apply(0U);
     }
 
     [[nodiscard]] bool onSetParameter(
@@ -2605,6 +3422,8 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId == "official_variant") return official_.setVariant(static_cast<unsigned int>(value));
+        if (parameterId.substr(0U, 9U) == "official_") return official_.setParameter(parameterId, value, rampFrames);
         if (parameterId == "time_ms") config_.timeMs = value;
         else if (parameterId == "feedback_percent") config_.feedbackPercent = value;
         else if (parameterId == "wow_flutter_percent") config_.wowFlutterPercent = value;
@@ -2616,11 +3435,13 @@ private:
     }
 
     void onResetState() noexcept override {
+        official_.reset();
         processor_.reset();
         (void)apply(0U);
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (officialVariant() != 0U) { official_.process(frame, channels); return; }
         (void)processor_.processInPlace(frame, 1U, channels);
     }
 };
@@ -2631,6 +3452,10 @@ public:
         : NativeEffectProcessor(descriptor) {}
 
 private:
+    NativeOfficialCountedDelay officialDelay_{NativeOfficialCountedDelay::Mode::Reverse};
+    NativeOfficialWetPath officialWet_{};
+    bool officialControls_ = false;
+    void onTempoChanged() noexcept override { officialDelay_.setTempo(tempoBpm(), defaultRampFrames(15U)); }
     NativeReverseDelayProcessor processor_{};
     NativeReverseDelayConfig config_{};
 
@@ -2639,6 +3464,8 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        officialDelay_.setTempo(tempoBpm(), 0U);
+        if (!officialDelay_.prepare(sampleRate()) || !officialWet_.prepare(sampleRate())) return false;
         return processor_.prepare(sampleRate()) && apply(0U);
     }
 
@@ -2647,6 +3474,10 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            officialControls_ = true;
+            return officialDelay_.set(parameterId, value, rampFrames) || officialWet_.set(parameterId, value, rampFrames);
+        }
         if (parameterId == "bpm") config_.bpm = value;
         else if (parameterId == "segment_beats") config_.segmentBeats = value;
         else if (parameterId == "feedback_percent") config_.feedbackPercent = value;
@@ -2657,11 +3488,18 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialDelay_.reset(); officialWet_.reset();
         processor_.reset();
         (void)apply(0U);
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (officialControls_) {
+            const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : 0.0f}};
+            officialDelay_.process(frame, channels);
+            officialWet_.mix(frame, dry, channels);
+            return;
+        }
         (void)processor_.processInPlace(frame, 1U, channels);
     }
 };
@@ -2676,6 +3514,10 @@ public:
         : NativeEffectProcessor(descriptor) {}
 
 private:
+    bool officialControls_ = false;
+    NativeOfficialWetPath officialWet_{};
+    NativeOfficialReverseReverb officialTail_{};
+    NativeFdn16ReverbProcessor officialDiffuse_{};
     NativeReverseDelayProcessor reverse_{};
     NativeReverseDelayConfig reverseConfig_{120.0f, 0.5f, 0.0f, 20.0f, 100.0f};
     NativeFdn16ReverbProcessor diffuse_{};
@@ -2696,6 +3538,9 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        if (!officialWet_.prepare(sampleRate(), true) || !officialTail_.prepare(sampleRate()) ||
+            !officialDiffuse_.prepare(sampleRate()) ||
+            !officialDiffuse_.setConfig({true, 1.0f, 0.15f, 8000.0f}, 0U)) return false;
         mixPercent_.reset(35.0f);
         return reverse_.prepare(sampleRate()) && diffuse_.prepare(sampleRate()) &&
             applyReverse(0U) && applyDiffuse(0U);
@@ -2706,6 +3551,13 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            officialControls_ = true;
+            if (parameterId == "official_time") officialTail_.setTime(value, rampFrames);
+            else if (parameterId == "official_gate_time") officialTail_.setGateTime(value, rampFrames);
+            else if (!officialWet_.set(parameterId, value, rampFrames)) return false;
+            return true;
+        }
         if (parameterId == "bpm") reverseConfig_.bpm = value;
         else if (parameterId == "segment_beats") reverseConfig_.segmentBeats = value;
         else if (parameterId == "feedback_percent") reverseConfig_.feedbackPercent = value;
@@ -2729,6 +3581,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialWet_.reset(); officialTail_.reset(); officialDiffuse_.resetState();
         reverse_.reset();
         diffuse_.resetState();
         mixPercent_.reset(mixPercent_.target());
@@ -2737,6 +3590,14 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (officialControls_) {
+            const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : 0.0f}};
+            officialWet_.delayInput(frame, channels);
+            (void)officialDiffuse_.processInPlace(frame, 1U, channels);
+            officialTail_.process(frame, channels);
+            officialWet_.mix(frame, dry, channels);
+            return;
+        }
         const unsigned int processedChannels = std::min<unsigned int>(channels, 2U);
         if (processedChannels == 0U) return;
 
@@ -2766,6 +3627,10 @@ public:
         : NativeEffectProcessor(descriptor) {}
 
 private:
+    NativeOfficialCountedDelay officialDelay_{NativeOfficialCountedDelay::Mode::Panning};
+    NativeOfficialWetPath officialWet_{};
+    bool officialControls_ = false;
+    void onTempoChanged() noexcept override { officialDelay_.setTempo(tempoBpm(), defaultRampFrames(15U)); }
     NativePanningDelayProcessor processor_{};
     NativePanningDelayProcessorConfig config_{};
 
@@ -2774,6 +3639,8 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        officialDelay_.setTempo(tempoBpm(), 0U);
+        if (!officialDelay_.prepare(sampleRate()) || !officialWet_.prepare(sampleRate())) return false;
         return processor_.prepare(sampleRate()) && apply(0U);
     }
 
@@ -2782,6 +3649,10 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            officialControls_ = true;
+            return officialDelay_.set(parameterId, value, rampFrames) || officialWet_.set(parameterId, value, rampFrames);
+        }
         if (parameterId == "time_ms") config_.timeMs = value;
         else if (parameterId == "feedback_percent") config_.feedbackPercent = value;
         else if (parameterId == "pan_percent") config_.panPercent = value;
@@ -2791,11 +3662,18 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialDelay_.reset(); officialWet_.reset();
         processor_.reset();
         (void)apply(0U);
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (officialControls_) {
+            const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : 0.0f}};
+            officialDelay_.process(frame, channels);
+            officialWet_.mix(frame, dry, channels);
+            return;
+        }
         (void)processor_.processInPlace(frame, 1U, channels);
     }
 };
@@ -2833,6 +3711,28 @@ private:
     dsp::ParameterSmoother amountPercent_{0.0f};
     dsp::ParameterSmoother trajectory_{0.0f};
     unsigned int sampleRate_ = 0U;
+    bool officialControls_ = false, officialActive_ = false;
+    float officialRise_ = 50.0f, officialFall_ = 50.0f;
+    int officialRelease_ = 0; // Unmarked manual default: software fallback FALL.
+    double officialPhase_ = 0.0;
+    std::uint64_t officialFadeRemaining_ = 0U;
+    dsp::ParameterSmoother officialRotation_{0.0f}, officialLevel_{0.5f};
+    std::uint64_t riseFrames() const noexcept { return static_cast<std::uint64_t>(std::max(1.0, std::round(sampleRate() * 0.002 * std::pow(1000.0, officialRise_ / 100.0)))); }
+    std::uint64_t fallFrames() const noexcept { return officialRelease_ == 1 ? static_cast<std::uint64_t>(std::max(1.0, std::round(sampleRate() * 0.002 * std::pow(2500.0, officialFall_ / 100.0)))) : 16U; }
+    void setOfficialActive(bool active) noexcept {
+        if (active == officialActive_) return;
+        officialActive_ = active;
+        if (active) {
+            officialPhase_ = 0.0; officialFadeRemaining_ = 0U;
+            officialRotation_.reset(0.0f); officialRotation_.setTarget(1.0f, riseFrames());
+        } else if (officialRelease_ == 1) officialFadeRemaining_ = fallFrames();
+        else { officialRotation_.reset(0.0f); officialFadeRemaining_ = 0U; }
+    }
+    void onBypassChanged(bool bypassed) noexcept override { if (officialControls_) setOfficialActive(!bypassed); }
+    std::uint64_t bypassRampFrames(bool bypassed, std::uint64_t requested) const noexcept override {
+        return officialControls_ && bypassed ? fallFrames() : requested;
+    }
+
 
     [[nodiscard]] static float transfer(float amount, unsigned int trajectory) noexcept {
         const float magnitude = std::clamp(std::fabs(amount), 0.0f, 1.0f);
@@ -2932,6 +3832,8 @@ private:
         filterStates_.fill(0.0f);
         amountPercent_.reset(0.0f);
         trajectory_.reset(0.0f);
+        officialRotation_.reset(0.0f); officialPhase_ = 0.0; officialFadeRemaining_ = 0U;
+        if (officialControls_ && officialActive_) officialRotation_.setTarget(1.0f, riseFrames());
         return true;
     }
 
@@ -2940,6 +3842,17 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (parameterId == "official_release") officialRelease_ = static_cast<int>(value);
+            else if (parameterId == "official_rise") {
+                officialRise_ = value;
+                if (officialActive_ && officialRotation_.isSmoothing()) officialRotation_.setTarget(1.0f, riseFrames());
+            } else if (parameterId == "official_fall") officialFall_ = value;
+            else if (parameterId == "official_level") officialLevel_.setTarget(value * 0.01f, rampFrames);
+            else return false;
+            if (!officialControls_) { officialControls_ = true; setOfficialActive(!isBypassed()); }
+            return true;
+        }
         if (parameterId == "amount_percent") amountPercent_.setTarget(value, rampFrames);
         else if (parameterId == "trajectory") trajectory_.setTarget(value, rampFrames);
         else return false;
@@ -2952,15 +3865,28 @@ private:
         filterStates_.fill(0.0f);
         amountPercent_.reset(amountPercent_.target());
         trajectory_.reset(trajectory_.target());
+        officialLevel_.reset(officialLevel_.target());
+        officialRotation_.reset(0.0f); officialPhase_ = 0.0; officialFadeRemaining_ = 0U;
+        if (officialControls_ && officialActive_) officialRotation_.setTarget(1.0f, riseFrames());
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !officialControls_; }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
         const unsigned int processedChannels = std::min<unsigned int>(channels, 2U);
         if (processedChannels == 0U || sampleRate_ == 0U) return;
-        const float amount = std::clamp(amountPercent_.next() * 0.01f, -1.0f, 1.0f);
-        const float trajectoryValue = std::clamp(trajectory_.next(), 0.0f, 3.0f);
+        float amount = std::clamp(amountPercent_.next() * 0.01f, -1.0f, 1.0f);
+        const float trajectory = trajectory_.next();
+        if (officialControls_) {
+            const float rotation = officialRotation_.next();
+            if (officialActive_ || officialFadeRemaining_ != 0U) {
+                officialPhase_ += kTwoPi * (0.4 + 7.6 * rotation * rotation) / sampleRate_;
+                if (officialPhase_ >= kTwoPi) officialPhase_ -= kTwoPi;
+                if (!officialActive_) --officialFadeRemaining_;
+            }
+            amount = rotation * static_cast<float>(std::sin(officialPhase_));
+        }
+        const float trajectoryValue = officialControls_ ? 0.0f : std::clamp(trajectory, 0.0f, 3.0f);
         const unsigned int modeA = static_cast<unsigned int>(trajectoryValue);
         const unsigned int modeB = std::min(3U, modeA + 1U);
         const float modeBlend = trajectoryValue - static_cast<float>(modeA);
@@ -2993,6 +3919,10 @@ private:
         const float rightGain = macro < 0.0f ? std::cos(magnitude * static_cast<float>(kTwoPi * 0.25)) : 1.0f;
         frame[0U] = std::clamp(filterStates_[0U] * leftGain, -kMaximumState, kMaximumState);
         if (processedChannels > 1U) frame[1U] = std::clamp(filterStates_[1U] * rightGain, -kMaximumState, kMaximumState);
+        if (officialControls_) {
+            const float gain = officialLevel_.next();
+            for (unsigned int ch = 0U; ch < processedChannels; ++ch) frame[ch] = input[ch] + frame[ch] * gain;
+        }
         ++writeFrame_;
         if (writeFrame_ >= buffers_[0U].size()) writeFrame_ = 0U;
     }
@@ -3008,7 +3938,11 @@ public:
         : NativeEffectProcessor(descriptor) {}
 
 private:
+    bool officialControls_ = false;
+    dsp::ParameterSmoother officialLevel_{0.5f};
     static constexpr std::size_t kGrainCount = 16U;
+    // 80 Hz × 1 s needs 80 simultaneous voices; legacy remains limited to 16.
+    static constexpr std::size_t kOfficialGrainCount = 96U;
     static constexpr std::size_t kWindowSize = 2048U;
     static constexpr float kMaximumState = 8.0f;
     static constexpr std::uint64_t kRandomSeed = 0x4752414e554c4152ULL;
@@ -3025,7 +3959,7 @@ private:
 
     std::array<std::vector<float>, 2U> history_{};
     std::array<std::size_t, 2U> writeIndices_{};
-    std::array<Grain, kGrainCount> grains_{};
+    std::array<Grain, kOfficialGrainCount> grains_{};
     std::array<float, kWindowSize + 1U> window_{};
     dsp::ParameterSmoother grainSizeMs_{120.0f};
     dsp::ParameterSmoother densityHz_{12.0f};
@@ -3070,6 +4004,14 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!officialControls_) { officialControls_ = true; feedbackPercent_.setTarget(0.0f, rampFrames); }
+            if (parameterId == "official_time") densityHz_.setTarget(std::pow(80.0f, 1.0f - value * 0.01f), rampFrames);
+            else if (parameterId == "official_feedback") grainSizeMs_.setTarget(10.0f * std::pow(100.0f, value * 0.01f), rampFrames);
+            else if (parameterId == "official_e_level") officialLevel_.setTarget(value * 0.01f, rampFrames);
+            else return false;
+            return true;
+        }
         if (parameterId == "grain_size_ms") grainSizeMs_.setTarget(value, rampFrames);
         else if (parameterId == "density_hz") densityHz_.setTarget(value, rampFrames);
         else if (parameterId == "pitch_semitones") pitchSemitones_.setTarget(value, rampFrames);
@@ -3081,6 +4023,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialLevel_.reset(officialLevel_.target());
         for (auto& channel : history_) std::fill(channel.begin(), channel.end(), 0.0f);
         writeIndices_.fill(0U);
         grains_.fill(Grain{});
@@ -3122,9 +4065,10 @@ private:
 
     void spawnGrain(float grainSizeMs, float densityHz, float pitchSemitones,
                     float jitterPercent) noexcept {
-        std::size_t chosen = kGrainCount;
+        const auto grainCount = officialControls_ ? kOfficialGrainCount : kGrainCount;
+        std::size_t chosen = grainCount;
         float quietestWindow = 2.0f;
-        for (std::size_t index = 0U; index < grains_.size(); ++index) {
+        for (std::size_t index = 0U; index < grainCount; ++index) {
             const auto& grain = grains_[index];
             if (!grain.active) {
                 chosen = index;
@@ -3136,7 +4080,7 @@ private:
                 chosen = index;
             }
         }
-        if (chosen == kGrainCount || history_[0U].empty()) return;
+        if (chosen == grainCount || history_[0U].empty()) return;
 
         auto& grain = grains_[chosen];
         const auto requestedLength = std::max(2U, static_cast<unsigned int>(std::lround(
@@ -3144,7 +4088,7 @@ private:
         )));
         const double periodFrames = static_cast<double>(sampleRate()) / std::clamp(static_cast<double>(densityHz), 1.0, 80.0);
         const auto voiceLimitedLength = static_cast<unsigned int>(std::max(2.0,
-            std::floor(periodFrames * static_cast<double>(kGrainCount)) - 1.0));
+            std::floor(periodFrames * static_cast<double>(grainCount)) - 1.0));
         const auto length = std::min(requestedLength, voiceLimitedLength);
         const float pitchStep = std::exp2(pitchSemitones / 12.0f);
         const double jitter = std::clamp(static_cast<double>(jitterPercent), 0.0, 100.0) * 0.01 *
@@ -3195,7 +4139,9 @@ private:
         std::array<double, 2U> wetSum{};
         double windowSum = 0.0;
         const double capacity = static_cast<double>(history_[0U].size());
-        for (auto& grain : grains_) {
+        const auto grainCount = officialControls_ ? kOfficialGrainCount : kGrainCount;
+        for (std::size_t index = 0U; index < grainCount; ++index) {
+            auto& grain = grains_[index];
             if (!grain.active) continue;
             const float envelope = readWindow(grain.age, grain.length);
             for (std::size_t channel = 0U; channel < 2U; ++channel) {
@@ -3214,7 +4160,8 @@ private:
         } else {
             lastWet_.fill(0.0f);
         }
-        const auto gains = dsp::equalPowerCrossfadeGains(wetMix);
+        const float effectLevel = officialLevel_.next();
+        const auto gains = officialControls_ ? dsp::CrossfadeGains{1.0f, effectLevel} : dsp::equalPowerCrossfadeGains(wetMix);
         frame[0U] = std::clamp(dry[0U] * gains.first + lastWet_[0U] * gains.second, -kMaximumState, kMaximumState);
         if (processedChannels > 1U) {
             frame[1U] = std::clamp(dry[1U] * gains.first + lastWet_[1U] * gains.second,
@@ -3234,16 +4181,44 @@ public:
 private:
     NativeAutoPanProcessor autoPan_{};
     NativeAutoPanConfig config_{};
+    bool officialControls_ = false;
+    float officialRate_ = -1.0f, officialStepRate_ = official::kStepOff;
+    dsp::ParameterSmoother officialDepth_{0.5f}, officialWaveform_{50.0f}, officialInitialPhase_{0.0f};
+    float officialRateHz_ = 2.0f, officialStepHz_ = 0.0f;
+    double officialPhase_ = 0.0, stepPhase_ = 1.0;
+    float heldLfo_ = 0.0f;
+    void onTempoChanged() noexcept override {
+        officialRateHz_ = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure());
+        officialStepHz_ = official::rateHz(officialStepRate_, tempoBpm(), quarterNotesPerMeasure());
+    }
+    void resetOfficial() noexcept {
+        officialDepth_.reset(officialDepth_.target());
+        officialWaveform_.reset(officialWaveform_.target());
+        officialInitialPhase_.reset(officialInitialPhase_.target());
+        officialPhase_ = 0.0; stepPhase_ = 1.0; heldLfo_ = 0.0f;
+    }
 
     [[nodiscard]] bool apply(std::uint64_t rampFrames) noexcept {
         return autoPan_.setConfig(config_, rampFrames);
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        resetOfficial();
         return autoPan_.prepare(sampleRate()) && apply(0U);
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            officialControls_ = true;
+            if (parameterId == "official_rate") officialRate_ = value;
+            else if (parameterId == "official_step_rate") officialStepRate_ = value;
+            else if (parameterId == "official_depth") officialDepth_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_waveform") officialWaveform_.setTarget(value, rampFrames);
+            else if (parameterId == "official_init_phase") officialInitialPhase_.setTarget(value / 360.0f, rampFrames);
+            else return false;
+            onTempoChanged();
+            return true;
+        }
         if (parameterId == "rate_hz") {
             config_.rateHz = value;
         } else if (parameterId == "depth") {
@@ -3259,6 +4234,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        resetOfficial();
         if (sampleRate() != 0U) {
             (void)autoPan_.prepare(sampleRate());
             (void)apply(0U);
@@ -3266,7 +4242,25 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
-        (void)autoPan_.processInPlace(frame, 1U, channels);
+        if (!officialControls_) { (void)autoPan_.processInPlace(frame, 1U, channels); return; }
+        const float depth = officialDepth_.next();
+        const float shape = 0.25f * std::pow(80.0f, officialWaveform_.next() * 0.01f);
+        const double phase = officialPhase_ + officialInitialPhase_.next();
+        const float lfo = std::tanh(static_cast<float>(std::sin(kTwoPi * phase)) * shape) / std::tanh(shape);
+        if (officialStepHz_ == 0.0f) heldLfo_ = lfo;
+        else {
+            if (stepPhase_ >= 1.0) { heldLfo_ = lfo; stepPhase_ -= std::floor(stepPhase_); }
+            stepPhase_ += officialStepHz_ / static_cast<double>(sampleRate());
+        }
+        const double pan = depth * heldLfo_;
+        if (channels >= 2U) {
+            const float mid = 0.5f * (frame[0] + frame[1]);
+            const float side = 0.5f * (frame[0] - frame[1]) * (1.0f - depth * std::fabs(heldLfo_));
+            frame[0] = mid * static_cast<float>(std::cos((pan + 1.0) * kTwoPi * 0.125)) * 1.41421356f + side;
+            frame[1] = mid * static_cast<float>(std::sin((pan + 1.0) * kTwoPi * 0.125)) * 1.41421356f - side;
+        }
+        officialPhase_ += officialRateHz_ / static_cast<double>(sampleRate());
+        if (officialPhase_ >= 1.0) officialPhase_ -= std::floor(officialPhase_);
     }
 };
 
@@ -3292,6 +4286,7 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId == "official_position") { position_.setTarget(value / 50.0f, rampFrames); return true; }
         if (parameterId != "position") return false;
         position_.setTarget(value * 0.01f, rampFrames);
         return true;
@@ -3332,6 +4327,11 @@ public:
 
 private:
     NativeChorusProcessor chorus_{};
+    NativeOfficialWetPath wetPath_{};
+    float officialRate_ = 50.0f;
+    void onTempoChanged() noexcept override {
+        if (config_.officialControls) { config_.rateHz = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure()); (void)apply(defaultRampFrames(20U)); }
+    }
     ChorusProcessorConfig config_{true, 0.8f, 5.0f, 0.0f, 0.25f};
 
     [[nodiscard]] bool apply(std::uint64_t rampFrames) noexcept {
@@ -3339,10 +4339,20 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        return chorus_.prepare(sampleRate()) && apply(0U);
+        return chorus_.prepare(sampleRate()) && wetPath_.prepare(sampleRate()) && apply(0U);
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            if (!config_.officialControls) {
+                config_.officialControls = true; config_.wetMix = 1.0f;
+                config_.rateHz = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure()); config_.depthMs = 12.5f;
+            }
+            if (parameterId == "official_rate") { officialRate_ = value; config_.rateHz = official::rateHz(value, tempoBpm(), quarterNotesPerMeasure()); }
+            else if (parameterId == "official_depth") config_.depthMs = value * 0.25f;
+            else if (!wetPath_.set(parameterId, value, rampFrames)) return false;
+            return apply(rampFrames);
+        }
         if (parameterId == "rate_hz") {
             config_.rateHz = value;
         } else if (parameterId == "depth_ms") {
@@ -3358,6 +4368,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        wetPath_.reset();
         if (sampleRate() != 0U) {
             (void)chorus_.prepare(sampleRate());
             (void)apply(0U);
@@ -3365,7 +4376,9 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : 0.0f}};
         (void)chorus_.processInPlace(frame, 1U, channels);
+        if (config_.officialControls) wetPath_.mix(frame, dry, channels);
     }
 };
 
@@ -3380,6 +4393,12 @@ private:
     dsp::ParameterSmoother waveform_{0.0f};
     dsp::ParameterSmoother wetMix_{1.0f};
     double phase_ = 0.0;
+    bool officialControls_ = false;
+    float officialRate_ = 85.0f;
+    dsp::ParameterSmoother officialWaveform_{50.0f};
+    void onTempoChanged() noexcept override {
+        if (officialControls_) rateHz_.setTarget(official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure()), defaultRampFrames(20U));
+    }
 
     [[nodiscard]] float waveformAt(float phase, unsigned int waveform) const noexcept {
         switch (waveform) {
@@ -3398,11 +4417,21 @@ private:
         depth_.reset(depth_.target());
         waveform_.reset(waveform_.target());
         wetMix_.reset(wetMix_.target());
+        officialWaveform_.reset(officialWaveform_.target());
         phase_ = 0.0;
         return true;
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            officialControls_ = true;
+            if (parameterId == "official_rate") { officialRate_ = value; rateHz_.setTarget(official::rateHz(value, tempoBpm(), quarterNotesPerMeasure()), rampFrames); }
+            else if (parameterId == "official_depth") depth_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_waveform") officialWaveform_.setTarget(value, rampFrames);
+            else return false;
+            wetMix_.setTarget(1.0f, rampFrames);
+            return true;
+        }
         if (parameterId == "rate_hz") {
             rateHz_.setTarget(value, rampFrames);
         } else if (parameterId == "depth") {
@@ -3422,6 +4451,7 @@ private:
         depth_.reset(depth_.target());
         waveform_.reset(waveform_.target());
         wetMix_.reset(wetMix_.target());
+        officialWaveform_.reset(officialWaveform_.target());
         phase_ = 0.0;
     }
 
@@ -3431,8 +4461,10 @@ private:
         const unsigned int lowerShape = static_cast<unsigned int>(waveform);
         const unsigned int upperShape = std::min(lowerShape + 1U, 2U);
         const float shapeBlend = waveform - static_cast<float>(lowerShape);
-        const float lfo = waveformAt(phase, lowerShape) +
+        float lfo = waveformAt(phase, lowerShape) +
             ((waveformAt(phase, upperShape) - waveformAt(phase, lowerShape)) * shapeBlend);
+        const float shape = 0.25f * std::pow(80.0f, officialWaveform_.next() * 0.01f);
+        if (officialControls_) lfo = 0.5f + 0.5f * std::tanh(std::sin(phase * static_cast<float>(kTwoPi)) * shape) / std::tanh(shape);
         const float modulationDepth = depth_.next();
         const float wetMix = wetMix_.next();
         const float gain = 1.0f - (modulationDepth * lfo);
@@ -3452,6 +4484,7 @@ public:
 
 private:
     dsp::ParameterSmoother carrierHz_{440.0f};
+    dsp::ParameterSmoother waveformBlend_{0.0f};
     dsp::ParameterSmoother depth_{1.0f};
     dsp::ParameterSmoother wetMix_{1.0f};
     double phase_ = 0.0;
@@ -3463,6 +4496,7 @@ private:
     [[nodiscard]] bool onPrepare() noexcept override {
         if (carrierHz_.target() >= maximumCarrierHz()) return false;
         carrierHz_.reset(carrierHz_.target());
+        waveformBlend_.reset(waveformBlend_.target());
         depth_.reset(depth_.target());
         wetMix_.reset(wetMix_.target());
         phase_ = 0.0;
@@ -3470,9 +4504,18 @@ private:
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept override {
+        if (parameterId == "official_frequency") {
+            const float frequency = 0.1f * std::pow(80000.0f, value * 0.01f);
+            carrierHz_.setTarget(std::min(frequency, maximumCarrierHz() * 0.999f), rampFrames);
+            return true;
+        }
+        if (parameterId == "official_balance") { wetMix_.setTarget(value * 0.01f, rampFrames); return true; }
         if (parameterId == "carrier_hz") {
             if (sampleRate() != 0U && value >= maximumCarrierHz()) return false;
             carrierHz_.setTarget(value, rampFrames);
+        } else if (parameterId == "waveform") {
+            if (value != 0.0f && value != 1.0f) return false;
+            waveformBlend_.setTarget(value, rampFrames);
         } else if (parameterId == "depth") {
             depth_.setTarget(value, rampFrames);
         } else if (parameterId == "wet_mix") {
@@ -3485,13 +4528,23 @@ private:
 
     void onResetState() noexcept override {
         carrierHz_.reset(carrierHz_.target());
+        waveformBlend_.reset(waveformBlend_.target());
         depth_.reset(depth_.target());
         wetMix_.reset(wetMix_.target());
         phase_ = 0.0;
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
-        const float carrier = static_cast<float>(std::sin(phase_));
+        const float sineCarrier = static_cast<float>(std::sin(phase_));
+        const float waveformBlend = waveformBlend_.next();
+        const float triangleCarrier = waveformBlend > 0.0f
+            ? ringModTriangle(phase_, static_cast<double>(sampleRate()), carrierHz_.current())
+            : sineCarrier;
+        const float carrier = waveformBlend <= 0.0f
+            ? sineCarrier
+            : waveformBlend >= 1.0f
+                ? triangleCarrier
+                : sineCarrier + (triangleCarrier - sineCarrier) * waveformBlend;
         const float depth = depth_.next();
         const float wetMix = wetMix_.next();
         const float ringGain = 1.0f - depth + (depth * carrier);
@@ -3530,6 +4583,8 @@ private:
     dsp::ParameterSmoother mid2GainDb_{0.0f};
     dsp::ParameterSmoother highFrequencyHz_{8000.0f};
     dsp::ParameterSmoother highGainDb_{0.0f};
+    dsp::ParameterSmoother outputLevel_{1.0f};
+    bool officialControls_ = false;
     std::uint64_t processedFrames_ = 0U;
 
     [[nodiscard]] double boundedFrequency(float requestedHz) const noexcept {
@@ -3612,6 +4667,7 @@ private:
         mid2GainDb_.reset(mid2GainDb_.target());
         highFrequencyHz_.reset(highFrequencyHz_.target());
         highGainDb_.reset(highGainDb_.target());
+        outputLevel_.reset(outputLevel_.target());
         processedFrames_ = 0U;
         return configureCurrent();
     }
@@ -3621,6 +4677,25 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true;
+                mid1FrequencyHz_.setTarget(800.0f, rampFrames);
+                mid2FrequencyHz_.setTarget(3150.0f, rampFrames);
+                outputLevel_.setTarget(0.5f, rampFrames);
+            }
+            if (parameterId == "official_lo") lowGainDb_.setTarget(value, rampFrames);
+            else if (parameterId == "official_lo_mid") mid1GainDb_.setTarget(value, rampFrames);
+            else if (parameterId == "official_lo_mid_freq") mid1FrequencyHz_.setTarget(value, rampFrames);
+            else if (parameterId == "official_lo_mid_q") mid1Q_.setTarget(value, rampFrames);
+            else if (parameterId == "official_hi_mid") mid2GainDb_.setTarget(value, rampFrames);
+            else if (parameterId == "official_hi_mid_freq") mid2FrequencyHz_.setTarget(value, rampFrames);
+            else if (parameterId == "official_hi_mid_q") mid2Q_.setTarget(value, rampFrames);
+            else if (parameterId == "official_high") highGainDb_.setTarget(value, rampFrames);
+            else if (parameterId == "official_level") outputLevel_.setTarget(value * 0.01f, rampFrames);
+            else return false;
+            return true;
+        }
         if (parameterId == "low_frequency_hz") lowFrequencyHz_.setTarget(value, rampFrames);
         else if (parameterId == "low_gain_db") lowGainDb_.setTarget(value, rampFrames);
         else if (parameterId == "mid1_frequency_hz") mid1FrequencyHz_.setTarget(value, rampFrames);
@@ -3647,11 +4722,13 @@ private:
         mid2GainDb_.reset(mid2GainDb_.target());
         highFrequencyHz_.reset(highFrequencyHz_.target());
         highGainDb_.reset(highGainDb_.target());
+        outputLevel_.reset(outputLevel_.target());
         processedFrames_ = 0U;
         (void)configureCurrent();
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        const float outputLevel = outputLevel_.next();
         const float lowFrequencyHz = lowFrequencyHz_.next();
         const float lowGainDb = lowGainDb_.next();
         const float mid1FrequencyHz = mid1FrequencyHz_.next();
@@ -3678,7 +4755,7 @@ private:
             for (std::size_t band = 0U; band < filters_.size(); ++band) {
                 sample = filters_[band][channel].process(sample);
             }
-            frame[channel] = sample;
+            frame[channel] = sample * outputLevel;
         }
     }
 };
@@ -3717,6 +4794,17 @@ private:
     std::uint64_t processedFrames_ = 0U;
     double gatePhase_ = 0.0;
     bool gateEnabled_ = false;
+    bool officialControls_ = false;
+    unsigned int officialBand_ = 0U, officialWaveform_ = 0U;
+    float officialRate_ = -1.0f, officialStep_ = official::kStepOff;
+    float officialRateHz_ = 2.0f, officialStepHz_ = 0.0f;
+    dsp::ParameterSmoother officialLevel_{0.5f}, officialDepth_{0.5f};
+    double officialPhase_ = 0.0, officialStepPhase_ = 1.0;
+    float officialHeld_ = 0.0f, officialBandGain_ = 1.0f;
+    void onTempoChanged() noexcept override {
+        officialRateHz_ = official::rateHz(officialRate_, tempoBpm(), quarterNotesPerMeasure());
+        officialStepHz_ = official::rateHz(officialStep_, tempoBpm(), quarterNotesPerMeasure());
+    }
 
     [[nodiscard]] static float decibelsToLinear(float decibels) noexcept {
         return std::pow(10.0f, decibels / 20.0f);
@@ -3778,7 +4866,8 @@ private:
             for (auto& section : *cascade) for (auto& filter : section) filter.reset();
         }
         resetSmoothers();
-        gatePhase_ = 0.0;
+        gatePhase_ = 0.0; officialPhase_ = 0.0; officialStepPhase_ = 1.0; officialBandGain_ = 1.0f;
+        officialLevel_.reset(officialLevel_.target()); officialDepth_.reset(officialDepth_.target());
         processedFrames_ = 0U;
         return configureCrossovers(lowCrossoverHz_.current(), highCrossoverHz_.current());
     }
@@ -3788,6 +4877,17 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            officialControls_ = true;
+            if (parameterId == "official_band") officialBand_ = static_cast<unsigned int>(value);
+            else if (parameterId == "official_rate") officialRate_ = value;
+            else if (parameterId == "official_step_rate") officialStep_ = value;
+            else if (parameterId == "official_band_level") officialLevel_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_depth") officialDepth_.setTarget(value * 0.01f, rampFrames);
+            else if (parameterId == "official_waveform") officialWaveform_ = static_cast<unsigned int>(value);
+            else return false;
+            onTempoChanged(); return true;
+        }
         if (parameterId == "low_crossover_hz") lowCrossoverHz_.setTarget(value, rampFrames);
         else if (parameterId == "high_crossover_hz") highCrossoverHz_.setTarget(value, rampFrames);
         else if (parameterId == "low_gain_db") lowGain_.setTarget(decibelsToLinear(value), rampFrames);
@@ -3811,7 +4911,8 @@ private:
             for (auto& section : *cascade) for (auto& filter : section) filter.reset();
         }
         resetSmoothers();
-        gatePhase_ = 0.0;
+        gatePhase_ = 0.0; officialPhase_ = 0.0; officialStepPhase_ = 1.0; officialBandGain_ = 1.0f;
+        officialLevel_.reset(officialLevel_.target()); officialDepth_.reset(officialDepth_.target());
         processedFrames_ = 0U;
         (void)configureCrossovers(lowCrossoverHz_.current(), highCrossoverHz_.current());
     }
@@ -3845,6 +4946,17 @@ private:
         }
         const float gate = gateEnvelope_.next();
 
+        if (officialControls_) {
+            officialPhase_ += officialRateHz_ / sampleRate(); officialPhase_ -= std::floor(officialPhase_);
+            if (officialStepHz_ == 0.0f || officialStepPhase_ >= 1.0) {
+                officialHeld_ = officialWaveform_ == 0U ? static_cast<float>(1.0 - 4.0 * std::fabs(officialPhase_ - 0.5)) : (officialPhase_ < 0.5 ? 1.0f : -1.0f);
+                officialStepPhase_ -= std::floor(officialStepPhase_);
+            }
+            officialStepPhase_ += officialStepHz_ / sampleRate();
+            const float target = officialLevel_.next() * (1.0f - officialDepth_.next() * (1.0f - officialHeld_) * 0.5f);
+            const float alpha = static_cast<float>(1.0 - std::exp(-1.0 / (sampleRate() * 0.002)));
+            officialBandGain_ += (target - officialBandGain_) * alpha;
+        }
         const unsigned int count = std::min<unsigned int>(channels, 2U);
         for (unsigned int channel = 0U; channel < count; ++channel) {
             const float input = std::isfinite(frame[channel]) ? frame[channel] : 0.0f;
@@ -3852,7 +4964,10 @@ private:
             const float upper = processCascade(lowHighPassCrossover_, channel, input);
             const float mid = processCascade(highPassCrossover_, channel, upper);
             const float high = processCascade(highHighPassCrossover_, channel, upper);
-            frame[channel] = ((low * lowGain) + (mid * midGain) + (high * highGain)) * gate;
+            if (officialControls_) {
+                const float selected = officialBand_ == 0U ? low : officialBand_ == 1U ? mid : high;
+                frame[channel] = low + mid + high + selected * (officialBandGain_ - 1.0f);
+            } else frame[channel] = ((low * lowGain) + (mid * midGain) + (high * highGain)) * gate;
         }
     }
 };
@@ -3864,6 +4979,8 @@ public:
 
 private:
     NativeStereoEnhanceProcessor processor_{};
+    NativeOfficialWetPath wetPath_{};
+    bool officialControls_ = false;
     NativeStereoEnhanceConfig config_{};
 
     [[nodiscard]] bool apply(std::uint64_t rampFrames) noexcept {
@@ -3871,7 +4988,7 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        return processor_.prepare(sampleRate()) && apply(0U);
+        return processor_.prepare(sampleRate()) && wetPath_.prepare(sampleRate()) && apply(0U);
     }
 
     [[nodiscard]] bool onSetParameter(
@@ -3879,6 +4996,16 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true; config_.widthPercent = 150.0f; config_.decorrelationPercent = 50.0f;
+                (void)wetPath_.set("official_d_level", 0.0f, 0U);
+                (void)wetPath_.set("official_e_level", 100.0f, 0U);
+            }
+            if (parameterId == "official_enhance") { config_.widthPercent = 100.0f + value; config_.decorrelationPercent = value; }
+            else if (!wetPath_.set(parameterId, value, rampFrames)) return false;
+            return apply(rampFrames);
+        }
         if (parameterId == "width") {
             config_.widthPercent = value;
         } else if (parameterId == "low_mono_cutoff_hz") {
@@ -3894,12 +5021,13 @@ private:
     }
 
     void onResetState() noexcept override {
-        processor_.reset();
+        processor_.reset(); wetPath_.reset();
         (void)apply(0U);
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
         (void)processor_.processInPlace(frame, 1U, channels);
+        if (officialControls_) wetPath_.mix(frame, {{0.0f, 0.0f}}, channels);
     }
 };
 
@@ -3909,6 +5037,10 @@ public:
         : NativeEffectProcessor(descriptor) {}
 
 private:
+    NativeOfficialCountedDelay officialDelay_{NativeOfficialCountedDelay::Mode::Delay};
+    NativeOfficialWetPath officialWet_{};
+    bool officialControls_ = false;
+    void onTempoChanged() noexcept override { officialDelay_.setTempo(tempoBpm(), defaultRampFrames(15U)); }
     std::array<std::vector<float>, 2U> lines_{};
     std::array<std::size_t, 2U> writeIndices_{};
     dsp::ParameterSmoother delayMs_{350.0f};
@@ -3933,6 +5065,8 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        officialDelay_.setTempo(tempoBpm(), 0U);
+        if (!officialDelay_.prepare(sampleRate()) || !officialWet_.prepare(sampleRate())) return false;
         try {
             maximumDelayFrames_ = static_cast<std::size_t>(std::max(
                 2.0, std::ceil(static_cast<double>(sampleRate()) * 2.0)
@@ -3954,6 +5088,10 @@ private:
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            officialControls_ = true;
+            return officialDelay_.set(parameterId, value, rampFrames) || officialWet_.set(parameterId, value, rampFrames);
+        }
         if (parameterId == "delay_ms") {
             delayMs_.setTarget(value, rampFrames);
         } else if (parameterId == "feedback") {
@@ -3967,6 +5105,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialDelay_.reset(); officialWet_.reset();
         for (auto& line : lines_) std::fill(line.begin(), line.end(), 0.0f);
         writeIndices_.fill(0U);
         delayMs_.reset(delayMs_.target());
@@ -3975,6 +5114,12 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (officialControls_) {
+            const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : 0.0f}};
+            officialDelay_.process(frame, channels);
+            officialWet_.mix(frame, dry, channels);
+            return;
+        }
         if (maximumDelayFrames_ < 2U) return;
         const float delaySamples = std::clamp(
             delayMs_.next() * static_cast<float>(sampleRate()) / 1000.0f,
@@ -4004,6 +5149,10 @@ public:
     }
 
 private:
+    NativeOfficialCountedDelay officialDelay_{NativeOfficialCountedDelay::Mode::Modulated};
+    NativeOfficialWetPath officialWet_{};
+    bool officialControls_ = false;
+    void onTempoChanged() noexcept override { officialDelay_.setTempo(tempoBpm(), defaultRampFrames(15U)); }
     NativeModDelayProcessor processor_{};
     NativeModDelayProcessorConfig config_{};
 
@@ -4012,6 +5161,8 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        officialDelay_.setTempo(tempoBpm(), 0U);
+        if (!officialDelay_.prepare(sampleRate()) || !officialWet_.prepare(sampleRate())) return false;
         return processor_.prepare(sampleRate()) && apply(0U);
     }
 
@@ -4020,6 +5171,10 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            officialControls_ = true;
+            return officialDelay_.set(parameterId, value, rampFrames) || officialWet_.set(parameterId, value, rampFrames);
+        }
         if (parameterId == "rate_hz") {
             config_.rateHz = value;
         } else if (parameterId == "depth_ms") {
@@ -4037,11 +5192,18 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialDelay_.reset(); officialWet_.reset();
         processor_.reset();
         (void)apply(0U);
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (officialControls_) {
+            const std::array<float, 2U> dry{{frame[0], channels > 1U ? frame[1] : 0.0f}};
+            officialDelay_.process(frame, channels);
+            officialWet_.mix(frame, dry, channels);
+            return;
+        }
         (void)processor_.processInPlace(frame, 1U, channels);
     }
 };
@@ -4056,6 +5218,8 @@ public:
         : NativeEffectProcessor(descriptor) {}
 
 private:
+    NativeOfficialSlicer official_{NativeOfficialSlicer::Mode::Pattern};
+    void onTempoChanged() noexcept override { (void)official_.setTempo(tempoBpm()); (void)official_.setQuarterNotesPerMeasure(quarterNotesPerMeasure()); }
     static constexpr double kPi = 3.14159265358979323846;
     static constexpr std::array<std::array<float, 8U>, 8U> kPatterns{{
         {{1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f}},
@@ -4076,6 +5240,8 @@ private:
     double phaseSteps_ = 0.0;
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        if (!official_.prepare(sampleRate())) return false;
+        (void)official_.setAuthoredPattern(kPatterns[pattern_].data(), 8U);
         depthPercent_.reset(depthPercent_.target());
         edgeMs_.reset(edgeMs_.target());
         bpm_.reset(bpm_.target());
@@ -4088,8 +5254,10 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") return official_.setParameter(parameterId, value, rampFrames);
         if (parameterId == "pattern") {
             pattern_ = static_cast<unsigned int>(value);
+            (void)official_.setAuthoredPattern(kPatterns[pattern_].data(), 8U);
         } else if (parameterId == "rate") {
             rateBeats_ = value;
         } else if (parameterId == "depth") {
@@ -4105,6 +5273,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        official_.reset();
         phaseSteps_ = 0.0;
         depthPercent_.reset(depthPercent_.target());
         edgeMs_.reset(edgeMs_.target());
@@ -4112,6 +5281,7 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (official_.active()) { official_.process(frame, channels); return; }
         const float depth = std::clamp(depthPercent_.next() * 0.01f, 0.0f, 1.0f);
         const double edgeFramesRequested = static_cast<double>(edgeMs_.next()) *
             static_cast<double>(sampleRate()) / 1000.0;
@@ -4161,6 +5331,8 @@ public:
     }
 
 private:
+    NativeOfficialSlicer official_{NativeOfficialSlicer::Mode::Step};
+    void onTempoChanged() noexcept override { (void)official_.setTempo(tempoBpm()); (void)official_.setQuarterNotesPerMeasure(quarterNotesPerMeasure()); }
     static constexpr double kPi = 3.14159265358979323846;
     static constexpr std::array<std::string_view, 16U> kStepParameterIds{{
         "step_01", "step_02", "step_03", "step_04", "step_05", "step_06", "step_07", "step_08",
@@ -4207,6 +5379,7 @@ private:
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        if (!official_.prepare(sampleRate())) return false;
         phaseSteps_ = 0.0;
         lowPassState_.fill(0.0f);
         applyPendingControls();
@@ -4216,8 +5389,9 @@ private:
     [[nodiscard]] bool onSetParameter(
         std::string_view parameterId,
         float value,
-        std::uint64_t
+        std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") return official_.setParameter(parameterId, value, rampFrames);
         if (parameterId == "step_count") {
             pendingStepCount_ = static_cast<unsigned int>(value);
         } else if (parameterId == "rate_beats") {
@@ -4246,6 +5420,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        official_.reset();
         phaseSteps_ = 0.0;
         lowPassState_.fill(0.0f);
         if (pendingControls_) applyPendingControls();
@@ -4253,6 +5428,7 @@ private:
     }
 
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
+        if (official_.active()) { official_.process(frame, channels); return; }
         // Snap only sub-picoframe residuals from fractional stepping so exact
         // tempo boundaries remain stable over long runs and arbitrary blocks.
         const double nearestStep = std::round(phaseSteps_);
@@ -4351,6 +5527,10 @@ private:
     double subPhase_ = 0.0;
     float trackedHz_ = 0.0f;
     float filterQ_ = 1.7f;
+    bool officialControls_ = false;
+    double officialDecayAlpha_ = 0.999;
+    double officialFilterEnvelope_ = 0.0;
+    unsigned int officialOnsetCooldown_ = 0U;
 
     [[nodiscard]] static double polyBlep(double phase, double increment) noexcept {
         if (increment <= 0.0) return 0.0;
@@ -4494,7 +5674,7 @@ private:
         trackerHopCount_ = 0U;
         filterUpdateCount_ = 0U;
         decimatorState_ = 0.0;
-        envelope_ = 0.0;
+        envelope_ = 0.0; officialFilterEnvelope_ = 0.0; officialOnsetCooldown_ = 0U;
         oscillatorPhase_ = 0.0;
         subPhase_ = 0.0;
         trackedHz_ = 0.0f;
@@ -4505,6 +5685,19 @@ private:
     [[nodiscard]] bool onSetParameter(
         std::string_view parameterId, float value, std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0, 9) == "official_") {
+            if (!officialControls_) {
+                officialControls_ = true; toneHz_.setTarget(official::cutoffHz(50.0f), rampFrames);
+                filterQ_ = 0.5f * std::sqrt(40.0f);
+                officialDecayAlpha_ = std::exp(-1.0 / (sampleRate() * 0.01 * std::sqrt(200.0)));
+            }
+            if (parameterId == "official_frequency") toneHz_.setTarget(official::cutoffHz(value), rampFrames);
+            else if (parameterId == "official_resonance") filterQ_ = 0.5f * std::pow(40.0f, value * 0.01f);
+            else if (parameterId == "official_decay") officialDecayAlpha_ = std::exp(-1.0 / (sampleRate() * 0.01 * std::pow(200.0, value * 0.01)));
+            else if (parameterId == "official_balance") mixPercent_.setTarget(value, rampFrames);
+            else return false;
+            return true;
+        }
         if (parameterId == "sensitivity") sensitivity_.setTarget(value, rampFrames);
         else if (parameterId == "waveform") waveform_.setTarget(value, rampFrames);
         else if (parameterId == "octave") octave_.setTarget(value, rampFrames);
@@ -4529,7 +5722,7 @@ private:
         trackerHopCount_ = 0U;
         filterUpdateCount_ = 0U;
         decimatorState_ = 0.0;
-        envelope_ = 0.0;
+        envelope_ = 0.0; officialFilterEnvelope_ = 0.0; officialOnsetCooldown_ = 0U;
         oscillatorPhase_ = 0.0;
         subPhase_ = 0.0;
         trackedHz_ = 0.0f;
@@ -4550,6 +5743,14 @@ private:
 
         const float sensitivity = std::clamp(sensitivity_.next(), 0.0f, 100.0f);
         const double absolute = std::fabs(static_cast<double>(mono));
+        if (officialControls_) {
+            if (officialOnsetCooldown_ > 0U) --officialOnsetCooldown_;
+            if (absolute > std::max(0.005, envelope_ * 1.8) && officialOnsetCooldown_ == 0U) {
+                officialFilterEnvelope_ = 1.0;
+                officialOnsetCooldown_ = static_cast<unsigned int>(sampleRate() * 0.04);
+            }
+            officialFilterEnvelope_ *= officialDecayAlpha_;
+        }
         const double envelopeCoefficient = absolute > envelope_ ? attackCoefficient_ : releaseCoefficient_;
         envelope_ = (envelopeCoefficient * envelope_) + ((1.0 - envelopeCoefficient) * absolute);
         const double gate = sensitivityGate(sensitivity);
@@ -4576,7 +5777,7 @@ private:
             oscillatorPhase_ = wrappedPhase(oscillatorPhase_ + increment);
             subPhase_ = wrappedPhase(subPhase_ + subIncrement);
 
-            if ((filterUpdateCount_++ & 7U) == 0U) (void)configureFilter(toneHz_.next());
+            if ((filterUpdateCount_++ & 7U) == 0U) (void)configureFilter(toneHz_.next() * static_cast<float>(officialControls_ ? std::exp2(2.0 * officialFilterEnvelope_) : 1.0));
             const float oscillator = (0.82f * main) + (0.18f * sub);
             const float level = static_cast<float>(std::clamp(envelope_ * 3.0, 0.0, 1.0));
             const float filtered = filter_.process(oscillator * level).lowPass;
@@ -4602,34 +5803,63 @@ private:
     }
 };
 
+class NativeCatalogBeatShift final : public NativeEffectProcessor {
+public:
+    explicit NativeCatalogBeatShift(const NativeEffectDescriptor& descriptor) noexcept : NativeEffectProcessor(descriptor) {}
+    bool officialSourceTransport(LoopTransportConfig& config) const noexcept override {
+        if (!officialControls_ || isBypassed()) return false;
+        config.mode = LoopTransportMode::BeatShift; config.bpm = tempoBpm();
+        config.beatOffsetBeats = shift_ == -1000.0f ? 0.0f : (type_ == 0U ? -shift_ : shift_);
+        config.crossfadeMs = 5.0f; return true;
+    }
+private:
+    bool officialControls_ = false;
+    unsigned int type_ = 0U;
+    float shift_ = -1.0f;
+    bool onPrepare() noexcept override { return true; }
+    bool onSetParameter(std::string_view key, float value, std::uint64_t) noexcept override {
+        if (!sourceTransportAttached()) return false;
+        if (key == "official_type") type_ = static_cast<unsigned int>(value);
+        else if (key == "official_shift") shift_ = value;
+        else return false;
+        officialControls_ = true; return true;
+    }
+    void onResetState() noexcept override {}
+    // The engine transforms stored-loop readheads before insert processing.
+    void processEffectFrame(float*, unsigned int) noexcept override {}
+};
+
 class NativeCatalogVinylFlick final : public NativeEffectProcessor {
 public:
-    explicit NativeCatalogVinylFlick(const NativeEffectDescriptor& descriptor) noexcept
-        : NativeEffectProcessor(descriptor) {}
-
+    explicit NativeCatalogVinylFlick(const NativeEffectDescriptor& descriptor) noexcept : NativeEffectProcessor(descriptor) {}
+    bool officialSourceTransport(LoopTransportConfig& config) const noexcept override {
+        if (!officialControls_ || isBypassed()) return false;
+        config.mode = LoopTransportMode::VinylFlick; config.bpm = tempoBpm();
+        config.vinylSpeedPercent = officialFlick_ * 2.0f - 100.0f;
+        config.motorReturnSeconds = config_.motorReturnSeconds; config.brakePercent = config_.brakePercent;
+        config.vinylMixPercent = 100.0f; config.crossfadeMs = 5.0f; return true;
+    }
 private:
+    bool officialControls_ = false;
+    float officialFlick_ = 50.0f;
     NativeVinylFlickProcessor processor_{};
     NativeVinylFlickConfig config_{-100.0f, 1.5f, 35.0f, 100.0f};
-
-    [[nodiscard]] bool onPrepare() noexcept override {
-        return processor_.setConfig(config_, 0U) && processor_.prepare(sampleRate());
-    }
-
-    [[nodiscard]] bool onSetParameter(
-        std::string_view parameterId, float value, std::uint64_t rampFrames
-    ) noexcept override {
-        if (parameterId == "speed_percent") config_.speedPercent = value;
-        else if (parameterId == "motor_return_seconds") config_.motorReturnSeconds = value;
-        else if (parameterId == "brake_percent") config_.brakePercent = value;
-        else if (parameterId == "mix_percent") config_.mixPercent = value;
+    bool onPrepare() noexcept override { return processor_.setConfig(config_, 0U) && processor_.prepare(sampleRate()); }
+    bool onSetParameter(std::string_view key, float value, std::uint64_t rampFrames) noexcept override {
+        if (key == "official_flick") {
+            if (!sourceTransportAttached()) return false;
+            officialControls_ = true; officialFlick_ = value; return true;
+        }
+        if (key == "speed_percent") config_.speedPercent = value;
+        else if (key == "motor_return_seconds") config_.motorReturnSeconds = value;
+        else if (key == "brake_percent") config_.brakePercent = value;
+        else if (key == "mix_percent") config_.mixPercent = value;
         else return false;
         return processor_.setConfig(config_, rampFrames);
     }
-
     void onResetState() noexcept override { processor_.reset(); }
-
     void processEffectFrame(float* frame, unsigned int channels) noexcept override {
-        (void)processor_.processInPlace(frame, 1U, channels);
+        if (!officialControls_) (void)processor_.processInPlace(frame, 1U, channels);
     }
 };
 
@@ -4655,7 +5885,7 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
-        if (parameterId != "shift_semitones") return false;
+        if (parameterId != "shift_semitones" && parameterId != "official_trans") return false;
         semitones_.setTarget(value, rampFrames);
         return true;
     }
@@ -4715,7 +5945,8 @@ private:
     NativeAutoRiffCore core_{};
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        return core_.prepare(sampleRate()) && core_.setParameter("mix", 100.0f);
+        return core_.prepare(sampleRate()) && core_.setParameter("mix", 100.0f) &&
+            core_.setTempoBpm(tempoBpm()) && core_.setQuarterNotesPerMeasure(quarterNotesPerMeasure());
     }
 
     [[nodiscard]] bool onSetParameter(
@@ -4724,6 +5955,8 @@ private:
         std::uint64_t rampFrames
     ) noexcept override {
         (void)rampFrames;
+        if (parameterId.substr(0U, 9U) == "official_") return core_.setParameter(parameterId, value);
+        if (parameterId == "mix_percent") return core_.setParameter("mix", value);
         if (parameterId == "bpm") return core_.setTempoBpm(value);
         if (parameterId == "scale") return core_.setParameter("scale", value);
         if (parameterId == "rate_beats") return core_.setParameter("rate", value);
@@ -4731,6 +5964,10 @@ private:
         return false;
     }
 
+    void onTempoChanged() noexcept override {
+        (void)core_.setTempoBpm(tempoBpm());
+        (void)core_.setQuarterNotesPerMeasure(quarterNotesPerMeasure());
+    }
     void onResetState() noexcept override { core_.reset(); }
 
     void processEffectFrame(float*, unsigned int) noexcept override {}
@@ -4747,7 +5984,7 @@ private:
         return core_.latencySamples();
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !core_.officialControlsActive(); }
 };
 
 // ROBOT uses the bounded YIN tracker and Signalsmith shifter in the clean-room
@@ -4764,6 +6001,8 @@ private:
     std::array<float, static_cast<std::size_t>(kMaximumBlockFrames) * 2U> monoScratch_{};
     float pitchSemitones_ = 0.0f;
     float formantSemitones_ = 0.0f;
+    bool officialActive_ = false;
+    unsigned int officialNote_ = 60U;
 
     [[nodiscard]] bool onPrepare() noexcept override {
         NativeRobotCore::Config config{};
@@ -4775,15 +6014,29 @@ private:
         config.formantSemitones = formantSemitones_;
         // The base processor applies the one and only latency-aligned mix.
         config.mixPercent = 100.0f;
-        return core_.prepare(config);
+        return core_.prepare(config) && (!officialActive_ || core_.setFixedMidiNote(officialNote_));
     }
 
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value,
                                       std::uint64_t rampFrames) noexcept override {
+        if (parameterId == "mix_percent") {
+            officialActive_ = false;
+            return setParameter(parameterId, value, rampFrames);
+        }
         (void)rampFrames;
+        if (parameterId == "official_note" || parameterId == "official_formant") {
+            officialActive_ = true;
+            if (parameterId == "official_note") officialNote_ = 60U + static_cast<unsigned int>(value);
+            else {
+                formantSemitones_ = value * 12.0f / 50.0f;
+                if (!core_.setFormantSemitones(formantSemitones_)) return false;
+            }
+            return core_.setFixedMidiNote(officialNote_);
+        }
         if (parameterId == "pitch_semitones") {
             if (!core_.setPitchSemitones(value)) return false;
             pitchSemitones_ = value;
+            officialActive_ = false;
             return true;
         }
         if (parameterId == "formant_semitones") {
@@ -4824,7 +6077,7 @@ private:
         return core_.latencyFrames();
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !officialActive_; }
 };
 
 class NativeCatalogPitchBend final : public NativeEffectProcessor {
@@ -4843,6 +6096,9 @@ private:
     float appliedSemitones_ = 0.0f;
     std::uint64_t elapsedFrames_ = 0U;
     bool sweepArmed_ = false;
+    bool officialActive_ = false;
+    float officialPitch_ = 4.0f;
+    float officialBend_ = 50.0f;
 
     [[nodiscard]] std::uint64_t sweepDurationFrames() const noexcept {
         const double frames = static_cast<double>(sampleRate()) * static_cast<double>(timeMs_) / 1000.0;
@@ -4850,6 +6106,7 @@ private:
     }
 
     [[nodiscard]] float targetSemitones() const noexcept {
+        if (officialActive_) return officialPitch_ * 12.0f * officialBend_ * 0.01f;
         const auto durationFrames = sweepDurationFrames();
         const double progress = std::min(1.0, static_cast<double>(elapsedFrames_) /
             static_cast<double>(durationFrames));
@@ -4858,6 +6115,7 @@ private:
     }
 
     void restartSweep() noexcept {
+        if (officialActive_) return;
         elapsedFrames_ = 0U;
         appliedSemitones_ = 0.0f;
         if (processor_.prepared() && processor_.setSemitones(0.0f)) {
@@ -4879,7 +6137,18 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId == "mix_percent") {
+            officialActive_ = false;
+            return setParameter(parameterId, value, rampFrames);
+        }
         (void)rampFrames;
+        if (parameterId == "official_pitch" || parameterId == "official_bend") {
+            officialActive_ = true;
+            if (parameterId == "official_pitch") officialPitch_ = value;
+            else officialBend_ = value;
+            return true;
+        }
+        officialActive_ = false;
         if (parameterId == "range") {
             if (value == rangeSemitones_) return true;
             rangeSemitones_ = value;
@@ -4931,9 +6200,11 @@ private:
         unsigned int processedFrames = 0U;
         while (processedFrames < frames) {
             const auto chunkFrames = std::min(kParameterUpdateFrames, frames - processedFrames);
-            const float nextSemitones = (!isBypassed() && sweepArmed_) ? targetSemitones() : 0.0f;
+            const float nextSemitones = officialActive_ ? targetSemitones()
+                : ((!isBypassed() && sweepArmed_) ? targetSemitones() : 0.0f);
             if (nextSemitones != appliedSemitones_) {
-                if (!processor_.setSemitones(nextSemitones)) return false;
+                if (!(officialActive_ ? processor_.setOfficialBendSemitones(nextSemitones)
+                                      : processor_.setSemitones(nextSemitones))) return false;
                 appliedSemitones_ = nextSemitones;
             }
 
@@ -4959,7 +6230,7 @@ private:
         return processor_.latencySamples();
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !officialActive_; }
 };
 
 // Keep the original as the dry voice and add two independently pitch-shifted
@@ -4972,6 +6243,7 @@ public:
 private:
     static constexpr unsigned int kMaximumBlockFrames = 4096U;
     static constexpr unsigned int kControlUpdateFrames = 64U;
+    NativeHrmAutoCore officialCore_{};
     NativePolyPitchProcessor voice1Processor_{};
     NativePolyPitchProcessor voice2Processor_{};
     std::array<float, kMaximumBlockFrames * NativePolyPitchProcessor::kMaximumChannels> voice1Scratch_{};
@@ -4985,6 +6257,11 @@ private:
     float appliedVoice2Interval_ = 12.0f;
 
     [[nodiscard]] bool onPrepare() noexcept override {
+        NativeHrmAutoCore::Config officialConfig{};
+        officialConfig.sampleRate = sampleRate();
+        officialConfig.channels = 2U;
+        officialConfig.mixPercent = 100.0f;
+        if (!officialCore_.prepare(officialConfig)) return false;
         const float initialVoice1Interval = voice1Interval_.target();
         const float initialVoice2Interval = voice2Interval_.target();
         voice1Interval_.reset(initialVoice1Interval);
@@ -5014,6 +6291,11 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId.substr(0U, 9U) == "official_") {
+            return officialCore_.setOfficialParameter(parameterId, value, true);
+        }
+        officialCore_.disableOfficialControls();
+        if (parameterId == "mix_percent") return setParameter(parameterId, value, rampFrames);
         if (parameterId == "voice_1_interval") {
             voice1Interval_.setTarget(value, rampFrames);
             return true;
@@ -5030,6 +6312,7 @@ private:
     }
 
     void onResetState() noexcept override {
+        officialCore_.reset();
         const float targetVoice1Interval = voice1Interval_.target();
         const float targetVoice2Interval = voice2Interval_.target();
         voice1Processor_.reset();
@@ -5053,6 +6336,18 @@ private:
         if (interleaved == nullptr || channels == 0U ||
             channels > NativePolyPitchProcessor::kMaximumChannels || frames > kMaximumBlockFrames ||
             dryAlignmentDelay_.empty() || voice1Processor_.latencySamples() == 0U) return false;
+        if (officialCore_.officialControlsActive()) {
+            if (channels == 2U) return officialCore_.processInterleaved(interleaved, frames, channels);
+            for (unsigned int frame = 0U; frame < frames; ++frame) {
+                voice1Scratch_[frame * 2U] = interleaved[frame];
+                voice1Scratch_[frame * 2U + 1U] = interleaved[frame];
+            }
+            if (!officialCore_.processInterleaved(voice1Scratch_.data(), frames, 2U)) return false;
+            for (unsigned int frame = 0U; frame < frames; ++frame) {
+                interleaved[frame] = 0.5f * (voice1Scratch_[frame * 2U] + voice1Scratch_[frame * 2U + 1U]);
+            }
+            return true;
+        }
         const unsigned int pitchChannels = channels;
         const unsigned int latencyFrames = voice1Processor_.latencySamples();
 
@@ -5136,7 +6431,7 @@ private:
         return voice1Processor_.latencySamples();
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !officialCore_.officialControlsActive(); }
 };
 
 // OCTAVE is a fixed three-voice pitch layer. The independent Signalsmith
@@ -5162,6 +6457,9 @@ private:
     dsp::ParameterSmoother minus24Level_{0.0f};
     dsp::ParameterSmoother minus12Level_{40.0f};
     dsp::ParameterSmoother plus12Level_{0.0f};
+    bool officialActive_ = false;
+    unsigned int officialOctave_ = 0U;
+    float officialLevel_ = 50.0f;
 
     [[nodiscard]] bool onPrepare() noexcept override {
         const float initialMinus24Level = minus24Level_.target();
@@ -5200,6 +6498,17 @@ private:
         float value,
         std::uint64_t rampFrames
     ) noexcept override {
+        if (parameterId == "official_octave" || parameterId == "official_oct_level") {
+            officialActive_ = true;
+            if (parameterId == "official_octave") officialOctave_ = static_cast<unsigned int>(value);
+            else officialLevel_ = value;
+            minus12Level_.setTarget(officialOctave_ != 1U ? officialLevel_ : 0.0f, rampFrames);
+            minus24Level_.setTarget(officialOctave_ != 0U ? officialLevel_ : 0.0f, rampFrames);
+            plus12Level_.setTarget(0.0f, rampFrames);
+            return true;
+        }
+        officialActive_ = false;
+        if (parameterId == "mix_percent") return setParameter(parameterId, value, rampFrames);
         if (parameterId == "minus_24_level") {
             minus24Level_.setTarget(value, rampFrames);
             return true;
@@ -5293,7 +6602,7 @@ private:
         return maximumVoiceLatencySamples_;
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !officialActive_; }
 };
 
 // Clean-room sample-clocked filterbank vocoder. The reusable core shares one
@@ -5304,29 +6613,47 @@ class NativeCatalogVocoder final : public NativeEffectProcessor {
 public:
     explicit NativeCatalogVocoder(const NativeEffectDescriptor& descriptor) noexcept
         : NativeEffectProcessor(descriptor) {}
+    [[nodiscard]] unsigned int vocoderCarrierTrack() const noexcept override { return carrierTrack_; }
+    void bindVocoderCarrierBlock(const float* samples, unsigned int frames, bool available) noexcept override {
+        const bool ready = available && samples != nullptr && frames > 0U && frames <= kMaximumBlockFrames;
+        if (carrierReady_ && !ready) { leftCore_.reset(); rightCore_.reset(); }
+        carrierReady_ = ready;
+        carrierBlock_ = ready ? samples : nullptr;
+        carrierFrames_ = carrierBlock_ != nullptr ? frames : 0U;
+        carrierOffset_ = 0U;
+    }
 
 private:
     static constexpr unsigned int kMaximumBlockFrames = 4096U;
     NativeVocoderCore leftCore_{};
     NativeVocoderCore rightCore_{};
     NativeVocoderConfig config_{};
+    unsigned int carrierTrack_ = 0U;
+    bool carrierReady_ = false;
+    const float* carrierBlock_ = nullptr;
+    unsigned int carrierFrames_ = 0U, carrierOffset_ = 0U;
+    std::array<float, kMaximumBlockFrames> leftCarrier_{};
+    std::array<float, kMaximumBlockFrames> rightCarrier_{};
     std::array<float, kMaximumBlockFrames> leftScratch_{};
     std::array<float, kMaximumBlockFrames> rightScratch_{};
 
     [[nodiscard]] bool applyConfig() noexcept {
         // The core produces the wet-only signal. NativeEffectProcessor applies
         // the user mix and aligned bypass path around it.
-        config_.wetMix = 1.0f;
+        config_.wetMix = leftCore_.officialControlsActive() ? leftCore_.config().wetMix : 1.0f;
         config_.enabled = true;
         return leftCore_.setConfig(config_) && rightCore_.setConfig(config_);
     }
 
     [[nodiscard]] bool onPrepare() noexcept override {
-        config_ = NativeVocoderConfig{};
-        config_.bands = 16U;
-        config_.carrier = NativeVocoderCarrier::Saw;
-        config_.wetMix = 1.0f;
-        config_.enabled = true;
+        if (carrierTrack_ == 0U) {
+            config_ = NativeVocoderConfig{};
+            config_.bands = 16U;
+            config_.carrier = NativeVocoderCarrier::Saw;
+            config_.wetMix = 1.0f;
+            config_.enabled = true;
+        }
+        carrierBlock_ = nullptr; carrierFrames_ = carrierOffset_ = 0U; carrierReady_ = false;
         return leftCore_.prepare(sampleRate()) && rightCore_.prepare(sampleRate()) && applyConfig();
     }
 
@@ -5336,6 +6663,17 @@ private:
         std::uint64_t rampFrames
     ) noexcept override {
         (void)rampFrames;
+        if (parameterId == "official_carrier") {
+            if (value < 6.0f || value > 10.0f || value != std::floor(value)) return false;
+            const auto track = static_cast<unsigned int>(value) - 5U;
+            if (track != carrierTrack_) { leftCore_.reset(); rightCore_.reset(); }
+            carrierTrack_ = track;
+            config_.carrier = NativeVocoderCarrier::VoiceInput;
+            return applyConfig();
+        }
+        if (parameterId.substr(0U, 9U) == "official_")
+            return leftCore_.setParameter(parameterId, value) && rightCore_.setParameter(parameterId, value);
+        if (carrierTrack_ != 0U && (parameterId == "carrier" || parameterId == "mix_percent")) return true;
         if (parameterId == "bands") {
             config_.bands = static_cast<std::size_t>(value);
             return applyConfig();
@@ -5369,8 +6707,20 @@ private:
                     ? interleaved[offset + 1U] : 0.0f;
             }
         }
-        if (!leftCore_.process(leftScratch_.data(), nullptr, leftScratch_.data(), frames)) return false;
-        if (channels > 1U && !rightCore_.process(rightScratch_.data(), nullptr, rightScratch_.data(), frames)) {
+        const bool supplied = carrierBlock_ != nullptr && carrierOffset_ <= carrierFrames_ &&
+            frames <= carrierFrames_ - carrierOffset_;
+        if (carrierTrack_ != 0U) {
+            for (unsigned int frame = 0U; frame < frames; ++frame) {
+                const auto offset = static_cast<std::size_t>(carrierOffset_ + frame) * 2U;
+                leftCarrier_[frame] = supplied ? carrierBlock_[offset] : 0.0f;
+                rightCarrier_[frame] = supplied ? carrierBlock_[offset + 1U] : 0.0f;
+            }
+            carrierOffset_ = supplied ? carrierOffset_ + frames : carrierFrames_;
+        }
+        // An unavailable external track is explicit silence. nullptr would
+        // incorrectly make VoiceInput use the modulator itself as carrier.
+        if (!leftCore_.process(leftScratch_.data(), carrierTrack_ != 0U ? leftCarrier_.data() : nullptr, leftScratch_.data(), frames)) return false;
+        if (channels > 1U && !rightCore_.process(rightScratch_.data(), carrierTrack_ != 0U ? rightCarrier_.data() : nullptr, rightScratch_.data(), frames)) {
             return false;
         }
         for (unsigned int frame = 0U; frame < frames; ++frame) {
@@ -5381,7 +6731,7 @@ private:
         return true;
     }
 
-    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return true; }
+    [[nodiscard]] bool usesBaseWetMix() const noexcept override { return !leftCore_.officialControlsActive(); }
 };
 
 } // namespace
@@ -5415,7 +6765,125 @@ const NativeEffectParameterDescriptor* findNativeEffectParameter(
     for (std::size_t index = 0U; index < effect->parameterCount; ++index) {
         if (effect->parameters[index].id == parameterId) return &effect->parameters[index];
     }
+    return findNativeEffectOfficialParameter(stableEffectId, parameterId);
+}
+
+const NativeEffectParameterDescriptor* nativeEffectLegacyParameterAliases(
+    std::string_view stableEffectId,
+    std::size_t& count
+) noexcept {
+    if (stableEffectId == kLowPassId || stableEffectId == kHighPassId) {
+        count = sizeof(kLegacyFilterQAliases) / sizeof(kLegacyFilterQAliases[0]);
+        return kLegacyFilterQAliases;
+    }
+    count = 0U;
     return nullptr;
+}
+
+const NativeEffectParameterDescriptor* findNativeEffectLegacyParameter(
+    std::string_view stableEffectId,
+    std::string_view parameterId
+) noexcept {
+    std::size_t count = 0U;
+    const auto* aliases = nativeEffectLegacyParameterAliases(stableEffectId, count);
+    for (std::size_t index = 0U; index < count; ++index) {
+        if (aliases[index].id == parameterId) return &aliases[index];
+    }
+    return nullptr;
+}
+
+const NativeEffectParameterDescriptor* nativeEffectOfficialParameters(
+    std::string_view id, std::size_t& count) noexcept {
+    if (id == kLowPassId || id == kBandPassId || id == kHighPassId) {
+        count = std::size(kOfficialFilterParameters); return kOfficialFilterParameters;
+    }
+    if (id == kPhaserId) { count = std::size(kOfficialPhaserParameters); return kOfficialPhaserParameters; }
+    if (id == kFlangerId) { count = std::size(kOfficialFlangerParameters); return kOfficialFlangerParameters; }
+    if (id == kDistortionId) { count = std::size(kOfficialDistParameters); return kOfficialDistParameters; }
+    if (id == kEqualizerId) { count = std::size(kOfficialEqParameters); return kOfficialEqParameters; }
+    if (id == kLoFiId) { count = std::size(kOfficialLoFiParameters); return kOfficialLoFiParameters; }
+    if (id == kRadioId) { count = std::size(kOfficialRadioParameters); return kOfficialRadioParameters; }
+    if (id == kRingModId) { count = std::size(kOfficialRingParameters); return kOfficialRingParameters; }
+    if (id == kSustainerId) { count = std::size(kOfficialSustainerParameters); return kOfficialSustainerParameters; }
+    if (id == kSlowGearId) { count = std::size(kOfficialSlowGearParameters); return kOfficialSlowGearParameters; }
+    if (id == kTremoloId) { count = std::size(kOfficialTremoloParameters); return kOfficialTremoloParameters; }
+    if (id == kAutoPanId) { count = std::size(kOfficialAutoPanParameters); return kOfficialAutoPanParameters; }
+    if (id == kManualPanId) { count = std::size(kOfficialManualPanParameters); return kOfficialManualPanParameters; }
+    if (id == kVibratoId) { count = std::size(kOfficialVibratoParameters); return kOfficialVibratoParameters; }
+    if (id == kFractionalDelayId || id == kPanningDelayId || id == kReverseDelayId) {
+        count = std::size(kOfficialCountedDelayParameters); return kOfficialCountedDelayParameters;
+    }
+    if (id == kModDelayId) { count = std::size(kOfficialModDelayParameters); return kOfficialModDelayParameters; }
+    if (id == kReverbId) { count = std::size(kOfficialReverbParameters); return kOfficialReverbParameters; }
+    if (id == kGateReverbId) { count = std::size(kOfficialGateReverbParameters); return kOfficialGateReverbParameters; }
+    if (id == kChorusId) { count = std::size(kOfficialChorusParameters); return kOfficialChorusParameters; }
+    if (id == kStereoEnhanceId) { count = std::size(kOfficialStereoEnhanceParameters); return kOfficialStereoEnhanceParameters; }
+    if (id == kSynthId) { count = std::size(kOfficialSynthParameters); return kOfficialSynthParameters; }
+    if (id == kG2BId) { count = std::size(kOfficialG2BParameters); return kOfficialG2BParameters; }
+    if (id == kIsolatorId) { count = std::size(kOfficialIsolatorParameters); return kOfficialIsolatorParameters; }
+    if (id == kTransposeId) { count = std::size(kOfficialTransposeParameters); return kOfficialTransposeParameters; }
+    if (id == kPitchBendId) { count = std::size(kOfficialPitchBendParameters); return kOfficialPitchBendParameters; }
+    if (id == kRobotId) { count = std::size(kOfficialRobotParameters); return kOfficialRobotParameters; }
+    if (id == kManualHarmonistId) { count = std::size(kOfficialManualHarmonistParameters); return kOfficialManualHarmonistParameters; }
+    if (id == kHrmAutoMId) { count = std::size(kOfficialHrmAutoMParameters); return kOfficialHrmAutoMParameters; }
+    if (id == kOctaveId) { count = std::size(kOfficialOctaveParameters); return kOfficialOctaveParameters; }
+    if (id == kAutoRiffId) { count = std::size(kOfficialAutoRiffParameters); return kOfficialAutoRiffParameters; }
+    if (id == kElectricId) { count = std::size(kOfficialElectricParameters); return kOfficialElectricParameters; }
+    if (id == kPreampId) { count = std::size(kOfficialPreampParameters); return kOfficialPreampParameters; }
+    if (id == kDynamicsId) { count = std::size(kOfficialDynamicsParameters); return kOfficialDynamicsParameters; }
+    if (id == kWarpId) { count = std::size(kOfficialWarpParameters); return kOfficialWarpParameters; }
+    if (id == kTwistId) { count = std::size(kOfficialTwistParameters); return kOfficialTwistParameters; }
+    if (id == kFreezeId) { count = std::size(kOfficialFreezeParameters); return kOfficialFreezeParameters; }
+    if (id == kTapeEchoId) { count = std::size(kOfficialTapeEchoParameters); return kOfficialTapeEchoParameters; }
+    if (id == kRollId) { count = std::size(kOfficialRollParameters); return kOfficialRollParameters; }
+    if (id == kPatternSlicerId) { count = std::size(kOfficialPatternSlicerParameters); return kOfficialPatternSlicerParameters; }
+    if (id == kStepSlicerId) { count = std::size(kOfficialStepSlicerParameters); return kOfficialStepSlicerParameters; }
+    if (id == kReverseReverbId) { count = std::size(kOfficialReverseReverbParameters); return kOfficialReverseReverbParameters; }
+    if (id == kGranularDelayId) { count = std::size(kOfficialGranularDelayParameters); return kOfficialGranularDelayParameters; }
+    if (id == kBeatShiftId) { count = std::size(kOfficialBeatShiftParameters); return kOfficialBeatShiftParameters; }
+    if (id == kBeatRepeatId) { count = std::size(kOfficialBeatRepeatParameters); return kOfficialBeatRepeatParameters; }
+    if (id == kBeatScatterId) { count = std::size(kOfficialBeatScatterParameters); return kOfficialBeatScatterParameters; }
+    if (id == kVinylFlickId) { count = std::size(kOfficialVinylFlickParameters); return kOfficialVinylFlickParameters; }
+    if (id == kVocoderId) { count = std::size(kOfficialVocoderParameters); return kOfficialVocoderParameters; }
+    if (id == kOscVocMId) { count = std::size(kOfficialOscVocMParameters); return kOfficialOscVocMParameters; }
+    if (id == kOscBotId) { count = std::size(kOfficialOscBotParameters); return kOfficialOscBotParameters; }
+    count = 0U;
+    return nullptr;
+}
+
+const NativeEffectParameterDescriptor* findNativeEffectOfficialParameter(
+    std::string_view id, std::string_view parameterId) noexcept {
+    std::size_t count = 0U;
+    const auto* parameters = nativeEffectOfficialParameters(id, count);
+    static constexpr NativeEffectParameterDescriptor tempoTransport{
+        "official_bpm", "Transport BPM (internal)", 40.0f, 300.0f, 120.0f, 20U, false};
+    if (count != 0U && parameterId == "official_bpm") return &tempoTransport;
+    static constexpr NativeEffectParameterDescriptor meterTransport{
+        "official_quarter_notes_per_measure", "Transport quarter notes per measure (internal)",
+        0.125f, 128.0f, 4.0f, 20U, false};
+    if (count != 0U && parameterId == "official_quarter_notes_per_measure") return &meterTransport;
+    for (std::size_t i = 0U; i < count; ++i) if (parameters[i].id == parameterId) return &parameters[i];
+    return nullptr;
+}
+
+std::string_view nativeEffectOfficialDomainId(std::string_view id, unsigned int variant) noexcept {
+    if (id == "tape_echo") return variant == 1U ? "tape_echo1" : variant == 2U ? "tape_echo2" : "";
+    if (id == "roll") return variant == 1U ? "roll1" : variant == 2U ? "roll2" : "";
+    return id;
+}
+
+bool NativeEffectProcessor::setTempoBpm(float bpm) noexcept {
+    if (!std::isfinite(bpm) || bpm < 40.0f || bpm > 300.0f) return false;
+    tempoBpm_ = bpm;
+    onTempoChanged();
+    return true;
+}
+
+bool NativeEffectProcessor::setQuarterNotesPerMeasure(float beats) noexcept {
+    if (!std::isfinite(beats) || beats < 0.125f || beats > 128.0f) return false;
+    quarterNotesPerMeasure_ = beats;
+    onTempoChanged();
+    return true;
 }
 
 NativeEffectProcessor::NativeEffectProcessor(const NativeEffectDescriptor& descriptor) noexcept
@@ -5469,10 +6937,44 @@ bool NativeEffectProcessor::prepare(unsigned int sampleRate) noexcept {
 }
 
 bool NativeEffectProcessor::setParameter(std::string_view parameterId, float value, std::uint64_t rampFrames) noexcept {
+    if (parameterId == "official_variant") {
+        if ((stableId() != "tape_echo" && stableId() != "roll") || (value != 1.0f && value != 2.0f)) return false;
+        const auto variant = static_cast<unsigned int>(value);
+        if (variant == officialVariant_) return true;
+        if (!onSetParameter(parameterId, value, 1U)) return false;
+        officialVariant_ = variant; officialDefaultsInitialized_ = true;
+        std::size_t count = 0U;
+        const auto* parameters = nativeEffectOfficialParameters(stableId(), count);
+        const auto domainId = nativeEffectOfficialDomainId(stableId(), variant);
+        for (std::size_t i = 0U; i < count; ++i) {
+            const auto* domain = official::parameterDomain(domainId, parameters[i].id);
+            if (domain && domain->hasDefault && !onSetParameter(parameters[i].id, domain->defaultValue, 1U)) return false;
+        }
+        return true;
+    }
+    if (parameterId == "official_bpm" || parameterId == "official_quarter_notes_per_measure") {
+        std::size_t officialCount = 0U;
+        (void)nativeEffectOfficialParameters(stableId(), officialCount);
+        return officialCount != 0U && (parameterId == "official_bpm" ? setTempoBpm(value) : setQuarterNotesPerMeasure(value));
+    }
+    if (parameterId.substr(0U, 9U) == "official_" &&
+        (stableId() == kBeatShiftId || stableId() == kVinylFlickId) && !sourceTransportAttached_) return false;
+    if (stableId() == kVocoderId && parameterId.substr(0U, 9U) == "official_" && !vocoderCarriersAttached_) return false;
     const auto* parameter = findNativeEffectParameter(stableId(), parameterId);
+    const bool legacyFilterQ = parameter == nullptr &&
+        (stableId() == kLowPassId || stableId() == kHighPassId) && parameterId == "q";
+    if (legacyFilterQ) {
+        // Preserve the historical programmatic Q API while the public
+        // catalog/UI exposes the newer project-defined percent control.
+        if (!std::isfinite(value) || value < 0.5f || value > 12.0f) return false;
+        const auto actualRamp = rampFrames == 0U ? defaultRampFrames(15U) : rampFrames;
+        return onSetParameter(parameterId, value, actualRamp);
+    }
     if (parameter == nullptr || !std::isfinite(value) || value < parameter->minimum || value > parameter->maximum) {
         return false;
     }
+    if (parameterId.substr(0, 9) == "official_" &&
+        !official::validParameter(nativeEffectOfficialDomainId(stableId(), officialVariant_), parameterId, value)) return false;
     if (parameter->discrete) {
         bool supportedValue = false;
         for (std::size_t index = 0U; index < parameter->discreteValueCount; ++index) {
@@ -5484,6 +6986,18 @@ bool NativeEffectProcessor::setParameter(std::string_view parameterId, float val
         if (!supportedValue) return false;
     }
     const auto actualRamp = rampFrames == 0U ? defaultRampFrames(parameter->smoothingMs) : rampFrames;
+    // A real official control opts into its documented defaults once. Tempo
+    // broadcasts return above and never convert a legacy project to this mode.
+    if (parameterId.substr(0, 9) == "official_" && !officialDefaultsInitialized_) {
+        std::size_t count = 0U;
+        const auto* descriptors = nativeEffectOfficialParameters(stableId(), count);
+        for (std::size_t i = 0U; i < count; ++i) {
+            const auto* domain = official::parameterDomain(nativeEffectOfficialDomainId(stableId(), officialVariant_), descriptors[i].id);
+            if (domain != nullptr && domain->hasDefault &&
+                !onSetParameter(descriptors[i].id, domain->defaultValue, actualRamp)) return false;
+        }
+        officialDefaultsInitialized_ = true;
+    }
     if (usesBaseWetMix() && parameterId == "mix_percent") {
         wetMix_.setTarget(value / 100.0f, actualRamp);
         return true;
@@ -5496,7 +7010,7 @@ void NativeEffectProcessor::setBypassed(bool bypassed, std::uint64_t rampFrames)
     bypassed_ = bypassed;
     if (changed) onBypassChanged(bypassed);
     const auto actualRamp = rampFrames == 0U ? defaultRampFrames(10U) : rampFrames;
-    bypassMix_.setTarget(bypassed ? 1.0f : 0.0f, actualRamp);
+    bypassMix_.setTarget(bypassed ? 1.0f : 0.0f, bypassRampFrames(bypassed, actualRamp));
 }
 
 void NativeEffectProcessor::resetState() noexcept {
@@ -5526,6 +7040,15 @@ bool NativeEffectProcessor::processEffectBlock(
 }
 
 float NativeEffectProcessor::processInPlace(float* interleaved, unsigned int frames, unsigned int channels) noexcept {
+    return processInPlaceInternal(interleaved, frames, channels, true);
+}
+
+float NativeEffectProcessor::processInPlaceInternal(
+    float* interleaved,
+    unsigned int frames,
+    unsigned int channels,
+    bool measurePeak
+) noexcept {
     if (interleaved == nullptr || frames == 0U || channels == 0U || sampleRate_ == 0U) return 0.0f;
     const unsigned int processedChannels = std::min<unsigned int>(channels, 2U);
     constexpr unsigned int kMaximumBlockFrames = 4096U;
@@ -5576,6 +7099,7 @@ float NativeEffectProcessor::processInPlace(float* interleaved, unsigned int fra
         blockStart += blockFrames;
     }
 
+    if (!measurePeak) return 0.0f;
     float peak = 0.0f;
     const std::size_t sampleCount = static_cast<std::size_t>(frames) * channels;
     for (std::size_t index = 0U; index < sampleCount; ++index) peak = std::max(peak, std::fabs(interleaved[index]));
@@ -5623,6 +7147,7 @@ std::unique_ptr<NativeEffectProcessor> createNativeEffectProcessor(std::string_v
     if (stableId == kSlowGearId) return std::make_unique<NativeCatalogSlowGear>(*descriptor);
     if (stableId == kPatternSlicerId) return std::make_unique<NativeCatalogPatternSlicer>(*descriptor);
     if (stableId == kStepSlicerId) return std::make_unique<NativeCatalogStepSlicer>(*descriptor);
+    if (stableId == kBeatShiftId) return std::make_unique<NativeCatalogBeatShift>(*descriptor);
     if (stableId == kVinylFlickId) return std::make_unique<NativeCatalogVinylFlick>(*descriptor);
     if (stableId == kSynthId) return std::make_unique<NativeCatalogSynth>(*descriptor);
     if (stableId == kG2BId) return std::make_unique<NativeG2BProcessor>(*descriptor);
@@ -5723,6 +7248,13 @@ float NativeEffectBank::processInPlace(float* interleaved, unsigned int frames, 
     const std::size_t sampleCount = static_cast<std::size_t>(frames) * channels;
     for (std::size_t index = 0U; index < sampleCount; ++index) peak = std::max(peak, std::fabs(interleaved[index]));
     return peak;
+}
+
+void NativeEffectBank::processInPlaceNoPeak(float* interleaved, unsigned int frames, unsigned int channels) noexcept {
+    if (interleaved == nullptr || frames == 0U || channels == 0U) return;
+    for (auto& effect : slots_) {
+        if (effect) (void)effect->processInPlaceInternal(interleaved, frames, channels, false);
+    }
 }
 
 } // namespace webrc::native

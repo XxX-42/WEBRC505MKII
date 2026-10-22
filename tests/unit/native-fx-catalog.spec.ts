@@ -738,3 +738,17 @@ describe('Native ELECTRIC catalog adapter', () => {
     });
   });
 });
+
+describe('Native source-aware BEAT SHIFT catalog adapter', () => {
+  it('offers only the advertised Track source route and preserves official controls without a fake macro', () => {
+    const status = { nativeFx: { catalogGraphAvailable: true, implementedCatalogEffects: ['beat_shift'],
+      catalogEffectAvailability: [{ effectId: 'beat_shift', sourceIndex: 52, input: false, track: true }] } } as unknown as NativeStatus;
+    expect(nativeCatalogEffectId('BEAT SHIFT')).toBe('beat_shift');
+    expect(nativeCatalogFxOptions(status, 'input')).not.toContain('BEAT SHIFT');
+    expect(nativeCatalogFxOptions(status, 'track')).toContain('BEAT SHIFT');
+    expect(nativeCatalogMacroParameters('BEAT SHIFT', 50)).toEqual({});
+    expect(nativeCatalogSlotConfig('track', 0, { type: 'BEAT SHIFT', value: 50, active: true,
+      parameters: { official_shift: -1, official_type: 0 } })).toMatchObject({ effectId: 'beat_shift',
+        parameters: { official_shift: -1, official_type: 0 }, bypassed: false });
+  });
+});

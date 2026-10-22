@@ -16,6 +16,8 @@ export class PhaserFX implements FXBase {
 
     private rate: number = 0.5;
     private depth: number = 0.5;
+    private resonance = 0.1;
+    private isBypassed = true;
 
     constructor(context: AudioContext) {
         this.context = context;
@@ -100,12 +102,14 @@ export class PhaserFX implements FXBase {
             case 'resonance':
                 // Q value
                 const q = 0.5 + (normValue * 5);
+                this.resonance = normValue;
                 this.filters.forEach(f => f.Q.setTargetAtTime(q, this.context.currentTime, 0.05));
                 break;
         }
     }
 
     public setBypass(bypass: boolean) {
+        this.isBypassed = bypass;
         if (bypass) {
             // Bypass: Only Dry signal, full volume
             this.dryNode.gain.setTargetAtTime(1, this.context.currentTime, 0.05);
@@ -115,6 +119,10 @@ export class PhaserFX implements FXBase {
             this.dryNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.05);
             this.wetNode.gain.setTargetAtTime(0.5, this.context.currentTime, 0.05);
         }
+    }
+
+    getParameterSnapshot(): Readonly<Record<string, number>> {
+        return Object.freeze({ rate: ((this.rate - 0.1) / 4.9) * 100, depth: this.depth * 100, resonance: this.resonance * 100, bypassed: Number(this.isBypassed) });
     }
 
     public dispose() {

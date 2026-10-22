@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_worklet_node_vm_relative_kernel_microbenchmark",
+  "generatedAtUtc": "2026-10-21T18:36:58.872Z",
+  "repositoryHead": null,
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sourcePath": "/workspace/scratch/2230ee2a4571/rc505-gain-recovery/docs/performance/20261021-followup/browser/gate-cache-final.js",
+  "sourceSha256": "a639965805e13daa6ee93d1d8ef2a5beaaa59b9c1c2ccf658707674683a6c0c8",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 32,
+  "measuredBlocksPerPass": 1024,
+  "passes": 2,
+  "timingSource": "Node process.hrtime.bigint() around synchronous worklet process() calls in a Node VM; this is a relative kernel diagnostic only.",
+  "exclusions": [
+    "No browser AudioWorklet scheduler, AudioContext, cross-thread scheduling, or device endpoint.",
+    "No 20-slot graph or five Signalsmith LIVE_POLY processors.",
+    "One synthetic stereo signal and one processor instance per algorithm; not a representative audio-quality suite.",
+    "Results rank relative JavaScript DSP cost in this Node VM and do not pass or replace browser/native realtime acceptance."
+  ],
+  "results": [
+    {
+      "catalogName": "TREMOLO",
+      "algorithm": "tremolo",
+      "measuredBlocksPerPass": 1024,
+      "passes": [
+        {
+          "elapsedMilliseconds": 328.883019,
+          "audioSeconds": 2.972154195011338,
+          "realtimeRatio": 0.11065476332015992,
+          "nanosecondsPerInputFrame": 2509.17830657959
+        },
+        {
+          "elapsedMilliseconds": 319.564066,
+          "audioSeconds": 2.972154195011338,
+          "realtimeRatio": 0.10751934288482667,
+          "nanosecondsPerInputFrame": 2438.080337524414
+        }
+      ],
+      "medianRealtimeRatio": 0.11065476332015992,
+      "finiteOutput": true,
+      "outputRms": 0.10940917978955765
+    }
+  ]
+}

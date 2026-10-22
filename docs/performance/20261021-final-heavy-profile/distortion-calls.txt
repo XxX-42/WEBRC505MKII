@@ -1,0 +1,4 @@
+   8d2e1:	e8 8a 5f f8 ff       	call   13270 <mcount@plt>
+   8d614:	e8 57 5e f8 ff       	call   13470 <tanhf@plt>
+   8d798:	e8 a3 f6 ff ff       	call   8ce40 <webrc::native::NativeDistortionProcessor::processSample(unsigned int, float, float, float, float&) [clone .constprop.0]>
+   8d98a:	e8 b1 f4 ff ff       	call   8ce40 <webrc::native::NativeDistortionProcessor::processSample(unsigned int, float, float, float, float&) [clone .constprop.0]>

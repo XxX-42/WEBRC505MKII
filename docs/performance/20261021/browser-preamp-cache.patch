@@ -1,0 +1,61 @@
+--- /tmp/rc505-browser-perf/preamp-baseline.ts	2026-10-21 04:37:54.464912420 -0700
++++ /tmp/rc505-browser-perf/preamp-cache.ts	2026-10-21 04:37:54.485072227 -0700
+@@ -151,6 +151,10 @@
+   private readonly upsampleWriteIndex = new Int32Array(2);
+   private readonly waveshapedWriteIndex = new Int32Array(2);
+   private readonly previousDriven = new Float64Array(2);
++  private readonly previousAntiderivative = new Float64Array(2);
++  private readonly antiderivativeValid = new Uint8Array(2);
++  private antiderivativeShape = Number.NaN;
++  private antiderivativeBias = Number.NaN;
+   private readonly cabinetHistory: Float64Array[] = [new Float64Array(CABINET_TAPS), new Float64Array(CABINET_TAPS)];
+   private readonly cabinetWriteIndex = new Int32Array(2);
+ 
+@@ -200,6 +204,13 @@
+     const shape = lerpTable(MODEL_SHAPE, lowerModel, upperModel, modelBlend);
+     const bias = lerpTable(MODEL_BIAS, lowerModel, upperModel, modelBlend);
+     const nonlinearBlend = lerpTable(MODEL_WET, lowerModel, upperModel, modelBlend);
++    // The prior primitive is reusable only for exactly the same transfer
++    // function. Model ramps change shape/bias and invalidate both channels.
++    if (shape !== this.antiderivativeShape || bias !== this.antiderivativeBias) {
++      this.antiderivativeValid.fill(0);
++      this.antiderivativeShape = shape;
++      this.antiderivativeBias = bias;
++    }
+     const gainPercent = this.gain.next() / 100;
+     const stageDrive = modelDrive * (1 + (gainPercent * gainPercent * 28));
+     const levelLinear = 10 ** (this.level.next() / 20);
+@@ -223,6 +234,8 @@
+     this.upsampleWriteIndex.fill(0);
+     this.waveshapedWriteIndex.fill(0);
+     this.previousDriven.fill(0);
++    this.previousAntiderivative.fill(0);
++    this.antiderivativeValid.fill(0);
+     this.cabinetWriteIndex.fill(0);
+     this.equalizer.reset();
+     this.outputLeft = 0;
+@@ -248,9 +261,21 @@
+       const driven = reconstructed * drive;
+       const previous = this.previousDriven[channel] ?? 0;
+       const difference = driven - previous;
+-      const shaped = Math.abs(difference) < 1e-8
+-        ? (Math.tanh(shape * (0.5 * (driven + previous) + bias)) - biasValue) / slopeAtZero
+-        : (antiderivative(shape, bias, driven) - antiderivative(shape, bias, previous)) / (difference * slopeAtZero);
++      let shaped: number;
++      if (Math.abs(difference) < 1e-8) {
++        shaped = (Math.tanh(shape * (0.5 * (driven + previous) + bias)) - biasValue) / slopeAtZero;
++        // This branch does not compute the current primitive. Never reuse a
++        // stale value when the next oversample returns to the ADAA branch.
++        this.antiderivativeValid[channel] = 0;
++      } else {
++        const currentPrimitive = antiderivative(shape, bias, driven);
++        const previousPrimitive = this.antiderivativeValid[channel]
++          ? this.previousAntiderivative[channel]!
++          : antiderivative(shape, bias, previous);
++        shaped = (currentPrimitive - previousPrimitive) / (difference * slopeAtZero);
++        this.previousAntiderivative[channel] = currentPrimitive;
++        this.antiderivativeValid[channel] = 1;
++      }
+       this.previousDriven[channel] = driven;
+       const normalized = reconstructed * (1 - blend) + shaped * blend;
+       shapedHistory[downIndex] = normalized;

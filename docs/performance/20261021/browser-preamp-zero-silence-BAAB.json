@@ -1,0 +1,121 @@
+{
+  "generatedAt": "2026-10-21T12:52:55.702Z",
+  "node": "v24.19.0",
+  "blocks": 512,
+  "rounds": 4,
+  "ordering": "BAAB",
+  "timingSignal": "silence",
+  "sourceHashes": {
+    "baseline": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "candidate": "e2f010c28e38e6b3823f834a85847d9986e71b64bfde1e882e958633a8c1fe03"
+  },
+  "scope": "Synchronous exact-source Node VM kernel only; no browser AudioContext, scheduler, hardware, xrun, or production five-loop acceptance. Tracks are independent FX instances. Reverse-reverb is an effect, not reverse loop playback; KeepPitch not exercised.",
+  "correctness": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+  "scenarios": [
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "preamp",
+      "preampModel": 4,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 356.164611,
+      "candidateMs": 359.827975,
+      "improvementPercent": -1.028559235493498,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "8353a6b087d804cf5465fed28483eb88018451bdd8b66b8933459a6face5f7e8",
+        "candidate": "8353a6b087d804cf5465fed28483eb88018451bdd8b66b8933459a6face5f7e8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 345.656041
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 355.819877
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 349.247873
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 334.915533
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 344.691845
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 333.422266
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 371.073273
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 363.116898
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 359.827975
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 357.525106
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "elapsedMs": 367.175033
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "elapsedMs": 380.600635
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 337.299367
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 356.164611
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "elapsedMs": 347.597981
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "elapsedMs": 378.868296
+        }
+      ]
+    }
+  ]
+}

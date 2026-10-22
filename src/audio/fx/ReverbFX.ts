@@ -9,6 +9,7 @@ export class ReverbFX implements FXBase {
     private wet: GainNode;
     private dry: GainNode;
     private currentMix = 0.5;
+    private decaySeconds = 2.0;
 
     constructor(context: AudioContext) {
         this.context = context;
@@ -57,11 +58,16 @@ export class ReverbFX implements FXBase {
     setParam(key: string, value: number) {
         if (key === 'decay') {
             const duration = 0.1 + (value * 4.0); // 0.1s to 4.1s
+            this.decaySeconds = duration;
             this.generateImpulseResponse(duration);
         } else if (key === 'mix') {
             this.currentMix = Math.max(0, Math.min(1, value));
             this.applyMix(this.currentMix);
         }
+    }
+
+    getParameterSnapshot(): Readonly<Record<string, number>> {
+        return Object.freeze({ decay: (this.decaySeconds - 0.1) / 4, mix: this.currentMix });
     }
 
     setBypass(bypass: boolean) {

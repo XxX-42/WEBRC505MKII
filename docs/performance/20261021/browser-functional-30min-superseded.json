@@ -1,0 +1,358 @@
+{
+  "schema": "rc505-browser-cpu-functional-simulation-v1",
+  "status": "SUPERSEDED_INVALID_OVERDUB_COVERAGE",
+  "explicitlyNotEvidenceFor": [
+    "browser AudioWorklet execution",
+    "physical device audio",
+    "XRUN/dropout acceptance",
+    "P99/P99.9/deadline compliance",
+    "acoustic latency",
+    "whole-app CPU admission",
+    "30-minute hardware acceptance"
+  ],
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v24.19.0",
+    "sampleRate": 48000,
+    "channels": 2,
+    "blockPatternFrames": [
+      64,
+      96,
+      128,
+      192,
+      256
+    ],
+    "actualElapsedSeconds": 368.00270399299995
+  },
+  "workload": {
+    "simulatedAudioSeconds": 1800,
+    "simulatedFrames": 86400000,
+    "callbackBlocks": 586958,
+    "fiveTrackPlaybackMix": true,
+    "inputFxBank": [
+      "lpf",
+      "distortion",
+      "vibrato",
+      "sustainer"
+    ],
+    "trackFxBank": [
+      "chorus",
+      "reverb",
+      "delay",
+      "auto-pan"
+    ],
+    "pitch": {
+      "mode": "LIVE_MONO clean-room YIN/PSOLA",
+      "semitones": 5,
+      "minimumFrequencyHz": 110,
+      "maximumFrequencyHz": 700,
+      "latencySamples": 1585
+    },
+    "rhythm": {
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "voicesPeak": 2,
+      "voicesStolen": 0
+    },
+    "recording": {
+      "framesCaptured": 86400000,
+      "chunks": 5274,
+      "droppedFrames": 0,
+      "sequenceError": false
+    },
+    "overdub": {
+      "patches": 0,
+      "patchFrames": 0,
+      "overflowFrames": 0,
+      "sequenceError": false
+    },
+    "parameterAutomationUpdates": 181
+  },
+  "functionalChecks": {
+    "nonFiniteOutputSamples": 0,
+    "outputPeak": 0.9036518335342407,
+    "checksum": 7555928.001262864,
+    "rhythmProgressCheckpoints": 29
+  },
+  "cpuUsageMicros": {
+    "user": 357429584,
+    "system": 861611
+  },
+  "simulatedPortTraffic": {
+    "byMessageType": {
+      "RECORD_CONFIGURED": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      },
+      "RECORD_CHUNK": {
+        "messages": 5274,
+        "typedArrayPayloadBytes": 691273728
+      },
+      "RECORD_COMPLETE": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      }
+    },
+    "scope": "Production source postMessage calls into same-process mock port; typed-array payload bytes, not actual browser IPC/structured-clone wire bytes."
+  },
+  "resourceCheckpoints": [
+    {
+      "simulatedSeconds": 60.00066666666667,
+      "wallTimeMs": 13433.59554,
+      "rss": 332791808,
+      "heapUsed": 143183392,
+      "cpuUserMicros": 14854060,
+      "cpuSystemMicros": 672606
+    },
+    {
+      "simulatedSeconds": 120.002,
+      "wallTimeMs": 29318.801481,
+      "rss": 332492800,
+      "heapUsed": 156844048,
+      "cpuUserMicros": 28043060,
+      "cpuSystemMicros": 727628
+    },
+    {
+      "simulatedSeconds": 180.004,
+      "wallTimeMs": 48786.654922,
+      "rss": 335769600,
+      "heapUsed": 165172352,
+      "cpuUserMicros": 41596481,
+      "cpuSystemMicros": 862760
+    },
+    {
+      "simulatedSeconds": 240.00733333333332,
+      "wallTimeMs": 63016.686754,
+      "rss": 335769600,
+      "heapUsed": 165903712,
+      "cpuUserMicros": 54074214,
+      "cpuSystemMicros": 942049
+    },
+    {
+      "simulatedSeconds": 300.012,
+      "wallTimeMs": 74911.928959,
+      "rss": 335769600,
+      "heapUsed": 114806640,
+      "cpuUserMicros": 65947647,
+      "cpuSystemMicros": 952385
+    },
+    {
+      "simulatedSeconds": 360.0126666666667,
+      "wallTimeMs": 85577.117025,
+      "rss": 335769600,
+      "heapUsed": 122935792,
+      "cpuUserMicros": 76602260,
+      "cpuSystemMicros": 962717
+    },
+    {
+      "simulatedSeconds": 420.014,
+      "wallTimeMs": 98014.89707600001,
+      "rss": 335904768,
+      "heapUsed": 133494176,
+      "cpuUserMicros": 89059122,
+      "cpuSystemMicros": 968754
+    },
+    {
+      "simulatedSeconds": 480.016,
+      "wallTimeMs": 109314.647941,
+      "rss": 335904768,
+      "heapUsed": 133934488,
+      "cpuUserMicros": 100356684,
+      "cpuSystemMicros": 974671
+    },
+    {
+      "simulatedSeconds": 540.0193333333333,
+      "wallTimeMs": 121300.527436,
+      "rss": 335904768,
+      "heapUsed": 149745824,
+      "cpuUserMicros": 112345970,
+      "cpuSystemMicros": 979139
+    },
+    {
+      "simulatedSeconds": 600.024,
+      "wallTimeMs": 132994.225655,
+      "rss": 335904768,
+      "heapUsed": 158418248,
+      "cpuUserMicros": 124043544,
+      "cpuSystemMicros": 981441
+    },
+    {
+      "simulatedSeconds": 660.0246666666667,
+      "wallTimeMs": 145183.86617999998,
+      "rss": 335904768,
+      "heapUsed": 166367184,
+      "cpuUserMicros": 136230147,
+      "cpuSystemMicros": 987871
+    },
+    {
+      "simulatedSeconds": 720.026,
+      "wallTimeMs": 156736.44138499998,
+      "rss": 335904768,
+      "heapUsed": 167003672,
+      "cpuUserMicros": 147785141,
+      "cpuSystemMicros": 989481
+    },
+    {
+      "simulatedSeconds": 780.028,
+      "wallTimeMs": 168435.696291,
+      "rss": 335904768,
+      "heapUsed": 115717352,
+      "cpuUserMicros": 159487458,
+      "cpuSystemMicros": 990826
+    },
+    {
+      "simulatedSeconds": 840.0313333333334,
+      "wallTimeMs": 181356.749801,
+      "rss": 335904768,
+      "heapUsed": 124294440,
+      "cpuUserMicros": 172408203,
+      "cpuSystemMicros": 999548
+    },
+    {
+      "simulatedSeconds": 900.036,
+      "wallTimeMs": 193676.73868799998,
+      "rss": 335904768,
+      "heapUsed": 132590760,
+      "cpuUserMicros": 184727375,
+      "cpuSystemMicros": 1004463
+    },
+    {
+      "simulatedSeconds": 960.0366666666666,
+      "wallTimeMs": 204884.19305,
+      "rss": 335904768,
+      "heapUsed": 132887048,
+      "cpuUserMicros": 195936079,
+      "cpuSystemMicros": 1004652
+    },
+    {
+      "simulatedSeconds": 1020.038,
+      "wallTimeMs": 217721.428609,
+      "rss": 335904768,
+      "heapUsed": 148436152,
+      "cpuUserMicros": 208775151,
+      "cpuSystemMicros": 1006069
+    },
+    {
+      "simulatedSeconds": 1080.04,
+      "wallTimeMs": 228417.18483299998,
+      "rss": 335904768,
+      "heapUsed": 156655336,
+      "cpuUserMicros": 219464950,
+      "cpuSystemMicros": 1014170
+    },
+    {
+      "simulatedSeconds": 1140.0433333333333,
+      "wallTimeMs": 239112.861675,
+      "rss": 335904768,
+      "heapUsed": 164626320,
+      "cpuUserMicros": 230161142,
+      "cpuSystemMicros": 1014525
+    },
+    {
+      "simulatedSeconds": 1200.048,
+      "wallTimeMs": 251229.339525,
+      "rss": 335904768,
+      "heapUsed": 165370592,
+      "cpuUserMicros": 242279352,
+      "cpuSystemMicros": 1014834
+    },
+    {
+      "simulatedSeconds": 1260.0486666666666,
+      "wallTimeMs": 262423.056705,
+      "rss": 335904768,
+      "heapUsed": 113738264,
+      "cpuUserMicros": 253471077,
+      "cpuSystemMicros": 1019188
+    },
+    {
+      "simulatedSeconds": 1320.05,
+      "wallTimeMs": 274573.82135800004,
+      "rss": 335904768,
+      "heapUsed": 121954656,
+      "cpuUserMicros": 265614863,
+      "cpuSystemMicros": 1028208
+    },
+    {
+      "simulatedSeconds": 1380.052,
+      "wallTimeMs": 287405.67018,
+      "rss": 335904768,
+      "heapUsed": 129931408,
+      "cpuUserMicros": 278440918,
+      "cpuSystemMicros": 1037498
+    },
+    {
+      "simulatedSeconds": 1440.0553333333332,
+      "wallTimeMs": 298930.170959,
+      "rss": 335904768,
+      "heapUsed": 130983648,
+      "cpuUserMicros": 289969697,
+      "cpuSystemMicros": 1041689
+    },
+    {
+      "simulatedSeconds": 1500.06,
+      "wallTimeMs": 310420.62946,
+      "rss": 335904768,
+      "heapUsed": 147106704,
+      "cpuUserMicros": 301450906,
+      "cpuSystemMicros": 1053287
+    },
+    {
+      "simulatedSeconds": 1560.0606666666667,
+      "wallTimeMs": 321344.802763,
+      "rss": 335904768,
+      "heapUsed": 155639280,
+      "cpuUserMicros": 312368612,
+      "cpuSystemMicros": 1061381
+    },
+    {
+      "simulatedSeconds": 1620.062,
+      "wallTimeMs": 332679.899947,
+      "rss": 335904768,
+      "heapUsed": 163635392,
+      "cpuUserMicros": 323694135,
+      "cpuSystemMicros": 1073861
+    },
+    {
+      "simulatedSeconds": 1680.064,
+      "wallTimeMs": 344835.282024,
+      "rss": 335904768,
+      "heapUsed": 164261112,
+      "cpuUserMicros": 335851257,
+      "cpuSystemMicros": 1073861
+    },
+    {
+      "simulatedSeconds": 1740.0673333333334,
+      "wallTimeMs": 357129.424573,
+      "rss": 335904768,
+      "heapUsed": 113075384,
+      "cpuUserMicros": 348133493,
+      "cpuSystemMicros": 1085727
+    }
+  ],
+  "unavailableMetrics": {
+    "browserCallbackPercentiles": null,
+    "hardwareXruns": null,
+    "mainThreadLongTasks": null,
+    "workletAllocations": null,
+    "actualIpcBytes": null,
+    "gcPauseMs": null,
+    "reason": "Node-hosted synchronous simulation; not browser/driver instrumentation. Resource checkpoints are host process snapshots only."
+  },
+  "memoryBytes": {
+    "startRss": 248016896,
+    "endRss": 335904768,
+    "startHeapUsed": 123755640,
+    "endHeapUsed": 116121376,
+    "processLifetimePeakRss": 339701760,
+    "peakScope": "OS process lifetime high-water RSS, including harness/startup; not audio-worklet-only memory"
+  },
+  "notes": [
+    "Loop data, input, rhythm, and kit timbres are synthetic and clean-room; this is a software simulation only.",
+    "The workload executes production BrowserFxDspCore, LiveMonoPitchProcessor, RhythmWorkletCore, and source recording/overdub AudioWorklet processor code in a Node VM with a same-process simulated MessagePort.",
+    "The actual audio callback worklet thread, structured-clone timing, browser scheduling, UI, browser memory, and audio hardware are not exercised.",
+    "No callback timing percentile, XRUN, latency, fidelity or acoustic claim is reported."
+  ],
+  "invalidationReason": "Missing oldValues patch pool; no active-path assertion or STOP acknowledgment. Do not count overdub or overflow PASS."
+}

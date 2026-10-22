@@ -27,6 +27,7 @@ class MockDelayNode extends MockAudioNode {
 
 class MockWorkletNode extends MockAudioNode {
   static instances: MockWorkletNode[] = [];
+  onprocessorerror: (() => void) | null = null;
   readonly port = {
     postMessage: vi.fn(),
     onmessage: null as ((event: MessageEvent<unknown>) => void) | null,
@@ -84,11 +85,12 @@ function makeEngine() {
     inputFxInstances: [null, null, null, null],
     trackFxInstances: [null, null, null, null],
     inputFxTypes: [null, null, null, null],
+    inputFxActive: [false, false, false, false],
     trackFxTypes: [null, null, null, null],
     fxWorkletModuleReady: null,
     lastError: '',
     statusListeners: new Set(),
-    midiInput: { connect: vi.fn(async () => 'connected'), disconnect: vi.fn() },
+    midiInput: { connect: vi.fn(async () => 'connected'), disconnect: vi.fn(), releaseHeldNotes: vi.fn() },
   });
   return engine;
 }
@@ -107,6 +109,7 @@ describe('Browser HRM AUTO FX adapter', () => {
     pitchHarness.create.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
     const fx = new BrowserHrmAutoFX(makeContext(), async () => undefined);
     await fx.ready;
+    expect(fx.processorReady).toBe(true);
 
     const analyzer = MockWorkletNode.instances[0]!;
     const dryDelay = (fx as unknown as { dryDelay: MockDelayNode }).dryDelay;
@@ -199,7 +202,47 @@ describe('Browser HRM AUTO FX adapter', () => {
     await unavailable.ready;
     expect(unavailable.error).toContain('Signalsmith unavailable');
     expect(getGain((unavailable as unknown as { directGain: AudioNode }).directGain).gain.value).toBe(1);
+    expect(unavailable.processorReady).toBe(false);
     unavailable.dispose();
+  });
+
+  it('rejects a partial two-voice startup and disconnects the one fulfilled pitch node', async () => {
+    vi.stubGlobal('AudioWorkletNode', MockWorkletNode);
+    const first = makePitchNode();
+    pitchHarness.create.mockResolvedValueOnce(first).mockRejectedValueOnce(new Error('second voice failed'));
+    const fx = new BrowserHrmAutoFX(makeContext(), async () => undefined);
+    await fx.ready;
+    expect(fx.processorReady).toBe(false);
+    expect(fx.error).toContain('second voice failed');
+    expect(first.disconnect).toHaveBeenCalledOnce();
+    expect(MockWorkletNode.instances).toHaveLength(0);
+    expect(getGain((fx as unknown as { directGain: AudioNode }).directGain).gain.value).toBe(1);
+    fx.dispose();
+  });
+
+  it('fails closed on AudioWorklet processorerror and removes handlers on dispose', async () => {
+    vi.stubGlobal('AudioWorkletNode', MockWorkletNode);
+    const first = makePitchNode();
+    const second = makePitchNode();
+    pitchHarness.create.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    const onFailure = vi.fn();
+    const fx = new BrowserHrmAutoFX(makeContext(), async () => undefined, onFailure);
+    await fx.ready;
+    const analyzer = MockWorkletNode.instances[0]!;
+    const lateMessageHandler = analyzer.port.onmessage;
+    expect(fx.processorReady).toBe(true);
+    analyzer.onprocessorerror?.();
+    expect(fx.processorReady).toBe(false);
+    expect(fx.error).toContain('AudioWorklet processor failed');
+    expect(onFailure).toHaveBeenCalledOnce();
+    expect(getGain((fx as unknown as { directGain: AudioNode }).directGain).gain.value).toBe(1);
+
+    fx.dispose();
+    expect(analyzer.onprocessorerror).toBeNull();
+    expect(analyzer.port.onmessage).toBeNull();
+    lateMessageHandler?.({ data: { type: 'hrm-auto-target', frame: 96_000, voiceCount: 1, target1: 4, target2: -128 } } as MessageEvent<unknown>);
+    expect(first.setPitch).not.toHaveBeenCalled();
+    expect(second.setPitch).not.toHaveBeenCalled();
   });
 
   it('routes MIDI only after explicit exact-slot connection and preserves OSC routing', async () => {
@@ -241,5 +284,31 @@ describe('Browser HRM AUTO FX adapter', () => {
     expect(midiMessages(1)).toHaveLength(1);
     inputFx.dispose();
     trackFx.dispose();
+  });
+
+  it('creates the experimental selector label by stable catalog ID and keeps its controls routable', async () => {
+    vi.stubGlobal('AudioWorkletNode', MockWorkletNode);
+    pitchHarness.create.mockResolvedValueOnce(makePitchNode()).mockResolvedValueOnce(makePitchNode());
+    const engine = makeEngine();
+    engine.setFxType('input', 3, 'HRM AUTO (M) (EXPERIMENTAL)');
+    const fx = (engine as unknown as { inputFxInstances: Array<BrowserHrmAutoFX | null> }).inputFxInstances[3]!;
+    await fx.ready;
+
+    expect(fx).toBeInstanceOf(BrowserHrmAutoFX);
+    expect(fx.processorReady).toBe(true);
+    expect(fx.error).toBe('');
+    expect((engine as unknown as { inputFxTypes: Array<string | null> }).inputFxTypes[3])
+      .toBe('HRM AUTO (M) (EXPERIMENTAL)');
+    engine.setFxNamedParameters('input', 3, { key: 4, scale: 2, 'midi-channel': 7, mix: 45 });
+    expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
+      type: 'configure', parameters: { hrmAutoKey: 4 },
+    });
+    expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
+      type: 'configure', parameters: { hrmAutoScale: 2 },
+    });
+    expect(MockWorkletNode.instances[0]!.port.postMessage).toHaveBeenCalledWith({
+      type: 'configure', parameters: { hrmAutoMidiChannel: 7 },
+    });
+    fx.dispose();
   });
 });

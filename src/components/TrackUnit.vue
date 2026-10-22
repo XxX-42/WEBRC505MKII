@@ -3,6 +3,9 @@
     <div class="track-header">
       <span class="track-id">TRACK {{ trackId }}</span>
       <span v-if="disabledReason" class="track-note">{{ disabledReason }}</span>
+      <span v-if="captureWarmupBlocksAction" class="track-note" data-testid="track-capture-warming" role="status">
+        Shared input pre-roll is warming; record and overdub are temporarily unavailable.
+      </span>
       <div v-if="capabilityNotes.length > 0" class="track-capability-row">
         <span v-for="note in capabilityNotes" :key="note" class="track-capability-chip">
           {{ note }}
@@ -102,7 +105,8 @@
           :color="buttonLedColor"
           :active="isRecordingOrPlaying"
           aria-label="Record or play track"
-          :disabled="!trackTransportEnabled"
+          :disabled="!recordActionEnabled"
+          :disabled-reason="recordActionDisabledReason"
           @press="handleRecPlay"
           class="main-btn"
         />
@@ -140,6 +144,7 @@ const filterRes = ref(Math.round(trackAudio.track.filterResonance * 10));
 const fxState = ref({ filter: trackAudio.track.filterEnabled });
 const trackAvailable = ref(trackAudio.isAvailable);
 const trackTransportEnabled = ref(trackAudio.transportEnabled && isEngineReady());
+const inputCaptureWarming = ref(false);
 const disabledReason = ref(trackAudio.disabledReason || (isEngineReady() ? '' : getEngineUiStatus()?.message || 'Audio engine is not ready'));
 const isFilterActive = computed(() => fxState.value.filter);
 const levelControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsTrackLevel);
@@ -148,6 +153,12 @@ const levelControlAriaLabel = computed(() => !levelControlEnabled.value
   : `Track ${props.trackId} level`);
 const filterControlsEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsTrackFx);
 const reverseControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsReverse);
+const captureWarmupBlocksAction = computed(() => getEngineUiStatus()?.mode === 'browser' && inputCaptureWarming.value
+  && (trackState.value === TrackState.EMPTY || trackState.value === TrackState.PLAYING));
+const recordActionEnabled = computed(() => trackTransportEnabled.value && !captureWarmupBlocksAction.value);
+const recordActionDisabledReason = computed(() => captureWarmupBlocksAction.value
+  ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
+  : disabledReason.value);
 const filterButtonAriaLabel = computed(() => filterControlsEnabled.value ? 'Toggle track filter' : trackCapabilities.value.trackFxReason);
 const reverseButtonAriaLabel = computed(() => reverseControlEnabled.value ? 'Toggle reverse playback' : trackCapabilities.value.reverseReason);
 const stopButtonAriaLabel = computed(() => trackTransportEnabled.value
@@ -182,6 +193,7 @@ const clamp = (value: number, min: number, max: number) => {
 const syncTrackUi = () => {
   const engineStatus = getEngineUiStatus();
   const engineReady = engineStatus?.ready ?? trackAudio.transportEnabled;
+  inputCaptureWarming.value = engineStatus?.inputCaptureWarming === true;
   trackState.value = trackAudio.state;
   isReverse.value = trackAudio.isReverse;
   trackAvailable.value = trackAudio.isAvailable;
@@ -235,7 +247,7 @@ const isRecordingOrPlaying = computed(() => {
 });
 
 const handleRecPlay = () => {
-  if (!trackTransportEnabled.value) return;
+  if (!recordActionEnabled.value) return;
   trackAudio.triggerRecord();
 };
 

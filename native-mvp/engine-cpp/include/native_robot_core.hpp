@@ -89,6 +89,8 @@ public:
     // RT-safe scalar controls. They validate and update fixed scalar state;
     // when prepared they call only the adapter's non-allocating setters.
     [[nodiscard]] bool setPitchSemitones(float semitones) noexcept;
+    // Official NOTE C..B selects a fixed C4..B4 target (authored octave).
+    [[nodiscard]] bool setFixedMidiNote(unsigned int note) noexcept;
     [[nodiscard]] bool setFormantSemitones(float semitones) noexcept;
     [[nodiscard]] bool setFormantPolicy(FormantPolicy policy) noexcept;
     [[nodiscard]] bool setPitchMode(PitchMode mode) noexcept;
@@ -230,6 +232,7 @@ private:
     float trackedFormantBaseHz_ = 0.0f;
     float lastConfiguredFormantSemitones_ = 0.0f;
     float lastConfiguredFormantBaseHz_ = 0.0f;
+    int fixedMidiNote_ = -1;
     int targetMidiNote_ = -1;
     int quantizedPitchTargetMidiNote_ = -1;
     bool wetActive_ = false;

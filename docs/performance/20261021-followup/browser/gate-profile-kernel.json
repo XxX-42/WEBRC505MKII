@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_worklet_node_vm_relative_kernel_microbenchmark",
+  "generatedAtUtc": "2026-10-21T18:20:05.845Z",
+  "repositoryHead": null,
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sourcePath": "/workspace/scratch/2230ee2a4571/rc505-gain-recovery/docs/performance/20261021-followup/browser/baseline.js",
+  "sourceSha256": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 32,
+  "measuredBlocksPerPass": 2048,
+  "passes": 2,
+  "timingSource": "Node process.hrtime.bigint() around synchronous worklet process() calls in a Node VM; this is a relative kernel diagnostic only.",
+  "exclusions": [
+    "No browser AudioWorklet scheduler, AudioContext, cross-thread scheduling, or device endpoint.",
+    "No 20-slot graph or five Signalsmith LIVE_POLY processors.",
+    "One synthetic stereo signal and one processor instance per algorithm; not a representative audio-quality suite.",
+    "Results rank relative JavaScript DSP cost in this Node VM and do not pass or replace browser/native realtime acceptance."
+  ],
+  "results": [
+    {
+      "catalogName": "GATE REVERB",
+      "algorithm": "gate-reverb",
+      "measuredBlocksPerPass": 2048,
+      "passes": [
+        {
+          "elapsedMilliseconds": 4501.498471,
+          "audioSeconds": 5.944308390022676,
+          "realtimeRatio": 0.7572787573665619,
+          "nanosecondsPerInputFrame": 17171.85390853882
+        },
+        {
+          "elapsedMilliseconds": 4345.051379,
+          "audioSeconds": 5.944308390022676,
+          "realtimeRatio": 0.7309599525981904,
+          "nanosecondsPerInputFrame": 16575.055614471436
+        }
+      ],
+      "medianRealtimeRatio": 0.7572787573665619,
+      "finiteOutput": true,
+      "outputRms": 0.13271829052658696
+    }
+  ]
+}

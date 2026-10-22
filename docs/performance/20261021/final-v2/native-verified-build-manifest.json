@@ -1,0 +1,55 @@
+{
+  "verifiedUtc": "2026-10-21T13:31:32.119755+00:00",
+  "sourceRoot": "/workspace/scratch/2230ee2a4571/rc505-gain-recovery/native-mvp/engine-cpp",
+  "buildRoot": "/tmp/rc505-native-release",
+  "buildBindingVerified": true,
+  "verification": "Explicit targets (unless verify-only), CMake home/build-rule source match, source/header <= object <= library <= each binary timestamps, SHA256 inventory",
+  "sourceSha256": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8",
+  "headerSha256": "be141a6ae5c95447f90199a35909e476a02f4dddde65846be02f16d2ef427b24",
+  "binaries": {
+    "native_performance_matrix": "784a57c23ad714df80114d61c64d0a22409d1058d5d3b6c73c8d0d32c0caf36a",
+    "native_performance_soak": "8433c2e8117b75fa5e4224f3c41995f9503d3b5b27d9f336a32e3b41f841985a",
+    "native_preamp_ab_probe": "f59817a5c5171f5cd9a1891a533755a6aea7f45dfbd76b06692f8d36543670df",
+    "native_catalog_ab_probe": "b5d4a6da699aca7b99b0b09895a8080497efe1242bb0bae69b08c94f857ba376",
+    "native_catalog_sanity_sweep": "59599249bfe17d75e2113cbd1766f144de908ba730afd9e77a9c4902d5311e39"
+  },
+  "artifacts": {
+    "/workspace/scratch/2230ee2a4571/rc505-gain-recovery/native-mvp/engine-cpp/src/native_preamp_processor.cpp": {
+      "sha256": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8",
+      "mtimeNs": 1792588480491266232
+    },
+    "/workspace/scratch/2230ee2a4571/rc505-gain-recovery/native-mvp/engine-cpp/include/native_preamp_processor.hpp": {
+      "sha256": "be141a6ae5c95447f90199a35909e476a02f4dddde65846be02f16d2ef427b24",
+      "mtimeNs": 1792588480493130779
+    },
+    "/tmp/rc505-native-release/CMakeFiles/native_dsp_portable.dir/src/native_preamp_processor.cpp.o": {
+      "sha256": "b28e98c542e140120a9c196b0ab120b6e349bf8202f52f6c8c4f22b88edbfc5c",
+      "mtimeNs": 1792588481344691581
+    },
+    "/tmp/rc505-native-release/libnative_dsp_portable.a": {
+      "sha256": "3ab6e66c4d796736d11c16562cce999c7ea203f5e99c0e3b40cd9f01f48bf756",
+      "mtimeNs": 1792588486864703458
+    },
+    "/tmp/rc505-native-release/native_performance_matrix": {
+      "sha256": "784a57c23ad714df80114d61c64d0a22409d1058d5d3b6c73c8d0d32c0caf36a",
+      "mtimeNs": 1792588730399006902
+    },
+    "/tmp/rc505-native-release/native_performance_soak": {
+      "sha256": "8433c2e8117b75fa5e4224f3c41995f9503d3b5b27d9f336a32e3b41f841985a",
+      "mtimeNs": 1792588730535103967
+    },
+    "/tmp/rc505-native-release/native_preamp_ab_probe": {
+      "sha256": "f59817a5c5171f5cd9a1891a533755a6aea7f45dfbd76b06692f8d36543670df",
+      "mtimeNs": 1792588730829727641
+    },
+    "/tmp/rc505-native-release/native_catalog_ab_probe": {
+      "sha256": "b5d4a6da699aca7b99b0b09895a8080497efe1242bb0bae69b08c94f857ba376",
+      "mtimeNs": 1792588730986977149
+    },
+    "/tmp/rc505-native-release/native_catalog_sanity_sweep": {
+      "sha256": "59599249bfe17d75e2113cbd1766f144de908ba730afd9e77a9c4902d5311e39",
+      "mtimeNs": 1792588731121144592
+    }
+  },
+  "limitation": "Local GNU Make portable build binding; timestamps/hashes are not a signed or adversary-resistant attestation"
+}

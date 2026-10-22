@@ -1,0 +1,263 @@
+{
+  "generatedAtUtc": "2026-10-18T18:29:58.529Z",
+  "state": "completed",
+  "elapsedWallSeconds": 10.049634999999776,
+  "actualSampleRateHz": 44100,
+  "audioContextCurrentTimeSeconds": 16.35265306122449,
+  "audioContextAdvanceDuringMeasurementSeconds": 10.060045351473924,
+  "instrumentedNodeCount": 15,
+  "readySlotCount": 15,
+  "nodeCounts": {
+    "rc505-browser-block-meter": 1,
+    "rc505-fx-processor": 8,
+    "signalsmith-stretch": 5,
+    "rc505-rhythm-processor": 1
+  },
+  "callbackErrors": 0,
+  "estimatedMissingCallbacks": 0,
+  "nodes": [
+    {
+      "slot": 0,
+      "label": "rc505-browser-block-meter#1",
+      "processorName": "rc505-browser-block-meter",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 1,
+      "label": "rc505-fx-processor#2",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 2,
+      "label": "rc505-fx-processor#3",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 3,
+      "label": "rc505-fx-processor#4",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 4,
+      "label": "rc505-fx-processor#5",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 5,
+      "label": "rc505-fx-processor#6",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 6,
+      "label": "rc505-fx-processor#7",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 7,
+      "label": "rc505-fx-processor#8",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 8,
+      "label": "rc505-fx-processor#9",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 9,
+      "label": "signalsmith-stretch#10",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 10,
+      "label": "signalsmith-stretch#11",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 11,
+      "label": "signalsmith-stretch#12",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 12,
+      "label": "signalsmith-stretch#13",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 13,
+      "label": "signalsmith-stretch#14",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    },
+    {
+      "slot": 14,
+      "label": "rc505-rhythm-processor#15",
+      "processorName": "rc505-rhythm-processor",
+      "callbacks": 0,
+      "outputFrames": 0,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true
+    }
+  ],
+  "workload": {
+    "profile": "browser-application-full-private-track-fx",
+    "appEngine": "production BrowserAudioEngine + TrackAudio + BrowserTrackFxChain + RhythmEngine",
+    "sampleRateHz": 44100,
+    "activeTrackCount": 5,
+    "activePrivateTrackFxCount": 0,
+    "privateTrackFxMatrix": [],
+    "activeInputFx": [
+      {
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "slot": "D",
+        "type": "SUSTAINER"
+      }
+    ],
+    "activeSharedTrackFx": [
+      {
+        "slot": "A",
+        "type": "CHORUS"
+      },
+      {
+        "slot": "B",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "slot": "C",
+        "type": "DELAY"
+      },
+      {
+        "slot": "D",
+        "type": "AUTO PAN"
+      }
+    ],
+    "activeLivePolyTracks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "diagnosticIsolation": "All twenty private A–D FX processors were intentionally omitted.",
+    "rhythm": {
+      "adapter": "production Browser RhythmEngine + rc505-rhythm-processor",
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "provenance": "clean-room-generated"
+    },
+    "pcmSeed": "deterministic stereo PCM installed through TrackAudio.restoreProjectBuffersAtomically before measurement; real Browser recording/overdub operations execute during measurement",
+    "dynamicOperationsDuringMeasurement": [],
+    "persistentWorkletSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "measurementStartUtc": "2026-10-18T18:29:48.319Z",
+    "measurementEndUtc": "2026-10-18T18:29:58.369Z"
+  },
+  "outputSampler": {
+    "inspectedValues": 1654784,
+    "nonSilentValues": 1643247,
+    "nonFiniteValues": 0,
+    "peakLinear": 3.0357589721679688,
+    "pollCount": 202,
+    "nonSilentPolls": 202,
+    "changedWindowPolls": 200,
+    "changedValues": 1632896,
+    "audioTimeAdvancePolls": 201
+  },
+  "processorErrors": [],
+  "error": null
+}

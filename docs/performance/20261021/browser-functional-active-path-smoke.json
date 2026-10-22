@@ -1,0 +1,178 @@
+{
+  "schema": "rc505-browser-cpu-functional-simulation-v1",
+  "status": "passed-functional-simulation",
+  "explicitlyNotEvidenceFor": [
+    "browser AudioWorklet execution",
+    "physical device audio",
+    "XRUN/dropout acceptance",
+    "P99/P99.9/deadline compliance",
+    "acoustic latency",
+    "whole-app CPU admission",
+    "30-minute hardware acceptance"
+  ],
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v24.19.0",
+    "sampleRate": 48000,
+    "channels": 2,
+    "blockPatternFrames": [
+      64,
+      96,
+      128,
+      192,
+      256
+    ],
+    "actualElapsedSeconds": 0.46670502399999986
+  },
+  "workload": {
+    "simulatedAudioSeconds": 2,
+    "simulatedFrames": 96000,
+    "callbackBlocks": 654,
+    "fiveTrackPlaybackMix": true,
+    "inputFxBank": [
+      "lpf",
+      "distortion",
+      "vibrato",
+      "sustainer"
+    ],
+    "trackFxBank": [
+      "chorus",
+      "reverb",
+      "delay",
+      "auto-pan"
+    ],
+    "pitch": {
+      "mode": "LIVE_MONO clean-room YIN/PSOLA",
+      "semitones": 5,
+      "minimumFrequencyHz": 110,
+      "maximumFrequencyHz": 700,
+      "latencySamples": 1585
+    },
+    "rhythm": {
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "voicesPeak": 2,
+      "voicesStolen": 0
+    },
+    "recording": {
+      "framesCaptured": 96000,
+      "chunks": 6,
+      "droppedFrames": 0,
+      "sequenceError": false
+    },
+    "overdub": {
+      "stopAcknowledged": true,
+      "processorOverflowFrames": 0,
+      "patches": 654,
+      "patchFrames": 96000,
+      "overflowFrames": 0,
+      "sequenceError": false
+    },
+    "parameterAutomationUpdates": 1
+  },
+  "functionalChecks": {
+    "activePathGate": true,
+    "internalFiniteGate": true,
+    "internalNonFinite": [
+      {
+        "algorithm": "lpf",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "distortion",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "vibrato",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "sustainer",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "chorus",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "reverb",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "delay",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "auto-pan",
+        "input": 0,
+        "output": 0
+      }
+    ],
+    "nonFiniteOutputSamples": 0,
+    "outputPeak": 0.7335647344589233,
+    "checksum": 8090.156652386135,
+    "rhythmProgressCheckpoints": 0
+  },
+  "cpuUsageMicros": {
+    "user": 675110,
+    "system": 43969
+  },
+  "simulatedPortTraffic": {
+    "byMessageType": {
+      "RECORD_CONFIGURED": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      },
+      "OVERDUB_PATCH": {
+        "messages": 654,
+        "typedArrayPayloadBytes": 128581632
+      },
+      "RECORD_CHUNK": {
+        "messages": 6,
+        "typedArrayPayloadBytes": 786432
+      },
+      "RECORD_COMPLETE": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      },
+      "OVERDUB_STOPPED": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      }
+    },
+    "scope": "Production source postMessage calls into same-process mock port; typed-array payload bytes, not actual browser IPC/structured-clone wire bytes."
+  },
+  "resourceCheckpoints": [],
+  "unavailableMetrics": {
+    "browserCallbackPercentiles": null,
+    "hardwareXruns": null,
+    "mainThreadLongTasks": null,
+    "workletAllocations": null,
+    "actualIpcBytes": null,
+    "gcPauseMs": null,
+    "reason": "Node-hosted synchronous simulation; not browser/driver instrumentation. Resource checkpoints are host process snapshots only."
+  },
+  "memoryBytes": {
+    "startRss": 230359040,
+    "endRss": 302800896,
+    "startHeapUsed": 100120608,
+    "endHeapUsed": 95002472,
+    "processLifetimePeakRss": 305369088,
+    "peakScope": "OS process lifetime high-water RSS, including harness/startup; not audio-worklet-only memory"
+  },
+  "notes": [
+    "Loop data, input, rhythm, and kit timbres are synthetic and clean-room; this is a software simulation only.",
+    "The workload executes production BrowserFxDspCore, LiveMonoPitchProcessor, RhythmWorkletCore, and source recording/overdub AudioWorklet processor code in a Node VM with a same-process simulated MessagePort.",
+    "The actual audio callback worklet thread, structured-clone timing, browser scheduling, UI, browser memory, and audio hardware are not exercised.",
+    "No callback timing percentile, XRUN, latency, fidelity or acoustic claim is reported."
+  ]
+}

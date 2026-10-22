@@ -1,0 +1,1264 @@
+{
+  "generatedAt": "2026-10-21T11:24:44.787Z",
+  "node": "v24.19.0",
+  "blocks": 16,
+  "rounds": 1,
+  "sourceHashes": {
+    "baseline": "7465f2341349ce918d6c565ebb686ead813ad1ca9d1ac66795c9aacb55d309d0",
+    "candidate": "81646c751b2fda667a49afd355fa3472ac38252c0332306aca66922d419e1675"
+  },
+  "scope": "Synchronous exact-source Node VM kernel only; no browser AudioContext, scheduler, hardware, xrun, or production five-loop acceptance. Tracks are independent FX instances. Reverse-reverb is an effect, not reverse loop playback; KeepPitch not exercised.",
+  "correctness": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+  "scenarios": [
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 0.167752,
+      "candidateMs": 0.083496,
+      "improvementPercent": 50.22652487004626,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4a3bdca81abd870ee00daf0a35b5383e6b6a23343496576eac02be1dbf6e1a88",
+        "candidate": "4a3bdca81abd870ee00daf0a35b5383e6b6a23343496576eac02be1dbf6e1a88"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.167752
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.083496
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.078448
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.131568
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "baselineMs": 45.536458,
+      "candidateMs": 45.598031,
+      "improvementPercent": -0.1352169288177718,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "acf6c3b7e4465dbb0d3aa32647b323d70c01ca7e1fcc4a31596847ea4957234e",
+        "candidate": "acf6c3b7e4465dbb0d3aa32647b323d70c01ca7e1fcc4a31596847ea4957234e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 45.536458
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 45.598031
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 37.864969
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 41.482578
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "baselineMs": 43.43466,
+      "candidateMs": 33.462458,
+      "improvementPercent": 22.959088433062448,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "aa22ba8c19a0a5b755cf8afcae853adf4c0b313348b2663ffb38974d566b16d5",
+        "candidate": "aa22ba8c19a0a5b755cf8afcae853adf4c0b313348b2663ffb38974d566b16d5"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 33.998854
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 33.462458
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 32.158567
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 43.43466
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 68.105404,
+      "candidateMs": 77.929304,
+      "improvementPercent": -14.42455285927091,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "5183df402d1097409c8795e1bf82a3c71a021f57fc5a1d1b932d9f608494fbe2",
+        "candidate": "5183df402d1097409c8795e1bf82a3c71a021f57fc5a1d1b932d9f608494fbe2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 67.936341
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 58.676145
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 77.929304
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 68.105404
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 0.264317,
+      "candidateMs": 0.161072,
+      "improvementPercent": 39.06105169171866,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6e609e6178b60cc0be54eecba15d329de79f20053d8062ff1bddd58e39448c6e",
+        "candidate": "6e609e6178b60cc0be54eecba15d329de79f20053d8062ff1bddd58e39448c6e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.240051
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.161072
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.149625
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.264317
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "baselineMs": 200.175633,
+      "candidateMs": 220.718594,
+      "improvementPercent": -10.26246835947311,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "80f39b8ef7a8a9c8f707b098e610d157da6c2d1ed59b20fc55f78c7411fd03e7",
+        "candidate": "80f39b8ef7a8a9c8f707b098e610d157da6c2d1ed59b20fc55f78c7411fd03e7"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 177.93135
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 199.7808
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 220.718594
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 200.175633
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "baselineMs": 190.926578,
+      "candidateMs": 185.569351,
+      "improvementPercent": 2.8059095051711447,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "b40d053b18b0632e7a29d2defec99b6d1136d3ea334cd6ee5f457cc39e56ff42",
+        "candidate": "b40d053b18b0632e7a29d2defec99b6d1136d3ea334cd6ee5f457cc39e56ff42"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 190.926578
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 185.569351
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 170.716624
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 190.698505
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 267.591262,
+      "candidateMs": 250.626746,
+      "improvementPercent": 6.339712243668094,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "18df014b8c4fb8936b6d3def474ce65d818b598099b389073f492c35b74d653e",
+        "candidate": "18df014b8c4fb8936b6d3def474ce65d818b598099b389073f492c35b74d653e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 267.591262
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 248.400929
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 250.626746
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 252.61658
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 0.114252,
+      "candidateMs": 0.030136,
+      "improvementPercent": 73.62321884956063,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3c329ca4d8a9fd43e274df4fc990f52f2d8367fb017a7f1dbcbdc5948ddf48a8",
+        "candidate": "3c329ca4d8a9fd43e274df4fc990f52f2d8367fb017a7f1dbcbdc5948ddf48a8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.114252
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.030136
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.028543
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.111728
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "baselineMs": 29.771587,
+      "candidateMs": 28.778984,
+      "improvementPercent": 3.334061432465796,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "a611cdfa4956d9fba3dfb0018bea077172ae288ed134748ad849b33e69c9b87a",
+        "candidate": "a611cdfa4956d9fba3dfb0018bea077172ae288ed134748ad849b33e69c9b87a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 29.396624
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 28.081455
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 28.778984
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 29.771587
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "baselineMs": 38.819046,
+      "candidateMs": 34.243755,
+      "improvementPercent": 11.786201546529506,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "220be22f9c78baa5bd540c233ba3a96c9473d36a2913695d75159e0dfc7665d3",
+        "candidate": "220be22f9c78baa5bd540c233ba3a96c9473d36a2913695d75159e0dfc7665d3"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 36.649058
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 34.243755
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 33.274325
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 38.819046
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 50.488742,
+      "candidateMs": 49.58407,
+      "improvementPercent": 1.7918291566860645,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d4fd75c852c47318ab61c7409db9d359f0acd5294ef9b5a2d0a7c351e1d897bf",
+        "candidate": "d4fd75c852c47318ab61c7409db9d359f0acd5294ef9b5a2d0a7c351e1d897bf"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 50.488742
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 49.58407
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 48.750384
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 47.15483
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 0.244979,
+      "candidateMs": 0.102354,
+      "improvementPercent": 58.21927593793754,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "e21beeb4b198c61045e277b178bb400ca5b0ebf9fe46bc869d587bf3c3e01307",
+        "candidate": "e21beeb4b198c61045e277b178bb400ca5b0ebf9fe46bc869d587bf3c3e01307"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.244688
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.099259
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.102354
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.244979
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "baselineMs": 172.657134,
+      "candidateMs": 203.288477,
+      "improvementPercent": -17.74113950020737,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "6be420ef48801cf52cd9c104feffa755e627f401b22e7cfb411146116b6031ea",
+        "candidate": "6be420ef48801cf52cd9c104feffa755e627f401b22e7cfb411146116b6031ea"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 165.426838
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 186.612656
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 203.288477
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 172.657134
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "baselineMs": 166.89288,
+      "candidateMs": 157.599679,
+      "improvementPercent": 5.56836277257603,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "92246a81709f43323838f6e28e4c51e1366ae7b118ffe2eb571784452a44914e",
+        "candidate": "92246a81709f43323838f6e28e4c51e1366ae7b118ffe2eb571784452a44914e"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 166.89288
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 155.248564
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 157.599679
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 158.120094
+        }
+      ]
+    },
+    {
+      "rate": 44100,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 247.496072,
+      "candidateMs": 252.848439,
+      "improvementPercent": -2.162606847352322,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3169fb3b7614179831e98eb8d52ac423a699073d7da8fa9cd0dd5ed488d7ba84",
+        "candidate": "3169fb3b7614179831e98eb8d52ac423a699073d7da8fa9cd0dd5ed488d7ba84"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 227.939205
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 252.55826
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 252.848439
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 247.496072
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 0.041733,
+      "candidateMs": 0.018648,
+      "improvementPercent": 55.315937028251014,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "3d341832733c8e5a1f529a4abdfd0e1a04861438276c6099bdf914227ab38cdd",
+        "candidate": "3d341832733c8e5a1f529a4abdfd0e1a04861438276c6099bdf914227ab38cdd"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.041733
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.018517
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.018648
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.031337
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "baselineMs": 34.026186,
+      "candidateMs": 30.775702,
+      "improvementPercent": 9.552889647990536,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d0e35318f4cf839d4797b0a59474fb9dab8e53ac1712f0f000a5cdcc02a4c0cd",
+        "candidate": "d0e35318f4cf839d4797b0a59474fb9dab8e53ac1712f0f000a5cdcc02a4c0cd"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 34.026186
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 30.775702
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 29.743156
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 31.405206
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "baselineMs": 37.586533,
+      "candidateMs": 35.50827,
+      "improvementPercent": 5.529275605174866,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "2325779e63f1fb7636b5b0140dd536c00af3e106f3d3d3af638c8f8c99a2358a",
+        "candidate": "2325779e63f1fb7636b5b0140dd536c00af3e106f3d3d3af638c8f8c99a2358a"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 37.586533
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 32.443979
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 35.50827
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 34.061573
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 62.4408,
+      "candidateMs": 66.81588,
+      "improvementPercent": -7.006764807625787,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "8a17e206c9de9ae3ffb43d72a59ecccd52b66acbf7fe501407675a60c4d834aa",
+        "candidate": "8a17e206c9de9ae3ffb43d72a59ecccd52b66acbf7fe501407675a60c4d834aa"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 49.974429
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 57.191973
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 66.81588
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 62.4408
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 0.160911,
+      "candidateMs": 0.090926,
+      "improvementPercent": 43.49298680637121,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f4535a14bae75d4ee3a877236b71322e912e53968e31281165e55f98f959082c",
+        "candidate": "f4535a14bae75d4ee3a877236b71322e912e53968e31281165e55f98f959082c"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.147371
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.090926
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.090856
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.160911
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "baselineMs": 166.204394,
+      "candidateMs": 158.337301,
+      "improvementPercent": 4.733384485611136,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "d6fa7dbf9bc8718d67636ed16ece2f42e2b73b01d01b55e45fdb10b15e7627eb",
+        "candidate": "d6fa7dbf9bc8718d67636ed16ece2f42e2b73b01d01b55e45fdb10b15e7627eb"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 166.204394
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 152.989598
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 158.337301
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 161.719987
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "baselineMs": 174.751052,
+      "candidateMs": 198.830968,
+      "improvementPercent": -13.779554242683488,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f954540ba358a552a7e71966bcb7ad35a6535591d9af21992af302032644748d",
+        "candidate": "f954540ba358a552a7e71966bcb7ad35a6535591d9af21992af302032644748d"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 174.751052
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 162.553424
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 198.830968
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 158.961655
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 1,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 239.354922,
+      "candidateMs": 251.388934,
+      "improvementPercent": -5.027685204651866,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f928754f86f7779aeb51e921b9d46af6552fb58c237e95f7f6129d43942e8e1c",
+        "candidate": "f928754f86f7779aeb51e921b9d46af6552fb58c237e95f7f6129d43942e8e1c"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 229.165865
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 225.822456
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 251.388934
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 239.354922
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "bypass",
+      "baselineMs": 0.088733,
+      "candidateMs": 0.02005,
+      "improvementPercent": 77.40412247979896,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "64b52c3249b11dc3186cae54111665c177fe762b4a3bb847e79cde7f3a4028ef",
+        "candidate": "64b52c3249b11dc3186cae54111665c177fe762b4a3bb847e79cde7f3a4028ef"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.040962
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.01997
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.02005
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.088733
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverb",
+      "baselineMs": 38.064132,
+      "candidateMs": 31.995366,
+      "improvementPercent": 15.943529199615003,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "bdf8102db9afec9a0343dd660756428c15e0360e767cfa9c471c36bd0bdbc4c8",
+        "candidate": "bdf8102db9afec9a0343dd660756428c15e0360e767cfa9c471c36bd0bdbc4c8"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 38.064132
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 28.693289
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 31.995366
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 29.619112
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "gate-reverb",
+      "baselineMs": 37.088594,
+      "candidateMs": 39.71908,
+      "improvementPercent": -7.0924392550442805,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "4e49597e84820ddd3908376d99efcf4c8fd6568cb421fa05286d82b1f9f619b2",
+        "candidate": "4e49597e84820ddd3908376d99efcf4c8fd6568cb421fa05286d82b1f9f619b2"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 37.088594
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 39.548854
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 39.71908
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 35.241236
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 46.455184,
+      "candidateMs": 46.523372,
+      "improvementPercent": -0.14678232681200054,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "a9393cca8c8eb13afb06a15d7ea4107d7728a8fababc34f4fbb7334dea684375",
+        "candidate": "a9393cca8c8eb13afb06a15d7ea4107d7728a8fababc34f4fbb7334dea684375"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 45.757991
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 46.523372
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 46.250683
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 46.455184
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "bypass",
+      "baselineMs": 0.195134,
+      "candidateMs": 0.247482,
+      "improvementPercent": -26.82669345167936,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "48f927cea9cd9f0af9bd155a0f1d86875a376910ec3b1837044a8e38535172ad",
+        "candidate": "48f927cea9cd9f0af9bd155a0f1d86875a376910ec3b1837044a8e38535172ad"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.195134
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.101112
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 0.247482
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 0.189184
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverb",
+      "baselineMs": 154.907345,
+      "candidateMs": 151.801499,
+      "improvementPercent": 2.004970132307149,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "25f080dd67f65a623959e3adb7e8e06809d96b08d39708c260698797ab442414",
+        "candidate": "25f080dd67f65a623959e3adb7e8e06809d96b08d39708c260698797ab442414"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 153.525811
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 151.801499
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 148.431496
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 154.907345
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "gate-reverb",
+      "baselineMs": 191.375151,
+      "candidateMs": 195.915787,
+      "improvementPercent": -2.372636142296236,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "8739da4315dded8f4b05df1fe5b48c40d87b8f493186a83b676f1bd16b250393",
+        "candidate": "8739da4315dded8f4b05df1fe5b48c40d87b8f493186a83b676f1bd16b250393"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 172.61833
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 183.687205
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 195.915787
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 191.375151
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 5,
+      "algorithm": "reverse-reverb",
+      "baselineMs": 251.811087,
+      "candidateMs": 225.999114,
+      "improvementPercent": 10.250530787788549,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "655779416ae9c79279719b2d542b4f3432d05ed8a64515dec7618575e9438565",
+        "candidate": "655779416ae9c79279719b2d542b4f3432d05ed8a64515dec7618575e9438565"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 251.811087
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 225.999114
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 222.015192
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 235.907378
+        }
+      ]
+    }
+  ],
+  "timingEligible": false,
+  "limitations": "correctness-only run with contended CPU and16 measured blocks; candidate predates extra shared-output-buffer fallback. Final source independently passes630shape cases,6unit regressions,and8noFX A/B cases"
+}

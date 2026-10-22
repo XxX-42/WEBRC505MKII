@@ -6,6 +6,8 @@
 #endif
 
 #include "native_audio_core.hpp"
+#include "native_official_domains.hpp"
+#include "project_archive_codec.hpp"
 #if defined(NATIVE_RUBBERBAND_HQ_AVAILABLE)
 #include "native_rubberband_renderer.hpp"
 #endif
@@ -16,6 +18,7 @@
 #include <charconv>
 #include <iostream>
 #include <limits>
+#include <string_view>
 
 #include "httplib.h"
 #include "nlohmann/json.hpp"
@@ -130,6 +133,21 @@ const char* nativePitchFallbackReasonToString(NativePitchFallbackReason reason) 
     return "unknown";
 }
 
+const char* vocoderCarrierStatusToString(NativeVocoderCarrierStatus status) {
+    switch (status) {
+    case NativeVocoderCarrierStatus::NotRequested: return "notRequested";
+    case NativeVocoderCarrierStatus::Ready: return "ready";
+    case NativeVocoderCarrierStatus::Empty: return "empty";
+    case NativeVocoderCarrierStatus::Stopped: return "stopped";
+    case NativeVocoderCarrierStatus::UnsupportedRecording: return "unsupportedRecording";
+    case NativeVocoderCarrierStatus::UnsupportedOverdubbing: return "unsupportedOverdubbing";
+    case NativeVocoderCarrierStatus::UnsupportedPitchProcessing: return "unsupportedPitchProcessing";
+    case NativeVocoderCarrierStatus::HistoryPinned: return "historyPinned";
+    case NativeVocoderCarrierStatus::BufferUnavailable: return "bufferUnavailable";
+    }
+    return "bufferUnavailable";
+}
+
 const char* loopTransportStatusToString(LoopTransportStatus status) {
     switch (status) {
     case LoopTransportStatus::Disabled: return "disabled";
@@ -138,6 +156,19 @@ const char* loopTransportStatusToString(LoopTransportStatus status) {
     case LoopTransportStatus::Active: return "active";
     case LoopTransportStatus::UnsupportedRecording: return "unsupportedRecording";
     case LoopTransportStatus::UnsupportedOverdubbing: return "unsupportedOverdubbing";
+    case LoopTransportStatus::UnsupportedPitchProcessing: return "unsupportedPitchProcessing";
+    }
+    return "unknown";
+}
+
+const char* nativeHistoryFailureToString(NativeHistoryFailure failure) {
+    switch (failure) {
+    case NativeHistoryFailure::None: return "none";
+    case NativeHistoryFailure::BudgetExceeded: return "budgetExceeded";
+    case NativeHistoryFailure::SnapshotUnavailable: return "snapshotUnavailable";
+    case NativeHistoryFailure::NoUndo: return "noUndo";
+    case NativeHistoryFailure::NoRedo: return "noRedo";
+    case NativeHistoryFailure::TrackMustBeStopped: return "trackMustBeStopped";
     }
     return "unknown";
 }
@@ -145,11 +176,20 @@ const char* loopTransportStatusToString(LoopTransportStatus status) {
 json statusToJson(const EngineStatus& status) {
     json nativeTracks = json::array();
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto& history = status.nativeTrackHistory[track];
         nativeTracks.push_back({
             {"trackId", track + 1U},
             {"state", looperStateToString(status.nativeTrackStates[track])},
             {"loopProgress", status.nativeTrackProgress[track]},
+            {"contentRevision", status.nativeTrackContentRevision[track]},
             {"loopTransportStatus", loopTransportStatusToString(status.nativeTrackLoopTransportStatus[track])},
+            {"vocoderCarrierStatus", vocoderCarrierStatusToString(status.nativeVocoderCarrierStatuses[track])},
+            {"history", {
+                {"canUndo", history.canUndo},
+                {"canRedo", history.canRedo},
+                {"retainedPcmBytes", history.retainedPcmBytes},
+                {"unavailableReason", nativeHistoryFailureToString(history.unavailableReason)},
+            }},
         });
     }
     json trackOutputLayout = json::array();
@@ -167,12 +207,90 @@ json statusToJson(const EngineStatus& status) {
     const auto* catalog = nativeEffectCatalog(catalogCount);
     for (std::size_t index = 0U; index < catalogCount; ++index) {
         catalogEffectIds.push_back(catalog[index].id);
+        json parameters = json::array();
+        for (std::size_t parameterIndex = 0U; parameterIndex < catalog[index].parameterCount; ++parameterIndex) {
+            const auto& parameter = catalog[index].parameters[parameterIndex];
+            json descriptor{
+                {"id", parameter.id}, {"label", parameter.label},
+                {"minimum", parameter.minimum}, {"maximum", parameter.maximum},
+                {"defaultValue", parameter.defaultValue}, {"smoothingMs", parameter.smoothingMs},
+                {"discrete", parameter.discrete},
+            };
+            if (parameter.discreteValues != nullptr && parameter.discreteValueCount > 0U) {
+                json choices = json::array();
+                for (std::size_t choiceIndex = 0U; choiceIndex < parameter.discreteValueCount; ++choiceIndex) {
+                    choices.push_back(parameter.discreteValues[choiceIndex]);
+                }
+                descriptor["discreteValues"] = std::move(choices);
+            }
+            parameters.push_back(std::move(descriptor));
+        }
+        json officialParameters = json::array();
+        std::size_t officialParameterCount = 0U;
+        const auto* officialDescriptors = nativeEffectOfficialParameters(catalog[index].id, officialParameterCount);
+        for (std::size_t parameterIndex = 0U; parameterIndex < officialParameterCount; ++parameterIndex) {
+            const auto& parameter = officialDescriptors[parameterIndex];
+            json descriptor{
+                {"id", parameter.id}, {"label", parameter.label},
+                {"minimum", parameter.minimum}, {"maximum", parameter.maximum},
+                {"defaultValue", parameter.defaultValue}, {"smoothingMs", parameter.smoothingMs},
+                {"discrete", parameter.discrete}, {"implementation", "clean-room"},
+                {"hardwareEquivalent", false},
+            };
+            if (parameter.discreteValues != nullptr && parameter.discreteValueCount > 0U) {
+                json choices = json::array();
+                for (std::size_t choiceIndex = 0U; choiceIndex < parameter.discreteValueCount; ++choiceIndex)
+                    choices.push_back(parameter.discreteValues[choiceIndex]);
+                descriptor["discreteValues"] = std::move(choices);
+            }
+            if (catalog[index].id == "vinyl_flick" || catalog[index].id == "beat_shift") {
+                descriptor["semanticSupport"] = "partial_source_modes";
+                descriptor["limitation"] = "Source-aware finalized forward loop playback in shared Track FX A only; recording, overdubbing and LIVE pitch/reverse processing are not supported. Bare streaming DSP rejects these controls.";
+            }
+            if (catalog[index].id == "vocoder" && parameter.id == "official_carrier") {
+                descriptor["semanticSupport"] = "partial_source_modes";
+                descriptor["limitation"] = "TRACK1-5 only, finalized Playing pre-FX/pre-LIVE-pitch source, same-block read-only tap. Empty/stopped/recording/overdub/pitch-conflicted/pinned sources are silent. Physical MIC/INST sources and CARRIER THRU are unsupported.";
+            }
+            if (catalog[index].id == "tape_echo" || catalog[index].id == "roll") {
+                descriptor["applicableVariants"] = json::array();
+                for (unsigned int variant = 1U; variant <= 2U; ++variant) {
+                    const auto* domain = official::parameterDomain(nativeEffectOfficialDomainId(catalog[index].id, variant), parameter.id);
+                    if (parameter.id == "official_variant" || domain != nullptr)
+                        descriptor["applicableVariants"].push_back(variant);
+                    if (domain != nullptr) {
+                        json choices = json::array();
+                        for (std::size_t choice = 0U; choice < domain->count; ++choice)
+                            choices.push_back(official::kDomainOptions[domain->offset + choice]);
+                        descriptor["variantDomains"][std::to_string(variant)] = {
+                            {"minimum", domain->minimum}, {"maximum", domain->maximum}, {"step", domain->step},
+                            {"values", choices}, {"documentedDefault", domain->hasDefault ? json(domain->defaultValue) : json(nullptr)}};
+                    }
+                }
+                if (parameter.id == "official_variant") descriptor["provenance"] = "routing";
+            }
+            officialParameters.push_back(std::move(descriptor));
+        }
+        std::size_t legacyAliasCount = 0U;
+        const auto* legacyAliases = nativeEffectLegacyParameterAliases(catalog[index].id, legacyAliasCount);
+        json legacyParameters = json::array();
+        for (std::size_t aliasIndex = 0U; aliasIndex < legacyAliasCount; ++aliasIndex) {
+            const auto& alias = legacyAliases[aliasIndex];
+            legacyParameters.push_back({
+                {"id", alias.id}, {"label", alias.label},
+                {"minimum", alias.minimum}, {"maximum", alias.maximum},
+                {"defaultValue", alias.defaultValue}, {"smoothingMs", alias.smoothingMs},
+                {"discrete", alias.discrete}, {"legacyAlias", true},
+            });
+        }
         catalogEffectAvailability.push_back({
             {"effectId", catalog[index].id},
             {"sourceIndex", catalog[index].sourceIndex},
             {"input", catalog[index].inputAvailable},
             {"track", catalog[index].trackAvailable},
             {"perTrackInsert", nativeEffectSupportsPerTrackInsert(catalog[index].id)},
+            {"parameters", parameters},
+            {"officialParameters", officialParameters},
+            {"legacyParameterAliases", legacyParameters},
         });
     }
     for (std::size_t slot = 0; slot < NativeTrackOutputBank::kSlotNames.size(); ++slot) {
@@ -266,8 +384,12 @@ json statusToJson(const EngineStatus& status) {
         {"outputDeviceName", status.outputDeviceName},
         {"sampleRate", status.sampleRate},
         {"bufferFrames", status.bufferFrames},
+        {"projectContentRevision", status.projectContentRevision},
+        {"projectContentRevisionSnapshotStable", status.projectContentRevisionSnapshotStable},
         {"monitoringEnabled", status.monitoringEnabled},
         {"nativeFx", {
+            {"parameterSchemaVersion", 1},
+            {"catalogParameterReplacement", true},
             {"implementedCatalogEffects", catalogEffectIds},
             {"catalogEffectAvailability", catalogEffectAvailability},
             {"implementedOutputEffects", {"lowPass", "highPass", "fdn16Reverb", "fractionalDelay", "compressor", "chorus", "phaser"}},
@@ -430,6 +552,10 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
         {"nativeTracks", nativeTracks},
+        {"nativeHistory", {
+            {"budgetBytes", status.nativeHistoryBudgetBytes},
+            {"retainedBytes", status.nativeHistoryRetainedBytes},
+        }},
         {"streamTimeSeconds", status.streamTimeSeconds},
         {"callbackTicks", status.callbackTicks},
 #if defined(NATIVE_RUBBERBAND_HQ_AVAILABLE)
@@ -458,6 +584,67 @@ void writeJson(httplib::Response& response, const json& payload) {
 
 void writeError(httplib::Response& response, const std::string& error) {
     writeJson(response, json{{"ok", false}, {"error", error}});
+}
+
+const char* projectImportStateToString(NativeProjectImportState state) {
+    switch (state) {
+    case NativeProjectImportState::Idle: return "idle";
+    case NativeProjectImportState::Pending: return "pending";
+    case NativeProjectImportState::Claimed: return "claimed";
+    case NativeProjectImportState::Committed: return "committed";
+    case NativeProjectImportState::Cancelled: return "cancelled";
+    }
+    return "unknown";
+}
+
+json projectImportStatusToJson(const NativeProjectImportStatus& status) {
+    json result{
+        {"ok", true},
+        {"generation", status.generation},
+        {"state", projectImportStateToString(status.state)},
+    };
+    if (!status.error.empty()) result["error"] = status.error;
+    return result;
+}
+
+bool parseProjectImportGeneration(const std::string& text, std::uint64_t& generation) {
+    if (text.empty()) return false;
+    const auto [end, status] = std::from_chars(text.data(), text.data() + text.size(), generation);
+    return status == std::errc{} && end == text.data() + text.size() && generation != 0U;
+}
+
+bool parseProjectImportExpectedContentRevision(const httplib::Request& request, std::uint64_t& revision) {
+    // cpp-httplib intentionally de-duplicates identical raw query pairs in
+    // its Params map. Checking only get_param_value_count() therefore cannot
+    // distinguish `?expectedContentRevision=7` from
+    // `?expectedContentRevision=7&expectedContentRevision=7`. Require the
+    // single canonical raw target before consulting the decoded query map.
+    constexpr std::string_view prefix = "/v1/project/import?expectedContentRevision=";
+    if (request.target.compare(0U, prefix.size(), prefix) != 0) return false;
+    const auto value = std::string_view(request.target).substr(prefix.size());
+    if (value.empty() || value.find_first_not_of("0123456789") != std::string_view::npos ||
+        request.get_param_value_count("expectedContentRevision") != 1U ||
+        request.get_param_value("expectedContentRevision") != value) return false;
+    const auto [end, status] = std::from_chars(value.data(), value.data() + value.size(), revision);
+    return status == std::errc{} && end == value.data() + value.size();
+}
+
+bool parseProjectImportContentLength(const httplib::Request& request, std::uint64_t& byteLength) {
+    if (request.get_header_value_count("Content-Length") != 1U) return false;
+    const auto value = request.get_header_value("Content-Length");
+    if (value.empty()) return false;
+    const auto [end, status] = std::from_chars(value.data(), value.data() + value.size(), byteLength);
+    return status == std::errc{} && end == value.data() + value.size();
+}
+
+std::string normalizedHeaderValue(std::string value) {
+    const auto isSpace = [](unsigned char character) { return character == ' ' || character == '\t'; };
+    while (!value.empty() && isSpace(static_cast<unsigned char>(value.front()))) value.erase(value.begin());
+    while (!value.empty() && isSpace(static_cast<unsigned char>(value.back()))) value.pop_back();
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char character) {
+        return static_cast<char>(std::tolower(character));
+    });
+    return value;
 }
 
 bool readUnsignedJsonInteger(const json& value, std::uint64_t maximum, std::uint64_t& result) {
@@ -507,7 +694,8 @@ void addLoopSnapshotCorsHeaders(const httplib::Request& request, httplib::Respon
     // here: browsers reject duplicate Access-Control-Allow-Origin headers.
     response.set_header(
         "Access-Control-Expose-Headers",
-        "X-Native-Loop-Sample-Rate, X-Native-Loop-Frame-Count, X-Native-Loop-Channels, X-Native-Loop-Sample-Format"
+        "X-Native-Loop-Sample-Rate, X-Native-Loop-Frame-Count, X-Native-Loop-Channels, "
+        "X-Native-Loop-Sample-Format, X-Native-Loop-Revision"
     );
 }
 
@@ -549,8 +737,8 @@ void enableLoopbackCors(httplib::Server& server) {
                 std::transform(normalizedHeaders.begin(), normalizedHeaders.end(), normalizedHeaders.begin(), [](unsigned char value) {
                     return static_cast<char>(std::tolower(value));
                 });
-                // NativeBridgeClient only needs JSON requests. Reject unexpected
-                // headers rather than broadening the local bridge's browser API.
+                // Control JSON and raw archive uploads only need the Content-Type
+                // header. Reject unexpected headers instead of broadening the API.
                 if (normalizedHeaders != "content-type") {
                     response.status = 400;
                     writeError(response, "Native bridge CORS only allows the Content-Type request header.");
@@ -571,6 +759,37 @@ void enableLoopbackCors(httplib::Server& server) {
             response.status = 403;
             writeError(response, "Native bridge write requires an approved WebRC-505 local UI Origin.");
             return httplib::Server::HandlerResponse::Handled;
+        }
+
+        if (request.method == "POST") {
+            // cpp-httplib's configured payload maximum applies to Content-Length
+            // bodies but its chunked reader has no aggregate byte counter. Reject
+            // transfer/content encoding before any body is buffered or dispatched.
+            if (request.has_header("Transfer-Encoding")) {
+                response.status = 411;
+                writeError(response, "Native bridge writes require a bounded Content-Length request body.");
+                return httplib::Server::HandlerResponse::Handled;
+            }
+            if (request.has_header("Content-Encoding")) {
+                response.status = 415;
+                writeError(response, "Native bridge writes do not accept Content-Encoding.");
+                return httplib::Server::HandlerResponse::Handled;
+            }
+
+            if (request.path != "/v1/project/import") {
+                std::uint64_t bodyBytes = 0U;
+                if (request.get_header_value_count("Content-Length") != 1U ||
+                    !parseProjectImportContentLength(request, bodyBytes)) {
+                    response.status = 411;
+                    writeError(response, "Native bridge writes require exactly one valid Content-Length header.");
+                    return httplib::Server::HandlerResponse::Handled;
+                }
+                if (bodyBytes > 1024U * 1024U) {
+                    response.status = 413;
+                    writeError(response, "Native bridge control request body exceeds the 1 MiB limit.");
+                    return httplib::Server::HandlerResponse::Handled;
+                }
+            }
         }
 
         if (request.method == "OPTIONS") {
@@ -634,6 +853,10 @@ int main() {
     NativeAudioCore engine;
     httplib::Server server;
     std::mutex nativeHqRenderMutex;
+    // cpp-httplib applies this to ContentReader routes too. Set the global cap
+    // to the v1 archive maximum, then use the pre-routing guard above to keep
+    // ordinary control POSTs at 1 MiB without blocking legitimate archives.
+    server.set_payload_max_length(static_cast<std::size_t>(kProjectArchiveMaxBytes));
     enableLoopbackCors(server);
 
     server.Get("/health", [&engine](const httplib::Request&, httplib::Response& response) {
@@ -655,18 +878,183 @@ int main() {
         writeJson(response, statusToJson(engine.getStatus()));
     });
 
+    server.Post("/v1/project/import", [&engine](const httplib::Request& request, httplib::Response& response,
+                                                const httplib::ContentReader& contentReader) {
+        if (normalizedHeaderValue(request.get_header_value("Content-Type")) != "application/octet-stream") {
+            response.status = 415;
+            writeError(response, "Native project import requires an application/octet-stream archive body.");
+            return;
+        }
+        if (request.has_header("Transfer-Encoding") || request.has_header("Content-Encoding")) {
+            response.status = 400;
+            writeError(response, "Native project import requires an unencoded body with a single Content-Length header.");
+            return;
+        }
+
+        std::uint64_t expectedProjectContentRevision = 0U;
+        if (!parseProjectImportExpectedContentRevision(request, expectedProjectContentRevision)) {
+            response.status = 400;
+            writeError(response, "Native project import requires exactly one valid operation-start expectedContentRevision query parameter.");
+            return;
+        }
+
+        std::uint64_t encodedBytes = 0U;
+        if (!parseProjectImportContentLength(request, encodedBytes)) {
+            response.status = 411;
+            writeError(response, "Native project import requires exactly one valid Content-Length header.");
+            return;
+        }
+        if (encodedBytes > kProjectArchiveMaxBytes) {
+            response.status = 413;
+            writeError(response, "Native project archive exceeds the v1 archive size limit.");
+            return;
+        }
+        if (encodedBytes > std::numeric_limits<std::size_t>::max()) {
+            response.status = 413;
+            writeError(response, "Native project archive is too large for this process to address.");
+            return;
+        }
+
+        std::vector<std::uint8_t> archiveBytes;
+        try {
+            archiveBytes.reserve(static_cast<std::size_t>(encodedBytes));
+        } catch (const std::bad_alloc&) {
+            response.status = 503;
+            writeError(response, "Native project import could not reserve bounded request storage.");
+            return;
+        } catch (const std::length_error&) {
+            response.status = 413;
+            writeError(response, "Native project archive is too large for this process to address.");
+            return;
+        }
+
+        bool bodyExceededLimit = false;
+        bool storageAllocationFailed = false;
+        const bool bodyRead = contentReader([&archiveBytes, encodedBytes, &bodyExceededLimit, &storageAllocationFailed](
+                                                const char* data, std::size_t dataLength) {
+            if (dataLength > encodedBytes - archiveBytes.size()) {
+                bodyExceededLimit = true;
+                return false;
+            }
+            try {
+                const auto* first = reinterpret_cast<const std::uint8_t*>(data);
+                archiveBytes.insert(archiveBytes.end(), first, first + dataLength);
+            } catch (const std::bad_alloc&) {
+                storageAllocationFailed = true;
+                return false;
+            } catch (const std::length_error&) {
+                storageAllocationFailed = true;
+                return false;
+            }
+            return true;
+        });
+        if (!bodyRead) {
+            response.status = storageAllocationFailed ? 503 : (bodyExceededLimit ? 413 : 400);
+            writeError(response, storageAllocationFailed
+                ? "Native project import could not store the bounded request body."
+                : (bodyExceededLimit
+                    ? "Native project archive body exceeds its declared Content-Length."
+                    : "Native project archive request body was incomplete or malformed."));
+            return;
+        }
+        if (archiveBytes.size() != encodedBytes) {
+            response.status = 400;
+            writeError(response, "Native project archive body length does not match Content-Length.");
+            return;
+        }
+
+        auto decoded = decodeProjectArchive(archiveBytes);
+        if (!decoded.project) {
+            response.status = 400;
+            writeError(response, decoded.error.empty() ? "Native project archive is invalid." : decoded.error);
+            return;
+        }
+
+        std::uint64_t generation = 0U;
+        std::string error;
+        if (!engine.beginProjectArchiveImport(
+                std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error)) {
+            response.status = 409;
+            writeError(response, error);
+            return;
+        }
+        response.status = 202;
+        writeJson(response, json{{"ok", true}, {"generation", generation}});
+    });
+
+    server.Get("/v1/project/import/status", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::uint64_t generation = 0U;
+        if (request.get_param_value_count("generation") != 1U ||
+            !parseProjectImportGeneration(request.get_param_value("generation"), generation)) {
+            response.status = 400;
+            writeError(response, "Native project import status requires one positive integer generation query parameter.");
+            return;
+        }
+        const auto status = engine.getProjectArchiveImportStatus(generation);
+        if (!status.found) {
+            response.status = 404;
+            writeError(response, "Native project import generation was not found.");
+            return;
+        }
+        writeJson(response, projectImportStatusToJson(status));
+    });
+
+    server.Post("/v1/project/import/cancel", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (normalizedHeaderValue(request.get_header_value("Content-Type")) != "text/plain") {
+            response.status = 415;
+            writeError(response, "Native project import cancellation requires a text/plain JSON body.");
+            return;
+        }
+        try {
+            const auto body = json::parse(request.body);
+            std::uint64_t generation = 0U;
+            if (!body.is_object() || body.size() != 1U || !body.contains("generation") ||
+                !readUnsignedJsonInteger(body["generation"], std::numeric_limits<std::uint64_t>::max(), generation) ||
+                generation == 0U) {
+                response.status = 400;
+                writeError(response, "Native project import cancellation requires one positive integer generation.");
+                return;
+            }
+
+            NativeProjectImportStatus status;
+            std::string error;
+            const bool cancelledOrFound = engine.cancelProjectArchiveImport(generation, status, error);
+            if (!status.found) {
+                response.status = 404;
+                writeError(response, error.empty() ? "Native project import generation was not found." : error);
+                return;
+            }
+            if (!cancelledOrFound || status.state == NativeProjectImportState::Claimed) {
+                response.status = 409;
+                auto result = projectImportStatusToJson(status);
+                result["ok"] = false;
+                result["error"] = error.empty()
+                    ? "Native project import is no longer pending and cannot be cancelled."
+                    : error;
+                writeJson(response, result);
+                return;
+            }
+            writeJson(response, projectImportStatusToJson(status));
+        } catch (const std::exception& error) {
+            response.status = 400;
+            writeError(response, error.what());
+        }
+    });
+
     server.Get("/v1/export/loop-snapshot", [&engine](const httplib::Request& request, httplib::Response& response) {
         addLoopSnapshotCorsHeaders(request, response);
         std::vector<float> samples;
         unsigned int sampleRate = 0U;
         std::string error;
         std::size_t trackIndex = 0U;
+        std::uint64_t contentRevision = 0U;
         if (!readTrackIndex(request, trackIndex, error)) {
             response.status = 400;
             writeError(response, error);
             return;
         }
-        if (!engine.captureTrackSnapshot(trackIndex, samples, sampleRate, error)) {
+        if (!engine.captureTrackSnapshot(trackIndex, samples, sampleRate, error,
+                                         std::numeric_limits<std::size_t>::max(), &contentRevision)) {
             response.status = 409;
             writeError(response, error);
             return;
@@ -676,6 +1064,7 @@ int main() {
         response.set_header("X-Native-Loop-Frame-Count", std::to_string(samples.size() / 2U));
         response.set_header("X-Native-Loop-Channels", "2");
         response.set_header("X-Native-Loop-Sample-Format", "float32le");
+        response.set_header("X-Native-Loop-Revision", std::to_string(contentRevision));
         response.set_content(
             reinterpret_cast<const char*>(samples.data()),
             samples.size() * sizeof(float),
@@ -694,7 +1083,8 @@ int main() {
         }
         std::size_t frameCount = 0U;
         unsigned int sampleRate = 0U;
-        if (!engine.getTrackSnapshotMetadata(trackIndex, frameCount, sampleRate, error)) {
+        std::uint64_t contentRevision = 0U;
+        if (!engine.getTrackSnapshotMetadata(trackIndex, frameCount, sampleRate, error, &contentRevision)) {
             response.status = 409;
             writeError(response, error);
             return;
@@ -705,6 +1095,7 @@ int main() {
             {"sampleRate", sampleRate},
             {"frameCount", frameCount},
             {"channels", 2},
+            {"contentRevision", contentRevision},
             {"sampleFormat", "float32le"},
         });
     });
@@ -979,6 +1370,38 @@ int main() {
             return;
         }
         if (!engine.clearTrack(trackIndex, error)) {
+            writeError(response, error);
+            return;
+        }
+        writeJson(response, statusToJson(engine.getStatus()));
+    });
+
+    server.Post("/v1/transport/undo", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        if (!readTrackIndex(request, trackIndex, error)) {
+            response.status = 400;
+            writeError(response, error);
+            return;
+        }
+        if (!engine.undoTrack(trackIndex, error)) {
+            response.status = 409;
+            writeError(response, error);
+            return;
+        }
+        writeJson(response, statusToJson(engine.getStatus()));
+    });
+
+    server.Post("/v1/transport/redo", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        if (!readTrackIndex(request, trackIndex, error)) {
+            response.status = 400;
+            writeError(response, error);
+            return;
+        }
+        if (!engine.redoTrack(trackIndex, error)) {
+            response.status = 409;
             writeError(response, error);
             return;
         }
@@ -1707,8 +2130,15 @@ int main() {
                     : current.nativePerTrackCatalogSlots[trackId - 1U][index].bypassed;
             }
 
+            bool replaceParameters = false;
+            if (body.contains("replaceParameters")) {
+                if (!body["replaceParameters"].is_boolean()) {
+                    response.status = 400; writeError(response, "'replaceParameters' must be a boolean."); return;
+                }
+                replaceParameters = body["replaceParameters"].get<bool>();
+            }
             std::string error;
-            if (!engine.setNativeCatalogSlot(slot, effectId, parameters, bypassed, error, path, trackId)) {
+            if (!engine.setNativeCatalogSlot(slot, effectId, parameters, bypassed, error, path, trackId, replaceParameters)) {
                 response.status = 409;
                 writeError(response, error);
                 return;

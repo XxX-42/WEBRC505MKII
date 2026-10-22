@@ -26,6 +26,13 @@ bool NativePhaserProcessor::prepare(unsigned int sampleRate) noexcept {
     allpassStates_ = {};
     feedbackState_.fill(0.0f);
     phase_ = 0.0;
+    stepPhase_ = 1.0;
+    heldWave_ = 0.0f;
+    heldBiWave_ = 1.0f;
+    manual_.reset(config_.manual);
+    stepRateHz_.reset(config_.stepRateHz);
+    directLevel_.reset(config_.directLevel);
+    effectLevel_.reset(config_.effectLevel);
     rateHz_.reset(config_.rateHz);
     depth_.reset(config_.depth);
     feedback_.reset(config_.feedback);
@@ -38,7 +45,14 @@ bool NativePhaserProcessor::setConfig(const PhaserProcessorConfig& config, std::
     if (!supportedStageCount(config.stages) ||
         !std::isfinite(config.rateHz) || !std::isfinite(config.depth) ||
         !std::isfinite(config.feedback) || !std::isfinite(config.wetMix) ||
-        config.rateHz < 0.05f || config.rateHz > 10.0f ||
+        !std::isfinite(config.manual) || !std::isfinite(config.stepRateHz) ||
+        !std::isfinite(config.directLevel) || !std::isfinite(config.effectLevel) ||
+        config.manual < 0.0f || config.manual > 1.0f ||
+        config.stepRateHz < 0.0f || config.stepRateHz > 100.0f ||
+        config.directLevel < 0.0f || config.directLevel > 1.0f ||
+        config.effectLevel < 0.0f || config.effectLevel > 1.0f ||
+        config.rateHz < (config.officialControls ? 0.001f : 0.05f) ||
+        config.rateHz > (config.officialControls ? 100.0f : 10.0f) ||
         config.depth < 0.0f || config.depth > 1.0f ||
         config.feedback < -0.9f || config.feedback > 0.9f ||
         config.wetMix < 0.0f || config.wetMix > 1.0f) {
@@ -46,6 +60,10 @@ bool NativePhaserProcessor::setConfig(const PhaserProcessorConfig& config, std::
     }
 
     config_ = config;
+    manual_.setTarget(config.manual, rampFrames);
+    stepRateHz_.setTarget(config.stepRateHz, rampFrames);
+    directLevel_.setTarget(config.directLevel, rampFrames);
+    effectLevel_.setTarget(config.effectLevel, rampFrames);
     rateHz_.setTarget(config.rateHz, rampFrames);
     depth_.setTarget(config.depth, rampFrames);
     feedback_.setTarget(config.feedback, rampFrames);
@@ -91,8 +109,24 @@ float NativePhaserProcessor::processInPlace(float* interleaved, unsigned int fra
         const float feedback = feedback_.next();
         const float mix = wetMix_.next();
         const float stageCount = stageCount_.next();
-        const float sweepPosition = 0.5f + (0.5f * depth * static_cast<float>(std::sin(phase_)));
+        const float manual = manual_.next();
+        const float stepHz = stepRateHz_.next();
+        const float direct = directLevel_.next();
+        const float effect = effectLevel_.next();
+        const float wave = static_cast<float>(std::sin(phase_));
+        const float biWave = static_cast<float>(std::cos(phase_));
+        if (stepHz <= 0.0f) { heldWave_ = wave; heldBiWave_ = biWave; }
+        else {
+            if (stepPhase_ >= 1.0) {
+                heldWave_ = wave; heldBiWave_ = biWave;
+                stepPhase_ -= std::floor(stepPhase_);
+            }
+            stepPhase_ += static_cast<double>(stepHz) / sampleRate_;
+        }
+        const float sweepPosition = manual + (0.5f * depth * heldWave_);
         const float coefficient = coefficientForSweep(sweepPosition);
+        const float biCoefficient = config_.biPhase
+            ? coefficientForSweep(manual + 0.5f * depth * heldBiWave_) : coefficient;
         const auto mixGains = dsp::equalPowerCrossfadeGains(mix);
         const float stagePosition = std::clamp((stageCount - 4.0f) / 4.0f, 0.0f, 2.0f);
         const auto lowerGroup = static_cast<std::size_t>(stagePosition);
@@ -106,7 +140,7 @@ float NativePhaserProcessor::processInPlace(float* interleaved, unsigned int fra
             float stageInput = feedbackInput;
             std::array<float, 3> groupOutput{};
             for (std::size_t stage = 0; stage < kMaximumStages; ++stage) {
-                stageInput = processAllpass(stageInput, coefficient, allpassStates_[channel][stage]);
+                stageInput = processAllpass(stageInput, config_.biPhase && stage >= 6U ? biCoefficient : coefficient, allpassStates_[channel][stage]);
                 if (((stage + 1U) % kStageGroupSize) == 0U) {
                     groupOutput[stage / kStageGroupSize] = stageInput;
                 }
@@ -114,7 +148,9 @@ float NativePhaserProcessor::processInPlace(float* interleaved, unsigned int fra
             const float wet = groupOutput[lowerGroup] +
                 ((groupOutput[upperGroup] - groupOutput[lowerGroup]) * stageBlend);
             feedbackState_[channel] = std::clamp(wet, -kFeedbackStateLimit, kFeedbackStateLimit);
-            const float output = (dry * mixGains.first) + (wet * mixGains.second);
+            const float output = config_.officialControls && config_.enabled
+                ? dry * direct + wet * effect
+                : (dry * mixGains.first) + (wet * mixGains.second);
             interleaved[offset + channel] = output;
             peak = std::max(peak, std::fabs(output));
         }

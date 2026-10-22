@@ -327,9 +327,66 @@ void testBoundedQueueAndNoAudioThreadAllocations() {
     for (float sample : block) assert(std::isfinite(sample));
 }
 
+void testOfficialHarmonyControls() {
+    constexpr unsigned int rate = 16000U;
+    NativeHrmAutoCore core;
+    NativeHrmAutoCore::Config config{};
+    config.sampleRate = rate; config.channels = 2U; config.mixPercent = 100.0f;
+    assert(core.prepare(config));
+    assert(!core.setOfficialParameter("official_mode", 1.0f, true));
+    assert(!core.setOfficialParameter("official_voice", 6.5f, true));
+    assert(!core.setOfficialParameter("official_voice", 11.0f, true));
+    assert(core.setOfficialParameter("official_voice", 6.0f, true));
+    assert(core.setOfficialParameter("official_d_level", 0.0f, true));
+    auto tone = makeTone(rate, 2U, rate, 220.0);
+    processBlocks(core, tone, 2U, {{64U, 127U, 32U, 63U, 256U, 11U, 77U}});
+    assert(core.activeVoiceCount() == 1U);
+    assert(core.targetMidiNote(0U) == 60);
+    assert(std::fabs(core.targetSemitones(0U) - 3.0f) < 0.12f);
+    assert(core.setOfficialParameter("official_key", 2.0f, true));
+    assert(core.targetMidiNote(0U) == 61);
+    assert(core.setOfficialParameter("official_voice", 0.0f, true));
+    assert(core.targetSemitones(0U) == -12.0f);
+    assert(core.setOfficialParameter("official_voice", 1.0f, true));
+    assert(core.targetSemitones(0U) == 12.0f);
+    assert(core.setOfficialParameter("official_voice", 10.0f, true));
+    assert(std::fabs(core.targetSemitones(0U) - 0.08f) < 0.001f);
+    assert(core.setOfficialParameter("official_voice", 6.0f, true));
+    assert(core.setOfficialParameter("official_pan", -50.0f, true));
+    tone = makeTone(rate / 2U, 2U, rate, 220.0);
+    processBlocks(core, tone, 2U, {{64U, 64U, 64U, 64U, 64U, 64U, 64U}});
+    double left = 0.0, right = 0.0;
+    for (unsigned int f = rate / 4U; f < rate / 2U; ++f) {
+        left += tone[f * 2U] * tone[f * 2U]; right += tone[f * 2U + 1U] * tone[f * 2U + 1U];
+    }
+    assert(left > 0.01 && right < 1.0e-8);
+    assert(core.setOfficialParameter("official_hrm_level", 0.0f, true));
+    tone = makeTone(rate / 8U, 2U, rate, 220.0);
+    processBlocks(core, tone, 2U, {{64U, 64U, 64U, 64U, 64U, 64U, 64U}});
+    for (std::size_t i = 256U; i < tone.size(); ++i) assert(tone[i] == 0.0f);
+
+    NativeHrmAutoCore automatic;
+    assert(automatic.prepare(config));
+    assert(automatic.setOfficialParameter("official_voice", 4.0f));
+    assert(automatic.enqueueMidi(noteEvent(0U, true, 61U)));
+    tone = makeTone(rate, 2U, rate, 220.0);
+    processBlocks(automatic, tone, 2U, {{64U, 127U, 32U, 63U, 256U, 11U, 77U}});
+    assert(automatic.targetMidiNote(0U) == 61); // AUTO follows C# MIDI.
+    assert(automatic.setOfficialParameter("official_hrm_mode", 0.0f));
+    assert(automatic.targetMidiNote(0U) == 59); // HYBRID C major fallback: B.
+    std::array<float, 256U> block{};
+    test_alloc::beginTracking();
+    assert(automatic.setOfficialParameter("official_formant", 50.0f));
+    assert(automatic.setOfficialParameter("official_pan", 50.0f));
+    assert(automatic.processInterleaved(block.data(), 128U, 2U));
+    test_alloc::endTracking();
+    assert(test_alloc::count() == 0U);
+}
+
 } // namespace
 
 int main() {
+    testOfficialHarmonyControls();
     testConfigurationAndQueueValidation();
     testDryPathAndArbitraryBlocks();
     testRootDiatonicTargetsAndSignalsmithVoices();

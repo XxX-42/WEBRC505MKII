@@ -249,6 +249,28 @@
               } });
             });
           }
+          if (processorName === 'rc505-input-capture' && message?.type === 'INPUT_READY' && message.ready === true) {
+            // The application E2E suites intentionally replace AudioContext
+            // and AudioWorkletNode. Give that mocked input-capture node a
+            // coherent synthetic pre-roll handshake; exact frame capture is
+            // verified separately with the real Chromium AudioWorklet.
+            const preRollCapacityFrames = mockNode.processorOptions.preRollFrames;
+            const requiredPreRollFrames = Number.isSafeInteger(preRollCapacityFrames)
+              ? preRollCapacityFrames
+              : 8_192;
+            queueMicrotask(() => {
+              if (onmessage) onmessage({ data: {
+                type: 'INPUT_CAPTURE_READY',
+                inputGeneration: message.generation,
+                sampleRate: mockNode.context.sampleRate,
+                oldestAvailableFrame: 0,
+                latestAvailableFrame: requiredPreRollFrames,
+                preRollValidFrames: requiredPreRollFrames,
+                preRollCapacityFrames: requiredPreRollFrames,
+                requiredPreRollFrames,
+              } });
+            });
+          }
           if (message && message.type === 'STOP_RECORD' && this.port.onmessage) {
             this.port.onmessage({
               data: {
@@ -294,10 +316,33 @@
     value: () => true,
   });
 
+  const createMockAudioTrack = () => {
+    const listeners = new Map();
+    return {
+      kind: 'audio',
+      readyState: 'live',
+      addEventListener(type, listener) {
+        const entries = listeners.get(type) ?? new Set();
+        entries.add(listener);
+        listeners.set(type, entries);
+      },
+      removeEventListener(type, listener) {
+        listeners.get(type)?.delete(listener);
+      },
+      // MediaStreamTrack.stop() changes readyState but does not dispatch ended.
+      stop() {
+        this.readyState = 'ended';
+      },
+    };
+  };
   const mediaDevices = {
-    getUserMedia: async () => ({
-      getTracks: () => [{ stop() {} }],
-    }),
+    getUserMedia: async () => {
+      const tracks = [createMockAudioTrack()];
+      return {
+        getTracks: () => tracks,
+        getAudioTracks: () => tracks,
+      };
+    },
     enumerateDevices: async () => ([
       { deviceId: 'mic-1', kind: 'audioinput', label: 'Mock Input' },
       { deviceId: 'out-1', kind: 'audiooutput', label: 'Mock Output' },

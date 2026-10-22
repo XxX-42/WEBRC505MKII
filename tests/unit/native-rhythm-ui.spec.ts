@@ -36,6 +36,7 @@ async function mountNativeControls(initial = nativeRhythmStatus({ patternIndex: 
     }),
     getUiStatus: () => ({ ready: true, message: 'NATIVE READY', lastError: '' }),
     getOutputLevel: () => 100,
+    getTrackHistoryStatus: () => ({ canUndo: false, canRedo: false, busy: false, unavailableReason: 'No history fixture' }),
     getTrackCapabilities: () => ({
       trackId: 1, isAvailable: false, availabilityReason: 'No track fixture',
       supportsTrackLevel: false, levelReason: 'Track level unavailable in this test runtime.',

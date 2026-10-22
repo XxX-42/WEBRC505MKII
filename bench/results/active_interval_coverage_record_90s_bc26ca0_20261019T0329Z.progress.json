@@ -1,0 +1,1436 @@
+{
+  "generatedAtUtc": "2026-10-19T03:30:38.265Z",
+  "state": "failed",
+  "elapsedWallSeconds": 90.00033500000089,
+  "actualSampleRateHz": 44100,
+  "audioContextCurrentTimeSeconds": 95.13215419501134,
+  "audioContextAdvanceDuringMeasurementSeconds": 88.95854875283447,
+  "instrumentedNodeCount": 38,
+  "readySlotCount": 38,
+  "nodeCounts": {
+    "rc505-browser-block-meter": 1,
+    "rc505-fx-processor": 28,
+    "signalsmith-stretch": 6,
+    "rc505-rhythm-processor": 1,
+    "looper-processor": 1,
+    "rc505-overdub-processor": 1
+  },
+  "nodeLifecycle": {
+    "createdNodeCount": 38,
+    "lifecycleCountByState": {
+      "persistent-graph": 30,
+      "retired-from-track": 3,
+      "active": 5
+    },
+    "lifecycleCountByProcessorAndState": {
+      "rc505-browser-block-meter:persistent-graph": 1,
+      "rc505-fx-processor:persistent-graph": 28,
+      "signalsmith-stretch:retired-from-track": 1,
+      "signalsmith-stretch:active": 5,
+      "rc505-rhythm-processor:persistent-graph": 1,
+      "looper-processor:retired-from-track": 1,
+      "rc505-overdub-processor:retired-from-track": 1
+    },
+    "classificationNotes": {
+      "persistentGraph": "Created during graph setup and retained as shared FX/Rhythm/meter infrastructure.",
+      "active": "Currently referenced by a TrackAudio live route or recording/overdub field.",
+      "retainedIdle": "Still referenced by TrackAudio but currently not routed as active.",
+      "retiredFromTrack": "Dynamic TrackAudio processor no longer referenced by its track; worklet callback history remains in the cumulative descriptor list.",
+      "callbacksAdvancedWithinRecentWindow": "At least one callback advanced within 3 seconds; this is activity evidence, not a hardware liveness guarantee."
+    },
+    "signalsmithWasmLeases": {
+      "budgetBytes": 134217728,
+      "reservedBytes": 20971520,
+      "measuredBytes": 5898240,
+      "processorCount": 5,
+      "liveFxProcessorCount": 0,
+      "livePolyProcessorCount": 5,
+      "pendingCount": 0,
+      "releaseUnconfirmedCount": 0
+    }
+  },
+  "nodeConstructionFailures": [],
+  "callbackExceptionDetails": [],
+  "sharedMemoryProbeBytes": 89005960,
+  "sharedMemoryProbeMiB": 84.88269805908203,
+  "callbackErrors": 0,
+  "estimatedMissingCallbacks": 0,
+  "nodes": [
+    {
+      "slot": 0,
+      "label": "rc505-browser-block-meter#1",
+      "processorName": "rc505-browser-block-meter",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 1,
+      "label": "track-1-private-A-dsp-lpf",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 2,
+      "label": "rc505-fx-processor#3",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 3,
+      "label": "rc505-fx-processor#4",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 4,
+      "label": "rc505-fx-processor#5",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 5,
+      "label": "rc505-fx-processor#6",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 6,
+      "label": "rc505-fx-processor#7",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 7,
+      "label": "rc505-fx-processor#8",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 8,
+      "label": "rc505-fx-processor#9",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 9,
+      "label": "rc505-fx-processor#10",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 10,
+      "label": "track-1-private-B-dist",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 11,
+      "label": "track-1-private-C-chorus",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 12,
+      "label": "track-1-private-D-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 13,
+      "label": "track-2-private-A-phaser",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 14,
+      "label": "track-2-private-B-tremolo",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 15,
+      "label": "track-2-private-C-auto-pan",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 16,
+      "label": "track-2-private-D-fdn8-reverb",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 17,
+      "label": "track-3-private-A-flanger",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 18,
+      "label": "track-3-private-B-ring-mod",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 19,
+      "label": "track-3-private-C-mod-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 20,
+      "label": "track-3-private-D-panning-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 21,
+      "label": "track-4-private-A-dynamics",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 22,
+      "label": "track-4-private-B-sustainer",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 23,
+      "label": "track-4-private-C-tape-echo",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 24,
+      "label": "track-4-private-D-granular-delay",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 25,
+      "label": "track-5-private-A-preamp",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 26,
+      "label": "track-5-private-B-gate-reverb",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 27,
+      "label": "track-5-private-C-vibrato",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 28,
+      "label": "track-5-private-D-stereo-enhance",
+      "processorName": "rc505-fx-processor",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 29,
+      "label": "signalsmith-stretch#30",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 10033,
+      "outputFrames": 1284224,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": false
+    },
+    {
+      "slot": 30,
+      "label": "signalsmith-stretch#31",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 31,
+      "label": "signalsmith-stretch#32",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 32,
+      "label": "signalsmith-stretch#33",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 33,
+      "label": "signalsmith-stretch#34",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 30649,
+      "outputFrames": 3923072,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 34,
+      "label": "rc505-rhythm-processor#35",
+      "processorName": "rc505-rhythm-processor",
+      "callbacks": 30648,
+      "outputFrames": 3922944,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": true,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 35,
+      "label": "looper-processor#36",
+      "processorName": "looper-processor",
+      "callbacks": 20613,
+      "outputFrames": 2638464,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 36,
+      "label": "signalsmith-stretch#37",
+      "processorName": "signalsmith-stretch",
+      "callbacks": 20386,
+      "outputFrames": 2609408,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    },
+    {
+      "slot": 37,
+      "label": "rc505-overdub-processor#38",
+      "processorName": "rc505-overdub-processor",
+      "callbacks": 10208,
+      "outputFrames": 1306624,
+      "callbackErrors": 0,
+      "missingCallbackEstimate": 0,
+      "isPersistentGraphNode": false,
+      "callbacksAdvancedWithinRecentWindow": true
+    }
+  ],
+  "workload": {
+    "profile": "browser-application-full-private-track-fx",
+    "appEngine": "production BrowserAudioEngine + TrackAudio + BrowserTrackFxChain + RhythmEngine",
+    "sampleRateHz": 44100,
+    "activeTrackCount": 5,
+    "activePrivateTrackFxCount": 20,
+    "privateTrackFxMatrix": [
+      {
+        "trackId": 1,
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "trackId": 1,
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "trackId": 1,
+        "slot": "C",
+        "type": "CHORUS"
+      },
+      {
+        "trackId": 1,
+        "slot": "D",
+        "type": "DELAY"
+      },
+      {
+        "trackId": 2,
+        "slot": "A",
+        "type": "PHASER"
+      },
+      {
+        "trackId": 2,
+        "slot": "B",
+        "type": "TREMOLO"
+      },
+      {
+        "trackId": 2,
+        "slot": "C",
+        "type": "AUTO PAN"
+      },
+      {
+        "trackId": 2,
+        "slot": "D",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "trackId": 3,
+        "slot": "A",
+        "type": "FLANGER"
+      },
+      {
+        "trackId": 3,
+        "slot": "B",
+        "type": "RING.MOD"
+      },
+      {
+        "trackId": 3,
+        "slot": "C",
+        "type": "MOD DELAY"
+      },
+      {
+        "trackId": 3,
+        "slot": "D",
+        "type": "PANNING DELAY"
+      },
+      {
+        "trackId": 4,
+        "slot": "A",
+        "type": "DYNAMICS"
+      },
+      {
+        "trackId": 4,
+        "slot": "B",
+        "type": "SUSTAINER"
+      },
+      {
+        "trackId": 4,
+        "slot": "C",
+        "type": "TAPE ECHO"
+      },
+      {
+        "trackId": 4,
+        "slot": "D",
+        "type": "GRANULAR DELAY"
+      },
+      {
+        "trackId": 5,
+        "slot": "A",
+        "type": "PREAMP"
+      },
+      {
+        "trackId": 5,
+        "slot": "B",
+        "type": "GATE REVERB"
+      },
+      {
+        "trackId": 5,
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "trackId": 5,
+        "slot": "D",
+        "type": "STEREO ENHANCE"
+      }
+    ],
+    "activeInputFx": [
+      {
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "slot": "D",
+        "type": "SUSTAINER"
+      }
+    ],
+    "activeSharedTrackFx": [
+      {
+        "slot": "A",
+        "type": "CHORUS"
+      },
+      {
+        "slot": "B",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "slot": "C",
+        "type": "DELAY"
+      },
+      {
+        "slot": "D",
+        "type": "AUTO PAN"
+      }
+    ],
+    "activeLivePolyTracks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "diagnosticIsolation": null,
+    "rhythm": {
+      "adapter": "production Browser RhythmEngine + rc505-rhythm-processor",
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "provenance": "clean-room-generated"
+    },
+    "pcmSeed": "deterministic stereo PCM installed through TrackAudio.restoreProjectBuffersAtomically before measurement; real Browser recording/overdub operations execute during measurement",
+    "instrumentationNodeSlotCapacity": 112,
+    "instrumentationSharedMemoryBytes": 89005960,
+    "instrumentationSharedMemoryMiB": 84.88269805908203,
+    "instrumentationMemoryNote": "Test-only callback instrumentation SharedArrayBuffer; this is added to the browser process memory footprint and can affect scheduling. It is not application audio memory.",
+    "dynamicOperationsDuringMeasurement": [
+      {
+        "index": 1,
+        "operation": "clear-record-stereo-live-poly-restore",
+        "trackId": 1,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T03:29:37.560Z",
+        "scheduledAtElapsedSeconds": 30,
+        "recordedFrames": 27392,
+        "recordedChannels": 2,
+        "recordedPcmSha256": "802ef65c767d5a74356fbf2c6e3c2d8c2aecdafcfd566d50674c59a7534562e4",
+        "recordingOverflowEvents": 0,
+        "recordingDroppedFrames": 0,
+        "livePolyRestored": true,
+        "privateTrackCoverageDuringOperation": {
+          "expectedFrames": 35200,
+          "tracks": [
+            {
+              "trackId": 1,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 1,
+                  "slot": "A",
+                  "type": "DSP LPF",
+                  "label": "track-1-private-A-dsp-lpf",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "B",
+                  "type": "DIST",
+                  "label": "track-1-private-B-dist",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "C",
+                  "type": "CHORUS",
+                  "label": "track-1-private-C-chorus",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "D",
+                  "type": "DELAY",
+                  "label": "track-1-private-D-delay",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 2,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 2,
+                  "slot": "A",
+                  "type": "PHASER",
+                  "label": "track-2-private-A-phaser",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35328,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1.0036363636363637,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "B",
+                  "type": "TREMOLO",
+                  "label": "track-2-private-B-tremolo",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35328,
+                  "callbacks": 276,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1.0036363636363637,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "C",
+                  "type": "AUTO PAN",
+                  "label": "track-2-private-C-auto-pan",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35328,
+                  "callbacks": 276,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1.0036363636363637,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "D",
+                  "type": "FDN8 REVERB",
+                  "label": "track-2-private-D-fdn8-reverb",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 276,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 3,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 3,
+                  "slot": "A",
+                  "type": "FLANGER",
+                  "label": "track-3-private-A-flanger",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "B",
+                  "type": "RING.MOD",
+                  "label": "track-3-private-B-ring-mod",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "C",
+                  "type": "MOD DELAY",
+                  "label": "track-3-private-C-mod-delay",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "D",
+                  "type": "PANNING DELAY",
+                  "label": "track-3-private-D-panning-delay",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 4,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 4,
+                  "slot": "A",
+                  "type": "DYNAMICS",
+                  "label": "track-4-private-A-dynamics",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "B",
+                  "type": "SUSTAINER",
+                  "label": "track-4-private-B-sustainer",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "C",
+                  "type": "TAPE ECHO",
+                  "label": "track-4-private-C-tape-echo",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "D",
+                  "type": "GRANULAR DELAY",
+                  "label": "track-4-private-D-granular-delay",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 5,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 5,
+                  "slot": "A",
+                  "type": "PREAMP",
+                  "label": "track-5-private-A-preamp",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "B",
+                  "type": "GATE REVERB",
+                  "label": "track-5-private-B-gate-reverb",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "C",
+                  "type": "VIBRATO",
+                  "label": "track-5-private-C-vibrato",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "D",
+                  "type": "STEREO ENHANCE",
+                  "label": "track-5-private-D-stereo-enhance",
+                  "expectedFrames": 35200,
+                  "observedFrames": 35200,
+                  "callbacks": 275,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "endedAtUtc": "2026-10-19T03:29:38.443Z"
+      },
+      {
+        "index": 2,
+        "operation": "overdub-undo-redo",
+        "trackId": 1,
+        "state": "completed",
+        "startedAtUtc": "2026-10-19T03:30:07.510Z",
+        "scheduledAtElapsedSeconds": 60,
+        "beforePcmSha256": "802ef65c767d5a74356fbf2c6e3c2d8c2aecdafcfd566d50674c59a7534562e4",
+        "afterOverdubPcmSha256": "4c2475d13e99bd958e9e8317e763faf4850c3c8211d017bd84d7d74a04579983",
+        "afterUndoPcmSha256": "802ef65c767d5a74356fbf2c6e3c2d8c2aecdafcfd566d50674c59a7534562e4",
+        "afterRedoPcmSha256": "4c2475d13e99bd958e9e8317e763faf4850c3c8211d017bd84d7d74a04579983",
+        "exactUndoAndRedoHashes": true,
+        "workletPatchMessages": 90,
+        "privateTrackCoverageDuringOperation": {
+          "expectedFrames": 19200,
+          "tracks": [
+            {
+              "trackId": 1,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 1,
+                  "slot": "A",
+                  "type": "DSP LPF",
+                  "label": "track-1-private-A-dsp-lpf",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "B",
+                  "type": "DIST",
+                  "label": "track-1-private-B-dist",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "C",
+                  "type": "CHORUS",
+                  "label": "track-1-private-C-chorus",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 1,
+                  "slot": "D",
+                  "type": "DELAY",
+                  "label": "track-1-private-D-delay",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 2,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 2,
+                  "slot": "A",
+                  "type": "PHASER",
+                  "label": "track-2-private-A-phaser",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "B",
+                  "type": "TREMOLO",
+                  "label": "track-2-private-B-tremolo",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "C",
+                  "type": "AUTO PAN",
+                  "label": "track-2-private-C-auto-pan",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 2,
+                  "slot": "D",
+                  "type": "FDN8 REVERB",
+                  "label": "track-2-private-D-fdn8-reverb",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 3,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 3,
+                  "slot": "A",
+                  "type": "FLANGER",
+                  "label": "track-3-private-A-flanger",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "B",
+                  "type": "RING.MOD",
+                  "label": "track-3-private-B-ring-mod",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "C",
+                  "type": "MOD DELAY",
+                  "label": "track-3-private-C-mod-delay",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 3,
+                  "slot": "D",
+                  "type": "PANNING DELAY",
+                  "label": "track-3-private-D-panning-delay",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 4,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 4,
+                  "slot": "A",
+                  "type": "DYNAMICS",
+                  "label": "track-4-private-A-dynamics",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "B",
+                  "type": "SUSTAINER",
+                  "label": "track-4-private-B-sustainer",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "C",
+                  "type": "TAPE ECHO",
+                  "label": "track-4-private-C-tape-echo",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 4,
+                  "slot": "D",
+                  "type": "GRANULAR DELAY",
+                  "label": "track-4-private-D-granular-delay",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            },
+            {
+              "trackId": 5,
+              "slotCount": 4,
+              "slots": [
+                {
+                  "trackId": 5,
+                  "slot": "A",
+                  "type": "PREAMP",
+                  "label": "track-5-private-A-preamp",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19328,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1.0066666666666666,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "B",
+                  "type": "GATE REVERB",
+                  "label": "track-5-private-B-gate-reverb",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 151,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "C",
+                  "type": "VIBRATO",
+                  "label": "track-5-private-C-vibrato",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                },
+                {
+                  "trackId": 5,
+                  "slot": "D",
+                  "type": "STEREO ENHANCE",
+                  "label": "track-5-private-D-stereo-enhance",
+                  "expectedFrames": 19200,
+                  "observedFrames": 19200,
+                  "callbacks": 150,
+                  "callbackErrors": 0,
+                  "coverageRatio": 1,
+                  "passed": true
+                }
+              ],
+              "minimumCoverageRatio": 1,
+              "passed": true
+            }
+          ],
+          "passed": true
+        },
+        "endedAtUtc": "2026-10-19T03:30:07.992Z"
+      }
+    ],
+    "persistentWorkletSlots": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      34
+    ],
+    "privateTrackFxWorklets": [
+      {
+        "trackId": 1,
+        "effectSlot": "A",
+        "type": "DSP LPF",
+        "label": "track-1-private-A-dsp-lpf",
+        "instrumentedSlot": 1
+      },
+      {
+        "trackId": 1,
+        "effectSlot": "B",
+        "type": "DIST",
+        "label": "track-1-private-B-dist",
+        "instrumentedSlot": 10
+      },
+      {
+        "trackId": 1,
+        "effectSlot": "C",
+        "type": "CHORUS",
+        "label": "track-1-private-C-chorus",
+        "instrumentedSlot": 11
+      },
+      {
+        "trackId": 1,
+        "effectSlot": "D",
+        "type": "DELAY",
+        "label": "track-1-private-D-delay",
+        "instrumentedSlot": 12
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "A",
+        "type": "PHASER",
+        "label": "track-2-private-A-phaser",
+        "instrumentedSlot": 13
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "B",
+        "type": "TREMOLO",
+        "label": "track-2-private-B-tremolo",
+        "instrumentedSlot": 14
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "C",
+        "type": "AUTO PAN",
+        "label": "track-2-private-C-auto-pan",
+        "instrumentedSlot": 15
+      },
+      {
+        "trackId": 2,
+        "effectSlot": "D",
+        "type": "FDN8 REVERB",
+        "label": "track-2-private-D-fdn8-reverb",
+        "instrumentedSlot": 16
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "A",
+        "type": "FLANGER",
+        "label": "track-3-private-A-flanger",
+        "instrumentedSlot": 17
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "B",
+        "type": "RING.MOD",
+        "label": "track-3-private-B-ring-mod",
+        "instrumentedSlot": 18
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "C",
+        "type": "MOD DELAY",
+        "label": "track-3-private-C-mod-delay",
+        "instrumentedSlot": 19
+      },
+      {
+        "trackId": 3,
+        "effectSlot": "D",
+        "type": "PANNING DELAY",
+        "label": "track-3-private-D-panning-delay",
+        "instrumentedSlot": 20
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "A",
+        "type": "DYNAMICS",
+        "label": "track-4-private-A-dynamics",
+        "instrumentedSlot": 21
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "B",
+        "type": "SUSTAINER",
+        "label": "track-4-private-B-sustainer",
+        "instrumentedSlot": 22
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "C",
+        "type": "TAPE ECHO",
+        "label": "track-4-private-C-tape-echo",
+        "instrumentedSlot": 23
+      },
+      {
+        "trackId": 4,
+        "effectSlot": "D",
+        "type": "GRANULAR DELAY",
+        "label": "track-4-private-D-granular-delay",
+        "instrumentedSlot": 24
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "A",
+        "type": "PREAMP",
+        "label": "track-5-private-A-preamp",
+        "instrumentedSlot": 25
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "B",
+        "type": "GATE REVERB",
+        "label": "track-5-private-B-gate-reverb",
+        "instrumentedSlot": 26
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "C",
+        "type": "VIBRATO",
+        "label": "track-5-private-C-vibrato",
+        "instrumentedSlot": 27
+      },
+      {
+        "trackId": 5,
+        "effectSlot": "D",
+        "type": "STEREO ENHANCE",
+        "label": "track-5-private-D-stereo-enhance",
+        "instrumentedSlot": 28
+      }
+    ],
+    "measurementStartUtc": "2026-10-19T03:29:07.510Z",
+    "measurementEndUtc": "2026-10-19T03:30:37.510Z"
+  },
+  "outputSampler": {
+    "inspectedValues": 14753792,
+    "nonSilentValues": 14743229,
+    "nonFiniteValues": 0,
+    "peakLinear": 2.4985904693603516,
+    "pollCount": 1801,
+    "nonSilentPolls": 1801,
+    "changedWindowPolls": 1799,
+    "changedValues": 14732790,
+    "audioTimeAdvancePolls": 1800
+  },
+  "processorErrors": [],
+  "error": "Error: Worklet callback coverage failed: [{\"label\":\"rc505-browser-block-meter#1\",\"processorName\":\"rc505-browser-block-meter\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-1-private-A-dsp-lpf\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#3\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#4\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#5\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#6\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#7\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#8\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#9\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"rc505-fx-processor#10\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-1-private-B-dist\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-1-private-C-chorus\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-1-private-D-delay\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-2-private-A-phaser\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-2-private-B-tremolo\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-2-private-C-auto-pan\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-2-private-D-fdn8-reverb\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-3-private-A-flanger\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-3-private-B-ring-mod\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-3-private-C-mod-delay\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-3-private-D-panning-delay\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-4-private-A-dynamics\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-4-private-B-sustainer\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-4-private-C-tape-echo\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-4-private-D-granular-delay\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-5-private-A-preamp\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-5-private-B-gate-reverb\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-5-private-C-vibrato\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"track-5-private-D-stereo-enhance\",\"processorName\":\"rc505-fx-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[],\"passed\":true},{\"label\":\"signalsmith-stretch#30\",\"processorName\":\"signalsmith-stretch\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":1284096,\"observedFrames\":1284096,\"observedFramesOutsideActiveIntervals\":128,\"ratio\":1,\"activeIntervals\":[{\"slot\":29,\"role\":\"live-poly\",\"trackId\":1,\"startedAtFrame\":272256,\"endedAtFrame\":1556352,\"expectedFrames\":1284096,\"observedFrames\":1284096,\"callbacks\":10032,\"callbackErrors\":0,\"coverageRatio\":1,\"passed\":true}],\"passed\":true},{\"label\":\"signalsmith-stretch#31\",\"processorName\":\"signalsmith-stretch\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1,\"activeIntervals\":[{\"slot\":30,\"role\":\"live-poly\",\"trackId\":2,\"startedAtFrame\":272256,\"endedAtFrame\":4195200,\"expectedFrames\":3922944,\"observedFrames\":3922944,\"callbacks\":30648,\"callbackErrors\":0,\"coverageRatio\":1,\"passed\":true}],\"passed\":true},{\"label\":\"signalsmith-stretch#32\",\"processorName\":\"signalsmith-stretch\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":128,\"ratio\":1,\"activeIntervals\":[{\"slot\":31,\"role\":\"live-poly\",\"trackId\":3,\"startedAtFrame\":272256,\"endedAtFrame\":4195200,\"expectedFrames\":3922944,\"observedFrames\":3922944,\"callbacks\":30648,\"callbackErrors\":0,\"coverageRatio\":1,\"passed\":true}],\"passed\":true},{\"label\":\"signalsmith-stretch#33\",\"processorName\":\"signalsmith-stretch\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1,\"activeIntervals\":[{\"slot\":32,\"role\":\"live-poly\",\"trackId\":4,\"startedAtFrame\":272256,\"endedAtFrame\":4195200,\"expectedFrames\":3922944,\"observedFrames\":3922944,\"callbacks\":30648,\"callbackErrors\":0,\"coverageRatio\":1,\"passed\":true}],\"passed\":true},{\"label\":\"signalsmith-stretch#34\",\"processorName\":\"signalsmith-stretch\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944,\"observedFrames\":3923072,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":1.0000326285565126,\"activeIntervals\":[{\"slot\":33,\"role\":\"live-poly\",\"trackId\":5,\"startedAtFrame\":272256,\"endedAtFrame\":4195200,\"expectedFrames\":3922944,\"observedFrames\":3923072,\"callbacks\":30649,\"callbackErrors\":0,\"coverageRatio\":1.0000326285565126,\"passed\":true}],\"passed\":true},{\"label\":\"rc505-rhythm-processor#35\",\"processorName\":\"rc505-rhythm-processor\",\"eventDriven\":false,\"continuousCoverageEligible\":true,\"coverageWindowNote\":\"Persistent graph node expected to process at least 95% of the complete measured AudioContext frame span.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":3922944.0000000005,\"observedFrames\":3922944,\"observedFramesOutsideActiveIntervals\":0,\"ratio\":0.9999999999999999,\"activeIntervals\":[],\"passed\":true},{\"label\":\"looper-processor#36\",\"processorName\":\"looper-processor\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":28928,\"observedFrames\":28544,\"observedFramesOutsideActiveIntervals\":2609920,\"ratio\":0.9867256637168141,\"activeIntervals\":[{\"slot\":35,\"role\":\"recorder\",\"trackId\":1,\"startedAtFrame\":1556352,\"endedAtFrame\":1585280,\"expectedFrames\":28928,\"observedFrames\":28544,\"callbacks\":223,\"callbackErrors\":0,\"coverageRatio\":0.9867256637168141,\"passed\":true}],\"passed\":true},{\"label\":\"signalsmith-stretch#37\",\"processorName\":\"signalsmith-stretch\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":2603904,\"observedFrames\":2604160,\"observedFramesOutsideActiveIntervals\":5248,\"ratio\":1.0000983139163349,\"activeIntervals\":[{\"slot\":36,\"role\":\"live-poly\",\"trackId\":1,\"startedAtFrame\":1588096,\"endedAtFrame\":2904320,\"expectedFrames\":1316224,\"observedFrames\":1316352,\"callbacks\":10284,\"callbackErrors\":0,\"coverageRatio\":1.0000972478848584,\"passed\":true},{\"slot\":36,\"role\":\"live-poly\",\"trackId\":1,\"startedAtFrame\":2905856,\"endedAtFrame\":2905856,\"expectedFrames\":0,\"observedFrames\":128,\"callbacks\":1,\"callbackErrors\":0,\"coverageRatio\":null,\"passed\":false},{\"slot\":36,\"role\":\"live-poly\",\"trackId\":1,\"startedAtFrame\":2907520,\"endedAtFrame\":4195200,\"expectedFrames\":1287680,\"observedFrames\":1287680,\"callbacks\":10060,\"callbackErrors\":0,\"coverageRatio\":1,\"passed\":true}],\"passed\":false},{\"label\":\"rc505-overdub-processor#38\",\"processorName\":\"rc505-overdub-processor\",\"eventDriven\":true,\"continuousCoverageEligible\":false,\"coverageWindowNote\":\"Dynamic TrackAudio worklets are evaluated separately over each observed active interval; frames outside tracked active intervals are reported but do not extend the expected window.\",\"expectedAudioFrames\":3922944.0000000005,\"expectedFramesForCoverage\":15104,\"observedFrames\":15104,\"observedFramesOutsideActiveIntervals\":1291520,\"ratio\":1,\"activeIntervals\":[{\"slot\":37,\"role\":\"overdub\",\"trackId\":1,\"startedAtFrame\":2889216,\"endedAtFrame\":2904320,\"expectedFrames\":15104,\"observedFrames\":15104,\"callbacks\":118,\"callbackErrors\":0,\"coverageRatio\":1,\"passed\":true}],\"passed\":true}]"
+}

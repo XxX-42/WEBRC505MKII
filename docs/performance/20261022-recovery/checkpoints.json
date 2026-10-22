@@ -1,0 +1,19 @@
+[
+  {
+    "commit": "d4397aaa2e6e4252d5126f7cbf4c8e75acb3619a",
+    "kind": "complete history, source checkpoint, unvalidated",
+    "filename": "rc505-browser-source-UNVALIDATED-20261022.bundle",
+    "sha256": "60066b3dc4bfc77c9c0f936e34cfc3ef98c36bea6c099154cc67a4023ed2ba5e",
+    "bytes": 11697887,
+    "library_file_id": "libfile_9c48c82c82ac8191b3679be1ae98c0b2"
+  },
+  {
+    "commit": "73202569379e046e9837210bee0d798edc5d1b55",
+    "kind": "incremental tests checkpoint, unrun",
+    "prerequisite": "d4397aaa2e6e4252d5126f7cbf4c8e75acb3619a",
+    "filename": "rc505-browser-tests-UNVALIDATED-20261022.bundle",
+    "sha256": "4a40a83c49d69aaa3b8c470b25685e07d563a16464b6516bbb13c57083f456fe",
+    "bytes": 2913,
+    "library_file_id": "libfile_b3bf23b1c6948191987e8cb41dc24dd7"
+  }
+]

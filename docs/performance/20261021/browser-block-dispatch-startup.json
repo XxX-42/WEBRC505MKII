@@ -1,0 +1,589 @@
+{
+  "scope": "Node VM fresh-context bundle parse/evaluate, constructor and first/warmup calls. Not isolated V8 compilation/JIT attribution, browser load or real-time acceptance.",
+  "sourceHashes": {
+    "baseline": "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "candidate": "808609880fd58006a523122d51444850b8e9f8c2465cbf70cfd8d394b6c01be0"
+  },
+  "bundleBytes": {
+    "baseline": 545084,
+    "candidate": 605278
+  },
+  "runs": [
+    {
+      "round": 0,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 37.111,
+      "constructMs": 3.8713520000000017,
+      "firstQuantumMs": 5.740403000000001,
+      "warmup128QuantaMs": 246.281653
+    },
+    {
+      "round": 0,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 34.05089700000002,
+      "constructMs": 3.6959790000000226,
+      "firstQuantumMs": 4.267477999999983,
+      "warmup128QuantaMs": 261.65297400000003
+    },
+    {
+      "round": 0,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 29.089647000000014,
+      "constructMs": 2.1034930000000713,
+      "firstQuantumMs": 3.0022299999999404,
+      "warmup128QuantaMs": 272.221192
+    },
+    {
+      "round": 0,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 29.447134000000005,
+      "constructMs": 2.4411210000000665,
+      "firstQuantumMs": 4.398545000000013,
+      "warmup128QuantaMs": 282.34026500000004
+    },
+    {
+      "round": 0,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 40.02838699999984,
+      "constructMs": 2.313188000000082,
+      "firstQuantumMs": 2.9139520000001085,
+      "warmup128QuantaMs": 198.85433899999998
+    },
+    {
+      "round": 0,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 28.491728000000194,
+      "constructMs": 2.7321479999998246,
+      "firstQuantumMs": 2.772318999999925,
+      "warmup128QuantaMs": 187.3116050000001
+    },
+    {
+      "round": 0,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 29.395556999999826,
+      "constructMs": 2.046248000000105,
+      "firstQuantumMs": 2.3554119999998875,
+      "warmup128QuantaMs": 189.21038599999997
+    },
+    {
+      "round": 0,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 30.214678999999933,
+      "constructMs": 2.1604389999999967,
+      "firstQuantumMs": 2.757896999999957,
+      "warmup128QuantaMs": 203.86017700000002
+    },
+    {
+      "round": 0,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 27.30788700000039,
+      "constructMs": 2.3876209999998537,
+      "firstQuantumMs": 3.370959999999741,
+      "warmup128QuantaMs": 178.46443
+    },
+    {
+      "round": 0,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 29.823961000000054,
+      "constructMs": 2.094239000000016,
+      "firstQuantumMs": 3.6469939999997223,
+      "warmup128QuantaMs": 178.9543020000001
+    },
+    {
+      "round": 0,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 31.513452000000143,
+      "constructMs": 2.026006999999936,
+      "firstQuantumMs": 2.8318380000000616,
+      "warmup128QuantaMs": 172.3835409999997
+    },
+    {
+      "round": 0,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 36.25262900000007,
+      "constructMs": 2.481402000000344,
+      "firstQuantumMs": 5.274591999999757,
+      "warmup128QuantaMs": 191.41444
+    },
+    {
+      "round": 0,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 28.573750999999902,
+      "constructMs": 2.239266999999927,
+      "firstQuantumMs": 0.9925819999998566,
+      "warmup128QuantaMs": 37.113002999999935
+    },
+    {
+      "round": 0,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 30.781630999999834,
+      "constructMs": 2.159798000000137,
+      "firstQuantumMs": 1.4742670000000544,
+      "warmup128QuantaMs": 32.04962800000021
+    },
+    {
+      "round": 0,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 29.005920999999944,
+      "constructMs": 2.120339000000058,
+      "firstQuantumMs": 0.8560770000003686,
+      "warmup128QuantaMs": 39.0899059999997
+    },
+    {
+      "round": 0,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 34.93624,
+      "constructMs": 2.3252769999999146,
+      "firstQuantumMs": 1.0228079999997135,
+      "warmup128QuantaMs": 31.645530000000235
+    },
+    {
+      "round": 1,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 30.48498500000005,
+      "constructMs": 2.218957000000046,
+      "firstQuantumMs": 3.521034999999756,
+      "warmup128QuantaMs": 246.67427399999997
+    },
+    {
+      "round": 1,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 27.523091000000022,
+      "constructMs": 2.258407000000261,
+      "firstQuantumMs": 3.2688459999999395,
+      "warmup128QuantaMs": 250.28158299999996
+    },
+    {
+      "round": 1,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 29.720655999999963,
+      "constructMs": 2.5673710000000938,
+      "firstQuantumMs": 3.000712999999905,
+      "warmup128QuantaMs": 246.60121900000058
+    },
+    {
+      "round": 1,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 32.428616999999576,
+      "constructMs": 2.8061100000004444,
+      "firstQuantumMs": 3.84007500000007,
+      "warmup128QuantaMs": 262.5486869999995
+    },
+    {
+      "round": 1,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 28.894272999999885,
+      "constructMs": 2.127650000000358,
+      "firstQuantumMs": 2.940060999999332,
+      "warmup128QuantaMs": 186.2115160000003
+    },
+    {
+      "round": 1,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 28.428492000000006,
+      "constructMs": 2.341551999999865,
+      "firstQuantumMs": 2.3607600000004823,
+      "warmup128QuantaMs": 185.96796900000027
+    },
+    {
+      "round": 1,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 29.95358699999997,
+      "constructMs": 2.511666999999761,
+      "firstQuantumMs": 4.559116000000358,
+      "warmup128QuantaMs": 183.67307900000014
+    },
+    {
+      "round": 1,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 31.20472299999983,
+      "constructMs": 2.2563030000001163,
+      "firstQuantumMs": 3.4087970000000496,
+      "warmup128QuantaMs": 191.55052499999965
+    },
+    {
+      "round": 1,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 32.333088999999745,
+      "constructMs": 3.0090259999997215,
+      "firstQuantumMs": 4.2402469999997265,
+      "warmup128QuantaMs": 182.1436050000002
+    },
+    {
+      "round": 1,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 28.295024000000012,
+      "constructMs": 2.0864080000001195,
+      "firstQuantumMs": 4.423351999999795,
+      "warmup128QuantaMs": 181.92640399999982
+    },
+    {
+      "round": 1,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 28.909638999999515,
+      "constructMs": 2.285377000000153,
+      "firstQuantumMs": 3.177469000000201,
+      "warmup128QuantaMs": 170.92012299999988
+    },
+    {
+      "round": 1,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 35.73342000000048,
+      "constructMs": 2.308319999999185,
+      "firstQuantumMs": 3.5188200000002325,
+      "warmup128QuantaMs": 190.5467519999993
+    },
+    {
+      "round": 1,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 27.591366000000562,
+      "constructMs": 2.116971999999805,
+      "firstQuantumMs": 1.4760379999997895,
+      "warmup128QuantaMs": 38.20570299999963
+    },
+    {
+      "round": 1,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 36.77986400000009,
+      "constructMs": 2.5807089999998425,
+      "firstQuantumMs": 1.3998289999999542,
+      "warmup128QuantaMs": 37.720524000000296
+    },
+    {
+      "round": 1,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 34.101292000000285,
+      "constructMs": 2.9533590000000913,
+      "firstQuantumMs": 0.9676440000002913,
+      "warmup128QuantaMs": 36.97603900000013
+    },
+    {
+      "round": 1,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 35.179792999999336,
+      "constructMs": 2.961602000000312,
+      "firstQuantumMs": 0.863256999999976,
+      "warmup128QuantaMs": 31.546983000000182
+    },
+    {
+      "round": 2,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 28.25066700000025,
+      "constructMs": 2.212717000000339,
+      "firstQuantumMs": 3.151057000000037,
+      "warmup128QuantaMs": 291.60804199999984
+    },
+    {
+      "round": 2,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 35.14507700000013,
+      "constructMs": 2.4836929999992208,
+      "firstQuantumMs": 4.175897000000077,
+      "warmup128QuantaMs": 298.32473800000025
+    },
+    {
+      "round": 2,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 38.74681599999985,
+      "constructMs": 2.782922999999755,
+      "firstQuantumMs": 4.468727000000399,
+      "warmup128QuantaMs": 294.35763999999926
+    },
+    {
+      "round": 2,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 37.85209699999996,
+      "constructMs": 2.5331379999997807,
+      "firstQuantumMs": 4.14981699999953,
+      "warmup128QuantaMs": 287.36406200000056
+    },
+    {
+      "round": 2,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 30.5955129999993,
+      "constructMs": 2.1969820000003892,
+      "firstQuantumMs": 3.4153540000006615,
+      "warmup128QuantaMs": 191.52350599999954
+    },
+    {
+      "round": 2,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 28.492129999999634,
+      "constructMs": 2.6104550000000017,
+      "firstQuantumMs": 2.9354730000004565,
+      "warmup128QuantaMs": 220.40086500000052
+    },
+    {
+      "round": 2,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 30.629273000000467,
+      "constructMs": 2.19924600000013,
+      "firstQuantumMs": 2.5000079999990703,
+      "warmup128QuantaMs": 195.23263100000077
+    },
+    {
+      "round": 2,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 28.204257999999754,
+      "constructMs": 2.504053999999087,
+      "firstQuantumMs": 4.545232999998916,
+      "warmup128QuantaMs": 218.84892200000104
+    },
+    {
+      "round": 2,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 50.65215700000044,
+      "constructMs": 2.11803399999917,
+      "firstQuantumMs": 2.9095029999989492,
+      "warmup128QuantaMs": 178.21239200000127
+    },
+    {
+      "round": 2,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 28.873053000001164,
+      "constructMs": 2.5232230000001437,
+      "firstQuantumMs": 2.9379470000003494,
+      "warmup128QuantaMs": 167.9816260000007
+    },
+    {
+      "round": 2,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 28.871831999998903,
+      "constructMs": 2.07938600000125,
+      "firstQuantumMs": 2.730965999999171,
+      "warmup128QuantaMs": 164.6422160000002
+    },
+    {
+      "round": 2,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 30.58892300000116,
+      "constructMs": 2.069019999999,
+      "firstQuantumMs": 2.8576350000003004,
+      "warmup128QuantaMs": 164.88747599999988
+    },
+    {
+      "round": 2,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 29.789910999999847,
+      "constructMs": 2.1835829999999987,
+      "firstQuantumMs": 0.8882760000014969,
+      "warmup128QuantaMs": 32.629659999998694
+    },
+    {
+      "round": 2,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 27.685327999999572,
+      "constructMs": 2.5983759999999165,
+      "firstQuantumMs": 0.9012050000001182,
+      "warmup128QuantaMs": 31.009464000000662
+    },
+    {
+      "round": 2,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 28.421024000001125,
+      "constructMs": 2.2728059999990364,
+      "firstQuantumMs": 1.2999039999995148,
+      "warmup128QuantaMs": 36.11035300000003
+    },
+    {
+      "round": 2,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 33.829303999998956,
+      "constructMs": 2.220688000001246,
+      "firstQuantumMs": 1.0782110000000102,
+      "warmup128QuantaMs": 32.64804700000059
+    },
+    {
+      "round": 3,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 32.06169599999885,
+      "constructMs": 2.523685000000114,
+      "firstQuantumMs": 3.882236000001285,
+      "warmup128QuantaMs": 263.19181000000026
+    },
+    {
+      "round": 3,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 31.87541599999895,
+      "constructMs": 2.229021000001012,
+      "firstQuantumMs": 3.2983079999994516,
+      "warmup128QuantaMs": 261.19450600000164
+    },
+    {
+      "round": 3,
+      "algorithm": "reverb",
+      "version": "candidate",
+      "loadMs": 29.329960999999457,
+      "constructMs": 2.4750120000007882,
+      "firstQuantumMs": 3.511070999998992,
+      "warmup128QuantaMs": 253.22172500000124
+    },
+    {
+      "round": 3,
+      "algorithm": "reverb",
+      "version": "baseline",
+      "loadMs": 32.61252299999978,
+      "constructMs": 2.6691940000000614,
+      "firstQuantumMs": 4.61453900000015,
+      "warmup128QuantaMs": 278.51133499999924
+    },
+    {
+      "round": 3,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 28.81493700000101,
+      "constructMs": 2.2822120000000723,
+      "firstQuantumMs": 3.091840000000957,
+      "warmup128QuantaMs": 192.87550399999964
+    },
+    {
+      "round": 3,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 31.60122500000034,
+      "constructMs": 2.5838970000004338,
+      "firstQuantumMs": 2.9972880000004807,
+      "warmup128QuantaMs": 205.37959799999953
+    },
+    {
+      "round": 3,
+      "algorithm": "phaser",
+      "version": "candidate",
+      "loadMs": 30.949016000000483,
+      "constructMs": 2.2997290000002977,
+      "firstQuantumMs": 3.5278760000001057,
+      "warmup128QuantaMs": 191.94605500000034
+    },
+    {
+      "round": 3,
+      "algorithm": "phaser",
+      "version": "baseline",
+      "loadMs": 29.401096999999936,
+      "constructMs": 2.5134309999994002,
+      "firstQuantumMs": 2.9373079999986658,
+      "warmup128QuantaMs": 198.17428199999995
+    },
+    {
+      "round": 3,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 30.49073700000008,
+      "constructMs": 2.637926999999763,
+      "firstQuantumMs": 6.0046910000000935,
+      "warmup128QuantaMs": 193.65196099999957
+    },
+    {
+      "round": 3,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 33.02779200000077,
+      "constructMs": 2.4844759999996313,
+      "firstQuantumMs": 3.88217799999984,
+      "warmup128QuantaMs": 169.97300899999937
+    },
+    {
+      "round": 3,
+      "algorithm": "distortion",
+      "version": "candidate",
+      "loadMs": 29.72345199999836,
+      "constructMs": 2.219498000000385,
+      "firstQuantumMs": 4.761379999999917,
+      "warmup128QuantaMs": 160.60216700000092
+    },
+    {
+      "round": 3,
+      "algorithm": "distortion",
+      "version": "baseline",
+      "loadMs": 30.286493999999948,
+      "constructMs": 2.041790999999648,
+      "firstQuantumMs": 6.317751000000499,
+      "warmup128QuantaMs": 165.57687799999985
+    },
+    {
+      "round": 3,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 28.37663699999939,
+      "constructMs": 2.165697000000364,
+      "firstQuantumMs": 0.8225870000005671,
+      "warmup128QuantaMs": 29.923463999999512
+    },
+    {
+      "round": 3,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 29.040564999999333,
+      "constructMs": 2.052997000000687,
+      "firstQuantumMs": 0.8437389999999141,
+      "warmup128QuantaMs": 31.213384000000588
+    },
+    {
+      "round": 3,
+      "algorithm": "lpf",
+      "version": "candidate",
+      "loadMs": 27.247548999999708,
+      "constructMs": 2.247510000001057,
+      "firstQuantumMs": 0.8313999999991211,
+      "warmup128QuantaMs": 31.00995800000055
+    },
+    {
+      "round": 3,
+      "algorithm": "lpf",
+      "version": "baseline",
+      "loadMs": 28.512220999999045,
+      "constructMs": 2.4856980000004114,
+      "firstQuantumMs": 0.987966000000597,
+      "warmup128QuantaMs": 30.70028099999945
+    }
+  ]
+}

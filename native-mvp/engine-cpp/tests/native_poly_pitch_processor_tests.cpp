@@ -262,9 +262,31 @@ void testHostFallbackConditionsRemainExplicit() {
         NativePitchFallbackReason::ProcessorNotPrepared);
 }
 
+void testOfficialBendExtendedRangeKeepsLegacyContract() {
+    NativePolyPitchProcessor processor;
+    assert(processor.prepareForFx(48000U));
+    assert(!processor.setSemitones(25.0f));
+    assert(!processor.setOfficialBendSemitones(-36.01f));
+    assert(!processor.setOfficialBendSemitones(48.01f));
+    for (float shift : {-36.0f, 48.0f}) {
+        processor.reset();
+        auto tone = std::vector<float>(48000U);
+        for (unsigned int f = 0U; f < 48000U; ++f) tone[f] = static_cast<float>(0.2 * std::sin(2.0 * kPi * 220.0 * f / 48000.0));
+        test_alloc::beginTracking();
+        assert(processor.setOfficialBendSemitones(shift));
+        for (unsigned int f = 0U; f < 48000U; f += 64U) assert(processor.processInterleaved(tone.data() + f, 64U, 1U));
+        test_alloc::endTracking();
+        assert(test_alloc::count() == 0U);
+        const double expected = 220.0 * std::pow(2.0, shift / 12.0);
+        assert(powerAt(tone, 24000U, 48000U, 48000U, expected) > powerAt(tone, 24000U, 48000U, 48000U, 220.0) * 20.0);
+        for (float sample : tone) assert(std::isfinite(sample));
+    }
+}
+
 } // namespace
 
 int main() {
+    testOfficialBendExtendedRangeKeepsLegacyContract();
     testConfigurationAndReportedLatency();
     testCatalogPresetSpectralAccuracyAcrossFullRange();
     testUnityPitchRetainsSignalAfterReportedLatency();

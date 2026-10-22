@@ -17,6 +17,7 @@ struct ChorusProcessorConfig {
     float depthMs = 5.0f;
     float feedback = 0.0f;
     float wetMix = 0.25f;
+    bool officialControls = false;
 };
 
 // Clean-room stereo chorus using a quadrature sine LFO and cubic Lagrange

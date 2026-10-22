@@ -1,0 +1,6 @@
+[  4%] Built target native_project_archive_codec
+[  7%] Building CXX object CMakeFiles/native_audio_core_simulation.dir/src/looper_core.cpp.o
+[  9%] Linking CXX static library libnative_audio_core_simulation.a
+[ 95%] Built target native_audio_core_simulation
+[ 97%] Linking CXX executable native_bridge_host_simulation
+[100%] Built target native_bridge_host_simulation

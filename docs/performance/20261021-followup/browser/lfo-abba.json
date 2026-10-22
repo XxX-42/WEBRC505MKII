@@ -1,0 +1,146 @@
+{
+  "generatedAt": "2026-10-21T18:37:01.349Z",
+  "node": "v24.19.0",
+  "blocks": 256,
+  "rounds": 2,
+  "ordering": "ABBA",
+  "timingSignal": "tone-and-impulse",
+  "sourceHashes": {
+    "baseline": "a639965805e13daa6ee93d1d8ef2a5beaaa59b9c1c2ccf658707674683a6c0c8",
+    "candidate": "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab"
+  },
+  "scope": "Synchronous exact-source Node VM kernel only; no browser AudioContext, scheduler, hardware, xrun, or production five-loop acceptance. Tracks are independent FX instances. Reverse-reverb is an effect, not reverse loop playback; KeepPitch not exercised.",
+  "correctness": "512 blocks (65536 frames) per scenario with per-track distinct signal, all output bytes, automation at blocks96/192/224, reset320, silence tail384 onward.",
+  "scenarios": [
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "tremolo",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 78.479638,
+      "candidateMs": 67.879894,
+      "improvementPercent": 13.506361994177396,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "f5835c52ee48da38b01f3cdbe27587d29269b384f235e18aab7f52994f71235d",
+        "candidate": "f5835c52ee48da38b01f3cdbe27587d29269b384f235e18aab7f52994f71235d"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 81.119131
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 69.289804
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 65.138243
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 78.479638
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 75.083643
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 64.599662
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 67.879894
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 75.28093
+        }
+      ]
+    },
+    {
+      "rate": 48000,
+      "channels": 2,
+      "tracks": 1,
+      "algorithm": "auto-pan",
+      "preampModel": null,
+      "distortionMode": null,
+      "configurationErrors": {
+        "baseline": [],
+        "candidate": []
+      },
+      "baselineMs": 93.814853,
+      "candidateMs": 87.640617,
+      "improvementPercent": 6.581299018823805,
+      "bitExact": true,
+      "maxAbsDifference": 0,
+      "finite": true,
+      "stereoPreserved": true,
+      "pcmHashes": {
+        "baseline": "5906808ae57ffc8a91b270fb5a835f4e2042d8088a4eaa5b40d32e4ea2939028",
+        "candidate": "5906808ae57ffc8a91b270fb5a835f4e2042d8088a4eaa5b40d32e4ea2939028"
+      },
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 92.448348
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 91.920183
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "elapsedMs": 87.640617
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "elapsedMs": 90.857215
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 93.814853
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 87.1304
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "elapsedMs": 87.310251
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "elapsedMs": 101.135452
+        }
+      ]
+    }
+  ]
+}

@@ -57,6 +57,7 @@ enum class LoopTransportStatus : std::uint8_t {
     Active,
     UnsupportedRecording,
     UnsupportedOverdubbing,
+    UnsupportedPitchProcessing,
 };
 
 struct Command {
@@ -71,6 +72,13 @@ struct ProcessStats {
     float inputPeak = 0.0f;
     float outputPeak = 0.0f;
     LoopTransportStatus loopTransportStatus = LoopTransportStatus::Disabled;
+};
+
+struct LoopMetadata {
+    LooperState state = LooperState::Empty;
+    std::size_t recordedFrames = 0U;
+    std::size_t finalizedFrames = 0U;
+    std::size_t playhead = 0U;
 };
 
 class LooperCore {
@@ -107,6 +115,7 @@ public:
     // ranges and enum values are rejected without changing the active config.
     [[nodiscard]] bool setLoopTransportConfig(const LoopTransportConfig& config) noexcept;
     [[nodiscard]] static bool validLoopTransportConfig(const LoopTransportConfig& config) noexcept;
+    [[nodiscard]] const LoopTransportConfig& loopTransportConfig() const noexcept { return loopTransportConfig_; }
     [[nodiscard]] LoopTransportStatus loopTransportStatus() const noexcept { return transportStatusForState(); }
     ProcessStats process(
         const float* inputInterleaved,
@@ -117,8 +126,18 @@ public:
         // Optional dry loop-playback tap. It excludes live monitoring and
         // rhythm, allowing a later track-FX stage to affect playback without
         // changing the signal written by record/overdub.
-        float* playbackOnlyInterleaved = nullptr
+        float* playbackOnlyInterleaved = nullptr,
+        // Set false when a caller replaces this meter with a later output-stage
+        // peak. Input metering and all audio/state processing remain enabled.
+        bool measureOutputPeak = true
     );
+
+    // Caller must own audio/transport state; this is not a concurrent snapshot API.
+    // Same-block, read-only finalized Playing tap. No monitoring, recording,
+    // overdub, cursor advance or allocation. Invalid capacity/layout is rejected
+    // before writes; unavailable playback returns false with explicit silence.
+    [[nodiscard]] bool previewPlayback(float* destination, unsigned int frames,
+        unsigned int outputChannels, unsigned int capacityFrames) const noexcept;
 
     [[nodiscard]] LooperState state() const noexcept;
     [[nodiscard]] bool monitoringEnabled() const noexcept;
@@ -147,6 +166,21 @@ public:
     ) const noexcept;
 
     [[nodiscard]] unsigned int channels() const noexcept;
+    [[nodiscard]] LoopMetadata metadata() const noexcept;
+    // Caller must hold a callback-boundary pin. Restores transport metadata
+    // only; PCM storage and its full prepared capacity are never replaced.
+    void restoreMetadata(const LoopMetadata& metadata) noexcept;
+    // Swaps finalized PCM with a caller-owned interleaved stereo buffer, one
+    // frame at a time. Control-thread only, while the callback is pinned.
+    [[nodiscard]] bool exchangeFinalizedStereoSamples(float* samples, std::size_t frames) noexcept;
+    // O(1) full-capacity storage swap for a staged project import. The caller
+    // must provide the same prepared stereo capacity; the vector receives the
+    // old storage so it can be reclaimed later on the control thread. No
+    // allocation, copy, or destruction occurs in this method.
+    [[nodiscard]] bool swapImportedStereoStorage(
+        std::vector<float>& fullCapacitySamples,
+        std::size_t frames
+    ) noexcept;
 
 private:
     void clearLoop();
@@ -154,7 +188,17 @@ private:
     [[nodiscard]] double wrappedLoopPosition(double position) const noexcept;
     void readLoopAt(double position, bool useLagrange4, float& left, float& right) const noexcept;
     [[nodiscard]] double beatShiftPosition(double canonicalPosition, double normalizedOffset) const noexcept;
-    void advanceVinylPlatter() noexcept;
+    struct PlaybackCursor {
+        std::size_t playhead;
+        std::size_t fadeRemaining;
+        double vinylPosition;
+        double vinylSpeed;
+        double vinylAcceleration;
+    };
+    [[nodiscard]] PlaybackCursor playbackCursor() const noexcept;
+    void commitPlaybackCursor(const PlaybackCursor& cursor) noexcept;
+    void readPlayingFrame(PlaybackCursor& cursor, float& left, float& right) const noexcept;
+    void advanceVinylPlatter(PlaybackCursor& cursor) const noexcept;
     [[nodiscard]] LoopTransportStatus transportStatusForState() const noexcept;
     void updateBeatShiftOffsets() noexcept;
     void prepareTransportCrossfadeLut() noexcept;

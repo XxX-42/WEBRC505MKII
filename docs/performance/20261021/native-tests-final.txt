@@ -1,0 +1,97 @@
+Test project /tmp/rc505-native-release
+      Start  1: looper_core_tests
+ 1/46 Test  #1: looper_core_tests .......................   Passed    0.00 sec
+      Start  2: dsp_primitives_tests
+ 2/46 Test  #2: dsp_primitives_tests ....................   Passed    0.00 sec
+      Start  3: native_audio_pipeline_tests
+ 3/46 Test  #3: native_audio_pipeline_tests .............   Passed    0.37 sec
+      Start  4: project_archive_codec_tests
+ 4/46 Test  #4: project_archive_codec_tests .............   Passed    0.01 sec
+      Start  5: native_fx_catalog_tests
+ 5/46 Test  #5: native_fx_catalog_tests .................   Passed    1.56 sec
+      Start  6: native_auto_riff_core_tests
+ 6/46 Test  #6: native_auto_riff_core_tests .............   Passed    0.18 sec
+      Start  7: native_vocoder_core_tests
+ 7/46 Test  #7: native_vocoder_core_tests ...............   Passed    0.03 sec
+      Start  8: native_osc_voc_core_tests
+ 8/46 Test  #8: native_osc_voc_core_tests ...............   Passed    0.08 sec
+      Start  9: native_osc_voc_processor_tests
+ 9/46 Test  #9: native_osc_voc_processor_tests ..........   Passed    0.00 sec
+      Start 10: native_hrm_auto_core_tests
+10/46 Test #10: native_hrm_auto_core_tests ..............   Passed    0.16 sec
+      Start 11: native_robot_core_tests
+11/46 Test #11: native_robot_core_tests .................   Passed    4.35 sec
+      Start 12: native_hrm_auto_processor_tests
+12/46 Test #12: native_hrm_auto_processor_tests .........   Passed    0.01 sec
+      Start 13: native_osc_bot_core_tests
+13/46 Test #13: native_osc_bot_core_tests ...............   Passed    0.07 sec
+      Start 14: native_osc_bot_processor_tests
+14/46 Test #14: native_osc_bot_processor_tests ..........   Passed    0.01 sec
+      Start 15: native_synth_processor_tests
+15/46 Test #15: native_synth_processor_tests ............   Passed    0.03 sec
+      Start 16: native_g2b_processor_tests
+16/46 Test #16: native_g2b_processor_tests ..............   Passed    0.05 sec
+      Start 17: native_manual_pan_processor_tests
+17/46 Test #17: native_manual_pan_processor_tests .......   Passed    0.00 sec
+      Start 18: native_isolator_processor_tests
+18/46 Test #18: native_isolator_processor_tests .........   Passed    0.05 sec
+      Start 19: native_slow_gear_processor_tests
+19/46 Test #19: native_slow_gear_processor_tests ........   Passed    0.01 sec
+      Start 20: native_audio_callback_tests
+20/46 Test #20: native_audio_callback_tests .............   Passed    0.40 sec
+      Start 21: native_freeze_processor_tests
+21/46 Test #21: native_freeze_processor_tests ...........   Passed    0.00 sec
+      Start 22: native_catalog_route_tests
+22/46 Test #22: native_catalog_route_tests ..............   Passed    1.32 sec
+      Start 23: native_pitch_processor_tests
+23/46 Test #23: native_pitch_processor_tests ............   Passed    0.03 sec
+      Start 24: native_poly_pitch_processor_tests
+24/46 Test #24: native_poly_pitch_processor_tests .......   Passed    0.14 sec
+      Start 25: native_chorus_processor_tests
+25/46 Test #25: native_chorus_processor_tests ...........   Passed    0.03 sec
+      Start 26: native_phaser_processor_tests
+26/46 Test #26: native_phaser_processor_tests ...........   Passed    0.10 sec
+      Start 27: native_autopan_processor_tests
+27/46 Test #27: native_autopan_processor_tests ..........   Passed    0.00 sec
+      Start 28: native_vinyl_flick_processor_tests
+28/46 Test #28: native_vinyl_flick_processor_tests ......   Passed    0.08 sec
+      Start 29: native_flanger_processor_tests
+29/46 Test #29: native_flanger_processor_tests ..........   Passed    0.11 sec
+      Start 30: native_dynamics_processor_tests
+30/46 Test #30: native_dynamics_processor_tests .........   Passed    0.01 sec
+      Start 31: native_fdn16_reverb_processor_tests
+31/46 Test #31: native_fdn16_reverb_processor_tests .....   Passed    0.14 sec
+      Start 32: native_distortion_processor_tests
+32/46 Test #32: native_distortion_processor_tests .......   Passed    0.05 sec
+      Start 33: native_preamp_processor_tests
+33/46 Test #33: native_preamp_processor_tests ...........   Passed    0.30 sec
+      Start 34: native_beat_repeat_processor_tests
+34/46 Test #34: native_beat_repeat_processor_tests ......   Passed    0.01 sec
+      Start 35: native_roll_processor_tests
+35/46 Test #35: native_roll_processor_tests .............   Passed    0.01 sec
+      Start 36: native_beat_scatter_processor_tests
+36/46 Test #36: native_beat_scatter_processor_tests .....   Passed    0.01 sec
+      Start 37: native_tape_echo_processor_tests
+37/46 Test #37: native_tape_echo_processor_tests ........   Passed    0.31 sec
+      Start 38: native_reverse_delay_processor_tests
+38/46 Test #38: native_reverse_delay_processor_tests ....   Passed    0.01 sec
+      Start 39: native_panning_delay_processor_tests
+39/46 Test #39: native_panning_delay_processor_tests ....   Passed    0.01 sec
+      Start 40: native_mod_delay_processor_tests
+40/46 Test #40: native_mod_delay_processor_tests ........   Passed    0.03 sec
+      Start 41: native_stereo_enhance_processor_tests
+41/46 Test #41: native_stereo_enhance_processor_tests ...   Passed    0.01 sec
+      Start 42: native_radio_processor_tests
+42/46 Test #42: native_radio_processor_tests ............   Passed    0.34 sec
+      Start 43: native_sustainer_processor_tests
+43/46 Test #43: native_sustainer_processor_tests ........   Passed    0.02 sec
+      Start 44: native_vibrato_processor_tests
+44/46 Test #44: native_vibrato_processor_tests ..........   Passed    0.04 sec
+      Start 45: native_rhythm_tests
+45/46 Test #45: native_rhythm_tests .....................   Passed    0.02 sec
+      Start 46: native_third_party_notices
+46/46 Test #46: native_third_party_notices ..............   Passed    0.01 sec
+
+100% tests passed out of 46
+
+Total Test time (real) =  10.53 sec

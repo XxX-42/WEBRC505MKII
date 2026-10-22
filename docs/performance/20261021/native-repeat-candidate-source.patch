@@ -1,0 +1,59 @@
+--- native-mvp/engine-cpp/src/native_preamp_processor.cpp	2026-10-21 04:31:45.006238379 -0700
++++ /tmp/rc505-next-candidates/preamp-repeat/src/native_preamp_processor.cpp	2026-10-21 05:36:35.869061859 -0700
+@@ -1,6 +1,7 @@
+ #include "native_preamp_processor.hpp"
+ 
+ #include <algorithm>
++#include <cstring>
+ #include <cmath>
+ #include <cstddef>
+ 
+@@ -71,7 +72,7 @@
+     float biasTanh,
+     float biasLogCosh,
+     float& previousAntiderivative,
+-    bool& antiderivativeValid
++    bool& antiderivativeValid, float& smallMidpoint, float& smallResult, bool& smallValid
+ ) noexcept {
+     const float delta = input - previousInput;
+ #if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+@@ -80,7 +81,12 @@
+ #endif
+     if (std::fabs(delta) < 1.0e-4f) {
+         antiderivativeValid = false;
+-        return triodeTransfer(0.5f * (input + previousInput), slope, bias, biasTanh);
++        const float midpoint = 0.5f * (input + previousInput);
++        if (smallValid && std::memcmp(&midpoint, &smallMidpoint, sizeof(float)) == 0) return smallResult;
++        smallMidpoint = midpoint;
++        smallResult = triodeTransfer(midpoint, slope, bias, biasTanh);
++        smallValid = true;
++        return smallResult;
+     }
+ #if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+     const float shiftedInput = std::clamp(slope * (input + bias), -16.0f, 16.0f);
+@@ -174,7 +180,7 @@
+         const float level = levelGain_.next();
+         const std::array<float, 6U> controls{{model, gain, bass, middle, treble, level}};
+         if (!frameParametersValid_ || controls != cachedControls_) {
+-            for (auto& state : channels_) state.antiderivativeValid.fill(false);
++            for (auto& state : channels_) { state.antiderivativeValid.fill(false); state.smallValid.fill(false); }
+             cachedFrameParameters_ = makeFrameParameters(model, gain, bass, middle, treble, level);
+             cachedControls_ = controls;
+             frameParametersValid_ = true;
+@@ -265,7 +271,7 @@
+                 stageParameters.biasTanh,
+                 stageParameters.biasLogCosh,
+                 state.previousAntiderivative[stage],
+-                state.antiderivativeValid[stage]);
++                state.antiderivativeValid[stage], state.smallMidpoint[stage], state.smallResult[stage], state.smallValid[stage]);
+             state.previousStageInput[stage] = stageInput;
+             // Interstage coupling gain and loading. The product remains near
+             // unity at low gain while high-gain models drive successive stages.
+@@ -413,6 +419,7 @@
+ 
+ void NativePreampProcessor::clearChannelState() noexcept {
+     for (auto& state : channels_) {
++        state.smallValid.fill(false);
+         state.inputHistory.fill(0.0f);
+         state.reconstructionHistory.fill(0.0f);
+         state.cabinetHistory.fill(0.0f);

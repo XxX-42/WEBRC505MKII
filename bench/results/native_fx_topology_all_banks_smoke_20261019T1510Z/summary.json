@@ -1,0 +1,26 @@
+{
+  "topology": "all-banks-20-private-4-input-4-shared-rhythm",
+  "inputPeak": 0.100,
+  "inputMonitoringEnabled": false,
+  "inputFxSlotsConfigured": 4,
+  "inputFxIds": [
+    "filter.lpf",
+    "manual_pan",
+    "dynamics",
+    "radio"
+  ],
+  "inputFxOutputPeakDuringWarmup": 0.175,
+  "sharedFxSlotsConfigured": 4,
+  "sharedFxIds": [
+    "chorus",
+    "reverb",
+    "tape_echo",
+    "stereo_enhance"
+  ],
+  "rhythmEnabled": true,
+  "rhythmObservedActiveVoicesMaxDuringWarmup": 2,
+  "topologyRoutesHealthyAfterMeasure": true,
+  "inputSharedFaultedSlotsAfterMeasure": 0,
+  "finiteOutputSamples": 32768,
+  "expectedOutputSamples": 32768
+}

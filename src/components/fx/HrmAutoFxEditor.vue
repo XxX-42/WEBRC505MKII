@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { AudioEngine } from '../../audio/AudioEngine';
+import { AudioEngine, type TrackFxMidiTarget } from '../../audio/AudioEngine';
 import type { MidiInputState } from '../../audio/MidiInputController';
 import {
   HRM_AUTO_KEY_OPTIONS,
@@ -52,7 +52,7 @@ import {
 
 const props = defineProps<{
   modelValue?: HrmAutoParameters;
-  midiTarget: { path: 'input' | 'track'; slot: 'A' | 'B' | 'C' | 'D'; effectId: 'hrm_auto_m' };
+  midiTarget: TrackFxMidiTarget;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [value: HrmAutoParameters] }>();
 const engine = AudioEngine.getInstance();
@@ -61,10 +61,26 @@ const midiState = ref<MidiInputState>(engine.getMidiInputState());
 let stopListening: (() => void) | undefined;
 
 onMounted(() => { stopListening = engine.onMidiInputStateChange((state) => { midiState.value = state; }); });
-onBeforeUnmount(() => stopListening?.());
-watch(() => [props.midiTarget.path, props.midiTarget.slot] as const, () => {
-  if (midiState.value === 'connected' && engine.getMode() === 'native') engine.disconnectMidiInput();
+onBeforeUnmount(() => {
+  stopListening?.();
+  if ((midiState.value === 'connected' || midiState.value === 'connecting') && isBrowserPrivateTarget(props.midiTarget)) {
+    engine.disconnectMidiInput();
+  }
 });
+watch(() => [props.midiTarget.path, props.midiTarget.trackId, props.midiTarget.slot] as const, (next, previous) => {
+  if (next.every((value, index) => value === previous[index])) return;
+  const nativeTargetChanged = engine.getMode() === 'native';
+  const browserPrivateTargetChanged = engine.getMode() === 'browser'
+    && (isBrowserPrivateTarget({ path: next[0], trackId: next[1], slot: next[2], effectId: props.midiTarget.effectId })
+      || isBrowserPrivateTarget({ path: previous[0], trackId: previous[1], slot: previous[2], effectId: props.midiTarget.effectId }));
+  if ((midiState.value === 'connected' || midiState.value === 'connecting')
+      && (nativeTargetChanged || browserPrivateTargetChanged)) engine.disconnectMidiInput();
+});
+
+function isBrowserPrivateTarget(target: TrackFxMidiTarget): boolean {
+  return engine.getMode() === 'browser' && target.path === 'track'
+    && typeof target.trackId === 'number' && target.trackId > 0;
+}
 
 const midiStateText = computed(() => {
   switch (midiState.value) {

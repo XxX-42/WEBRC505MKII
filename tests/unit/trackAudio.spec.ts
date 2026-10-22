@@ -46,8 +46,10 @@ function installPlaybackNodeSpies(context: AudioContext) {
     canceledAt: [] as number[],
     setValues: [] as Array<{ value: number; time: number }>,
     curves: [] as Array<{ values: number[]; time: number; duration: number }>,
+    ramps: [] as Array<{ value: number; time: number }>,
     cancelScheduledValues(time: number) { this.canceledAt.push(time); },
     setValueAtTime(value: number, time: number) { this.value = value; this.setValues.push({ value, time }); },
+    linearRampToValueAtTime(value: number, time: number) { this.value = value; this.ramps.push({ value, time }); },
     setValueCurveAtTime(values: Float32Array, time: number, duration: number) {
       this.curves.push({ values: Array.from(values), time, duration });
     },
@@ -216,7 +218,7 @@ describe('TrackAudio transport sync helpers', () => {
     Transport.setBpm(120);
   });
 
-  it('keeps the existing read-head controllable while the loop is overdubbing', async () => {
+  it('rejects source-readhead edits while a canonical-frame overdub is active', async () => {
     const { context, TrackState, trackAudio } = await createTrackAudioHarness();
     const nodes = installPlaybackNodeSpies(context);
     (trackAudio as any).audioBuffer = context.createBuffer(1, context.sampleRate * 4, context.sampleRate);
@@ -224,10 +226,38 @@ describe('TrackAudio transport sync helpers', () => {
     await trackAudio.play();
     trackAudio.state = TrackState.OVERDUBBING;
 
-    expect(trackAudio.setLoopTransportFxParameter(0, 'offset', -0.5)).toBe(true);
+    expect(trackAudio.setLoopTransportFxParameter(0, 'offset', -0.5)).toBe(false);
     expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
-    expect(nodes.sources).toHaveLength(2);
-    expect(nodes.sources[1].starts[0].offset).toBeCloseTo(3.75);
+    expect(nodes.sources).toHaveLength(1);
+    expect((trackAudio as any).loopTransportFxSlots[0]).toMatchObject({ type: 'BEAT SHIFT', beatShiftOffsetBeats: 0.5 });
+  });
+
+  it('suspends and restores the source reader around an actual overdub worklet session', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const { context, TrackState, trackAudio } = await createTrackAudioHarness();
+    installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(1, 32, context.sampleRate);
+    trackAudio.configureLoopTransportFx(0, 'BEAT SHIFT', { offset: 0.5, crossfade: 5 });
+    await trackAudio.play();
+
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
+    expect((trackAudio as any).loopTransportFxSlots[0]).toBeNull();
+    expect(trackAudio.loopTransportUnavailableReason).toContain('suspended during overdub');
+    for (let index = 0; index < 8; index += 1) await Promise.resolve();
+
+    const node = FakeAudioWorkletNode.instances.at(-1);
+    expect(node?.name).toBe('rc505-overdub-processor');
+    expect(node?.port.posted[0]?.message.type).toBe('OVERDUB_INIT');
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect((trackAudio as any).loopTransportFxSlots[0]).toBeNull();
+    node?.port.receive({ type: 'OVERDUB_STOPPED', patchesSent: 0, overflowFrames: 0, overflowEvents: 0,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 });
+
+    expect((trackAudio as any).loopTransportFxSlots[0]).toMatchObject({
+      type: 'BEAT SHIFT', beatShiftOffsetBeats: 0.5, beatShiftCrossfadeMs: 5,
+    });
   });
 
   it('returns to direct reverse playback when reverse is toggled during read-head playback', async () => {
@@ -249,7 +279,7 @@ describe('TrackAudio transport sync helpers', () => {
     expect(nodes.sources[0].stopTimes.at(-1)).toBe(0);
   });
 
-  it('uses bounded variable-rate curves and advances the per-loop vinyl phase', async () => {
+  it('uses bounded variable-rate curves while keeping the Vinyl transport cursor canonical', async () => {
     const { context, trackAudio } = await createTrackAudioHarness();
     const nodes = installPlaybackNodeSpies(context);
     const buffer = context.createBuffer(1, context.sampleRate * 8, context.sampleRate);
@@ -263,8 +293,8 @@ describe('TrackAudio transport sync helpers', () => {
 
     await trackAudio.play();
     const firstCurve = nodes.sources[0].playbackRate.curves[0];
-    expect(firstCurve.values).toHaveLength(65);
-    expect(firstCurve.duration).toBeLessThanOrEqual(40);
+    expect(firstCurve.values).toHaveLength(1025);
+    expect(firstCurve.duration).toBeLessThanOrEqual(200);
     expect(firstCurve.values[0]).toBeCloseTo(1);
     expect(firstCurve.values.at(-1)).toBeCloseTo(2);
     expect((trackAudio as any).loopTransportFxSlots[2]).toMatchObject({
@@ -274,16 +304,188 @@ describe('TrackAudio transport sync helpers', () => {
 
     context.currentTime = 0.5;
     const position = (trackAudio as any).getCurrentPlaybackPosition();
-    expect(position).toBeGreaterThan(0.5);
-    expect(position).toBeLessThan(1.2);
+    expect(position).toBeCloseTo(0.5);
+    expect((trackAudio as any).loopTransportPhaseBaseSeconds).toBeGreaterThan(position);
+    expect((trackAudio as any).loopTransportPhaseBaseSeconds).toBeLessThan(1.2);
 
     expect(trackAudio.setLoopTransportFxParameter(2, 'speed', -100)).toBe(true);
     const brakingCurve = nodes.sources[0].playbackRate.curves.at(-1)!;
-    expect(brakingCurve.values).toHaveLength(65);
+    expect(brakingCurve.values).toHaveLength(1025);
     expect(brakingCurve.values.at(-1)).toBeCloseTo(0);
     expect(nodes.sources[0].playbackRate.canceledAt.at(-1)).toBe(0.5);
     trackAudio.stop();
     expect(nodes.sources[0].playbackRate.canceledAt.at(-1)).toBe(0.5);
+  });
+
+
+  it.each([0, 50, 100])('uses the Native motor coefficients at brake %s', async (brake) => {
+    const { context, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(1, context.sampleRate * 4, context.sampleRate);
+    trackAudio.configureLoopTransportFx(0, 'VINYL FLICK', { speed: 50, mixPercent: 100, 'return-time': 0.05, brake });
+    await trackAudio.play();
+    const curve = nodes.sources[0].playbackRate.curves[0];
+    expect(curve.duration).toBe(1);
+    let rate = 1;
+    let velocity = 0;
+    const dt = 1 / 48000;
+    const omega = 2 / 0.05;
+    const damping = 0.7 + 1.2 * brake / 100;
+    for (let frame = 1; frame <= 4800; frame += 1) {
+      velocity += (omega * omega * (1.5 - rate) - 2 * damping * omega * velocity) * dt;
+      rate += velocity * dt;
+      if (frame % 1200 !== 0) continue;
+      const position = frame * dt / curve.duration * (curve.values.length - 1);
+      const index = Math.floor(position);
+      const fraction = position - index;
+      const renderedRate = curve.values[index] + (curve.values[index + 1] - curve.values[index]) * fraction;
+      expect(Math.abs(renderedRate - rate)).toBeLessThan(0.0005);
+    }
+    trackAudio.stop();
+  });
+
+  it.each([0, 50, 100])('keeps Vinyl speed independent of mix %s and blends canonical/wet stereo readers', async (mix) => {
+    const { context, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    const buffer = context.createBuffer(2, context.sampleRate * 4, context.sampleRate);
+    (trackAudio as any).audioBuffer = buffer;
+    (trackAudio as any).startOffset = 3.75;
+    trackAudio.configureLoopTransportFx(0, 'VINYL FLICK', { speed: 50, mixPercent: mix, 'return-time': 0.05 });
+    await trackAudio.play();
+
+    expect(nodes.sources).toHaveLength(2);
+    const [wet, dry] = nodes.sources;
+    for (const source of [wet, dry]) {
+      expect(source.buffer).toBe(buffer);
+      expect(source.loop).toBe(true);
+      expect(source.starts[0]).toEqual({ when: 0, offset: 3.75 });
+    }
+    expect(wet.playbackRate.curves[0].values.at(-1)).toBeCloseTo(1.5);
+    expect(dry.playbackRate.value).toBe(1);
+    expect(dry.playbackRate.curves).toHaveLength(0);
+    expect((trackAudio as any).loopTransportWetMixGainNode.gain.value).toBeCloseTo(mix / 100);
+    expect((trackAudio as any).loopTransportDryGainNode.gain.value).toBeCloseTo(1 - mix / 100);
+    // Unity source envelope feeds the shared wet-mix gain; the canonical source
+    // has its own direct gain. Both streams retain all original PCM channels.
+    expect(wet.connect).toHaveBeenCalledWith((trackAudio as any).sourceGainNode);
+    expect((trackAudio as any).sourceGainNode.connect).toHaveBeenLastCalledWith((trackAudio as any).loopTransportWetMixGainNode);
+    expect(dry.connect).toHaveBeenCalledWith((trackAudio as any).loopTransportDryGainNode);
+    context.currentTime = 0.5;
+    expect((trackAudio as any).getCurrentPlaybackPosition()).toBeCloseTo(0.25);
+    trackAudio.stop();
+  });
+
+  it.each([-100, 0, 100])('keeps a fixed 50 percent dry/wet blend at Vinyl speed %s', async (speed) => {
+    const { context, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+    trackAudio.configureLoopTransportFx(0, 'VINYL FLICK', { speed, mixPercent: 50 });
+    await trackAudio.play();
+    expect((trackAudio as any).loopMotorStates[0].targetRate).toBe(1 + speed / 100);
+    expect((trackAudio as any).loopTransportWetMixGainNode.gain.value).toBe(0.5);
+    expect((trackAudio as any).loopTransportDryGainNode.gain.value).toBe(0.5);
+    if (speed !== 0) expect(nodes.sources[0].playbackRate.curves[0].values.at(-1)).toBe(1 + speed / 100);
+    else expect(nodes.sources[0].playbackRate.value).toBe(1);
+    trackAudio.stop();
+  });
+
+  it('promotes a running source and edits Vinyl mix without restarting either readhead', async () => {
+    const { context, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(2, context.sampleRate * 4, context.sampleRate);
+    await trackAudio.play();
+    context.currentTime = 0.25;
+    expect(trackAudio.configureLoopTransportFx(0, 'VINYL FLICK', { speed: 50, mixPercent: 100 })).toBe(true);
+    expect(nodes.sources).toHaveLength(2);
+    expect(nodes.sources[1].starts[0]).toEqual({ when: 0.25, offset: 0.25 });
+    const dry = (trackAudio as any).loopTransportDrySourceNode;
+    const wet = (trackAudio as any).sourceNode;
+    context.currentTime = 0.5;
+    expect(trackAudio.setLoopTransportFxParameter(0, 'mixPercent', 1)).toBe(true);
+    expect((trackAudio as any).loopTransportWetMixGainNode.gain.value).toBeCloseTo(0.01);
+    expect((trackAudio as any).loopTransportDryGainNode.gain.value).toBeCloseTo(0.99);
+    expect((trackAudio as any).loopMotorStates[0].targetRate).toBe(1.5);
+    expect((trackAudio as any).loopTransportWetMixGainNode.gain.ramps.at(-1).time).toBeCloseTo(0.505);
+    expect((trackAudio as any).loopTransportDryGainNode.gain.ramps.at(-1)).toEqual({ value: 0.99, time: 0.505 });
+    expect((trackAudio as any).loopTransportDrySourceNode).toBe(dry);
+    expect((trackAudio as any).sourceNode).toBe(wet);
+    expect(nodes.sources).toHaveLength(2);
+    expect((trackAudio as any).getCurrentPlaybackPosition()).toBeCloseTo(0.5);
+    expect(trackAudio.configureLoopTransportFx(0, null)).toBe(true);
+    expect((trackAudio as any).loopTransportWetMixGainNode.gain.value).toBe(0);
+    expect((trackAudio as any).loopTransportDryGainNode.gain.value).toBe(1);
+    trackAudio.stop();
+    for (const source of nodes.sources) {
+      expect(source.stopTimes).toContain(0);
+      expect(source.disconnect).toHaveBeenCalledOnce();
+      expect(source.onended).toBeNull();
+    }
+    expect((trackAudio as any).loopTransportDrySourceNode).toBeNull();
+    expect((trackAudio as any).loopTransportWetMixGainNode).toBeNull();
+    await trackAudio.play();
+    expect(nodes.sources).toHaveLength(3);
+    expect(nodes.sources[2].starts[0].offset).toBeCloseTo(0.5);
+    trackAudio.stop();
+  });
+
+  it('retargets the wet reader without changing the mix and cleans every reader on stop', async () => {
+    const { context, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(2, context.sampleRate * 4, context.sampleRate);
+    trackAudio.configureLoopTransportFx(0, 'VINYL FLICK', { speed: 50, mixPercent: 50 });
+    await trackAudio.play();
+    context.currentTime = 0.2;
+    trackAudio.configureLoopTransportFx(1, 'BEAT SHIFT', { offset: 1 });
+    expect(nodes.sources).toHaveLength(3);
+    expect((trackAudio as any).loopTransportWetMixGainNode.gain.value).toBe(0.5);
+    expect((trackAudio as any).loopTransportDryGainNode.gain.value).toBe(0.5);
+    const wetMix = (trackAudio as any).loopTransportWetMixGainNode;
+    expect((trackAudio as any).sourceGainNode.connect).toHaveBeenLastCalledWith(wetMix);
+    trackAudio.setLoopTransportFxParameter(0, 'mixPercent', 25);
+    expect((trackAudio as any).sourceGainNode.gain.curves[0].values.at(-1)).toBe(1);
+    expect(wetMix.gain.value).toBe(0.25);
+    trackAudio.stop();
+    for (const source of nodes.sources) {
+      expect(source.stopTimes).toContain(0);
+      expect(source.disconnect).toHaveBeenCalledOnce();
+      expect(source.onended).toBeNull();
+    }
+    expect(wetMix.disconnect).toHaveBeenCalledOnce();
+    expect((trackAudio as any).loopTransportTransitionActive).toBe(false);
+  });
+
+  it('reanchors a Vinyl wet reader to canonical phase when selecting BEAT SHIFT', async () => {
+    const { context, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(2, context.sampleRate * 4, context.sampleRate);
+    trackAudio.configureLoopTransportFx(0, 'VINYL FLICK', { speed: 100, mixPercent: 100, 'return-time': 0.05 });
+    await trackAudio.play();
+    context.currentTime = 0.5;
+    expect((trackAudio as any).getCurrentPlaybackPosition()).toBeCloseTo(0.5);
+    expect((trackAudio as any).loopTransportPhaseBaseSeconds).toBeGreaterThan(0.5);
+    expect(trackAudio.configureLoopTransportFx(0, 'BEAT SHIFT', { offset: 0 })).toBe(true);
+    expect(nodes.sources).toHaveLength(3);
+    expect(nodes.sources[2].starts[0]).toEqual({ when: 0.5, offset: 0.5 });
+    expect(nodes.sources[2].playbackRate.value).toBe(1);
+    expect((trackAudio as any).loopTransportWetMixGainNode.gain.value).toBe(1);
+    expect((trackAudio as any).loopTransportDryGainNode.gain.value).toBe(0);
+    trackAudio.stop();
+  });
+
+  it('rolls back a live Vinyl selection if its canonical dry reader fails to start', async () => {
+    const { context, trackAudio } = await createTrackAudioHarness();
+    const nodes = installPlaybackNodeSpies(context);
+    (trackAudio as any).audioBuffer = context.createBuffer(1, context.sampleRate * 4, context.sampleRate);
+    await trackAudio.play();
+    (context as any).createBufferSource.mockImplementationOnce(() => null);
+    expect(trackAudio.configureLoopTransportFx(0, 'VINYL FLICK', { speed: 50, mixPercent: 50 })).toBe(false);
+    expect((trackAudio as any).loopTransportFxSlots[0]).toBeNull();
+    expect((trackAudio as any).loopMotorStates[0].targetRate).toBe(1);
+    expect(nodes.sources).toHaveLength(1);
+    expect(nodes.sources[0].stopTimes).toHaveLength(0);
+    expect(trackAudio.loopTransportActive).toBe(false);
+    expect(trackAudio.loopTransportUnavailableReason).toContain('Canonical dry reader creation failed');
+    trackAudio.stop();
   });
 
   it('defaults Vinyl Flick to unity and dry when no slot values are supplied', async () => {
@@ -382,15 +584,18 @@ describe('TrackAudio transport sync helpers', () => {
       reverse: true,
     });
     expect((init?.buffers as unknown[])).toHaveLength(3);
-    expect(node?.port.posted[0]?.transferList).toHaveLength(7);
+    expect(node?.port.posted[0]?.transferList).toHaveLength(10);
 
     node?.port.receive({
       type: 'OVERDUB_PATCH', sequence: 0, slotIndex: 0, validFrames: 2,
+      startInputFrame: 100, endInputFrame: 102,
       indices: Uint32Array.from([5, 2]), values: Float32Array.from([0.5, 0.25]),
+      oldValues: Float32Array.from([5, 2]),
     });
     node?.port.receive({
       type: 'OVERDUB_PATCH', sequence: 1, slotIndex: 1, validFrames: 1,
-      indices: Uint32Array.from([5]), values: Float32Array.from([0.75]),
+      startInputFrame: 102, endInputFrame: 103,
+      indices: Uint32Array.from([5]), values: Float32Array.from([0.75]), oldValues: Float32Array.from([0.5]),
     });
     expect(samples[5]).toBe(0.75);
     expect(samples[2]).toBe(0.25);
@@ -400,9 +605,10 @@ describe('TrackAudio transport sync helpers', () => {
 
     trackAudio.triggerRecord();
     expect(trackAudio.state).toBe(TrackState.PLAYING);
-    expect(node?.port.posted.at(-1)?.message).toEqual({ type: 'OVERDUB_STOP' });
+    expect(node?.port.posted.at(-1)?.message).toMatchObject({ type: 'OVERDUB_STOP', stopFrame: 0 });
     expect(node?.disconnected).toBe(false);
-    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 4, overflowEvents: 1, patchesSent: 2 });
+    node?.port.receive({ type: 'OVERDUB_STOPPED', overflowFrames: 4, overflowEvents: 1, patchesSent: 2,
+      requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 });
     expect(node?.disconnected).toBe(true);
     expect(trackAudio.overdubDiagnostic).toContain('dropped 4 input frames');
   });

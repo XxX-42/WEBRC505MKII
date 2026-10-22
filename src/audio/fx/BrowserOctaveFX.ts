@@ -1,3 +1,4 @@
+import { officialPitchDefaults } from './dsp/OfficialPitchParameters';
 import { createLiveInputTransposeNode, type LiveInputTransposeNode } from '../pitch/signalsmith';
 import type { FXBase } from './FXBase';
 
@@ -16,6 +17,7 @@ const MAX_ALIGNMENT_DELAY_SECONDS = 0.1;
  */
 export class BrowserOctaveFX implements FXBase {
   readonly name = 'OCTAVE';
+  readonly algorithm = 'octave';
   readonly input: GainNode;
   readonly output: GainNode;
   readonly ready: Promise<void>;
@@ -30,13 +32,21 @@ export class BrowserOctaveFX implements FXBase {
   private voiceNodes: [LiveInputTransposeNode, LiveInputTransposeNode, LiveInputTransposeNode] | null = null;
   private levels: [number, number, number] = [0, 40, 0];
   private mixPercent = 70;
+  private officialOctave = 0;
+  private officialOctLevel = 50;
+  private officialActive = false;
   private bypassed = true;
   private disposed = false;
   private failed = false;
   private failureKind: FailureKind = null;
   private failedParameterKey: string | null = null;
   private voicesReady = false;
+  private readonly officialParameters: Record<string, number> = {};
+  private officialInitialized = false;
   public error = '';
+
+  /** The private A–D chain acknowledges OCTAVE after all three voices exist. */
+  get processorReady(): boolean { return this.voicesReady && !this.disposed && !this.error; }
 
   constructor(context: AudioContext, onFailure?: FailureHandler) {
     this.context = context;
@@ -77,6 +87,14 @@ export class BrowserOctaveFX implements FXBase {
     return Math.max(...this.voiceNodes.map((node) => node.latencySamples));
   }
 
+  /** Shared Browser amount macro controls the overall harmony-layer mix. */
+  setAmount(value: number): void {
+    if (!Number.isFinite(value)) return;
+    const official = { ...this.officialParameters };
+    this.setParam('mix_percent', Math.max(0, Math.min(1, value)) * 100);
+    for (const [key, selected] of Object.entries(official)) this.setParam(key, selected);
+  }
+
   setParam(key: string, value: number): void {
     if (this.disposed) return;
     if (!Number.isFinite(value)) {
@@ -84,7 +102,28 @@ export class BrowserOctaveFX implements FXBase {
       return;
     }
 
+    if (key === 'official_mode') {
+      this.failClosed('OCTAVE official MODE 1/2 algorithms are unsupported; this implementation uses Signalsmith.', key);
+      return;
+    }
+    if (key === 'official_octave' || key === 'official_oct_level') {
+      const max = key === 'official_octave' ? 2 : 100;
+      if (!Number.isInteger(value) || value < 0 || value > max) {
+        this.failClosed(`OCTAVE ${key} must be an integer from 0 to ${max}.`, key);
+        return;
+      }
+      this.initializeOfficialParameters(key);
+      this.officialParameters[key] = value;
+      this.officialActive = true;
+      if (key === 'official_octave') this.officialOctave = value;
+      else this.officialOctLevel = value;
+      this.clearParameterFailure(key);
+      this.applyRouting();
+      return;
+    }
+
     if (key === 'mix_percent') {
+      this.officialActive = false;
       if (value < 0 || value > 100) {
         this.failClosed('OCTAVE mix_percent must be between 0 and 100 percent.', key);
         return;
@@ -101,6 +140,7 @@ export class BrowserOctaveFX implements FXBase {
         this.failClosed(`OCTAVE ${key} must be between 0 and 100 percent.`, key);
         return;
       }
+      this.officialActive = false;
       this.levels[voiceIndex] = value;
       this.clearParameterFailure(key);
       this.applyRouting();
@@ -115,10 +155,28 @@ export class BrowserOctaveFX implements FXBase {
     this.failClosed(unsupported, key);
   }
 
+  private initializeOfficialParameters(exceptKey: string): void {
+    if (this.officialInitialized) return;
+    this.officialInitialized = true;
+    for (const [key, value] of Object.entries(officialPitchDefaults(this.name, this.algorithm))) {
+      if (key !== exceptKey) this.setParam(key, value);
+    }
+  }
+
   setBypass(bypass: boolean): void {
     if (this.disposed) return;
     this.bypassed = bypass;
     this.applyRouting();
+  }
+
+  getParameterSnapshot(): Readonly<Record<string, number>> {
+    return Object.freeze({
+      minus_24_level: this.levels[0],
+      minus_12_level: this.levels[1],
+      plus_12_level: this.levels[2],
+      mix_percent: this.mixPercent,
+      ...this.officialParameters,
+    });
   }
 
   dispose(): void {
@@ -251,7 +309,10 @@ export class BrowserOctaveFX implements FXBase {
     this.directGain.gain.setTargetAtTime(direct, now, 0.005);
     this.dryGain.gain.setTargetAtTime(dry, now, 0.005);
     for (let index = 0; index < this.voiceGains.length; index += 1) {
-      const voice = direct ? 0 : (this.levels[index]! / 100) * (this.mixPercent / 100);
+      const selected = index === 0 ? this.officialOctave !== 0 : index === 1 ? this.officialOctave !== 1 : false;
+      const voice = direct ? 0 : this.officialActive
+        ? (selected ? this.officialOctLevel / 100 : 0)
+        : (this.levels[index]! / 100) * (this.mixPercent / 100);
       this.voiceGains[index]!.gain.setTargetAtTime(voice, now, 0.005);
     }
   }

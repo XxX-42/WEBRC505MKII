@@ -213,6 +213,27 @@ describe('MidiInputController', () => {
     controller.disconnect();
   });
 
+  it('releases held notes for a route change without disconnecting the MIDI access', async () => {
+    const input = new FakeMidiInput();
+    const access = new FakeMidiAccess([input]);
+    const received: unknown[] = [];
+    const controller = new MidiInputController((event) => received.push(event), {
+      requestMIDIAccess: () => Promise.resolve(access),
+    });
+    await controller.connect();
+    input.emit([0x90, 64, 100], 1);
+    controller.releaseHeldNotes();
+    expect(controller.state).toBe('connected');
+    expect(input.listenerCount).toBe(1);
+    expect(received).toEqual([
+      { channel: 1, note: 64, velocity: 100 / 127, noteOn: true, timeStampMs: 1 },
+      expect.objectContaining({ channel: 1, note: 64, velocity: 0, noteOn: false }),
+    ]);
+    input.emit([0x90, 67, 80], 2);
+    expect(received.at(-1)).toMatchObject({ channel: 1, note: 67, noteOn: true });
+    controller.disconnect();
+  });
+
   it('reports unsupported and permission-denied access states', async () => {
     const unsupported = new MidiInputController(() => undefined, {
       requestMIDIAccess: () => undefined,

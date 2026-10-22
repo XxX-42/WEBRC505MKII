@@ -1,0 +1,262 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - status [ref=e6]:
+        - generic [ref=e8]: BROWSER AUDIO READY
+      - 'generic "BROWSER: 5 TRACKS; LIMITED EFFECTS/RHYTHM; DSP PARITY INCOMPLETE" [ref=e9]'
+      - generic [ref=e10]: INPUT READY · OUTPUT READY
+    - generic [ref=e11]:
+      - button "READY" [disabled] [ref=e12]
+      - button "AUDIO BROWSER" [ref=e13] [cursor=pointer]
+      - group [ref=e14]:
+        - generic "SETTINGS" [ref=e15] [cursor=pointer]
+  - main [ref=e16]:
+    - region "RC-505mkII replica view" [ref=e17]:
+      - toolbar "Faceplate zoom and pan" [ref=e18]:
+        - generic [ref=e19]: FACEPLATE VIEW
+        - generic [ref=e20]:
+          - button "Zoom out" [ref=e21] [cursor=pointer]: −
+          - generic [ref=e22]:
+            - generic [ref=e23]: ZOOM
+            - slider "Faceplate zoom" [ref=e24]: "0.8"
+            - status [ref=e25]: 80%
+          - button "Zoom in" [ref=e26] [cursor=pointer]: +
+          - button "FIT" [ref=e27] [cursor=pointer]
+          - button "Pan left" [ref=e29] [cursor=pointer]: ←
+          - button "Pan right" [ref=e30] [cursor=pointer]: →
+          - button "Pan up" [ref=e31] [cursor=pointer]: ↑
+          - button "Pan down" [ref=e32] [cursor=pointer]: ↓
+      - generic "Scrollable RC-505mkII faceplate" [ref=e33]:
+        - region "BOSS RC-505mkII top control panel" [ref=e36]:
+          - generic "BOSS RC-505mkII" [ref=e37]:
+            - generic [ref=e38]: BOSS
+            - generic [ref=e39]:
+              - generic [ref=e40]: RC-505mkII
+              - generic [ref=e41]: LOOP STATION
+            - generic [ref=e42]: LOOP STATION
+          - generic [ref=e43]:
+            - region "INPUT FX controls" [ref=e44]:
+              - generic [ref=e45]:
+                - generic [ref=e46]: MIC · INST
+                - heading "INPUT FX" [level=2] [ref=e47]
+              - generic [ref=e48]:
+                - slider "INPUT FX selected effect value" [ref=e49]:
+                  - generic [ref=e50]:
+                    - img
+                  - generic: FILTER
+                - generic [ref=e53]:
+                  - group "INPUT FX FX slots" [ref=e54]:
+                    - button "INPUT FX FX A" [ref=e55] [cursor=pointer]:
+                      - generic: A
+                    - button "INPUT FX FX B" [ref=e57] [cursor=pointer]:
+                      - generic: B
+                    - button "INPUT FX FX C" [ref=e59] [cursor=pointer]:
+                      - generic: C
+                    - button "INPUT FX FX D" [ref=e61] [cursor=pointer]:
+                      - generic: D
+                  - button "Edit input fx effects" [ref=e63] [cursor=pointer]:
+                    - generic: EDIT
+              - paragraph: A · FILTER · 0%
+            - region "RC-505mkII center controls" [ref=e64]:
+              - generic:
+                - generic:
+                  - button "Open menu" [ref=e65] [cursor=pointer]:
+                    - generic: MENU
+                  - button "Open selected track loop" [ref=e66] [cursor=pointer]:
+                    - generic: LOOP
+                - generic:
+                  - button "Start all tracks" [ref=e67] [cursor=pointer]:
+                    - generic: ALL START
+                  - button "No PCM undo or redo available for track 1" [disabled] [ref=e69]:
+                    - generic: UNDO/REDO
+              - generic:
+                - generic "RC-505 status display":
+                  - generic [ref=e70]:
+                    - generic [ref=e71]:
+                      - generic [ref=e72]: BOSS RC-505mkII
+                      - generic [ref=e73]: HOME
+                    - generic [ref=e74]: "120"
+                    - generic [ref=e75]: LIVE SESSION
+                    - generic [ref=e76]:
+                      - generic [ref=e77]: TR 1 · RECORDING
+                      - generic [ref=e78]: 120 BPM
+                    - generic "Current screen controls" [ref=e79]:
+                      - generic [ref=e80]: 1 BPM 120
+                      - generic [ref=e81]: 2 RHYTHM VOL 50%
+                      - generic [ref=e82]: 3 INPUT FX 0%
+                      - generic [ref=e83]: 4 TRACK FX 0%
+                    - status "BROWSER AUDIO READY" [ref=e84]
+                - generic "Screen controls":
+                  - slider "BPM screen control" [ref=e85]:
+                    - generic [ref=e86]:
+                      - img
+                    - generic: BPM
+                  - slider "RHYTHM VOL screen control" [ref=e89]:
+                    - generic [ref=e90]:
+                      - img
+                    - generic: RHYTHM VOL
+                  - slider "INPUT FX screen control" [ref=e93]:
+                    - generic [ref=e94]:
+                      - img
+                    - generic: INPUT FX
+                  - slider "TRACK FX screen control" [ref=e97]:
+                    - generic [ref=e98]:
+                      - img
+                    - generic: TRACK FX
+                - generic:
+                  - button "Exit current page" [ref=e101] [cursor=pointer]:
+                    - generic: EXIT
+                  - button "Enter selected page" [ref=e103] [cursor=pointer]:
+                    - generic: ENTER
+                  - generic: PAGE
+                  - button "Previous display page" [ref=e104] [cursor=pointer]:
+                    - generic: K ‹
+                  - button "Next display page" [ref=e106] [cursor=pointer]:
+                    - generic: J ›
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: OUTPUT
+                    - generic: LEVEL
+                  - slider "Master output level" [ref=e108]:
+                    - generic [ref=e109]:
+                      - img
+                    - generic: MASTER
+                - generic:
+                  - generic: RHYTHM
+                  - button "Edit rhythm settings" [ref=e112] [cursor=pointer]:
+                    - generic: EDIT
+                  - button "Toggle rhythm playback" [ref=e113] [cursor=pointer]:
+                    - generic: START/ STOP
+                  - button "Tap tempo" [ref=e114] [cursor=pointer]:
+                    - generic: TAP TEMPO
+            - region "TRACK FX controls" [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e117]: TRACK
+                - heading "TRACK FX" [level=2] [ref=e118]
+              - generic [ref=e119]:
+                - slider "TRACK FX selected effect value" [ref=e120]:
+                  - generic [ref=e121]:
+                    - img
+                  - generic: FILTER
+                - generic [ref=e124]:
+                  - group "TRACK FX FX slots" [ref=e125]:
+                    - button "TRACK FX FX A" [ref=e126] [cursor=pointer]:
+                      - generic: A
+                    - button "TRACK FX FX B" [ref=e128] [cursor=pointer]:
+                      - generic: B
+                    - button "TRACK FX FX C" [ref=e130] [cursor=pointer]:
+                      - generic: C
+                    - button "TRACK FX FX D" [ref=e132] [cursor=pointer]:
+                      - generic: D
+                  - button "Edit track fx effects" [ref=e134] [cursor=pointer]:
+                    - generic: EDIT
+              - paragraph: A · FILTER · 0%
+          - generic [ref=e135]:
+            - generic [ref=e136]:
+              - generic [ref=e137]:
+                - generic [ref=e138]: "1"
+                - generic [ref=e139]: RECORD
+                - status [ref=e140]: Shared input capture was not ready at the request frame; the legacy recorder starts after input setup.
+              - generic:
+                - generic:
+                  - button "Open track FX editor for track 1" [ref=e141] [cursor=pointer]:
+                    - generic: FX
+                  - button "Track 1 selected" [ref=e143] [cursor=pointer]:
+                    - generic: TRACK
+                  - generic: "CLEAR: HOLD"
+                  - button "Stop track (hold to clear)" [ref=e145] [cursor=pointer]
+                - slider "Track 1 level" [ref=e153] [cursor=pointer]: "100"
+              - generic:
+                - button "Record or play track" [ref=e154] [cursor=pointer]:
+                  - generic: ▶ / ●
+                - generic:
+                  - generic: REC
+                  - generic: PLAY
+                  - generic: DUB
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - generic [ref=e158]: "2"
+                - generic [ref=e159]: EMPTY
+              - generic:
+                - generic:
+                  - button "Open track FX editor for track 2" [ref=e160] [cursor=pointer]:
+                    - generic: FX
+                  - button "Select track 2" [ref=e162] [cursor=pointer]:
+                    - generic: TRACK
+                  - generic: "CLEAR: HOLD"
+                  - button "Stop track (hold to clear)" [ref=e164] [cursor=pointer]
+                - slider "Track 2 level" [ref=e172] [cursor=pointer]: "100"
+              - generic:
+                - button "Record or play track" [ref=e173] [cursor=pointer]:
+                  - generic: ▶ / ●
+                - generic:
+                  - generic: REC
+                  - generic: PLAY
+                  - generic: DUB
+            - generic [ref=e175]:
+              - generic [ref=e176]:
+                - generic [ref=e177]: "3"
+                - generic [ref=e178]: EMPTY
+              - generic:
+                - generic:
+                  - button "Open track FX editor for track 3" [ref=e179] [cursor=pointer]:
+                    - generic: FX
+                  - button "Select track 3" [ref=e181] [cursor=pointer]:
+                    - generic: TRACK
+                  - generic: "CLEAR: HOLD"
+                  - button "Stop track (hold to clear)" [ref=e183] [cursor=pointer]
+                - slider "Track 3 level" [ref=e191] [cursor=pointer]: "100"
+              - generic:
+                - button "Record or play track" [ref=e192] [cursor=pointer]:
+                  - generic: ▶ / ●
+                - generic:
+                  - generic: REC
+                  - generic: PLAY
+                  - generic: DUB
+            - generic [ref=e194]:
+              - generic [ref=e195]:
+                - generic [ref=e196]: "4"
+                - generic [ref=e197]: EMPTY
+              - generic:
+                - generic:
+                  - button "Open track FX editor for track 4" [ref=e198] [cursor=pointer]:
+                    - generic: FX
+                  - button "Select track 4" [ref=e200] [cursor=pointer]:
+                    - generic: TRACK
+                  - generic: "CLEAR: HOLD"
+                  - button "Stop track (hold to clear)" [ref=e202] [cursor=pointer]
+                - slider "Track 4 level" [ref=e210] [cursor=pointer]: "100"
+              - generic:
+                - button "Record or play track" [ref=e211] [cursor=pointer]:
+                  - generic: ▶ / ●
+                - generic:
+                  - generic: REC
+                  - generic: PLAY
+                  - generic: DUB
+            - generic [ref=e213]:
+              - generic [ref=e214]:
+                - generic [ref=e215]: "5"
+                - generic [ref=e216]: EMPTY
+              - generic:
+                - generic:
+                  - button "Open track FX editor for track 5" [ref=e217] [cursor=pointer]:
+                    - generic: FX
+                  - button "Select track 5" [ref=e219] [cursor=pointer]:
+                    - generic: TRACK
+                  - generic: "CLEAR: HOLD"
+                  - button "Stop track (hold to clear)" [ref=e221] [cursor=pointer]
+                - slider "Track 5 level" [ref=e229] [cursor=pointer]: "100"
+              - generic:
+                - button "Record or play track" [ref=e230] [cursor=pointer]:
+                  - generic: ▶ / ●
+                - generic:
+                  - generic: REC
+                  - generic: PLAY
+                  - generic: DUB
+  - generic:
+    - complementary
+```

@@ -1,0 +1,37 @@
+--- /tmp/rc505-next-candidates/preamp-repeat/src/native_preamp_processor.cpp	2026-10-21 05:36:35.869061859 -0700
++++ /tmp/native-repeat-instrumented.cpp	2026-10-21 05:37:22.845213967 -0700
+@@ -2,12 +2,15 @@
+ 
+ #include <algorithm>
+ #include <cstring>
++#include <cstdio>
+ #include <cmath>
+ #include <cstddef>
+ 
+ namespace webrc::native {
+ namespace {
+ 
++struct CacheCounts { unsigned long long total=0,small=0,hits=0; ~CacheCounts(){std::fprintf(stderr,"{\"total\":%llu,\"smallDelta\":%llu,\"repeatHits\":%llu}\n",total,small,hits);} };
++CacheCounts cacheCounts;
+ constexpr double kPi = 3.141592653589793238462643383279502884;
+ constexpr double kTwoPi = 2.0 * kPi;
+ constexpr double kCutoffCyclesPerOversample = 0.118;
+@@ -74,15 +77,17 @@
+     float& previousAntiderivative,
+     bool& antiderivativeValid, float& smallMidpoint, float& smallResult, bool& smallValid
+ ) noexcept {
++    ++cacheCounts.total;
+     const float delta = input - previousInput;
+ #if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+     (void)biasLogCosh;
+     (void)previousAntiderivative;
+ #endif
+     if (std::fabs(delta) < 1.0e-4f) {
++        ++cacheCounts.small;
+         antiderivativeValid = false;
+         const float midpoint = 0.5f * (input + previousInput);
+-        if (smallValid && std::memcmp(&midpoint, &smallMidpoint, sizeof(float)) == 0) return smallResult;
++        if (smallValid && std::memcmp(&midpoint, &smallMidpoint, sizeof(float)) == 0) { ++cacheCounts.hits; return smallResult; }
+         smallMidpoint = midpoint;
+         smallResult = triodeTransfer(midpoint, slope, bias, biasTanh);
+         smallValid = true;

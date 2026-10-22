@@ -92,10 +92,17 @@ describe('Browser independent per-track FX state', () => {
     const { panel, engine } = await loadState();
     vi.clearAllMocks();
     panel.selectTarget(1);
-    for (const type of ['BEAT SHIFT', 'VINYL FLICK', 'OSC VOC (M)', 'HRM AUTO (M)', 'FILTER', 'TRANSPOSE']) {
+    for (const type of ['BEAT SHIFT', 'VINYL FLICK', 'FILTER']) {
       expect(panel.fxOptions).not.toContain(type);
       expect(panel.setType(1, 0, type)).toBe(false);
     }
+    expect(panel.fxOptions).toContain('TRANSPOSE');
+    expect(panel.fxOptions).toContain('OSC VOC (M)');
+    expect(panel.fxOptions).toContain('ROBOT (EXPERIMENTAL)');
+    expect(panel.fxOptions).toContain('HRM AUTO (M) (EXPERIMENTAL)');
+    expect(panel.fxOptions).not.toContain('ROBOT');
+    expect(panel.fxOptions).not.toContain('HRM AUTO (M)');
+    expect(panel.fxOptions).toContain('TRANSPOSE');
     expect(panel.warning.value).toContain('Unsupported Browser per-track FX');
     expect(panel.setType(0, 0, 'DELAY')).toBe(false);
     expect(panel.setType(6, 0, 'DELAY')).toBe(false);
@@ -103,6 +110,37 @@ describe('Browser independent per-track FX state', () => {
     expect(panel.setType(1.5, 0, 'DELAY')).toBe(false);
     expect(engine.setTrackFxType).not.toHaveBeenCalled();
     expect(panel.activeFx.value?.type).toBe('NONE');
+  });
+
+  it('restores executable HRM AUTO with catalog-named controls and its 70 percent mix default', async () => {
+    localStorage.setItem('webrc505_browser_per_track_fx_v1', JSON.stringify({
+      version: 1, target: 1,
+      tracks: [{ trackId: 1, activeSlot: 'A', slots: [{
+        id: 'A', type: 'HRM AUTO (M)', active: false,
+        namedParameters: { key: 5, scale: 2, 'midi-channel': 16, mix: 84 },
+      }] }],
+    }));
+
+    const { panel, engine } = await loadState();
+    expect(panel.fxOptions).toContain('HRM AUTO (M) (EXPERIMENTAL)');
+    expect(panel.activeFx.value).toMatchObject({
+      type: 'HRM AUTO (M) (EXPERIMENTAL)', value: 70,
+      namedParameters: { key: 5, scale: 2, 'midi-channel': 16, mix: 84 },
+    });
+    expect(engine.setTrackFxParameter).toHaveBeenCalledWith(1, 0, 70);
+    expect(engine.setTrackFxNamedParameters).toHaveBeenCalledWith(1, 0, { key: 5, scale: 2, 'midi-channel': 16, mix: 84 });
+  });
+
+  it('keeps UI selection and settings when the runtime reports that an occupied slot was preserved', async () => {
+    const { panel, engine } = await loadState();
+    panel.selectTarget(1);
+    panel.setType(1, 0, 'DELAY');
+    panel.setNamedParameters(1, 0, { delayTimeMs: 420, delayFeedback: 0.3 });
+    engine.getTrackFxStatus.mockReturnValueOnce([{ slots: [{ type: 'DELAY' }] }] as never);
+    engine.setTrackFxType.mockReturnValueOnce(false);
+
+    expect(panel.setType(1, 0, 'TRANSPOSE')).toBe(false);
+    expect(panel.activeFx.value).toMatchObject({ type: 'DELAY', namedParameters: { delayTimeMs: 420, delayFeedback: 0.3 } });
   });
 
   it('keeps unrelated named settings when the macro changes and clears them on effect replacement', async () => {
@@ -169,5 +207,17 @@ describe('Browser independent per-track FX state', () => {
     expect(panel.setType(1, 0, 'PHASER')).toBe(false);
     expect(panel.activeFx.value).toMatchObject({ type: 'PHASER', active: false });
     expect(panel.warning.value).toContain('could not be installed');
+  });
+
+  it('keeps UI selection and settings when the runtime reports that an occupied slot was preserved', async () => {
+    const { panel, engine } = await loadState();
+    panel.selectTarget(1);
+    panel.setType(1, 0, 'DELAY');
+    panel.setNamedParameters(1, 0, { delayTimeMs: 420, delayFeedback: 0.3 });
+    engine.getTrackFxStatus.mockReturnValueOnce([{ slots: [{ type: 'DELAY' }] }] as never);
+    engine.setTrackFxType.mockReturnValueOnce(false);
+
+    expect(panel.setType(1, 0, 'TRANSPOSE')).toBe(false);
+    expect(panel.activeFx.value).toMatchObject({ type: 'DELAY', namedParameters: { delayTimeMs: 420, delayFeedback: 0.3 } });
   });
 });

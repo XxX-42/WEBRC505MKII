@@ -1,0 +1,13 @@
+{
+  "checkedAtUtc": "2026-10-21T18:21:49.087819+00:00",
+  "cloudBrowser": "available CDP Chromium",
+  "filePageAttempt": "file:///workspace/scratch/2230ee2a4571/rc505-gain-recovery/bench/browser_audio_worklet_stress.html",
+  "result": "DENIED: browser URL policy allows only HTTP/HTTPS",
+  "action": "Stopped file route, did not change browser/sandbox/security settings or use user device",
+  "priorKnownBlockers": [
+    "exec Chromium socket() EPERM recorded in previous batch",
+    "exec localhost is inaccessible from separate cloud browser namespace; no repeated attempt without new evidence"
+  ],
+  "requiredCondition": "Supported HTTP test origin accessible to the cloud browser, or an allowed Chromium execution environment with sandbox enabled",
+  "actualBrowserMetrics": "NOT_MEASURED"
+}

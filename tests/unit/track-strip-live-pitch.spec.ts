@@ -66,6 +66,8 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
       triggerStop: vi.fn(),
       clear: vi.fn(),
       updateSettings: vi.fn(),
+      recordingDiagnostic: null as string | null,
+      overdubDiagnostic: null as string | null,
       canExportHqWav: true,
       exportHqWav: vi.fn(async () => ({ bytes: new Uint8Array([1, 2, 3, 4]) })),
     };
@@ -229,6 +231,13 @@ describe('TrackStrip live KeepPitch controls and HQ memory budget', () => {
     state.handleLivePitchModeChange();
     await flushPromises();
     expect(state.livePitchError.value).toContain('pitch processor failed');
+  });
+
+  it('shows recording capture failures in the track strip status area', async () => {
+    trackAudio.recordingDiagnostic = 'Shared input capture failed: request-frame-outside-preroll.';
+    await mountTrack();
+    expect(wrapper?.get('[data-testid="track-recording-diagnostic"]').text())
+      .toContain('request-frame-outside-preroll');
   });
 
   it('persists and passes the configurable HQ estimate to export without changing the default', async () => {

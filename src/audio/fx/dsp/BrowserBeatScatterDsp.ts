@@ -79,6 +79,17 @@ export class BrowserBeatScatterDsp {
   get activeSliceFrames(): number { return this.playbackLength; }
   get remainingFramesToBoundary(): number { return this.framesUntilBoundary; }
 
+  /** Exact documented note lengths, including 1/32 note; legacy quantization is unchanged. */
+  setOfficialLengthBeats(beats: number, initial = false): void {
+    if (!Number.isFinite(beats) || beats < 0.125 || beats > 4) return;
+    this.pendingSliceBeats = beats;
+    if (initial) {
+      this.currentSliceBeats = beats;
+      this.activeIntervalFrames = this.intervalFrames(this.currentBpm, beats);
+      this.framesUntilBoundary = this.activeIntervalFrames;
+    }
+  }
+
   setParameters(parameters: BrowserBeatScatterParameters): void {
     if (Number.isFinite(parameters.bpm)) this.pendingBpm = this.clampBpm(parameters.bpm as number);
     if (Number.isFinite(parameters.sliceBeats)) this.pendingSliceBeats = this.clampSliceBeats(parameters.sliceBeats as number);

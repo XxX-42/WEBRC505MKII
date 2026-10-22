@@ -1,0 +1,90 @@
+{
+  "utc": "2026-10-21T18:31:27.837100+00:00",
+  "scope": "Isolated hypothesis screening; final CMake explicit-target verification follows accepted changes",
+  "artifacts": {
+    "base.cpp": {
+      "sha256": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8",
+      "bytes": 21350
+    },
+    "candidate.cpp": {
+      "sha256": "16be46c306ea25f3559166db9d0c4965f90fe7e625cc202fbec8aa9fd176430e",
+      "bytes": 21797
+    },
+    "micro-base": {
+      "sha256": "eecdc2dbc7bb8fe16fca598d759ab4bed47bd9e4f3d3f9468e611a38c91dc6d5",
+      "bytes": 37024
+    },
+    "micro-candidate": {
+      "sha256": "8425c4a8f7a4fb168b66aea022ba507bda7085b6d268b968d1f8c2d42341c207",
+      "bytes": 41120
+    },
+    "pristine/native_preamp_processor.hpp": {
+      "sha256": "5f9bc0cec4d898293b45cef42fa17fa5cbefd55e30dcb764e190b6d254e0c681",
+      "bytes": 5422
+    },
+    "pristine/candidate.cpp": {
+      "sha256": "82eac262574105696cd4d55da81293e539ab0a595359d7b2ddf9c22577308eab",
+      "bytes": 21561
+    },
+    "channel_bench-base": {
+      "sha256": "58bbb774d0565433f2e0efd7355632bafac041e29aae1de70d4ebbad27feef80",
+      "bytes": 37024
+    },
+    "channel_bench-pristine": {
+      "sha256": "db6032fc9f52c495d931933a53f3f419dc587a379369b85c7b5c3905bdd15358",
+      "bytes": 37032
+    },
+    "pristine-base.pcm": {
+      "sha256": "49063d7afd01812ba28d7f66ed95339b7b63acd4a5086b75569b3ce3421872d0",
+      "bytes": 18736500
+    },
+    "pristine-pristine.pcm": {
+      "sha256": "49063d7afd01812ba28d7f66ed95339b7b63acd4a5086b75569b3ce3421872d0",
+      "bytes": 18736500
+    },
+    "robot-base.cpp": {
+      "sha256": "fa05b5566d4bca871326975aca5a3c85a369c10dcb0235955cd819daafc77967",
+      "bytes": 22703
+    },
+    "robot-candidate.cpp": {
+      "sha256": "47d1474d68f387c3ea42cdd02a9331e8dd816987f77a5cd09c476a867c57377a",
+      "bytes": 24009
+    },
+    "robot-candidate.o": {
+      "sha256": "fbe50f4ce9a10601ced3c2c989dd153796e551683f21d87f53599ebc3e0d74bd",
+      "bytes": 22664
+    },
+    "robot-fallback.o": {
+      "sha256": "1bef78ce7dfdb75150c6055cb4b1239f1c837bc93de06ec4e545d45298cc0bc0",
+      "bytes": 22512
+    },
+    "matrix-robot-candidate": {
+      "sha256": "bcafa008f2fcbc954c06b88315356d3cd77913cfa0cd97fe2826bcdfba914a9a",
+      "bytes": 954696
+    },
+    "robot-probe-base": {
+      "sha256": "7cca8ee7cb6a449453508a046e6bd3c7e2fd409cb327e39221cecd1da7c0afad",
+      "bytes": 168760
+    },
+    "robot-probe-candidate": {
+      "sha256": "f396895f4801bef861102f327f08c60c61ca5ef2ca76caac84e21d026a1876a6",
+      "bytes": 168760
+    },
+    "robot-probe-fallback": {
+      "sha256": "ed0cc945c006e3a364dd2e92ca7ea31248852393626eb48017ed1820bbc76170",
+      "bytes": 168760
+    },
+    "robot-base.pcm": {
+      "sha256": "dcb69009ecada83f4e0150959e0408aa27fa3149711333998b9469ea397fea64",
+      "bytes": 8899884
+    },
+    "robot-candidate.pcm": {
+      "sha256": "dcb69009ecada83f4e0150959e0408aa27fa3149711333998b9469ea397fea64",
+      "bytes": 8899884
+    },
+    "robot-fallback.pcm": {
+      "sha256": "dcb69009ecada83f4e0150959e0408aa27fa3149711333998b9469ea397fea64",
+      "bytes": 8899884
+    }
+  }
+}

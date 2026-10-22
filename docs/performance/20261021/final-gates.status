@@ -1,0 +1,13 @@
+started=2026-10-21T12:13:38Z
+load=co-loaded functional checks; not isolated timing acceptance
+build=0
+unit=0
+cloudPreview=0
+sanityBaseline=0
+sanityFinal=0
+functionalSim30minOriginal=SUPERSEDED_INVALID_OVERDUB_COVERAGE
+longTailBaseline=0
+longTailFinal=0
+finished=2026-10-21T12:23:18Z
+sourceStable=0
+functionalSim30minCorrected=0

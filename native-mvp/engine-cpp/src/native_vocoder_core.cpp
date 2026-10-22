@@ -1,4 +1,5 @@
 #include "native_vocoder_core.hpp"
+#include "native_official_fx.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -134,6 +135,111 @@ float NativeVocoderOscillator::processSample() noexcept {
     return static_cast<float>(sample);
 }
 
+bool NativeOfficialVocoderOscillator::prepare(std::uint32_t sampleRate,
+    float frequencyHz, unsigned int waveform) noexcept {
+    if (sampleRate < 8000U || sampleRate > 384000U || waveform > 4U ||
+        !std::isfinite(frequencyHz) || frequencyHz <= 0.0f) return false;
+    sampleRate_ = sampleRate;
+    waveform_ = waveform;
+    // Keep each oscillator below Nyquist, including the +7-cent detuned voice.
+    // Very high requested pitches at low sample rates saturate at this ceiling.
+    frequencyHz_ = std::min(frequencyHz, static_cast<float>(sampleRate_) * 0.44f);
+    if (!first_.prepare(sampleRate_, frequencyHz_, NativeVocoderWaveform::Saw) ||
+        !second_.prepare(sampleRate_, frequencyHz_, NativeVocoderWaveform::Saw)) return false;
+    vintageCoefficient_ = std::exp(-kTwoPi * std::min(3500.0,
+        static_cast<double>(sampleRate_) * 0.2) / static_cast<double>(sampleRate_));
+    (void)setWaveform(waveform);
+    reset();
+    return true;
+}
+
+bool NativeOfficialVocoderOscillator::setFrequency(float frequencyHz) noexcept {
+    if (sampleRate_ == 0U || !std::isfinite(frequencyHz) || frequencyHz <= 0.0f) return false;
+    frequencyHz_ = std::min(frequencyHz, static_cast<float>(sampleRate_) * 0.44f);
+    return first_.setFrequency(frequencyHz_) && second_.setFrequency(
+        waveform_ == 2U ? frequencyHz_ * 1.0040518f : frequencyHz_);
+}
+
+bool NativeOfficialVocoderOscillator::setWaveform(unsigned int waveform) noexcept {
+    if (waveform > 4U) return false;
+    waveform_ = waveform;
+    if (sampleRate_ == 0U) return true;
+    (void)first_.setWaveform(waveform == 3U ? NativeVocoderWaveform::Square : NativeVocoderWaveform::Saw);
+    (void)second_.setWaveform(NativeVocoderWaveform::Saw);
+    (void)setFrequency(frequencyHz_);
+    second_.reset(first_.phase() + (waveform == 4U ? 0.75 : 0.37));
+    return true;
+}
+
+void NativeOfficialVocoderOscillator::reset() noexcept {
+    first_.reset();
+    second_.reset(waveform_ == 4U ? 0.75 : 0.37);
+    vintageLow_ = 0.0;
+}
+
+float NativeOfficialVocoderOscillator::processSample() noexcept {
+    const float first = first_.processSample();
+    const float second = second_.processSample();
+    if (waveform_ == 1U) {
+        // Soft saturation plus a fixed gentle rolloff is the authored vintage color.
+        const double shaped = std::tanh(1.6 * static_cast<double>(first));
+        vintageLow_ = vintageCoefficient_ * vintageLow_ + (1.0 - vintageCoefficient_) * shaped;
+        return boundedOutput(0.35 * shaped + 0.65 * vintageLow_);
+    }
+    if (waveform_ == 2U) return 0.5f * (first + second);
+    if (waveform_ == 4U) return first - second; // DC-balanced 25% rectangle.
+    return first;
+}
+
+void NativeVocoderOfficialShaping::prepare(std::uint32_t sampleRate) noexcept {
+    toneCoefficient_ = std::exp(-kTwoPi * 1200.0 / static_cast<double>(sampleRate));
+    reset();
+}
+
+void NativeVocoderOfficialShaping::activate(std::string_view effect) noexcept {
+    if (active_) return;
+    active_ = true;
+    constexpr std::string_view keys[]{"official_tone", "official_attack", "official_mod_sens", "official_release"};
+    for (const auto key : keys) {
+        const auto* domain = official::parameterDomain(effect, key);
+        if (domain != nullptr && domain->hasDefault) (void)setParameter(effect, key, domain->defaultValue);
+    }
+}
+
+bool NativeVocoderOfficialShaping::setParameter(std::string_view effect,
+    std::string_view key, float value) noexcept {
+    if (key != "official_tone" && key != "official_attack" &&
+        key != "official_mod_sens" && key != "official_release") return false;
+    if (!official::validParameter(effect, key, value)) return false;
+    activate(effect);
+    if (key == "official_tone") {
+        tone_ = value;
+        lowGain_ = std::exp2(-static_cast<double>(value) / 25.0);
+        highGain_ = std::exp2(static_cast<double>(value) / 25.0);
+    } else if (key == "official_attack") attack_ = value;
+    else if (key == "official_release") release_ = value;
+    else sensitivityGain_ = std::pow(10.0f, value * 0.024f); // Authored +/-24 dB law.
+    return true;
+}
+
+float NativeVocoderOfficialShaping::modulator(float sample) const noexcept {
+    return boundedSample(sample * sensitivityGain_);
+}
+
+float NativeVocoderOfficialShaping::tone(float sample) noexcept {
+    toneLow_ = toneCoefficient_ * toneLow_ + (1.0 - toneCoefficient_) * static_cast<double>(sample);
+    if (tone_ == 0.0f) return sample;
+    return boundedOutput(lowGain_ * toneLow_ + highGain_ * (static_cast<double>(sample) - toneLow_));
+}
+
+float NativeVocoderOfficialShaping::attackSeconds() const noexcept {
+    return 0.0005f * std::pow(2000.0f, attack_ * 0.01f);
+}
+
+float NativeVocoderOfficialShaping::releaseSeconds() const noexcept {
+    return 0.005f * std::pow(400.0f, release_ * 0.01f);
+}
+
 void NativeVocoderFilterBank::BandPass::configure(double sampleRate, double centerHz, double q) noexcept {
     const double omega = kTwoPi * centerHz / sampleRate;
     const double cosine = std::cos(omega);
@@ -207,6 +313,14 @@ bool NativeVocoderFilterBank::prepare(std::uint32_t sampleRate, std::size_t band
     return true;
 }
 
+bool NativeVocoderFilterBank::setEnvelopeTimes(float attackSeconds, float releaseSeconds) noexcept {
+    if (sampleRate_ == 0U || !std::isfinite(attackSeconds) || !std::isfinite(releaseSeconds) ||
+        attackSeconds <= 0.0f || releaseSeconds <= 0.0f) return false;
+    attackCoefficient_ = std::exp(-1.0 / (static_cast<double>(attackSeconds) * sampleRate_));
+    releaseCoefficient_ = std::exp(-1.0 / (static_cast<double>(releaseSeconds) * sampleRate_));
+    return true;
+}
+
 void NativeVocoderFilterBank::reset() noexcept {
     envelopes_.fill(0.0f);
     for (std::size_t band = 0U; band < bandCount_; ++band) {
@@ -267,6 +381,8 @@ bool NativeVocoderCore::prepare(std::uint32_t sampleRate) noexcept {
         sampleRate_ = 0U;
         return false;
     }
+    official_.prepare(sampleRate_);
+    if (official_.active()) (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), 0.070f);
     return true;
 }
 
@@ -285,6 +401,7 @@ bool NativeVocoderCore::setConfig(const NativeVocoderConfig& config) noexcept {
             return false;
         }
     }
+    if (sampleRate_ != 0U && official_.active()) (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), 0.070f);
     if (sampleRate_ != 0U && (bandsChanged || carrierChanged)) {
         if (!configureOscillators()) {
             return false;
@@ -293,8 +410,24 @@ bool NativeVocoderCore::setConfig(const NativeVocoderConfig& config) noexcept {
     return true;
 }
 
+bool NativeVocoderCore::setParameter(std::string_view parameterId, float value) noexcept {
+    if (parameterId != "official_tone" && parameterId != "official_attack" &&
+        parameterId != "official_mod_sens" && parameterId != "official_balance") return false;
+    if (!official::validParameter("vocoder", parameterId, value)) return false;
+    if (!official_.active()) {
+        official_.activate("vocoder");
+        const auto* balance = official::parameterDomain("vocoder", "official_balance");
+        config_.wetMix = balance->defaultValue * 0.01f;
+    }
+    if (parameterId == "official_balance") config_.wetMix = value * 0.01f;
+    else (void)official_.setParameter("vocoder", parameterId, value);
+    if (sampleRate_ != 0U) (void)filterBank_.setEnvelopeTimes(official_.attackSeconds(), 0.070f);
+    return true;
+}
+
 void NativeVocoderCore::reset() noexcept {
     filterBank_.reset();
+    official_.reset();
     for (std::size_t band = 0U; band < filterBank_.bandCount(); ++band) {
         oscillators_[band].reset();
     }
@@ -338,14 +471,15 @@ bool NativeVocoderCore::process(const float* modulator,
         const float carrierSample = voiceMode
             ? boundedSample(voiceCarrier == nullptr ? modulator[frame] : voiceCarrier[frame])
             : 0.0f;
-        filterBank_.analyzeModulatorSample(modSample);
+        filterBank_.analyzeModulatorSample(official_.active() ? official_.modulator(modSample) : modSample);
         for (std::size_t band = 0U; band < filterBank_.bandCount(); ++band) {
             const float bandCarrier = voiceMode
                 ? filterBank_.filterCarrierSample(band, carrierSample)
                 : filterBank_.filterCarrierSample(band, oscillators_[band].processSample());
             bandCarriers_[band] = bandCarrier;
         }
-        const float wet = filterBank_.synthesizeSample(bandCarriers_.data(), filterBank_.bandCount());
+        float wet = filterBank_.synthesizeSample(bandCarriers_.data(), filterBank_.bandCount());
+        if (official_.active()) wet = official_.tone(wet);
         output[frame] = boundedOutput((static_cast<double>(modSample) * dryGain) +
                                       (static_cast<double>(wet) * wetGain));
     }

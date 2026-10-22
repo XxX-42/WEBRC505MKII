@@ -26,6 +26,17 @@ constexpr float kMaxFiniteInput = 16.0f;
     return denominator > 0.0 ? static_cast<float>(1.0 / denominator) : 1.0f;
 }
 
+[[nodiscard]] float officialShape(float x, unsigned int type) noexcept {
+    switch (type) {
+    case 0U: return std::tanh(x * 0.6f); // Soft vocal saturation.
+    case 1U: return (2.0f / static_cast<float>(kPi)) * std::atan(x * 0.8f);
+    case 2U: return std::tanh(x + 0.2f) - std::tanh(0.2f); // Asymmetric OD.
+    case 3U: return std::clamp(x, -1.0f, 1.0f);
+    case 4U: return std::tanh(x * 2.0f) + 0.15f * std::tanh(x * x) * std::tanh(x);
+    default: return std::copysign(1.0f - std::exp(-std::fabs(x) * 3.0f), x);
+    }
+}
+
 } // namespace
 
 bool NativeDistortionProcessor::prepare(unsigned int sampleRate) noexcept {
@@ -42,11 +53,18 @@ bool NativeDistortionProcessor::setConfig(
 ) noexcept {
     if (!std::isfinite(config.driveDb) || !std::isfinite(config.mixPercent) ||
         config.driveDb < 0.0f || config.driveDb > 36.0f ||
-        config.mixPercent < 0.0f || config.mixPercent > 100.0f) {
+        config.mixPercent < 0.0f || config.mixPercent > 100.0f ||
+        config.type > 5U || !std::isfinite(config.tone) || config.tone < -50.0f || config.tone > 50.0f ||
+        !std::isfinite(config.directLevel) || config.directLevel < 0.0f || config.directLevel > 1.0f ||
+        !std::isfinite(config.effectLevel) || config.effectLevel < 0.0f || config.effectLevel > 1.0f) {
         return false;
     }
 
     config_ = config;
+    type_.setTarget(static_cast<float>(config.type), rampFrames);
+    tone_.setTarget(config.tone, rampFrames);
+    directLevel_.setTarget(config.directLevel, rampFrames);
+    effectLevel_.setTarget(config.effectLevel, rampFrames);
     const float driveGain = gainForDriveDb(config.driveDb);
     driveGain_.setTarget(driveGain, rampFrames);
     makeupGain_.setTarget(makeupForDrive(driveGain), rampFrames);
@@ -56,6 +74,12 @@ bool NativeDistortionProcessor::setConfig(
 
 void NativeDistortionProcessor::reset() noexcept {
     if (sampleRate_ == 0U) return;
+    type_.reset(static_cast<float>(config_.type));
+    tone_.reset(config_.tone);
+    directLevel_.reset(config_.directLevel);
+    effectLevel_.reset(config_.effectLevel);
+    processedFrames_ = 0U;
+    for (auto& filter : toneFilters_) filter.reset();
     for (auto& state : channels_) {
         state.inputHistory.fill(0.0f);
         state.reconstructionHistory.fill(0.0f);
@@ -83,11 +107,24 @@ float NativeDistortionProcessor::processInPlace(
         const float driveGain = driveGain_.next();
         const float makeupGain = makeupGain_.next();
         const float wetMix = mix_.next();
+        const float type = type_.next();
+        const float tone = tone_.next();
+        const float direct = directLevel_.next();
+        const float effect = effectLevel_.next();
+        if (config_.officialControls && processedFrames_ % 16U == 0U) {
+            for (auto& filter : toneFilters_) {
+                (void)filter.setParameters(dsp::BiquadType::HighShelf, sampleRate_,
+                    std::min(2000.0, static_cast<double>(sampleRate_) * 0.4), 0.70710678, tone * 0.24f, 1.0);
+            }
+        }
+        ++processedFrames_;
         const float leftInput = finiteBoundedInput(interleaved[offset]);
         float delayedDryLeft = 0.0f;
-        const float wetLeft = processSample(0U, leftInput, driveGain, makeupGain, delayedDryLeft);
+        float wetLeft = processSample(0U, leftInput, driveGain, makeupGain, type, delayedDryLeft);
+        if (config_.officialControls) wetLeft = toneFilters_[0].process(wetLeft);
         float outputLeft = wetMix <= 0.0f ? delayedDryLeft :
             (wetMix >= 1.0f ? wetLeft : delayedDryLeft * (1.0f - wetMix) + wetLeft * wetMix);
+        if (config_.officialControls) outputLeft = delayedDryLeft * direct + wetLeft * effect;
         if (!std::isfinite(outputLeft)) outputLeft = 0.0f;
         interleaved[offset] = outputLeft;
         peak = std::max(peak, std::fabs(outputLeft));
@@ -95,9 +132,11 @@ float NativeDistortionProcessor::processInPlace(
         if (channels >= 2U) {
             const float rightInput = finiteBoundedInput(interleaved[offset + 1U]);
             float delayedDryRight = 0.0f;
-            const float wetRight = processSample(1U, rightInput, driveGain, makeupGain, delayedDryRight);
+            float wetRight = processSample(1U, rightInput, driveGain, makeupGain, type, delayedDryRight);
+            if (config_.officialControls) wetRight = toneFilters_[1].process(wetRight);
             float outputRight = wetMix <= 0.0f ? delayedDryRight :
                 (wetMix >= 1.0f ? wetRight : delayedDryRight * (1.0f - wetMix) + wetRight * wetMix);
+            if (config_.officialControls) outputRight = delayedDryRight * direct + wetRight * effect;
             if (!std::isfinite(outputRight)) outputRight = 0.0f;
             interleaved[offset + 1U] = outputRight;
             peak = std::max(peak, std::fabs(outputRight));
@@ -105,7 +144,7 @@ float NativeDistortionProcessor::processInPlace(
             // Keep the unused right-channel history settled if the caller later
             // changes from mono to stereo without resetting the processor.
             float ignoredDry = 0.0f;
-            (void)processSample(1U, 0.0f, driveGain, makeupGain, ignoredDry);
+            (void)processSample(1U, 0.0f, driveGain, makeupGain, type, ignoredDry);
         }
     }
     return peak;
@@ -116,6 +155,7 @@ float NativeDistortionProcessor::processSample(
     float input,
     float driveGain,
     float makeupGain,
+    float type,
     float& delayedDry
 ) noexcept {
     auto& state = channels_[channel];
@@ -126,11 +166,19 @@ float NativeDistortionProcessor::processSample(
     if (state.dryWrite == kLatencyFrames) state.dryWrite = 0U;
 
     state.inputHistory[state.inputWrite] = safeInput;
+    state.inputHistory[state.inputWrite + kPolyphaseTaps] = safeInput;
     float output = 0.0f;
     for (unsigned int phase = 0U; phase < kOversampling; ++phase) {
         const float oversampled = interpolate(channel, phase);
         const float preShaped = std::clamp(oversampled * driveGain, -64.0f, 64.0f);
-        const float shaped = std::tanh(preShaped) * makeupGain;
+        float shaped = std::tanh(preShaped) * makeupGain;
+        if (config_.officialControls) {
+            const auto lower = static_cast<unsigned int>(std::clamp(type, 0.0f, 5.0f));
+            const auto upper = std::min(lower + 1U, 5U);
+            const float blend = type - static_cast<float>(lower);
+            const float a = officialShape(preShaped, lower);
+            shaped = a + (officialShape(preShaped, upper) - a) * blend;
+        }
         const float reconstructed = reconstruct(
             channel,
             std::isfinite(shaped) ? shaped : 0.0f,
@@ -146,12 +194,11 @@ float NativeDistortionProcessor::processSample(
 
 float NativeDistortionProcessor::interpolate(unsigned int channel, unsigned int phase) const noexcept {
     const auto& state = channels_[channel];
-    unsigned int historyIndex = state.inputWrite;
+    unsigned int historyIndex = state.inputWrite + kPolyphaseTaps;
     float sum = 0.0f;
     for (unsigned int tap = phase; tap < kFirTaps; tap += kOversampling) {
         sum += interpolationTaps_[tap] * state.inputHistory[historyIndex];
-        if (historyIndex == 0U) historyIndex = kPolyphaseTaps - 1U;
-        else --historyIndex;
+        --historyIndex;
     }
     return std::isfinite(sum) ? std::clamp(sum, -kMaxFiniteInput, kMaxFiniteInput) : 0.0f;
 }
@@ -159,14 +206,14 @@ float NativeDistortionProcessor::interpolate(unsigned int channel, unsigned int 
 float NativeDistortionProcessor::reconstruct(unsigned int channel, float sample, bool computeOutput) noexcept {
     auto& state = channels_[channel];
     state.reconstructionHistory[state.reconstructionWrite] = sample;
+    state.reconstructionHistory[state.reconstructionWrite + kFirTaps] = sample;
 
     float sum = 0.0f;
     if (computeOutput) {
-        unsigned int historyIndex = state.reconstructionWrite;
+        unsigned int historyIndex = state.reconstructionWrite + kFirTaps;
         for (unsigned int tap = 0U; tap < kFirTaps; ++tap) {
             sum += reconstructionTaps_[tap] * state.reconstructionHistory[historyIndex];
-            if (historyIndex == 0U) historyIndex = kFirTaps - 1U;
-            else --historyIndex;
+            --historyIndex;
         }
     }
 

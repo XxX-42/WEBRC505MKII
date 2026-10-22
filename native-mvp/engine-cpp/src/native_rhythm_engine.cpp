@@ -22,12 +22,65 @@ std::uint32_t hashText(std::string_view value) noexcept {
     return hash;
 }
 
+void appendHash(std::uint32_t& hash, std::string_view value) noexcept {
+    for (const char character : value) {
+        hash ^= static_cast<std::uint8_t>(character);
+        hash *= 0x01000193U;
+    }
+}
+
+void appendHashSeparator(std::uint32_t& hash) noexcept {
+    hash ^= static_cast<std::uint8_t>('|');
+    hash *= 0x01000193U;
+}
+
 bool containsText(std::string_view value, std::string_view token) noexcept {
     return value.find(token) != std::string_view::npos;
 }
 
-float unitHash(std::uint32_t seed) noexcept {
-    return static_cast<float>(static_cast<double>(seed) / 4294967295.0);
+std::uint32_t mix32(std::uint32_t value) noexcept {
+    value ^= value >> 16U;
+    value *= 0x7feb352dU;
+    value ^= value >> 15U;
+    value *= 0x846ca68bU;
+    value ^= value >> 16U;
+    return value;
+}
+
+double unitHash(std::uint32_t seed, std::uint32_t salt) noexcept {
+    const std::uint32_t salted = seed ^ ((salt + 1U) * 0x9e3779b1U);
+    return static_cast<double>(mix32(salted)) / 4294967296.0;
+}
+
+const char* instrumentName(std::uint8_t instrument) noexcept {
+    static constexpr const char* names[] = {
+        "kick", "snare", "closedHat", "openHat", "tom", "ride", "clap", "brush",
+    };
+    return instrument < (sizeof(names) / sizeof(names[0])) ? names[instrument] : "kick";
+}
+
+std::uint32_t cleanRoomPatternSeed(
+    const NativeRhythmPatternMetadata& pattern,
+    NativeRhythmVariation variation,
+    NativeRhythmSection section
+) noexcept {
+    std::uint32_t hash = 0x811c9dc5U;
+    appendHash(hash, pattern.id);
+    appendHashSeparator(hash);
+    appendHash(hash, pattern.genre);
+    appendHashSeparator(hash);
+    appendHash(hash, pattern.pattern);
+    appendHashSeparator(hash);
+    appendHash(hash, nativeRhythmVariationToString(variation));
+    appendHashSeparator(hash);
+    appendHash(hash, nativeRhythmSectionToString(section));
+    return hash;
+}
+
+float cleanRoomVelocity(double accent, double humanization) noexcept {
+    const double scaled = 80.0 * accent * humanization;
+    const auto rounded = static_cast<int>(std::floor(scaled + 0.5));
+    return static_cast<float>(std::max(1, std::min(127, rounded)));
 }
 
 } // namespace
@@ -72,6 +125,13 @@ bool NativeRhythmEngine::setConfig(const NativeRhythmConfig& config, std::uint64
     timelineOriginFrame_ = startFrame;
     stepOrdinal_ = 0;
     nextStepFrame_ = startFrame;
+    const bool guideClick = config.patternIndex == 210U && meterNumerator_ == 4U && meterDenominator_ == 4U;
+    const auto seedVariation = guideClick ? NativeRhythmVariation::A : config.variation;
+    const auto seedSection = guideClick ? NativeRhythmSection::Main : config.section;
+    patternSeed_ = cleanRoomPatternSeed(*pattern_, seedVariation, seedSection);
+    eventOrdinal_ = 0U;
+    eventSeedBar_ = 0U;
+    eventSeedBarInitialized_ = false;
     for (auto& voice : voices_) {
         voice.active = false;
     }
@@ -235,11 +295,18 @@ void NativeRhythmEngine::scheduleStep(
 
     const unsigned int step = static_cast<unsigned int>(ordinal % stepsPerBar_);
     const std::uint64_t bar = ordinal / stepsPerBar_;
+    if (!eventSeedBarInitialized_ || eventSeedBar_ != bar) {
+        eventSeedBar_ = bar;
+        eventOrdinal_ = 0U;
+        eventSeedBarInitialized_ = true;
+    }
     const unsigned int beat = step / stepsPerBeat_;
     const unsigned int withinBeat = step % stepsPerBeat_;
     const bool downbeat = step == 0U;
     const bool onBeat = withinBeat == 0U;
-    const bool intro = config_.section == NativeRhythmSection::Intro && bar == 0U;
+    // Browser sends a one-bar template to the worklet and repeats it; Intro
+    // therefore remains an intro each repeated bar in both clean-room renderers.
+    const bool intro = config_.section == NativeRhythmSection::Intro;
     const bool ending = config_.section == NativeRhythmSection::Ending;
     const bool fill = config_.section == NativeRhythmSection::Fill;
     const bool electronic = containsText(pattern_->genre, "ELCTRO") || containsText(pattern_->genre, "TECHNO") ||
@@ -249,15 +316,21 @@ void NativeRhythmEngine::scheduleStep(
     const bool world = containsText(pattern_->genre, "WORLD") || containsText(pattern_->genre, "TRAD") ||
         containsText(pattern_->pattern, "CONGA") || containsText(pattern_->pattern, "BOSSA") ||
         containsText(pattern_->pattern, "CAJON");
-    const bool brushPattern = containsText(pattern_->pattern, "BRUSH");
+    const double random = unitHash(patternSeed_, step);
 
-    std::uint32_t seed = hashText(pattern_->genre) ^ (hashText(pattern_->pattern) * 0x9e3779b1U) ^
-        (static_cast<std::uint32_t>(pattern_->globalIndex) * 0x45d9f3bU) ^
-        (static_cast<std::uint32_t>(config_.kitIndex) << 24U) ^
-        (static_cast<std::uint32_t>(config_.variation) << 20U) ^
-        (static_cast<std::uint32_t>(config_.section) << 16U) ^ static_cast<std::uint32_t>(bar);
-    seed = mixSeed(seed ^ (static_cast<std::uint32_t>(step) * 0x27d4eb2dU));
-    const float random = unitHash(seed);
+    const auto seedFor = [this, step, bar](Instrument instrument) noexcept {
+        const auto instrumentSeed = hashText(instrumentName(static_cast<std::uint8_t>(instrument)));
+        const std::uint32_t localSeed = mixSeed(patternSeed_ ^
+            (static_cast<std::uint32_t>(step + 1U) * 0x45d9f3bU) ^ instrumentSeed);
+        return localSeed ^ (static_cast<std::uint32_t>(bar + 1U) * 0x9e3779b1U);
+    };
+    const auto add = [this, &seedFor, step, eventFrame](Instrument instrument, double accent) noexcept {
+        const auto salt = static_cast<std::uint32_t>(step) * 13U + eventOrdinal_;
+        const double humanization = 0.82 + unitHash(patternSeed_, salt) * 0.18;
+        const float velocity = cleanRoomVelocity(accent, humanization);
+        startVoice(instrument, velocity, seedFor(instrument), eventFrame);
+        ++eventOrdinal_;
+    };
 
     // Preserve the existing legacy metronome mapping (catalog row 210) as a
     // simple four-beat clean-room click: strong kick on beat one, snare clicks
@@ -265,8 +338,11 @@ void NativeRhythmEngine::scheduleStep(
     if (config_.patternIndex == 210U && meterNumerator_ == 4U && meterDenominator_ == 4U) {
         if (onBeat) {
             const bool firstBeat = beat == 0U;
+            // Browser builds the base template as A/main, selects the hat's
+            // deterministic seed, then substitutes a kick/snare click and
+            // fixed velocity. Keep that exact stable event identity here.
             startVoice(firstBeat ? Instrument::Kick : Instrument::Snare,
-                firstBeat ? 112.0f : 86.0f, seed ^ 0x7a11U, eventFrame);
+                firstBeat ? 112.0f : 86.0f, seedFor(Instrument::ClosedHat), eventFrame);
         }
         for (auto& voice : voices_) {
             if (voice.active && voice.endFrame <= renderedFrame) {
@@ -277,43 +353,41 @@ void NativeRhythmEngine::scheduleStep(
     }
 
     const unsigned int kickBeatInterval = electronic ? 1U : 2U;
-    const bool regularKick = onBeat && (beat % kickBeatInterval) == 0U && random > 0.43f;
-    const bool variationKick = config_.variation == NativeRhythmVariation::B && !onBeat && random > 0.90f;
-    const bool denseKick = config_.variation == NativeRhythmVariation::D && !onBeat && random > 0.96f;
-    const bool kick = downbeat || regularKick || variationKick || denseKick;
-    if (kick && (!intro || downbeat)) {
-        startVoice(Instrument::Kick, downbeat ? 116.0f : 96.0f, seed ^ 0x11a3U, eventFrame);
+    const bool kick = (downbeat || (onBeat && (beat % kickBeatInterval) == 0U && random > 0.43)) &&
+        (!intro || downbeat);
+    if (kick) {
+        add(Instrument::Kick, downbeat ? 1.18 : 0.94);
+    } else if (config_.variation == NativeRhythmVariation::B && !onBeat && random > 0.90) {
+        add(Instrument::Kick, 0.70);
     }
 
     const bool backbeat = onBeat && (beat % 2U) == 1U;
-    if (!intro && backbeat) {
-        const Instrument backbeatInstrument = brushPattern ? Instrument::Brush :
-            world ? Instrument::Clap : Instrument::Snare;
-        startVoice(backbeatInstrument, 100.0f, seed ^ 0x27b5U, eventFrame);
-    }
-    if (fill && step >= (stepsPerBar_ * 7U) / 10U && !onBeat && random > 0.52f) {
-        startVoice(Instrument::Tom, 88.0f, seed ^ 0x39c7U, eventFrame);
-    }
-    if (fill && beat + 1U == meterNumerator_ && onBeat && !intro) {
-        startVoice(Instrument::Snare, 94.0f, seed ^ 0x4ad9U, eventFrame);
-    }
-    if (config_.variation == NativeRhythmVariation::D && !onBeat && random > 0.94f && !fill) {
-        startVoice(Instrument::Tom, 74.0f, seed ^ 0x5bebU, eventFrame);
+    if (backbeat || (fill && !onBeat && random > 0.58)) {
+        if (!intro || random > 0.35) {
+            add(world ? Instrument::Clap : Instrument::Snare, backbeat ? 1.0 : 0.83);
+        }
     }
 
     const unsigned int hatsPerBeat = config_.variation == NativeRhythmVariation::C ? 1U :
         config_.variation == NativeRhythmVariation::D ? 4U : 2U;
     const unsigned int hatInterval = std::max(1U, stepsPerBeat_ / hatsPerBeat);
     const bool hat = (step % hatInterval) == 0U;
-    if (hat && (downbeat || config_.variation == NativeRhythmVariation::D || onBeat || random > 0.10f)) {
-        const bool openHat = ending && step + 1U == stepsPerBar_;
-        const bool ride = downbeat && config_.variation != NativeRhythmVariation::C;
+    if (hat && (random > (config_.variation == NativeRhythmVariation::C ? 0.25 : 0.10) || onBeat)) {
+        const bool openHat = !fill && !intro && !onBeat && electronic &&
+            config_.variation != NativeRhythmVariation::C && random > 0.94;
+        const bool ride = electronic && onBeat && beat % 2U == 0U;
         const auto instrument = openHat ? Instrument::OpenHat : ride ? Instrument::Ride : Instrument::ClosedHat;
-        startVoice(instrument, downbeat ? 72.0f : 56.0f, seed ^ 0x6cfdU, eventFrame);
+        add(instrument, onBeat ? 0.72 : 0.49);
     }
 
-    if (ending && step + 1U == stepsPerBar_ && !hat) {
-        startVoice(Instrument::OpenHat, 88.0f, seed ^ 0x7d0fU, eventFrame);
+    if (fill && step >= static_cast<unsigned int>(static_cast<double>(stepsPerBar_) * 0.70) && random > 0.57 && !onBeat) {
+        add(Instrument::Tom, 0.78);
+    }
+    if (ending && step + 1U == stepsPerBar_) {
+        add(Instrument::OpenHat, 0.78);
+    }
+    if (config_.variation == NativeRhythmVariation::D && !onBeat && random > 0.92 && !fill) {
+        add(Instrument::Tom, 0.57);
     }
 
     // Old step events from a large callback gap are discarded when their voice
@@ -331,6 +405,10 @@ void NativeRhythmEngine::startVoice(
     std::uint64_t seed,
     std::uint64_t frame
 ) noexcept {
+    if (eventTraceCallback_ != nullptr) {
+        eventTraceCallback_(eventTraceContext_, frame, static_cast<std::uint8_t>(instrument),
+            velocity, static_cast<std::uint32_t>(seed));
+    }
     const auto& timbre = activeTimbre();
     float durationMs = timbre.hatDecayMs;
     float baseAmplitude = 0.10f;

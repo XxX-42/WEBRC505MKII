@@ -1,0 +1,1049 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_chrome_audio_worklet_trace_summary",
+  "generatedAtUtc": "2026-10-18T23:49:32.851Z",
+  "inputPath": "/workspace/shared/rc505-recovery-20261018/WEBRC505MKII/bench/results/browser_worklet_trace_35node_20261018T2347Z.json",
+  "inputBytes": 91751774,
+  "inputSha256": "67803ad5411bb3bbf60b97dcdaf427852bd9802ad8a1b3605aa61c49930f6fb7",
+  "browserBinaryVersion": "Google Chrome for Testing 154.0.8037.57",
+  "repoHead": "b78c55d6bcbe95974cbf21afa86ef18f8761381a",
+  "graph": {
+    "profile": "full-runtime",
+    "expectedWorklets": 35,
+    "readyWorklets": 35,
+    "sampleRateHz": 44100,
+    "durationSeconds": 6
+  },
+  "pageHarnessError": "Error: AudioContext did not remain live for measurement: state=running, audioAdvance=3.120s, wall=6.051s, minimum=5.748s",
+  "pageProgression": {
+    "passed": false,
+    "minimumAdvanceRatio": 0.95,
+    "minimumAdvanceSeconds": 5.747998749998584,
+    "measuredAdvanceSeconds": 3.120181405895692,
+    "limitation": "AudioContext clock progression is a software-side guard; this is not endpoint continuity or hardware XRUN instrumentation."
+  },
+  "pageCallbackCounts": {
+    "totalInstrumentedCallbacks": 37615,
+    "estimatedMissingCallbacks": 0,
+    "estimatedMissingFrames": 0,
+    "directDroppedCallbackCount": null,
+    "directDroppedFrameCount": null,
+    "directDroppedCountUnavailableReason": "The Web Audio AudioWorklet API exposes no direct browser XRUN or dropped-callback counter; positive currentFrame gaps are reported as software-side estimates.",
+    "deadlineMisses": null,
+    "wrapperDeadlineMisses": null,
+    "callbackErrors": 0,
+    "instrumentationErrors": 0,
+    "nonFiniteOutputSamples": 0
+  },
+  "traceStats": {
+    "eventCount": 258864,
+    "processEventCount": 37495,
+    "profileChunkCount": 1072,
+    "dataLossOccurred": false
+  },
+  "processEventStats": {
+    "count": 37495,
+    "threadName": "Realtime AudioWorklet thread",
+    "wallDurationUs": {
+      "count": 37495,
+      "p50": 91,
+      "p95": 256,
+      "p99": 370,
+      "max": 43039,
+      "total": 4545240,
+      "units": "microseconds, as emitted by Chrome trace; intrusive diagnostic only"
+    },
+    "threadCpuDurationUs": {
+      "count": 37495,
+      "p50": 85,
+      "p95": 251,
+      "p99": 352,
+      "max": 42531,
+      "total": 4504230,
+      "units": "microseconds, as emitted by Chrome trace; intrusive diagnostic only"
+    }
+  },
+  "profiles": [
+    {
+      "pid": 80,
+      "tid": 19,
+      "threadName": "v8:ProfEvntProc",
+      "chunks": 707,
+      "samples": 70578,
+      "missingSampleNode": 0,
+      "idleSamples": 50010,
+      "nonIdleSamples": 20513,
+      "topNonIdleFrames": [
+        {
+          "functionName": "processReverb",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11390,
+          "samples": 3118,
+          "percentOfNonIdleSamples": 15.2
+        },
+        {
+          "functionName": "processBlock",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10393,
+          "samples": 2632,
+          "percentOfNonIdleSamples": 12.831
+        },
+        {
+          "functionName": "equalPowerFadeOutGain",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 120,
+          "samples": 2121,
+          "percentOfNonIdleSamples": 10.34
+        },
+        {
+          "functionName": "processDistortionSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11103,
+          "samples": 1879,
+          "percentOfNonIdleSamples": 9.16
+        },
+        {
+          "functionName": "wasm-function[48]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 1100,
+          "percentOfNonIdleSamples": 5.362
+        },
+        {
+          "functionName": "equalPowerFadeInGain",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 123,
+          "samples": 784,
+          "percentOfNonIdleSamples": 3.822
+        },
+        {
+          "functionName": "processPhaser",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11321,
+          "samples": 751,
+          "percentOfNonIdleSamples": 3.661
+        },
+        {
+          "functionName": "processChorus",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11288,
+          "samples": 704,
+          "percentOfNonIdleSamples": 3.432
+        },
+        {
+          "functionName": "wasm-function[49]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 630,
+          "percentOfNonIdleSamples": 3.071
+        },
+        {
+          "functionName": "processOversampledChannel",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 5989,
+          "samples": 584,
+          "percentOfNonIdleSamples": 2.847
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 5955,
+          "samples": 445,
+          "percentOfNonIdleSamples": 2.169
+        },
+        {
+          "functionName": "(garbage collector)",
+          "url": "",
+          "line": null,
+          "samples": 351,
+          "percentOfNonIdleSamples": 1.711
+        },
+        {
+          "functionName": "recordWithHiss",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1264,
+          "samples": 346,
+          "percentOfNonIdleSamples": 1.687
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 2079,
+          "samples": 272,
+          "percentOfNonIdleSamples": 1.326
+        },
+        {
+          "functionName": "processEffectSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10975,
+          "samples": 267,
+          "percentOfNonIdleSamples": 1.302
+        },
+        {
+          "functionName": "wasm-function[35]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 261,
+          "percentOfNonIdleSamples": 1.272
+        },
+        {
+          "functionName": "wasm-function[34]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 246,
+          "percentOfNonIdleSamples": 1.199
+        },
+        {
+          "functionName": "processDelay",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11267,
+          "samples": 219,
+          "percentOfNonIdleSamples": 1.068
+        },
+        {
+          "functionName": "process",
+          "url": "http://127.0.0.1:5173/bench/worklets/instrument-register-processor.js",
+          "line": 313,
+          "samples": 188,
+          "percentOfNonIdleSamples": 0.916
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1958,
+          "samples": 184,
+          "percentOfNonIdleSamples": 0.897
+        },
+        {
+          "functionName": "processAutoPan",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11369,
+          "samples": 175,
+          "percentOfNonIdleSamples": 0.853
+        },
+        {
+          "functionName": "processFrameSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1179,
+          "samples": 174,
+          "percentOfNonIdleSamples": 0.848
+        },
+        {
+          "functionName": "processFlanger",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11199,
+          "samples": 171,
+          "percentOfNonIdleSamples": 0.834
+        },
+        {
+          "functionName": "refreshControlDependentCoefficients",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10841,
+          "samples": 167,
+          "percentOfNonIdleSamples": 0.814
+        },
+        {
+          "functionName": "",
+          "url": "blob:http://127.0.0.1:5173/e35c9602-3437-427d-87d6-0cd3c0f427f5",
+          "line": 348,
+          "samples": 159,
+          "percentOfNonIdleSamples": 0.775
+        },
+        {
+          "functionName": "processChannel",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1980,
+          "samples": 152,
+          "percentOfNonIdleSamples": 0.741
+        },
+        {
+          "functionName": "readLagrangeFromWriteHead2",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 9187,
+          "samples": 152,
+          "percentOfNonIdleSamples": 0.741
+        },
+        {
+          "functionName": "wasm-function[33]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 149,
+          "percentOfNonIdleSamples": 0.726
+        },
+        {
+          "functionName": "processChannel",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1015,
+          "samples": 146,
+          "percentOfNonIdleSamples": 0.712
+        },
+        {
+          "functionName": "readClockMilliseconds",
+          "url": "http://127.0.0.1:5173/bench/worklets/instrument-register-processor.js",
+          "line": 59,
+          "samples": 123,
+          "percentOfNonIdleSamples": 0.6
+        },
+        {
+          "functionName": "renderInto",
+          "url": "http://127.0.0.1:5173/worklets/rhythm-processor.js",
+          "line": 196,
+          "samples": 122,
+          "percentOfNonIdleSamples": 0.595
+        },
+        {
+          "functionName": "readFractional",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1246,
+          "samples": 122,
+          "percentOfNonIdleSamples": 0.595
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1635,
+          "samples": 121,
+          "percentOfNonIdleSamples": 0.59
+        },
+        {
+          "functionName": "clampPosition",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 116,
+          "samples": 121,
+          "percentOfNonIdleSamples": 0.59
+        },
+        {
+          "functionName": "advanceControls",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10766,
+          "samples": 116,
+          "percentOfNonIdleSamples": 0.565
+        },
+        {
+          "functionName": "process",
+          "url": "blob:http://127.0.0.1:5173/e35c9602-3437-427d-87d6-0cd3c0f427f5",
+          "line": 261,
+          "samples": 109,
+          "percentOfNonIdleSamples": 0.531
+        },
+        {
+          "functionName": "wasm-function[5]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 107,
+          "percentOfNonIdleSamples": 0.522
+        },
+        {
+          "functionName": "process",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11524,
+          "samples": 104,
+          "percentOfNonIdleSamples": 0.507
+        },
+        {
+          "functionName": "processRingMod",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11170,
+          "samples": 102,
+          "percentOfNonIdleSamples": 0.497
+        },
+        {
+          "functionName": "processFrameSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 861,
+          "samples": 82,
+          "percentOfNonIdleSamples": 0.4
+        }
+      ],
+      "topFxWorkletFrames": [
+        {
+          "functionName": "processReverb",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11390,
+          "samples": 3118,
+          "percentOfNonIdleSamples": 15.2
+        },
+        {
+          "functionName": "processBlock",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10393,
+          "samples": 2632,
+          "percentOfNonIdleSamples": 12.831
+        },
+        {
+          "functionName": "equalPowerFadeOutGain",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 120,
+          "samples": 2121,
+          "percentOfNonIdleSamples": 10.34
+        },
+        {
+          "functionName": "processDistortionSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11103,
+          "samples": 1879,
+          "percentOfNonIdleSamples": 9.16
+        },
+        {
+          "functionName": "equalPowerFadeInGain",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 123,
+          "samples": 784,
+          "percentOfNonIdleSamples": 3.822
+        },
+        {
+          "functionName": "processPhaser",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11321,
+          "samples": 751,
+          "percentOfNonIdleSamples": 3.661
+        },
+        {
+          "functionName": "processChorus",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11288,
+          "samples": 704,
+          "percentOfNonIdleSamples": 3.432
+        },
+        {
+          "functionName": "processOversampledChannel",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 5989,
+          "samples": 584,
+          "percentOfNonIdleSamples": 2.847
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 5955,
+          "samples": 445,
+          "percentOfNonIdleSamples": 2.169
+        },
+        {
+          "functionName": "recordWithHiss",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1264,
+          "samples": 346,
+          "percentOfNonIdleSamples": 1.687
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 2079,
+          "samples": 272,
+          "percentOfNonIdleSamples": 1.326
+        },
+        {
+          "functionName": "processEffectSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10975,
+          "samples": 267,
+          "percentOfNonIdleSamples": 1.302
+        },
+        {
+          "functionName": "processDelay",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11267,
+          "samples": 219,
+          "percentOfNonIdleSamples": 1.068
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1958,
+          "samples": 184,
+          "percentOfNonIdleSamples": 0.897
+        },
+        {
+          "functionName": "processAutoPan",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11369,
+          "samples": 175,
+          "percentOfNonIdleSamples": 0.853
+        },
+        {
+          "functionName": "processFrameSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1179,
+          "samples": 174,
+          "percentOfNonIdleSamples": 0.848
+        },
+        {
+          "functionName": "processFlanger",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11199,
+          "samples": 171,
+          "percentOfNonIdleSamples": 0.834
+        },
+        {
+          "functionName": "refreshControlDependentCoefficients",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10841,
+          "samples": 167,
+          "percentOfNonIdleSamples": 0.814
+        },
+        {
+          "functionName": "processChannel",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1980,
+          "samples": 152,
+          "percentOfNonIdleSamples": 0.741
+        },
+        {
+          "functionName": "readLagrangeFromWriteHead2",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 9187,
+          "samples": 152,
+          "percentOfNonIdleSamples": 0.741
+        },
+        {
+          "functionName": "processChannel",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1015,
+          "samples": 146,
+          "percentOfNonIdleSamples": 0.712
+        },
+        {
+          "functionName": "readFractional",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1246,
+          "samples": 122,
+          "percentOfNonIdleSamples": 0.595
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1635,
+          "samples": 121,
+          "percentOfNonIdleSamples": 0.59
+        },
+        {
+          "functionName": "clampPosition",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 116,
+          "samples": 121,
+          "percentOfNonIdleSamples": 0.59
+        },
+        {
+          "functionName": "advanceControls",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10766,
+          "samples": 116,
+          "percentOfNonIdleSamples": 0.565
+        },
+        {
+          "functionName": "process",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11524,
+          "samples": 104,
+          "percentOfNonIdleSamples": 0.507
+        },
+        {
+          "functionName": "processRingMod",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11170,
+          "samples": 102,
+          "percentOfNonIdleSamples": 0.497
+        },
+        {
+          "functionName": "processFrameSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 861,
+          "samples": 82,
+          "percentOfNonIdleSamples": 0.4
+        },
+        {
+          "functionName": "updateGateReverbEnvelope",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10864,
+          "samples": 60,
+          "percentOfNonIdleSamples": 0.292
+        },
+        {
+          "functionName": "updateDynamicsDetector",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11230,
+          "samples": 51,
+          "percentOfNonIdleSamples": 0.249
+        },
+        {
+          "functionName": "process",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 685,
+          "samples": 41,
+          "percentOfNonIdleSamples": 0.2
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 976,
+          "samples": 32,
+          "percentOfNonIdleSamples": 0.156
+        },
+        {
+          "functionName": "processStereoEnhance",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10930,
+          "samples": 27,
+          "percentOfNonIdleSamples": 0.132
+        },
+        {
+          "functionName": "readLagrangeFromWriteHead",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 768,
+          "samples": 18,
+          "percentOfNonIdleSamples": 0.088
+        },
+        {
+          "functionName": "get fullyBypassed",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 10348,
+          "samples": 17,
+          "percentOfNonIdleSamples": 0.083
+        },
+        {
+          "functionName": "readLagrange",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 909,
+          "samples": 15,
+          "percentOfNonIdleSamples": 0.073
+        },
+        {
+          "functionName": "processDistortionDryDelay",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 11091,
+          "samples": 14,
+          "percentOfNonIdleSamples": 0.068
+        },
+        {
+          "functionName": "next",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 37,
+          "samples": 13,
+          "percentOfNonIdleSamples": 0.063
+        },
+        {
+          "functionName": "finiteBounded",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 765,
+          "samples": 12,
+          "percentOfNonIdleSamples": 0.058
+        },
+        {
+          "functionName": "processSample",
+          "url": "http://127.0.0.1:5173/worklets/fx-processor.js",
+          "line": 1150,
+          "samples": 12,
+          "percentOfNonIdleSamples": 0.058
+        }
+      ],
+      "topWasmFrames": [
+        {
+          "functionName": "wasm-function[48]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 1100,
+          "percentOfNonIdleSamples": 5.362
+        },
+        {
+          "functionName": "wasm-function[49]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 630,
+          "percentOfNonIdleSamples": 3.071
+        },
+        {
+          "functionName": "wasm-function[35]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 261,
+          "percentOfNonIdleSamples": 1.272
+        },
+        {
+          "functionName": "wasm-function[34]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 246,
+          "percentOfNonIdleSamples": 1.199
+        },
+        {
+          "functionName": "wasm-function[33]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 149,
+          "percentOfNonIdleSamples": 0.726
+        },
+        {
+          "functionName": "wasm-function[5]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 107,
+          "percentOfNonIdleSamples": 0.522
+        },
+        {
+          "functionName": "wasm-function[23]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 42,
+          "percentOfNonIdleSamples": 0.205
+        },
+        {
+          "functionName": "wasm-function[21]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 38,
+          "percentOfNonIdleSamples": 0.185
+        },
+        {
+          "functionName": "js-to-wasm:ff:",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 32,
+          "percentOfNonIdleSamples": 0.156
+        },
+        {
+          "functionName": "wasm-function[20]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 21,
+          "percentOfNonIdleSamples": 0.102
+        },
+        {
+          "functionName": "wasm-function[30]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 5,
+          "percentOfNonIdleSamples": 0.024
+        },
+        {
+          "functionName": "wasm-function[53]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 5,
+          "percentOfNonIdleSamples": 0.024
+        },
+        {
+          "functionName": "wasm-function[24]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 5,
+          "percentOfNonIdleSamples": 0.024
+        },
+        {
+          "functionName": "wasm-function[6]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.015
+        },
+        {
+          "functionName": "js-to-wasm:id:",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.015
+        },
+        {
+          "functionName": "js-to-wasm:ii:",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.015
+        },
+        {
+          "functionName": "wasm-function[29]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.015
+        },
+        {
+          "functionName": "js-to-wasm:fi:",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.015
+        },
+        {
+          "functionName": "wasm-function[11]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 2,
+          "percentOfNonIdleSamples": 0.01
+        },
+        {
+          "functionName": "js-to-wasm:f:",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 2,
+          "percentOfNonIdleSamples": 0.01
+        },
+        {
+          "functionName": "wasm-function[10]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 2,
+          "percentOfNonIdleSamples": 0.01
+        },
+        {
+          "functionName": "js-to-wasm:ii:i",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.005
+        },
+        {
+          "functionName": "wasm-function[19]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.005
+        },
+        {
+          "functionName": "wasm-function[12]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.005
+        },
+        {
+          "functionName": "wasm-function[31]",
+          "url": "wasm://wasm/0003efba",
+          "line": 0,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.005
+        }
+      ]
+    },
+    {
+      "pid": 80,
+      "tid": 20,
+      "threadName": "v8:ProfEvntProc",
+      "chunks": 365,
+      "samples": 36254,
+      "missingSampleNode": 0,
+      "idleSamples": 32140,
+      "nonIdleSamples": 408,
+      "topNonIdleFrames": [
+        {
+          "functionName": "requestAnimationFrame",
+          "url": "",
+          "line": null,
+          "samples": 103,
+          "percentOfNonIdleSamples": 25.245
+        },
+        {
+          "functionName": "",
+          "url": "",
+          "line": null,
+          "samples": 66,
+          "percentOfNonIdleSamples": 16.176
+        },
+        {
+          "functionName": "poll",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 237,
+          "samples": 42,
+          "percentOfNonIdleSamples": 10.294
+        },
+        {
+          "functionName": "suspend",
+          "url": "",
+          "line": null,
+          "samples": 25,
+          "percentOfNonIdleSamples": 6.127
+        },
+        {
+          "functionName": "update",
+          "url": "http://127.0.0.1:5173/src/audio/TrackAudio.ts",
+          "line": 753,
+          "samples": 24,
+          "percentOfNonIdleSamples": 5.882
+        },
+        {
+          "functionName": "(garbage collector)",
+          "url": "",
+          "line": null,
+          "samples": 21,
+          "percentOfNonIdleSamples": 5.147
+        },
+        {
+          "functionName": "",
+          "url": "http://127.0.0.1:5173/src/core/Transport.ts",
+          "line": 33,
+          "samples": 17,
+          "percentOfNonIdleSamples": 4.167
+        },
+        {
+          "functionName": "",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 119,
+          "samples": 13,
+          "percentOfNonIdleSamples": 3.186
+        },
+        {
+          "functionName": "getFloatTimeDomainData",
+          "url": "",
+          "line": null,
+          "samples": 13,
+          "percentOfNonIdleSamples": 3.186
+        },
+        {
+          "functionName": "innerSerialize",
+          "url": "",
+          "line": 169,
+          "samples": 12,
+          "percentOfNonIdleSamples": 2.941
+        },
+        {
+          "functionName": "",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 405,
+          "samples": 11,
+          "percentOfNonIdleSamples": 2.696
+        },
+        {
+          "functionName": "serialize",
+          "url": "",
+          "line": 158,
+          "samples": 11,
+          "percentOfNonIdleSamples": 2.696
+        },
+        {
+          "functionName": "",
+          "url": "",
+          "line": 0,
+          "samples": 10,
+          "percentOfNonIdleSamples": 2.451
+        },
+        {
+          "functionName": "next",
+          "url": "",
+          "line": 24,
+          "samples": 6,
+          "percentOfNonIdleSamples": 1.471
+        },
+        {
+          "functionName": "getCurrentPlaybackPosition",
+          "url": "http://127.0.0.1:5173/src/audio/TrackAudio.ts",
+          "line": 1698,
+          "samples": 6,
+          "percentOfNonIdleSamples": 1.471
+        },
+        {
+          "functionName": "snapshotMetrics",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 400,
+          "samples": 6,
+          "percentOfNonIdleSamples": 1.471
+        },
+        {
+          "functionName": "runTimedMeasurement",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 1159,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.735
+        },
+        {
+          "functionName": "runBenchmark",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 1284,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.735
+        },
+        {
+          "functionName": "isTypedArray",
+          "url": "",
+          "line": 61,
+          "samples": 3,
+          "percentOfNonIdleSamples": 0.735
+        },
+        {
+          "functionName": "getBenchmarkProgress",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 1219,
+          "samples": 2,
+          "percentOfNonIdleSamples": 0.49
+        },
+        {
+          "functionName": "isRegExp",
+          "url": "",
+          "line": 32,
+          "samples": 2,
+          "percentOfNonIdleSamples": 0.49
+        },
+        {
+          "functionName": "snapshot",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 303,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "audioNode.port.onmessage",
+          "url": "http://127.0.0.1:5173/src/audio/pitch/vendor/SignalsmithStretch.mjs",
+          "line": 474,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 498,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 1340,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 1358,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "setStatus",
+          "url": "http://127.0.0.1:5173/bench/browser_audio_worklet_stress_page.js",
+          "line": 41,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "evaluate",
+          "url": "",
+          "line": 283,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "isURL",
+          "url": "",
+          "line": 46,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        },
+        {
+          "functionName": "isError",
+          "url": "",
+          "line": 53,
+          "samples": 1,
+          "percentOfNonIdleSamples": 0.245
+        }
+      ],
+      "topFxWorkletFrames": [],
+      "topWasmFrames": []
+    }
+  ],
+  "cautions": [
+    "Chrome tracing and CPU sampling are intrusive; this does not substitute for an untraced real-time acceptance run.",
+    "V8 profile frames identify function names and source lines, but this trace does not identify the individual AudioWorkletNode instance for shared functions.",
+    "Signalsmith WASM function indices are unsymbolized here and are not assigned semantic names.",
+    "No physical device, hardware XRUN, or acoustic evidence is produced."
+  ]
+}

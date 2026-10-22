@@ -1,0 +1,7 @@
+run_id=20261018T165624Z_no_peak_B2
+attempt_started_utc=2026-10-18T16:56:24Z
+variant=no-peak candidate
+source_head=f7bee1d0360fe46f3a586094bec42076df433cf9
+executable_sha256=0ef76405db80fa7b99a61272e11ff8f310ad0319ab4af1b62500dcc92a1aef5e
+result_validity=INVALID
+reason=Attempt was interrupted with Ctrl-C at 2026-10-18T16:57:45Z before a JSON result was produced. The empty JSON is retained only as an interrupted-run record; do not interpret it as a measurement.

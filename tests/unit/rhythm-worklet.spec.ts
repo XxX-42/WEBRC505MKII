@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RhythmEngine } from '../../src/audio/RhythmEngine';
-import { RHYTHM_PATTERN_CATALOG, createCleanRoomPatternEvents } from '../../src/audio/rhythm';
-import { RhythmWorkletCore, type RhythmWorkletConfiguration } from '../../src/audio/worklet/RhythmProcessor';
+import { DrumVoicePool, RHYTHM_PATTERN_CATALOG, createCleanRoomPatternEvents } from '../../src/audio/rhythm';
+import { RhythmWorkletCore, RhythmWorkletProcessor, type RhythmWorkletConfiguration } from '../../src/audio/worklet/RhythmProcessor';
 import { Transport } from '../../src/core/Transport';
 
 class TestWorkletNode {
   static instances: TestWorkletNode[] = [];
-  readonly port = { postMessage: vi.fn() };
+  readonly port: {
+    postMessage: ReturnType<typeof vi.fn>;
+    onmessage: ((event: MessageEvent<unknown>) => void) | null;
+  } = { postMessage: vi.fn(), onmessage: null };
   readonly connect = vi.fn();
   readonly disconnect = vi.fn();
   onprocessorerror: (() => void) | null = null;
@@ -17,6 +20,10 @@ class TestWorkletNode {
     readonly options: AudioWorkletNodeOptions,
   ) {
     TestWorkletNode.instances.push(this);
+  }
+
+  emitMessage(data: unknown): void {
+    this.port.onmessage?.({ data } as MessageEvent<unknown>);
   }
 }
 
@@ -77,6 +84,154 @@ describe('rhythm AudioWorklet integration', () => {
     expect([first.length, second.length, third.length]).toEqual([257, 19, 2049]);
     expect([...first, ...second, ...third].some((sample) => sample !== 0)).toBe(true);
     expect(core.peakVoiceCount).toBeLessThanOrEqual(4);
+  });
+
+  it('silences a stale AudioWorklet frame without advancing the rhythm timeline, then resumes', () => {
+    const sampleRate = 16_000;
+    const configuration = createWorkletConfig({
+      sampleRate,
+      startFrame: 1_024,
+      eventTemplate: createCleanRoomPatternEvents(106, { sampleRate, bpm: 123, bars: 1, variation: 'A' }),
+    });
+    const reference = new RhythmWorkletCore(sampleRate);
+    reference.configure(configuration);
+    const expectedBlocks = [1_024, 1_152, 1_280, 1_408].map((frame) => reference.renderBlock(frame, 128));
+
+    const recovering = new RhythmWorkletCore(sampleRate);
+    recovering.configure(configuration);
+    const first = new Float32Array(128);
+    const second = new Float32Array(128);
+    const stale = new Float32Array(128);
+    const staleOverlap = new Float32Array(128);
+    const resumed = new Float32Array(128);
+    const following = new Float32Array(128);
+    recovering.renderInto(1_024, first);
+    recovering.renderInto(1_152, second);
+
+    // AudioWorklet currentFrame rewound one 128-frame quantum after a successful block.
+    // Never feed this stale range to DrumVoicePool; silence it without moving the cursor.
+    expect(recovering.renderInto(1_024, stale)).toBe(false);
+    expect([...stale].every((sample) => sample === 0)).toBe(true);
+    // Partial-overlap and repeated stale blocks remain muted and do not move the cursor.
+    expect(recovering.renderInto(1_279, staleOverlap)).toBe(false);
+    expect([...staleOverlap].every((sample) => sample === 0)).toBe(true);
+    expect(recovering.renderInto(1_280, resumed)).toBe(true);
+    expect(recovering.renderInto(1_408, following)).toBe(true);
+    expect(first).toEqual(expectedBlocks[0]);
+    expect(second).toEqual(expectedBlocks[1]);
+    expect(resumed).toEqual(expectedBlocks[2]);
+    expect(following).toEqual(expectedBlocks[3]);
+  });
+
+  it('mutes repeated stale blocks around a bar boundary without replaying or duplicating hits', () => {
+    const sampleRate = 16_000;
+    const bpm = 120;
+    const barFrames = sampleRate * 2;
+    const configuration = createWorkletConfig({
+      sampleRate,
+      bpm,
+      startFrame: 0,
+      eventTemplate: createCleanRoomPatternEvents(106, { sampleRate, bpm, bars: 1, variation: 'A' }),
+    });
+    const reference = new RhythmWorkletCore(sampleRate);
+    reference.configure(configuration);
+    reference.renderBlock(0, barFrames - 256);
+    reference.renderBlock(barFrames - 256, 128);
+    reference.renderBlock(barFrames - 128, 128);
+    const expectedAtBar = reference.renderBlock(barFrames, 128);
+
+    const recovering = new RhythmWorkletCore(sampleRate);
+    recovering.configure(configuration);
+    recovering.renderBlock(0, barFrames - 256);
+    recovering.renderBlock(barFrames - 256, 128);
+    recovering.renderBlock(barFrames - 128, 128);
+
+    const stale = new Float32Array(128);
+    const repeatedStale = new Float32Array(128);
+    const atBar = new Float32Array(128);
+    expect(recovering.renderInto(barFrames - 128, stale)).toBe(false);
+    expect(recovering.renderInto(barFrames - 256, repeatedStale)).toBe(false);
+    expect([...stale, ...repeatedStale].every((sample) => sample === 0)).toBe(true);
+    expect(recovering.renderInto(barFrames, atBar)).toBe(true);
+    expect(atBar).toEqual(expectedAtBar);
+    expect([...atBar].some((sample) => sample !== 0)).toBe(true);
+  });
+
+  it('keeps the absolute cursor across a tempo reconfiguration and resumes with the new pattern', () => {
+    const sampleRate = 16_000;
+    const initial = createWorkletConfig({ sampleRate, startFrame: 1_024 });
+    const updated = createWorkletConfig({
+      sampleRate,
+      bpm: 91,
+      startFrame: 1_280,
+      eventTemplate: createCleanRoomPatternEvents(106, { sampleRate, bpm: 91, bars: 1, variation: 'D' }),
+    });
+    const reference = new RhythmWorkletCore(sampleRate);
+    reference.configure(updated);
+    const expected = reference.renderBlock(1_280, 128);
+
+    const core = new RhythmWorkletCore(sampleRate);
+    core.configure(initial);
+    core.renderBlock(1_024, 128);
+    core.renderBlock(1_152, 128);
+    expect(core.expectedNextFrame).toBe(1_280);
+    core.configure(updated);
+    const stale = new Float32Array(128);
+    const resumed = new Float32Array(128);
+    expect(core.renderInto(1_152, stale)).toBe(false);
+    expect([...stale].every((sample) => sample === 0)).toBe(true);
+    expect(core.expectedNextFrame).toBe(1_280);
+    expect(core.renderInto(1_280, resumed)).toBe(true);
+    expect(resumed).toEqual(expected);
+  });
+
+  it('keeps DrumVoicePool strict when a caller attempts to render a stale frame', () => {
+    const sampleRate = 16_000;
+    const pool = new DrumVoicePool({ sampleRate, kit: 16, maxVoices: 4 });
+    pool.renderBlock(1_024, 128);
+    pool.renderBlock(1_152, 128);
+    expect(() => pool.renderBlock(1_024, 128)).toThrow(
+      'renderBlock must advance monotonically on the absolute sample-frame timeline',
+    );
+  });
+
+  it('keeps the AudioWorklet alive, mutes stale frames, and posts one rewind/recovery pair', () => {
+    const sampleRate = 16_000;
+    const configuration = createWorkletConfig({
+      sampleRate,
+      startFrame: 1_024,
+      eventTemplate: createCleanRoomPatternEvents(106, { sampleRate, bpm: 123, bars: 1, variation: 'A' }),
+    });
+    vi.stubGlobal('sampleRate', sampleRate);
+    const processor = new RhythmWorkletProcessor();
+    const postMessage = vi.spyOn(processor.port, 'postMessage');
+    processor.port.onmessage?.({ data: { type: 'start', configuration } });
+
+    const renderAt = (frame: number): { readonly alive: boolean; readonly output: Float32Array } => {
+      vi.stubGlobal('currentFrame', frame);
+      const output = new Float32Array(128);
+      const alive = processor.process([], [[output]]);
+      return { alive, output };
+    };
+
+    const first = renderAt(1_024);
+    const second = renderAt(1_152);
+    const stale = renderAt(1_024);
+    const repeatedStale = renderAt(1_152);
+    const resumed = renderAt(1_280);
+
+    const reference = new RhythmWorkletCore(sampleRate);
+    reference.configure(configuration);
+    reference.renderBlock(1_024, 128);
+    reference.renderBlock(1_152, 128);
+    const expectedResumed = reference.renderBlock(1_280, 128);
+    expect(first.alive && second.alive && stale.alive && repeatedStale.alive && resumed.alive).toBe(true);
+    expect([...stale.output, ...repeatedStale.output].every((sample) => sample === 0)).toBe(true);
+    expect(resumed.output).toEqual(expectedResumed);
+    expect(postMessage.mock.calls.map(([message]) => (message as { type: string }).type)).toEqual([
+      'timeline-rewind',
+      'timeline-recovered',
+    ]);
   });
 
   it('renders directly into reused caller buffers for variable block sizes', () => {
@@ -141,8 +296,12 @@ describe('rhythm AudioWorklet integration', () => {
   it('loads one rhythm processor, passes catalog/kit/variation data, and preserves legacy controls', async () => {
     vi.stubGlobal('AudioWorkletNode', TestWorkletNode);
     const context = createContext();
+    const transport = Transport.getInstance();
+    const bpmListeners = () => ((transport as any).listeners.get('bpm-change') ?? []).length;
+    const bpmListenersBefore = bpmListeners();
     const engine = new RhythmEngine(context);
     try {
+      expect(bpmListeners()).toBe(bpmListenersBefore);
       engine.connect({} as AudioNode);
       engine.setVolume(75);
       engine.setPattern('TECHNO');
@@ -153,6 +312,7 @@ describe('rhythm AudioWorklet integration', () => {
       expect(engine.setQuantizeGrid('1/8')).toBe(true);
       const timerSpy = vi.spyOn(window, 'setTimeout');
       engine.start();
+      expect(bpmListeners()).toBe(bpmListenersBefore + 1);
       engine.start();
       expect(timerSpy).not.toHaveBeenCalled();
       await vi.waitFor(() => expect(TestWorkletNode.instances).toHaveLength(1));
@@ -188,6 +348,7 @@ describe('rhythm AudioWorklet integration', () => {
         configuration: { kitIndex: 7 },
       });
       engine.stop();
+      expect(bpmListeners()).toBe(bpmListenersBefore);
       expect(node.port.postMessage.mock.calls.at(-1)?.[0]).toEqual({ type: 'stop' });
       expect(engine.outputNode.gain.value).toBe(0.75);
     } finally {
@@ -210,6 +371,65 @@ describe('rhythm AudioWorklet integration', () => {
       expect(posted.configuration.eventTemplate.map((event) => event.instrument)).toEqual(['kick', 'snare', 'snare', 'snare']);
       expect(context.createGain).toHaveBeenCalledOnce();
       expect(engine.error).toBe('');
+    } finally {
+      engine.dispose();
+    }
+  });
+
+  it('surfaces timeline mute and recovery diagnostics through the rhythm status callback', async () => {
+    vi.stubGlobal('AudioWorkletNode', TestWorkletNode);
+    const context = createContext();
+    const notifyStatus = vi.fn();
+    const engine = new RhythmEngine(context, notifyStatus);
+    try {
+      engine.start();
+      await vi.waitFor(() => expect(TestWorkletNode.instances).toHaveLength(1));
+      const node = TestWorkletNode.instances[0]!;
+      node.emitMessage({
+        type: 'timeline-rewind',
+        requestedStartFrame: 1_024,
+        expectedStartFrame: 1_152,
+        frameCount: 128,
+      });
+      expect(engine.error).toContain('block was muted');
+      expect(engine.error).toContain('state was not rewound');
+      expect(notifyStatus).toHaveBeenCalledOnce();
+
+      node.emitMessage({
+        type: 'timeline-recovered',
+        firstStaleStartFrame: 1_024,
+        expectedStartFrame: 1_152,
+        resumedStartFrame: 1_152,
+      });
+      expect(engine.error).toContain('Timeline continuity was interrupted');
+      expect(engine.error).toContain('not buffered for replay');
+      expect(notifyStatus).toHaveBeenCalledTimes(2);
+    } finally {
+      engine.dispose();
+    }
+  });
+
+  it('renders catalog GUIDE 210 with the same sample-frame click as legacy METRONOME, independent of variation/section', async () => {
+    vi.stubGlobal('AudioWorkletNode', TestWorkletNode);
+    const context = createContext();
+    const engine = new RhythmEngine(context);
+    try {
+      engine.setCatalogPattern(210);
+      engine.setVariation('D');
+      engine.setSection('fill');
+      engine.start();
+      await vi.waitFor(() => expect(TestWorkletNode.instances).toHaveLength(1));
+
+      const node = TestWorkletNode.instances[0]!;
+      const posted = node.port.postMessage.mock.calls[0]![0] as { configuration: RhythmWorkletConfiguration };
+      const { eventTemplate, startFrame } = posted.configuration;
+      expect(eventTemplate.map(({ step }) => step)).toEqual([0, 4, 8, 12]);
+      expect(eventTemplate.map(({ instrument }) => instrument)).toEqual(['kick', 'snare', 'snare', 'snare']);
+      expect(startFrame).toBeGreaterThan(0);
+      expect(eventTemplate.map(({ frame }) => frame)).toEqual([0, 24000, 48000, 72000]);
+      expect(eventTemplate.every(({ variation, section, patternId }) =>
+        variation === 'A' && section === 'main' && patternId === 'rhythm-210')).toBe(true);
+      expect(engine.patternMetadata.genre).toBe('GUIDE');
     } finally {
       engine.dispose();
     }

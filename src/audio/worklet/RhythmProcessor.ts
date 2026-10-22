@@ -31,6 +31,20 @@ type WorkletMessage =
   | { readonly type: "start"; readonly configuration: RhythmWorkletConfiguration }
   | { readonly type: "stop" };
 
+type RhythmTimelineMessage =
+  | {
+    readonly type: "timeline-rewind";
+    readonly requestedStartFrame: number;
+    readonly expectedStartFrame: number;
+    readonly frameCount: number;
+  }
+  | {
+    readonly type: "timeline-recovered";
+    readonly firstStaleStartFrame: number;
+    readonly expectedStartFrame: number;
+    readonly resumedStartFrame: number;
+  };
+
 class FallbackPort implements RhythmMessagePort {
   onmessage: ((event: { data: unknown }) => void) | null = null;
   postMessage(_message: unknown): void { /* no worklet global in the unit-test runtime */ }
@@ -53,6 +67,7 @@ export class RhythmWorkletCore {
   private configuration: RhythmWorkletConfiguration | null = null;
   private pool: DrumVoicePool | null = null;
   private nextBarToSchedule = 0;
+  private lastRenderedFrameEnd: number | null = null;
 
   constructor(sampleRate: number) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8_000) {
@@ -63,6 +78,11 @@ export class RhythmWorkletCore {
 
   get isPlaying(): boolean {
     return this.configuration !== null && this.pool !== null;
+  }
+
+  /** End of the last successfully rendered absolute-frame block, if any. */
+  get expectedNextFrame(): number | null {
+    return this.lastRenderedFrameEnd;
   }
 
   configure(configuration: RhythmWorkletConfiguration): void {
@@ -93,6 +113,9 @@ export class RhythmWorkletCore {
       maxVoices: configuration.maxVoices,
     });
     this.nextBarToSchedule = 0;
+    // Keep the core's last successful cursor across live reconfiguration. The new pool
+    // starts fresh, but a late callback from before the configuration must not be allowed
+    // to render into the new rhythm state at an older absolute frame.
   }
 
   stop(): void {
@@ -100,6 +123,7 @@ export class RhythmWorkletCore {
     this.pool = null;
     this.configuration = null;
     this.nextBarToSchedule = 0;
+    this.lastRenderedFrameEnd = null;
   }
 
   /** Render one actual-sized Web Audio block; the caller supplies the global frame. */
@@ -110,14 +134,32 @@ export class RhythmWorkletCore {
   }
 
   /** Render into caller-owned storage. This is the only path used from process(). */
-  renderInto(startFrame: number, output: Float32Array): void {
-    if (!this.configuration || !this.pool) {
-      output.fill(0);
-      return;
+  renderInto(startFrame: number, output: Float32Array): boolean {
+    if (!Number.isSafeInteger(startFrame) || startFrame < 0) {
+      throw new RangeError("Rhythm render startFrame must be a non-negative safe integer");
     }
     const endFrame = startFrame + output.length;
+    if (!Number.isSafeInteger(endFrame)) {
+      throw new RangeError("Rhythm render range exceeds safe sample-frame precision");
+    }
+    if (!this.configuration || !this.pool) {
+      output.fill(0);
+      return true;
+    }
+
+    // currentFrame is expected to be monotonic, but browser/runtime resets can deliver an
+    // overlapping quantum. Mute that block and leave scheduling, voices, and the cursor
+    // untouched. In particular, do not rewind DrumVoicePool or replay already rendered
+    // transients. The first subsequent forward block resumes from the original timeline.
+    if (this.lastRenderedFrameEnd !== null && startFrame < this.lastRenderedFrameEnd) {
+      output.fill(0);
+      return false;
+    }
+
     this.scheduleBarsThrough(endFrame);
     this.pool.renderInto(startFrame, output);
+    this.lastRenderedFrameEnd = endFrame;
+    return true;
   }
 
   get activeVoiceCount(): number {
@@ -161,8 +203,10 @@ export class RhythmWorkletCore {
   }
 }
 
-class RhythmWorkletProcessor extends WorkletProcessorBase {
+export class RhythmWorkletProcessor extends WorkletProcessorBase {
   private readonly core: RhythmWorkletCore;
+  private staleEpisodeStartFrame: number | null = null;
+  private staleEpisodeExpectedFrame: number | null = null;
 
   constructor() {
     super();
@@ -170,7 +214,11 @@ class RhythmWorkletProcessor extends WorkletProcessorBase {
     this.port.onmessage = (event: { data: unknown }): void => {
       const message = event.data as WorkletMessage | null;
       if (message?.type === "start") this.core.configure(message.configuration);
-      else if (message?.type === "stop") this.core.stop();
+      else if (message?.type === "stop") {
+        this.core.stop();
+        this.staleEpisodeStartFrame = null;
+        this.staleEpisodeExpectedFrame = null;
+      }
     };
   }
 
@@ -183,7 +231,32 @@ class RhythmWorkletProcessor extends WorkletProcessorBase {
     }
     const startFrame = workletGlobals.currentFrame ?? 0;
     const rendered = outputChannels[renderChannelIndex]!;
-    this.core.renderInto(startFrame, rendered);
+    const expectedStartFrame = this.core.expectedNextFrame;
+    const renderedOnTimeline = this.core.renderInto(startFrame, rendered);
+    if (!renderedOnTimeline) {
+      if (this.staleEpisodeStartFrame === null) {
+        const expected = expectedStartFrame ?? startFrame + rendered.length;
+        this.staleEpisodeStartFrame = startFrame;
+        this.staleEpisodeExpectedFrame = expected;
+        const message: RhythmTimelineMessage = {
+          type: "timeline-rewind",
+          requestedStartFrame: startFrame,
+          expectedStartFrame: expected,
+          frameCount: rendered.length,
+        };
+        this.port.postMessage(message);
+      }
+    } else if (this.staleEpisodeStartFrame !== null) {
+      const message: RhythmTimelineMessage = {
+        type: "timeline-recovered",
+        firstStaleStartFrame: this.staleEpisodeStartFrame,
+        expectedStartFrame: this.staleEpisodeExpectedFrame ?? startFrame,
+        resumedStartFrame: startFrame,
+      };
+      this.port.postMessage(message);
+      this.staleEpisodeStartFrame = null;
+      this.staleEpisodeExpectedFrame = null;
+    }
     for (let channelIndex = 0; channelIndex < outputChannels.length; channelIndex += 1) {
       if (channelIndex === renderChannelIndex) continue;
       const channel = outputChannels[channelIndex]!;

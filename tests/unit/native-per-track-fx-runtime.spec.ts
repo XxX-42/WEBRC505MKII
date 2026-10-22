@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioEngine } from '../../src/audio/AudioEngine';
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
 import { createDefaultNativeStepSlicerParameters } from '../../src/audio/nativeStepSlicerParameters';
-import type { NativeBridgeClient, NativeCatalogMidiEvent, NativeCatalogSlotConfig, NativeCatalogSlotStatus, NativePerTrackCatalogBank, NativeStatus } from '../../src/audio/NativeBridgeClient';
+import { NativeBridgeRequestTimeoutError, type NativeBridgeClient, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeCatalogSlotStatus, type NativePerTrackCatalogBank, type NativeStatus } from '../../src/audio/NativeBridgeClient';
 
 const slots = ['A', 'B', 'C', 'D'] as const;
 const types = ['DSP LPF', 'DSP HPF', 'CHORUS', 'PREAMP'];
@@ -84,6 +84,32 @@ beforeEach(() => {
 });
 
 describe('Native five-track A–D adapter', () => {
+  it('exposes only a versioned, well-formed Native parameter schema with compatibility aliases separate', () => {
+    const engine = NativeAudioEngine.getInstance();
+    const { internals } = install(engine);
+    expect(engine.getCatalogFxParameterSchema('PHASER', 'track', 1)).toBeNull();
+    const status = internals.latestStatus!;
+    status.nativeFx!.parameterSchemaVersion = 1;
+    status.nativeFx!.catalogEffectAvailability = [
+      { effectId: 'phaser', input: true, track: true, perTrackInsert: true, parameters: [
+        { id: 'rate_hz', label: 'Rate', minimum: Math.fround(0.05), maximum: 10, defaultValue: 0.5, smoothingMs: 20, discrete: false },
+        { id: 'stages', label: 'Stages', minimum: 4, maximum: 12, defaultValue: 8, smoothingMs: 40, discrete: true, discreteValues: [4, 8, 12] },
+      ], legacyParameterAliases: [] },
+      { effectId: 'filter.lpf', input: true, track: true, perTrackInsert: true,
+        parameters: [{ id: 'resonance_percent', label: 'Resonance', minimum: 0, maximum: 100, defaultValue: 15, smoothingMs: 15, discrete: false }],
+        legacyParameterAliases: [{ id: 'q', label: 'Legacy Q compatibility alias', minimum: 0.5, maximum: 12,
+          defaultValue: 0.70710678, smoothingMs: 15, discrete: false, legacyAlias: true }] },
+    ];
+    expect(engine.getCatalogFxParameterSchema('PHASER', 'track', 1)).toMatchObject({
+      version: 1,
+      parameters: [{ id: 'rate_hz', minimum: 0.05, maximum: 10 }, { id: 'stages', discreteValues: [4, 8, 12] }],
+      legacyAliases: [],
+    });
+    expect(engine.getCatalogFxParameterSchema('DSP LPF', 'track', 1)?.legacyAliases[0]?.id).toBe('q');
+    status.nativeFx!.catalogEffectAvailability[0]!.parameters![1]!.discreteValues = [4, 6, 12];
+    expect(engine.getCatalogFxParameterSchema('PHASER', 'track', 1)).toBeNull();
+  });
+
   it('orders and preserves 20 independently configured slots without touching the shared bank', async () => {
     const engine = NativeAudioEngine.getInstance();
     const bridge = install(engine);
@@ -171,6 +197,46 @@ describe('Native five-track A–D adapter', () => {
     bridge.internals.handleBridgeFailure(new Error('bridge disconnected'));
     expect(engine.getTrackFxStatus(1)[0]).toMatchObject({ available: false, routeMode: 'unavailable' });
     expect(engine.getCatalogFxSlotStatus('track', 0, 1)).toMatchObject({ acknowledged: false, error: 'bridge disconnected' });
+  });
+
+  it('keeps a timed-out Native write unknown unless status exactly identifies its baseline-plus-one applied revision', async () => {
+    const engine = NativeAudioEngine.getInstance();
+    const bridge = install(engine);
+    engine.setTrackFxType(1, 0, 'DSP LPF');
+    engine.setTrackFxActive(1, 0, true);
+    const status = bridge.status();
+    Object.assign(status.nativeFx!.perTrackCatalogBanks![0]!.slots[0]!, {
+      effectId: 'filter.lpf', bypassed: false, appliedBypassed: false, prepared: true,
+      requestedRevision: 2, appliedRevision: 2,
+    });
+    bridge.setCatalogSlot.mockRejectedValueOnce(new NativeBridgeRequestTimeoutError(
+      '/v1/native-fx/catalog-slot', 'POST', 5000, status,
+    ));
+    await bridge.sync();
+    expect(engine.getCatalogFxSlotStatus('track', 0, 1)).toMatchObject({
+      acknowledged: false, pendingApply: true, outcomeUnknown: true,
+      error: expect.stringContaining('does not uniquely confirm'),
+    });
+  });
+
+  it('reconciles a timed-out Native write when the exact next applied slot revision is reported', async () => {
+    const engine = NativeAudioEngine.getInstance();
+    const bridge = install(engine);
+    engine.setTrackFxType(1, 0, 'DSP LPF');
+    engine.setTrackFxActive(1, 0, true);
+    const status = bridge.status();
+    Object.assign(status.nativeFx!.perTrackCatalogBanks![0]!.slots[0]!, {
+      effectId: 'filter.lpf', bypassed: false, appliedBypassed: false, prepared: true,
+      requestedRevision: 1, appliedRevision: 1,
+    });
+    bridge.setCatalogSlot.mockRejectedValueOnce(new NativeBridgeRequestTimeoutError(
+      '/v1/native-fx/catalog-slot', 'POST', 5000, status,
+    ));
+    await bridge.sync();
+    expect(engine.getCatalogFxSlotStatus('track', 0, 1)).toMatchObject({
+      acknowledged: true, pendingApply: false, outcomeUnknown: false,
+      requestedRevision: 1, appliedRevision: 1,
+    });
   });
 
   it('never lets an older in-flight response acknowledge newer desired parameters', async () => {

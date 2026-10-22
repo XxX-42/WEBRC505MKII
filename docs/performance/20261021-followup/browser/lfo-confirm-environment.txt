@@ -1,0 +1,5 @@
+2026-10-21T11:40:28-07:00
+v24.19.0
+Linux d35b1ec7b921 6.18.55 #1 SMP Wed Oct 14 19:45:18 UTC 2026 x86_64 GNU/Linux
+Cpus_allowed_list:	0-8
+Mems_allowed_list:	0

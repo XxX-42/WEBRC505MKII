@@ -1,0 +1,108 @@
+diff --git a/native-mvp/engine-cpp/include/native_preamp_processor.hpp b/native-mvp/engine-cpp/include/native_preamp_processor.hpp
+index a7624c5..310d1bf 100644
+--- a/native-mvp/engine-cpp/include/native_preamp_processor.hpp
++++ b/native-mvp/engine-cpp/include/native_preamp_processor.hpp
+@@ -55,6 +55,8 @@ private:
+         std::array<float, kFirTaps> reconstructionHistory{};
+         std::array<float, kCabinetIrTaps> cabinetHistory{};
+         std::array<float, kNonlinearStageCount> previousStageInput{};
++        std::array<float, kNonlinearStageCount> previousAntiderivative{};
++        std::array<bool, kNonlinearStageCount> antiderivativeValid{};
+         unsigned int inputWrite = 0U;
+         unsigned int reconstructionWrite = 0U;
+         unsigned int cabinetWrite = 0U;
+@@ -107,6 +109,10 @@ private:
+     void designCabinetImpulseResponses() noexcept;
+     void clearChannelState() noexcept;
+ 
++    // Exact-value cache: smoothing still advances every sample.
++    FrameParameters cachedFrameParameters_{};
++    std::array<float, 6U> cachedControls_{};
++    bool frameParametersValid_ = false;
+     NativePreampConfig config_{};
+     std::array<float, kFirTaps> interpolationTaps_{};
+     std::array<float, kFirTaps> reconstructionTaps_{};
+diff --git a/native-mvp/engine-cpp/src/native_preamp_processor.cpp b/native-mvp/engine-cpp/src/native_preamp_processor.cpp
+index 45a48c9..4ce6c8b 100644
+--- a/native-mvp/engine-cpp/src/native_preamp_processor.cpp
++++ b/native-mvp/engine-cpp/src/native_preamp_processor.cpp
+@@ -69,13 +69,17 @@ constexpr std::array<float, 5U> kCabinetCutoffHz{{7200.0f, 5900.0f, 5300.0f, 640
+     float slope,
+     float bias,
+     float biasTanh,
+-    float biasLogCosh
++    float biasLogCosh,
++    float& previousAntiderivative,
++    bool& antiderivativeValid
+ ) noexcept {
+     const float delta = input - previousInput;
+ #if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+     (void)biasLogCosh;
++    (void)previousAntiderivative;
+ #endif
+     if (std::fabs(delta) < 1.0e-4f) {
++        antiderivativeValid = false;
+         return triodeTransfer(0.5f * (input + previousInput), slope, bias, biasTanh);
+     }
+ #if defined(NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA) && NATIVE_PREAMP_EXPERIMENTAL_STABLE_ADAA
+@@ -95,7 +99,15 @@ constexpr std::array<float, 5U> kCabinetCutoffHz{{7200.0f, 5900.0f, 5300.0f, 640
+         const float shifted = std::clamp(slope * (value + bias), -16.0f, 16.0f);
+         return (logCosh(shifted) - biasLogCosh) / slope - biasTanh * value;
+     };
+-    const float result = (antiderivative(input) - antiderivative(previousInput)) / delta;
++    // Reuse exactly the same rounded value from the preceding oversample.
++    // Shape changes and the small-delta branch invalidate it; no algebra,
++    // approximation, smoothing, or ADAA threshold changes are involved.
++    const float currentAntiderivative = antiderivative(input);
++    const float priorAntiderivative = antiderivativeValid
++        ? previousAntiderivative : antiderivative(previousInput);
++    previousAntiderivative = currentAntiderivative;
++    antiderivativeValid = true;
++    const float result = (currentAntiderivative - priorAntiderivative) / delta;
+ #endif
+     return std::isfinite(result) ? std::clamp(result, -2.0f, 2.0f) : 0.0f;
+ }
+@@ -138,6 +150,7 @@ bool NativePreampProcessor::setConfig(const NativePreampConfig& config, std::uin
+ }
+ 
+ void NativePreampProcessor::reset() noexcept {
++    frameParametersValid_ = false;
+     clearChannelState();
+     modelPosition_.reset(config_.model);
+     gainPercent_.reset(config_.gainPercent);
+@@ -159,7 +172,14 @@ float NativePreampProcessor::processInPlace(float* interleaved, unsigned int fra
+         const float middle = middleGain_.next();
+         const float treble = trebleGain_.next();
+         const float level = levelGain_.next();
+-        const FrameParameters parameters = makeFrameParameters(model, gain, bass, middle, treble, level);
++        const std::array<float, 6U> controls{{model, gain, bass, middle, treble, level}};
++        if (!frameParametersValid_ || controls != cachedControls_) {
++            for (auto& state : channels_) state.antiderivativeValid.fill(false);
++            cachedFrameParameters_ = makeFrameParameters(model, gain, bass, middle, treble, level);
++            cachedControls_ = controls;
++            frameParametersValid_ = true;
++        }
++        const FrameParameters& parameters = cachedFrameParameters_;
+ 
+         const float left = processSample(0U, finiteBoundedInput(interleaved[offset]), parameters);
+         interleaved[offset] = left;
+@@ -243,7 +263,9 @@ float NativePreampProcessor::processSample(
+                 stageParameters.slope,
+                 stageParameters.bias,
+                 stageParameters.biasTanh,
+-                stageParameters.biasLogCosh);
++                stageParameters.biasLogCosh,
++                state.previousAntiderivative[stage],
++                state.antiderivativeValid[stage]);
+             state.previousStageInput[stage] = stageInput;
+             // Interstage coupling gain and loading. The product remains near
+             // unity at low gain while high-gain models drive successive stages.
+@@ -395,6 +417,8 @@ void NativePreampProcessor::clearChannelState() noexcept {
+         state.reconstructionHistory.fill(0.0f);
+         state.cabinetHistory.fill(0.0f);
+         state.previousStageInput.fill(0.0f);
++        state.previousAntiderivative.fill(0.0f);
++        state.antiderivativeValid.fill(false);
+         state.inputWrite = 0U;
+         state.reconstructionWrite = 0U;
+         state.cabinetWrite = 0U;

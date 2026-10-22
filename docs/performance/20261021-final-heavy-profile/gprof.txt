@@ -1,0 +1,1095 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ms/call  ms/call  name    
+ 23.51      6.04     6.04  9920000     0.00     0.00  webrc::native::NativePreampProcessor::processInPlace(float*, unsigned int, unsigned int)
+ 22.58     11.84     5.80 317440000     0.00     0.00  webrc::native::(anonymous namespace)::antialiasedTriode(float, float, float, float, float, float, float&, bool&)
+ 13.35     15.27     3.43    41280     0.08     0.08  webrc::native::NativeRobotCore::PitchTracker::analyzeFrame()
+  7.43     17.18     1.91   542225     0.00     0.00  signalsmith::stretch::SignalsmithStretch<float, void>::processSpectrum(unsigned long)
+  6.23     18.78     1.60  9920000     0.00     0.00  webrc::native::NativeDistortionProcessor::processInPlace(float*, unsigned int, unsigned int)
+  6.11     20.35     1.57  9920005     0.00     0.00  webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor()
+  4.87     21.60     1.25    82630     0.02     0.02  webrc::native::NativePitchProcessor::YinDetector::analyzeFrame()
+  3.54     22.51     0.91 12144640     0.00     0.00  webrc::native::NativeFdn16ReverbProcessor::processInPlace(float*, unsigned int, unsigned int)
+  1.56     22.91     0.40    77385     0.01     0.01  signalsmith::stretch::SignalsmithStretch<float, void>::updateFormants(unsigned long)
+  1.44     23.28     0.37   155000     0.00     0.02  webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int)
+  1.36     23.63     0.35   310000     0.00     0.01  webrc::native::NativePitchProcessor::synthesizePitchGrain(double)
+  0.93     23.87     0.24                             _init
+  0.78     24.07     0.20  2224640     0.00     0.00  webrc::native::NativePhaserProcessor::processInPlace(float*, unsigned int, unsigned int)
+  0.74     24.26     0.19   620000     0.00     0.04  webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool)
+  0.58     24.41     0.15   155040     0.00     0.00  signalsmith::linear::SimpleFFT<float>::fft(float const*, float const*, float*, float*)
+  0.54     24.55     0.14 21043200     0.00     0.00  webrc::native::dsp::equalPowerCrossfadeGains(float)
+  0.54     24.69     0.14    51660     0.00     0.01  signalsmith::linear::DynamicSTFT<float, false, 1>::synthesiseStep(unsigned long)
+  0.51     24.82     0.13   154980     0.00     0.00  signalsmith::linear::SimpleFFT<float>::ifft(float const*, float const*, float*, float*)
+  0.51     24.95     0.13    51680     0.00     0.01  signalsmith::linear::DynamicSTFT<float, false, 1>::analyseStep(unsigned long, unsigned long)
+  0.43     25.06     0.11 19906153     0.00     0.00  webrc::native::NativePitchProcessor::lookupPitch(long)
+  0.43     25.17     0.11   155000     0.00     0.05  webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int)
+  0.31     25.25     0.08        5    16.00    16.00  webrc::native::NativeDistortionProcessor::prepare(unsigned int)
+  0.19     25.30     0.05  4449280     0.00     0.00  webrc::native::NativeChorusProcessor::readFractionalDelay(std::vector<float, std::allocator<float> > const&, unsigned long, double) const
+  0.19     25.35     0.05  2224640     0.00     0.00  webrc::native::NativeOutputStage::processFractionalDelay(float, float, float&, float&)
+  0.19     25.40     0.05   173800     0.00     0.00  webrc::native::LooperCore::process(float const*, float*, unsigned int, unsigned int, unsigned int, float*, bool)
+  0.16     25.44     0.04  8898560     0.00     0.00  webrc::native::dsp::lagrange4(float, float, float, float, float)
+  0.16     25.48     0.04  2224640     0.00     0.00  webrc::native::NativeChorusProcessor::processInPlace(float*, unsigned int, unsigned int)
+  0.16     25.52     0.04    34760     0.00     0.73  webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*)
+  0.12     25.55     0.03    34760     0.00     0.02  webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int)
+  0.08     25.57     0.02   212310     0.00     0.00  webrc::native::NativeEffectBank::hasEffects() const
+  0.08     25.59     0.02   155005     0.00     0.00  webrc::native::NativeRobotCore::updatePitchTarget()
+  0.04     25.60     0.01  8898560     0.00     0.00  webrc::native::dsp::Biquad::process(float)
+  0.04     25.61     0.01   759046     0.00     0.00  webrc::native::NativeFdn16ReverbProcessor::updateFeedbackAndDamping(float, float)
+  0.04     25.62     0.01   155000     0.00     0.16  webrc::native::NativeEffectBank::processInPlaceNoPeak(float*, unsigned int, unsigned int)
+  0.04     25.63     0.01    34760     0.00     0.73  webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int)
+  0.04     25.64     0.01       53     0.19     0.19  frame_dummy
+  0.04     25.65     0.01        5     2.00     2.00  webrc::native::(anonymous namespace)::NativeCatalogPreamp::onPrepare()
+  0.04     25.66     0.01        5     2.00    18.00  webrc::native::(anonymous namespace)::NativeCatalogDistortion::onPrepare()
+  0.04     25.67     0.01                             webrc::native::(anonymous namespace)::NativeCatalogDynamics::onPrepare()
+  0.04     25.68     0.01                             webrc::native::NativeRhythmEngine::processVoice(webrc::native::NativeRhythmEngine::Voice&, unsigned long)
+  0.04     25.69     0.01                             main
+  0.00     25.69     0.00 29760015     0.00     0.00  webrc::native::NativeEffectProcessor::usesBaseWetMix() const
+  0.00     25.69     0.00  9920005     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogWarp::usesBaseWetMix() const
+  0.00     25.69     0.00  9920000     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogPreamp::processEffectFrame(float*, unsigned int)
+  0.00     25.69     0.00  9920000     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogReverb::processEffectFrame(float*, unsigned int)
+  0.00     25.69     0.00  9920000     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogDistortion::processEffectFrame(float*, unsigned int)
+  0.00     25.69     0.00  2641760     0.00     0.00  webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot)
+  0.00     25.69     0.00   465000     0.00     0.03  webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int)
+  0.00     25.69     0.00   310000     0.00     0.01  webrc::native::NativePitchProcessor::processInPlace(float*, unsigned int)
+  0.00     25.69     0.00   173800     0.00     0.00  webrc::native::LooperCore::state() const
+  0.00     25.69     0.00   162525     0.00     0.00  webrc::native::LooperCore::loopLengthSamples() const
+  0.00     25.69     0.00   155000     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogRobot::processEffectBlock(float*, unsigned int, unsigned int)
+  0.00     25.69     0.00   155000     0.00     0.00  webrc::native::NativeRobotCore::selectProcessingMode()
+  0.00     25.69     0.00    77623     0.00     0.00  std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&)
+  0.00     25.69     0.00    72814     0.00     0.00  webrc::native::NativePitchProcessor::setSemitones(float)
+  0.00     25.69     0.00    36407     0.00     0.00  webrc::native::NativePolyPitchProcessor::setSemitones(float)
+  0.00     25.69     0.00    34761     0.00     0.00  webrc::native::NativeAudioCore::applyNativeCatalogFxCommands()
+  0.00     25.69     0.00    34760     0.00     0.73  webrc::native::NativeAudioCore::audioCallback(void*, void*, unsigned int, double, unsigned int, void*)
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::applyNativePitchCommands()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::applyNativeChorusCommands()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::applyNativePhaserCommands()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::applyNativeRhythmCommands()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::processInputFxForCallback(float const*, unsigned int, unsigned int*)
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::processHistoryPinAtCallback()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::applyProjectImportAtCallback()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::applyNativeCompressorCommands()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::applyNativeLoopTransportCommands()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeAudioCore::processLoopSnapshotRequestAtCallback()
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::NativeRhythmEngine::processAdditive(float*, unsigned int, unsigned int, unsigned long)
+  0.00     25.69     0.00    34760     0.00     0.00  webrc::native::decideNativePitchRoute(bool, bool, bool, unsigned int, unsigned long, unsigned long)
+  0.00     25.69     0.00    30015     0.00     0.00  bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)
+  0.00     25.69     0.00    30004     0.00     0.00  webrc::native::test_alloc::endTracking()
+  0.00     25.69     0.00    30000     0.00     0.00  webrc::native::test_alloc::beginTracking()
+  0.00     25.69     0.00    25913     0.00     0.00  std::vector<float, std::allocator<float> >::_M_default_append(unsigned long)
+  0.00     25.69     0.00      450     0.00     0.00  operator delete(void*, unsigned long)
+  0.00     25.69     0.00      450     0.00     0.00  operator new(unsigned long)
+  0.00     25.69     0.00      118     0.00     0.00  webrc::native::dsp::ParameterSmoother::reset(float)
+  0.00     25.69     0.00      118     0.00     0.00  webrc::native::dsp::ParameterSmoother::ParameterSmoother(float)
+  0.00     25.69     0.00       96     0.00     0.00  webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) const
+  0.00     25.69     0.00       95     0.00     0.00  webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long)
+  0.00     25.69     0.00       66     0.00     0.00  std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long)
+  0.00     25.69     0.00       45     0.00     0.00  std::basic_string_view<char, std::char_traits<char> >::compare(std::basic_string_view<char, std::char_traits<char> >) const
+  0.00     25.69     0.00       38     0.00     0.00  std::vector<float, std::allocator<float> >::_M_fill_assign(unsigned long, float const&)
+  0.00     25.69     0.00       30     0.00     0.00  webrc::native::LooperCore::metadata() const
+  0.00     25.69     0.00       28     0.00     0.00  webrc::native::NativeEffectBank::effectId(webrc::native::NativeEffectSlot) const
+  0.00     25.69     0.00       25     0.00     0.00  webrc::native::NativePitchProcessor::reset()
+  0.00     25.69     0.00       24     0.00     0.00  void std::vector<signalsmith::linear::SplitFFT<float, false>::Step, std::allocator<signalsmith::linear::SplitFFT<float, false>::Step> >::_M_realloc_append<signalsmith::linear::SplitFFT<float, false>::Step>(signalsmith::linear::SplitFFT<float, false>::Step&&)
+  0.00     25.69     0.00       22     0.00     0.00  std::vector<double, std::allocator<double> >::_M_fill_assign(unsigned long, double const&)
+  0.00     25.69     0.00       22     0.00     0.00  std::vector<unsigned char, std::allocator<unsigned char> >::_M_fill_assign(unsigned long, unsigned char const&)
+  0.00     25.69     0.00       20     0.00     5.00  webrc::native::NativeAudioCore::setNativeCatalogSlot(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char)
+  0.00     25.69     0.00       20     0.00     5.00  webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char)
+  0.00     25.69     0.00       20     0.00     0.00  webrc::native::NativeEffectBank::setBypassed(webrc::native::NativeEffectSlot, bool, unsigned long)
+  0.00     25.69     0.00       20     0.00     5.00  webrc::native::NativeEffectBank::setEffect(webrc::native::NativeEffectSlot, std::basic_string_view<char, std::char_traits<char> >)
+  0.00     25.69     0.00       20     0.00     5.00  webrc::native::NativeEffectProcessor::prepare(unsigned int)
+  0.00     25.69     0.00       20     0.00     0.00  webrc::native::NativePolyPitchProcessor::reset()
+  0.00     25.69     0.00       20     0.00     0.00  webrc::native::findNativeEffectDescriptor(std::basic_string_view<char, std::char_traits<char> >)
+  0.00     25.69     0.00       20     0.00     0.00  webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >)
+  0.00     25.69     0.00       20     0.00     0.00  webrc::native::nativeEffectSupportsPerTrackInsert(std::basic_string_view<char, std::char_traits<char> >)
+  0.00     25.69     0.00       15     0.00     0.00  webrc::native::LooperCore::applyCommand(webrc::native::Command const&)
+  0.00     25.69     0.00       15     0.00     0.00  webrc::native::SpscRingQueue<webrc::native::Command, 64ul>::push(webrc::native::Command const&)
+  0.00     25.69     0.00       15     0.00     0.00  webrc::native::NativeAudioCore::applyTrackCommandAtCallback(webrc::native::Command const&)
+  0.00     25.69     0.00       15     0.00     0.00  webrc::native::NativeEffectProcessor::NativeEffectProcessor(webrc::native::NativeEffectDescriptor const&)
+  0.00     25.69     0.00       15     0.00     0.00  webrc::native::NativeEffectProcessor::algorithmicLatencySamples() const
+  0.00     25.69     0.00       12     0.00     0.00  signalsmith::linear::DynamicSTFT<float, false, 1>::reset(float)
+  0.00     25.69     0.00       12     0.00     0.00  signalsmith::linear::SplitFFT<float, false>::resize(unsigned long)
+  0.00     25.69     0.00       12     0.00     0.00  webrc::native::NativePolyPitchProcessor::setFormantBaseHz(float)
+  0.00     25.69     0.00       11     0.00     0.00  webrc::native::NativePitchProcessor::YinDetector::configure(unsigned int, float, float, unsigned int)
+  0.00     25.69     0.00       11     0.00     0.00  webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float)
+  0.00     25.69     0.00       11     0.00     0.00  webrc::native::NativeAudioCore::setNativeRhythmConfig(webrc::native::NativeRhythmConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&)::{lambda(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char)#1}::operator()(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char) const
+  0.00     25.69     0.00       10     0.00     0.00  webrc::native::LooperCore::prepare(unsigned int, unsigned long, unsigned int)
+  0.00     25.69     0.00        7     0.00     0.00  webrc::native::NativeEffectBank::prepare(unsigned int)
+  0.00     25.69     0.00        6     0.00     0.00  signalsmith::stretch::SignalsmithStretch<float, void>::reset()
+  0.00     25.69     0.00        6     0.00     0.00  signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool)
+  0.00     25.69     0.00        6     0.00     0.00  webrc::native::NativePolyPitchProcessor::NativePolyPitchProcessor()
+  0.00     25.69     0.00        6     0.00     0.00  webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int)
+  0.00     25.69     0.00        6     0.00     0.00  webrc::native::NativeFdn16ReverbProcessor::setConfig(webrc::native::NativeFdn16ReverbConfig const&, unsigned long)
+  0.00     25.69     0.00        6     0.00     0.00  unsigned long __gnu_cxx::__stoa<unsigned long, unsigned long, char, int>(unsigned long (*)(char const*, char**, int), char const*, char const*, unsigned long*, int)
+  0.00     25.69     0.00        6     0.00     0.00  std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction> >::_M_default_append(unsigned long)
+  0.00     25.69     0.00        6     0.00     0.00  std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint> >::_M_default_append(unsigned long)
+  0.00     25.69     0.00        5     0.00     0.00  signalsmith::stretch::SignalsmithStretch<float, void>::~SignalsmithStretch()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::LooperCore::LooperCore(unsigned int, unsigned long, unsigned int)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogRobot::onPrepare()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogRobot::NativeCatalogRobot(webrc::native::NativeEffectDescriptor const&)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogRobot::~NativeCatalogRobot()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogPreamp::~NativeCatalogPreamp()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogReverb::onPrepare()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogReverb::~NativeCatalogReverb()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogDistortion::~NativeCatalogDistortion()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativeRobotCore::PitchTracker::configure(unsigned int)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativeRobotCore::reset()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePreampProcessor::designFilters()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePreampProcessor::clearChannelState()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePreampProcessor::designCabinetImpulseResponses()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePreampProcessor::reset()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePreampProcessor::prepare(unsigned int)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePreampProcessor::setConfig(webrc::native::NativePreampConfig const&, unsigned long)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePolyPitchProcessor::prepareForFx(unsigned int, float)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePolyPitchProcessor::setFormantSemitones(float, bool)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativeDistortionProcessor::designFilters()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativeDistortionProcessor::setConfig(webrc::native::NativeDistortionConfig const&, unsigned long)
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativeFdn16ReverbProcessor::NativeFdn16ReverbProcessor()
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::(anonymous namespace)::NativeCatalogRobot::algorithmicLatencySamples() const
+  0.00     25.69     0.00        5     0.00     0.00  webrc::native::NativePreampProcessor::makeFrameParameters(float, float, float, float, float, float) const
+  0.00     25.69     0.00        4     0.00     0.00  webrc::native::dsp::Biquad::setParameters(webrc::native::dsp::BiquadType, double, double, double, double, double)
+  0.00     25.69     0.00        4     0.00     0.00  webrc::native::dsp::Biquad::reset()
+  0.00     25.69     0.00        2     0.00     0.00  webrc::native::test_alloc::count()
+  0.00     25.69     0.00        2     0.00     0.00  webrc::native::NativeAudioCoreTestAccess::healthy(webrc::native::NativeAudioCore const&, unsigned int)
+  0.00     25.69     0.00        2     0.00     0.00  std::vector<float, std::allocator<float> >::vector(unsigned long, std::allocator<float> const&)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::EngineStatus::~EngineStatus()
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCore::closeStreamLocked()
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCore::reclaimInactiveHistoryPcmLocked()
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCore::stop(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCore::NativeAudioCore()
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCore::~NativeAudioCore()
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeOutputStage::updateCompressorParameters()
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeOutputStage::reverbMinimumDelayFramesForSampleRate(unsigned int)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeOutputStage::prepare(unsigned int)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeRhythmEngine::isValidConfig(webrc::native::NativeRhythmConfig const&)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeRhythmEngine::prepare(unsigned int)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeRhythmEngine::setConfig(webrc::native::NativeRhythmConfig const&, unsigned long)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeChorusProcessor::prepare(unsigned int)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeChorusProcessor::setConfig(webrc::native::ChorusProcessorConfig const&, unsigned long)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativePhaserProcessor::prepare(unsigned int)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativePhaserProcessor::setConfig(webrc::native::PhaserProcessorConfig const&, unsigned long)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativePolyPitchProcessor::prepare(unsigned int, float)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeFdn16ReverbProcessor::minimumDelayFramesForSampleRate(unsigned int)
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCore::buildCatalog() const
+  0.00     25.69     0.00        1     0.00     0.00  webrc::native::NativeAudioCore::getStatus() const
+  0.00     25.69     0.00        1     0.00     0.00  void std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >::_M_realloc_append<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+
+			Call graph
+
+
+granularity: each sample hit covers 2 byte(s) for 0.04% of 25.69 seconds
+
+index % time    self  children    called     name
+                                                 <spontaneous>
+[1]     99.0    0.01   25.42                 main [1]
+                0.00   25.31   34760/34760       webrc::native::NativeAudioCore::audioCallback(void*, void*, unsigned int, double, unsigned int, void*) [2]
+                0.00    0.10      20/20          webrc::native::NativeAudioCore::setNativeCatalogSlot(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [31]
+                0.01    0.00      53/53          frame_dummy [43]
+                0.00    0.00       1/1           webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+                0.00    0.00   30015/30015       bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*) [87]
+                0.00    0.00   30000/30000       webrc::native::test_alloc::beginTracking() [89]
+                0.00    0.00   30000/30004       webrc::native::test_alloc::endTracking() [88]
+                0.00    0.00      15/15          webrc::native::SpscRingQueue<webrc::native::Command, 64ul>::push(webrc::native::Command const&) [112]
+                0.00    0.00       6/6           unsigned long __gnu_cxx::__stoa<unsigned long, unsigned long, char, int>(unsigned long (*)(char const*, char**, int), char const*, char const*, unsigned long*, int) [128]
+                0.00    0.00       3/450         operator delete(void*, unsigned long) [91]
+                0.00    0.00       2/2           std::vector<float, std::allocator<float> >::vector(unsigned long, std::allocator<float> const&) [156]
+                0.00    0.00       2/2           webrc::native::NativeAudioCoreTestAccess::healthy(webrc::native::NativeAudioCore const&, unsigned int) [155]
+                0.00    0.00       2/2           webrc::native::test_alloc::count() [154]
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::NativeAudioCore() [161]
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+                0.00    0.00       1/450         operator new(unsigned long) [92]
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::getStatus() const [175]
+                0.00    0.00       1/1           webrc::native::EngineStatus::~EngineStatus() [157]
+-----------------------------------------------
+                0.00   25.31   34760/34760       main [1]
+[2]     98.5    0.00   25.31   34760         webrc::native::NativeAudioCore::audioCallback(void*, void*, unsigned int, double, unsigned int, void*) [2]
+                0.01   25.30   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+-----------------------------------------------
+                0.01   25.30   34760/34760       webrc::native::NativeAudioCore::audioCallback(void*, void*, unsigned int, double, unsigned int, void*) [2]
+[3]     98.5    0.01   25.30   34760         webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+                0.04   25.26   34760/34760       webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::processInputFxForCallback(float const*, unsigned int, unsigned int*) [49]
+                0.00    0.00  556160/2641760     webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) [67]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::processLoopSnapshotRequestAtCallback() [84]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::processHistoryPinAtCallback() [80]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::applyNativeChorusCommands() [77]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::applyNativeCompressorCommands() [82]
+                0.00    0.00   34760/34761       webrc::native::NativeAudioCore::applyNativeCatalogFxCommands() [75]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::applyNativePhaserCommands() [78]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::applyNativePitchCommands() [76]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::applyNativeRhythmCommands() [79]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::applyNativeLoopTransportCommands() [83]
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::applyProjectImportAtCallback() [81]
+                0.00    0.00      15/15          webrc::native::NativeAudioCore::applyTrackCommandAtCallback(webrc::native::Command const&) [113]
+                0.00    0.00      15/25          webrc::native::NativePitchProcessor::reset() [102]
+                0.00    0.00      15/20          webrc::native::NativePolyPitchProcessor::reset() [107]
+-----------------------------------------------
+                0.04   25.26   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[4]     98.5    0.04   25.26   34760         webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+                0.01   24.52  155000/155000      webrc::native::NativeEffectBank::processInPlaceNoPeak(float*, unsigned int, unsigned int) [5]
+                0.03    0.63   34760/34760       webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+                0.05    0.00  173800/173800      webrc::native::LooperCore::process(float const*, float*, unsigned int, unsigned int, unsigned int, float*, bool) [39]
+                0.02    0.00  208560/212310      webrc::native::NativeEffectBank::hasEffects() const [41]
+                0.00    0.00 2085600/2641760     webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) [67]
+                0.00    0.00  173800/173800      webrc::native::LooperCore::state() const [68]
+                0.00    0.00  162525/162525      webrc::native::LooperCore::loopLengthSamples() const [69]
+                0.00    0.00   34760/34760       webrc::native::decideNativePitchRoute(bool, bool, bool, unsigned int, unsigned long, unsigned long) [86]
+                0.00    0.00   34760/34760       webrc::native::NativeRhythmEngine::processAdditive(float*, unsigned int, unsigned int, unsigned long) [85]
+-----------------------------------------------
+                0.01   24.52  155000/155000      webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[5]     95.5    0.01   24.52  155000         webrc::native::NativeEffectBank::processInPlaceNoPeak(float*, unsigned int, unsigned int) [5]
+                0.19   24.33  620000/620000      webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [6]
+-----------------------------------------------
+                0.19   24.33  620000/620000      webrc::native::NativeEffectBank::processInPlaceNoPeak(float*, unsigned int, unsigned int) [5]
+[6]     95.4    0.19   24.33  620000         webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [6]
+                0.00   15.83  465000/465000      webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+                0.11    8.39  155000/155000      webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [9]
+                0.00    0.00 29760000/29760015     webrc::native::NativeEffectProcessor::usesBaseWetMix() const [62]
+                0.00    0.00 9920000/9920005     webrc::native::(anonymous namespace)::NativeCatalogWarp::usesBaseWetMix() const [63]
+                0.00    0.00  155000/155000      webrc::native::(anonymous namespace)::NativeCatalogRobot::processEffectBlock(float*, unsigned int, unsigned int) [70]
+-----------------------------------------------
+                0.00   15.83  465000/465000      webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [6]
+[7]     61.6    0.00   15.83  465000         webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+                6.04    5.80 9920000/9920000     webrc::native::NativePreampProcessor::processInPlace(float*, unsigned int, unsigned int) [8]
+                1.60    1.57 9920000/9920000     webrc::native::NativeDistortionProcessor::processInPlace(float*, unsigned int, unsigned int) [13]
+                0.74    0.07 9920000/12144640     webrc::native::NativeFdn16ReverbProcessor::processInPlace(float*, unsigned int, unsigned int) [19]
+                0.00    0.00 9920000/9920000     webrc::native::(anonymous namespace)::NativeCatalogReverb::processEffectFrame(float*, unsigned int) [65]
+                0.00    0.00 9920000/9920000     webrc::native::(anonymous namespace)::NativeCatalogDistortion::processEffectFrame(float*, unsigned int) [66]
+                0.00    0.00 9920000/9920000     webrc::native::(anonymous namespace)::NativeCatalogPreamp::processEffectFrame(float*, unsigned int) [64]
+-----------------------------------------------
+                6.04    5.80 9920000/9920000     webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+[8]     46.1    6.04    5.80 9920000         webrc::native::NativePreampProcessor::processInPlace(float*, unsigned int, unsigned int) [8]
+                5.80    0.00 317440000/317440000     webrc::native::(anonymous namespace)::antialiasedTriode(float, float, float, float, float, float, float&, bool&) [10]
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::makeFrameParameters(float, float, float, float, float, float) const [151]
+-----------------------------------------------
+                0.11    8.39  155000/155000      webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [6]
+[9]     33.1    0.11    8.39  155000         webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [9]
+                3.43    0.00   41280/41280       webrc::native::NativeRobotCore::PitchTracker::analyzeFrame() [11]
+                0.37    2.86  155000/155000      webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+                0.00    1.71  310000/310000      webrc::native::NativePitchProcessor::processInPlace(float*, unsigned int) [15]
+                0.02    0.00  155000/155005      webrc::native::NativeRobotCore::updatePitchTarget() [42]
+                0.00    0.00  155000/155000      webrc::native::NativeRobotCore::selectProcessingMode() [71]
+-----------------------------------------------
+                5.80    0.00 317440000/317440000     webrc::native::NativePreampProcessor::processInPlace(float*, unsigned int, unsigned int) [8]
+[10]    22.6    5.80    0.00 317440000         webrc::native::(anonymous namespace)::antialiasedTriode(float, float, float, float, float, float, float&, bool&) [10]
+-----------------------------------------------
+                3.43    0.00   41280/41280       webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [9]
+[11]    13.4    3.43    0.00   41280         webrc::native::NativeRobotCore::PitchTracker::analyzeFrame() [11]
+-----------------------------------------------
+                0.37    2.86  155000/155000      webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [9]
+[12]    12.6    0.37    2.86  155000         webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+                1.91    0.00  542225/542225      signalsmith::stretch::SignalsmithStretch<float, void>::processSpectrum(unsigned long) [14]
+                0.40    0.00   77385/77385       signalsmith::stretch::SignalsmithStretch<float, void>::updateFormants(unsigned long) [21]
+                0.13    0.15   51680/51680       signalsmith::linear::DynamicSTFT<float, false, 1>::analyseStep(unsigned long, unsigned long) [22]
+                0.14    0.13   51660/51660       signalsmith::linear::DynamicSTFT<float, false, 1>::synthesiseStep(unsigned long) [23]
+                0.00    0.00   77505/77623       std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&) [72]
+                0.00    0.00   25835/25913       std::vector<float, std::allocator<float> >::_M_default_append(unsigned long) [90]
+-----------------------------------------------
+                1.60    1.57 9920000/9920000     webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+[13]    12.3    1.60    1.57 9920000         webrc::native::NativeDistortionProcessor::processInPlace(float*, unsigned int, unsigned int) [13]
+                1.57    0.00 9920000/9920005     webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor() [17]
+-----------------------------------------------
+                1.91    0.00  542225/542225      webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+[14]     7.4    1.91    0.00  542225         signalsmith::stretch::SignalsmithStretch<float, void>::processSpectrum(unsigned long) [14]
+-----------------------------------------------
+                0.00    1.71  310000/310000      webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [9]
+[15]     6.7    0.00    1.71  310000         webrc::native::NativePitchProcessor::processInPlace(float*, unsigned int) [15]
+                0.35    1.36  310000/310000      webrc::native::NativePitchProcessor::synthesizePitchGrain(double) [16]
+-----------------------------------------------
+                               94313             webrc::native::NativePitchProcessor::synthesizePitchGrain(double) [16]
+                0.35    1.36  310000/310000      webrc::native::NativePitchProcessor::processInPlace(float*, unsigned int) [15]
+[16]     6.7    0.35    1.36  310000+94313   webrc::native::NativePitchProcessor::synthesizePitchGrain(double) [16]
+                1.25    0.00   82630/82630       webrc::native::NativePitchProcessor::YinDetector::analyzeFrame() [18]
+                0.11    0.00 19906153/19906153     webrc::native::NativePitchProcessor::lookupPitch(long) [30]
+                               94313             webrc::native::NativePitchProcessor::synthesizePitchGrain(double) [16]
+-----------------------------------------------
+                0.00    0.00       5/9920005     webrc::native::NativeDistortionProcessor::prepare(unsigned int) [36]
+                1.57    0.00 9920000/9920005     webrc::native::NativeDistortionProcessor::processInPlace(float*, unsigned int, unsigned int) [13]
+[17]     6.1    1.57    0.00 9920005         webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor() [17]
+                0.00    0.00      10/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+-----------------------------------------------
+                1.25    0.00   82630/82630       webrc::native::NativePitchProcessor::synthesizePitchGrain(double) [16]
+[18]     4.9    1.25    0.00   82630         webrc::native::NativePitchProcessor::YinDetector::analyzeFrame() [18]
+-----------------------------------------------
+                0.17    0.02 2224640/12144640     webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+                0.74    0.07 9920000/12144640     webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+[19]     3.9    0.91    0.09 12144640         webrc::native::NativeFdn16ReverbProcessor::processInPlace(float*, unsigned int, unsigned int) [19]
+                0.08    0.00 12144640/21043200     webrc::native::dsp::equalPowerCrossfadeGains(float) [27]
+                0.01    0.00  759040/759046      webrc::native::NativeFdn16ReverbProcessor::updateFeedbackAndDamping(float, float) [45]
+-----------------------------------------------
+                0.03    0.63   34760/34760       webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[20]     2.6    0.03    0.63   34760         webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+                0.20    0.01 2224640/2224640     webrc::native::NativePhaserProcessor::processInPlace(float*, unsigned int, unsigned int) [25]
+                0.17    0.02 2224640/12144640     webrc::native::NativeFdn16ReverbProcessor::processInPlace(float*, unsigned int, unsigned int) [19]
+                0.04    0.08 2224640/2224640     webrc::native::NativeChorusProcessor::processInPlace(float*, unsigned int, unsigned int) [29]
+                0.05    0.02 2224640/2224640     webrc::native::NativeOutputStage::processFractionalDelay(float, float, float&, float&) [37]
+                0.03    0.00 4449280/21043200     webrc::native::dsp::equalPowerCrossfadeGains(float) [27]
+                0.01    0.00 8898560/8898560     webrc::native::dsp::Biquad::process(float) [44]
+-----------------------------------------------
+                0.40    0.00   77385/77385       webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+[21]     1.6    0.40    0.00   77385         signalsmith::stretch::SignalsmithStretch<float, void>::updateFormants(unsigned long) [21]
+-----------------------------------------------
+                0.13    0.15   51680/51680       webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+[22]     1.1    0.13    0.15   51680         signalsmith::linear::DynamicSTFT<float, false, 1>::analyseStep(unsigned long, unsigned long) [22]
+                0.15    0.00  155040/155040      signalsmith::linear::SimpleFFT<float>::fft(float const*, float const*, float*, float*) [26]
+-----------------------------------------------
+                0.14    0.13   51660/51660       webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+[23]     1.1    0.14    0.13   51660         signalsmith::linear::DynamicSTFT<float, false, 1>::synthesiseStep(unsigned long) [23]
+                0.13    0.00  154980/154980      signalsmith::linear::SimpleFFT<float>::ifft(float const*, float const*, float*, float*) [28]
+-----------------------------------------------
+                                                 <spontaneous>
+[24]     0.9    0.24    0.00                 _init [24]
+-----------------------------------------------
+                0.20    0.01 2224640/2224640     webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+[25]     0.8    0.20    0.01 2224640         webrc::native::NativePhaserProcessor::processInPlace(float*, unsigned int, unsigned int) [25]
+                0.01    0.00 2224640/21043200     webrc::native::dsp::equalPowerCrossfadeGains(float) [27]
+-----------------------------------------------
+                0.15    0.00  155040/155040      signalsmith::linear::DynamicSTFT<float, false, 1>::analyseStep(unsigned long, unsigned long) [22]
+[26]     0.6    0.15    0.00  155040         signalsmith::linear::SimpleFFT<float>::fft(float const*, float const*, float*, float*) [26]
+-----------------------------------------------
+                0.01    0.00 2224640/21043200     webrc::native::NativeChorusProcessor::processInPlace(float*, unsigned int, unsigned int) [29]
+                0.01    0.00 2224640/21043200     webrc::native::NativePhaserProcessor::processInPlace(float*, unsigned int, unsigned int) [25]
+                0.03    0.00 4449280/21043200     webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+                0.08    0.00 12144640/21043200     webrc::native::NativeFdn16ReverbProcessor::processInPlace(float*, unsigned int, unsigned int) [19]
+[27]     0.5    0.14    0.00 21043200         webrc::native::dsp::equalPowerCrossfadeGains(float) [27]
+-----------------------------------------------
+                0.13    0.00  154980/154980      signalsmith::linear::DynamicSTFT<float, false, 1>::synthesiseStep(unsigned long) [23]
+[28]     0.5    0.13    0.00  154980         signalsmith::linear::SimpleFFT<float>::ifft(float const*, float const*, float*, float*) [28]
+-----------------------------------------------
+                0.04    0.08 2224640/2224640     webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+[29]     0.5    0.04    0.08 2224640         webrc::native::NativeChorusProcessor::processInPlace(float*, unsigned int, unsigned int) [29]
+                0.05    0.00 4449280/4449280     webrc::native::NativeChorusProcessor::readFractionalDelay(std::vector<float, std::allocator<float> > const&, unsigned long, double) const [38]
+                0.02    0.00 4449280/8898560     webrc::native::dsp::lagrange4(float, float, float, float, float) [40]
+                0.01    0.00 2224640/21043200     webrc::native::dsp::equalPowerCrossfadeGains(float) [27]
+-----------------------------------------------
+                0.11    0.00 19906153/19906153     webrc::native::NativePitchProcessor::synthesizePitchGrain(double) [16]
+[30]     0.4    0.11    0.00 19906153         webrc::native::NativePitchProcessor::lookupPitch(long) [30]
+-----------------------------------------------
+                0.00    0.10      20/20          main [1]
+[31]     0.4    0.00    0.10      20         webrc::native::NativeAudioCore::setNativeCatalogSlot(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [31]
+                0.00    0.10      20/20          webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [32]
+-----------------------------------------------
+                0.00    0.10      20/20          webrc::native::NativeAudioCore::setNativeCatalogSlot(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [31]
+[32]     0.4    0.00    0.10      20         webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [32]
+                0.00    0.10      20/20          webrc::native::NativeEffectBank::setEffect(webrc::native::NativeEffectSlot, std::basic_string_view<char, std::char_traits<char> >) [33]
+                0.00    0.00      20/20          webrc::native::findNativeEffectDescriptor(std::basic_string_view<char, std::char_traits<char> >) [108]
+                0.00    0.00      20/20          webrc::native::nativeEffectSupportsPerTrackInsert(std::basic_string_view<char, std::char_traits<char> >) [110]
+                0.00    0.00      20/20          webrc::native::NativeEffectBank::setBypassed(webrc::native::NativeEffectSlot, bool, unsigned long) [106]
+                0.00    0.00       5/7           webrc::native::NativeEffectBank::prepare(unsigned int) [123]
+-----------------------------------------------
+                0.00    0.10      20/20          webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [32]
+[33]     0.4    0.00    0.10      20         webrc::native::NativeEffectBank::setEffect(webrc::native::NativeEffectSlot, std::basic_string_view<char, std::char_traits<char> >) [33]
+                0.00    0.10      20/20          webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+                0.00    0.00      20/20          webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+-----------------------------------------------
+                0.00    0.10      20/20          webrc::native::NativeEffectBank::setEffect(webrc::native::NativeEffectSlot, std::basic_string_view<char, std::char_traits<char> >) [33]
+[34]     0.4    0.00    0.10      20         webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+                0.01    0.08       5/5           webrc::native::(anonymous namespace)::NativeCatalogDistortion::onPrepare() [35]
+                0.01    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogPreamp::onPrepare() [46]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogRobot::onPrepare() [50]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogReverb::onPrepare() [54]
+                0.00    0.00      40/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+                0.00    0.00      15/15          webrc::native::NativeEffectProcessor::algorithmicLatencySamples() const [115]
+                0.00    0.00      15/29760015     webrc::native::NativeEffectProcessor::usesBaseWetMix() const [62]
+                0.00    0.00       5/6           webrc::native::NativeFdn16ReverbProcessor::setConfig(webrc::native::NativeFdn16ReverbConfig const&, unsigned long) [127]
+                0.00    0.00       5/5           webrc::native::NativeDistortionProcessor::setConfig(webrc::native::NativeDistortionConfig const&, unsigned long) [148]
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::setConfig(webrc::native::NativePreampConfig const&, unsigned long) [144]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogRobot::algorithmicLatencySamples() const [150]
+                0.00    0.00       5/9920005     webrc::native::(anonymous namespace)::NativeCatalogWarp::usesBaseWetMix() const [63]
+                0.00    0.00       5/38          std::vector<float, std::allocator<float> >::_M_fill_assign(unsigned long, float const&) [99]
+                0.00    0.00       5/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.01    0.08       5/5           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[35]     0.4    0.01    0.08       5         webrc::native::(anonymous namespace)::NativeCatalogDistortion::onPrepare() [35]
+                0.08    0.00       5/5           webrc::native::NativeDistortionProcessor::prepare(unsigned int) [36]
+-----------------------------------------------
+                0.08    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogDistortion::onPrepare() [35]
+[36]     0.3    0.08    0.00       5         webrc::native::NativeDistortionProcessor::prepare(unsigned int) [36]
+                0.00    0.00       5/9920005     webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor() [17]
+                0.00    0.00       5/5           webrc::native::NativeDistortionProcessor::designFilters() [147]
+                0.00    0.00       5/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+-----------------------------------------------
+                0.05    0.02 2224640/2224640     webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+[37]     0.3    0.05    0.02 2224640         webrc::native::NativeOutputStage::processFractionalDelay(float, float, float&, float&) [37]
+                0.02    0.00 4449280/8898560     webrc::native::dsp::lagrange4(float, float, float, float, float) [40]
+-----------------------------------------------
+                0.05    0.00 4449280/4449280     webrc::native::NativeChorusProcessor::processInPlace(float*, unsigned int, unsigned int) [29]
+[38]     0.2    0.05    0.00 4449280         webrc::native::NativeChorusProcessor::readFractionalDelay(std::vector<float, std::allocator<float> > const&, unsigned long, double) const [38]
+-----------------------------------------------
+                0.05    0.00  173800/173800      webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[39]     0.2    0.05    0.00  173800         webrc::native::LooperCore::process(float const*, float*, unsigned int, unsigned int, unsigned int, float*, bool) [39]
+-----------------------------------------------
+                0.02    0.00 4449280/8898560     webrc::native::NativeOutputStage::processFractionalDelay(float, float, float&, float&) [37]
+                0.02    0.00 4449280/8898560     webrc::native::NativeChorusProcessor::processInPlace(float*, unsigned int, unsigned int) [29]
+[40]     0.2    0.04    0.00 8898560         webrc::native::dsp::lagrange4(float, float, float, float, float) [40]
+-----------------------------------------------
+                0.00    0.00    3750/212310      webrc::native::NativeAudioCore::processInputFxForCallback(float const*, unsigned int, unsigned int*) [49]
+                0.02    0.00  208560/212310      webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[41]     0.1    0.02    0.00  212310         webrc::native::NativeEffectBank::hasEffects() const [41]
+-----------------------------------------------
+                0.00    0.00       5/155005      webrc::native::NativeRobotCore::reset() [51]
+                0.02    0.00  155000/155005      webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [9]
+[42]     0.1    0.02    0.00  155005         webrc::native::NativeRobotCore::updatePitchTarget() [42]
+                0.00    0.00   72814/72814       webrc::native::NativePitchProcessor::setSemitones(float) [73]
+                0.00    0.00   36407/36407       webrc::native::NativePolyPitchProcessor::setSemitones(float) [74]
+                0.00    0.00      12/12          webrc::native::NativePolyPitchProcessor::setFormantBaseHz(float) [118]
+                0.00    0.00       5/5           webrc::native::NativePolyPitchProcessor::setFormantSemitones(float, bool) [146]
+-----------------------------------------------
+                                3106             frame_dummy [43]
+                0.01    0.00      53/53          main [1]
+[43]     0.0    0.01    0.00      53+3106    frame_dummy [43]
+                                3106             frame_dummy [43]
+-----------------------------------------------
+                0.01    0.00 8898560/8898560     webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [20]
+[44]     0.0    0.01    0.00 8898560         webrc::native::dsp::Biquad::process(float) [44]
+-----------------------------------------------
+                0.00    0.00       6/759046      webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int) [53]
+                0.01    0.00  759040/759046      webrc::native::NativeFdn16ReverbProcessor::processInPlace(float*, unsigned int, unsigned int) [19]
+[45]     0.0    0.01    0.00  759046         webrc::native::NativeFdn16ReverbProcessor::updateFeedbackAndDamping(float, float) [45]
+-----------------------------------------------
+                0.01    0.00       5/5           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[46]     0.0    0.01    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogPreamp::onPrepare() [46]
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::prepare(unsigned int) [143]
+-----------------------------------------------
+                                                 <spontaneous>
+[47]     0.0    0.01    0.00                 webrc::native::(anonymous namespace)::NativeCatalogDynamics::onPrepare() [47]
+-----------------------------------------------
+                                                 <spontaneous>
+[48]     0.0    0.01    0.00                 webrc::native::NativeRhythmEngine::processVoice(webrc::native::NativeRhythmEngine::Voice&, unsigned long) [48]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[49]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::processInputFxForCallback(float const*, unsigned int, unsigned int*) [49]
+                0.00    0.00    3750/212310      webrc::native::NativeEffectBank::hasEffects() const [41]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[50]     0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogRobot::onPrepare() [50]
+                0.00    0.00       5/5           webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&) [52]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&) [52]
+[51]     0.0    0.00    0.00       5         webrc::native::NativeRobotCore::reset() [51]
+                0.00    0.00       5/155005      webrc::native::NativeRobotCore::updatePitchTarget() [42]
+                0.00    0.00      10/25          webrc::native::NativePitchProcessor::reset() [102]
+                0.00    0.00       5/20          webrc::native::NativePolyPitchProcessor::reset() [107]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogRobot::onPrepare() [50]
+[52]     0.0    0.00    0.00       5         webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&) [52]
+                0.00    0.00       5/5           webrc::native::NativeRobotCore::reset() [51]
+                0.00    0.00      10/11          webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+                0.00    0.00       5/5           webrc::native::NativePolyPitchProcessor::prepareForFx(unsigned int, float) [145]
+                0.00    0.00       5/5           webrc::native::NativeRobotCore::PitchTracker::configure(unsigned int) [138]
+-----------------------------------------------
+                0.00    0.00       1/6           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00       5/6           webrc::native::(anonymous namespace)::NativeCatalogReverb::onPrepare() [54]
+[53]     0.0    0.00    0.00       6         webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int) [53]
+                0.00    0.00       6/759046      webrc::native::NativeFdn16ReverbProcessor::updateFeedbackAndDamping(float, float) [45]
+                0.00    0.00      96/450         operator new(unsigned long) [92]
+                0.00    0.00      18/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[54]     0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogReverb::onPrepare() [54]
+                0.00    0.00       5/6           webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int) [53]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+[55]     0.0    0.00    0.00       1         webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00       1/6           webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int) [53]
+                0.00    0.00       6/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+                0.00    0.00       4/4           webrc::native::dsp::Biquad::setParameters(webrc::native::dsp::BiquadType, double, double, double, double, double) [152]
+                0.00    0.00       4/4           webrc::native::dsp::Biquad::reset() [153]
+                0.00    0.00       3/95          webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+                0.00    0.00       2/450         operator new(unsigned long) [92]
+                0.00    0.00       1/1           webrc::native::NativeChorusProcessor::prepare(unsigned int) [168]
+                0.00    0.00       1/1           webrc::native::NativePhaserProcessor::prepare(unsigned int) [170]
+                0.00    0.00       1/6           webrc::native::NativeFdn16ReverbProcessor::setConfig(webrc::native::NativeFdn16ReverbConfig const&, unsigned long) [127]
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::updateCompressorParameters() [163]
+                0.00    0.00       1/1           webrc::native::NativeChorusProcessor::setConfig(webrc::native::ChorusProcessorConfig const&, unsigned long) [169]
+                0.00    0.00       1/1           webrc::native::NativePhaserProcessor::setConfig(webrc::native::PhaserProcessorConfig const&, unsigned long) [171]
+                0.00    0.00       1/7           webrc::native::NativeEffectBank::prepare(unsigned int) [123]
+-----------------------------------------------
+                0.00    0.00       1/1           main [1]
+[56]     0.0    0.00    0.00       1         webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00       5/10          webrc::native::LooperCore::prepare(unsigned int, unsigned long, unsigned int) [122]
+                0.00    0.00       1/7           webrc::native::NativeEffectBank::prepare(unsigned int) [123]
+                0.00    0.00       1/11          webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+                0.00    0.00       1/1           webrc::native::NativePolyPitchProcessor::prepare(unsigned int, float) [172]
+                0.00    0.00       1/1           webrc::native::NativeRhythmEngine::prepare(unsigned int) [166]
+                0.00    0.00       1/1           webrc::native::NativeRhythmEngine::setConfig(webrc::native::NativeRhythmConfig const&, unsigned long) [167]
+-----------------------------------------------
+                0.00    0.00      15/29760015     webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+                0.00    0.00 29760000/29760015     webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [6]
+[62]     0.0    0.00    0.00 29760015         webrc::native::NativeEffectProcessor::usesBaseWetMix() const [62]
+-----------------------------------------------
+                0.00    0.00       5/9920005     webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+                0.00    0.00 9920000/9920005     webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [6]
+[63]     0.0    0.00    0.00 9920005         webrc::native::(anonymous namespace)::NativeCatalogWarp::usesBaseWetMix() const [63]
+-----------------------------------------------
+                0.00    0.00 9920000/9920000     webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+[64]     0.0    0.00    0.00 9920000         webrc::native::(anonymous namespace)::NativeCatalogPreamp::processEffectFrame(float*, unsigned int) [64]
+-----------------------------------------------
+                0.00    0.00 9920000/9920000     webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+[65]     0.0    0.00    0.00 9920000         webrc::native::(anonymous namespace)::NativeCatalogReverb::processEffectFrame(float*, unsigned int) [65]
+-----------------------------------------------
+                0.00    0.00 9920000/9920000     webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [7]
+[66]     0.0    0.00    0.00 9920000         webrc::native::(anonymous namespace)::NativeCatalogDistortion::processEffectFrame(float*, unsigned int) [66]
+-----------------------------------------------
+                0.00    0.00  556160/2641760     webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+                0.00    0.00 2085600/2641760     webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[67]     0.0    0.00    0.00 2641760         webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) [67]
+-----------------------------------------------
+                0.00    0.00  173800/173800      webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[68]     0.0    0.00    0.00  173800         webrc::native::LooperCore::state() const [68]
+-----------------------------------------------
+                0.00    0.00  162525/162525      webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[69]     0.0    0.00    0.00  162525         webrc::native::LooperCore::loopLengthSamples() const [69]
+-----------------------------------------------
+                0.00    0.00  155000/155000      webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [6]
+[70]     0.0    0.00    0.00  155000         webrc::native::(anonymous namespace)::NativeCatalogRobot::processEffectBlock(float*, unsigned int, unsigned int) [70]
+-----------------------------------------------
+                0.00    0.00  155000/155000      webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [9]
+[71]     0.0    0.00    0.00  155000         webrc::native::NativeRobotCore::selectProcessingMode() [71]
+-----------------------------------------------
+                0.00    0.00      18/77623       signalsmith::stretch::SignalsmithStretch<float, void>::reset() [124]
+                0.00    0.00      18/77623       signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+                0.00    0.00      22/77623       webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+                0.00    0.00      60/77623       webrc::native::NativePolyPitchProcessor::reset() [107]
+                0.00    0.00   77505/77623       webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+[72]     0.0    0.00    0.00   77623         std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&) [72]
+                0.00    0.00      40/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00   72814/72814       webrc::native::NativeRobotCore::updatePitchTarget() [42]
+[73]     0.0    0.00    0.00   72814         webrc::native::NativePitchProcessor::setSemitones(float) [73]
+-----------------------------------------------
+                0.00    0.00   36407/36407       webrc::native::NativeRobotCore::updatePitchTarget() [42]
+[74]     0.0    0.00    0.00   36407         webrc::native::NativePolyPitchProcessor::setSemitones(float) [74]
+-----------------------------------------------
+                0.00    0.00       1/34761       webrc::native::NativeAudioCore::closeStreamLocked() [158]
+                0.00    0.00   34760/34761       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[75]     0.0    0.00    0.00   34761         webrc::native::NativeAudioCore::applyNativeCatalogFxCommands() [75]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[76]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::applyNativePitchCommands() [76]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[77]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::applyNativeChorusCommands() [77]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[78]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::applyNativePhaserCommands() [78]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[79]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::applyNativeRhythmCommands() [79]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[80]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::processHistoryPinAtCallback() [80]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[81]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::applyProjectImportAtCallback() [81]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[82]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::applyNativeCompressorCommands() [82]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[83]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::applyNativeLoopTransportCommands() [83]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[84]     0.0    0.00    0.00   34760         webrc::native::NativeAudioCore::processLoopSnapshotRequestAtCallback() [84]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[85]     0.0    0.00    0.00   34760         webrc::native::NativeRhythmEngine::processAdditive(float*, unsigned int, unsigned int, unsigned long) [85]
+-----------------------------------------------
+                0.00    0.00   34760/34760       webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [4]
+[86]     0.0    0.00    0.00   34760         webrc::native::decideNativePitchRoute(bool, bool, bool, unsigned int, unsigned long, unsigned long) [86]
+-----------------------------------------------
+                0.00    0.00   30015/30015       main [1]
+[87]     0.0    0.00    0.00   30015         bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*) [87]
+-----------------------------------------------
+                0.00    0.00       4/30004       webrc::native::NativeAudioCore::getStatus() const [175]
+                0.00    0.00   30000/30004       main [1]
+[88]     0.0    0.00    0.00   30004         webrc::native::test_alloc::endTracking() [88]
+-----------------------------------------------
+                0.00    0.00   30000/30000       main [1]
+[89]     0.0    0.00    0.00   30000         webrc::native::test_alloc::beginTracking() [89]
+-----------------------------------------------
+                0.00    0.00       1/25913       webrc::native::NativePolyPitchProcessor::prepare(unsigned int, float) [172]
+                0.00    0.00       5/25913       webrc::native::NativePolyPitchProcessor::prepareForFx(unsigned int, float) [145]
+                0.00    0.00      12/25913       signalsmith::linear::SplitFFT<float, false>::resize(unsigned long) [117]
+                0.00    0.00      60/25913       signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+                0.00    0.00   25835/25913       webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [12]
+[90]     0.0    0.00    0.00   25913         std::vector<float, std::allocator<float> >::_M_default_append(unsigned long) [90]
+                0.00    0.00      78/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00       1/450         webrc::native::NativeAudioCore::buildCatalog() const [174]
+                0.00    0.00       3/450         main [1]
+                0.00    0.00       6/450         std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long) [97]
+                0.00    0.00      18/450         void std::vector<signalsmith::linear::SplitFFT<float, false>::Step, std::allocator<signalsmith::linear::SplitFFT<float, false>::Step> >::_M_realloc_append<signalsmith::linear::SplitFFT<float, false>::Step>(signalsmith::linear::SplitFFT<float, false>::Step&&) [103]
+                0.00    0.00      80/450         webrc::native::(anonymous namespace)::NativeCatalogReverb::~NativeCatalogReverb() [136]
+                0.00    0.00      87/450         webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+                0.00    0.00     100/450         webrc::native::(anonymous namespace)::NativeCatalogRobot::~NativeCatalogRobot() [134]
+                0.00    0.00     155/450         signalsmith::stretch::SignalsmithStretch<float, void>::~SignalsmithStretch() [131]
+[91]     0.0    0.00    0.00     450         operator delete(void*, unsigned long) [91]
+-----------------------------------------------
+                0.00    0.00       1/450         main [1]
+                0.00    0.00       1/450         void std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >::_M_realloc_append<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [176]
+                0.00    0.00       2/450         std::vector<float, std::allocator<float> >::vector(unsigned long, std::allocator<float> const&) [156]
+                0.00    0.00       2/450         webrc::native::NativeAudioCore::buildCatalog() const [174]
+                0.00    0.00       2/450         webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00       2/450         webrc::native::NativeChorusProcessor::prepare(unsigned int) [168]
+                0.00    0.00       5/450         webrc::native::LooperCore::prepare(unsigned int, unsigned long, unsigned int) [122]
+                0.00    0.00       5/450         webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+                0.00    0.00       6/450         std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint> >::_M_default_append(unsigned long) [130]
+                0.00    0.00       6/450         std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction> >::_M_default_append(unsigned long) [129]
+                0.00    0.00      12/450         signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+                0.00    0.00      20/450         webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+                0.00    0.00      22/450         std::vector<unsigned char, std::allocator<unsigned char> >::_M_fill_assign(unsigned long, unsigned char const&) [105]
+                0.00    0.00      22/450         std::vector<double, std::allocator<double> >::_M_fill_assign(unsigned long, double const&) [104]
+                0.00    0.00      24/450         void std::vector<signalsmith::linear::SplitFFT<float, false>::Step, std::allocator<signalsmith::linear::SplitFFT<float, false>::Step> >::_M_realloc_append<signalsmith::linear::SplitFFT<float, false>::Step>(signalsmith::linear::SplitFFT<float, false>::Step&&) [103]
+                0.00    0.00      38/450         std::vector<float, std::allocator<float> >::_M_fill_assign(unsigned long, float const&) [99]
+                0.00    0.00      40/450         std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&) [72]
+                0.00    0.00      66/450         std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long) [97]
+                0.00    0.00      78/450         std::vector<float, std::allocator<float> >::_M_default_append(unsigned long) [90]
+                0.00    0.00      96/450         webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int) [53]
+[92]     0.0    0.00    0.00     450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00       4/118         webrc::native::NativeChorusProcessor::prepare(unsigned int) [168]
+                0.00    0.00       5/118         webrc::native::NativePhaserProcessor::prepare(unsigned int) [170]
+                0.00    0.00       5/118         webrc::native::NativeDistortionProcessor::prepare(unsigned int) [36]
+                0.00    0.00       5/118         webrc::native::NativePreampProcessor::prepare(unsigned int) [143]
+                0.00    0.00       6/118         webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00      10/118         webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor() [17]
+                0.00    0.00      18/118         webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int) [53]
+                0.00    0.00      25/118         webrc::native::NativePreampProcessor::reset() [142]
+                0.00    0.00      40/118         webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[93]     0.0    0.00    0.00     118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+-----------------------------------------------
+                0.00    0.00      10/118         webrc::native::(anonymous namespace)::NativeCatalogRobot::NativeCatalogRobot(webrc::native::NativeEffectDescriptor const&) [133]
+                0.00    0.00      15/118         webrc::native::NativeFdn16ReverbProcessor::NativeFdn16ReverbProcessor() [149]
+                0.00    0.00      18/118         webrc::native::NativeAudioCore::NativeAudioCore() [161]
+                0.00    0.00      30/118         webrc::native::NativeEffectProcessor::NativeEffectProcessor(webrc::native::NativeEffectDescriptor const&) [114]
+                0.00    0.00      45/118         webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+[94]     0.0    0.00    0.00     118         webrc::native::dsp::ParameterSmoother::ParameterSmoother(float) [94]
+-----------------------------------------------
+                0.00    0.00      28/96          webrc::native::NativeAudioCore::setNativeRhythmConfig(webrc::native::NativeRhythmConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&)::{lambda(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char)#1}::operator()(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char) const [121]
+                0.00    0.00      28/96          webrc::native::NativeAudioCore::getStatus() const [175]
+                0.00    0.00      40/96          webrc::native::NativeAudioCoreTestAccess::healthy(webrc::native::NativeAudioCore const&, unsigned int) [155]
+[95]     0.0    0.00    0.00      96         webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) const [95]
+-----------------------------------------------
+                0.00    0.00       3/95          webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00       4/95          webrc::native::NativeChorusProcessor::setConfig(webrc::native::ChorusProcessorConfig const&, unsigned long) [169]
+                0.00    0.00       5/95          webrc::native::NativePhaserProcessor::setConfig(webrc::native::PhaserProcessorConfig const&, unsigned long) [171]
+                0.00    0.00      15/95          webrc::native::NativeDistortionProcessor::setConfig(webrc::native::NativeDistortionConfig const&, unsigned long) [148]
+                0.00    0.00      18/95          webrc::native::NativeFdn16ReverbProcessor::setConfig(webrc::native::NativeFdn16ReverbConfig const&, unsigned long) [127]
+                0.00    0.00      20/95          webrc::native::NativeEffectBank::setBypassed(webrc::native::NativeEffectSlot, bool, unsigned long) [106]
+                0.00    0.00      30/95          webrc::native::NativePreampProcessor::setConfig(webrc::native::NativePreampConfig const&, unsigned long) [144]
+[96]     0.0    0.00    0.00      95         webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+-----------------------------------------------
+                0.00    0.00       6/66          webrc::native::NativePolyPitchProcessor::NativePolyPitchProcessor() [126]
+                0.00    0.00      30/66          signalsmith::linear::SplitFFT<float, false>::resize(unsigned long) [117]
+                0.00    0.00      30/66          signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+[97]     0.0    0.00    0.00      66         std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long) [97]
+                0.00    0.00      66/450         operator new(unsigned long) [92]
+                0.00    0.00       6/450         operator delete(void*, unsigned long) [91]
+-----------------------------------------------
+                0.00    0.00      45/45          webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+[98]     0.0    0.00    0.00      45         std::basic_string_view<char, std::char_traits<char> >::compare(std::basic_string_view<char, std::char_traits<char> >) const [98]
+-----------------------------------------------
+                0.00    0.00       5/38          webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+                0.00    0.00      33/38          webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+[99]     0.0    0.00    0.00      38         std::vector<float, std::allocator<float> >::_M_fill_assign(unsigned long, float const&) [99]
+                0.00    0.00      38/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00      30/30          webrc::native::NativeAudioCore::applyTrackCommandAtCallback(webrc::native::Command const&) [113]
+[100]    0.0    0.00    0.00      30         webrc::native::LooperCore::metadata() const [100]
+-----------------------------------------------
+                0.00    0.00      28/28          webrc::native::NativeAudioCore::getStatus() const [175]
+[101]    0.0    0.00    0.00      28         webrc::native::NativeEffectBank::effectId(webrc::native::NativeEffectSlot) const [101]
+-----------------------------------------------
+                0.00    0.00      10/25          webrc::native::NativeRobotCore::reset() [51]
+                0.00    0.00      15/25          webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[102]    0.0    0.00    0.00      25         webrc::native::NativePitchProcessor::reset() [102]
+-----------------------------------------------
+                0.00    0.00      24/24          signalsmith::linear::SplitFFT<float, false>::resize(unsigned long) [117]
+[103]    0.0    0.00    0.00      24         void std::vector<signalsmith::linear::SplitFFT<float, false>::Step, std::allocator<signalsmith::linear::SplitFFT<float, false>::Step> >::_M_realloc_append<signalsmith::linear::SplitFFT<float, false>::Step>(signalsmith::linear::SplitFFT<float, false>::Step&&) [103]
+                0.00    0.00      24/450         operator new(unsigned long) [92]
+                0.00    0.00      18/450         operator delete(void*, unsigned long) [91]
+-----------------------------------------------
+                0.00    0.00      22/22          webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+[104]    0.0    0.00    0.00      22         std::vector<double, std::allocator<double> >::_M_fill_assign(unsigned long, double const&) [104]
+                0.00    0.00      22/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00      22/22          webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+[105]    0.0    0.00    0.00      22         std::vector<unsigned char, std::allocator<unsigned char> >::_M_fill_assign(unsigned long, unsigned char const&) [105]
+                0.00    0.00      22/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00      20/20          webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [32]
+[106]    0.0    0.00    0.00      20         webrc::native::NativeEffectBank::setBypassed(webrc::native::NativeEffectSlot, bool, unsigned long) [106]
+                0.00    0.00      20/95          webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+-----------------------------------------------
+                0.00    0.00       5/20          webrc::native::NativeRobotCore::reset() [51]
+                0.00    0.00      15/20          webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[107]    0.0    0.00    0.00      20         webrc::native::NativePolyPitchProcessor::reset() [107]
+                0.00    0.00      60/77623       std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&) [72]
+-----------------------------------------------
+                0.00    0.00      20/20          webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [32]
+[108]    0.0    0.00    0.00      20         webrc::native::findNativeEffectDescriptor(std::basic_string_view<char, std::char_traits<char> >) [108]
+-----------------------------------------------
+                0.00    0.00      20/20          webrc::native::NativeEffectBank::setEffect(webrc::native::NativeEffectSlot, std::basic_string_view<char, std::char_traits<char> >) [33]
+[109]    0.0    0.00    0.00      20         webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+                0.00    0.00      45/45          std::basic_string_view<char, std::char_traits<char> >::compare(std::basic_string_view<char, std::char_traits<char> >) const [98]
+                0.00    0.00      45/118         webrc::native::dsp::ParameterSmoother::ParameterSmoother(float) [94]
+                0.00    0.00      20/450         operator new(unsigned long) [92]
+                0.00    0.00      15/15          webrc::native::NativeEffectProcessor::NativeEffectProcessor(webrc::native::NativeEffectDescriptor const&) [114]
+                0.00    0.00       5/5           webrc::native::NativeFdn16ReverbProcessor::NativeFdn16ReverbProcessor() [149]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogRobot::NativeCatalogRobot(webrc::native::NativeEffectDescriptor const&) [133]
+-----------------------------------------------
+                0.00    0.00      20/20          webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [32]
+[110]    0.0    0.00    0.00      20         webrc::native::nativeEffectSupportsPerTrackInsert(std::basic_string_view<char, std::char_traits<char> >) [110]
+-----------------------------------------------
+                0.00    0.00      15/15          webrc::native::NativeAudioCore::applyTrackCommandAtCallback(webrc::native::Command const&) [113]
+[111]    0.0    0.00    0.00      15         webrc::native::LooperCore::applyCommand(webrc::native::Command const&) [111]
+-----------------------------------------------
+                0.00    0.00      15/15          main [1]
+[112]    0.0    0.00    0.00      15         webrc::native::SpscRingQueue<webrc::native::Command, 64ul>::push(webrc::native::Command const&) [112]
+-----------------------------------------------
+                0.00    0.00      15/15          webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [3]
+[113]    0.0    0.00    0.00      15         webrc::native::NativeAudioCore::applyTrackCommandAtCallback(webrc::native::Command const&) [113]
+                0.00    0.00      30/30          webrc::native::LooperCore::metadata() const [100]
+                0.00    0.00      15/15          webrc::native::LooperCore::applyCommand(webrc::native::Command const&) [111]
+-----------------------------------------------
+                0.00    0.00      15/15          webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+[114]    0.0    0.00    0.00      15         webrc::native::NativeEffectProcessor::NativeEffectProcessor(webrc::native::NativeEffectDescriptor const&) [114]
+                0.00    0.00      30/118         webrc::native::dsp::ParameterSmoother::ParameterSmoother(float) [94]
+-----------------------------------------------
+                0.00    0.00      15/15          webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[115]    0.0    0.00    0.00      15         webrc::native::NativeEffectProcessor::algorithmicLatencySamples() const [115]
+-----------------------------------------------
+                0.00    0.00      12/12          signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+[116]    0.0    0.00    0.00      12         signalsmith::linear::DynamicSTFT<float, false, 1>::reset(float) [116]
+-----------------------------------------------
+                0.00    0.00       6/12          webrc::native::NativePolyPitchProcessor::NativePolyPitchProcessor() [126]
+                0.00    0.00       6/12          signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+[117]    0.0    0.00    0.00      12         signalsmith::linear::SplitFFT<float, false>::resize(unsigned long) [117]
+                0.00    0.00      30/66          std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long) [97]
+                0.00    0.00      24/24          void std::vector<signalsmith::linear::SplitFFT<float, false>::Step, std::allocator<signalsmith::linear::SplitFFT<float, false>::Step> >::_M_realloc_append<signalsmith::linear::SplitFFT<float, false>::Step>(signalsmith::linear::SplitFFT<float, false>::Step&&) [103]
+                0.00    0.00      12/25913       std::vector<float, std::allocator<float> >::_M_default_append(unsigned long) [90]
+-----------------------------------------------
+                0.00    0.00      12/12          webrc::native::NativeRobotCore::updatePitchTarget() [42]
+[118]    0.0    0.00    0.00      12         webrc::native::NativePolyPitchProcessor::setFormantBaseHz(float) [118]
+-----------------------------------------------
+                0.00    0.00      11/11          webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+[119]    0.0    0.00    0.00      11         webrc::native::NativePitchProcessor::YinDetector::configure(unsigned int, float, float, unsigned int) [119]
+-----------------------------------------------
+                0.00    0.00       1/11          webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+                0.00    0.00      10/11          webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&) [52]
+[120]    0.0    0.00    0.00      11         webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [120]
+                0.00    0.00      33/38          std::vector<float, std::allocator<float> >::_M_fill_assign(unsigned long, float const&) [99]
+                0.00    0.00      22/22          std::vector<unsigned char, std::allocator<unsigned char> >::_M_fill_assign(unsigned long, unsigned char const&) [105]
+                0.00    0.00      22/22          std::vector<double, std::allocator<double> >::_M_fill_assign(unsigned long, double const&) [104]
+                0.00    0.00      22/77623       std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&) [72]
+                0.00    0.00      11/11          webrc::native::NativePitchProcessor::YinDetector::configure(unsigned int, float, float, unsigned int) [119]
+-----------------------------------------------
+                0.00    0.00       2/11          webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+                0.00    0.00       9/11          webrc::native::NativeAudioCore::getStatus() const [175]
+[121]    0.0    0.00    0.00      11         webrc::native::NativeAudioCore::setNativeRhythmConfig(webrc::native::NativeRhythmConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&)::{lambda(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char)#1}::operator()(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char) const [121]
+                0.00    0.00      28/96          webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) const [95]
+-----------------------------------------------
+                0.00    0.00       5/10          webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+                0.00    0.00       5/10          webrc::native::LooperCore::LooperCore(unsigned int, unsigned long, unsigned int) [132]
+[122]    0.0    0.00    0.00      10         webrc::native::LooperCore::prepare(unsigned int, unsigned long, unsigned int) [122]
+                0.00    0.00       5/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00       1/7           webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+                0.00    0.00       1/7           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00       5/7           webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [32]
+[123]    0.0    0.00    0.00       7         webrc::native::NativeEffectBank::prepare(unsigned int) [123]
+-----------------------------------------------
+                0.00    0.00       1/6           webrc::native::NativePolyPitchProcessor::prepare(unsigned int, float) [172]
+                0.00    0.00       5/6           webrc::native::NativePolyPitchProcessor::prepareForFx(unsigned int, float) [145]
+[124]    0.0    0.00    0.00       6         signalsmith::stretch::SignalsmithStretch<float, void>::reset() [124]
+                0.00    0.00      18/77623       std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&) [72]
+-----------------------------------------------
+                0.00    0.00       1/6           webrc::native::NativePolyPitchProcessor::prepare(unsigned int, float) [172]
+                0.00    0.00       5/6           webrc::native::NativePolyPitchProcessor::prepareForFx(unsigned int, float) [145]
+[125]    0.0    0.00    0.00       6         signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+                0.00    0.00      60/25913       std::vector<float, std::allocator<float> >::_M_default_append(unsigned long) [90]
+                0.00    0.00      30/66          std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long) [97]
+                0.00    0.00      18/77623       std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&) [72]
+                0.00    0.00      12/12          signalsmith::linear::DynamicSTFT<float, false, 1>::reset(float) [116]
+                0.00    0.00      12/450         operator new(unsigned long) [92]
+                0.00    0.00       6/12          signalsmith::linear::SplitFFT<float, false>::resize(unsigned long) [117]
+                0.00    0.00       6/6           std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction> >::_M_default_append(unsigned long) [129]
+                0.00    0.00       6/6           std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint> >::_M_default_append(unsigned long) [130]
+-----------------------------------------------
+                0.00    0.00       1/6           webrc::native::NativeAudioCore::NativeAudioCore() [161]
+                0.00    0.00       5/6           webrc::native::(anonymous namespace)::NativeCatalogRobot::NativeCatalogRobot(webrc::native::NativeEffectDescriptor const&) [133]
+[126]    0.0    0.00    0.00       6         webrc::native::NativePolyPitchProcessor::NativePolyPitchProcessor() [126]
+                0.00    0.00       6/12          signalsmith::linear::SplitFFT<float, false>::resize(unsigned long) [117]
+                0.00    0.00       6/66          std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long) [97]
+-----------------------------------------------
+                0.00    0.00       1/6           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+                0.00    0.00       5/6           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[127]    0.0    0.00    0.00       6         webrc::native::NativeFdn16ReverbProcessor::setConfig(webrc::native::NativeFdn16ReverbConfig const&, unsigned long) [127]
+                0.00    0.00      18/95          webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+-----------------------------------------------
+                0.00    0.00       6/6           main [1]
+[128]    0.0    0.00    0.00       6         unsigned long __gnu_cxx::__stoa<unsigned long, unsigned long, char, int>(unsigned long (*)(char const*, char**, int), char const*, char const*, unsigned long*, int) [128]
+-----------------------------------------------
+                0.00    0.00       6/6           signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+[129]    0.0    0.00    0.00       6         std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction> >::_M_default_append(unsigned long) [129]
+                0.00    0.00       6/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00       6/6           signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+[130]    0.0    0.00    0.00       6         std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint> >::_M_default_append(unsigned long) [130]
+                0.00    0.00       6/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogRobot::~NativeCatalogRobot() [134]
+[131]    0.0    0.00    0.00       5         signalsmith::stretch::SignalsmithStretch<float, void>::~SignalsmithStretch() [131]
+                0.00    0.00     155/450         operator delete(void*, unsigned long) [91]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeAudioCore::NativeAudioCore() [161]
+[132]    0.0    0.00    0.00       5         webrc::native::LooperCore::LooperCore(unsigned int, unsigned long, unsigned int) [132]
+                0.00    0.00       5/10          webrc::native::LooperCore::prepare(unsigned int, unsigned long, unsigned int) [122]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+[133]    0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogRobot::NativeCatalogRobot(webrc::native::NativeEffectDescriptor const&) [133]
+                0.00    0.00      10/118         webrc::native::dsp::ParameterSmoother::ParameterSmoother(float) [94]
+                0.00    0.00       5/6           webrc::native::NativePolyPitchProcessor::NativePolyPitchProcessor() [126]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+[134]    0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogRobot::~NativeCatalogRobot() [134]
+                0.00    0.00     100/450         operator delete(void*, unsigned long) [91]
+                0.00    0.00       5/5           signalsmith::stretch::SignalsmithStretch<float, void>::~SignalsmithStretch() [131]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+[135]    0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogPreamp::~NativeCatalogPreamp() [135]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+[136]    0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogReverb::~NativeCatalogReverb() [136]
+                0.00    0.00      80/450         operator delete(void*, unsigned long) [91]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+[137]    0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogDistortion::~NativeCatalogDistortion() [137]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&) [52]
+[138]    0.0    0.00    0.00       5         webrc::native::NativeRobotCore::PitchTracker::configure(unsigned int) [138]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::prepare(unsigned int) [143]
+[139]    0.0    0.00    0.00       5         webrc::native::NativePreampProcessor::designFilters() [139]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::reset() [142]
+[140]    0.0    0.00    0.00       5         webrc::native::NativePreampProcessor::clearChannelState() [140]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::prepare(unsigned int) [143]
+[141]    0.0    0.00    0.00       5         webrc::native::NativePreampProcessor::designCabinetImpulseResponses() [141]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::prepare(unsigned int) [143]
+[142]    0.0    0.00    0.00       5         webrc::native::NativePreampProcessor::reset() [142]
+                0.00    0.00      25/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::clearChannelState() [140]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogPreamp::onPrepare() [46]
+[143]    0.0    0.00    0.00       5         webrc::native::NativePreampProcessor::prepare(unsigned int) [143]
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::designCabinetImpulseResponses() [141]
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::designFilters() [139]
+                0.00    0.00       5/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::reset() [142]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[144]    0.0    0.00    0.00       5         webrc::native::NativePreampProcessor::setConfig(webrc::native::NativePreampConfig const&, unsigned long) [144]
+                0.00    0.00      30/95          webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&) [52]
+[145]    0.0    0.00    0.00       5         webrc::native::NativePolyPitchProcessor::prepareForFx(unsigned int, float) [145]
+                0.00    0.00       5/6           signalsmith::stretch::SignalsmithStretch<float, void>::reset() [124]
+                0.00    0.00       5/25913       std::vector<float, std::allocator<float> >::_M_default_append(unsigned long) [90]
+                0.00    0.00       5/6           signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeRobotCore::updatePitchTarget() [42]
+[146]    0.0    0.00    0.00       5         webrc::native::NativePolyPitchProcessor::setFormantSemitones(float, bool) [146]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeDistortionProcessor::prepare(unsigned int) [36]
+[147]    0.0    0.00    0.00       5         webrc::native::NativeDistortionProcessor::designFilters() [147]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[148]    0.0    0.00    0.00       5         webrc::native::NativeDistortionProcessor::setConfig(webrc::native::NativeDistortionConfig const&, unsigned long) [148]
+                0.00    0.00      15/95          webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >) [109]
+[149]    0.0    0.00    0.00       5         webrc::native::NativeFdn16ReverbProcessor::NativeFdn16ReverbProcessor() [149]
+                0.00    0.00      15/118         webrc::native::dsp::ParameterSmoother::ParameterSmoother(float) [94]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativeEffectProcessor::prepare(unsigned int) [34]
+[150]    0.0    0.00    0.00       5         webrc::native::(anonymous namespace)::NativeCatalogRobot::algorithmicLatencySamples() const [150]
+-----------------------------------------------
+                0.00    0.00       5/5           webrc::native::NativePreampProcessor::processInPlace(float*, unsigned int, unsigned int) [8]
+[151]    0.0    0.00    0.00       5         webrc::native::NativePreampProcessor::makeFrameParameters(float, float, float, float, float, float) const [151]
+-----------------------------------------------
+                0.00    0.00       4/4           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+[152]    0.0    0.00    0.00       4         webrc::native::dsp::Biquad::setParameters(webrc::native::dsp::BiquadType, double, double, double, double, double) [152]
+-----------------------------------------------
+                0.00    0.00       4/4           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+[153]    0.0    0.00    0.00       4         webrc::native::dsp::Biquad::reset() [153]
+-----------------------------------------------
+                0.00    0.00       2/2           main [1]
+[154]    0.0    0.00    0.00       2         webrc::native::test_alloc::count() [154]
+-----------------------------------------------
+                0.00    0.00       2/2           main [1]
+[155]    0.0    0.00    0.00       2         webrc::native::NativeAudioCoreTestAccess::healthy(webrc::native::NativeAudioCore const&, unsigned int) [155]
+                0.00    0.00      40/96          webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) const [95]
+-----------------------------------------------
+                0.00    0.00       2/2           main [1]
+[156]    0.0    0.00    0.00       2         std::vector<float, std::allocator<float> >::vector(unsigned long, std::allocator<float> const&) [156]
+                0.00    0.00       2/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00       1/1           main [1]
+[157]    0.0    0.00    0.00       1         webrc::native::EngineStatus::~EngineStatus() [157]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::stop(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [160]
+[158]    0.0    0.00    0.00       1         webrc::native::NativeAudioCore::closeStreamLocked() [158]
+                0.00    0.00       1/34761       webrc::native::NativeAudioCore::applyNativeCatalogFxCommands() [75]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::getStatus() const [175]
+[159]    0.0    0.00    0.00       1         webrc::native::NativeAudioCore::reclaimInactiveHistoryPcmLocked() [159]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+[160]    0.0    0.00    0.00       1         webrc::native::NativeAudioCore::stop(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [160]
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::closeStreamLocked() [158]
+-----------------------------------------------
+                0.00    0.00       1/1           main [1]
+[161]    0.0    0.00    0.00       1         webrc::native::NativeAudioCore::NativeAudioCore() [161]
+                0.00    0.00      18/118         webrc::native::dsp::ParameterSmoother::ParameterSmoother(float) [94]
+                0.00    0.00       5/5           webrc::native::LooperCore::LooperCore(unsigned int, unsigned long, unsigned int) [132]
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::buildCatalog() const [174]
+                0.00    0.00       1/6           webrc::native::NativePolyPitchProcessor::NativePolyPitchProcessor() [126]
+-----------------------------------------------
+                0.00    0.00       1/1           main [1]
+[162]    0.0    0.00    0.00       1         webrc::native::NativeAudioCore::~NativeAudioCore() [162]
+                0.00    0.00      87/450         operator delete(void*, unsigned long) [91]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogPreamp::~NativeCatalogPreamp() [135]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogDistortion::~NativeCatalogDistortion() [137]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogRobot::~NativeCatalogRobot() [134]
+                0.00    0.00       5/5           webrc::native::(anonymous namespace)::NativeCatalogReverb::~NativeCatalogReverb() [136]
+                0.00    0.00       2/11          webrc::native::NativeAudioCore::setNativeRhythmConfig(webrc::native::NativeRhythmConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&)::{lambda(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char)#1}::operator()(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char) const [121]
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::stop(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [160]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+[163]    0.0    0.00    0.00       1         webrc::native::NativeOutputStage::updateCompressorParameters() [163]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::getStatus() const [175]
+[164]    0.0    0.00    0.00       1         webrc::native::NativeOutputStage::reverbMinimumDelayFramesForSampleRate(unsigned int) [164]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeRhythmEngine::setConfig(webrc::native::NativeRhythmConfig const&, unsigned long) [167]
+[165]    0.0    0.00    0.00       1         webrc::native::NativeRhythmEngine::isValidConfig(webrc::native::NativeRhythmConfig const&) [165]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+[166]    0.0    0.00    0.00       1         webrc::native::NativeRhythmEngine::prepare(unsigned int) [166]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+[167]    0.0    0.00    0.00       1         webrc::native::NativeRhythmEngine::setConfig(webrc::native::NativeRhythmConfig const&, unsigned long) [167]
+                0.00    0.00       1/1           webrc::native::NativeRhythmEngine::isValidConfig(webrc::native::NativeRhythmConfig const&) [165]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+[168]    0.0    0.00    0.00       1         webrc::native::NativeChorusProcessor::prepare(unsigned int) [168]
+                0.00    0.00       4/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+                0.00    0.00       2/450         operator new(unsigned long) [92]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+[169]    0.0    0.00    0.00       1         webrc::native::NativeChorusProcessor::setConfig(webrc::native::ChorusProcessorConfig const&, unsigned long) [169]
+                0.00    0.00       4/95          webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+[170]    0.0    0.00    0.00       1         webrc::native::NativePhaserProcessor::prepare(unsigned int) [170]
+                0.00    0.00       5/118         webrc::native::dsp::ParameterSmoother::reset(float) [93]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::prepare(unsigned int) [55]
+[171]    0.0    0.00    0.00       1         webrc::native::NativePhaserProcessor::setConfig(webrc::native::PhaserProcessorConfig const&, unsigned long) [171]
+                0.00    0.00       5/95          webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long) [96]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int) [56]
+[172]    0.0    0.00    0.00       1         webrc::native::NativePolyPitchProcessor::prepare(unsigned int, float) [172]
+                0.00    0.00       1/6           signalsmith::stretch::SignalsmithStretch<float, void>::reset() [124]
+                0.00    0.00       1/25913       std::vector<float, std::allocator<float> >::_M_default_append(unsigned long) [90]
+                0.00    0.00       1/6           signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [125]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::getStatus() const [175]
+[173]    0.0    0.00    0.00       1         webrc::native::NativeFdn16ReverbProcessor::minimumDelayFramesForSampleRate(unsigned int) [173]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::NativeAudioCore() [161]
+[174]    0.0    0.00    0.00       1         webrc::native::NativeAudioCore::buildCatalog() const [174]
+                0.00    0.00       2/450         operator new(unsigned long) [92]
+                0.00    0.00       1/450         operator delete(void*, unsigned long) [91]
+                0.00    0.00       1/1           void std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >::_M_realloc_append<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [176]
+-----------------------------------------------
+                0.00    0.00       1/1           main [1]
+[175]    0.0    0.00    0.00       1         webrc::native::NativeAudioCore::getStatus() const [175]
+                0.00    0.00      28/28          webrc::native::NativeEffectBank::effectId(webrc::native::NativeEffectSlot) const [101]
+                0.00    0.00      28/96          webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) const [95]
+                0.00    0.00       9/11          webrc::native::NativeAudioCore::setNativeRhythmConfig(webrc::native::NativeRhythmConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&)::{lambda(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char)#1}::operator()(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char) const [121]
+                0.00    0.00       4/30004       webrc::native::test_alloc::endTracking() [88]
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::reclaimInactiveHistoryPcmLocked() [159]
+                0.00    0.00       1/1           webrc::native::NativeFdn16ReverbProcessor::minimumDelayFramesForSampleRate(unsigned int) [173]
+                0.00    0.00       1/1           webrc::native::NativeOutputStage::reverbMinimumDelayFramesForSampleRate(unsigned int) [164]
+-----------------------------------------------
+                0.00    0.00       1/1           webrc::native::NativeAudioCore::buildCatalog() const [174]
+[176]    0.0    0.00    0.00       1         void std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >::_M_realloc_append<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) [176]
+                0.00    0.00       1/450         operator new(unsigned long) [92]
+-----------------------------------------------
+
+Index by function name
+
+  [22] signalsmith::linear::DynamicSTFT<float, false, 1>::analyseStep(unsigned long, unsigned long) [11] webrc::native::NativeRobotCore::PitchTracker::analyzeFrame() [155] webrc::native::NativeAudioCoreTestAccess::healthy(webrc::native::NativeAudioCore const&, unsigned int)
+  [23] signalsmith::linear::DynamicSTFT<float, false, 1>::synthesiseStep(unsigned long) [138] webrc::native::NativeRobotCore::PitchTracker::configure(unsigned int) [56] webrc::native::NativeAudioCoreTestAccess::prepare(webrc::native::NativeAudioCore&, unsigned int, unsigned int, unsigned int, unsigned int)
+ [116] signalsmith::linear::DynamicSTFT<float, false, 1>::reset(float) [42] webrc::native::NativeRobotCore::updatePitchTarget() [147] webrc::native::NativeDistortionProcessor::designFilters()
+ [117] signalsmith::linear::SplitFFT<float, false>::resize(unsigned long) [9] webrc::native::NativeRobotCore::processInterleaved(float*, unsigned int, unsigned int) [13] webrc::native::NativeDistortionProcessor::processInPlace(float*, unsigned int, unsigned int)
+  [26] signalsmith::linear::SimpleFFT<float>::fft(float const*, float const*, float*, float*) [71] webrc::native::NativeRobotCore::selectProcessingMode() [36] webrc::native::NativeDistortionProcessor::prepare(unsigned int)
+  [28] signalsmith::linear::SimpleFFT<float>::ifft(float const*, float const*, float*, float*) [51] webrc::native::NativeRobotCore::reset() [148] webrc::native::NativeDistortionProcessor::setConfig(webrc::native::NativeDistortionConfig const&, unsigned long)
+  [21] signalsmith::stretch::SignalsmithStretch<float, void>::updateFormants(unsigned long) [52] webrc::native::NativeRobotCore::prepare(webrc::native::NativeRobotCore::Config const&) [19] webrc::native::NativeFdn16ReverbProcessor::processInPlace(float*, unsigned int, unsigned int)
+  [14] signalsmith::stretch::SignalsmithStretch<float, void>::processSpectrum(unsigned long) [106] webrc::native::NativeEffectBank::setBypassed(webrc::native::NativeEffectSlot, bool, unsigned long) [45] webrc::native::NativeFdn16ReverbProcessor::updateFeedbackAndDamping(float, float)
+ [124] signalsmith::stretch::SignalsmithStretch<float, void>::reset() [5] webrc::native::NativeEffectBank::processInPlaceNoPeak(float*, unsigned int, unsigned int) [173] webrc::native::NativeFdn16ReverbProcessor::minimumDelayFramesForSampleRate(unsigned int)
+ [125] signalsmith::stretch::SignalsmithStretch<float, void>::configure(int, int, int, bool) [123] webrc::native::NativeEffectBank::prepare(unsigned int) [53] webrc::native::NativeFdn16ReverbProcessor::prepare(unsigned int)
+ [131] signalsmith::stretch::SignalsmithStretch<float, void>::~SignalsmithStretch() [67] webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) [127] webrc::native::NativeFdn16ReverbProcessor::setConfig(webrc::native::NativeFdn16ReverbConfig const&, unsigned long)
+ [111] webrc::native::LooperCore::applyCommand(webrc::native::Command const&) [33] webrc::native::NativeEffectBank::setEffect(webrc::native::NativeEffectSlot, std::basic_string_view<char, std::char_traits<char> >) [149] webrc::native::NativeFdn16ReverbProcessor::NativeFdn16ReverbProcessor()
+ [122] webrc::native::LooperCore::prepare(unsigned int, unsigned long, unsigned int) [20] webrc::native::NativeOutputStage::processInPlace(float*, unsigned int, unsigned int) [108] webrc::native::findNativeEffectDescriptor(std::basic_string_view<char, std::char_traits<char> >)
+  [39] webrc::native::LooperCore::process(float const*, float*, unsigned int, unsigned int, unsigned int, float*, bool) [37] webrc::native::NativeOutputStage::processFractionalDelay(float, float, float&, float&) [109] webrc::native::createNativeEffectProcessor(std::basic_string_view<char, std::char_traits<char> >)
+ [132] webrc::native::LooperCore::LooperCore(unsigned int, unsigned long, unsigned int) [163] webrc::native::NativeOutputStage::updateCompressorParameters() [110] webrc::native::nativeEffectSupportsPerTrackInsert(std::basic_string_view<char, std::char_traits<char> >)
+  [88] webrc::native::test_alloc::endTracking() [164] webrc::native::NativeOutputStage::reverbMinimumDelayFramesForSampleRate(unsigned int) [93] webrc::native::dsp::ParameterSmoother::reset(float)
+  [89] webrc::native::test_alloc::beginTracking() [55] webrc::native::NativeOutputStage::prepare(unsigned int) [96] webrc::native::dsp::ParameterSmoother::setTarget(float, unsigned long)
+ [154] webrc::native::test_alloc::count() [48] webrc::native::NativeRhythmEngine::processVoice(webrc::native::NativeRhythmEngine::Voice&, unsigned long) [94] webrc::native::dsp::ParameterSmoother::ParameterSmoother(float)
+ [157] webrc::native::EngineStatus::~EngineStatus() [165] webrc::native::NativeRhythmEngine::isValidConfig(webrc::native::NativeRhythmConfig const&) [27] webrc::native::dsp::equalPowerCrossfadeGains(float)
+  [10] webrc::native::(anonymous namespace)::antialiasedTriode(float, float, float, float, float, float, float&, bool&) [85] webrc::native::NativeRhythmEngine::processAdditive(float*, unsigned int, unsigned int, unsigned long) [152] webrc::native::dsp::Biquad::setParameters(webrc::native::dsp::BiquadType, double, double, double, double, double)
+  [70] webrc::native::(anonymous namespace)::NativeCatalogRobot::processEffectBlock(float*, unsigned int, unsigned int) [166] webrc::native::NativeRhythmEngine::prepare(unsigned int) [153] webrc::native::dsp::Biquad::reset()
+  [50] webrc::native::(anonymous namespace)::NativeCatalogRobot::onPrepare() [167] webrc::native::NativeRhythmEngine::setConfig(webrc::native::NativeRhythmConfig const&, unsigned long) [44] webrc::native::dsp::Biquad::process(float)
+ [133] webrc::native::(anonymous namespace)::NativeCatalogRobot::NativeCatalogRobot(webrc::native::NativeEffectDescriptor const&) [18] webrc::native::NativePitchProcessor::YinDetector::analyzeFrame() [40] webrc::native::dsp::lagrange4(float, float, float, float, float)
+ [134] webrc::native::(anonymous namespace)::NativeCatalogRobot::~NativeCatalogRobot() [119] webrc::native::NativePitchProcessor::YinDetector::configure(unsigned int, float, float, unsigned int) [128] unsigned long __gnu_cxx::__stoa<unsigned long, unsigned long, char, int>(unsigned long (*)(char const*, char**, int), char const*, char const*, unsigned long*, int)
+  [64] webrc::native::(anonymous namespace)::NativeCatalogPreamp::processEffectFrame(float*, unsigned int) [30] webrc::native::NativePitchProcessor::lookupPitch(long) [69] webrc::native::LooperCore::loopLengthSamples() const
+  [46] webrc::native::(anonymous namespace)::NativeCatalogPreamp::onPrepare() [73] webrc::native::NativePitchProcessor::setSemitones(float) [68] webrc::native::LooperCore::state() const
+ [135] webrc::native::(anonymous namespace)::NativeCatalogPreamp::~NativeCatalogPreamp() [15] webrc::native::NativePitchProcessor::processInPlace(float*, unsigned int) [100] webrc::native::LooperCore::metadata() const
+  [65] webrc::native::(anonymous namespace)::NativeCatalogReverb::processEffectFrame(float*, unsigned int) [16] webrc::native::NativePitchProcessor::synthesizePitchGrain(double) [63] webrc::native::(anonymous namespace)::NativeCatalogWarp::usesBaseWetMix() const
+  [54] webrc::native::(anonymous namespace)::NativeCatalogReverb::onPrepare() [102] webrc::native::NativePitchProcessor::reset() [150] webrc::native::(anonymous namespace)::NativeCatalogRobot::algorithmicLatencySamples() const
+ [136] webrc::native::(anonymous namespace)::NativeCatalogReverb::~NativeCatalogReverb() [120] webrc::native::NativePitchProcessor::prepare(unsigned int, float, float, float, float) [174] webrc::native::NativeAudioCore::buildCatalog() const
+  [47] webrc::native::(anonymous namespace)::NativeCatalogDynamics::onPrepare() [29] webrc::native::NativeChorusProcessor::processInPlace(float*, unsigned int, unsigned int) [175] webrc::native::NativeAudioCore::getStatus() const
+  [66] webrc::native::(anonymous namespace)::NativeCatalogDistortion::processEffectFrame(float*, unsigned int) [168] webrc::native::NativeChorusProcessor::prepare(unsigned int) [41] webrc::native::NativeEffectBank::hasEffects() const
+  [35] webrc::native::(anonymous namespace)::NativeCatalogDistortion::onPrepare() [169] webrc::native::NativeChorusProcessor::setConfig(webrc::native::ChorusProcessorConfig const&, unsigned long) [101] webrc::native::NativeEffectBank::effectId(webrc::native::NativeEffectSlot) const
+ [137] webrc::native::(anonymous namespace)::NativeCatalogDistortion::~NativeCatalogDistortion() [7] webrc::native::NativeEffectProcessor::processEffectBlock(float*, unsigned int, unsigned int) [95] webrc::native::NativeEffectBank::processor(webrc::native::NativeEffectSlot) const
+ [112] webrc::native::SpscRingQueue<webrc::native::Command, 64ul>::push(webrc::native::Command const&) [6] webrc::native::NativeEffectProcessor::processInPlaceInternal(float*, unsigned int, unsigned int, bool) [38] webrc::native::NativeChorusProcessor::readFractionalDelay(std::vector<float, std::allocator<float> > const&, unsigned long, double) const
+   [2] webrc::native::NativeAudioCore::audioCallback(void*, void*, unsigned int, double, unsigned int, void*) [34] webrc::native::NativeEffectProcessor::prepare(unsigned int) [62] webrc::native::NativeEffectProcessor::usesBaseWetMix() const
+ [158] webrc::native::NativeAudioCore::closeStreamLocked() [114] webrc::native::NativeEffectProcessor::NativeEffectProcessor(webrc::native::NativeEffectDescriptor const&) [115] webrc::native::NativeEffectProcessor::algorithmicLatencySamples() const
+   [3] webrc::native::NativeAudioCore::handleAudioCallback(void*, void*, unsigned int, unsigned int) [17] webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor() [151] webrc::native::NativePreampProcessor::makeFrameParameters(float, float, float, float, float, float) const
+  [31] webrc::native::NativeAudioCore::setNativeCatalogSlot(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [25] webrc::native::NativePhaserProcessor::processInPlace(float*, unsigned int, unsigned int) [98] std::basic_string_view<char, std::char_traits<char> >::compare(std::basic_string_view<char, std::char_traits<char> >) const
+  [76] webrc::native::NativeAudioCore::applyNativePitchCommands() [170] webrc::native::NativePhaserProcessor::prepare(unsigned int) [103] void std::vector<signalsmith::linear::SplitFFT<float, false>::Step, std::allocator<signalsmith::linear::SplitFFT<float, false>::Step> >::_M_realloc_append<signalsmith::linear::SplitFFT<float, false>::Step>(signalsmith::linear::SplitFFT<float, false>::Step&&)
+  [77] webrc::native::NativeAudioCore::applyNativeChorusCommands() [171] webrc::native::NativePhaserProcessor::setConfig(webrc::native::PhaserProcessorConfig const&, unsigned long) [129] std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::Prediction> >::_M_default_append(unsigned long)
+  [78] webrc::native::NativeAudioCore::applyNativePhaserCommands() [139] webrc::native::NativePreampProcessor::designFilters() [130] std::vector<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint, std::allocator<signalsmith::stretch::SignalsmithStretch<float, void>::PitchMapPoint> >::_M_default_append(unsigned long)
+  [79] webrc::native::NativeAudioCore::applyNativeRhythmCommands() [8] webrc::native::NativePreampProcessor::processInPlace(float*, unsigned int, unsigned int) [176] void std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >::_M_realloc_append<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&>(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+  [49] webrc::native::NativeAudioCore::processInputFxForCallback(float const*, unsigned int, unsigned int*) [140] webrc::native::NativePreampProcessor::clearChannelState() [97] std::vector<std::complex<float>, std::allocator<std::complex<float> > >::_M_default_append(unsigned long)
+ [113] webrc::native::NativeAudioCore::applyTrackCommandAtCallback(webrc::native::Command const&) [141] webrc::native::NativePreampProcessor::designCabinetImpulseResponses() [104] std::vector<double, std::allocator<double> >::_M_fill_assign(unsigned long, double const&)
+  [80] webrc::native::NativeAudioCore::processHistoryPinAtCallback() [142] webrc::native::NativePreampProcessor::reset() [99] std::vector<float, std::allocator<float> >::_M_fill_assign(unsigned long, float const&)
+  [75] webrc::native::NativeAudioCore::applyNativeCatalogFxCommands() [143] webrc::native::NativePreampProcessor::prepare(unsigned int) [90] std::vector<float, std::allocator<float> >::_M_default_append(unsigned long)
+  [81] webrc::native::NativeAudioCore::applyProjectImportAtCallback() [144] webrc::native::NativePreampProcessor::setConfig(webrc::native::NativePreampConfig const&, unsigned long) [156] std::vector<float, std::allocator<float> >::vector(unsigned long, std::allocator<float> const&)
+  [82] webrc::native::NativeAudioCore::applyNativeCompressorCommands() [86] webrc::native::decideNativePitchRoute(bool, bool, bool, unsigned int, unsigned long, unsigned long) [105] std::vector<unsigned char, std::allocator<unsigned char> >::_M_fill_assign(unsigned long, unsigned char const&)
+   [4] webrc::native::NativeAudioCore::processNativeTracksForCallback(float const*, float*, unsigned int, unsigned int, webrc::native::NativePitchRouteDecision*) [145] webrc::native::NativePolyPitchProcessor::prepareForFx(unsigned int, float) [72] std::vector<unsigned long, std::allocator<unsigned long> >::_M_fill_assign(unsigned long, unsigned long const&)
+ [159] webrc::native::NativeAudioCore::reclaimInactiveHistoryPcmLocked() [74] webrc::native::NativePolyPitchProcessor::setSemitones(float) [87] bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)
+  [83] webrc::native::NativeAudioCore::applyNativeLoopTransportCommands() [118] webrc::native::NativePolyPitchProcessor::setFormantBaseHz(float) [121] webrc::native::NativeAudioCore::setNativeRhythmConfig(webrc::native::NativeRhythmConfig const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&)::{lambda(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char)#1}::operator()(webrc::native::NativeEffectBank const&, webrc::native::NativeCatalogFxPath, unsigned char) const
+  [32] webrc::native::NativeAudioCore::configureNativeCatalogSlotLocked(webrc::native::NativeEffectSlot, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::map<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, float, std::less<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const, float> > > const&, bool, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, webrc::native::NativeCatalogFxPath, unsigned char) [12] webrc::native::NativePolyPitchProcessor::processInterleaved(float*, unsigned int, unsigned int) [91] operator delete(void*, unsigned long)
+  [84] webrc::native::NativeAudioCore::processLoopSnapshotRequestAtCallback() [146] webrc::native::NativePolyPitchProcessor::setFormantSemitones(float, bool) [92] operator new(unsigned long)
+ [160] webrc::native::NativeAudioCore::stop(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&) [107] webrc::native::NativePolyPitchProcessor::reset() [24] _init
+ [161] webrc::native::NativeAudioCore::NativeAudioCore() [172] webrc::native::NativePolyPitchProcessor::prepare(unsigned int, float) [43] frame_dummy
+ [162] webrc::native::NativeAudioCore::~NativeAudioCore() [126] webrc::native::NativePolyPitchProcessor::NativePolyPitchProcessor() [1] main

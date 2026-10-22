@@ -13,6 +13,10 @@ class MockAudioParam {
     this.value = value;
   }
 
+  public cancelScheduledValues(_startTime: number) {
+    return this;
+  }
+
   public exponentialRampToValueAtTime(value: number) {
     this.value = value;
   }

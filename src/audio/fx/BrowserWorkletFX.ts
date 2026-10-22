@@ -1,3 +1,5 @@
+import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOfficialEffect } from './official/parameters';
+import { BROWSER_OFFICIAL_SOURCE_ALGORITHMS, getBrowserOfficialDefaults, isBrowserOfficialParameterSupported } from './dsp/OfficialBrowserParameters';
 import type { FXBase } from './FXBase';
 import type { BrowserFxAlgorithm, BrowserFxParameters } from './dsp/BrowserFxDspCore';
 
@@ -53,10 +55,13 @@ export const BROWSER_WORKLET_FX_TYPES = {
 
 export type BrowserWorkletFxName = keyof typeof BROWSER_WORKLET_FX_TYPES;
 
+/** A verified playback-only bus, never a mixed/live-monitor or post-FX node. */
+export type BrowserVocoderCarrierSource = (trackId: number) => AudioNode | null;
+
 interface BrowserMidiNoteMessage {
-  readonly type: 'midi-note-on' | 'midi-note-off';
-  readonly channel: number;
-  readonly note: number;
+  readonly type: 'midi-note-on' | 'midi-note-off' | 'midi-all-notes-off';
+  readonly channel?: number;
+  readonly note?: number;
   readonly frame: number;
   readonly velocity?: number;
 }
@@ -97,7 +102,7 @@ const amountParameters = (algorithm: BrowserFxAlgorithm, value: number): Browser
     case 'synth':
       return { synthMixPercent: amount * 100 };
     case 'vocoder':
-      return { vocoderBands: 16, vocoderCarrier: 1, mix: amount };
+      return { mix: amount };
     case 'electric':
       return { mix: amount };
     case 'osc-voc':
@@ -175,11 +180,15 @@ export class BrowserWorkletFX implements FXBase {
   private readonly ensureModule: () => Promise<void>;
   private readonly onFailure?: (error: Error) => void;
   private node: AudioWorkletNode | null = null;
+  private readonly getVocoderCarrierSource?: BrowserVocoderCarrierSource;
+  private vocoderCarrierSource: AudioNode | null = null;
+  private readonly legacyVocoderMixPercent: boolean;
   private parameters: BrowserFxParameters = {};
   private pendingMidiMessages: BrowserMidiNoteMessage[] = [];
   private bypassed = true;
   private disposed = false;
   private amount = 0.5;
+  readonly sourceAwareLoopTransport: boolean;
   public error = '';
   /** Settles after the processor is installed or its failure has been reported. */
   public readonly ready: Promise<void>;
@@ -192,17 +201,45 @@ export class BrowserWorkletFX implements FXBase {
     ensureModule: () => Promise<void>,
     onFailure?: (error: Error) => void,
     initialParameters: BrowserFxParameters = {},
+    options: { sourceAwareLoopTransport?: boolean; getVocoderCarrierSource?: BrowserVocoderCarrierSource; legacyVocoderMixPercent?: boolean } = {},
   ) {
     this.context = context;
     this.name = name;
     this.algorithm = BROWSER_WORKLET_FX_TYPES[name];
+    this.sourceAwareLoopTransport = options.sourceAwareLoopTransport === true && BROWSER_OFFICIAL_SOURCE_ALGORITHMS.includes(this.algorithm);
     this.ensureModule = ensureModule;
     this.onFailure = onFailure;
+    this.getVocoderCarrierSource = options.getVocoderCarrierSource;
+    this.legacyVocoderMixPercent = this.algorithm === 'vocoder' && options.legacyVocoderMixPercent === true;
     this.parameters = { ...initialParameters };
     this.input = context.createGain();
     this.output = context.createGain();
     this.input.connect(this.output);
 
+    if (initialParameters.quarterNotesPerMeasure !== undefined && (!Number.isFinite(initialParameters.quarterNotesPerMeasure) || initialParameters.quarterNotesPerMeasure < 0.125 || initialParameters.quarterNotesPerMeasure > 128)) {
+      this.reportError('Invalid initial Browser meter: quarterNotesPerMeasure must be between 0.125 and 128.');
+      this.ready = Promise.resolve();
+      return;
+    }
+    const effect = resolveOfficialEffect(name, { official_variant: initialParameters.official_variant ?? 0 });
+    for (const [key, value] of Object.entries(initialParameters)) {
+      if (!key.startsWith('official_')) continue;
+      if (BROWSER_OFFICIAL_SOURCE_ALGORITHMS.includes(this.algorithm) && !this.sourceAwareLoopTransport) {
+        this.reportError(`Official ${name} requires the source-aware loop transport route.`); this.ready = Promise.resolve(); return;
+      }
+      const parameter = effect ? findOfficialRuntimeParameter(effect, key) : undefined;
+      if (!isBrowserOfficialParameterSupported(this.algorithm, key, initialParameters.official_variant)
+        || (key === 'official_variant' ? value !== 1 && value !== 2 : key === 'official_step_index' ? !Number.isInteger(value) || value < 1 || value > 16 : typeof value !== 'number' || !parameter || !isOfficialRuntimeValueValid(parameter, value))) {
+        this.reportError(`Invalid initial official Browser ${name} ${key}: ${value}`);
+        this.ready = Promise.resolve();
+        return;
+      }
+    }
+    if (this.sourceAwareLoopTransport && Object.keys(initialParameters).some(key => key.startsWith('official_'))) this.parameters = { ...getBrowserOfficialDefaults(this.algorithm), ...initialParameters };
+    if (this.algorithm === 'vocoder' && Object.keys(initialParameters).some(key => key.startsWith('official_'))) {
+      this.parameters = { ...getBrowserOfficialDefaults(this.algorithm), ...initialParameters };
+      if (!this.selectVocoderCarrier(this.parameters)) { this.ready = Promise.resolve(); return; }
+    }
     this.ready = this.installProcessor(onFailure);
   }
 
@@ -210,11 +247,57 @@ export class BrowserWorkletFX implements FXBase {
     if (!Number.isFinite(value)) return;
     this.amount = Math.max(0, Math.min(1, value));
     this.parameters = { ...this.parameters, ...amountParameters(this.algorithm, this.amount) };
-    this.node?.port.postMessage({ type: 'configure', parameters: this.parameters });
+    this.node?.port.postMessage({ type: 'configure', parameters: this.getProcessorParameters() });
   }
 
   setParam(key: string, value: number): void {
     if (!Number.isFinite(value)) return;
+    // Host clock fields are not legacy effect knobs. In particular RADIO's
+    // percentage clamp must never turn an authored 107 BPM snapshot into 100.
+    if (key === 'bpm') {
+      if (value < 40 || value > 300) { this.reportError('Browser tempo must be between 40 and 300 BPM.'); return; }
+      this.parameters = { ...this.parameters, bpm: value };
+      this.node?.port.postMessage({ type: 'configure', parameters: { bpm: value } });
+      return;
+    }
+    if (key === 'quarterNotesPerMeasure') {
+      if (value < 0.125 || value > 128) { this.reportError('Browser meter must be between 0.125 and 128 quarter notes per measure.'); return; }
+      this.parameters = { ...this.parameters, quarterNotesPerMeasure: value };
+      this.node?.port.postMessage({ type: 'configure', parameters: this.getProcessorParameters() });
+      return;
+    }
+    if (key.startsWith('official_')) {
+      if (BROWSER_OFFICIAL_SOURCE_ALGORITHMS.includes(this.algorithm) && !this.sourceAwareLoopTransport) {
+        this.reportError(`Official ${this.name} requires the source-aware loop transport route.`); return;
+      }
+      if (!isBrowserOfficialParameterSupported(this.algorithm, key, this.parameters.official_variant)) {
+        this.reportError(`Unsupported official Browser ${this.algorithm} parameter: ${key}`);
+        return;
+      }
+      if (key === 'official_step_index' && (!Number.isInteger(value) || value < 1 || value > 16)) { this.reportError('Official step index must be an integer from 1 to 16.'); return; }
+      if (key !== 'official_variant' && key !== 'official_step_index') {
+        const effect = resolveOfficialEffect(this.name, { official_variant: this.parameters.official_variant ?? 0 });
+        const parameter = effect ? findOfficialRuntimeParameter(effect, key) : undefined;
+        if (!parameter || !isOfficialRuntimeValueValid(parameter, value)) {
+          this.reportError(`Invalid official Browser ${this.name} ${key}: ${value}`);
+          return;
+        }
+      }
+      if (key === 'official_variant') {
+        if (value !== 1 && value !== 2) { this.reportError('Official FX variant must be 1 or 2'); return; }
+        if (value !== this.parameters.official_variant) {
+          this.parameters = Object.fromEntries(Object.entries(this.parameters).filter(([name]) => !name.startsWith('official_')));
+        }
+      }
+      if (this.sourceAwareLoopTransport && !Object.keys(this.parameters).some(name => name.startsWith('official_'))) Object.assign(this.parameters, getBrowserOfficialDefaults(this.algorithm));
+      const nextParameters = this.algorithm === 'vocoder'
+        ? { ...getBrowserOfficialDefaults('vocoder'), ...this.parameters, [key]: value }
+        : { ...this.parameters, [key]: value };
+      if (this.algorithm === 'vocoder' && !this.selectVocoderCarrier(nextParameters)) return;
+      this.parameters = nextParameters;
+      this.node?.port.postMessage({ type: 'configure', parameters: this.getProcessorParameters() });
+      return;
+    }
     if (this.algorithm === 'beat-shift' && (key === 'mix' || key === 'beat-shift.mix')) return;
     if (this.algorithm === 'preamp' && (key === 'mix' || key === 'preamp.mix')) return;
     if (key === 'amount') {
@@ -226,7 +309,13 @@ export class BrowserWorkletFX implements FXBase {
     let parameterValue = (this.algorithm === 'beat-repeat' || this.algorithm === 'roll') && key === 'mix' && value > 1
       ? value / 100
       : value;
-    if (this.algorithm === 'roll') {
+    if (this.algorithm === 'ring-mod') {
+      if (key === 'waveform' || key === 'ring-mod.waveform') parameterKey = 'ringModWaveform';
+      if (parameterKey === 'ringModWaveform' && value !== 0 && value !== 1) {
+        this.reportError("RING.MOD waveform must be 0 (sine) or 1 (triangle).");
+        return;
+      }
+    } else if (this.algorithm === 'roll') {
       const rollKeys: Record<string, string> = {
         slice: 'rollSliceBeats', 'roll-slice': 'rollSliceBeats', 'roll.slice': 'rollSliceBeats', slice_beats: 'rollSliceBeats', rollSliceBeats: 'rollSliceBeats',
         decay: 'rollDecayPercent', 'roll-decay': 'rollDecayPercent', 'roll.decay': 'rollDecayPercent', decay_percent: 'rollDecayPercent', rollDecayPercent: 'rollDecayPercent',
@@ -287,7 +376,7 @@ export class BrowserWorkletFX implements FXBase {
         this.setBypass(true);
         this.reportError('VOCODER formant shifting is unsupported and rejected.');
         return;
-      } else if (key === 'mix' && value > 1) parameterValue = value / 100;
+      } else if (key === 'mix' && (this.legacyVocoderMixPercent || value > 1)) parameterValue = value / 100;
     } else if (this.algorithm === 'electric') {
       const electricKeys: Record<string, string> = {
         character: 'electricCharacter', 'electric.character': 'electricCharacter', electricCharacter: 'electricCharacter',
@@ -558,10 +647,15 @@ export class BrowserWorkletFX implements FXBase {
 
   /** Return a copy of the canonical authored controls for source-aware routes. */
   getParameterSnapshot(): Readonly<BrowserFxParameters> {
-    return { ...this.parameters };
+    // Shared VOCODER historically authors/snapshots MIX as percent, even at
+    // 0.5 or 1. Private inserts retain their existing normalized-unit contract.
+    return this.legacyVocoderMixPercent && this.parameters.mix !== undefined
+      ? { ...this.parameters, mix: this.parameters.mix * 100 }
+      : { ...this.parameters };
   }
 
   setBypass(bypass: boolean): void {
+    if (this.sourceAwareLoopTransport) bypass = true;
     if ((this.algorithm === 'beat-repeat' || this.algorithm === 'beat-scatter' || this.algorithm === 'roll' || this.algorithm === 'pattern-slicer' || this.algorithm === 'step-slicer') && this.bypassed && !bypass) {
       // Activation starts a fresh local tempo phase for these sample-clocked
       // effects rather than resuming stale state.
@@ -586,22 +680,43 @@ export class BrowserWorkletFX implements FXBase {
       : { type: 'midi-note-off', channel: event.channel, note: event.note, frame: event.frame };
     if (this.node) {
       this.node.port.postMessage(message);
-      return true;
-    }
-    if (this.pendingMidiMessages.length >= MAX_PENDING_MIDI_EVENTS) {
+    } else if (this.pendingMidiMessages.length >= MAX_PENDING_MIDI_EVENTS) {
       this.reportError(`OSC VOC MIDI queue is full (${MAX_PENDING_MIDI_EVENTS} events).`);
       return false;
+    } else {
+      this.pendingMidiMessages.push(message);
     }
-    this.pendingMidiMessages.push(message);
+
+    return true;
+  }
+
+  /** Clear the held MIDI voice at the requested frame, even if its event queue is full. */
+  clearMidiNotes(frame: number): boolean {
+    if (this.algorithm !== 'osc-voc' || this.disposed || !Number.isSafeInteger(frame) || frame < 0) return false;
+    const message: BrowserMidiNoteMessage = { type: 'midi-all-notes-off', frame };
+    if (this.node) {
+      this.node.port.postMessage(message);
+    } else {
+      // Replacing this adapter's pending MIDI list matches the processor panic:
+      // queued ons must not be resurrected after the selected route changes.
+      this.pendingMidiMessages = [message];
+    }
     return true;
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disconnectVocoderCarrier();
     this.disposed = true;
     this.input.disconnect();
     this.node?.disconnect();
     this.output.disconnect();
     this.node = null;
+  }
+
+  /** A source-bound official selection must never leak to the causal worklet. */
+  private getProcessorParameters(): BrowserFxParameters {
+    return this.sourceAwareLoopTransport ? Object.fromEntries(Object.entries(this.parameters).filter(([key]) => !key.startsWith('official_'))) : this.parameters;
   }
 
   private async installProcessor(onFailure?: (error: Error) => void): Promise<void> {
@@ -611,7 +726,7 @@ export class BrowserWorkletFX implements FXBase {
       if (this.disposed) return;
 
       const node = new AudioWorkletNode(this.context, 'rc505-fx-processor', {
-        numberOfInputs: 1,
+        numberOfInputs: this.algorithm === 'vocoder' ? 2 : 1,
         numberOfOutputs: 1,
         outputChannelCount: [2],
         channelCount: 2,
@@ -619,10 +734,11 @@ export class BrowserWorkletFX implements FXBase {
         processorOptions: {
           algorithm: this.algorithm,
           sampleRate: this.context.sampleRate,
-          parameters: this.parameters,
+          parameters: this.getProcessorParameters(),
           bypassed: this.bypassed,
         },
       });
+      this.vocoderCarrierSource?.connect(node, 0, 1);
       this.input.disconnect(this.output);
       this.input.connect(node);
       node.connect(this.output);
@@ -631,6 +747,7 @@ export class BrowserWorkletFX implements FXBase {
         if (this.disposed || this.node !== node) return;
         // A dead processor cannot respond to a bypass message. Restore a
         // direct audible wire and surface the failed route to its host.
+        this.disconnectVocoderCarrier();
         this.input.disconnect();
         node.disconnect();
         this.input.connect(this.output);
@@ -643,7 +760,7 @@ export class BrowserWorkletFX implements FXBase {
       };
 
       // Preserve any fader or activation changes made while the module loaded.
-      node.port.postMessage({ type: 'configure', parameters: this.parameters });
+      node.port.postMessage({ type: 'configure', parameters: this.getProcessorParameters() });
       node.port.postMessage({ type: 'set-bypass', value: this.bypassed, rampFrames: 0 });
       this.flushPendingMidiMessages();
     } catch (unknownError) {
@@ -652,6 +769,38 @@ export class BrowserWorkletFX implements FXBase {
       this.error = unknownError instanceof Error ? unknownError.message : String(unknownError);
       onFailure?.(new Error(this.error));
     }
+  }
+
+  private selectVocoderCarrier(parameters: BrowserFxParameters): boolean {
+    const selection = parameters.official_carrier ?? 6; // Official TRACK1 default.
+    if (!Number.isInteger(selection) || selection < 6 || selection > 10) {
+      this.reportError('Browser VOCODER CARRIER supports TRACK1–5 only; MIC1/MIC2/INST1-L/R/INST2-L/R are not mapped.');
+      return false;
+    }
+    const source = this.getVocoderCarrierSource?.(selection - 5) ?? null;
+    if (!source) {
+      this.reportError(`Browser VOCODER TRACK${selection - 5} playback-only carrier bus is unavailable. No synthetic fallback was applied.`);
+      return false;
+    }
+    if (source === this.vocoderCarrierSource) return true;
+    try {
+      // Connect the replacement before dropping the old edge, without touching
+      // any of the source's audible outputs or other vocoder consumers.
+      if (this.node) source.connect(this.node, 0, 1);
+      this.disconnectVocoderCarrier();
+      this.vocoderCarrierSource = source;
+      return true;
+    } catch (error) {
+      this.reportError(`Browser VOCODER carrier routing failed: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
+  }
+
+  private disconnectVocoderCarrier(): void {
+    if (this.node && this.vocoderCarrierSource) {
+      try { this.vocoderCarrierSource.disconnect(this.node, 0, 1); } catch { /* context/source already retired */ }
+    }
+    this.vocoderCarrierSource = null;
   }
 
   private reportError(message: string): void {
@@ -667,9 +816,7 @@ export class BrowserWorkletFX implements FXBase {
     );
     const safeFrame = Math.ceil((this.context.currentTime * this.context.sampleRate) + this.context.sampleRate * 0.03);
     const shift = Math.max(0, safeFrame - firstRequestedFrame);
-    for (const event of this.pendingMidiMessages) {
-      node.port.postMessage({ ...event, frame: event.frame + shift });
-    }
+    for (const event of this.pendingMidiMessages) node.port.postMessage({ ...event, frame: event.frame + shift });
     this.pendingMidiMessages = [];
   }
 }

@@ -1,0 +1,31 @@
+{
+  "candidate": "ABI-preserving grouped parameters plus positive-zero identity",
+  "probes": [
+    {
+      "baseline": "/tmp/native-preamp-baseline-expanded.pcm",
+      "candidate": "/tmp/native-groups-abi.pcm",
+      "baselineSha256": "0335262669f2b74ef2e240627d3467b30fd4eb553d32c26647dd1cb4c03ade70",
+      "candidateSha256": "0335262669f2b74ef2e240627d3467b30fd4eb553d32c26647dd1cb4c03ade70",
+      "exact": true
+    },
+    {
+      "baseline": "/tmp/native-edge-base.pcm",
+      "candidate": "/tmp/native-edge-groups-abi.pcm",
+      "baselineSha256": "373b8eff4f1762620ab51e7a9d40328b8ae5c7d7c2bfe25379ca34409b91c617",
+      "candidateSha256": "373b8eff4f1762620ab51e7a9d40328b8ae5c7d7c2bfe25379ca34409b91c617",
+      "exact": true
+    },
+    {
+      "baseline": "/tmp/native-auto-original.pcm",
+      "candidate": "/tmp/native-auto-groups-abi.pcm",
+      "baselineSha256": "1f5445a1e3cbb3427102c885a57ec9810b669c6ffe42045c5b3f64e4f44bfdf1",
+      "candidateSha256": "1f5445a1e3cbb3427102c885a57ec9810b669c6ffe42045c5b3f64e4f44bfdf1",
+      "exact": true
+    }
+  ],
+  "sourceSha256": {
+    "/tmp/rc505-next-candidates/preamp-groups-abi/src/native_preamp_processor.cpp": "6810f9807c6148b9bb31235c4d3a29a1d0898fca196b1d41581f71b7505d79d8",
+    "/tmp/rc505-next-candidates/preamp-groups-abi/include/native_preamp_processor.hpp": "be141a6ae5c95447f90199a35909e476a02f4dddde65846be02f16d2ef427b24"
+  },
+  "binarySha256": "f59817a5c5171f5cd9a1891a533755a6aea7f45dfbd76b06692f8d36543670df"
+}

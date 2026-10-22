@@ -1,0 +1,15 @@
+000000000005ac00 W webrc::native::NativeDistortionProcessor::NativeDistortionProcessor()
+000000000005ac00 W webrc::native::NativeDistortionProcessor::NativeDistortionProcessor()
+000000000008cbd0 W webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor()
+000000000008cbd0 W webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor()
+000000000008cc30 W webrc::native::NativeOscBotProcessor::~NativeOscBotProcessor()
+000000000008ccc0 t webrc::native::NativeDistortionProcessor::reset() [clone .part.0]
+000000000008ce40 t webrc::native::NativeDistortionProcessor::processSample(unsigned int, float, float, float, float&) [clone .constprop.0]
+000000000008d160 T webrc::native::NativeDistortionProcessor::setConfig(webrc::native::NativeDistortionConfig const&, unsigned long)
+000000000008d2a0 T webrc::native::NativeDistortionProcessor::reset()
+000000000008d2d0 T webrc::native::NativeDistortionProcessor::processInPlace(float*, unsigned int, unsigned int)
+000000000008da30 T webrc::native::NativeDistortionProcessor::processSample(unsigned int, float, float, float, float&)
+000000000008de00 T webrc::native::NativeDistortionProcessor::interpolate(unsigned int, unsigned int) const
+000000000008df00 T webrc::native::NativeDistortionProcessor::reconstruct(unsigned int, float, bool)
+000000000008e020 T webrc::native::NativeDistortionProcessor::designFilters()
+000000000008e380 T webrc::native::NativeDistortionProcessor::prepare(unsigned int)

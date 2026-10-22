@@ -1,11 +1,13 @@
 #pragma once
 
 #include "native_poly_pitch_processor.hpp"
+#include "dsp_primitives.hpp"
 
 #include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace webrc::native {
 
@@ -70,6 +72,11 @@ public:
     // consumed to reconstruct held-note state and counted as late.
     [[nodiscard]] bool synchronizeFrame(std::uint64_t absoluteFrame) noexcept;
     void reset() noexcept;
+    // Independent hardware-facing path. Legacy configuration and two-voice
+    // behavior remain unchanged until a validated official control is used.
+    [[nodiscard]] bool setOfficialParameter(std::string_view id, float value, bool manual = false) noexcept;
+    void disableOfficialControls() noexcept;
+    [[nodiscard]] bool officialControlsActive() const noexcept { return officialActive_; }
 
     // In-place mono/stereo processing. Arbitrarily large host blocks are split
     // into bounded work segments; no heap allocations occur here.
@@ -170,6 +177,7 @@ private:
     [[nodiscard]] unsigned int collectTargets(std::array<int, 2U>& targets) const noexcept;
     void handleMidi(const MidiEvent& event) noexcept;
     void updateVoiceTargets() noexcept;
+    [[nodiscard]] float officialShift(float sourceMidi) const noexcept;
     [[nodiscard]] bool processSegment(float* interleaved, unsigned int frames,
                                       std::uint64_t segmentStart) noexcept;
     [[nodiscard]] bool peekEvent(MidiEvent& event) const noexcept;
@@ -201,6 +209,15 @@ private:
     std::array<int, 2U> targetMidiNotes_{{-1, -1}};
     std::array<float, 2U> targetSemitones_{{0.0f, 0.0f}};
     bool hasLastEnqueuedFrame_ = false;
+    bool officialActive_ = false;
+    bool officialManual_ = false;
+    unsigned int officialVoice_ = 4U;
+    unsigned int officialKey_ = 0U;
+    unsigned int officialMode_ = 1U;
+    float officialFormant_ = 0.0f;
+    dsp::ParameterSmoother officialPan_{0.0f};
+    dsp::ParameterSmoother officialDirect_{1.0f};
+    dsp::ParameterSmoother officialHarmony_{0.8f};
     bool prepared_ = false;
 };
 

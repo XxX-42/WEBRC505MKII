@@ -26,6 +26,9 @@ public:
     // LIVE_POLY playback route keeps its cheaper, 140 ms preset via prepare().
     [[nodiscard]] bool prepareForFx(unsigned int sampleRate, float semitones = 0.0f) noexcept;
     [[nodiscard]] bool setSemitones(float semitones) noexcept;
+    // Official PITCH BEND supports -3..+4 octaves. Keep the legacy setter
+    // and playback-domain limits unchanged. Scalar, allocation-free update.
+    [[nodiscard]] bool setOfficialBendSemitones(float semitones) noexcept;
     // Signalsmith's formant mapping is configured outside render-buffer setup;
     // these setters only update bounded scalar state in the live engine.
     [[nodiscard]] bool setFormantSemitones(float semitones, bool compensatePitch = false) noexcept;

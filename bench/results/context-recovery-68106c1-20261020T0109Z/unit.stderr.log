@@ -1,0 +1,269 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > lists WARP only as an experimental option in both Browser A–D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > lists WARP only as an experimental option in both Browser A–D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes HRM AUTO (M) from its experimental Browser catalog route in both A-D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes HRM AUTO (M) from its experimental Browser catalog route in both A-D banks
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/app-audio-retry.spec.ts > App audio startup > keeps output ready after input failure and allows a separate input retry
+Failed to initialize audio engine: Error: Microphone permission denied
+    at /workspace/shared/rc505-recovery-20261018/WEBRC505MKII/tests/unit/app-audio-retry.spec.ts:68:65
+    at file:///workspace/shared/rc505-recovery-20261018/WEBRC505MKII/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > centers TRANSPOSE when newly selected so the first sound is unshifted
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > centers TRANSPOSE when newly selected so the first sound is unshifted
+Unknown FX type: TRANSPOSE
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes PITCH BEND defaults while leaving the activation-triggered sweep bypassed
+Unknown FX type: PITCH BEND
+Unknown FX type: PITCH BEND
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes, updates, and persists HRM MANUAL controls in both runtime slot stores
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes, updates, and persists HRM MANUAL controls in both runtime slot stores
+Unknown FX type: HRM MANUAL
+Unknown FX type: HRM MANUAL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes, updates, and persists HRM MANUAL controls in both runtime slot stores
+Unknown FX type: HRM MANUAL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores
+Unknown FX type: OCTAVE
+Unknown FX type: OCTAVE
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists supported OCTAVE voices and mix in both runtime slot stores
+Unknown FX type: OCTAVE
+Unknown FX type: OCTAVE
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists the Browser VOCODER filterbank, carrier and mix
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists the Browser VOCODER filterbank, carrier and mix
+Unknown FX type: VOCODER
+Unknown FX type: VOCODER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > initializes and persists the Browser VOCODER filterbank, carrier and mix
+Unknown FX type: VOCODER
+Unknown FX type: VOCODER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > retains the shared Browser A–D selector and full option list
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT out of the Browser input selector
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes AUTO RIFF experimentally only when its Browser bank route is catalogued
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > exposes AUTO RIFF experimentally only when its Browser bank route is catalogued
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists AUTO RIFF named controls per slot in Browser and Native stores without dropping older slot fields
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: AUTO RIFF (EXPERIMENTAL)
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists HRM AUTO named controls per Input/Track slot in Browser and Native and routes catalog parameters
+Unknown FX type: HRM AUTO (M) (EXPERIMENTAL)
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT bypassed when a previously active slot changes effect
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT bypassed when a previously active slot changes effect
+Unknown FX type: BEAT REPEAT
+Unknown FX type: BEAT REPEAT
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > keeps BEAT REPEAT bypassed when a previously active slot changes effect
+Unknown FX type: BEAT REPEAT
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation when a track slot changes to BEAT SCATTER
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation when a track slot changes to BEAT SCATTER
+Unknown FX type: BEAT SCATTER
+Unknown FX type: BEAT SCATTER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation when a track slot changes to BEAT SCATTER
+Unknown FX type: BEAT SCATTER
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: ROLL
+Unknown FX type: ROLL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: ROLL
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > requires explicit activation for ROLL on either Browser bank
+Unknown FX type: ROLL
+Unknown FX type: ROLL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+Unknown FX type: ROLL
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > persists bounded ROLL controls with the selected FX slot
+Unknown FX type: ROLL
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/fx-panel-state.spec.ts > FX panel runtime selection > sends the same supported ROBOT pitch/formant/mix keys in Browser and Native modes
+Unknown FX type: DELAY
+Unknown FX type: DELAY
+
+stderr | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > does not let an older late stream or error overwrite the newest failed request
+Failed to set input device: DOMException {}
+
+stderr | tests/unit/browser-input-device-lifecycle.spec.ts > Browser input device lifecycle > keeps a previously committed live input when a newer permission request fails during its warm-up
+Failed to set input device: DOMException {}
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/electric-fx-panels.spec.ts > ELECTRIC controls in FX panels > mounts in all Input/Track surfaces, persists four edits and dispatches exact Browser and Native names; macro remains mix
+Unknown FX type: ELECTRIC
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/hrm-auto-panel-targets.spec.ts > HRM AUTO panel MIDI targets > passes one exact Input and Track target in each shell layout and routes the active mix macro
+Unknown FX type: HRM AUTO (M)
+
+stderr | tests/unit/browser-audio-startup.spec.ts > Browser audio startup deadlines > keeps Browser output ready when microphone permission is denied
+Failed to set input device: DOMException {}
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

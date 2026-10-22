@@ -1,0 +1,8 @@
+{
+  "objectPath": "/tmp/rc505-native-followup/build-final/CMakeFiles/native_dsp_portable.dir/src/native_preamp_processor.cpp.o",
+  "objectSha256": "d6c3e8533f02bc2c960e2a79adf3528466a8a310f736f21bc7cfe0cd704a3e77",
+  "sourceSha256": "fb5c5e68c5165a201d5b283b22572a674a0b40cf9d2da3564191c520c02ee1cb",
+  "existingFinalManifest": "../20261021-followup/native/final-post-matrix-manifest.json",
+  "historicalRejectedEvidence": "../20261021/native-inline-abba.json",
+  "action": "Read-only inspection; no compilation or timing"
+}

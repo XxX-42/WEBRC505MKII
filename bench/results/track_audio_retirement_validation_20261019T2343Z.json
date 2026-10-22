@@ -1,0 +1,43 @@
+{
+  "schema": "rc505-validation-record-v1",
+  "scope": "TrackAudio/FXChain disposal after AudioContext close",
+  "source_commit": "06c50ca",
+  "commands": [
+    {
+      "started_utc": "2026-10-19T23:44:13Z",
+      "command": "TMPDIR=/workspace/shared/.tmp-rc505 npm run build",
+      "result": "PASS",
+      "details": "vue-tsc, FxProcessor bundle, Vite production build, and 6 built license/notice files verified"
+    },
+    {
+      "started_utc": "2026-10-19T23:44:30Z",
+      "command": "TMPDIR=/workspace/shared/.tmp-rc505 npm run test:unit",
+      "result": "PASS",
+      "details": "144 test files, 1074 tests passed"
+    },
+    {
+      "started_utc": "2026-10-19T23:45:09Z",
+      "command": "npm run test:e2e:rubberband (99 tests, one worker)",
+      "result": "FAIL_ENVIRONMENT_MISMATCH",
+      "details": "96/99 passed. Three Native project-memory tests failed because the selected simulation host did not provide a stable project revision snapshot; error contexts showed bridge unavailable. Selected binary was /tmp/rc505-native-e2e-simulation/native_bridge_host_simulation, SHA256 5742fc39c845f2467bad701390f81601c6c3e25bb0cc5566a7f2f271dce4418c, 18827200 bytes, mtime 2026-10-19 10:58:13 -0700. This binary predates the checked-in Native host sources (native_audio_core.cpp 11:05:28 -0700; native_bridge_host.cpp 11:09:17 -0700). Original Playwright failure paths were test-results/native-project-load-race-N-86d68--completed-after-load-began, native-project-memory-impo-b2669-leaves-imported-PCM-stopped, and native-project-memory-save-c1187--the-99-browser-local-slots."
+    },
+    {
+      "started_utc": "2026-10-19T23:51:02Z",
+      "command": "npx playwright test tests/e2e/native-project-load-race.spec.ts tests/e2e/native-project-memory-import.spec.ts tests/e2e/native-project-memory-save.spec.ts --workers=1",
+      "result": "PASS",
+      "details": "3/3 passed with /workspace/shared/rc505-recovery-20261018/native-e2e-project-race/native_bridge_host_simulation (18832032 bytes, mtime 2026-10-19 11:09 -0700) and verified CfT headless-shell 154.0.8037.57"
+    },
+    {
+      "started_utc": "2026-10-19T23:51:47Z",
+      "command": "npm run test:e2e:rubberband (99 tests, one worker)",
+      "result": "PASS",
+      "details": "99/99 passed with the matching Native simulation host above and verified CfT headless-shell 154.0.8037.57"
+    }
+  ],
+  "test_interpretation": {
+    "browser_engine": "real Chromium headless-shell AudioContext/AudioWorklet software tests",
+    "native_host": "explicit no-audio Native HTTP simulation only",
+    "hardware": "not tested",
+    "realtime_acceptance": "still not passed; prior 35-node browser deadline/coverage and Native callback gate failures remain"
+  }
+}

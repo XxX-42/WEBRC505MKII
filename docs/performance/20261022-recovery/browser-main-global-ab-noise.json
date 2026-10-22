@@ -1,0 +1,505 @@
+{
+  "harnessSha256": "3f406a0a0980c4ef5bee98ef2ee55f82e58271c6b8d8f09c59703b5c29ec2c94",
+  "generatedAt": "2026-10-22T04:27:10.871Z",
+  "fixture": "Node main-global, unmodified actual FxProcessor IIFE bundles",
+  "scope": "Five independent active/wet ROBOT worklet kernels; not Chrome, AudioContext, whole Browser mixer graph, external Signalsmith adapter or callback deadlines",
+  "workload": "noise",
+  "noiseSeed": 84221990,
+  "initialNoiseStates": [
+    [
+      517575668,
+      2430979401
+    ],
+    [
+      3162511679,
+      851199874
+    ],
+    [
+      1514702694,
+      3564427739
+    ],
+    [
+      4164095145,
+      1980715540
+    ],
+    [
+      2549844688,
+      432526445
+    ]
+  ],
+  "recoveredRaw": false,
+  "sourceHashes": {
+    "baseline": "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab",
+    "candidate": "d438eb0dbcefd1eb6ba2f5052f598d66cc277139f9b5d45bab8831ae96e1c8d5"
+  },
+  "nodeVersion": "v24.19.0",
+  "configuration": {
+    "rate": 48000,
+    "blockFrames": 128,
+    "tracks": 5,
+    "channels": 2,
+    "bankBlocks": 256,
+    "frequencies": [
+      147,
+      196,
+      220,
+      330,
+      440
+    ],
+    "parameters": {
+      "mix": 1,
+      "robotPitch": 7,
+      "robotFormantSemitones": 0
+    },
+    "bypassed": false,
+    "timingBlocks": 512,
+    "warmupBlocks": 1024,
+    "parityBlocks": 1024,
+    "rounds": 6
+  },
+  "signal": "Deterministic uniform LCG noise, independent stereo/track seeds, repeated 32768-frame bank; not microphone or infinite white noise",
+  "inputHash": "fd0377ffcf3c4dbf003211726bddfaa901affabe00654f0bf096e5915a01ff75",
+  "fullScanCounts": [
+    {
+      "controller": 506,
+      "liveDetector": 542
+    },
+    {
+      "controller": 506,
+      "liveDetector": 542
+    },
+    {
+      "controller": 506,
+      "liveDetector": 542
+    },
+    {
+      "controller": 506,
+      "liveDetector": 542
+    },
+    {
+      "controller": 506,
+      "liveDetector": 542
+    }
+  ],
+  "parity": {
+    "framesPerTrack": 131072,
+    "pcmBitExact": true,
+    "messagesExact": true,
+    "pcmHashes": [
+      "121b5536916b771c646655106943c511e6ff1d632adf87cd2f3dfbce4e807943",
+      "eac4f1c4f98f454c02abe02876f318f4e3317ee415cb2fd4b9671d595c15ff56",
+      "be22042d53d38b61cdf78648a23cf22a92a8d20fc1ec579b741eabcdfc6647c7",
+      "cf1d509699d33cde38821d28a661e36189b2747553eebadca2d5109ee158b548",
+      "4b770037ed8c369c141166870249e7bce181baaea0b2d1678401bd74309326f8"
+    ],
+    "energy": [
+      2681.9487307137324,
+      2674.9347714806177,
+      2702.9528589326096,
+      2704.9789840256235,
+      2671.204108804688
+    ],
+    "dryDifference": [
+      8133.911433293036,
+      8090.786764596163,
+      8161.887028112661,
+      8166.569433659726,
+      8150.697306928231
+    ],
+    "modeCounters": [
+      {
+        "messages": 1,
+        "psola": 0,
+        "signalsmith": 1
+      },
+      {
+        "messages": 1,
+        "psola": 0,
+        "signalsmith": 1
+      },
+      {
+        "messages": 1,
+        "psola": 0,
+        "signalsmith": 1
+      },
+      {
+        "messages": 1,
+        "psola": 0,
+        "signalsmith": 1
+      },
+      {
+        "messages": 1,
+        "psola": 0,
+        "signalsmith": 1
+      }
+    ],
+    "messageCounts": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "framesProcessed": [
+      131072,
+      131072,
+      131072,
+      131072,
+      131072
+    ]
+  },
+  "results": [
+    {
+      "order": "ABBA",
+      "baselineMedianMs": 132.818756,
+      "candidateMedianMs": 101.45258050000001,
+      "improvementPercent": 23.615772684996383,
+      "runs": [
+        {
+          "round": 0,
+          "version": "baseline",
+          "startFrame": 131072,
+          "endFrame": 196608,
+          "milliseconds": 137.207977
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "startFrame": 131072,
+          "endFrame": 196608,
+          "milliseconds": 102.575808
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "startFrame": 196608,
+          "endFrame": 262144,
+          "milliseconds": 101.558634
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "startFrame": 196608,
+          "endFrame": 262144,
+          "milliseconds": 130.93668
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "startFrame": 262144,
+          "endFrame": 327680,
+          "milliseconds": 131.875217
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "startFrame": 262144,
+          "endFrame": 327680,
+          "milliseconds": 101.551293
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "startFrame": 327680,
+          "endFrame": 393216,
+          "milliseconds": 101.188789
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "startFrame": 327680,
+          "endFrame": 393216,
+          "milliseconds": 132.825321
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "startFrame": 393216,
+          "endFrame": 458752,
+          "milliseconds": 134.293592
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "startFrame": 393216,
+          "endFrame": 458752,
+          "milliseconds": 101.118675
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "startFrame": 458752,
+          "endFrame": 524288,
+          "milliseconds": 104.35845
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "startFrame": 458752,
+          "endFrame": 524288,
+          "milliseconds": 132.29072
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "startFrame": 524288,
+          "endFrame": 589824,
+          "milliseconds": 131.445183
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "startFrame": 524288,
+          "endFrame": 589824,
+          "milliseconds": 101.445244
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "startFrame": 589824,
+          "endFrame": 655360,
+          "milliseconds": 101.177492
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "startFrame": 589824,
+          "endFrame": 655360,
+          "milliseconds": 129.564343
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "startFrame": 655360,
+          "endFrame": 720896,
+          "milliseconds": 135.20266
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "startFrame": 655360,
+          "endFrame": 720896,
+          "milliseconds": 101.459917
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "startFrame": 720896,
+          "endFrame": 786432,
+          "milliseconds": 100.016181
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "startFrame": 720896,
+          "endFrame": 786432,
+          "milliseconds": 134.0043
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "startFrame": 786432,
+          "endFrame": 851968,
+          "milliseconds": 133.420573
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "startFrame": 786432,
+          "endFrame": 851968,
+          "milliseconds": 100.368229
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "startFrame": 851968,
+          "endFrame": 917504,
+          "milliseconds": 105.012757
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "startFrame": 851968,
+          "endFrame": 917504,
+          "milliseconds": 132.812191
+        }
+      ]
+    },
+    {
+      "order": "BAAB",
+      "baselineMedianMs": 132.30214949999998,
+      "candidateMedianMs": 101.720217,
+      "improvementPercent": 23.11521968129473,
+      "runs": [
+        {
+          "round": 0,
+          "version": "candidate",
+          "startFrame": 131072,
+          "endFrame": 196608,
+          "milliseconds": 104.393987
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "startFrame": 131072,
+          "endFrame": 196608,
+          "milliseconds": 131.600118
+        },
+        {
+          "round": 0,
+          "version": "baseline",
+          "startFrame": 196608,
+          "endFrame": 262144,
+          "milliseconds": 129.604786
+        },
+        {
+          "round": 0,
+          "version": "candidate",
+          "startFrame": 196608,
+          "endFrame": 262144,
+          "milliseconds": 102.063297
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "startFrame": 262144,
+          "endFrame": 327680,
+          "milliseconds": 101.377137
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "startFrame": 262144,
+          "endFrame": 327680,
+          "milliseconds": 144.839284
+        },
+        {
+          "round": 1,
+          "version": "baseline",
+          "startFrame": 327680,
+          "endFrame": 393216,
+          "milliseconds": 139.767116
+        },
+        {
+          "round": 1,
+          "version": "candidate",
+          "startFrame": 327680,
+          "endFrame": 393216,
+          "milliseconds": 104.439671
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "startFrame": 393216,
+          "endFrame": 458752,
+          "milliseconds": 98.019282
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "startFrame": 393216,
+          "endFrame": 458752,
+          "milliseconds": 128.706227
+        },
+        {
+          "round": 2,
+          "version": "baseline",
+          "startFrame": 458752,
+          "endFrame": 524288,
+          "milliseconds": 129.918134
+        },
+        {
+          "round": 2,
+          "version": "candidate",
+          "startFrame": 458752,
+          "endFrame": 524288,
+          "milliseconds": 97.554685
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "startFrame": 524288,
+          "endFrame": 589824,
+          "milliseconds": 98.876867
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "startFrame": 524288,
+          "endFrame": 589824,
+          "milliseconds": 128.713558
+        },
+        {
+          "round": 3,
+          "version": "baseline",
+          "startFrame": 589824,
+          "endFrame": 655360,
+          "milliseconds": 132.251754
+        },
+        {
+          "round": 3,
+          "version": "candidate",
+          "startFrame": 589824,
+          "endFrame": 655360,
+          "milliseconds": 98.60453
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "startFrame": 655360,
+          "endFrame": 720896,
+          "milliseconds": 100.002546
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "startFrame": 655360,
+          "endFrame": 720896,
+          "milliseconds": 132.352545
+        },
+        {
+          "round": 4,
+          "version": "baseline",
+          "startFrame": 720896,
+          "endFrame": 786432,
+          "milliseconds": 143.264422
+        },
+        {
+          "round": 4,
+          "version": "candidate",
+          "startFrame": 720896,
+          "endFrame": 786432,
+          "milliseconds": 105.977979
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "startFrame": 786432,
+          "endFrame": 851968,
+          "milliseconds": 105.05913
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "startFrame": 786432,
+          "endFrame": 851968,
+          "milliseconds": 143.945383
+        },
+        {
+          "round": 5,
+          "version": "baseline",
+          "startFrame": 851968,
+          "endFrame": 917504,
+          "milliseconds": 134.900036
+        },
+        {
+          "round": 5,
+          "version": "candidate",
+          "startFrame": 851968,
+          "endFrame": 917504,
+          "milliseconds": 102.661094
+        }
+      ]
+    }
+  ]
+}

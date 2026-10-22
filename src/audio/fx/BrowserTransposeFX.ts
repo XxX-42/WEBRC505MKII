@@ -1,3 +1,4 @@
+import { officialPitchDefaults } from './dsp/OfficialPitchParameters';
 import { createLiveInputTransposeNode, type LiveInputTransposeNode } from '../pitch/signalsmith';
 import type { FXBase } from './FXBase';
 
@@ -6,6 +7,7 @@ type FailureHandler = (error: Error) => void;
 /** Signalsmith-backed live-input TRANSPOSE for the Browser Input/Track FX banks. */
 export class BrowserTransposeFX implements FXBase {
   readonly name = 'TRANSPOSE';
+  readonly algorithm = 'transpose';
   readonly input: GainNode;
   readonly output: GainNode;
   readonly ready: Promise<void>;
@@ -20,9 +22,15 @@ export class BrowserTransposeFX implements FXBase {
   private bypassed = true;
   private disposed = false;
   private failed = false;
+  private unsupportedOfficialMode = false;
   private semitones = 0;
   private mix = 1;
+  private readonly officialParameters: Record<string, number> = {};
+  private officialInitialized = false;
   public error = '';
+
+  /** Ready only after the context-wide Signalsmith reservation is confirmed. */
+  get processorReady(): boolean { return this.pitchNode !== null && !this.disposed && !this.error; }
 
   constructor(context: AudioContext, onFailure?: FailureHandler) {
     this.context = context;
@@ -63,6 +71,21 @@ export class BrowserTransposeFX implements FXBase {
       return;
     }
 
+    if (key === 'official_mode') {
+      this.unsupportedOfficialMode = true;
+      this.failClosed('TRANSPOSE official MODE 1/2 algorithms are unsupported; this implementation uses Signalsmith.');
+      return;
+    }
+    if (key === 'official_trans') {
+      if (!Number.isInteger(value) || value < -12 || value > 12) {
+        this.failClosed('TRANSPOSE official TRANS must be an integer from -12 to +12.');
+        return;
+      }
+      this.initializeOfficialParameters(key);
+      this.officialParameters[key] = value;
+      key = 'shift';
+    }
+
     if (key === 'shift') {
       if (value < -24 || value > 24) {
         this.failClosed('TRANSPOSE shift must be between -24 and +24 semitones.');
@@ -89,9 +112,21 @@ export class BrowserTransposeFX implements FXBase {
     this.failClosed(`TRANSPOSE does not support the ${key} parameter.`);
   }
 
+  private initializeOfficialParameters(exceptKey: string): void {
+    if (this.officialInitialized) return;
+    this.officialInitialized = true;
+    for (const [key, value] of Object.entries(officialPitchDefaults(this.name, this.algorithm))) {
+      if (key !== exceptKey) this.setParam(key, value);
+    }
+  }
+
   setBypass(bypass: boolean): void {
     this.bypassed = bypass;
     this.applyRouting();
+  }
+
+  getParameterSnapshot(): Readonly<Record<string, number>> {
+    return Object.freeze({ shift: this.semitones, mix: this.mix * 100, ...this.officialParameters });
   }
 
   dispose(): void {
@@ -124,8 +159,7 @@ export class BrowserTransposeFX implements FXBase {
       this.input.connect(node);
       node.connect(this.wetGain);
       this.wetGain.connect(this.output);
-      this.failed = false;
-      this.error = '';
+      if (!this.failed && !this.unsupportedOfficialMode) this.error = '';
 
       if (this.semitones !== initialSemitones) await this.updatePitch(this.semitones);
       this.applyRouting();
@@ -161,7 +195,7 @@ export class BrowserTransposeFX implements FXBase {
   private clearParameterFailure(): void {
     // A valid control must never erase an installation/runtime failure while
     // there is no processor to make the effect audible.
-    if (!this.pitchNode) return;
+    if (!this.pitchNode || this.unsupportedOfficialMode) return;
     this.failed = false;
     this.error = '';
   }

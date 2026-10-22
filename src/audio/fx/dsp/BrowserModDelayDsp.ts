@@ -24,6 +24,8 @@ const MAX_SAMPLE_MAGNITUDE = 8;
 const FEEDBACK_STABILITY_SCALE = 0.78;
 
 function clamp(value: number, minimum: number, maximum: number): number {
+  // Preserve exceptional values and signed-zero behavior on the original path.
+  if (value !== 0 && value >= minimum && value <= maximum) return value;
   return Math.max(minimum, Math.min(maximum, value));
 }
 
@@ -171,3 +173,6 @@ export class BrowserModDelayDsp {
     return finiteBounded(delayed);
   }
 }
+
+// Exact numerical contract exercised by shared regression cases.
+export { clamp as clampModDelayValue };

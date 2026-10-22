@@ -1,15 +1,19 @@
 import type { TrackAudio } from './TrackAudio';
 import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserStepSlicerControl } from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus, type NativeCatalogFxSlotRuntime } from './NativeAudioEngine';
-import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeStatus } from './NativeBridgeClient';
+import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus } from './NativeBridgeClient';
 import type { NativeTrackProxy } from './NativeTrackProxy';
 import type { BrowserFxAlgorithm, BrowserFxParameters } from './fx/dsp/BrowserFxDspCore';
 import type { NativeFxPath } from './nativeFxCatalog';
 import type { NativeStepSlicerParameters } from './nativeStepSlicerParameters';
+import type { BrowserRecoverySnapshot } from './BrowserRecoverySnapshot';
+import { buildBrowserRecoveryCandidate } from './BrowserRecoveryCandidate';
 import { toBrowserPreampParameters, toNativePreampParameters, type PreampParameters } from './preampParameters';
 import { MidiInputController, type MidiInputState, type MidiNoteEvent } from './MidiInputController';
 import type { NativeCatalogMidiEvent } from './NativeBridgeClient';
 import { mapMidiNoteToNativeCatalogEvent, type OscVocMidiTarget } from './nativeOscVocMidi';
+import type { ProjectArchive, ProjectRestoreOperationToken } from './projectArchive';
+import { Transport } from '../core/Transport';
 export type TrackFxMidiTarget = OscVocMidiTarget & { trackId?: number };
 export type { OscVocMidiTarget } from './nativeOscVocMidi';
 
@@ -57,8 +61,13 @@ export interface AudioUiStatus {
   message: string;
   lastError: string;
   inputReady?: boolean;
+  inputCaptureReady?: boolean;
+  inputCaptureWarming?: boolean;
+  inputCaptureWarmupReason?: string;
+  inputCaptureUnavailableReason?: string;
   inputState?: 'not-requested' | 'requesting' | 'ready' | 'error';
   inputError?: string;
+  recoveryAwaitingUserResume?: boolean;
 }
 
 export interface AudioCapabilities {
@@ -91,6 +100,13 @@ export interface TrackCapabilities {
   reverseReason: string;
 }
 
+export interface TrackPcmHistoryStatus {
+  canUndo: boolean;
+  canRedo: boolean;
+  busy: boolean;
+  unavailableReason: string;
+}
+
 export interface TrackFxSlotStatus {
   readonly slotIndex: number;
   readonly slot: NativeFxSlot;
@@ -99,6 +115,9 @@ export interface TrackFxSlotStatus {
   readonly bypassed: boolean;
   readonly state: 'empty' | 'loading' | 'ready' | 'error';
   readonly error: string | null;
+  /** Optional Browser per-track adapter resource limitation or non-fatal rejection. */
+  readonly warning?: string | null;
+  readonly resourceNote?: string | null;
   readonly requestedEffectId?: string | null;
   readonly acknowledgedEffectId?: string | null;
   readonly acknowledged?: boolean;
@@ -158,12 +177,19 @@ export class AudioEngine {
   private readonly nativeEngine = NativeAudioEngine.getInstance();
   private browserEngine: BrowserAudioEngine | null = null;
   private currentMode: AudioMode = resolveInitialMode();
+  private modeGeneration = 0;
   private browserOutputLevelPercent = 100;
   private nativeMidiInput: MidiInputController | null = null;
   private nativeMidiTarget: TrackFxMidiTarget | null = null;
   private nativeMidiInputState: MidiInputState = 'disconnected';
   private readonly midiInputListeners = new Set<(state: MidiInputState) => void>();
   private browserMidiInputUnsubscribe: (() => void) | null = null;
+  private browserStatusListeners = new Set<(status: BrowserAudioUiStatus) => void>();
+  private browserMonitoringListeners = new Set<(enabled: boolean) => void>();
+  private browserLatencyListeners = new Set<(info: LatencyInfo) => void>();
+  private browserUiBinding: { engine: BrowserAudioEngine; dispose: () => void } | null = null;
+  /** Preserved master level applied only after the user explicitly resumes the recovered context. */
+  private recoveredBrowserOutputGain: number | null = null;
   private nativeMidiQueue: NativeCatalogMidiEvent[] = [];
   private nativeMidiFlushRunning = false;
   private suppressNativeMidiCallbacks = false;
@@ -188,7 +214,10 @@ export class AudioEngine {
   }
 
   public setMode(mode: AudioMode) {
-    if (mode !== this.currentMode) this.disconnectMidiInput();
+    if (mode !== this.currentMode) {
+      this.disconnectMidiInput();
+      this.modeGeneration += 1;
+    }
     this.currentMode = mode;
     if (mode === 'browser' && this.midiInputListeners.size > 0) this.ensureBrowserMidiStateSubscription();
     AudioEngine.setPreferredMode(mode);
@@ -273,7 +302,166 @@ export class AudioEngine {
   }
 
   public async init() {
-    await this.activeEngine.init();
+    if (this.currentMode === 'browser') {
+      const browser = this.browser;
+      await browser.init();
+      this.applyRecoveredBrowserOutputGain(browser);
+      return;
+    }
+    await this.nativeEngine.init();
+  }
+
+  /**
+   * Atomically publish a fully prepared Browser replacement. This only swaps
+   * the facade and its subscriptions. Old PCM/history remains intact until
+   * publication; after that commit, only its closed context graph is retired.
+   * The returned old engine still owns its PCM/history buffers for export.
+   */
+  public adoptRecoveredBrowserEngine(
+    expectedOldEngine: BrowserAudioEngine,
+    sourceSnapshot: BrowserRecoverySnapshot,
+    candidate: BrowserAudioEngine,
+    preparedSnapshot: BrowserRecoverySnapshot,
+  ): BrowserAudioEngine {
+    if (candidate === expectedOldEngine) {
+      throw new Error('Browser recovery requires a distinct candidate engine.');
+    }
+    if (this.currentMode !== 'browser' || this.browserEngine !== expectedOldEngine) {
+      throw new Error('Browser recovery adoption was canceled because the active engine changed.');
+    }
+    if (!expectedOldEngine.isRecoverySnapshotCurrent(sourceSnapshot)) {
+      throw new Error('Browser recovery adoption was canceled because the old PCM, history, transport, or settings changed during preparation.');
+    }
+    expectedOldEngine.assertRetirableAfterRecoveryAdoption();
+    candidate.prepareRecoveryAdoption(preparedSnapshot);
+    if (!candidate.claimRecoveryAdoption(preparedSnapshot)) {
+      throw new Error('Browser recovery candidate ownership was already claimed or is not prepared for this snapshot.');
+    }
+
+    // Register dormant bridges first. BrowserAudioEngine invokes each listener
+    // once at subscription time; the identity guard below keeps that staged
+    // initial callback from escaping before publication.
+    let stagedBinding: { engine: BrowserAudioEngine; dispose: () => void } | null = null;
+    let stagedMidiUnsubscribe: (() => void) | null = null;
+    const oldHadTransportSubscription = expectedOldEngine.hasTransportBpmChangeSubscription();
+    let oldTransportDetached = false;
+    try {
+      stagedBinding = this.createBrowserUiBinding(candidate);
+      if (this.browserMidiInputUnsubscribe) {
+        stagedMidiUnsubscribe = candidate.onMidiInputStateChange(() => {
+          if (this.browserEngine === candidate) this.notifyMidiInputStateListenersSafely();
+        });
+      }
+      candidate.attachTransportBpmChangeSubscription();
+      // Listener setup may synchronously call user code. Recheck after staging
+      // so a re-entrant edit cannot be overwritten by this recovery.
+      if (!expectedOldEngine.isRecoverySnapshotCurrent(sourceSnapshot)) {
+        throw new Error('Browser recovery adoption was canceled because the old PCM, history, transport, or settings changed during final validation.');
+      }
+      // The closed source and its AudioBuffer/history references remain intact.
+      expectedOldEngine.detachTransportBpmChangeSubscription();
+      oldTransportDetached = oldHadTransportSubscription;
+      if (!candidate.completeRecoveryAdoption()) {
+        throw new Error('Browser recovery candidate lost its ownership claim before publication.');
+      }
+    } catch (error) {
+      this.rollbackBrowserRecoveryStaging(candidate, stagedBinding, stagedMidiUnsubscribe, oldTransportDetached ? expectedOldEngine : null, oldHadTransportSubscription);
+      candidate.releaseRecoveryAdoptionClaim();
+      throw error;
+    }
+
+    // No fallible work is permitted between ownership completion and this
+    // synchronous pointer publication.
+    const oldBinding = this.browserUiBinding;
+    const oldMidiUnsubscribe = this.browserMidiInputUnsubscribe;
+    this.browserEngine = candidate;
+    this.browserUiBinding = stagedBinding;
+    if (stagedMidiUnsubscribe) this.browserMidiInputUnsubscribe = stagedMidiUnsubscribe;
+    // The prepared graph is intentionally at zero gain. Preserve the saved
+    // authored level separately and apply it only after an explicit resume.
+    // A replacement may itself close before that resume. Its actual gain is
+    // still the safety mute, not a newly authored zero level. Keep any pending
+    // authored gain; snapshot identity validation must still use the real graph.
+    this.recoveredBrowserOutputGain ??= sourceSnapshot.outputGainValue;
+    this.browserOutputLevelPercent = Math.max(0, Math.min(100, this.recoveredBrowserOutputGain * 100));
+
+    // This is the commit point. Cleanup, Transport notifications, and UI
+    // observers are best-effort and must never turn a committed swap into an
+    // apparent failed transaction.
+    this.runRecoveryPostCommitCleanup('old Browser UI subscription cleanup', () => oldBinding?.dispose());
+    this.runRecoveryPostCommitCleanup('old Browser MIDI subscription cleanup', () => oldMidiUnsubscribe?.());
+    try {
+      // Once the candidate is published, the old context no longer needs its
+      // render graph. Disposal preserves PCM/history references on the returned
+      // old engine and removes stale Rhythm/Transport observers before STOP.
+      expectedOldEngine.retireAfterRecoveryAdoption();
+    } catch (error) {
+      console.error('Recovered Browser engine was published, but old closed-graph retirement reported an error', error);
+    }
+    try { Transport.getInstance().stop(); } catch (error) {
+      console.error('Recovered Browser engine was published, but Transport STOP listeners reported an error', error);
+    }
+    this.runRecoveryPostCommitCleanup('Browser UI notification', () => this.notifyBrowserUiListeners(candidate));
+    this.notifyMidiInputStateListenersSafely();
+    return expectedOldEngine;
+  }
+
+  public isBrowserContextClosed(): boolean {
+    return this.currentMode === 'browser' && this.browserEngine?.context.state === 'closed';
+  }
+
+  public isBrowserRecoveryAwaitingUserResume(): boolean {
+    return this.currentMode === 'browser' && this.browserEngine?.isRecoveryAwaitingUserResume() === true;
+  }
+
+  /**
+   * Recover a permanently closed Browser context on the existing project.
+   * Context creation is synchronous up to the first await in the candidate
+   * builder, so callers must invoke this directly from a trusted user click.
+   * The replacement remains suspended, stopped, muted, MIDI-disconnected and
+   * microphone-disconnected after adoption.
+   */
+  public async recoverClosedBrowserAudioContext(): Promise<void> {
+    if (this.currentMode !== 'browser' || !this.browserEngine) {
+      throw new Error('Browser audio recovery requires the existing Browser engine.');
+    }
+    const oldEngine = this.browserEngine;
+    if (oldEngine.context.state !== 'closed') throw new Error('The Browser AudioContext is not closed; ordinary resume remains available.');
+    const sourceSnapshot = oldEngine.getRecoverySnapshot();
+    const candidate = await buildBrowserRecoveryCandidate(sourceSnapshot, undefined, {
+      // The replacement engine itself will materialize these paths. Preflight
+      // their combined per-context reservation without allocating a detached
+      // duplicate graph or pitch runtime in the same candidate context.
+      preflightPersistedFxGraph: true,
+      prepareRuntime: false,
+    });
+    let runtime: ReturnType<typeof candidate.takeRuntime> | null = null;
+    let replacement: BrowserAudioEngine | null = null;
+    try {
+      runtime = candidate.takeRuntime();
+      try { runtime.silentSink.disconnect(); } catch { /* the recovery candidate remains muted */ }
+      replacement = new BrowserAudioEngine({
+        context: runtime.context,
+        deferTransportBpmChangeSubscription: true,
+        loadDevicePreferences: false,
+        historyBudgetBytes: sourceSnapshot.pcmHistoryBudget.limitBytes,
+      });
+      await replacement.restoreRecoverySnapshot(runtime.snapshot);
+      this.adoptRecoveredBrowserEngine(oldEngine, sourceSnapshot, replacement, runtime.snapshot);
+    } catch (error) {
+      if (runtime) {
+        try { if (runtime.context.state !== 'closed') await runtime.context.close(); }
+        catch (cleanupError) { console.error('Unpublished Browser recovery context close failed', cleanupError); }
+        try { replacement?.retireAfterRecoveryAdoption(); }
+        catch (cleanupError) { console.error('Unpublished Browser recovery graph retirement failed', cleanupError); }
+        try { await runtime.dispose(); }
+        catch (cleanupError) { console.error('Unpublished Browser recovery candidate disposal failed', cleanupError); }
+      } else {
+        try { await candidate.dispose(); }
+        catch (cleanupError) { console.error('Unpublished Browser recovery candidate disposal failed', cleanupError); }
+      }
+      throw error;
+    }
   }
 
   /** Apply saved Native FX choices while the host is stopped, then restart audio. */
@@ -285,7 +473,16 @@ export class AudioEngine {
   /** Resume a suspended Browser AudioContext directly from a trusted user gesture. */
   public resumeFromUserActivation(): Promise<void> {
     if (this.currentMode !== 'browser') return Promise.resolve();
-    return this.browser.resumeFromUserActivation();
+    const browser = this.browser;
+    return browser.resumeFromUserActivation().then(() => this.applyRecoveredBrowserOutputGain(browser));
+  }
+
+  /** Initialize output-only runtime after recovery from a separate trusted click. */
+  public async resumeRecoveredBrowserOutputFromUserActivation(): Promise<void> {
+    if (this.currentMode !== 'browser') return;
+    const browser = this.browser;
+    await browser.initializeRecoveredOutputFromUserActivation();
+    this.applyRecoveredBrowserOutputGain(browser);
   }
 
   /** Request the recording input separately so playback survives a denied microphone. */
@@ -301,6 +498,7 @@ export class AudioEngine {
     if (this.currentMode !== 'browser') throw new Error('Native master output level is not exposed by this bridge.');
     if (!Number.isFinite(percent)) throw new RangeError('Output level must be finite.');
     this.browserOutputLevelPercent = Math.max(0, Math.min(100, percent));
+    this.recoveredBrowserOutputGain = null;
     this.browser.masterGainNode.gain.setTargetAtTime(this.browserOutputLevelPercent / 100, this.browser.context.currentTime, 0.005);
   }
 
@@ -369,6 +567,18 @@ export class AudioEngine {
     return this.nativeEngine.setLoopTransport(trackId, config);
   }
 
+  /** Configure the Browser's separate per-loop source-readhead stage. */
+  public setBrowserLoopTransport(trackId: number, config: NativeLoopTransportConfig): boolean {
+    if (this.currentMode !== 'browser' || !this.browserEngine) return false;
+    return this.browserEngine.setLoopTransport(trackId, config);
+  }
+
+  /** Remove a private Browser source-reader override and resume the legacy shared Track bank route. */
+  public clearBrowserLoopTransportOverride(trackId: number): boolean {
+    if (this.currentMode !== 'browser' || !this.browserEngine) return false;
+    return this.browserEngine.clearLoopTransportOverride(trackId);
+  }
+
   /** Read the latest acknowledged Native per-track loop-transport state. */
   public getNativeLoopTransportStatus(trackId: number): NativeLoopTransportStatus | null {
     if (this.currentMode !== 'native') return null;
@@ -390,7 +600,16 @@ export class AudioEngine {
   }
 
   public onMonitoringChange(listener: (enabled: boolean) => void) {
-    return this.activeEngine.onMonitoringChange(listener);
+    if (this.currentMode === 'native') return this.nativeEngine.onMonitoringChange(listener);
+    const engine = this.browser;
+    this.browserMonitoringListeners.add(listener);
+    const alreadyBound = this.browserUiBinding?.engine === engine;
+    this.ensureBrowserUiBinding();
+    if (alreadyBound) listener(engine.monitoringEnabled);
+    return () => {
+      this.browserMonitoringListeners.delete(listener);
+      this.releaseBrowserUiBindingIfUnused();
+    };
   }
 
   public onLatencyInfoChange(listener: (info: LatencyInfo) => void) {
@@ -400,9 +619,15 @@ export class AudioEngine {
       });
     }
 
-    return this.browser.onLatencyInfoChange((info: BrowserAudioLatencyInfo) => {
-      listener(this.mapBrowserLatency(info));
-    });
+    const engine = this.browser;
+    this.browserLatencyListeners.add(listener);
+    const alreadyBound = this.browserUiBinding?.engine === engine;
+    this.ensureBrowserUiBinding();
+    if (alreadyBound) listener(this.mapBrowserLatency(engine.getLatencyInfo()));
+    return () => {
+      this.browserLatencyListeners.delete(listener);
+      this.releaseBrowserUiBindingIfUnused();
+    };
   }
 
   public onStatusChange(listener: (status: AudioUiStatus) => void) {
@@ -415,9 +640,15 @@ export class AudioEngine {
       });
     }
 
-    return this.browser.onStatusChange((status: BrowserAudioUiStatus) => {
-      listener(status);
-    });
+    const engine = this.browser;
+    this.browserStatusListeners.add(listener);
+    const alreadyBound = this.browserUiBinding?.engine === engine;
+    this.ensureBrowserUiBinding();
+    if (alreadyBound) listener(engine.getUiStatus());
+    return () => {
+      this.browserStatusListeners.delete(listener);
+      this.releaseBrowserUiBindingIfUnused();
+    };
   }
 
   public getLatencyInfo(): LatencyInfo {
@@ -548,6 +779,157 @@ export class AudioEngine {
       return this.nativeEngine.isNativeTrackAvailable(trackId);
     }
     return this.browser.isTrackAvailable(trackId);
+  }
+
+  /** Last acknowledged one-step PCM history for the selected loop. */
+  public getTrackHistoryStatus(trackId: number): TrackPcmHistoryStatus {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) {
+      return { canUndo: false, canRedo: false, busy: false, unavailableReason: 'Select a valid track.' };
+    }
+    if (!this.isTrackAvailable(trackId)) {
+      return { canUndo: false, canRedo: false, busy: false, unavailableReason: `Track ${trackId} is unavailable in this audio runtime.` };
+    }
+
+    if (this.currentMode === 'native') {
+      const history = this.nativeEngine.getNativeTrackHistoryStatus(trackId);
+      if (!history) {
+        return { canUndo: false, canRedo: false, busy: false, unavailableReason: 'Native PCM history status is unavailable from the connected bridge.' };
+      }
+      const state = this.nativeEngine.nativeTrackState(trackId);
+      const busy = state !== 'Empty' && state !== 'Stopped';
+      const reason = busy
+        ? 'Stop this Native track before using PCM history.'
+        : history.unavailableReason !== 'none'
+          ? `Native PCM history unavailable: ${history.unavailableReason}.`
+          : 'No saved PCM undo/redo step is available for this track.';
+      return { canUndo: history.canUndo, canRedo: history.canRedo, busy, unavailableReason: reason };
+    }
+
+    const track = this.browser.tracks[trackId - 1];
+    if (!track) return { canUndo: false, canRedo: false, busy: false, unavailableReason: `Track ${trackId} is unavailable.` };
+    return {
+      canUndo: track.canUndo,
+      canRedo: track.canRedo,
+      busy: track.historyBusy,
+      unavailableReason: track.historyUnavailableReason ?? 'No saved PCM undo/redo step is available for this track.',
+    };
+  }
+
+  public async undoTrack(trackId: number): Promise<boolean> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !this.isTrackAvailable(trackId)) return false;
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.undoTrack(trackId);
+      return true;
+    }
+    return this.browser.tracks[trackId - 1]?.undo() ?? false;
+  }
+
+  public async redoTrack(trackId: number): Promise<boolean> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !this.isTrackAvailable(trackId)) return false;
+    if (this.currentMode === 'native') {
+      await this.nativeEngine.redoTrack(trackId);
+      return true;
+    }
+    return this.browser.tracks[trackId - 1]?.redo() ?? false;
+  }
+
+  /** Shared v1 binary project export for Browser and revision-verified Native snapshots. */
+  public async exportProjectArchive(name: string): Promise<Uint8Array> {
+    return this.currentMode === 'browser'
+      ? this.browser.exportProjectArchive(name)
+      : this.nativeEngine.exportProjectArchive(name);
+  }
+
+  /** Capture operation-start state before any asynchronous project archive read or decode. */
+  public async captureProjectRestoreOperationToken(): Promise<ProjectRestoreOperationToken> {
+    const mode = this.currentMode;
+    const modeGeneration = this.modeGeneration;
+    if (mode === 'browser') {
+      return Object.freeze({ mode, modeGeneration, browser: this.browser.captureProjectRestoreToken() });
+    }
+
+    // Capture app-owned transport before the fresh host request, then verify it
+    // remained stable while the authoritative Native content epoch was read.
+    // This token is obtained before ProjectMemory reads or decodes the archive.
+    const transportMutationRevision = this.nativeEngine.captureProjectTransportMutationRevision();
+    const transport = this.captureProjectRestoreTransport();
+    const native = await this.nativeEngine.captureProjectRestoreBaseline();
+    if (mode !== this.currentMode || modeGeneration !== this.modeGeneration) {
+      throw new Error('Project load canceled because the audio mode changed while its Native baseline was being captured; retry in the selected audio mode');
+    }
+    if (!this.matchesProjectRestoreTransport(transport) ||
+        this.nativeEngine.captureProjectTransportMutationRevision() !== transportMutationRevision) {
+      throw new Error('Project load canceled because transport changed while the Native content baseline was being captured; retry the load');
+    }
+    return Object.freeze({
+      mode,
+      modeGeneration,
+      native: Object.freeze({ ...native, transport, projectTransportMutationRevision: transportMutationRevision }),
+    });
+  }
+
+  /** Restore one validated project archive; Native commits at an audio callback boundary. */
+  public async restoreProjectArchive(
+    project: ProjectArchive,
+    archive: ArrayBuffer | Uint8Array,
+    operationToken: ProjectRestoreOperationToken,
+  ): Promise<void> {
+    if (operationToken.mode !== this.currentMode || operationToken.modeGeneration !== this.modeGeneration) {
+      throw new Error('Project load canceled because the audio mode changed while the archive was being read; retry in the selected audio mode');
+    }
+    if (this.currentMode === 'native') {
+      const native = operationToken.native;
+      if (!native) throw new Error('Native project load is missing its operation-start host revision guard');
+      if (!this.matchesProjectRestoreTransport(native.transport)) {
+        throw new Error('Native project load canceled because transport changed while the archive was being read; current PCM and transport were left unchanged. Retry the load');
+      }
+      await this.nativeEngine.restoreProjectArchive(project, archive, native, () => {
+        try {
+          return this.currentMode === 'native'
+            && this.modeGeneration === operationToken.modeGeneration
+            && this.matchesProjectRestoreTransport(native.transport)
+            && this.nativeEngine.captureProjectTransportMutationRevision() === native.projectTransportMutationRevision;
+        } catch {
+          // Treat an exhausted/unknown local revision as stale, so the bridge
+          // can cancel while Pending or report the claimed generation rather
+          // than losing track of an accepted import.
+          return false;
+        }
+      });
+      return;
+    }
+    if (!operationToken.browser) throw new Error('Browser project load is missing its operation-start revision guard');
+    this.browser.restoreProjectArchive(project, archive.byteLength, operationToken.browser);
+  }
+
+  private captureProjectRestoreTransport(): NonNullable<ProjectRestoreOperationToken['native']>['transport'] {
+    const transport = Transport.getInstance();
+    return Object.freeze({
+      bpm: transport.bpm,
+      state: transport.state,
+      masterTrackId: transport.masterTrackId,
+      measureLengthSeconds: transport.measureLength,
+      masterLoopLengthSamples: transport.masterLoopLengthSamples,
+      timeSignatureNumerator: transport.timeSignature[0],
+      timeSignatureDenominator: transport.timeSignature[1],
+    });
+  }
+
+  private matchesProjectRestoreTransport(expected: NonNullable<ProjectRestoreOperationToken['native']>['transport']): boolean {
+    const current = this.captureProjectRestoreTransport();
+    return current.bpm === expected.bpm
+      && current.state === expected.state
+      && current.masterTrackId === expected.masterTrackId
+      && current.measureLengthSeconds === expected.measureLengthSeconds
+      && current.masterLoopLengthSamples === expected.masterLoopLengthSamples
+      && current.timeSignatureNumerator === expected.timeSignatureNumerator
+      && current.timeSignatureDenominator === expected.timeSignatureDenominator;
+  }
+
+  /** Check a Native import generation without uploading or changing the PCM bank again. */
+  public async getNativeProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
+    if (this.currentMode !== 'native') throw new Error('Native project-import status is only available in Native audio mode.');
+    return this.nativeEngine.getProjectArchiveImportStatus(generation);
   }
 
   public async recordTrack() {
@@ -705,7 +1087,10 @@ export class AudioEngine {
 
   private ensureBrowserMidiStateSubscription(): void {
     if (this.browserMidiInputUnsubscribe) return;
-    this.browserMidiInputUnsubscribe = this.browser.onMidiInputStateChange(() => this.emitMidiInputState());
+    const engine = this.browser;
+    this.browserMidiInputUnsubscribe = engine.onMidiInputStateChange(() => {
+      if (this.browserEngine === engine) this.notifyMidiInputStateListenersSafely();
+    });
   }
 
   private emitMidiInputState(): void {
@@ -765,6 +1150,16 @@ export class AudioEngine {
   public getNativeCatalogFxOptions(path: NativeFxPath, trackId = 0): string[] {
     if (this.currentMode !== 'native') return [];
     return this.nativeEngine.getCatalogFxOptions(path, trackId);
+  }
+
+  public getNativeCatalogFxParameterSchema(type: string, path: NativeFxPath, trackId = 0, currentParameters: Record<string, number> = {}, slotIndex = 0): NativeFxParameterSchema | null {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.getCatalogFxParameterSchema(type, path, trackId, currentParameters, slotIndex);
+  }
+
+  public getNativeCatalogFxParameterSnapshot(path: NativeFxPath, slotIndex: number, trackId = 0, overrides?: Record<string, number>): Record<string, number> | null {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.getCatalogFxParameterSnapshot(path, slotIndex, trackId, overrides);
   }
 
   public getNativeCatalogFxSlotStatus(path: NativeFxPath, slotIndex: number, trackId = 0): NativeCatalogFxSlotRuntime | null {
@@ -844,6 +1239,114 @@ export class AudioEngine {
       this.browserEngine = new BrowserAudioEngine();
     }
     return this.browserEngine;
+  }
+
+  private createBrowserUiBinding(engine: BrowserAudioEngine): { engine: BrowserAudioEngine; dispose: () => void } {
+    const unsubscribers: Array<() => void> = [];
+    try {
+      if (this.browserStatusListeners.size) unsubscribers.push(engine.onStatusChange((status) => {
+        if (this.browserEngine !== engine) return;
+        this.dispatchBrowserListenersSafely(this.browserStatusListeners, status, 'status');
+      }));
+      if (this.browserMonitoringListeners.size) unsubscribers.push(engine.onMonitoringChange((enabled) => {
+        if (this.browserEngine !== engine) return;
+        this.dispatchBrowserListenersSafely(this.browserMonitoringListeners, enabled, 'monitoring');
+      }));
+      if (this.browserLatencyListeners.size) unsubscribers.push(engine.onLatencyInfoChange((info) => {
+        if (this.browserEngine !== engine) return;
+        try {
+          this.dispatchBrowserListenersSafely(this.browserLatencyListeners, this.mapBrowserLatency(info), 'latency');
+        } catch (error) {
+          console.error('Browser latency mapping failed', error);
+        }
+      }));
+    } catch (error) {
+      for (const unsubscribe of unsubscribers) {
+        try { unsubscribe(); } catch (cleanupError) { console.error('Browser subscription staging rollback failed', cleanupError); }
+      }
+      throw error;
+    }
+    let disposed = false;
+    return {
+      engine,
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        for (const unsubscribe of unsubscribers) {
+          try { unsubscribe(); } catch (error) { console.error('Browser subscription cleanup failed', error); }
+        }
+      },
+    };
+  }
+
+  private rollbackBrowserRecoveryStaging(
+    candidate: BrowserAudioEngine,
+    stagedBinding: { engine: BrowserAudioEngine; dispose: () => void } | null,
+    stagedMidiUnsubscribe: (() => void) | null,
+    oldEngineToRestore: BrowserAudioEngine | null,
+    oldHadTransportSubscription: boolean,
+  ): void {
+    const attempt = (label: string, action: () => void) => {
+      try { action(); } catch (error) { console.error(`Browser recovery pre-publication rollback failed: ${label}`, error); }
+    };
+    attempt('candidate Transport listener', () => candidate.detachTransportBpmChangeSubscription());
+    attempt('candidate UI subscriptions', () => stagedBinding?.dispose());
+    attempt('candidate MIDI subscription', () => stagedMidiUnsubscribe?.());
+    if (oldEngineToRestore && oldHadTransportSubscription) {
+      attempt('old Transport listener', () => oldEngineToRestore.attachTransportBpmChangeSubscription());
+    }
+  }
+
+  private runRecoveryPostCommitCleanup(label: string, action: () => void): void {
+    try { action(); } catch (error) { console.error(`Browser recovery committed; ${label} failed`, error); }
+  }
+
+  private dispatchBrowserListenersSafely<T>(listeners: Set<(value: T) => void>, value: T, label: string): void {
+    for (const listener of [...listeners]) {
+      try { listener(value); } catch (error) { console.error(`Browser ${label} listener failed`, error); }
+    }
+  }
+
+  private ensureBrowserUiBinding(): void {
+    const engine = this.browser;
+    if (this.browserUiBinding?.engine === engine) return;
+    const next = this.createBrowserUiBinding(engine);
+    const previous = this.browserUiBinding;
+    this.browserUiBinding = next;
+    previous?.dispose();
+  }
+
+  private releaseBrowserUiBindingIfUnused(): void {
+    if (this.browserStatusListeners.size || this.browserMonitoringListeners.size || this.browserLatencyListeners.size
+      || this.browserMidiInputUnsubscribe) return;
+    this.browserUiBinding?.dispose();
+    this.browserUiBinding = null;
+  }
+
+  private notifyBrowserUiListeners(engine: BrowserAudioEngine): void {
+    try { this.dispatchBrowserListenersSafely(this.browserStatusListeners, engine.getUiStatus(), 'status'); }
+    catch (error) { console.error('Browser status snapshot failed after recovery adoption', error); }
+    try { this.dispatchBrowserListenersSafely(this.browserMonitoringListeners, engine.monitoringEnabled, 'monitoring'); }
+    catch (error) { console.error('Browser monitoring snapshot failed after recovery adoption', error); }
+    try { this.dispatchBrowserListenersSafely(this.browserLatencyListeners, this.mapBrowserLatency(engine.getLatencyInfo()), 'latency'); }
+    catch (error) { console.error('Browser latency snapshot failed after recovery adoption', error); }
+  }
+
+  private notifyMidiInputStateListenersSafely(): void {
+    let state: MidiInputState;
+    try { state = this.getMidiInputState(); }
+    catch (error) {
+      console.error('Browser MIDI state snapshot failed after recovery adoption', error);
+      return;
+    }
+    this.dispatchBrowserListenersSafely(this.midiInputListeners, state, 'MIDI state');
+  }
+
+  private applyRecoveredBrowserOutputGain(engine: BrowserAudioEngine): void {
+    const gain = this.recoveredBrowserOutputGain;
+    if (gain === null || this.browserEngine !== engine || engine.context.state !== 'running') return;
+    engine.masterGainNode.gain.setValueAtTime(gain, engine.context.currentTime);
+    this.recoveredBrowserOutputGain = null;
   }
 
   private mapNativeLatency(info: NativeLatencyInfo): LatencyInfo {

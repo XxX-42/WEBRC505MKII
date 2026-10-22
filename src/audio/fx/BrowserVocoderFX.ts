@@ -91,6 +91,14 @@ export class BrowserVocoderFX implements FXBase {
     this.applyRouting();
   }
 
+  getParameterSnapshot(): Readonly<Record<string, number>> {
+    return Object.freeze({
+      vocoderBands: this.parameters.vocoderBands,
+      vocoderCarrier: this.parameters.vocoderCarrier,
+      mix: this.parameters.mix * 100,
+    });
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

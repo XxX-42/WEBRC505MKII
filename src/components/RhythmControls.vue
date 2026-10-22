@@ -128,11 +128,15 @@ const quantizeGrids = RHYTHM_QUANTIZE_GRIDS;
 }
 
 .native-note {
+  max-width: 190px;
   font-size: 12px;
   font-family: var(--font-hardware);
   letter-spacing: 1px;
+  line-height: 1.3;
+  text-align: center;
   color: #777;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .section-label {

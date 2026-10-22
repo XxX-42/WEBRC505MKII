@@ -499,7 +499,8 @@ ProcessStats processNativeAudioBlock(
         frames,
         inputChannels,
         outputChannels,
-        playbackFxActive ? playbackOnly : nullptr
+        playbackFxActive ? playbackOnly : nullptr,
+        false
     );
     if (playbackFxActive && playbackOnly != nullptr && outputInterleaved != nullptr) {
         const std::size_t sampleCount = static_cast<std::size_t>(frames) * outputChannels;
@@ -509,7 +510,7 @@ ProcessStats processNativeAudioBlock(
             outputInterleaved[sample] -= playbackOnly[sample];
         }
         if (effectiveTrackFxBank != nullptr && trackFxActive) {
-            (void)effectiveTrackFxBank->processInPlace(playbackOnly, frames, outputChannels);
+            effectiveTrackFxBank->processInPlaceNoPeak(playbackOnly, frames, outputChannels);
         }
         if (pitchRoute.useProcessor) {
             const bool processed = selectedMonoProcessor != nullptr

@@ -1,3 +1,9 @@
+import { BrowserOfficialReverseReverbDsp } from './BrowserOfficialReverseReverbDsp';
+import { officialDynamicsProfile } from './OfficialDynamicsProfiles';
+import { BrowserOfficialRollDsp } from './BrowserOfficialRollDsp';
+import { BrowserOfficialStepSlicerDsp } from './BrowserOfficialStepSlicerDsp';
+import { BrowserOfficialDelayDsp } from './BrowserOfficialDelayDsp';
+import { OfficialBrowserControlState, officialRateHz } from './OfficialBrowserParameters';
 import { LinearParameterSmoother } from '../../dsp/LinearParameterSmoother';
 import { TptStateVariableFilter } from '../../dsp/TptStateVariableFilter';
 import { equalPowerFadeInGain, equalPowerFadeOutGain } from '../../dsp/equalPowerCrossfade';
@@ -61,8 +67,10 @@ import { BrowserElectricDsp } from './BrowserElectricDsp';
  * Provenance and algorithmic latency:
  * - LPF/BPF/HPF: supplied contract formulas F01/F03; existing project
  *   TptStateVariableFilter primitive; 0 samples algorithmic latency.
- * - RING.MOD: supplied report formula F29, y=(1-m)x+m*x*sin(phi), with F01
- *   parameter smoothing; 0 samples algorithmic latency.
+ * - RING.MOD: supplied report formula F29, y=(1-m)x+m*x*carrier(phi), with
+ *   sine retained as the bit-exact default and a crossfaded, harmonic-limited
+ *   triangle option; 0 samples algorithmic latency. The triangle table uses
+ *   fixed Fourier tiers and is not a complete quality/alias acceptance.
  * - DIST: catalog ID 24. Four-times zero-stuffed, Blackman-windowed sinc FIR
  *   interpolation and decimation around first-order ADAA; three analytic,
  *   clean-room curves (tanh overdrive, hard clip, asymmetric fuzz), with F01
@@ -157,8 +165,12 @@ export type BrowserDynamicsDetector = 'peak' | 'rms';
 export type BrowserTremoloWaveform = 'sine' | 'triangle' | 'square';
 
 export interface BrowserFxParameters {
+  /** Manual-aligned controls; admitted keys are in BROWSER_OFFICIAL_PARAMETER_KEYS. */
+  [key: `official_${string}`]: number | undefined;
   cutoffHz?: number;
   q?: number;
+  /** LPF/HPF catalog control in percent; mapped to the project's SVF Q curve. */
+  filterResonancePercent?: number;
   mix?: number;
   decaySeconds?: number;
   dampingHz?: number;
@@ -167,6 +179,8 @@ export interface BrowserFxParameters {
   gateReleaseMs?: number;
   ringModHz?: number;
   ringModDepth?: number;
+  /** 0 = sine (default), 1 = band-limited triangle carrier. */
+  ringModWaveform?: number;
   driveDb?: number;
   outputDb?: number;
   distortionMode?: BrowserDistortionMode;
@@ -208,6 +222,8 @@ export interface BrowserFxParameters {
   autoPanWaveform?: BrowserTremoloWaveform;
   /** Beat-repeat clock and slice controls; clocked values latch at a slice boundary. */
   bpm?: number;
+  /** Host meter metadata. Never opts a legacy patch into official DSP. */
+  quarterNotesPerMeasure?: number;
   division?: number;
   decay?: number;
   direction?: number;
@@ -350,6 +366,15 @@ export interface BrowserFxParameters {
   oscBotPattern?: number;
   oscBotToneHz?: number;
   /** AUTO RIFF experiment analysis and sample-clocked Signalsmith commands. */
+  autoRiffOfficialTempo?: number;
+  autoRiffHold?: number;
+  autoRiffAttack?: number;
+  autoRiffLoop?: number;
+  autoRiffKey?: number;
+  hrmAutoOfficialManualVoice?: number;
+  hrmAutoOfficialVoice?: number;
+  hrmAutoOfficialHrmMode?: number;
+  robotNote?: number;
   autoRiffScale?: number;
   autoRiffRateBeats?: number;
   autoRiffSensitivityPercent?: number;
@@ -401,7 +426,7 @@ export const BROWSER_FX_ALGORITHM_INFO: Readonly<Record<BrowserFxAlgorithm, Brow
     catalogFunction: 'RING.MOD (catalog ID 9)',
     formulaIds: ['F01', 'F06', 'F29'],
     algorithmicLatencySamples: 0,
-    cleanRoomProvenance: 'Supplied report F29 sine-carrier equation and clean-room phase accumulator; no Roland source or code.',
+    cleanRoomProvenance: 'Supplied report F29 sine-carrier equation with a sine default and selectable, harmonic-limited triangle wavetable; no Roland source or code. Triangle alias/quality acceptance remains open.',
   },
   distortion: {
     catalogFunction: 'DIST (catalog ID 24)',
@@ -680,14 +705,46 @@ export const BROWSER_FX_ALGORITHM_INFO: Readonly<Record<BrowserFxAlgorithm, Brow
   robot: {
     catalogFunction: 'ROBOT (catalog ID 16)',
     formulaIds: ['F09', 'F10', 'F11', 'F12'],
-    algorithmicLatencySamples: 0,
+    // Default 48 kHz PSOLA core reference; the instance getter follows sample rate.
+    algorithmicLatencySamples: 1_416,
     implementationStatus: 'experimental',
-    cleanRoomProvenance: 'Experimental sample-clocked monophonic decimated-YIN tracking and semitone target quantization driving a separately pinned Signalsmith LIVE_FX shifter in the host. Polyphonic and unvoiced pitch tracking are unsupported; vendor formant compensation is enabled and anchored to tracked source F0, with zero shift expressing preserve intent and nonzero shift expressing independent envelope movement. Quality acceptance remains unverified; total acquisition/shifter latency requires measurement and no Roland source or firmware semantics are asserted.',
+    cleanRoomProvenance: 'Experimental sample-clocked monophonic decimated-YIN tracking and semitone target quantization with a fixed-latency PSOLA-lite core and a separately pinned Signalsmith LIVE_FX fallback in the host. The core latency excludes tracker acquisition; BrowserRobotFX aligns both paths to max(PSOLA, Signalsmith) latency, not measured physical end-to-end delay. Polyphonic and unvoiced pitch tracking are unsupported; vendor formant compensation is enabled and anchored to tracked source F0, with zero shift expressing preserve intent and nonzero shift expressing independent envelope movement. Quality acceptance remains unverified and no Roland source or firmware semantics are asserted.',
   },
 };
 
 const TWO_PI = Math.PI * 2;
 const DEFAULT_SMOOTHING_SECONDS = 0.015;
+const FILTER_RESONANCE_PERCENT_CURVE_EXPONENT = 2.117350426267045;
+export function filterResonancePercentToQ(percent: number): number {
+  const normalized = clamp(percent, 0, 100) / 100;
+  // Preserve the historical default coefficient exactly at the authored 15% default.
+  if (normalized === 0.15) return Math.SQRT1_2;
+  return 0.5 + 11.5 * (normalized ** FILTER_RESONANCE_PERCENT_CURVE_EXPONENT);
+}
+const RING_MOD_WAVETABLE_SIZE = 2048;
+const RING_MOD_TRIANGLE_HARMONIC_TIERS = [63, 31, 15, 7, 3, 1] as const;
+
+function createRingModTriangleTables(): readonly Float64Array[] {
+  return RING_MOD_TRIANGLE_HARMONIC_TIERS.map((maximumHarmonic) => {
+    const table = new Float64Array(RING_MOD_WAVETABLE_SIZE);
+    for (let sample = 0; sample < table.length; sample += 1) {
+      const phase = TWO_PI * sample / table.length;
+      let value = 0;
+      for (let harmonic = 1; harmonic <= maximumHarmonic; harmonic += 2) {
+        const alternating = ((harmonic - 1) / 2) % 2 === 0 ? 1 : -1;
+        value += alternating * Math.sin(harmonic * phase) / (harmonic * harmonic);
+      }
+      table[sample] = value;
+    }
+    let peak = 0;
+    for (let sample = 0; sample < table.length; sample += 1) peak = Math.max(peak, Math.abs(table[sample] ?? 0));
+    if (peak > 0) for (let sample = 0; sample < table.length; sample += 1) table[sample] = (table[sample] ?? 0) / peak;
+    return table;
+  });
+}
+
+// Built during module initialization, never from an AudioWorklet callback.
+const RING_MOD_TRIANGLE_TABLES = createRingModTriangleTables();
 const DEFAULT_DELAY_SECONDS = [0.0297, 0.0335, 0.0361, 0.0397, 0.0431, 0.0473, 0.0527, 0.0579] as const;
 const EARLY_REFLECTION_DELAYS_SECONDS = [0, 0.0067, 0.0113, 0.0169, 0.0227, 0.0289, 0.0341] as const;
 const EARLY_REFLECTION_GAINS_LEFT = [0.13, 0.068, -0.047, 0.035, -0.026, 0.021, -0.014] as const;
@@ -701,12 +758,20 @@ const FDN_MODULATION_DEPTH_SAMPLES = 0.35;
 const DISTORTION_OVERSAMPLE_FACTOR = 4;
 const DISTORTION_FIR_TAPS = 65;
 const DISTORTION_UPSAMPLE_INPUT_HISTORY = Math.ceil(DISTORTION_FIR_TAPS / DISTORTION_OVERSAMPLE_FACTOR);
+const DISTORTION_INTERPOLATION_TAPS_BY_PHASE = [
+  DISTORTION_UPSAMPLE_INPUT_HISTORY,
+  DISTORTION_UPSAMPLE_INPUT_HISTORY - 1,
+  DISTORTION_UPSAMPLE_INPUT_HISTORY - 1,
+  DISTORTION_UPSAMPLE_INPUT_HISTORY - 1,
+] as const;
 const DISTORTION_FIR_CENTER = (DISTORTION_FIR_TAPS - 1) / 2;
 const DISTORTION_CUTOFF_CYCLES_PER_OVERSAMPLE_SAMPLE = 0.117;
 const DISTORTION_MODE_CROSSFADE_OVERSAMPLED_SAMPLES = 256;
 const DISTORTION_DRY_DELAY_SAMPLES = 16;
 const DISTORTION_BIAS = 0.12;
 const FUZZ_SHARPNESS = 2.2;
+// Fixed transfer-function bias; evaluate the identical value once per module.
+const FUZZ_BIAS_TANH = Math.tanh(FUZZ_SHARPNESS * DISTORTION_BIAS);
 const FLANGER_MAX_DELAY_MILLISECONDS = 10;
 const FLANGER_MIN_DELAY_MILLISECONDS = 0.2;
 const FLANGER_MAX_DEPTH_MILLISECONDS = 5;
@@ -750,7 +815,7 @@ const PHASER_FEEDBACK_MAX = 0.95;
 const PHASER_MIN_FREQUENCY_HZ = 120;
 const PHASER_MAX_FREQUENCY_HZ = 3000;
 const PHASER_FEEDBACK_FILTER_HZ = 7000;
-const PHASER_MAX_STAGES = 8;
+const PHASER_MAX_STAGES = 12;
 const TREMOLO_DEFAULT_RATE_HZ = 4;
 const TREMOLO_DEFAULT_DEPTH = 0.5;
 const TREMOLO_MIN_RATE_HZ = 0.05;
@@ -803,7 +868,7 @@ function distortionFunction(mode: BrowserDistortionMode, value: number): number 
       return clamp(value, -1, 1);
     case 'fuzz':
       return Math.tanh(FUZZ_SHARPNESS * (value + DISTORTION_BIAS))
-        - Math.tanh(FUZZ_SHARPNESS * DISTORTION_BIAS);
+        - FUZZ_BIAS_TANH;
     case 'overdrive':
       return Math.tanh(value);
   }
@@ -817,7 +882,7 @@ function distortionAntiderivative(mode: BrowserDistortionMode, value: number): n
     }
     case 'fuzz':
       return logCosh(FUZZ_SHARPNESS * (value + DISTORTION_BIAS)) / FUZZ_SHARPNESS
-        - value * Math.tanh(FUZZ_SHARPNESS * DISTORTION_BIAS);
+        - value * FUZZ_BIAS_TANH;
     case 'overdrive':
       return logCosh(value);
   }
@@ -838,6 +903,7 @@ class ExponentialParameterSmoother {
   private current: number;
   private target: number;
   private readonly oneMinusAlpha: number;
+  private settled = false;
 
   constructor(sampleRate: number, initialValue: number, smoothingSeconds = DEFAULT_SMOOTHING_SECONDS) {
     this.current = initialValue;
@@ -845,24 +911,40 @@ class ExponentialParameterSmoother {
     this.oneMinusAlpha = 1 - Math.exp(-1 / (sampleRate * smoothingSeconds));
   }
 
+  get isSettled(): boolean {
+    return this.settled;
+  }
+
   setTarget(value: number): void {
-    this.target = value;
+    if (!Object.is(this.target, value)) {
+      this.target = value;
+      this.settled = false;
+    }
   }
 
   next(): number {
+    if (this.settled) return this.current;
+    const previous = this.current;
     this.current += (this.target - this.current) * this.oneMinusAlpha;
+    // Once one recurrence rounds back to the exact same IEEE-754 value, the
+    // unchanged target and coefficient make every later recurrence identical.
+    if (Object.is(this.current, previous)) this.settled = true;
     return this.current;
   }
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
+  // The common in-range path is already its own clamped value. Keep zero on
+  // the original path to preserve Math.min/max signed-zero behavior; NaN,
+  // reversed bounds and out-of-range values also take that exact fallback.
+  if (value !== 0 && value >= minimum && value <= maximum) return value;
   return Math.max(minimum, Math.min(maximum, value));
 }
 
 function validateBrowserVocoderParameters(parameters: BrowserFxParameters): void {
   const supported = ['mix', 'vocoderBands', 'vocoderCarrier'];
   for (const key of Object.keys(parameters)) {
-    if (!supported.includes(key)) {
+    if (!supported.includes(key) && key !== 'bpm' && key !== 'quarterNotesPerMeasure' && !key.startsWith('official_')) {
       throw new RangeError(key === 'formant' || key === 'vocoderFormantSemitones'
         ? 'Browser VOCODER formant shifting is unsupported; no formant remapping is applied.'
         : `Browser VOCODER does not support the ${key} parameter.`);
@@ -884,7 +966,7 @@ function validateBrowserVocoderParameters(parameters: BrowserFxParameters): void
 function validateBrowserElectricParameters(parameters: BrowserFxParameters): void {
   const supported = ['mix', 'electricCharacter', 'electricPitchSnapPercent', 'electricToneHz'];
   for (const key of Object.keys(parameters)) {
-    if (!supported.includes(key)) {
+    if (!supported.includes(key) && key !== 'bpm' && key !== 'quarterNotesPerMeasure' && !key.startsWith('official_')) {
       throw new RangeError(`Browser ELECTRIC does not support the ${key} parameter.`);
     }
   }
@@ -908,7 +990,7 @@ function validateBrowserElectricParameters(parameters: BrowserFxParameters): voi
 function validateBrowserOscBotParameters(parameters: BrowserFxParameters, sampleRate: number): void {
   const supported = ['mix', 'oscBotWaveform', 'oscBotPattern', 'oscBotToneHz', 'bpm'];
   for (const key of Object.keys(parameters)) {
-    if (!supported.includes(key)) {
+    if (!supported.includes(key) && key !== 'bpm' && key !== 'quarterNotesPerMeasure' && !key.startsWith('official_')) {
       throw new RangeError(`Browser OSC BOT does not support the ${key} parameter.`);
     }
   }
@@ -935,7 +1017,7 @@ function validateBrowserOscBotParameters(parameters: BrowserFxParameters, sample
 function validateBrowserOscVocParameters(parameters: BrowserFxParameters): void {
   const supported = ['mix', 'oscVocWaveform', 'oscVocMidiChannel', 'oscVocOctave', 'oscVocBands'];
   for (const key of Object.keys(parameters)) {
-    if (!supported.includes(key)) throw new RangeError(`Browser OSC VOC (M) does not support the ${key} parameter.`);
+    if (!supported.includes(key) && key !== 'bpm' && key !== 'quarterNotesPerMeasure' && !key.startsWith('official_')) throw new RangeError(`Browser OSC VOC (M) does not support the ${key} parameter.`);
   }
   if (parameters.mix !== undefined && (!Number.isFinite(parameters.mix) || parameters.mix < 0 || parameters.mix > 1)) {
     throw new RangeError('Browser OSC VOC (M) mix must be between 0 and 1.');
@@ -952,11 +1034,6 @@ function validateBrowserOscVocParameters(parameters: BrowserFxParameters): void 
   if (parameters.oscVocBands !== undefined && (!Number.isInteger(parameters.oscVocBands) || parameters.oscVocBands < 8 || parameters.oscVocBands > 24)) {
     throw new RangeError('Browser OSC VOC (M) bands must be an integer from 8 to 24.');
   }
-}
-
-function positiveModulo(value: number, modulus: number): number {
-  const result = value % modulus;
-  return result < 0 ? result + modulus : result;
 }
 
 function isTremoloWaveform(value: unknown): value is BrowserTremoloWaveform {
@@ -992,7 +1069,11 @@ function readLagrangeFromWriteHead(buffer: Float32Array, writeIndex: number, del
   const coefficient2 = -(fraction * oneMinus * (3 - fraction)) / 2;
   const coefficient3 = (fraction * oneMinus * (2 - fraction)) / 6;
   const length = buffer.length;
-  let index = positiveModulo(writeIndex - wholeDelay, length);
+  // All callers clamp delay to the buffer's valid range. This difference is
+  // therefore in (-length, length), so one correction is equivalent to
+  // positive modulo without a floating/integer remainder in the sample loop.
+  let index = writeIndex - wholeDelay;
+  if (index < 0) index += length;
   const sample0 = buffer[index] ?? 0;
   index = index > 0 ? index - 1 : length - 1;
   const sample1 = buffer[index] ?? 0;
@@ -1011,8 +1092,12 @@ export class BrowserFxDspCore {
     if (this.algorithm === 'synth' || this.algorithm === 'g2b' || this.algorithm === 'electric') return 2_868;
     if (this.algorithm === 'beat-shift') return this.beatShift?.latencySamples ?? 0;
     if (this.algorithm === 'reverse-delay') return this.reverseDelay?.latencySamples ?? 0;
-    if (this.algorithm === 'reverse-reverb') return this.reverseReverb?.latencySamples ?? 0;
+    if (this.algorithm === 'reverse-reverb') return this.officialReverseReverb?.latencySamples ?? this.reverseReverb?.latencySamples ?? 0;
     if (this.algorithm === 'vinyl-flick') return this.vinylFlick?.algorithmicLatencySamples ?? 0;
+    // The active core renders PSOLA, including its delayed unvoiced path.
+    // This is its declared engine delay, not a pitch-dependent waveform peak.
+    // Host PSOLA/Signalsmith alignment and tracker acquisition are separate.
+    if (this.algorithm === 'robot') return this.robot?.psolaLatencySamples ?? 0;
     return 0;
   }
 
@@ -1034,8 +1119,16 @@ export class BrowserFxDspCore {
   private gateDetectorEnvelope = 0;
   private gateHoldRemainingSamples = 0;
   private gateGain = 0;
+  private readonly gateDetectorRelease: number;
+  private gateThresholdKey = Number.NaN;
+  private gateThresholdLinear = 0;
+  private gateHoldKey = Number.NaN;
+  private gateHoldSamples = 1;
+  private gateReleaseKey = Number.NaN;
+  private gateReleaseCoefficient = 0;
   private readonly ringModHz: ExponentialParameterSmoother;
   private readonly ringModDepth: ExponentialParameterSmoother;
+  private readonly ringModWaveform: ExponentialParameterSmoother;
   private readonly driveDb: ExponentialParameterSmoother;
   private readonly outputDb: ExponentialParameterSmoother;
   private readonly flangerDelayMs: ExponentialParameterSmoother;
@@ -1088,15 +1181,28 @@ export class BrowserFxDspCore {
   private autoPanWetLeft = 0;
   private autoPanWetRight = 0;
   private readonly bypassMix = new LinearParameterSmoother(0);
+  // Cache the exact equal-power coefficients while mix/bypass controls are
+  // stationary. Values are refreshed from the existing helpers whenever the
+  // sample-position changes, so automation retains the original equations.
+  private cachedWetPosition = Number.NaN;
+  private cachedWetDryGain = 1;
+  private cachedWetGain = 0;
+  private cachedBypassPosition = Number.NaN;
+  private cachedBypassActiveGain = 1;
+  private cachedBypassGain = 0;
   private readonly distortionModeBlend = new LinearParameterSmoother(1);
   private distortionModeOld: BrowserDistortionMode;
   private distortionModeTarget: BrowserDistortionMode;
   private driveLinear = 1;
   private outputLinear = 1;
-  private readonly upsampleHistory = new Float64Array(DISTORTION_UPSAMPLE_INPUT_HISTORY * 2);
+  // Duplicate each circular history so processDistortionSample can read a
+  // contiguous window without a wrap branch for every FIR tap.
+  private readonly upsampleHistory = new Float64Array(DISTORTION_UPSAMPLE_INPUT_HISTORY * 4);
   private readonly upsampleWriteIndices = new Int32Array(2);
   private readonly previousDrivenInput = new Float64Array(2);
-  private readonly waveshapedHistory = new Float64Array(DISTORTION_FIR_TAPS * 2);
+  private readonly distortionPreviousPrimitive = new Float64Array(2);
+  private readonly distortionPrimitiveValid = new Uint8Array(2);
+  private readonly waveshapedHistory = new Float64Array(DISTORTION_FIR_TAPS * 4);
   private readonly waveshapedWriteIndices = new Int32Array(2);
   private readonly dryDelayBuffers: Float32Array[] = [
     new Float32Array(DISTORTION_DRY_DELAY_SAMPLES),
@@ -1192,19 +1298,71 @@ export class BrowserFxDspCore {
   private readonly flangerDampingAlpha: number;
   private readonly earlyRingLength: number;
   private controlUpdateCountdown = 0;
+  // `advanceControls` updates a fixed set of smoothed values every audio
+  // sample. Once every smoother and waveform crossfade has reached its exact
+  // terminal value, the values and their derived coefficients are immutable
+  // until the next control message. A short scan cadence detects that state
+  // without adding work to every sample; the coefficient refresh after the
+  // final ramp is required before the fast path can become active.
+  private controlsSteady = false;
+  private controlSettleScanCountdown = 0;
+  private controlSmoothersSettled = false;
+  // Test-only differential reference switch; production instances keep this
+  // enabled and it never changes DSP parameters or audio state.
+  private settledControlFastPathEnabled = true;
   private currentAudioFrame = 0;
+  private readonly official: OfficialBrowserControlState;
+  private officialDelay: BrowserOfficialDelayDsp | null = null;
+  private officialRoll: BrowserOfficialRollDsp | null = null;
+  private officialReverseReverb: BrowserOfficialReverseReverbDsp | null = null;
+  private officialStepSlicer: BrowserOfficialStepSlicerDsp | null = null;
+  private readonly officialDirectGain = new LinearParameterSmoother(1);
+  private readonly officialEffectGain = new LinearParameterSmoother(1);
+  private readonly officialLevelGain = new LinearParameterSmoother(1);
+  private officialIndependentMix = false;
+  private officialModulation = false;
+  private officialFilterPhase = 0;
+  private officialStepPhase = 1;
+  private officialLfoLeft = 0;
+  private officialLfoRight = 0;
+  private officialBiPhase = false;
+  private officialToneEq: EqualizerDsp | null = null;
+  private readonly officialLowCutLeft: TptStateVariableFilter;
+  private readonly officialLowCutRight: TptStateVariableFilter;
+  private readonly officialHighCutLeft: TptStateVariableFilter;
+  private readonly officialHighCutRight: TptStateVariableFilter;
+  private officialHasLowCut = false;
+  private officialHasHighCut = false;
+  private readonly officialPreDelayBuffers: readonly [Float32Array, Float32Array] | null;
+  private officialPreDelayWrite = 0;
+  private officialPreDelaySamples = 0;
+  private officialInitPhase = NaN;
+  private officialLastVariant = 0;
 
   constructor(algorithm: BrowserFxAlgorithm, sampleRate = 48000, parameters: BrowserFxParameters = {}, initialFrame = 0) {
+    this.official = new OfficialBrowserControlState(algorithm, sampleRate);
+    parameters = this.official.translate(parameters);
     if (algorithm === 'vocoder') validateBrowserVocoderParameters(parameters);
     if (algorithm === 'electric') validateBrowserElectricParameters(parameters);
     if (algorithm === 'osc-voc') validateBrowserOscVocParameters(parameters);
     this.algorithm = algorithm;
     this.sampleRate = Number.isFinite(sampleRate) && sampleRate >= 8000 ? sampleRate : 48000;
+    this.officialLowCutLeft = new TptStateVariableFilter(this.sampleRate);
+    this.officialLowCutRight = new TptStateVariableFilter(this.sampleRate);
+    this.officialHighCutLeft = new TptStateVariableFilter(this.sampleRate);
+    this.officialHighCutRight = new TptStateVariableFilter(this.sampleRate);
+    this.officialPreDelayBuffers = algorithm === 'reverb' || algorithm === 'gate-reverb'
+      ? [new Float32Array(Math.ceil(this.sampleRate * 0.5) + 1), new Float32Array(Math.ceil(this.sampleRate * 0.5) + 1)] : null;
+    this.gateDetectorRelease = algorithm === 'gate-reverb'
+      ? Math.exp(-1 / (GATE_REVERB_DETECTOR_RELEASE_MS * 0.001 * this.sampleRate)) : 0;
     this.currentAudioFrame = Number.isSafeInteger(initialFrame) && initialFrame >= 0 ? Math.floor(initialFrame) : 0;
 
     const nyquist = this.sampleRate * 0.499;
     const initialCutoff = clamp(parameters.cutoffHz ?? 1200, 20, nyquist);
-    const initialQ = clamp(parameters.q ?? Math.SQRT1_2, 0.1, 30);
+    const mappedFilterResonance = (algorithm === 'lpf' || algorithm === 'hpf') && Number.isFinite(parameters.filterResonancePercent)
+      ? filterResonancePercentToQ(parameters.filterResonancePercent as number)
+      : undefined;
+    const initialQ = clamp(mappedFilterResonance ?? parameters.q ?? Math.SQRT1_2, 0.1, 30);
     if (algorithm === 'osc-bot') validateBrowserOscBotParameters(parameters, this.sampleRate);
     const initialWet = clamp(parameters.mix ?? (algorithm === 'vocoder' || algorithm === 'osc-voc' || algorithm === 'osc-bot' || algorithm === 'electric' ? 0.7 : (
       algorithm === 'delay' || algorithm === 'panning-delay' || algorithm === 'mod-delay' ? DELAY_DEFAULT_MIX : algorithm === 'chorus' ? 0.4 : algorithm === 'phaser' || algorithm === 'beat-repeat' || algorithm === 'beat-scatter' || algorithm === 'roll' || algorithm === 'twist' ? 0.5 : algorithm === 'lo-fi' || algorithm === 'radio' ? 0.7 : algorithm === 'tape-echo' || algorithm === 'gate-reverb' || algorithm === 'reverse-delay' ? 0.3 : algorithm === 'reverse-reverb' ? 0.35 : algorithm === 'granular-delay' ? 0.35 : algorithm === 'warp' ? 0.4 : 1
@@ -1217,8 +1375,9 @@ export class BrowserFxDspCore {
     const initialGateThresholdDb = clamp(parameters.gateThresholdDb ?? GATE_REVERB_DEFAULT_THRESHOLD_DB, -60, 0);
     const initialGateHoldMs = clamp(parameters.gateHoldMs ?? GATE_REVERB_DEFAULT_HOLD_MS, 5, 2000);
     const initialGateReleaseMs = clamp(parameters.gateReleaseMs ?? GATE_REVERB_DEFAULT_RELEASE_MS, 10, 2000);
-    const initialRingModHz = clamp(parameters.ringModHz ?? 440, 0, Math.min(4000, nyquist));
+    const initialRingModHz = clamp(parameters.ringModHz ?? 440, 0, Math.min(8000, this.sampleRate * 0.45));
     const initialRingModDepth = clamp(parameters.ringModDepth ?? 1, 0, 1);
+    const initialRingModWaveform = parameters.ringModWaveform === 1 ? 1 : 0;
     const initialDriveDb = clamp(parameters.driveDb ?? 18, 0, 36);
     const initialOutputDb = clamp(parameters.outputDb ?? 0, -24, 12);
     const initialDistortionMode = isDistortionMode(parameters.distortionMode) ? parameters.distortionMode : 'overdrive';
@@ -1269,6 +1428,7 @@ export class BrowserFxDspCore {
     this.gateReleaseMs = new ExponentialParameterSmoother(this.sampleRate, initialGateReleaseMs);
     this.ringModHz = new ExponentialParameterSmoother(this.sampleRate, initialRingModHz);
     this.ringModDepth = new ExponentialParameterSmoother(this.sampleRate, initialRingModDepth);
+    this.ringModWaveform = new ExponentialParameterSmoother(this.sampleRate, initialRingModWaveform, 0.020);
     this.driveDb = new ExponentialParameterSmoother(this.sampleRate, initialDriveDb);
     this.outputDb = new ExponentialParameterSmoother(this.sampleRate, initialOutputDb);
     this.flangerDelayMs = new ExponentialParameterSmoother(this.sampleRate, initialFlangerDelayMs);
@@ -1317,7 +1477,7 @@ export class BrowserFxDspCore {
     this.delayDampingStates = new Float64Array(16);
     this.delayReadScratch = new Float64Array(16);
     this.dampingAlpha = new Float64Array(16);
-    this.currentControls = new Float64Array(36);
+    this.currentControls = new Float64Array(37);
     this.currentControls[0] = initialCutoff;
     this.currentControls[1] = initialQ;
     this.currentControls[2] = initialWet;
@@ -1325,6 +1485,7 @@ export class BrowserFxDspCore {
     this.currentControls[4] = initialDamping;
     this.currentControls[5] = initialRingModHz;
     this.currentControls[6] = initialRingModDepth;
+    this.currentControls[36] = initialRingModWaveform;
     this.currentControls[7] = initialDriveDb;
     this.currentControls[8] = initialOutputDb;
     this.currentControls[9] = initialFlangerDelayMs;
@@ -1422,6 +1583,12 @@ export class BrowserFxDspCore {
         bpm: parameters.bpm,
         scale: parameters.autoRiffScale as 0 | 1 | 2 | 3 | 4 | undefined,
         beatStepRate: parameters.autoRiffRateBeats,
+        officialTempo: parameters.autoRiffOfficialTempo,
+        quarterNotesPerMeasure: parameters.quarterNotesPerMeasure,
+        hold: parameters.autoRiffHold,
+        attack: parameters.autoRiffAttack,
+        loop: parameters.autoRiffLoop,
+        key: parameters.autoRiffKey,
         onsetSensitivity: Number.isFinite(parameters.autoRiffSensitivityPercent)
           ? (parameters.autoRiffSensitivityPercent as number) / 100
           : undefined,
@@ -1433,11 +1600,14 @@ export class BrowserFxDspCore {
         scale: parameters.hrmAutoScale,
         midiChannel: parameters.hrmAutoMidiChannel,
         mix: parameters.hrmAutoMixPercent,
+        officialManualVoice: parameters.hrmAutoOfficialManualVoice,
+        officialAutoVoice: parameters.hrmAutoOfficialVoice,
+        officialHrmMode: parameters.hrmAutoOfficialHrmMode,
         voices: 2,
       })
       : null;
     this.robot = algorithm === 'robot'
-      ? new BrowserRobotDsp(this.sampleRate, { pitch: parameters.robotPitch })
+      ? new BrowserRobotDsp(this.sampleRate, { pitch: parameters.robotPitch, note: parameters.robotNote })
       : null;
     this.patternSlicer = algorithm === 'pattern-slicer'
       ? new BrowserPatternSlicerDsp(this.sampleRate, {
@@ -1533,6 +1703,7 @@ export class BrowserFxDspCore {
       : null;
     this.sustainer = algorithm === 'sustainer'
       ? new BrowserSustainerDsp(this.sampleRate, {
+        attackMs: parameters.attackMs,
         thresholdDb: parameters.thresholdDb,
         ratio: parameters.ratio,
         releaseMs: parameters.releaseMs,
@@ -1710,6 +1881,7 @@ export class BrowserFxDspCore {
       }
       this.refreshTimeVariantCoefficients(initialDecay, initialDamping);
     }
+    this.applyOfficialControls(true);
   }
 
   /**
@@ -1718,6 +1890,9 @@ export class BrowserFxDspCore {
    * parameter claims.
    */
   setParameters(parameters: BrowserFxParameters): void {
+    const previousCarrier = this.official.get('carrier', -1);
+    parameters = this.official.translate(parameters);
+    if (this.algorithm === 'vocoder' && this.official.get('carrier', -1) !== previousCarrier) this.vocoder?.reset();
     const nyquist = this.sampleRate * 0.499;
     if (this.algorithm === 'vocoder') {
       validateBrowserVocoderParameters(parameters);
@@ -1754,16 +1929,24 @@ export class BrowserFxDspCore {
     if (this.algorithm === 'freeze' && Number.isFinite(parameters.freezeMode) && parameters.freezeMode !== 0) {
       throw new RangeError('Spectral FREEZE mode is unavailable; only micro-loop mode is wired.');
     }
+    this.controlsSteady = false;
+    this.controlSmoothersSettled = false;
+    this.controlSettleScanCountdown = 0;
     if (Number.isFinite(parameters.cutoffHz)) this.cutoff.setTarget(clamp(parameters.cutoffHz as number, 20, nyquist));
-    if (Number.isFinite(parameters.q)) this.q.setTarget(clamp(parameters.q as number, 0.1, 30));
+    if ((this.algorithm === 'lpf' || this.algorithm === 'hpf') && Number.isFinite(parameters.filterResonancePercent)) {
+      this.q.setTarget(filterResonancePercentToQ(parameters.filterResonancePercent as number));
+    } else if (Number.isFinite(parameters.q)) {
+      this.q.setTarget(clamp(parameters.q as number, 0.1, 30));
+    }
     if (Number.isFinite(parameters.mix)) this.wet.setTarget(clamp(parameters.mix as number, 0, 1));
     if (Number.isFinite(parameters.decaySeconds)) this.decaySeconds.setTarget(clamp(parameters.decaySeconds as number, 0.1, 20));
     if (Number.isFinite(parameters.dampingHz)) this.dampingHz.setTarget(clamp(parameters.dampingHz as number, 200, nyquist));
     if (Number.isFinite(parameters.gateThresholdDb)) this.gateThresholdDb.setTarget(clamp(parameters.gateThresholdDb as number, -60, 0));
     if (Number.isFinite(parameters.gateHoldMs)) this.gateHoldMs.setTarget(clamp(parameters.gateHoldMs as number, 5, 2000));
     if (Number.isFinite(parameters.gateReleaseMs)) this.gateReleaseMs.setTarget(clamp(parameters.gateReleaseMs as number, 10, 2000));
-    if (Number.isFinite(parameters.ringModHz)) this.ringModHz.setTarget(clamp(parameters.ringModHz as number, 0, Math.min(4000, nyquist)));
+    if (Number.isFinite(parameters.ringModHz)) this.ringModHz.setTarget(clamp(parameters.ringModHz as number, 0, Math.min(8000, this.sampleRate * 0.45)));
     if (Number.isFinite(parameters.ringModDepth)) this.ringModDepth.setTarget(clamp(parameters.ringModDepth as number, 0, 1));
+    if (parameters.ringModWaveform === 0 || parameters.ringModWaveform === 1) this.ringModWaveform.setTarget(parameters.ringModWaveform);
     if (Number.isFinite(parameters.driveDb)) this.driveDb.setTarget(clamp(parameters.driveDb as number, 0, 36));
     if (Number.isFinite(parameters.outputDb)) this.outputDb.setTarget(clamp(parameters.outputDb as number, -24, 12));
     if (isDistortionMode(parameters.distortionMode)) this.requestDistortionMode(parameters.distortionMode);
@@ -1882,6 +2065,12 @@ export class BrowserFxDspCore {
         bpm: parameters.bpm,
         scale: Number.isFinite(parameters.autoRiffScale) ? parameters.autoRiffScale as 0 | 1 | 2 | 3 | 4 : undefined,
         beatStepRate: parameters.autoRiffRateBeats,
+        officialTempo: parameters.autoRiffOfficialTempo,
+        quarterNotesPerMeasure: parameters.quarterNotesPerMeasure,
+        hold: parameters.autoRiffHold,
+        attack: parameters.autoRiffAttack,
+        loop: parameters.autoRiffLoop,
+        key: parameters.autoRiffKey,
         onsetSensitivity: Number.isFinite(parameters.autoRiffSensitivityPercent)
           ? (parameters.autoRiffSensitivityPercent as number) / 100
           : undefined,
@@ -1893,10 +2082,13 @@ export class BrowserFxDspCore {
         scale: parameters.hrmAutoScale,
         midiChannel: parameters.hrmAutoMidiChannel,
         mix: parameters.hrmAutoMixPercent,
+        officialManualVoice: parameters.hrmAutoOfficialManualVoice,
+        officialAutoVoice: parameters.hrmAutoOfficialVoice,
+        officialHrmMode: parameters.hrmAutoOfficialHrmMode,
       });
     }
     if (this.algorithm === 'robot') {
-      this.robot?.setParameters({ pitch: parameters.robotPitch, formant: parameters.robotFormantSemitones });
+      this.robot?.setParameters({ pitch: parameters.robotPitch, formant: parameters.robotFormantSemitones, note: parameters.robotNote });
     }
     if (this.algorithm === 'pattern-slicer') {
       this.patternSlicer?.setParameters({
@@ -2045,6 +2237,7 @@ export class BrowserFxDspCore {
     if (Number.isFinite(parameters.manualPanPosition)) {
       this.manualPanPosition.setTarget(clamp(parameters.manualPanPosition as number, -1, 1), Math.round(this.sampleRate * DEFAULT_SMOOTHING_SECONDS));
     }
+    this.applyOfficialControls(false);
   }
 
   /** Small read-only diagnostics for deterministic clock tests and host status. */
@@ -2176,6 +2369,14 @@ export class BrowserFxDspCore {
   }
 
   setBypass(bypassed: boolean, rampFrames = 0): void {
+    if (this.algorithm === 'freeze' && Object.keys(this.official.values).length > 0) {
+      this.freeze?.setParameters({ frozen: !bypassed });
+      if (bypassed) rampFrames = this.freeze?.officialReleaseFrames ?? rampFrames;
+    }
+    if (this.algorithm === 'twist' && Object.keys(this.official.values).length > 0) {
+      this.twist?.setOfficialActive(!bypassed);
+      if (bypassed) rampFrames = this.twist?.officialReleaseFrames ?? rampFrames;
+    }
     this.bypassMix.setTarget(bypassed ? 1 : 0, rampFrames);
   }
 
@@ -2222,6 +2423,13 @@ export class BrowserFxDspCore {
     throw new RangeError('MIDI note events are only supported by OSC VOC (M) and HRM AUTO (M).');
   }
 
+  scheduleMidiAllNotesOff(frame: number): void {
+    if (this.algorithm !== 'osc-voc' || !this.oscVoc) {
+      throw new RangeError(`${this.algorithm} does not accept OSC VOC MIDI all-notes-off.`);
+    }
+    this.oscVoc.allNotesOff(frame);
+  }
+
   /**
    * Process up to two channels. Null input is silence; a mono-to-stereo caller
    * may deliberately pass the same left input for both input channels. Arrays
@@ -2234,6 +2442,8 @@ export class BrowserFxDspCore {
     outputRight: Float32Array | null,
     frameCount?: number,
     inputIsMono = inputRight === null,
+    carrierLeft: Float32Array | null = null,
+    carrierRight: Float32Array | null = null,
   ): void {
     this.blocksProcessed += 1;
     const frames = Math.max(0, Math.floor(frameCount ?? Math.max(outputLeft?.length ?? 0, outputRight?.length ?? 0)));
@@ -2248,7 +2458,24 @@ export class BrowserFxDspCore {
     // BEAT SHIFT, REVERSE DELAY, REVERSE REVERB, VINYL FLICK, and FREEZE keep bounded histories
     // warm while bypassed. Output still stays exact-dry, so a later activation
     // or capture edge has the input history it needs.
-    if (this.fullyBypassed && this.algorithm !== 'beat-shift' && this.algorithm !== 'reverse-delay' && this.algorithm !== 'reverse-reverb' && this.algorithm !== 'vinyl-flick' && this.algorithm !== 'freeze' && this.algorithm !== 'osc-voc' && this.algorithm !== 'hrm-auto') {
+    if (this.fullyBypassed && !this.officialRoll && this.algorithm !== 'beat-shift' && this.algorithm !== 'reverse-delay' && this.algorithm !== 'reverse-reverb' && this.algorithm !== 'vinyl-flick' && this.algorithm !== 'freeze' && this.algorithm !== 'osc-voc' && this.algorithm !== 'hrm-auto') {
+      // Web Audio's usual equal-size channels can use a native copy without
+      // subarray views or per-sample bounds checks. Keep the general path for
+      // partial blocks, missing inputs, and deliberately mismatched arrays.
+      const bypassRightInput = monoAutoPanInput || monoManualPanInput || monoStereoEnhanceInput
+        ? inputLeft : inputRight;
+      if (outputLeft && inputLeft && outputLeftLength === frames && inputLeftLength === frames
+        && outputLeft.buffer !== inputLeft.buffer
+        && (!outputRight || outputLeft.buffer !== outputRight.buffer)
+        && (!bypassRightInput || outputLeft.buffer !== bypassRightInput.buffer)
+        && (!outputRight || (outputRight.buffer !== inputLeft.buffer && outputRight.buffer !== bypassRightInput?.buffer))
+        && ((!outputRight) || (bypassRightInput && outputRightLength === frames && bypassRightInput.length === frames))) {
+        outputLeft.set(inputLeft);
+        if (outputRight && bypassRightInput) outputRight.set(bypassRightInput);
+        this.framesProcessed += frames;
+        this.currentAudioFrame += frames;
+        return;
+      }
       for (let frame = 0; frame < frames; frame += 1) {
         if (frame < outputLeftLength && outputLeft) outputLeft[frame] = frame < inputLeftLength ? (inputLeft?.[frame] ?? 0) : 0;
         if (frame < outputRightLength && outputRight) {
@@ -2281,14 +2508,15 @@ export class BrowserFxDspCore {
       if (Math.abs(dryRight) < MIN_STATE_MAGNITUDE) dryRight = 0;
 
       this.advanceControls();
+      if (this.officialModulation) this.advanceOfficialModulation();
       if (this.algorithm === 'dynamics') this.updateDynamicsDetector(dryLeft, dryRight);
-      if (this.algorithm === 'gate-reverb') this.updateGateReverbEnvelope(dryLeft, dryRight);
+      if (this.algorithm === 'gate-reverb' && !this.official.has('threshold')) this.updateGateReverbEnvelope(dryLeft, dryRight);
       const wetPosition = this.algorithm === 'electric' && this.electric?.requiresVoicedInput && !this.electric.isVoiced
         ? 0
         : this.algorithm === 'preamp' || this.algorithm === 'synth' || this.algorithm === 'g2b'
         ? 1
         : (this.algorithm === 'beat-repeat' && !this.beatRepeat?.hasCapturedSlice)
-        || (this.algorithm === 'roll' && !this.roll?.hasCapturedSlice)
+        || (this.algorithm === 'roll' && !(this.officialRoll ? this.officialRoll.hasCapturedSlice : this.roll?.hasCapturedSlice))
         || (this.algorithm === 'beat-scatter' && !this.beatScatter?.hasCapturedSlice)
         || (this.algorithm === 'reverse-delay' && !this.reverseDelay?.hasCaptured)
         ? 0
@@ -2300,13 +2528,33 @@ export class BrowserFxDspCore {
           : this.algorithm === 'pattern-slicer' || this.algorithm === 'step-slicer'
             ? 1
           : (this.currentControls[2] ?? 1);
-      const wetDryGain = equalPowerFadeOutGain(wetPosition);
-      const wetGain = equalPowerFadeInGain(wetPosition);
+      if (wetPosition !== this.cachedWetPosition) {
+        this.cachedWetPosition = wetPosition;
+        this.cachedWetDryGain = equalPowerFadeOutGain(wetPosition);
+        this.cachedWetGain = equalPowerFadeInGain(wetPosition);
+      }
+      const wetDryGain = this.officialIndependentMix ? this.officialDirectGain.next() : this.cachedWetDryGain;
+      const wetGain = this.officialIndependentMix ? this.officialEffectGain.next() : this.cachedWetGain;
       let mixDryLeft = this.algorithm === 'distortion' ? this.processDistortionDryDelay(dryLeft, 0) : dryLeft;
       let mixDryRight = this.algorithm === 'distortion' ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
       let wetLeft: number;
       let wetRight: number;
-      if (this.algorithm === 'vinyl-flick') {
+      if (this.officialReverseReverb) {
+        this.officialReverseReverb.processSample(dryLeft, dryRight);
+        wetLeft = this.officialReverseReverb.wetLeft; wetRight = this.officialReverseReverb.wetRight;
+      } else if (this.officialStepSlicer) {
+        this.officialStepSlicer.processSample(dryLeft, dryRight);
+        wetLeft = this.officialStepSlicer.wetLeft;
+        wetRight = this.officialStepSlicer.wetRight;
+      } else if (this.officialRoll) {
+        this.officialRoll.processSample(dryLeft, dryRight);
+        wetLeft = this.officialRoll.wetLeft;
+        wetRight = this.officialRoll.wetRight;
+      } else if (this.officialDelay) {
+        this.officialDelay.processSample(dryLeft, dryRight);
+        wetLeft = this.officialDelay.wetLeft;
+        wetRight = this.officialDelay.wetRight;
+      } else if (this.algorithm === 'vinyl-flick') {
         this.vinylFlick?.processSample(dryLeft, dryRight);
         wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
         wetRight = this.vinylFlick?.wetRight ?? dryRight;
@@ -2350,10 +2598,9 @@ export class BrowserFxDspCore {
         wetRight = this.reverseReverb?.wetRight ?? 0;
       } else if (this.algorithm === 'auto-riff') {
         this.autoRiff?.processStereoSample(dryLeft, dryRight, this.currentAudioFrame + frame);
-        // The worklet analyzes and sequences only. The host's Signalsmith
-        // LIVE_FX node immediately downstream performs actual resynthesis.
-        wetLeft = dryLeft;
-        wetRight = dryRight;
+        // Pitch resynthesis is downstream; official HOLD/ATTACK shape this source.
+        wetLeft = this.autoRiff?.wetLeft ?? dryLeft;
+        wetRight = this.autoRiff?.wetRight ?? dryRight;
       } else if (this.algorithm === 'hrm-auto') {
         this.hrmAuto?.processSample((dryLeft + dryRight) * 0.5, this.currentAudioFrame + frame);
         // Analysis and MIDI voicing only. Host-pinned Signalsmith LIVE_FX
@@ -2428,9 +2675,21 @@ export class BrowserFxDspCore {
         wetLeft = this.g2b?.outputLeft ?? dryLeft;
         wetRight = this.g2b?.outputRight ?? dryRight;
       } else if (this.algorithm === 'vocoder') {
-        this.vocoder?.processSample(dryLeft, dryRight);
-        wetLeft = this.vocoder?.outputLeft ?? 0;
-        wetRight = this.vocoder?.outputRight ?? 0;
+        if (this.official.has('carrier')) {
+          // A disconnected/empty playback source is silence, never a fallback
+          // oscillator or a copy of the modulator. Stereo tracks are summed
+          // to the existing mono ERB carrier bank at the same audio frame.
+          const rawCarrierL = carrierLeft?.[frame] ?? 0;
+          const rawCarrierR = carrierRight?.[frame] ?? rawCarrierL;
+          const carrierL = Number.isFinite(rawCarrierL) ? rawCarrierL : 0;
+          const carrierR = Number.isFinite(rawCarrierR) ? rawCarrierR : 0;
+          wetLeft = this.vocoder?.processWithCarrier((dryLeft + dryRight) * 0.5, (carrierL + carrierR) * 0.5) ?? 0;
+          wetRight = wetLeft;
+        } else {
+          this.vocoder?.processSample(dryLeft, dryRight);
+          wetLeft = this.vocoder?.outputLeft ?? 0;
+          wetRight = this.vocoder?.outputRight ?? 0;
+        }
       } else if (this.algorithm === 'electric') {
         this.electric?.processSample(dryLeft, dryRight);
         wetLeft = this.electric?.outputLeft ?? dryLeft;
@@ -2461,8 +2720,31 @@ export class BrowserFxDspCore {
         wetLeft = this.modDelay?.wetLeft ?? 0;
         wetRight = this.modDelay?.wetRight ?? 0;
       } else {
-        wetLeft = this.processEffectSample(dryLeft, 0);
-        wetRight = this.processEffectSample(dryRight, 1);
+        let effectLeft = dryLeft, effectRight = dryRight;
+        if (this.officialPreDelayBuffers) {
+          const [leftBuffer, rightBuffer] = this.officialPreDelayBuffers;
+          leftBuffer[this.officialPreDelayWrite] = dryLeft;
+          rightBuffer[this.officialPreDelayWrite] = dryRight;
+          const readIndex = (this.officialPreDelayWrite - this.officialPreDelaySamples + leftBuffer.length) % leftBuffer.length;
+          effectLeft = leftBuffer[readIndex]!;
+          effectRight = rightBuffer[readIndex]!;
+          this.officialPreDelayWrite = (this.officialPreDelayWrite + 1) % leftBuffer.length;
+        }
+        wetLeft = this.processEffectSample(effectLeft, 0);
+        wetRight = this.processEffectSample(effectRight, 1);
+      }
+      if (this.officialHasLowCut) {
+        this.officialLowCutLeft.processSample(wetLeft); this.officialLowCutRight.processSample(wetRight);
+        wetLeft = this.officialLowCutLeft.highpass; wetRight = this.officialLowCutRight.highpass;
+      }
+      if (this.officialHasHighCut) {
+        this.officialHighCutLeft.processSample(wetLeft); this.officialHighCutRight.processSample(wetRight);
+        wetLeft = this.officialHighCutLeft.lowpass; wetRight = this.officialHighCutRight.lowpass;
+      }
+      if (this.officialToneEq) {
+        this.officialToneEq.process(wetLeft, wetRight);
+        wetLeft = this.officialToneEq.outputLeft;
+        wetRight = this.officialToneEq.outputRight;
       }
       if (!Number.isFinite(wetLeft)) {
         wetLeft = 0;
@@ -2473,20 +2755,27 @@ export class BrowserFxDspCore {
         this.nonFiniteOutputSamples += 1;
       }
       if (this.algorithm === 'gate-reverb') {
+        if (this.official.has('threshold')) this.updateGateReverbEnvelope(wetLeft, wetRight);
         wetLeft *= this.gateGain;
         wetRight *= this.gateGain;
       }
 
-      let mixedLeft = mixDryLeft * wetDryGain + wetLeft * wetGain;
-      let mixedRight = mixDryRight * wetDryGain + wetRight * wetGain;
+      const officialLevel = this.officialLevelGain.next();
+      let mixedLeft = (mixDryLeft * wetDryGain + wetLeft * wetGain) * officialLevel;
+      let mixedRight = (mixDryRight * wetDryGain + wetRight * wetGain) * officialLevel;
       const bypassPosition = this.bypassMix.next();
       if (bypassPosition >= 1) {
         // Preserve bit-exact identity at the bypass endpoint.
         mixedLeft = dryLeft;
         mixedRight = dryRight;
       } else {
-        const activeGain = equalPowerFadeOutGain(bypassPosition);
-        const bypassGain = equalPowerFadeInGain(bypassPosition);
+        if (bypassPosition !== this.cachedBypassPosition) {
+          this.cachedBypassPosition = bypassPosition;
+          this.cachedBypassActiveGain = equalPowerFadeOutGain(bypassPosition);
+          this.cachedBypassGain = equalPowerFadeInGain(bypassPosition);
+        }
+        const activeGain = this.cachedBypassActiveGain;
+        const bypassGain = this.cachedBypassGain;
         mixedLeft = mixedLeft * activeGain + dryLeft * bypassGain;
         mixedRight = mixedRight * activeGain + dryRight * bypassGain;
       }
@@ -2547,6 +2836,9 @@ export class BrowserFxDspCore {
   }
 
   reset(): void {
+    this.controlsSteady = false;
+    this.controlSmoothersSettled = false;
+    this.controlSettleScanCountdown = 0;
     this.filterLeft.reset();
     this.filterRight.reset();
     for (let index = 0; index < this.fdnBuffers.length; index += 1) {
@@ -2563,6 +2855,8 @@ export class BrowserFxDspCore {
     this.upsampleHistory.fill(0);
     this.upsampleWriteIndices.fill(0);
     this.previousDrivenInput.fill(0);
+    this.distortionPreviousPrimitive.fill(0);
+    this.distortionPrimitiveValid.fill(0);
     this.waveshapedHistory.fill(0);
     this.waveshapedWriteIndices.fill(0);
     this.dryDelayBuffers[0]?.fill(0);
@@ -2592,11 +2886,20 @@ export class BrowserFxDspCore {
     this.phaserOutputStates.fill(0);
     this.phaserFeedbackStates.fill(0);
     this.phaserPhase = 0;
+    this.officialFilterPhase = 0;
+    this.officialStepPhase = 1;
+    this.officialLfoLeft = 0;
+    this.officialLfoRight = 0;
+    this.officialToneEq?.reset();
+    this.officialLowCutLeft.reset(); this.officialLowCutRight.reset();
+    this.officialHighCutLeft.reset(); this.officialHighCutRight.reset();
+    this.officialPreDelayBuffers?.[0].fill(0); this.officialPreDelayBuffers?.[1].fill(0);
+    this.officialPreDelayWrite = 0;
     this.tremoloPhase = 0;
     this.tremoloWaveformOld = this.tremoloWaveformTarget;
     this.tremoloWaveformBlend.reset(1);
     this.tremoloWaveformBlendValue = 1;
-    this.autoPanPhase = 0;
+    this.autoPanPhase = Number.isFinite(this.officialInitPhase) ? clamp(this.officialInitPhase, 0, 180) / 360 : 0;
     this.autoPanWaveformOld = this.autoPanWaveformTarget;
     this.autoPanWaveformBlend.reset(1);
     this.autoPanWaveformBlendValue = 1;
@@ -2614,10 +2917,15 @@ export class BrowserFxDspCore {
     this.beatRepeat?.reset();
     this.roll?.reset();
     this.freeze?.reset();
+    if (this.algorithm === 'freeze' && Object.keys(this.official.values).length > 0) this.freeze?.setParameters({ frozen: !this.bypassed });
     this.warp?.reset();
     this.beatScatter?.reset();
     this.beatShift?.reset();
     this.reverseDelay?.reset();
+    this.officialDelay?.reset();
+    this.officialRoll?.reset();
+    this.officialStepSlicer?.reset();
+    this.officialReverseReverb?.reset();
     this.reverseReverb?.reset();
     this.autoRiff?.reset();
     this.hrmAuto?.reset();
@@ -2649,7 +2957,193 @@ export class BrowserFxDspCore {
     this.manualPanWetRight = 0;
   }
 
+  private applyOfficialControls(initial: boolean): void {
+    const c = this.official;
+    const ramp = initial ? 0 : Math.round(this.sampleRate * 0.02);
+    const isCountedDelay = this.algorithm === 'delay' || this.algorithm === 'panning-delay' || this.algorithm === 'reverse-delay' || this.algorithm === 'mod-delay';
+    const hasOfficial = Object.keys(c.values).length > 0;
+    const isOfficialTape = this.algorithm === 'tape-echo' && c.has('variant');
+    if (hasOfficial) {
+      if (this.algorithm === 'electric') this.electric?.setOfficialParameters({ shift: c.get('shift'), formant: c.get('formant'), speed: c.get('speed', 5), stability: c.get('stability', 0), scale: c.get('scale') });
+      if (this.algorithm === 'vocoder') this.vocoder?.setOfficialParameters({ tone: c.get('tone'), attack: c.get('attack', 50), mod_sens: c.get('mod_sens') });
+      if (this.algorithm === 'osc-voc') this.oscVoc?.setOfficialParameters({ carrier: c.get('carrier'), tone: c.get('tone'), attack: c.get('attack', 50), octave: c.get('octave', 2), mod_sens: c.get('mod_sens'), release: c.get('release', 50) });
+      if (this.algorithm === 'osc-bot') this.oscBot?.setOfficialParameters({ osc: c.get('osc'), tone: c.get('tone'), attack: c.get('attack', 50), note: c.get('note', 36), mod_sens: c.get('mod_sens') });
+      if (this.algorithm === 'preamp') this.preamp?.setOfficialParameters({ ampType: c.get('amp_type', 3), spkType: c.get('spk_type', 1), gain: c.get('gain', 50), tComp: c.get('t_comp'), bass: c.get('bass', 50), middle: c.get('middle', 50), treble: c.get('treble', 50), presence: c.get('presence', 50), micType: c.get('mic_type'), micDis: c.get('mic_dis'), micPos: c.get('mic_pos') });
+    }
+    if (this.algorithm === 'dynamics' && hasOfficial) {
+      const profile = officialDynamicsProfile(c.get('type', 0));
+      this.officialToneEq ??= new EqualizerDsp(this.sampleRate);
+      this.officialToneEq.setOfficialParameters({ lowGainDb: profile.low, highGainDb: profile.high }, ramp);
+      this.officialHasLowCut = profile.lowCut > 0; this.officialHasHighCut = profile.highCut > 0;
+      if (this.officialHasLowCut) { this.officialLowCutLeft.setParameters(profile.lowCut, Math.SQRT1_2); this.officialLowCutRight.setParameters(profile.lowCut, Math.SQRT1_2); }
+      if (this.officialHasHighCut) { this.officialHighCutLeft.setParameters(Math.min(this.sampleRate * 0.45, profile.highCut), Math.SQRT1_2); this.officialHighCutRight.setParameters(Math.min(this.sampleRate * 0.45, profile.highCut), Math.SQRT1_2); }
+    }
+    if (this.algorithm === 'beat-scatter' && c.has('length')) this.beatScatter?.setOfficialLengthBeats(c.get('length') === -1000 ? 1 : Math.abs(c.get('length')), initial);
+    if (this.algorithm === 'reverse-reverb' && hasOfficial) {
+      const values = { timeSeconds: c.get('time', 3), preDelayMs: c.get('pre_delay', 500), gateTimeSeconds: c.get('gate_time', .5), lowCutHz: c.get('low_cut', -1000), highCutHz: c.get('high_cut', -1000) };
+      this.officialReverseReverb ??= new BrowserOfficialReverseReverbDsp(this.sampleRate, values);
+      this.officialReverseReverb.setParameters(values);
+    }
+    if (this.algorithm === 'pattern-slicer' && hasOfficial) this.patternSlicer?.setOfficialParameters({ rateHz: officialRateHz(c.get('rate', -1), c.bpm, c.quarterNotesPerMeasure), duty: c.get('duty', 50), attack: c.get('attack', 35), depth: c.get('depth', 100), compThreshold: c.get('comp_threshold', -30), compGain: c.get('comp_gain', 2) });
+    if (this.algorithm === 'step-slicer' && hasOfficial) {
+      const values = { rateHz: officialRateHz(c.get('rate', -1), c.bpm, c.quarterNotesPerMeasure), stepMax: c.get('step_max', 16), stepLength: c.get('step_length', 50), depth: c.get('depth', 100), compThreshold: c.get('comp_threshold', -30), compGain: c.get('comp_gain', 6), levels: Array.from({ length: 16 }, (_, i) => c.get(`step_level_${i + 1}`, 100)) };
+      this.officialStepSlicer ??= new BrowserOfficialStepSlicerDsp(this.sampleRate, values);
+      this.officialStepSlicer.setParameters(values);
+    }
+    if (this.algorithm === 'roll' && c.has('variant')) {
+      const variant = c.get('variant') as 1 | 2;
+      if (variant !== this.officialLastVariant) { this.officialRoll?.reset(); this.officialLastVariant = variant; }
+      const values = { variant, time: c.get('time', -1), repeats: c.get(variant === 1 ? 'feedback' : 'repeat', 50), roll: c.get('roll', 0), bpm: c.bpm };
+      this.officialRoll ??= new BrowserOfficialRollDsp(this.sampleRate, values);
+      this.officialRoll.setParameters(values);
+    }
+    if (isOfficialTape) {
+      const variant = c.get('variant');
+      if (variant !== this.officialLastVariant) {
+        this.officialLastVariant = variant;
+        this.officialHasLowCut = false; this.officialHasHighCut = false;
+        this.officialToneEq = null;
+      }
+      const repeatRate = c.get('repeat_rate', variant === 1 ? 50 : 200);
+      const time = variant === 1 ? 2000 * 0.0005 ** (clamp(repeatRate, 0, 100) / 100)
+        : repeatRate < 0 ? Math.min(4, Math.abs(repeatRate)) * 60000 / clamp(c.bpm, 40, 300) : clamp(repeatRate, 1, 2000);
+      this.tapeEcho?.setOfficialTimeMs(time, initial);
+      if (variant === 1 && (c.has('bass') || c.has('treble'))) {
+        this.officialToneEq ??= new EqualizerDsp(this.sampleRate);
+        this.officialToneEq.setOfficialParameters({ lowGainDb: clamp(c.get('bass'), -50, 50) * 0.4, highGainDb: clamp(c.get('treble'), -50, 50) * 0.4 }, ramp);
+      }
+    }
+    if (isCountedDelay && hasOfficial) {
+      const values = { time: c.get('time', 200), feedback: c.get('feedback', 16), modDepth: c.get('mod_depth', 50), bpm: c.bpm };
+      this.officialDelay ??= new BrowserOfficialDelayDsp(this.algorithm as 'delay' | 'panning-delay' | 'reverse-delay' | 'mod-delay', this.sampleRate, values);
+      this.officialDelay.setParameters(values);
+    }
+    if ((isCountedDelay && hasOfficial) || isOfficialTape || c.has('d_level') || c.has('e_level') || ((this.algorithm === 'warp' || this.algorithm === 'twist') && c.has('level'))) {
+      this.officialIndependentMix = true;
+      this.officialDirectGain.setTarget(this.algorithm === 'preamp' ? 0 : clamp(c.get('d_level', 100), 0, 100) / 100, ramp);
+      const effectLevel = this.algorithm === 'warp' || this.algorithm === 'twist' ? c.get('level', 50) : c.get('e_level', isCountedDelay || isOfficialTape ? 50 : 100);
+      this.officialEffectGain.setTarget(clamp(effectLevel, 0, isCountedDelay || isOfficialTape ? 120 : 100) / 100, ramp);
+    }
+    if (c.has('level') && this.algorithm !== 'warp' && this.algorithm !== 'twist') this.officialLevelGain.setTarget(clamp(c.get('level', 100), 0, 100) / 100, ramp);
+    if (this.algorithm === 'lpf' || this.algorithm === 'bpf' || this.algorithm === 'hpf' || this.algorithm === 'phaser' || this.algorithm === 'flanger' || this.algorithm === 'auto-pan') {
+      this.officialModulation = c.has('rate') || c.has('depth') || c.has('step_rate') || c.has('separation');
+    }
+    if (c.has('rate')) {
+      const rate = officialRateHz(c.get('rate'), c.bpm, c.quarterNotesPerMeasure);
+      if (this.algorithm === 'phaser') this.phaserRateHz.setTarget(rate);
+      if (this.algorithm === 'flanger') this.flangerRateHz.setTarget(rate);
+      if (this.algorithm === 'tremolo') this.tremoloRateHz.setTarget(rate);
+      if (this.algorithm === 'auto-pan') this.autoPanRateHz.setTarget(rate);
+      if (this.algorithm === 'chorus') this.chorusRateHz.setTarget(rate);
+    }
+    if (c.has('low_cut') && !this.officialReverseReverb) {
+      this.officialHasLowCut = c.get('low_cut') !== -1000;
+      const frequency = clamp(c.get('low_cut'), 20, Math.min(12500, this.sampleRate * 0.45));
+      this.officialLowCutLeft.setParameters(frequency, Math.SQRT1_2);
+      this.officialLowCutRight.setParameters(frequency, Math.SQRT1_2);
+    }
+    if (c.has('high_cut') && !this.officialReverseReverb) {
+      this.officialHasHighCut = c.get('high_cut') !== -1000;
+      const frequency = clamp(c.get('high_cut'), 20, Math.min(12500, this.sampleRate * 0.45));
+      this.officialHighCutLeft.setParameters(frequency, Math.SQRT1_2);
+      this.officialHighCutRight.setParameters(frequency, Math.SQRT1_2);
+    }
+    if (c.has('pre_delay')) this.officialPreDelaySamples = Math.round(clamp(c.get('pre_delay'), 0, 500) * this.sampleRate / 1000);
+    if (this.algorithm === 'auto-pan' && c.has('init_phase') && c.get('init_phase') !== this.officialInitPhase) {
+      this.officialInitPhase = c.get('init_phase');
+      this.autoPanPhase = clamp(this.officialInitPhase, 0, 180) / 360;
+    }
+    if (this.algorithm === 'freeze' && hasOfficial) {
+      this.freeze?.setOfficialParameters({ attack: c.get('attack', 30), release: c.get('release', 30), decay: c.get('decay', 30), sustain: c.get('sustain', 30) });
+      this.freeze?.setParameters({ frozen: !this.bypassed });
+    }
+    if (this.algorithm === 'twist' && hasOfficial) {
+      this.twist?.setOfficialParameters({ rise: c.get('rise', 50), fall: c.get('fall', 50), release: c.get('release', 0) });
+      this.twist?.setOfficialActive(!this.bypassed);
+    }
+    if (this.algorithm === 'vibrato') this.vibrato?.setOfficialParameters({
+      color: c.has('color') ? c.get('color') : undefined,
+      rateHz: c.has('rate') ? officialRateHz(c.get('rate'), c.bpm, c.quarterNotesPerMeasure) : undefined,
+    });
+    if (this.algorithm === 'synth') this.synth?.setOfficialParameters({
+      frequencyHz: c.has('frequency') ? 20 * 1000 ** (clamp(c.get('frequency'), 0, 100) / 100) : undefined,
+      resonanceQ: c.has('resonance') ? 0.5 * 40 ** (clamp(c.get('resonance'), 0, 100) / 100) : undefined,
+      decayMs: c.has('decay') ? 10 * 200 ** (clamp(c.get('decay'), 0, 100) / 100) : undefined,
+    });
+    if (this.algorithm === 'isolator' && Object.keys(c.values).length > 0) this.isolator?.setOfficialParameters({
+      band: c.get('band', 0), rateHz: officialRateHz(c.get('rate', -1), c.bpm, c.quarterNotesPerMeasure), bandLevel: c.get('band_level', 50),
+      depth: c.get('depth', 50), stepRateHz: officialRateHz(c.get('step_rate', -1000), c.bpm, c.quarterNotesPerMeasure), waveform: c.get('waveform', 0),
+    });
+    if (this.algorithm === 'phaser' && c.has('stage')) {
+      const stage = c.get('stage');
+      this.officialBiPhase = stage === -1;
+      this.phaserStageCount = stage === 12 ? 12 : stage === 8 || stage === -1 ? 8 : 4;
+    }
+    if (this.algorithm === 'lo-fi') {
+      this.loFi?.setOfficialParameters({ bitDepth: c.has('bitdepth') ? c.get('bitdepth') : undefined,
+        sampleRateDivisor: c.has('samplerate') ? c.get('samplerate') : undefined });
+    }
+    if (this.algorithm === 'eq') this.equalizer?.setOfficialParameters({
+      lowGainDb: c.has('lo') ? c.get('lo') : undefined, mid1GainDb: c.has('lo_mid') ? c.get('lo_mid') : undefined,
+      mid1FrequencyHz: c.has('lo_mid_freq') ? c.get('lo_mid_freq') : undefined, mid1Q: c.has('lo_mid_q') ? c.get('lo_mid_q') : undefined,
+      mid2GainDb: c.has('hi_mid') ? c.get('hi_mid') : undefined, mid2FrequencyHz: c.has('hi_mid_freq') ? c.get('hi_mid_freq') : undefined,
+      mid2Q: c.has('hi_mid_q') ? c.get('hi_mid_q') : undefined, highGainDb: c.has('high') ? c.get('high') : undefined,
+    }, ramp);
+    if ((this.algorithm === 'sustainer' && (c.has('low_gain') || c.has('hi_gain')))
+      || (this.algorithm === 'distortion' && (c.has('tone') || c.has('type')))) {
+      this.officialToneEq ??= new EqualizerDsp(this.sampleRate);
+      if (this.algorithm === 'sustainer') this.officialToneEq.setOfficialParameters({ lowGainDb: c.get('low_gain'), highGainDb: c.get('hi_gain') }, ramp);
+      else {
+        const tone = clamp(c.get('tone'), -50, 50) / 50;
+        const type = Math.round(clamp(c.get('type', 2), 0, 5));
+        // Authored vocal/boost/OD/DS/metal/fuzz profiles, not factory models.
+        this.officialToneEq.setOfficialParameters({ lowGainDb: -tone * 12 + [ -3, 0, 1, 2, 5, 3 ][type]!,
+          highGainDb: tone * 12 + [ -2, 0, -3, 1, 4, -5 ][type]!,
+          mid1FrequencyHz: 900, mid1GainDb: [ 4, 0, 3, 0, -6, -2 ][type]! }, ramp);
+      }
+    }
+  }
+
+  private advanceOfficialModulation(): void {
+    const c = this.official;
+    const isFilter = this.algorithm === 'lpf' || this.algorithm === 'bpf' || this.algorithm === 'hpf';
+    const phase = isFilter ? this.officialFilterPhase : this.algorithm === 'phaser' ? this.phaserPhase : this.algorithm === 'auto-pan' ? TWO_PI * this.autoPanPhase : this.flangerPhases[0] ?? 0;
+    const offset = this.algorithm === 'flanger' ? Math.PI * clamp(c.get('separation', 100), 0, 100) / 100 : this.algorithm === 'phaser' ? Math.PI * 0.5 : 0;
+    const stepRate = officialRateHz(c.get('step_rate', -1000), c.bpm, c.quarterNotesPerMeasure);
+    if (stepRate === 0 || this.officialStepPhase >= 1) {
+      this.officialLfoLeft = Math.sin(phase);
+      this.officialLfoRight = Math.sin(phase + offset);
+      this.officialStepPhase %= 1;
+    }
+    this.officialStepPhase += stepRate / this.sampleRate;
+    if (isFilter) {
+      const rate = officialRateHz(c.get('rate', -1), c.bpm, c.quarterNotesPerMeasure);
+      this.officialFilterPhase = (this.officialFilterPhase + TWO_PI * rate / this.sampleRate) % TWO_PI;
+      if (this.controlUpdateCountdown === 15) {
+        const base = this.currentControls[0] ?? 1200;
+        const modulated = clamp(base * 2 ** (5 * clamp(c.get('depth', 50), 0, 100) / 100 * this.officialLfoLeft), 20, this.sampleRate * 0.45);
+        const q = this.currentControls[1] ?? Math.SQRT1_2;
+        this.filterLeft.setParameters(modulated, q);
+        this.filterRight.setParameters(modulated, q);
+      }
+    }
+  }
+
   private advanceControls(): void {
+    if (this.settledControlFastPathEnabled && this.controlsSteady) {
+      // Keep the established 16-sample coefficient-refresh phase even while
+      // values are steady. A later parameter message must resume the legacy
+      // ramp on the same sample boundary as the reference path.
+      if (this.controlUpdateCountdown <= 0) {
+        this.refreshControlDependentCoefficients();
+        this.controlUpdateCountdown = 15;
+      } else {
+        this.controlUpdateCountdown -= 1;
+      }
+      return;
+    }
+
+    const refreshedCoefficients = this.controlUpdateCountdown <= 0;
     this.currentControls[0] = this.cutoff.next();
     this.currentControls[1] = this.q.next();
     this.currentControls[2] = this.wet.next();
@@ -2657,6 +3151,7 @@ export class BrowserFxDspCore {
     this.currentControls[4] = this.dampingHz.next();
     this.currentControls[5] = this.ringModHz.next();
     this.currentControls[6] = this.ringModDepth.next();
+    this.currentControls[36] = this.ringModWaveform.next();
     this.currentControls[7] = this.driveDb.next();
     this.currentControls[8] = this.outputDb.next();
     this.currentControls[9] = this.flangerDelayMs.next();
@@ -2695,24 +3190,8 @@ export class BrowserFxDspCore {
       this.outputLinear = Math.pow(10, (this.currentControls[8] ?? 0) / 20);
     }
 
-    if (this.controlUpdateCountdown <= 0) {
-      const cutoffHz = this.currentControls[0] ?? 1200;
-      const resonanceQ = this.currentControls[1] ?? Math.SQRT1_2;
-      if (this.algorithm === 'lpf' || this.algorithm === 'bpf' || this.algorithm === 'hpf') {
-        this.filterLeft.setParameters(cutoffHz, resonanceQ);
-        this.filterRight.setParameters(cutoffHz, resonanceQ);
-      } else if (this.algorithm === 'reverb' || this.algorithm === 'gate-reverb') {
-        this.refreshTimeVariantCoefficients(this.currentControls[3] ?? 2.4, this.currentControls[4] ?? 9000);
-      } else if (this.algorithm === 'dynamics') {
-        this.dynamicsAttackAlpha = Math.exp(-1 / (Math.max(0.1, this.currentControls[16] ?? DYNAMICS_DEFAULT_ATTACK_MS) * 0.001 * this.sampleRate));
-        this.dynamicsReleaseAlpha = Math.exp(-1 / (Math.max(5, this.currentControls[17] ?? DYNAMICS_DEFAULT_RELEASE_MS) * 0.001 * this.sampleRate));
-      } else if (this.algorithm === 'delay') {
-        this.delayToneAlpha = 1 - Math.exp(-TWO_PI * Math.min(this.currentControls[20] ?? DELAY_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
-      } else if (this.algorithm === 'chorus') {
-        this.chorusToneAlpha = 1 - Math.exp(-TWO_PI * Math.min(this.currentControls[25] ?? CHORUS_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
-      } else if (this.algorithm === 'stereo-enhance') {
-        this.refreshStereoEnhanceCoefficients(this.currentControls[34] ?? 120);
-      }
+    if (refreshedCoefficients) {
+      this.refreshControlDependentCoefficients();
       this.controlUpdateCountdown = 15;
     } else {
       this.controlUpdateCountdown -= 1;
@@ -2722,6 +3201,76 @@ export class BrowserFxDspCore {
     if (this.algorithm === 'phaser') this.phaserPhaseStep = TWO_PI * (this.currentControls[26] ?? PHASER_DEFAULT_RATE_HZ) / this.sampleRate;
     if (this.algorithm === 'tremolo') this.tremoloPhaseStep = (this.currentControls[29] ?? TREMOLO_DEFAULT_RATE_HZ) / this.sampleRate;
     if (this.algorithm === 'auto-pan') this.autoPanPhaseStep = (this.currentControls[31] ?? AUTO_PAN_DEFAULT_RATE_HZ) / this.sampleRate;
+
+    if (this.controlSettleScanCountdown <= 0) {
+      this.controlSettleScanCountdown = 15;
+      if (this.advanceControlSmoothersSettled()) this.controlSmoothersSettled = true;
+    } else {
+      this.controlSettleScanCountdown -= 1;
+    }
+    if (this.controlSmoothersSettled && refreshedCoefficients) this.controlsSteady = true;
+  }
+
+  private refreshControlDependentCoefficients(): void {
+    const cutoffHz = this.currentControls[0] ?? 1200;
+    const resonanceQ = this.currentControls[1] ?? Math.SQRT1_2;
+    if (this.algorithm === 'lpf' || this.algorithm === 'bpf' || this.algorithm === 'hpf') {
+      this.filterLeft.setParameters(cutoffHz, resonanceQ);
+      this.filterRight.setParameters(cutoffHz, resonanceQ);
+    } else if (this.algorithm === 'reverb' || this.algorithm === 'gate-reverb') {
+      this.refreshTimeVariantCoefficients(this.currentControls[3] ?? 2.4, this.currentControls[4] ?? 9000);
+    } else if (this.algorithm === 'dynamics') {
+      this.dynamicsAttackAlpha = Math.exp(-1 / (Math.max(0.1, this.currentControls[16] ?? DYNAMICS_DEFAULT_ATTACK_MS) * 0.001 * this.sampleRate));
+      this.dynamicsReleaseAlpha = Math.exp(-1 / (Math.max(5, this.currentControls[17] ?? DYNAMICS_DEFAULT_RELEASE_MS) * 0.001 * this.sampleRate));
+    } else if (this.algorithm === 'delay') {
+      this.delayToneAlpha = 1 - Math.exp(-TWO_PI * Math.min(this.currentControls[20] ?? DELAY_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
+    } else if (this.algorithm === 'chorus') {
+      this.chorusToneAlpha = 1 - Math.exp(-TWO_PI * Math.min(this.currentControls[25] ?? CHORUS_DEFAULT_TONE_HZ, this.sampleRate * 0.499) / this.sampleRate);
+    } else if (this.algorithm === 'stereo-enhance') {
+      this.refreshStereoEnhanceCoefficients(this.currentControls[34] ?? 120);
+    }
+  }
+
+  private advanceControlSmoothersSettled(): boolean {
+    return this.cutoff.isSettled
+      && this.q.isSettled
+      && this.wet.isSettled
+      && this.decaySeconds.isSettled
+      && this.dampingHz.isSettled
+      && this.ringModHz.isSettled
+      && this.ringModDepth.isSettled
+      && this.ringModWaveform.isSettled
+      && this.driveDb.isSettled
+      && this.outputDb.isSettled
+      && this.flangerDelayMs.isSettled
+      && this.flangerDepth.isSettled
+      && this.flangerRateHz.isSettled
+      && this.flangerFeedback.isSettled
+      && this.dynamicsThreshold.isSettled
+      && this.dynamicsRatio.isSettled
+      && this.dynamicsKnee.isSettled
+      && this.dynamicsAttackMs.isSettled
+      && this.dynamicsReleaseMs.isSettled
+      && this.delayTimeMs.isSettled
+      && this.delayFeedback.isSettled
+      && this.delayToneHz.isSettled
+      && this.chorusDelayMs.isSettled
+      && this.chorusRateHz.isSettled
+      && this.chorusDepthMs.isSettled
+      && this.chorusFeedback.isSettled
+      && this.chorusToneHz.isSettled
+      && this.phaserRateHz.isSettled
+      && this.phaserDepth.isSettled
+      && this.phaserFeedback.isSettled
+      && this.tremoloRateHz.isSettled
+      && this.tremoloDepth.isSettled
+      && this.autoPanRateHz.isSettled
+      && this.autoPanDepth.isSettled
+      && this.stereoWidth.isSettled
+      && this.stereoLowMonoCutoffHz.isSettled
+      && this.stereoDecorrelation.isSettled
+      && this.tremoloWaveformBlendValue === 1
+      && this.autoPanWaveformBlendValue === 1;
   }
 
   /** Stereo-linked gate control for the FDN8 return; allocated state is scalar-only. */
@@ -2731,12 +3280,23 @@ export class BrowserFxDspCore {
       // Instant peak attack keeps a sharp transient from being missed.
       this.gateDetectorEnvelope = linkedPeak;
     } else {
-      const detectorRelease = Math.exp(-1 / (GATE_REVERB_DETECTOR_RELEASE_MS * 0.001 * this.sampleRate));
-      this.gateDetectorEnvelope *= detectorRelease;
+      this.gateDetectorEnvelope *= this.gateDetectorRelease;
     }
 
-    const threshold = Math.pow(10, this.gateThresholdDb.next() / 20);
-    const holdSamples = Math.max(1, Math.round(this.gateHoldMs.next() * 0.001 * this.sampleRate));
+    // Advance every smoother on every sample, including while the gate is shut.
+    // Only memoize exact derived values; neither the envelope nor control rate changes.
+    const thresholdDb = this.gateThresholdDb.next();
+    if (thresholdDb !== this.gateThresholdKey) {
+      this.gateThresholdKey = thresholdDb;
+      this.gateThresholdLinear = Math.pow(10, thresholdDb / 20);
+    }
+    const threshold = this.gateThresholdLinear;
+    const holdMs = this.gateHoldMs.next();
+    if (holdMs !== this.gateHoldKey) {
+      this.gateHoldKey = holdMs;
+      this.gateHoldSamples = Math.max(1, Math.round(holdMs * 0.001 * this.sampleRate));
+    }
+    const holdSamples = this.gateHoldSamples;
     const releaseMs = this.gateReleaseMs.next();
     const closeThreshold = threshold * GATE_REVERB_HYSTERESIS_RATIO;
     if (this.gateDetectorEnvelope >= threshold) {
@@ -2748,11 +3308,14 @@ export class BrowserFxDspCore {
       this.gateHoldRemainingSamples -= 1;
     } else if (this.gateGain > 0) {
       // Define the release control as approximately the time to -60 dB.
-      const releaseCoefficient = Math.exp(-
-        (GATE_REVERB_RELEASE_DB * Math.LN10 / 20)
-        / (Math.max(10, releaseMs) * 0.001 * this.sampleRate),
-      );
-      this.gateGain *= releaseCoefficient;
+      if (releaseMs !== this.gateReleaseKey) {
+        this.gateReleaseKey = releaseMs;
+        this.gateReleaseCoefficient = Math.exp(-
+          (GATE_REVERB_RELEASE_DB * Math.LN10 / 20)
+          / (Math.max(10, releaseMs) * 0.001 * this.sampleRate),
+        );
+      }
+      this.gateGain *= this.gateReleaseCoefficient;
       if (this.gateGain < 1e-4) this.gateGain = 0;
     }
   }
@@ -2775,6 +3338,7 @@ export class BrowserFxDspCore {
 
   private requestDistortionMode(mode: BrowserDistortionMode): void {
     if (mode === this.distortionModeTarget) return;
+    this.distortionPrimitiveValid.fill(0);
     this.distortionModeOld = this.distortionModeTarget;
     this.distortionModeTarget = mode;
     this.distortionModeBlend.reset(0);
@@ -3025,31 +3589,54 @@ export class BrowserFxDspCore {
   }
 
   /** 4x zero-stuffed sinc oversampling, ADAA waveshaping and FIR decimation. */
+  /** Exact ADAA primitive reuse for a settled mode, never across a mode fade. */
+  private processCachedDistortionSample(mode: BrowserDistortionMode, current: number, previous: number, channel: 0 | 1): number {
+    const difference = current - previous;
+    if (Math.abs(difference) < 1e-8) {
+      this.distortionPrimitiveValid[channel] = 0;
+      return distortionFunction(mode, 0.5 * (current + previous));
+    }
+    const currentPrimitive = distortionAntiderivative(mode, current);
+    const previousPrimitive = this.distortionPrimitiveValid[channel]
+      ? this.distortionPreviousPrimitive[channel]!
+      : distortionAntiderivative(mode, previous);
+    this.distortionPreviousPrimitive[channel] = currentPrimitive;
+    this.distortionPrimitiveValid[channel] = 1;
+    return (currentPrimitive - previousPrimitive) / difference;
+  }
+
   private processDistortionSample(input: number, channel: 0 | 1): number {
-    const inputHistoryBase = channel * DISTORTION_UPSAMPLE_INPUT_HISTORY;
-    const waveshapedHistoryBase = channel * DISTORTION_FIR_TAPS;
+    const inputHistoryBase = channel * DISTORTION_UPSAMPLE_INPUT_HISTORY * 2;
+    const waveshapedHistoryBase = channel * DISTORTION_FIR_TAPS * 2;
+    const upsampleHistory = this.upsampleHistory;
+    const waveshapedHistory = this.waveshapedHistory;
+    const interpolation = DISTORTION_FILTERS.interpolation;
+    const decimation = DISTORTION_FILTERS.decimation;
     let upWriteIndex = this.upsampleWriteIndices[channel] ?? 0;
     let downWriteIndex = this.waveshapedWriteIndices[channel] ?? 0;
     let output = 0;
-    this.upsampleHistory[inputHistoryBase + upWriteIndex] = input;
+    const upWriteOffset = inputHistoryBase + upWriteIndex;
+    upsampleHistory[upWriteOffset] = input;
+    upsampleHistory[upWriteOffset + DISTORTION_UPSAMPLE_INPUT_HISTORY] = input;
 
     for (let subSample = 0; subSample < DISTORTION_OVERSAMPLE_FACTOR; subSample += 1) {
       let reconstructed = 0;
-      let inputHistoryIndex = upWriteIndex;
-      for (let inputTap = 0; inputTap < DISTORTION_UPSAMPLE_INPUT_HISTORY; inputTap += 1) {
+      let inputHistoryIndex = upWriteOffset + DISTORTION_UPSAMPLE_INPUT_HISTORY;
+      const phaseTapCount = DISTORTION_INTERPOLATION_TAPS_BY_PHASE[subSample]!;
+      for (let inputTap = 0; inputTap < phaseTapCount; inputTap += 1) {
         const coefficientIndex = subSample + DISTORTION_OVERSAMPLE_FACTOR * inputTap;
-        if (coefficientIndex < DISTORTION_FIR_TAPS) {
-          reconstructed += (this.upsampleHistory[inputHistoryBase + inputHistoryIndex] ?? 0)
-            * (DISTORTION_FILTERS.interpolation[coefficientIndex] ?? 0);
-        }
-        inputHistoryIndex = inputHistoryIndex > 0 ? inputHistoryIndex - 1 : DISTORTION_UPSAMPLE_INPUT_HISTORY - 1;
+        reconstructed += upsampleHistory[inputHistoryIndex]! * interpolation[coefficientIndex]!;
+        inputHistoryIndex -= 1;
       }
 
       const driven = reconstructed * this.driveLinear;
       let shaped: number;
       if (this.distortionModeOld === this.distortionModeTarget) {
-        shaped = antiderivativeAntialiasSample(this.distortionModeTarget, driven, this.previousDrivenInput[channel] ?? 0);
+        shaped = this.processCachedDistortionSample(this.distortionModeTarget, driven, this.previousDrivenInput[channel] ?? 0, channel);
       } else {
+        // Preserve the existing dual-mode crossfade and ensure its last
+        // oversample cannot leave a cached primitive from the previous mode.
+        this.distortionPrimitiveValid[channel] = 0;
         const oldModeOutput = antiderivativeAntialiasSample(
           this.distortionModeOld,
           driven,
@@ -3070,15 +3657,16 @@ export class BrowserFxDspCore {
       }
       this.previousDrivenInput[channel] = driven;
       const boundedShaped = Number.isFinite(shaped * this.outputLinear) ? shaped * this.outputLinear : 0;
-      this.waveshapedHistory[waveshapedHistoryBase + downWriteIndex] = boundedShaped;
+      const downWriteOffset = waveshapedHistoryBase + downWriteIndex;
+      waveshapedHistory[downWriteOffset] = boundedShaped;
+      waveshapedHistory[downWriteOffset + DISTORTION_FIR_TAPS] = boundedShaped;
 
       if (subSample === 0) {
         let decimated = 0;
-        let historyIndex = downWriteIndex;
+        let historyIndex = downWriteOffset + DISTORTION_FIR_TAPS;
         for (let tap = 0; tap < DISTORTION_FIR_TAPS; tap += 1) {
-          decimated += (this.waveshapedHistory[waveshapedHistoryBase + historyIndex] ?? 0)
-            * (DISTORTION_FILTERS.decimation[tap] ?? 0);
-          historyIndex = historyIndex > 0 ? historyIndex - 1 : DISTORTION_FIR_TAPS - 1;
+          decimated += waveshapedHistory[historyIndex]! * decimation[tap]!;
+          historyIndex -= 1;
         }
         output = decimated;
       }
@@ -3094,7 +3682,13 @@ export class BrowserFxDspCore {
   }
 
   private processRingMod(input: number, channel: 0 | 1): number {
-    const carrier = Math.sin(this.phase);
+    const sineCarrier = Math.sin(this.phase);
+    const waveformBlend = this.currentControls[36] ?? 0;
+    const carrier = waveformBlend <= 0
+      ? sineCarrier
+      : waveformBlend >= 1
+        ? this.ringModTriangle(this.phase, this.currentControls[5] ?? 440)
+        : sineCarrier + (this.ringModTriangle(this.phase, this.currentControls[5] ?? 440) - sineCarrier) * waveformBlend;
     const depth = this.currentControls[6] ?? 1;
     const modulated = input * ((1 - depth) + depth * carrier);
 
@@ -3102,6 +3696,24 @@ export class BrowserFxDspCore {
     this.dcBlockInput[channel] = modulated;
     this.dcBlockOutput[channel] = Math.abs(dcBlocked) < MIN_STATE_MAGNITUDE ? 0 : dcBlocked;
     return this.dcBlockOutput[channel] ?? 0;
+  }
+
+  private ringModTriangle(phaseRadians: number, carrierHz: number): number {
+    const harmonicBudget = (this.sampleRate * 0.45) / Math.max(carrierHz, 1e-9);
+    let tier = RING_MOD_TRIANGLE_TABLES.length - 1;
+    for (let index = 0; index < RING_MOD_TRIANGLE_HARMONIC_TIERS.length; index += 1) {
+      if (RING_MOD_TRIANGLE_HARMONIC_TIERS[index]! <= harmonicBudget) {
+        tier = index;
+        break;
+      }
+    }
+    const table = RING_MOD_TRIANGLE_TABLES[tier]!;
+    const position = (phaseRadians / TWO_PI) * table.length;
+    const baseIndex = Math.floor(position);
+    const fraction = position - baseIndex;
+    const first = table[baseIndex % table.length] ?? 0;
+    const second = table[(baseIndex + 1) % table.length] ?? 0;
+    return first + (second - first) * fraction;
   }
 
   /** Smoothed sine-LFO flanger with a four-point Lagrange read head. */
@@ -3116,7 +3728,7 @@ export class BrowserFxDspCore {
     const feedback = clamp(this.currentControls[12] ?? FLANGER_DEFAULT_FEEDBACK, -0.95, 0.95);
     const excursionMs = depth * FLANGER_MAX_DEPTH_MILLISECONDS;
     const delayMs = clamp(
-      baseDelayMs + excursionMs * Math.sin(phase),
+      baseDelayMs + excursionMs * (this.officialModulation ? (channel === 0 ? this.officialLfoLeft : this.officialLfoRight) : Math.sin(phase)),
       FLANGER_MIN_DELAY_MILLISECONDS,
       FLANGER_MAX_DELAY_MILLISECONDS,
     );
@@ -3137,7 +3749,7 @@ export class BrowserFxDspCore {
     this.flangerPhases[channel] = nextPhase;
     // This is a feed-forward comb blend; output gain is bounded by a gentle
     // normalization before the core's outer wet/dry equal-power mixer.
-    return 0.5 * (input + delayed);
+    return this.officialIndependentMix ? delayed : 0.5 * (input + delayed);
   }
 
   /** Stereo-linked peak/RMS envelope and the clean-room F08 soft-knee curve. */
@@ -3242,7 +3854,9 @@ export class BrowserFxDspCore {
     const depth = clamp(this.currentControls[27] ?? PHASER_DEFAULT_DEPTH, 0, 1);
     const feedback = clamp(this.currentControls[28] ?? PHASER_DEFAULT_FEEDBACK, 0, PHASER_FEEDBACK_MAX);
     const phase = this.phaserPhase + (channel === 0 ? 0 : Math.PI * 0.5);
-    const sweepPosition = 0.5 + 0.5 * depth * Math.sin(phase);
+    const lfo = this.officialModulation ? (channel === 0 ? this.officialLfoLeft : this.officialLfoRight) : Math.sin(phase);
+    const manual = this.official.has('manual') ? clamp(this.official.get('manual'), 0, 100) / 100 : 0.5;
+    const sweepPosition = clamp(manual + 0.5 * depth * lfo, 0, 1);
     const maximumFrequency = Math.min(PHASER_MAX_FREQUENCY_HZ, this.sampleRate * 0.45);
     const baseFrequency = PHASER_MIN_FREQUENCY_HZ
       * Math.pow(maximumFrequency / PHASER_MIN_FREQUENCY_HZ, sweepPosition);
@@ -3254,7 +3868,12 @@ export class BrowserFxDspCore {
       // Slight stage-to-stage spread makes the cascade's phase rotation broad
       // rather than a set of coincident first-order sections.
       const stageScale = 0.72 + stage * 0.08;
-      const cutoff = clamp(baseFrequency * stageScale, 20, maximumFrequency);
+      // BI-PHASE is a clean-room dual four-stage sweep: the second bank runs
+      // opposite to the first, rather than pretending it is another stage count.
+      const secondBankFrequency = this.officialBiPhase && stage >= 4
+        ? PHASER_MIN_FREQUENCY_HZ * Math.pow(maximumFrequency / PHASER_MIN_FREQUENCY_HZ, clamp(manual - 0.5 * depth * lfo, 0, 1))
+        : baseFrequency;
+      const cutoff = clamp(secondBankFrequency * stageScale, 20, maximumFrequency);
       const tangent = Math.tan(Math.PI * cutoff / this.sampleRate);
       const coefficient = (tangent - 1) / (tangent + 1);
       const stateIndex = channelOffset + stage;
@@ -3271,7 +3890,7 @@ export class BrowserFxDspCore {
     this.phaserFeedbackStates[channel] = Number.isFinite(filteredFeedback) ? filteredFeedback : 0;
     // A 50/50 dry/all-pass sum produces the moving phase-cancellation notches;
     // the outer mix control then blends this effect with untouched dry input.
-    return 0.5 * (input + stageInput);
+    return this.officialIndependentMix ? stageInput : 0.5 * (input + stageInput);
   }
 
   private lfoValue(waveform: BrowserTremoloWaveform, phase: number, phaseStep: number): number {
@@ -3289,9 +3908,13 @@ export class BrowserFxDspCore {
   private processTremolo(input: number): number {
     const depth = clamp(this.currentControls[30] ?? TREMOLO_DEFAULT_DEPTH, 0, 1);
     const oldLfo = this.lfoValue(this.tremoloWaveformOld, this.tremoloPhase, this.tremoloPhaseStep);
-    const targetLfo = this.lfoValue(this.tremoloWaveformTarget, this.tremoloPhase, this.tremoloPhaseStep);
+    const targetLfo = this.tremoloWaveformOld === this.tremoloWaveformTarget
+      ? oldLfo
+      : this.lfoValue(this.tremoloWaveformTarget, this.tremoloPhase, this.tremoloPhaseStep);
     const blend = this.tremoloWaveformBlendValue;
-    const lfo = oldLfo + (targetLfo - oldLfo) * blend;
+    const lfo = this.official.has('waveform')
+      ? this.officialWaveform(Math.sin(TWO_PI * this.tremoloPhase))
+      : oldLfo + (targetLfo - oldLfo) * blend;
     const gain = 1 - depth * 0.5 * (1 - lfo);
     return input * gain;
   }
@@ -3300,9 +3923,12 @@ export class BrowserFxDspCore {
   private processAutoPan(inputLeft: number, inputRight: number, monoInput: boolean): void {
     const depth = clamp(this.currentControls[32] ?? AUTO_PAN_DEFAULT_DEPTH, 0, 1);
     const oldLfo = this.lfoValue(this.autoPanWaveformOld, this.autoPanPhase, this.autoPanPhaseStep);
-    const targetLfo = this.lfoValue(this.autoPanWaveformTarget, this.autoPanPhase, this.autoPanPhaseStep);
+    const targetLfo = this.autoPanWaveformOld === this.autoPanWaveformTarget
+      ? oldLfo
+      : this.lfoValue(this.autoPanWaveformTarget, this.autoPanPhase, this.autoPanPhaseStep);
     const blend = this.autoPanWaveformBlendValue;
-    const lfo = oldLfo + (targetLfo - oldLfo) * blend;
+    const rawLfo = this.officialModulation ? this.officialLfoLeft : oldLfo + (targetLfo - oldLfo) * blend;
+    const lfo = this.official.has('waveform') ? this.officialWaveform(rawLfo) : rawLfo;
     const pan = clamp(depth * lfo, -1, 1);
     const angle = (pan + 1) * Math.PI * 0.25;
     const leftGain = Math.cos(angle);
@@ -3321,6 +3947,12 @@ export class BrowserFxDspCore {
     this.autoPanWetRight = mid * rightGain * Math.SQRT2 - side * sideGain;
   }
 
+  /** Normalized tanh continuously sharpens sine toward square without discontinuities. */
+  private officialWaveform(sine: number): number {
+    const sharpness = 0.25 * 80 ** (clamp(this.official.get('waveform', 50), 0, 100) / 100);
+    return Math.tanh(sharpness * sine) / Math.tanh(sharpness);
+  }
+
   private processReverb(input: number, channel: 0 | 1): number {
     const lineStart = channel === 0 ? 0 : 8;
     let feedbackSum = 0;
@@ -3331,10 +3963,15 @@ export class BrowserFxDspCore {
     if (earlyBuffer) earlyBuffer[earlyIndex] = input;
     const earlyCoefficients = channel === 0 ? EARLY_REFLECTION_GAINS_LEFT : EARLY_REFLECTION_GAINS_RIGHT;
     let early = input * (earlyCoefficients[0] ?? 0);
-    for (let tap = 1; tap < EARLY_REFLECTION_DELAYS_SECONDS.length; tap += 1) {
+    const density = this.official.has('density') ? clamp(this.official.get('density'), 1, 10) : 10;
+    const earlyTapCount = Math.max(2, Math.ceil(EARLY_REFLECTION_DELAYS_SECONDS.length * density / 10));
+    for (let tap = 1; tap < earlyTapCount; tap += 1) {
       if (!earlyBuffer) continue;
       const delay = this.earlyDelays[tap] ?? 0;
-      const readIndex = positiveModulo(earlyIndex - delay, this.earlyRingLength);
+      // earlyIndex and delay are both bounded to [0, earlyRingLength), so a
+      // negative difference wraps at most once.
+      let readIndex = earlyIndex - delay;
+      if (readIndex < 0) readIndex += this.earlyRingLength;
       early += (earlyBuffer[readIndex] ?? 0) * (earlyCoefficients[tap] ?? 0);
     }
     earlyIndex += 1;
@@ -3354,12 +3991,12 @@ export class BrowserFxDspCore {
       const damping = this.delayDampingStates[index] ?? 0;
       const alpha = this.dampingAlpha[index] ?? 1;
       const damped = damping + alpha * (raw - damping);
-      this.delayDampingStates[index] = Math.abs(damped) < MIN_STATE_MAGNITUDE ? 0 : damped;
-      this.delayReadScratch[index] = this.delayDampingStates[index] ?? 0;
-      const feedback = (this.delayReadScratch[index] ?? 0) * (this.delayFeedbackGains[index] ?? 0);
+      const dampedState = Math.abs(damped) < MIN_STATE_MAGNITUDE ? 0 : damped;
+      this.delayDampingStates[index] = dampedState;
+      const feedback = dampedState * (this.delayFeedbackGains[index] ?? 0);
       this.delayReadScratch[index] = feedback;
       feedbackSum += feedback;
-      outputSum += (this.delayDampingStates[index] ?? 0) * (line % 2 === 0 ? 1 : -1);
+      outputSum += dampedState * (line % 2 === 0 ? 1 : -1);
     }
 
     for (let line = 0; line < 8; line += 1) {
@@ -3369,7 +4006,8 @@ export class BrowserFxDspCore {
       const feedback = this.delayReadScratch[index] ?? 0;
       const householderOutput = feedback - HOUSEHOLDER_ROW_SUM_FACTOR * feedbackSum;
       const injectionSign = (line & 1) === 0 ? 1 : -1;
-      let next = householderOutput + input * FDN_INJECTION_GAIN * injectionSign;
+      const injectionWeight = this.official.has('density') ? clamp(density * 0.8 - line, 0, 1) : 1;
+      let next = householderOutput + input * FDN_INJECTION_GAIN * injectionSign * injectionWeight;
       if (!Number.isFinite(next) || Math.abs(next) < MIN_STATE_MAGNITUDE) next = 0;
       const writeIndex = this.fdnWriteIndices[index] ?? 0;
       buffer[writeIndex] = next;
@@ -3382,3 +4020,6 @@ export class BrowserFxDspCore {
     return wet;
   }
 }
+
+// Export the numerical contract for direct exceptional-value regression tests.
+export { clamp as clampBrowserFxValue };

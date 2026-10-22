@@ -1,5 +1,227 @@
 import { expect, test } from '@playwright/test';
 
+test('changes RING.MOD from its default sine to the selected triangle in a real AudioWorklet', async ({ page }) => {
+  await page.goto('/?audio=browser');
+
+  const result = await page.evaluate(async () => {
+    const sampleRate = 48_000;
+    const frameCount = 36_000;
+    const changeFrame = 12_000;
+    const context = new OfflineAudioContext({ numberOfChannels: 2, length: frameCount, sampleRate });
+    await context.audioWorklet.addModule('/worklets/fx-processor.js');
+    const worklet = new AudioWorkletNode(context, 'rc505-fx-processor', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      channelCount: 2,
+      channelCountMode: 'explicit',
+      outputChannelCount: [2],
+      processorOptions: {
+        algorithm: 'ring-mod',
+        sampleRate,
+        bypassed: false,
+        parameters: { ringModHz: 440, ringModDepth: 1, mix: 1 },
+      },
+    });
+    const input = context.createBuffer(2, frameCount, sampleRate);
+    input.getChannelData(0).fill(1);
+    input.getChannelData(1).fill(1);
+    const source = context.createBufferSource();
+    source.buffer = input;
+    source.connect(worklet);
+    worklet.connect(context.destination);
+    source.start(0);
+
+    const suspend = context.suspend(changeFrame / sampleRate);
+    const render = context.startRendering();
+    await suspend;
+    worklet.port.postMessage({ type: 'configure', parameters: { ringModWaveform: 1 } });
+    await context.resume();
+    const rendered = await render;
+    const left = rendered.getChannelData(0);
+    const right = rendered.getChannelData(1);
+    const magnitude = (begin: number, frames: number, bin: number): number => {
+      const coefficient = 2 * Math.cos((2 * Math.PI * bin) / frames);
+      let previous = 0;
+      let previous2 = 0;
+      for (let index = 0; index < frames; index += 1) {
+        const current = (left[begin + index] ?? 0) + coefficient * previous - previous2;
+        previous2 = previous;
+        previous = current;
+      }
+      return (2 * Math.sqrt(Math.max(0, previous * previous + previous2 * previous2 - coefficient * previous * previous2))) / frames;
+    };
+    const windowFrames = 9_600; // exactly 88 carrier cycles at 440 Hz
+    const beforeFundamental = magnitude(2_400, windowFrames, 88);
+    const beforeThird = magnitude(2_400, windowFrames, 264);
+    const afterFundamental = magnitude(24_000, windowFrames, 88);
+    const afterThird = magnitude(24_000, windowFrames, 264);
+    let nonFinite = 0;
+    let maxAdjacentStep = 0;
+    let maxStereoDifference = 0;
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const sample = left[frame] ?? 0;
+      if (!Number.isFinite(sample) || !Number.isFinite(right[frame] ?? 0)) nonFinite += 1;
+      if (frame > 0) maxAdjacentStep = Math.max(maxAdjacentStep, Math.abs(sample - (left[frame - 1] ?? 0)));
+      maxStereoDifference = Math.max(maxStereoDifference, Math.abs(sample - (right[frame] ?? 0)));
+    }
+    return {
+      sampleRate: rendered.sampleRate,
+      nonFinite,
+      maxAdjacentStep,
+      maxStereoDifference,
+      beforeThirdRatio: beforeThird / beforeFundamental,
+      afterThirdRatio: afterThird / afterFundamental,
+    };
+  });
+
+  expect(result.sampleRate).toBe(48_000);
+  expect(result.nonFinite).toBe(0);
+  expect(result.maxAdjacentStep).toBeLessThan(0.1);
+  expect(result.maxStereoDifference).toBeLessThan(1e-6);
+  expect(result.beforeThirdRatio).toBeLessThan(0.02);
+  expect(result.afterThirdRatio).toBeGreaterThan(0.08);
+  expect(result.afterThirdRatio).toBeLessThan(0.15);
+});
+
+for (const algorithm of ['lpf', 'hpf'] as const) {
+test(`${algorithm.toUpperCase()} routes catalog resonance percent into smoothed filter Q in a real AudioWorklet`, async ({ page }) => {
+  await page.goto('/?audio=browser');
+
+  const result = await page.evaluate(async (filterAlgorithm) => {
+    const sampleRate = 48_000;
+    const frameCount = 57_600;
+    const changeFrame = 21_600;
+    const renderFixed = async (resonancePercent: number): Promise<Float32Array> => {
+      const referenceContext = new OfflineAudioContext(2, frameCount, sampleRate);
+      await referenceContext.audioWorklet.addModule('/worklets/fx-processor.js');
+      const referenceWorklet = new AudioWorkletNode(referenceContext, 'rc505-fx-processor', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        channelCount: 2,
+        channelCountMode: 'explicit',
+        outputChannelCount: [2],
+        processorOptions: {
+          algorithm: filterAlgorithm,
+          sampleRate,
+          bypassed: false,
+          parameters: { cutoffHz: 1000, filterResonancePercent: resonancePercent, mix: 1 },
+        },
+      });
+      const referenceInput = referenceContext.createBuffer(2, frameCount, sampleRate);
+      for (let channel = 0; channel < 2; channel += 1) {
+        const samples = referenceInput.getChannelData(channel);
+        for (let frame = 0; frame < frameCount; frame += 1) samples[frame] = 0.08 * Math.sin((2 * Math.PI * 1000 * frame) / sampleRate);
+      }
+      const referenceSource = referenceContext.createBufferSource();
+      referenceSource.buffer = referenceInput;
+      referenceSource.connect(referenceWorklet);
+      referenceWorklet.connect(referenceContext.destination);
+      referenceSource.start(0);
+      return (await referenceContext.startRendering()).getChannelData(0);
+    };
+    // Fixed-parameter references make both the expected sinusoid slope and a
+    // deliberately abrupt LPF/HPF mode-value switch measurable controls.
+    const lowReference = await renderFixed(15);
+    const highReference = await renderFixed(100);
+    const context = new OfflineAudioContext({ numberOfChannels: 2, length: frameCount, sampleRate });
+    await context.audioWorklet.addModule('/worklets/fx-processor.js');
+    const worklet = new AudioWorkletNode(context, 'rc505-fx-processor', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      channelCount: 2,
+      channelCountMode: 'explicit',
+      outputChannelCount: [2],
+      processorOptions: {
+        algorithm: filterAlgorithm,
+        sampleRate,
+        bypassed: false,
+        parameters: { cutoffHz: 1000, filterResonancePercent: 15, mix: 1 },
+      },
+    });
+    const input = context.createBuffer(2, frameCount, sampleRate);
+    for (let channel = 0; channel < 2; channel += 1) {
+      const samples = input.getChannelData(channel);
+      for (let frame = 0; frame < frameCount; frame += 1) samples[frame] = 0.08 * Math.sin((2 * Math.PI * 1000 * frame) / sampleRate);
+    }
+    const source = context.createBufferSource();
+    source.buffer = input;
+    source.connect(worklet);
+    worklet.connect(context.destination);
+    source.start(0);
+    const suspend = context.suspend(changeFrame / sampleRate);
+    const render = context.startRendering();
+    await suspend;
+    worklet.port.postMessage({ type: 'configure', parameters: { filterResonancePercent: 100 } });
+    await context.resume();
+    const rendered = await render;
+    const left = rendered.getChannelData(0);
+    const right = rendered.getChannelData(1);
+    const rms = (begin: number, end: number): number => {
+      let energy = 0;
+      for (let frame = begin; frame < end; frame += 1) energy += (left[frame] ?? 0) ** 2;
+      return Math.sqrt(energy / (end - begin));
+    };
+    let nonFinite = 0;
+    let maxAdjacentStep = 0;
+    let maxStereoDifference = 0;
+    let peakAmplitude = 0;
+    let transitionMaxStep = 0;
+    let transitionPeak = 0;
+    let hardSwitchMaxStep = 0;
+    let hardSwitchPeak = 0;
+    let steadyHighMaxStep = 0;
+    let steadyHighPeak = 0;
+    const transitionStart = changeFrame - 128;
+    const transitionEnd = changeFrame + 128;
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      const sample = left[frame] ?? 0;
+      if (!Number.isFinite(sample) || !Number.isFinite(right[frame] ?? 0)) nonFinite += 1;
+      peakAmplitude = Math.max(peakAmplitude, Math.abs(sample));
+      if (frame > 0) maxAdjacentStep = Math.max(maxAdjacentStep, Math.abs(sample - (left[frame - 1] ?? 0)));
+      maxStereoDifference = Math.max(maxStereoDifference, Math.abs(sample - (right[frame] ?? 0)));
+      if (frame >= transitionStart && frame < transitionEnd) {
+        transitionPeak = Math.max(transitionPeak, Math.abs(sample));
+        const previous = left[frame - 1] ?? 0;
+        transitionMaxStep = Math.max(transitionMaxStep, Math.abs(sample - previous));
+        const hardSample = frame < changeFrame ? (lowReference[frame] ?? 0) : (highReference[frame] ?? 0);
+        const hardPrevious = frame - 1 < changeFrame ? (lowReference[frame - 1] ?? 0) : (highReference[frame - 1] ?? 0);
+        hardSwitchPeak = Math.max(hardSwitchPeak, Math.abs(hardSample));
+        hardSwitchMaxStep = Math.max(hardSwitchMaxStep, Math.abs(hardSample - hardPrevious));
+      }
+      if (frame >= 48_000 && frame < frameCount - 1) {
+        steadyHighPeak = Math.max(steadyHighPeak, Math.abs(highReference[frame] ?? 0));
+        steadyHighMaxStep = Math.max(steadyHighMaxStep, Math.abs((highReference[frame + 1] ?? 0) - (highReference[frame] ?? 0)));
+      }
+    }
+    return {
+      sampleRate: rendered.sampleRate,
+      beforeRms: rms(4_800, 14_400),
+      afterRms: rms(40_800, 50_400),
+      nonFinite,
+      maxAdjacentStep,
+      peakAmplitude,
+      transitionSlopeRatio: transitionMaxStep / transitionPeak,
+      hardSwitchSlopeRatio: hardSwitchMaxStep / hardSwitchPeak,
+      steadyHighSlopeRatio: steadyHighMaxStep / steadyHighPeak,
+      maxStereoDifference,
+    };
+  }, algorithm);
+
+  expect(result.sampleRate).toBe(48_000);
+  expect(result.nonFinite).toBe(0);
+  expect(result.beforeRms).toBeGreaterThan(0.01);
+  expect(result.afterRms).toBeGreaterThan(result.beforeRms * 2);
+  // For a steady 1 kHz sine at 48 kHz, the exact adjacent-sample slope is
+  // 2*sin(pi*1000/48000)=0.1308 times peak amplitude. A 0.15 bound allows
+  // that natural slope plus modest transition error; the hard-switched
+  // low/high reference must exceed the same bound to prove click detection.
+  expect(result.steadyHighSlopeRatio).toBeLessThan(0.14);
+  expect(result.transitionSlopeRatio).toBeLessThan(0.15);
+  expect(result.hardSwitchSlopeRatio).toBeGreaterThan(0.15);
+  expect(result.maxStereoDifference).toBeLessThan(1e-6);
+});
+}
+
 test('executes the shipped VIBRATO processor in a real Chromium AudioWorklet', async ({ page }) => {
   await page.goto('/?audio=browser');
 
@@ -880,4 +1102,92 @@ test('executes MIDI-scheduled OSC VOC through the shipped Browser AudioWorklet',
   expect(result.fundamental).toBeGreaterThan(result.subharmonic * 1.1);
   expect(result.fundamental).toBeGreaterThan(result.secondHarmonic * 1.1);
   expect(result.maxStereoDifference).toBeLessThan(1e-6);
+});
+
+test('routes MIDI OSC VOC through one exact private Browser track slot in real audio', async ({ page }) => {
+  await page.goto('/?audio=browser');
+  const result = await page.evaluate(async () => {
+    const sampleRate = 48_000;
+    const frameCount = 16_384;
+    const context = new OfflineAudioContext({ numberOfChannels: 4, length: frameCount, sampleRate });
+    const moduleReady = context.audioWorklet.addModule('/worklets/fx-processor.js');
+    const { BrowserTrackFxChain } = await import('/src/audio/BrowserTrackFxChain.ts');
+    const { BrowserAudioEngine } = await import('/src/audio/BrowserAudioEngine.ts');
+    const chains = Array.from({ length: 5 }, () => new BrowserTrackFxChain(context as unknown as AudioContext, () => moduleReady));
+    const merger = context.createChannelMerger(4);
+    merger.connect(context.destination);
+    const modulator = context.createBuffer(2, frameCount, sampleRate);
+    let random = 0x13579bdf;
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      random = (Math.imul(random, 1664525) + 1013904223) >>> 0;
+      const value = (((random >>> 8) / 0x800000) - 1) * 0.3;
+      modulator.getChannelData(0)[frame] = value;
+      modulator.getChannelData(1)[frame] = value;
+    }
+    for (const index of [1, 3]) {
+      const chain = chains[index]!;
+      chain.setType(1, 'OSC VOC (M)');
+      chain.setNamedParameters(1, { waveform: 0, 'midi-channel': 1, octave: 0, mix: 1 });
+      chain.setActive(1, true);
+      const source = context.createBufferSource();
+      source.buffer = modulator;
+      source.connect(chain.input);
+      const splitter = context.createChannelSplitter(2);
+      chain.output.connect(splitter);
+      splitter.connect(merger, 0, index === 1 ? 0 : 2);
+      splitter.connect(merger, 1, index === 1 ? 1 : 3);
+      source.start(0);
+    }
+    await moduleReady;
+    for (let retry = 0; retry < 200 && [1, 3].some((index) => chains[index]!.getStatus(index + 1).slots[1]?.state !== 'ready'); retry++) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    }
+    const engine = Object.create(BrowserAudioEngine.prototype) as InstanceType<typeof BrowserAudioEngine>;
+    Object.assign(engine, {
+      context,
+      perTrackFxChains: chains,
+      inputFxInstances: [null, null, null, null],
+      trackFxInstances: [null, null, null, null],
+      midiInput: { connect: async () => 'connected', disconnect: () => {}, releaseHeldNotes: () => {} },
+      midiRoutingMode: 'legacy-broadcast',
+      selectedHrmAutoMidiTarget: null,
+      selectedTrackMidiTarget: null,
+      lastError: '',
+      statusListeners: new Set(),
+    });
+    await engine.connectMidiInput({ path: 'track', trackId: 2, slot: 'B', effectId: 'osc_voc_m' });
+    const targetEffect = (chains[1] as unknown as { slots: Array<{ effect: { node: AudioWorkletNode | null } | null }> }).slots[1]!.effect!;
+    const processorNode = targetEffect.node!;
+    const queuedMidi = new Promise<void>((resolve, reject) => {
+      const originalHandler = processorNode.port.onmessage;
+      const timeout = setTimeout(() => reject(new Error('Private OSC VOC MIDI target was not accepted by its processor')), 3000);
+      processorNode.port.onmessage = (event) => {
+        originalHandler?.call(processorNode.port, event);
+        if ((event.data as { type?: string } | null)?.type === 'midi-event-queued') {
+          clearTimeout(timeout);
+          resolve();
+        }
+      };
+    });
+    (engine as unknown as { handleMidiNote(event: { channel: number; note: number; velocity: number; noteOn: boolean; timeStampMs: number }): void })
+      .handleMidiNote({ channel: 1, note: 69, velocity: 1, noteOn: true, timeStampMs: performance.now() });
+    await queuedMidi;
+    const rendered = await context.startRendering();
+    const rms = (channel: number) => {
+      let sum = 0;
+      let count = 0;
+      for (let frame = 2_000; frame < frameCount; frame += 1) {
+        const value = rendered.getChannelData(channel)[frame] ?? 0;
+        sum += value * value;
+        count += 1;
+      }
+      return Math.sqrt(sum / count);
+    };
+    engine.disconnectMidiInput();
+    chains.forEach((chain) => chain.dispose());
+    return { targetedRms: rms(0) + rms(1), otherTrackRms: rms(2) + rms(3), error: engine.getUiStatus().lastError };
+  });
+  expect(result.targetedRms).toBeGreaterThan(0.001);
+  expect(result.otherTrackRms).toBeLessThan(1e-8);
+  expect(result.error).toBe('');
 });

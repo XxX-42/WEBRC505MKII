@@ -62,6 +62,18 @@ export class SampleFrameScheduler {
     return true;
   }
 
+  /** Replace queued events with one safety event at an absolute frame. */
+  replacePendingWith(frame: number, code: number, value = 0): boolean {
+    if (!Number.isInteger(frame) || !Number.isInteger(code) || !Number.isFinite(value) ||
+        frame < this.currentFrame || this.blockActive) return false;
+    this.count = 0;
+    this.eventFrames[0] = frame;
+    this.eventCodes[0] = code;
+    this.eventValues[0] = value;
+    this.count = 1;
+    return true;
+  }
+
   peekNextFrame(): number | null {
     return this.count > 0 ? this.eventFrames[0]! : null;
   }

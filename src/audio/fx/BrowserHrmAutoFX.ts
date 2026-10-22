@@ -1,3 +1,4 @@
+import { officialFormantSemitones, officialPitchDefaults } from './dsp/OfficialPitchParameters';
 import { createLiveInputTransposeNode, type LiveInputTransposeNode } from '../pitch/signalsmith';
 import type { MidiNoteEvent } from '../MidiInputController';
 import type { FXBase } from './FXBase';
@@ -43,6 +44,7 @@ const INACTIVE_TARGET = -128;
  */
 export class BrowserHrmAutoFX implements FXBase {
   readonly name = 'HRM AUTO (M)';
+  readonly algorithm = 'hrm-auto';
   readonly input: GainNode;
   readonly output: GainNode;
   readonly ready: Promise<void>;
@@ -58,7 +60,10 @@ export class BrowserHrmAutoFX implements FXBase {
   private readonly pendingMidiMessages: PendingMidiMessage[] = [];
   private analyzerNode: AudioWorkletNode | null = null;
   private voiceNodes: [LiveInputTransposeNode, LiveInputTransposeNode] | null = null;
-  private parameters = {
+  private officialActive = false;
+  private officialValues: Record<string, number> = { voice: 4, formant: 0, pan: 0, hrm_mode: 1, key: 0, d_level: 100, hrm_level: 80 };
+  private voicePan: StereoPannerNode | null = null;
+  private parameters: { hrmAutoKey: number; hrmAutoScale: number; hrmAutoMidiChannel: number; hrmAutoMixPercent: number; hrmAutoOfficialVoice?: number; hrmAutoOfficialHrmMode?: number } = {
     hrmAutoKey: 0,
     hrmAutoScale: 0,
     hrmAutoMidiChannel: 1,
@@ -72,6 +77,8 @@ export class BrowserHrmAutoFX implements FXBase {
   private currentVoiceCount = 0;
   private currentTarget1 = INACTIVE_TARGET;
   private currentTarget2 = INACTIVE_TARGET;
+  private readonly officialParameters: Record<string, number> = {};
+  private officialInitialized = false;
   public error = '';
 
   constructor(context: AudioContext, ensureModule: () => Promise<void>, onFailure?: FailureHandler) {
@@ -111,12 +118,22 @@ export class BrowserHrmAutoFX implements FXBase {
     return Math.max(this.voiceNodes[0].latencySamples, this.voiceNodes[1].latencySamples);
   }
 
+  /** True only when both host pitch voices and the MIDI analyzer are connected. */
+  get processorReady(): boolean {
+    return !this.disposed && !this.failed && this.error === '' && this.analyzerNode !== null && this.voiceNodes !== null;
+  }
+
   get activeMidiVoiceCount(): number { return this.currentVoiceCount; }
 
   setParam(key: string, value: number): void {
     if (this.disposed) return;
     if (!Number.isFinite(value)) {
       this.failClosed(`HRM AUTO ${key} must be finite.`, key);
+      return;
+    }
+
+    if (key.startsWith('official_')) {
+      this.setOfficialParameter(key, value);
       return;
     }
 
@@ -157,6 +174,55 @@ export class BrowserHrmAutoFX implements FXBase {
 
     this.parameters = { ...this.parameters, [parameterKey]: bounded };
     this.analyzerNode?.port.postMessage({ type: 'configure', parameters: { [parameterKey]: bounded } });
+    this.clearParameterFailure(key);
+    this.applyRouting();
+  }
+
+  private setOfficialParameter(key: string, value: number): void {
+    const name = key.slice('official_'.length);
+    const ranges: Record<string, readonly [number, number]> = {
+      voice: [0, 6], formant: [-50, 50], pan: [-50, 50], hrm_mode: [0, 1], key: [0, 11], d_level: [0, 100], hrm_level: [0, 100],
+    };
+    const range = ranges[name];
+    if (!range || !Number.isInteger(value) || value < range[0] || value > range[1]) {
+      this.failClosed(`HRM AUTO unsupported or out-of-range ${key}.`, key);
+      return;
+    }
+    this.initializeOfficialParameters(key);
+    this.officialParameters[key] = value;
+    this.officialActive = true;
+    this.officialValues[name] = value;
+    this.parameters.hrmAutoOfficialVoice = this.officialValues.voice!;
+    this.parameters.hrmAutoOfficialHrmMode = this.officialValues.hrm_mode!;
+    this.parameters.hrmAutoKey = this.officialValues.key!;
+    this.parameters.hrmAutoScale = 0;
+    if (name === 'pan') {
+      if (!this.voicePan) {
+        if (typeof this.context.createStereoPanner !== 'function') {
+          this.failClosed('HRM AUTO official PAN requires StereoPanner support.', key);
+          return;
+        }
+        this.voicePan = this.context.createStereoPanner();
+        for (const gain of this.voiceGains) { gain.disconnect(this.output); gain.connect(this.voicePan); }
+        this.voicePan.connect(this.output);
+      }
+      this.voicePan.pan.setTargetAtTime(value / 50, this.context.currentTime, 0.005);
+    }
+    this.analyzerNode?.port.postMessage({ type: 'configure', parameters: {
+      hrmAutoOfficialVoice: this.parameters.hrmAutoOfficialVoice,
+      hrmAutoOfficialHrmMode: this.parameters.hrmAutoOfficialHrmMode,
+      hrmAutoKey: this.parameters.hrmAutoKey, hrmAutoScale: 0,
+    } });
+    if (name === 'formant' && this.voiceNodes) {
+      for (let voice = 0; voice < this.currentVoiceCount; voice += 1) {
+        const node = this.voiceNodes[voice]!;
+        const target = voice === 0 ? this.currentTarget1 : this.currentTarget2;
+        try {
+          void node.setPitch(target, this.context.currentTime + node.latencySeconds, true, officialFormantSemitones(value), 0, true)
+            .catch((cause: unknown) => this.failRuntime(`HRM AUTO formant scheduling failed: ${String(cause)}`));
+        } catch (cause) { this.failRuntime(`HRM AUTO formant scheduling failed: ${String(cause)}`); return; }
+      }
+    }
     this.clearParameterFailure(key);
     this.applyRouting();
   }
@@ -205,11 +271,29 @@ export class BrowserHrmAutoFX implements FXBase {
     this.applyRouting();
   }
 
+  private initializeOfficialParameters(exceptKey: string): void {
+    if (this.officialInitialized) return;
+    this.officialInitialized = true;
+    for (const [key, value] of Object.entries(officialPitchDefaults(this.name, this.algorithm))) {
+      if (key !== exceptKey) this.setParam(key, value);
+    }
+  }
+
   setBypass(bypass: boolean): void {
     if (this.disposed) return;
     this.bypassed = bypass;
     this.analyzerNode?.port.postMessage({ type: 'set-bypass', value: bypass, rampFrames: 0 });
     this.applyRouting();
+  }
+
+  getParameterSnapshot(): Readonly<Record<string, number>> {
+    return Object.freeze({
+      key: this.parameters.hrmAutoKey,
+      scale: this.parameters.hrmAutoScale,
+      'midi-channel': this.parameters.hrmAutoMidiChannel,
+      mix: this.parameters.hrmAutoMixPercent,
+      ...this.officialParameters,
+    });
   }
 
   dispose(): void {
@@ -218,6 +302,10 @@ export class BrowserHrmAutoFX implements FXBase {
     this.pendingMidiMessages.length = 0;
     this.input.disconnect();
     this.directGain.disconnect();
+    if (this.analyzerNode) {
+      this.analyzerNode.port.onmessage = null;
+      this.analyzerNode.onprocessorerror = null;
+    }
     this.analyzerNode?.disconnect();
     this.dryDelay.disconnect();
     this.dryGain.disconnect();
@@ -225,6 +313,8 @@ export class BrowserHrmAutoFX implements FXBase {
     for (const gain of this.voiceGains) gain.disconnect();
     for (const node of this.voiceNodes ?? []) node.disconnect();
     this.output.disconnect();
+    this.voicePan?.disconnect();
+    this.voicePan = null;
     this.analyzerNode = null;
     this.voiceNodes = null;
   }
@@ -289,7 +379,15 @@ export class BrowserHrmAutoFX implements FXBase {
         throw cause;
       }
 
-      analyzerNode.port.onmessage = (event: MessageEvent<unknown>) => this.handleWorkletMessage(event.data);
+      analyzerNode.onprocessorerror = () => {
+        if (!this.disposed && this.analyzerNode === analyzerNode) {
+          this.failRuntime('Browser HRM AUTO AudioWorklet processor failed.');
+        }
+      };
+      analyzerNode.port.onmessage = (event: MessageEvent<unknown>) => {
+        if (this.disposed || this.analyzerNode !== analyzerNode) return;
+        this.handleWorkletMessage(event.data);
+      };
       analyzerNode.port.postMessage({ type: 'configure', parameters: this.parameters });
       analyzerNode.port.postMessage({ type: 'set-bypass', value: this.bypassed, rampFrames: 0 });
       this.failed = false;
@@ -301,6 +399,10 @@ export class BrowserHrmAutoFX implements FXBase {
       createdNodes.forEach((node) => node.disconnect());
       if (this.disposed) return;
       this.voiceNodes = null;
+      if (this.analyzerNode) {
+        this.analyzerNode.port.onmessage = null;
+        this.analyzerNode.onprocessorerror = null;
+      }
       this.analyzerNode?.disconnect();
       this.analyzerNode = null;
       const error = cause instanceof Error ? cause : new Error(String(cause));
@@ -309,6 +411,7 @@ export class BrowserHrmAutoFX implements FXBase {
   }
 
   private handleWorkletMessage(raw: unknown): void {
+    if (this.disposed) return;
     const message = raw as HrmAutoTargetMessage | null;
     if (message?.type === 'error' && typeof message.message === 'string') {
       this.failRuntime(`Browser HRM AUTO analyzer failed: ${message.message}`);
@@ -362,7 +465,9 @@ export class BrowserHrmAutoFX implements FXBase {
       const node = this.voiceNodes[voice]!;
       const voiceOutputTime = (message.frame as number) / this.context.sampleRate + node.latencySeconds;
       try {
-        void node.setPitch(target, voiceOutputTime, false).catch((cause: unknown) => {
+        void (this.officialActive
+          ? node.setPitch(target, voiceOutputTime, false, officialFormantSemitones(this.officialValues.formant!), 0, true)
+          : node.setPitch(target, voiceOutputTime, false)).catch((cause: unknown) => {
           this.failRuntime(`Browser HRM AUTO voice ${voice + 1} scheduling failed: ${cause instanceof Error ? cause.message : String(cause)}`);
         });
       } catch (cause) {
@@ -394,6 +499,7 @@ export class BrowserHrmAutoFX implements FXBase {
   }
 
   private failRuntime(message: string): void {
+    if (this.disposed) return;
     this.failed = true;
     this.failureKind = 'runtime';
     this.failedParameterKey = '';
@@ -419,8 +525,8 @@ export class BrowserHrmAutoFX implements FXBase {
     const direct = this.bypassed || this.failed || !this.analyzerNode ? 1 : 0;
     const activeVoiceCount = direct ? 0 : this.currentVoiceCount;
     const mix = this.parameters.hrmAutoMixPercent / 100;
-    const dry = direct ? 0 : activeVoiceCount === 0 ? 1 : 1 - mix;
-    const voiceMix = direct || activeVoiceCount === 0 ? 0 : mix / activeVoiceCount;
+    const dry = direct ? 0 : this.officialActive ? this.officialValues.d_level! / 100 : activeVoiceCount === 0 ? 1 : 1 - mix;
+    const voiceMix = direct || activeVoiceCount === 0 ? 0 : (this.officialActive ? this.officialValues.hrm_level! / 100 : mix) / activeVoiceCount;
     this.directGain.gain.setTargetAtTime(direct, atTime, 0.005);
     this.dryGain.gain.setTargetAtTime(dry, atTime, 0.005);
     this.voiceGains[0].gain.setTargetAtTime(activeVoiceCount >= 1 ? voiceMix : 0, atTime, 0.005);

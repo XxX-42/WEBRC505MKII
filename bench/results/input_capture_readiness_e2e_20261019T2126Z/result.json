@@ -1,0 +1,11 @@
+{
+  "run": "strict RubberBand-enabled Playwright E2E",
+  "browser": "Google Chrome for Testing headless shell 154.0.8037.57",
+  "result": "FAIL",
+  "tests": { "passed": 98, "failed": 1 },
+  "failedTest": "browser-record-stop-timeout: retry began before shared capture pre-roll was ready after AudioContext resume",
+  "observedDiagnostic": "Shared input capture was not ready at the request frame; the legacy recorder starts after input setup.",
+  "interpretation": "The production correctly remained not-ready while rewarming; the test assumed immediate shared-capture availability after resume. The regression test now waits for the READY contract before retrying.",
+  "rawLog": "full-e2e.log",
+  "errorContext": "retry-not-ready-error-context.md"
+}

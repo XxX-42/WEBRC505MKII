@@ -1,0 +1,13 @@
+--- /tmp/rc505-next-candidates/preamp-zero/src/native_preamp_processor.cpp	2026-10-21 05:46:34.059206373 -0700
++++ /tmp/rc505-next-candidates/preamp-invalidation/src/native_preamp_processor.cpp	2026-10-21 05:50:44.695654110 -0700
+@@ -179,7 +179,9 @@
+         const float level = levelGain_.next();
+         const std::array<float, 6U> controls{{model, gain, bass, middle, treble, level}};
+         if (!frameParametersValid_ || controls != cachedControls_) {
+-            for (auto& state : channels_) state.antiderivativeValid.fill(false);
++            if (!frameParametersValid_ || model != cachedControls_[0]) {
++                for (auto& state : channels_) state.antiderivativeValid.fill(false);
++            }
+             cachedFrameParameters_ = makeFrameParameters(model, gain, bass, middle, treble, level);
+             cachedControls_ = controls;
+             frameParametersValid_ = true;

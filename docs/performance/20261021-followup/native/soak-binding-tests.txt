@@ -1,0 +1,12 @@
+test_changed_binary_rejected (test_native_soak_binding.SoakBindingTests.test_changed_binary_rejected) ... ok
+test_empty_dependencies_rejected (test_native_soak_binding.SoakBindingTests.test_empty_dependencies_rejected) ... ok
+test_legacy_is_unverified (test_native_soak_binding.SoakBindingTests.test_legacy_is_unverified) ... ok
+test_legacy_manifest_rejected (test_native_soak_binding.SoakBindingTests.test_legacy_manifest_rejected) ... ok
+test_matching_manifest_is_verified (test_native_soak_binding.SoakBindingTests.test_matching_manifest_is_verified) ... ok
+test_mid_run_dependency_change_rejected (test_native_soak_binding.SoakBindingTests.test_mid_run_dependency_change_rejected) ... ok
+test_unverified_manifest_rejected (test_native_soak_binding.SoakBindingTests.test_unverified_manifest_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.350s
+
+OK

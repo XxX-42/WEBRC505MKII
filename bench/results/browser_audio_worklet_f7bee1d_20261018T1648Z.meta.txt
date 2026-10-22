@@ -1,0 +1,6 @@
+run_id=20261018T1648Z
+source_head=f7bee1d0360fe46f3a586094bec42076df433cf9
+source_tree=5c5963e83cb30dab121fc886935969d678acfddb
+browser=Google Chrome for Testing 154.0.8037.57
+run=10s production AudioWorklet graph, requested 48kHz, no device, harness default directSource=false
+runner=bench/run_browser_audio_worklet_stress.mjs

@@ -18,7 +18,7 @@ export type {
 } from "./catalog";
 export { DRUM_KIT_CATALOG, SOURCE_KIT_ROWS, getDrumKitByIndex, getDrumKitByName } from "./kits";
 export type { DrumKitProfile, KitSourceRow } from "./kits";
-export { DRUM_INSTRUMENTS, createCleanRoomPatternEvents } from "./events";
+export { DRUM_INSTRUMENTS, createCleanRoomPatternEvents, createRhythmRuntimeEventTemplate } from "./events";
 export type { CleanRoomDrumEvent, CleanRoomPatternOptions, DrumInstrument } from "./events";
 export { DrumVoicePool } from "./voicePool";
 export type { DrumVoicePoolOptions } from "./voicePool";

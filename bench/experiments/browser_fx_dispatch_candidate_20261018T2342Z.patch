@@ -1,0 +1,219 @@
+diff --git a/public/worklets/fx-processor.js b/public/worklets/fx-processor.js
+index 6644c8c..f3eb355 100644
+--- a/public/worklets/fx-processor.js
++++ b/public/worklets/fx-processor.js
+@@ -9208,6 +9208,14 @@
+   var BrowserFxDspCore = class {
+     sampleRate;
+     algorithm;
++    /**
++     * The algorithms that use the scalar fallback path select their channel
++     * processor once on the control thread and enter that path before the
++     * stereo-specialized dispatch chain. This avoids rechecking dozens of
++     * immutable algorithm names for every rendered frame.
++     */
++    processEffectSampleDispatch;
++    usesScalarEffectSampleDispatch = false;
+     get algorithmicLatencySamples() {
+       if (this.algorithm === "distortion" || this.algorithm === "preamp") return DISTORTION_DRY_DELAY_SAMPLES;
+       if (this.algorithm === "synth" || this.algorithm === "g2b" || this.algorithm === "electric") return 2868;
+@@ -9858,6 +9866,8 @@
+         }
+         this.refreshTimeVariantCoefficients(initialDecay, initialDamping);
+       }
++      this.usesScalarEffectSampleDispatch = algorithm === "lpf" || algorithm === "bpf" || algorithm === "hpf" || algorithm === "ring-mod" || algorithm === "flanger" || algorithm === "dynamics" || algorithm === "delay" || algorithm === "chorus" || algorithm === "phaser" || algorithm === "tremolo" || algorithm === "reverb" || algorithm === "gate-reverb" || algorithm === "distortion";
++      this.processEffectSampleDispatch = this.createEffectSampleDispatch();
+     }
+     /**
+      * Update targets from outside the render loop. Invalid individual values
+@@ -10435,7 +10445,10 @@
+         let mixDryRight = this.algorithm === "distortion" ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
+         let wetLeft;
+         let wetRight;
+-        if (this.algorithm === "vinyl-flick") {
++        if (this.usesScalarEffectSampleDispatch) {
++          wetLeft = this.processEffectSampleDispatch(dryLeft, 0);
++          wetRight = this.processEffectSampleDispatch(dryRight, 1);
++        } else if (this.algorithm === "vinyl-flick") {
+           this.vinylFlick?.processSample(dryLeft, dryRight);
+           wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
+           wetRight = this.vinylFlick?.wetRight ?? dryRight;
+@@ -10583,8 +10596,8 @@
+           wetLeft = this.modDelay?.wetLeft ?? 0;
+           wetRight = this.modDelay?.wetRight ?? 0;
+         } else {
+-          wetLeft = this.processEffectSample(dryLeft, 0);
+-          wetRight = this.processEffectSample(dryRight, 1);
++          wetLeft = this.processEffectSampleDispatch(dryLeft, 0);
++          wetRight = this.processEffectSampleDispatch(dryRight, 1);
+         }
+         if (!Number.isFinite(wetLeft)) {
+           wetLeft = 0;
+@@ -10973,6 +10986,50 @@
+         this.manualPanWetRight = inputRight;
+       }
+     }
++    /** Select the scalar processor once during construction, outside render. */
++    createEffectSampleDispatch() {
++      switch (this.algorithm) {
++        case "lpf":
++          return (input, channel) => {
++            const filter = channel === 0 ? this.filterLeft : this.filterRight;
++            filter.processSample(input);
++            return filter.lowpass;
++          };
++        case "bpf":
++          return (input, channel) => {
++            const filter = channel === 0 ? this.filterLeft : this.filterRight;
++            filter.processSample(input);
++            return filter.bandpass;
++          };
++        case "hpf":
++          return (input, channel) => {
++            const filter = channel === 0 ? this.filterLeft : this.filterRight;
++            filter.processSample(input);
++            return filter.highpass;
++          };
++        case "ring-mod":
++          return (input, channel) => this.processRingMod(input, channel);
++        case "flanger":
++          return (input, channel) => this.processFlanger(input, channel);
++        case "dynamics":
++          return (input) => input * this.dynamicsGain;
++        case "delay":
++          return (input, channel) => this.processDelay(input, channel);
++        case "chorus":
++          return (input, channel) => this.processChorus(input, channel);
++        case "phaser":
++          return (input, channel) => this.processPhaser(input, channel);
++        case "tremolo":
++          return (input) => this.processTremolo(input);
++        case "reverb":
++        case "gate-reverb":
++          return (input, channel) => this.processReverb(input, channel);
++        case "distortion":
++          return (input, channel) => this.processDistortionSample(input, channel);
++        default:
++          return (input, channel) => this.processEffectSample(input, channel);
++      }
++    }
+     processEffectSample(input, channel) {
+       switch (this.algorithm) {
+         case "lpf":
+diff --git a/src/audio/fx/dsp/BrowserFxDspCore.ts b/src/audio/fx/dsp/BrowserFxDspCore.ts
+index 578f53b..a6b94ea 100644
+--- a/src/audio/fx/dsp/BrowserFxDspCore.ts
++++ b/src/audio/fx/dsp/BrowserFxDspCore.ts
+@@ -1061,6 +1061,14 @@ function readLagrangeFromWriteHead(buffer: Float32Array, writeIndex: number, del
+ export class BrowserFxDspCore {
+   readonly sampleRate: number;
+   readonly algorithm: BrowserFxAlgorithm;
++  /**
++   * The algorithms that use the scalar fallback path select their channel
++   * processor once on the control thread and enter that path before the
++   * stereo-specialized dispatch chain. This avoids rechecking dozens of
++   * immutable algorithm names for every rendered frame.
++   */
++  private processEffectSampleDispatch!: (input: number, channel: 0 | 1) => number;
++  private usesScalarEffectSampleDispatch = false;
+   get algorithmicLatencySamples(): number {
+     if (this.algorithm === 'distortion' || this.algorithm === 'preamp') return DISTORTION_DRY_DELAY_SAMPLES;
+     if (this.algorithm === 'synth' || this.algorithm === 'g2b' || this.algorithm === 'electric') return 2_868;
+@@ -1786,6 +1794,20 @@ export class BrowserFxDspCore {
+       }
+       this.refreshTimeVariantCoefficients(initialDecay, initialDamping);
+     }
++    this.usesScalarEffectSampleDispatch = algorithm === 'lpf'
++      || algorithm === 'bpf'
++      || algorithm === 'hpf'
++      || algorithm === 'ring-mod'
++      || algorithm === 'flanger'
++      || algorithm === 'dynamics'
++      || algorithm === 'delay'
++      || algorithm === 'chorus'
++      || algorithm === 'phaser'
++      || algorithm === 'tremolo'
++      || algorithm === 'reverb'
++      || algorithm === 'gate-reverb'
++      || algorithm === 'distortion';
++    this.processEffectSampleDispatch = this.createEffectSampleDispatch();
+   }
+ 
+   /**
+@@ -2397,7 +2419,10 @@ export class BrowserFxDspCore {
+       let mixDryRight = this.algorithm === 'distortion' ? this.processDistortionDryDelay(dryRight, 1) : dryRight;
+       let wetLeft: number;
+       let wetRight: number;
+-      if (this.algorithm === 'vinyl-flick') {
++      if (this.usesScalarEffectSampleDispatch) {
++        wetLeft = this.processEffectSampleDispatch(dryLeft, 0);
++        wetRight = this.processEffectSampleDispatch(dryRight, 1);
++      } else if (this.algorithm === 'vinyl-flick') {
+         this.vinylFlick?.processSample(dryLeft, dryRight);
+         wetLeft = this.vinylFlick?.wetLeft ?? dryLeft;
+         wetRight = this.vinylFlick?.wetRight ?? dryRight;
+@@ -2552,8 +2577,8 @@ export class BrowserFxDspCore {
+         wetLeft = this.modDelay?.wetLeft ?? 0;
+         wetRight = this.modDelay?.wetRight ?? 0;
+       } else {
+-        wetLeft = this.processEffectSample(dryLeft, 0);
+-        wetRight = this.processEffectSample(dryRight, 1);
++        wetLeft = this.processEffectSampleDispatch(dryLeft, 0);
++        wetRight = this.processEffectSampleDispatch(dryRight, 1);
+       }
+       if (!Number.isFinite(wetLeft)) {
+         wetLeft = 0;
+@@ -3023,6 +3048,53 @@ export class BrowserFxDspCore {
+     }
+   }
+ 
++  /** Select the scalar processor once during construction, outside render. */
++  private createEffectSampleDispatch(): (input: number, channel: 0 | 1) => number {
++    switch (this.algorithm) {
++      case 'lpf':
++        return (input, channel) => {
++          const filter = channel === 0 ? this.filterLeft : this.filterRight;
++          filter.processSample(input);
++          return filter.lowpass;
++        };
++      case 'bpf':
++        return (input, channel) => {
++          const filter = channel === 0 ? this.filterLeft : this.filterRight;
++          filter.processSample(input);
++          return filter.bandpass;
++        };
++      case 'hpf':
++        return (input, channel) => {
++          const filter = channel === 0 ? this.filterLeft : this.filterRight;
++          filter.processSample(input);
++          return filter.highpass;
++        };
++      case 'ring-mod':
++        return (input, channel) => this.processRingMod(input, channel);
++      case 'flanger':
++        return (input, channel) => this.processFlanger(input, channel);
++      case 'dynamics':
++        return (input) => input * this.dynamicsGain;
++      case 'delay':
++        return (input, channel) => this.processDelay(input, channel);
++      case 'chorus':
++        return (input, channel) => this.processChorus(input, channel);
++      case 'phaser':
++        return (input, channel) => this.processPhaser(input, channel);
++      case 'tremolo':
++        return (input) => this.processTremolo(input);
++      case 'reverb':
++      case 'gate-reverb':
++        return (input, channel) => this.processReverb(input, channel);
++      case 'distortion':
++        return (input, channel) => this.processDistortionSample(input, channel);
++      default:
++        // Effects handled as stereo-frame operations do not normally use this
++        // fallback. Retain the generic reference for forward compatibility.
++        return (input, channel) => this.processEffectSample(input, channel);
++    }
++  }
++
+   private processEffectSample(input: number, channel: 0 | 1): number {
+     switch (this.algorithm) {
+       case 'lpf':

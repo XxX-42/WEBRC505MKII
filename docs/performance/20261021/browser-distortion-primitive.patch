@@ -1,0 +1,64 @@
+--- /tmp/rc505-browser-perf/distortion-core-base.ts	2026-10-21 04:41:57.047009360 -0700
++++ /tmp/rc505-browser-perf/distortion-core-cache.ts	2026-10-21 04:41:57.064705506 -0700
+@@ -1163,6 +1163,8 @@
+   private readonly upsampleHistory = new Float64Array(DISTORTION_UPSAMPLE_INPUT_HISTORY * 4);
+   private readonly upsampleWriteIndices = new Int32Array(2);
+   private readonly previousDrivenInput = new Float64Array(2);
++  private readonly distortionPreviousPrimitive = new Float64Array(2);
++  private readonly distortionPrimitiveValid = new Uint8Array(2);
+   private readonly waveshapedHistory = new Float64Array(DISTORTION_FIR_TAPS * 4);
+   private readonly waveshapedWriteIndices = new Int32Array(2);
+   private readonly dryDelayBuffers: Float32Array[] = [
+@@ -2693,6 +2695,8 @@
+     this.upsampleHistory.fill(0);
+     this.upsampleWriteIndices.fill(0);
+     this.previousDrivenInput.fill(0);
++    this.distortionPreviousPrimitive.fill(0);
++    this.distortionPrimitiveValid.fill(0);
+     this.waveshapedHistory.fill(0);
+     this.waveshapedWriteIndices.fill(0);
+     this.dryDelayBuffers[0]?.fill(0);
+@@ -2974,6 +2978,7 @@
+ 
+   private requestDistortionMode(mode: BrowserDistortionMode): void {
+     if (mode === this.distortionModeTarget) return;
++    this.distortionPrimitiveValid.fill(0);
+     this.distortionModeOld = this.distortionModeTarget;
+     this.distortionModeTarget = mode;
+     this.distortionModeBlend.reset(0);
+@@ -3224,6 +3229,22 @@
+   }
+ 
+   /** 4x zero-stuffed sinc oversampling, ADAA waveshaping and FIR decimation. */
++  /** Exact ADAA primitive reuse for a settled mode, never across a mode fade. */
++  private processCachedDistortionSample(mode: BrowserDistortionMode, current: number, previous: number, channel: 0 | 1): number {
++    const difference = current - previous;
++    if (Math.abs(difference) < 1e-8) {
++      this.distortionPrimitiveValid[channel] = 0;
++      return distortionFunction(mode, 0.5 * (current + previous));
++    }
++    const currentPrimitive = distortionAntiderivative(mode, current);
++    const previousPrimitive = this.distortionPrimitiveValid[channel]
++      ? this.distortionPreviousPrimitive[channel]!
++      : distortionAntiderivative(mode, previous);
++    this.distortionPreviousPrimitive[channel] = currentPrimitive;
++    this.distortionPrimitiveValid[channel] = 1;
++    return (currentPrimitive - previousPrimitive) / difference;
++  }
++
+   private processDistortionSample(input: number, channel: 0 | 1): number {
+     const inputHistoryBase = channel * DISTORTION_UPSAMPLE_INPUT_HISTORY * 2;
+     const waveshapedHistoryBase = channel * DISTORTION_FIR_TAPS * 2;
+@@ -3251,8 +3272,11 @@
+       const driven = reconstructed * this.driveLinear;
+       let shaped: number;
+       if (this.distortionModeOld === this.distortionModeTarget) {
+-        shaped = antiderivativeAntialiasSample(this.distortionModeTarget, driven, this.previousDrivenInput[channel] ?? 0);
++        shaped = this.processCachedDistortionSample(this.distortionModeTarget, driven, this.previousDrivenInput[channel] ?? 0, channel);
+       } else {
++        // Preserve the existing dual-mode crossfade and ensure its last
++        // oversample cannot leave a cached primitive from the previous mode.
++        this.distortionPrimitiveValid[channel] = 0;
+         const oldModeOutput = antiderivativeAntialiasSample(
+           this.distortionModeOld,
+           driven,

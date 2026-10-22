@@ -14,6 +14,7 @@ struct NativeFdn16ReverbConfig {
     float wetMix = 0.25f;
     float rt60Seconds = 2.0f;
     float dampingCutoffHz = 7000.0f;
+    float density = 1.0f;
 };
 
 // Clean-room stereo reverberator based on a 16-line feedback delay network.
@@ -52,6 +53,8 @@ private:
     dsp::ParameterSmoother wetMix_{0.0f};
     dsp::ParameterSmoother rt60Seconds_{2.0f};
     dsp::ParameterSmoother dampingCutoffHz_{7000.0f};
+    dsp::ParameterSmoother density_{1.0f};
+    std::array<float, kLineCount> injectionWeights_{};
     NativeFdn16ReverbConfig config_{};
     unsigned int sampleRate_ = 0U;
     float dampingAlpha_ = 0.0f;

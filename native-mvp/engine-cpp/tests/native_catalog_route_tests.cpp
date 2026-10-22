@@ -1,10 +1,13 @@
 #include "native_audio_core.hpp"
+#include "native_official_domains.hpp"
+#include "native_alloc_tracker.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <map>
 #include <string>
 #include <vector>
@@ -48,10 +51,65 @@ struct NativeAudioCoreTestAccess {
             output, const_cast<float*>(input), frames, 0.0, static_cast<RtAudioStreamStatus>(0), &core);
     }
 
-    static const float* processInputFx(NativeAudioCore& core, const float* input, unsigned int frames) {
+    static const float* processInputFx(
+        NativeAudioCore& core,
+        const float* input,
+        unsigned int frames,
+        unsigned int* processedChannels = nullptr
+    ) {
         core.applyNativeCatalogFxCommands();
-        return core.processInputFxForCallback(input, frames);
+        return core.processInputFxForCallback(input, frames, processedChannels);
     }
+
+    static void processSharedTrackFx(NativeAudioCore& core, float* audio, unsigned int frames) {
+        core.applyNativeCatalogFxCommands();
+        (void)core.outputStage_.trackFxBank().processInPlace(audio, frames, 2U);
+    }
+
+    static void prepareSelectedCatalog(NativeAudioCore& core) { assert(core.nativeInputFxBank_.prepare(48000.0)); }
+    static void splitInputCallback(NativeAudioCore& core, const float* input, unsigned int frames) {
+        (void)core.handleInputAudioCallback(const_cast<float*>(input), frames, static_cast<RtAudioStreamStatus>(0));
+    }
+    static void resetRuntime(NativeAudioCore& core) { core.resetRuntimeStateLocked(); }
+
+    static NativeVocoderCarrierStatus carrierStatus(const NativeAudioCore& core, std::size_t track) {
+        return core.nativeVocoderCarrierStatuses_[track].load(std::memory_order_acquire);
+    }
+    static void prepareCarriers(NativeAudioCore& core, unsigned int frames) { core.prepareVocoderCarriers(frames); }
+    static void pinCarrierSource(NativeAudioCore& core, std::size_t track) { core.historyPinnedTrackIndex_ = track; }
+    static void restoreSourceLoop(NativeAudioCore& core, const std::vector<float>& samples, std::size_t track) {
+        auto& source = core.looperForTrack(track);
+        std::vector<float> replacement(source.capacityFrames() * 2U, 0.0f);
+        std::copy(samples.begin(), samples.end(), replacement.begin());
+        assert(source.swapImportedStereoStorage(replacement, samples.size() / 2U));
+    }
+    static void loadSourceLoop(NativeAudioCore& core, const std::vector<float>& samples, std::size_t index = 0U) {
+        auto& track = core.looperForTrack(index);
+        track.applyCommand({CommandType::Clear, false});
+        track.applyCommand({CommandType::Record, false});
+        (void)track.process(samples.data(), nullptr, static_cast<unsigned int>(samples.size() / 2U), 2U, 2U);
+        track.applyCommand({CommandType::StopRecordOrPlayback, false});
+        track.applyCommand({CommandType::Play, false});
+    }
+    static const LoopTransportConfig& transport(const NativeAudioCore& core, std::size_t track) {
+        return core.looperForTrack(track).loopTransportConfig();
+    }
+    static void applySourceQueue(NativeAudioCore& core) {
+        core.applyNativeCatalogFxCommands(); core.applyNativePitchCommands(); core.applyNativeLoopTransportCommands();
+    }
+
+    static bool copyTrackStereo(NativeAudioCore& core, std::size_t trackIndex,
+                                float* destination, std::size_t destinationFrames,
+                                std::size_t& copiedFrames) {
+        return core.looperForTrack(trackIndex).copyFinalizedStereoLoopSnapshot(
+            destination, destinationFrames, copiedFrames);
+    }
+
+    static bool queueTrackCommand(NativeAudioCore& core, CommandType type,
+                                  std::size_t trackIndex, std::string& error) {
+        return core.queueTrackCommand(type, trackIndex, error);
+    }
+
 };
 
 } // namespace webrc::native
@@ -1538,9 +1596,544 @@ void testAutoRiffInputTempoFollowsNativeRhythmTransport() {
     assert(queuedDifferenceRms < 1.0e-6);
 }
 
+void testOfficialControlsTraverseLiveHostQueue() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    std::size_t effectCount = 0U;
+    const auto* effects = nativeEffectCatalog(effectCount);
+    std::array<float, 512U> input{};
+    for (std::size_t i = 0U; i < input.size(); ++i) input[i] = 0.1f * std::sin(static_cast<float>(i) * 0.17f);
+    for (std::size_t e = 0U; e < effectCount; ++e) {
+        std::size_t count = 0U;
+        const auto* descriptors = nativeEffectOfficialParameters(effects[e].id, count);
+        if (count == 0U) continue;
+        const bool variants = effects[e].id == "tape_echo" || effects[e].id == "roll";
+        for (unsigned int variant = variants ? 1U : 0U; variant <= (variants ? 2U : 0U); ++variant) {
+            std::map<std::string, float> defaults{{"official_bpm", 120.0f}}, updates{{"official_bpm", 180.0f}, {"official_quarter_notes_per_measure", 3.5f}};
+            if (variants) { defaults["official_variant"] = static_cast<float>(variant); updates["official_variant"] = static_cast<float>(variant); }
+            const auto domainId = nativeEffectOfficialDomainId(effects[e].id, variant);
+            for (std::size_t i = 0U; i < count; ++i) {
+                const auto* domain = official::parameterDomain(domainId, descriptors[i].id);
+                if (!domain) continue;
+                defaults[std::string(descriptors[i].id)] = domain->hasDefault ? domain->defaultValue : descriptors[i].defaultValue;
+                float maximum = domain->step > 0.0f ? domain->maximum : official::kDomainOptions[domain->offset];
+                for (std::size_t choice = 0U; choice < domain->count; ++choice)
+                    maximum = std::max(maximum, official::kDomainOptions[domain->offset + choice]);
+                updates[std::string(descriptors[i].id)] = maximum;
+            }
+            const auto path = effects[e].inputAvailable ? NativeCatalogFxPath::Input : NativeCatalogFxPath::Track;
+            std::string error;
+            NativeAudioCoreTestAccess::setRunning(core, false);
+            assert(core.setNativeCatalogSlot(NativeEffectSlot::A, std::string(effects[e].id), defaults, false, error, path));
+            NativeAudioCoreTestAccess::setRunning(core, true);
+            assert(core.setNativeCatalogSlot(NativeEffectSlot::A, std::string(effects[e].id), updates, false, error, path));
+            auto trackOutput = input;
+            const float* output = trackOutput.data();
+            if (path == NativeCatalogFxPath::Input) output = NativeAudioCoreTestAccess::processInputFx(core, input.data(), 256U);
+            else NativeAudioCoreTestAccess::processSharedTrackFx(core, trackOutput.data(), 256U);
+            assert(output != nullptr);
+            for (std::size_t i = 0U; i < input.size(); ++i) assert(std::isfinite(output[i]));
+            assert(core.getStatus().nativeCatalogControlFaultCount == 0U);
+        }
+    }
+    NativeAudioCoreTestAccess::setRunning(core, false);
+}
+
+void testVariantQueueUsesProspectiveBranch() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    std::string error;
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_variant", 1.0f}, {"official_bass", 20.0f}}, false, error, NativeCatalogFxPath::Input));
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    // No callback is allowed between these edits: pending selector must already
+    // control validation, and a rejected cross-branch batch must be atomic.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_variant", 2.0f}, {"official_high_cut", 4000.0f}}, false, error, NativeCatalogFxPath::Input));
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_low_cut", 200.0f}}, false, error, NativeCatalogFxPath::Input));
+    assert(!core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_variant", 1.0f}, {"official_high_cut", 3000.0f}}, false, error, NativeCatalogFxPath::Input));
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_low_cut", 300.0f}}, false, error, NativeCatalogFxPath::Input));
+    std::array<float, 128U> input{};
+    assert(NativeAudioCoreTestAccess::processInputFx(core, input.data(), 64U));
+    assert(core.getStatus().nativeCatalogControlFaultCount == 0U);
+    // Switching back exercises lexical BASS-before-VARIANT ordering.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_variant", 1.0f}, {"official_bass", -20.0f}}, false, error, NativeCatalogFxPath::Input));
+    assert(NativeAudioCoreTestAccess::processInputFx(core, input.data(), 64U));
+    assert(core.getStatus().nativeCatalogControlFaultCount == 0U);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+}
+
+void testParameterReplacementCannotAcknowledgeStaleState() {
+    NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    std::string error;
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "step_slicer",
+        {{"official_depth", 0.0f}, {"official_comp_gain", 20.0f}}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "step_slicer", {}, false, error, NativeCatalogFxPath::Input));
+    std::vector<float> input(4096U, 0.01f);
+    const auto* wet = NativeAudioCoreTestAccess::processInputFx(core, input.data(), 2048U); assert(wet);
+    const float oldGain = wet[4094U];
+    assert(!core.setNativeCatalogSlot(NativeEffectSlot::A, "step_slicer",
+        {{"official_depth", 0.0f}}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    assert(error.find("Stop Native audio") != std::string::npos);
+    assert(!core.setNativeCatalogSlot(NativeEffectSlot::A, "step_slicer", {}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    NativeAudioCoreTestAccess::setRunning(core, false);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "step_slicer",
+        {{"official_depth", 0.0f}}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    wet = NativeAudioCoreTestAccess::processInputFx(core, input.data(), 2048U); assert(wet);
+    assert(oldGain > 0.08f && wet[4094U] < oldGain * 0.3f);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_variant", 1.0f}, {"official_bass", 20.0f}}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo", {}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    assert(!core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_bass", 20.0f}}, false, error, NativeCatalogFxPath::Input));
+    // Explicit branch changes can reset branch state safely without restarting.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_variant", 1.0f}, {"official_bass", 20.0f}}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "tape_echo",
+        {{"official_variant", 2.0f}, {"official_high_cut", 4000.0f}}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    assert(NativeAudioCoreTestAccess::processInputFx(core, input.data(), 2048U));
+    assert(core.getStatus().nativeCatalogControlFaultCount == 0U);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+}
+
+void testOfficialSourceChunkInvariance() {
+    for (const auto id : {"vinyl_flick", "beat_shift"}) {
+        const auto render = [id](unsigned int chunk) {
+            NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+            NativeAudioCoreTestAccess::setInputChannels(core, 0U);
+            std::vector<float> loop(9600U);
+            for (std::size_t f = 0; f < 4800U; ++f) {
+                loop[f * 2U] = 0.1f * std::sin(static_cast<float>(f) * 6.28318530718f / 4800.0f);
+                loop[f * 2U + 1U] = -0.5f * loop[f * 2U];
+            }
+            NativeAudioCoreTestAccess::loadSourceLoop(core, loop);
+            const std::map<std::string, float> controls = std::string_view(id) == "vinyl_flick"
+                ? std::map<std::string, float>{{"official_flick", 100.0f}, {"motor_return_seconds", 0.05f}}
+                : std::map<std::string, float>{{"official_shift", -0.25f}, {"official_bpm", 113.0f}};
+            std::string error; assert(core.setNativeCatalogSlot(NativeEffectSlot::A, id, controls, false, error));
+            NativeAudioCoreTestAccess::setRunning(core, true);
+            std::vector<float> result(32768U);
+            for (unsigned int f = 0; f < 16384U;) {
+                const auto frames = std::min(chunk, 16384U - f);
+                assert(NativeAudioCoreTestAccess::callback(core, nullptr, result.data() + f * 2U, frames) == 0);
+                f += frames;
+            }
+            NativeAudioCoreTestAccess::setRunning(core, false); return result;
+        };
+        assert(vectorDifferenceRms(render(13U), render(127U), 0U) < 1.0e-7);
+    }
+}
+
+void testOfficialSourceReadheadsAndRestoration() {
+    NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 0U);
+    std::string error;
+    std::vector<float> ramp(96000U);
+    for (std::size_t f = 0; f < ramp.size() / 2U; ++f) { ramp[f * 2U] = static_cast<float>(f) * 1.0e-6f; ramp[f * 2U + 1U] = -ramp[f * 2U] * 0.5f; }
+    NativeAudioCoreTestAccess::loadSourceLoop(core, ramp);
+    std::array<LoopTransportConfig, kNativeTrackCount> originals{};
+    for (std::size_t t = 0; t < kNativeTrackCount; ++t) {
+        originals[t].mode = LoopTransportMode::BeatShift;
+        originals[t].beatOffsetBeats = -0.125f * static_cast<float>(t + 1U);
+        originals[t].bpm = 120.0f + static_cast<float>(t);
+        assert(core.setNativeLoopTransport(t, originals[t], error));
+    }
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "beat_shift",
+        {{"official_type", 0.0f}, {"official_shift", -0.25f}, {"official_bpm", 120.0f}}, false, error));
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    std::vector<float> output(2048U);
+    callbackInChunks(core, nullptr, output.data(), 1024U);
+    assert(std::fabs(output[2046U] - ramp[2U * (1023U + 6000U)]) < 1.0e-6f);
+    assert(std::fabs(output[2047U] - ramp[2U * (1023U + 6000U) + 1U]) < 1.0e-6f);
+    assert(core.getStatus().nativeTrackLoopTransportStatus[0] == LoopTransportStatus::Active);
+    // PAST is a genuinely different stored-loop location, not delayed live input.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "beat_shift", {{"official_type", 1.0f}}, false, error));
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    assert(std::fabs(output[1022U] - ramp[2U * (1535U + 48000U - 6000U)]) < 1.0e-6f);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "beat_shift", {{"official_shift", -1000.0f}}, false, error));
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    assert(std::fabs(output[1022U] - ramp[2U * 2047U]) < 1.0e-6f);
+    // Updates to the underlying independent route survive the temporary overlay.
+    originals[2].beatOffsetBeats = 0.75f;
+    assert(core.setNativeLoopTransport(2U, originals[2], error));
+    NativeAudioCoreTestAccess::applySourceQueue(core);
+    assert(NativeAudioCoreTestAccess::transport(core, 2U).beatOffsetBeats == 0.0f);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "beat_shift", {}, true, error));
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    for (std::size_t t = 0; t < kNativeTrackCount; ++t) {
+        const auto& restored = NativeAudioCoreTestAccess::transport(core, t);
+        assert(restored.mode == originals[t].mode && restored.beatOffsetBeats == originals[t].beatOffsetBeats && restored.bpm == originals[t].bpm);
+    }
+    assert(std::fabs(output[1022U] - ramp[2U * (2559U + 48000U - 3000U)]) < 1.0e-6f);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "beat_shift", {{"official_shift", -1.0f}}, false, error));
+    NativeAudioCoreTestAccess::applySourceQueue(core);
+    assert(NativeAudioCoreTestAccess::transport(core, 0U).beatOffsetBeats == -1.0f);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "", {}, false, error));
+    for (std::size_t t = 0; t < kNativeTrackCount; ++t)
+        assert(NativeAudioCoreTestAccess::transport(core, t).beatOffsetBeats == originals[t].beatOffsetBeats);
+}
+
+void testOfficialVinylSustainedSpeedAndUnsupportedModes() {
+    NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 0U);
+    std::vector<float> loop(9600U);
+    for (std::size_t f = 0; f < loop.size() / 2U; ++f) { loop[2U * f] = 0.1f * std::sin(static_cast<float>(f) * 6.28318530718f / 4800.0f); loop[2U * f + 1U] = -0.5f * loop[2U * f]; }
+    NativeAudioCoreTestAccess::loadSourceLoop(core, loop);
+    std::string error;
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vinyl_flick",
+        {{"official_flick", 100.0f}, {"motor_return_seconds", 0.05f}, {"brake_percent", 100.0f}}, false, error));
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    std::vector<float> output(48000U * 8U * 2U);
+    const auto allocations = test_alloc::count(); test_alloc::beginTracking();
+    callbackInChunks(core, nullptr, output.data(), 48000U * 8U);
+    test_alloc::endTracking(); assert(test_alloc::count() == allocations);
+    unsigned int positiveCrossings = 0U;
+    for (std::size_t f = 48000U * 4U + 1U; f < 48000U * 8U; ++f) {
+        if (output[2U * (f - 1U)] <= 0.0f && output[2U * f] > 0.0f) ++positiveCrossings;
+        assert(std::fabs(output[2U * f + 1U] + 0.5f * output[2U * f]) < 1.0e-6f);
+    }
+    assert(positiveCrossings >= 79U && positiveCrossings <= 81U); // 20 Hz, after 40+ source wraps.
+    assert(core.getStatus().nativeTrackLoopTransportStatus[0] == LoopTransportStatus::Active);
+    // Stop the platter, rather than resuming a causal history writer.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vinyl_flick", {{"official_flick", 0.0f}}, false, error));
+    callbackInChunks(core, nullptr, output.data(), 48000U * 2U);
+    for (std::size_t f = 48000U * 2U - 256U; f < 48000U * 2U; ++f)
+        assert(std::fabs(output[2U * f] - output[2U * (48000U * 2U - 256U)]) < 1.0e-5f);
+    NativeAudioCoreTestAccess::command(core, CommandType::ToggleOverdub);
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    assert(core.getStatus().nativeTrackLoopTransportStatus[0] == LoopTransportStatus::UnsupportedOverdubbing);
+    NativeAudioCoreTestAccess::command(core, CommandType::ToggleOverdub);
+    NativePitchConfig pitch; pitch.enabled = true; pitch.trackId = 1U;
+    assert(core.setNativePitchConfig(pitch, error));
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    assert(core.getStatus().nativeTrackLoopTransportStatus[0] == LoopTransportStatus::UnsupportedPitchProcessing);
+    assert(NativeAudioCoreTestAccess::transport(core, 0U).mode == LoopTransportMode::Off);
+    pitch.enabled = false; assert(core.setNativePitchConfig(pitch, error));
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    assert(core.getStatus().nativeTrackLoopTransportStatus[0] == LoopTransportStatus::Active);
+    pitch.reversePlayback = true; assert(core.setNativePitchConfig(pitch, error));
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    assert(core.getStatus().nativeTrackLoopTransportStatus[0] == LoopTransportStatus::UnsupportedPitchProcessing);
+    pitch.reversePlayback = false; assert(core.setNativePitchConfig(pitch, error));
+    callbackInChunks(core, nullptr, output.data(), 512U);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vinyl_flick", {}, false, error, NativeCatalogFxPath::Track, 0U, true));
+    assert(NativeAudioCoreTestAccess::transport(core, 0U).mode == LoopTransportMode::Off);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf", {}, false, error));
+    assert(NativeAudioCoreTestAccess::transport(core, 0U).mode == LoopTransportMode::Off);
+}
+
+std::vector<float> carrierSignal(std::size_t frames, float frequency) {
+    std::vector<float> result(frames * 2U);
+    for (std::size_t f = 0U; f < frames; ++f) {
+        result[f * 2U] = 0.12f * std::sin(static_cast<float>(f) * frequency * 6.28318530718f / 48000.0f) +
+            0.06f * std::sin(static_cast<float>(f) * frequency * 1.719f * 6.28318530718f / 48000.0f);
+        result[f * 2U + 1U] = -0.73f * result[f * 2U];
+    }
+    return result;
+}
+
+std::vector<float> renderVocoderCarrierRoute(std::size_t carrierTrack, bool privateRoute, unsigned int chunk) {
+    NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    const auto carrier = carrierSignal(479U, 880.0f);
+    const auto modulator = carrierSignal(257U, 220.0f);
+    NativeAudioCoreTestAccess::loadSourceLoop(core, carrier, carrierTrack);
+    const auto modulatorTrack = carrierTrack == 0U ? 4U : 0U;
+    if (privateRoute) NativeAudioCoreTestAccess::loadSourceLoop(core, modulator, modulatorTrack);
+    std::string error;
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vocoder",
+        {{"official_carrier", static_cast<float>(carrierTrack + 6U)}, {"official_balance", 100.0f}}, false,
+        error, privateRoute ? NativeCatalogFxPath::Track : NativeCatalogFxPath::Input,
+        privateRoute ? static_cast<std::uint8_t>(modulatorTrack + 1U) : 0U));
+    if (!privateRoute) NativeAudioCoreTestAccess::command(core, CommandType::SetMonitoring, true);
+    constexpr std::size_t frames = 8192U;
+    std::vector<float> input(frames * 2U, 0.0f), output(frames * 2U);
+    if (!privateRoute) for (std::size_t f = 0U; f < frames; ++f) {
+        input[f * 2U] = modulator[(f % 257U) * 2U]; input[f * 2U + 1U] = modulator[(f % 257U) * 2U + 1U];
+    }
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    test_alloc::beginTracking();
+    for (std::size_t offset = 0U; offset < frames;) {
+        const auto count = static_cast<unsigned int>(std::min<std::size_t>(chunk, frames - offset));
+        NativeAudioCoreTestAccess::callback(core, input.data() + offset * 2U, output.data() + offset * 2U, count);
+        offset += count;
+    }
+    test_alloc::endTracking(); assert(test_alloc::count() == 0U);
+    assert(NativeAudioCoreTestAccess::carrierStatus(core, carrierTrack) == NativeVocoderCarrierStatus::Ready);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+    if (!privateRoute) {
+        NativeVocoderCore left, right;
+        NativeVocoderConfig config; config.carrier = NativeVocoderCarrier::VoiceInput; config.wetMix = 1.0f;
+        for (auto* processor : {&left, &right}) {
+            assert(processor->prepare(48000U)); assert(processor->setConfig(config));
+            assert(processor->setParameter("official_tone", 0.0f));
+            assert(processor->setParameter("official_attack", 50.0f));
+            assert(processor->setParameter("official_mod_sens", 0.0f));
+            assert(processor->setParameter("official_balance", 100.0f));
+        }
+        std::vector<float> modL(frames), modR(frames), sourceL(frames), sourceR(frames), wetL(frames), wetR(frames);
+        for (std::size_t f = 0U; f < frames; ++f) {
+            modL[f] = input[f * 2U]; modR[f] = input[f * 2U + 1U];
+            sourceL[f] = carrier[(f % 479U) * 2U]; sourceR[f] = carrier[(f % 479U) * 2U + 1U];
+        }
+        assert(left.process(modL.data(), sourceL.data(), wetL.data(), frames));
+        assert(right.process(modR.data(), sourceR.data(), wetR.data(), frames));
+        double firstBlockEnergy = 0.0;
+        for (std::size_t f = 0U; f < frames; ++f) {
+            assert(std::abs(output[f * 2U] - (sourceL[f] + wetL[f])) < 0.000002f);
+            assert(std::abs(output[f * 2U + 1U] - (sourceR[f] + wetR[f])) < 0.000002f);
+            if (f < 13U) firstBlockEnergy += static_cast<double>(wetL[f]) * wetL[f];
+        }
+        assert(firstBlockEnergy > 1.0e-15); // Current block, not a preceding-block carrier cache.
+    }
+    return output;
+}
+
+void testVocoderTrackCarriersUseSameBlockReadOnlyPlayback() {
+    const auto inputFirst = renderVocoderCarrierRoute(0U, false, 13U);
+    const auto inputLast = renderVocoderCarrierRoute(4U, false, 127U);
+    assert(vectorDifferenceRms(inputFirst, inputLast, 0U) < 1.0e-7);
+    const auto trackFirst = renderVocoderCarrierRoute(0U, true, 13U);
+    const auto trackLast = renderVocoderCarrierRoute(4U, true, 127U);
+    assert(vectorDifferenceRms(trackFirst, trackLast, 0U) < 1.0e-7);
+    for (std::size_t track = 1U; track < 4U; ++track) {
+        const auto other = renderVocoderCarrierRoute(track, false, 4096U);
+        assert(vectorDifferenceRms(inputFirst, other, 0U) < 1.0e-7);
+    }
+}
+
+std::vector<float> renderOfficialSpatialInput(const std::string& effect,
+    const std::map<std::string, float>& parameters, unsigned int inputChannels, bool official) {
+    NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, inputChannels);
+    std::string error;
+    // The M/S enhancer widens existing stereo, not a perfectly mono signal.
+    // Generate that stereo upstream inside the same mono-input bank.
+    const bool stagedEnhancer = official && effect == "stereo_enhance";
+    if (stagedEnhancer) assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "auto_pan",
+        {{"official_rate", 100.0f}, {"official_depth", 60.0f}}, false, error, NativeCatalogFxPath::Input));
+    assert(core.setNativeCatalogSlot(stagedEnhancer ? NativeEffectSlot::B : NativeEffectSlot::A,
+        effect, parameters, false, error, NativeCatalogFxPath::Input));
+    constexpr unsigned int frames = 8192U;
+    std::vector<float> input(frames * inputChannels), output(frames * 2U);
+    for (unsigned int f = 0U; f < frames; ++f) {
+        const float sample = 0.1f * std::sin(static_cast<float>(f) * 0.071f) + 0.05f * std::sin(static_cast<float>(f) * 0.177f);
+        for (unsigned int c = 0U; c < inputChannels; ++c) input[f * inputChannels + c] = sample;
+    }
+    const auto before = test_alloc::count(); test_alloc::beginTracking();
+    for (unsigned int offset = 0U; offset < frames;) {
+        const auto count = std::min(127U, frames - offset); unsigned int channels = 0U;
+        const auto* processed = NativeAudioCoreTestAccess::processInputFx(core, input.data() + offset * inputChannels, count, &channels);
+        assert(processed && channels == (official ? 2U : inputChannels));
+        for (unsigned int f = 0U; f < count; ++f) {
+            output[(offset + f) * 2U] = processed[f * channels];
+            output[(offset + f) * 2U + 1U] = processed[f * channels + (channels > 1U ? 1U : 0U)];
+        }
+        offset += count;
+    }
+    test_alloc::endTracking(); assert(test_alloc::count() == before);
+    return output;
+}
+
+void testOfficialMonoSpatialParametersProduceRealStereo() {
+    const std::array<std::pair<std::string, std::map<std::string, float>>, 4U> effects{{
+        {"auto_pan", {{"official_rate", 100.0f}, {"official_depth", 100.0f}, {"official_waveform", 0.0f}}},
+        {"stereo_enhance", {{"official_enhance", 100.0f}}},
+        {"panning_delay", {{"official_time", 5.0f}, {"official_feedback", 2.0f}, {"official_d_level", 0.0f}, {"official_e_level", 100.0f}}},
+        {"chorus", {{"official_rate", 70.0f}, {"official_depth", 100.0f}, {"official_d_level", 0.0f}, {"official_e_level", 100.0f}}},
+    }};
+    for (const auto& [effect, parameters] : effects) {
+        const auto mono = renderOfficialSpatialInput(effect, parameters, 1U, true);
+        const auto stereo = renderOfficialSpatialInput(effect, parameters, 2U, true);
+        assert(vectorDifferenceRms(mono, stereo, 0U) < 1.0e-7);
+        double sideEnergy = 0.0;
+        for (std::size_t f = 2048U; f < mono.size() / 2U; ++f) {
+            const double side = mono[f * 2U] - mono[f * 2U + 1U]; sideEnergy += side * side;
+        }
+        assert(sideEnergy > 0.01); // Not merely advertised as stereo: actual L/R audio differs.
+        const auto legacy = renderOfficialSpatialInput(effect, {}, 1U, false);
+        const auto tempoOnly = renderOfficialSpatialInput(effect,
+            {{"official_bpm", 120.0f}, {"official_quarter_notes_per_measure", 4.0f}}, 1U, false);
+        assert(legacy == tempoOnly); // Auxiliary transport broadcasts retain legacy mono PCM.
+    }
+    const auto enhanced = renderOfficialSpatialInput("stereo_enhance", {{"official_enhance", 100.0f}}, 1U, true);
+    const auto unenhanced = renderOfficialSpatialInput("stereo_enhance", {{"official_enhance", 0.0f}}, 1U, true);
+    assert(vectorDifferenceRms(enhanced, unenhanced, 2048U) > 0.001);
+    const auto pan = renderOfficialSpatialInput("auto_pan", effects[0U].second, 1U, true);
+    for (const auto& edit : {std::pair<std::string, float>{"official_depth", 0.0f},
+                            {"official_rate", 0.0f}, {"official_waveform", 100.0f}}) {
+        auto parameters = effects[0U].second; parameters[edit.first] = edit.second;
+        const auto changed = renderOfficialSpatialInput("auto_pan", parameters, 1U, true);
+        assert(vectorDifferenceRms(pan, changed, 2048U) > 0.001);
+        if (edit.first == "official_depth") for (std::size_t f = 2048U; f < changed.size() / 2U; ++f)
+            assert(std::abs(changed[f * 2U] - changed[f * 2U + 1U]) < 1.0e-7f);
+    }
+    auto panProcessor = createNativeEffectProcessor("auto_pan"); assert(panProcessor && panProcessor->prepare(48000U));
+    assert(!panProcessor->officialParametersActive());
+    assert(panProcessor->setParameter("official_bpm", 120.0f)); assert(!panProcessor->officialParametersActive());
+    assert(!panProcessor->setParameter("official_rate", -3.14159f)); assert(!panProcessor->officialParametersActive());
+    assert(panProcessor->setParameter("official_depth", 100.0f)); assert(panProcessor->officialParametersActive());
+    auto roll = createNativeEffectProcessor("roll"); assert(roll && roll->prepare(48000U));
+    assert(!roll->officialParametersActive()); assert(roll->setParameter("official_variant", 1.0f));
+    assert(roll->officialParametersActive());
+}
+
+void testVocoderMonoInputRetainsStereoCarrierAndRejectsUnroutedControls() {
+    NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 1U);
+    std::string error;
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vocoder", {}, false, error, NativeCatalogFxPath::Input));
+    for (float value = 0.0f; value <= 5.0f; value += 1.0f) {
+        assert(!core.setNativeCatalogSlot(NativeEffectSlot::A, "vocoder",
+            {{"official_carrier", value}, {"official_balance", 100.0f}}, false, error, NativeCatalogFxPath::Input));
+        NativeAudioCoreTestAccess::prepareCarriers(core, 256U);
+        assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::NotRequested);
+    }
+    for (bool rightOnly : {false, true}) {
+        auto source = carrierSignal(4096U, 880.0f);
+        for (std::size_t f = 0U; f < 4096U; ++f) source[f * 2U + (rightOnly ? 0U : 1U)] = 0.0f;
+        NativeAudioCoreTestAccess::loadSourceLoop(core, source);
+        assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vocoder",
+            {{"official_carrier", 6.0f}, {"official_balance", 100.0f}}, false, error, NativeCatalogFxPath::Input, 0U, true));
+        auto stereoInput = carrierSignal(4096U, 220.0f);
+        std::vector<float> mono(4096U), external(4096U), reference(4096U);
+        for (std::size_t f = 0U; f < 4096U; ++f) {
+            mono[f] = stereoInput[f * 2U]; external[f] = source[f * 2U + (rightOnly ? 1U : 0U)];
+        }
+        NativeVocoderCore ref; assert(ref.prepare(48000U));
+        NativeVocoderConfig config; config.carrier = NativeVocoderCarrier::VoiceInput;
+        assert(ref.setConfig(config)); assert(ref.setParameter("official_tone", 0.0f));
+        assert(ref.setParameter("official_attack", 50.0f)); assert(ref.setParameter("official_mod_sens", 0.0f));
+        assert(ref.setParameter("official_balance", 100.0f));
+        assert(ref.process(mono.data(), external.data(), reference.data(), 4096U));
+        NativeAudioCoreTestAccess::prepareCarriers(core, 4096U);
+        unsigned int channels = 0U;
+        const auto* actual = NativeAudioCoreTestAccess::processInputFx(core, mono.data(), 4096U, &channels);
+        assert(actual && channels == 2U);
+        double energy = 0.0;
+        for (std::size_t f = 0U; f < 4096U; ++f) {
+            assert(actual[f * 2U + (rightOnly ? 0U : 1U)] == 0.0f);
+            assert(std::abs(actual[f * 2U + (rightOnly ? 1U : 0U)] - reference[f]) < 1.0e-7f);
+            energy += static_cast<double>(reference[f]) * reference[f];
+        }
+        assert(energy > 0.00001);
+        NativeAudioCoreTestAccess::setRunning(core, true);
+        assert(core.getStatus().nativeVocoderCarrierStatuses[0] == NativeVocoderCarrierStatus::Ready);
+        NativeAudioCoreTestAccess::splitInputCallback(core, mono.data(), 4097U);
+        assert(core.getStatus().nativeVocoderCarrierStatuses[0] == NativeVocoderCarrierStatus::BufferUnavailable);
+        NativeAudioCoreTestAccess::setRunning(core, false);
+        assert(core.getStatus().nativeVocoderCarrierStatuses[0] == NativeVocoderCarrierStatus::NotRequested);
+        assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "", {}, false, error, NativeCatalogFxPath::Input));
+        assert(core.getStatus().nativeVocoderCarrierStatuses[0] == NativeVocoderCarrierStatus::NotRequested);
+        NativeAudioCoreTestAccess::resetRuntime(core);
+        assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::NotRequested);
+    }
+    // A legacy-only mono vocoder must not be silently promoted by the new tap.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vocoder", {}, false, error, NativeCatalogFxPath::Input));
+    std::vector<float> mono(256U, 0.1f); unsigned int channels = 0U;
+    assert(NativeAudioCoreTestAccess::processInputFx(core, mono.data(), 256U, &channels)); assert(channels == 1U);
+}
+
+void testVocoderTrackCarrierLifecycleAndExplicitSilence() {
+    NativeAudioCore core; NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    std::string error;
+    // Another official field also opts into the documented TRACK 1 default.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vocoder", {{"official_balance", 100.0f}}, false, error, NativeCatalogFxPath::Input));
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    const auto input = carrierSignal(256U, 220.0f), source = carrierSignal(479U, 880.0f);
+    std::vector<float> output(512U), processed(512U);
+    const auto checkSilence = [&](NativeVocoderCarrierStatus expected) {
+        NativeAudioCoreTestAccess::prepareCarriers(core, 256U);
+        assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == expected);
+        const auto* wet = NativeAudioCoreTestAccess::processInputFx(core, input.data(), 256U);
+        assert(wet); std::copy(wet, wet + 512U, processed.begin());
+        assert(std::all_of(processed.begin(), processed.end(), [](float x) { return x == 0.0f; }));
+    };
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    checkSilence(NativeVocoderCarrierStatus::Empty);
+    NativeAudioCoreTestAccess::command(core, CommandType::Record);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    checkSilence(NativeVocoderCarrierStatus::UnsupportedRecording);
+    NativeAudioCoreTestAccess::command(core, CommandType::Clear);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    NativeAudioCoreTestAccess::loadSourceLoop(core, source);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::Ready);
+    NativeAudioCoreTestAccess::command(core, CommandType::StopRecordOrPlayback);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    checkSilence(NativeVocoderCarrierStatus::Stopped);
+    NativeAudioCoreTestAccess::command(core, CommandType::Play);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::Ready);
+    NativeAudioCoreTestAccess::command(core, CommandType::ToggleOverdub);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    checkSilence(NativeVocoderCarrierStatus::UnsupportedOverdubbing);
+    NativeAudioCoreTestAccess::command(core, CommandType::ToggleOverdub);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    NativeAudioCoreTestAccess::pinCarrierSource(core, 0U);
+    checkSilence(NativeVocoderCarrierStatus::HistoryPinned);
+    NativeAudioCoreTestAccess::pinCarrierSource(core, kNativeTrackCount);
+    NativePitchConfig pitch; pitch.enabled = true; pitch.trackId = 1U;
+    assert(core.setNativePitchConfig(pitch, error));
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    checkSilence(NativeVocoderCarrierStatus::UnsupportedPitchProcessing);
+    pitch.enabled = false; assert(core.setNativePitchConfig(pitch, error));
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    NativeAudioCoreTestAccess::prepareCarriers(core, 4097U);
+    assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::BufferUnavailable);
+    const auto* wet = NativeAudioCoreTestAccess::processInputFx(core, input.data(), 256U);
+        assert(wet); std::copy(wet, wet + 512U, processed.begin());
+    assert(std::all_of(processed.begin(), processed.end(), [](float x) { return x == 0.0f; }));
+    NativeAudioCoreTestAccess::command(core, CommandType::Clear);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    checkSilence(NativeVocoderCarrierStatus::Empty);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+    NativeAudioCoreTestAccess::restoreSourceLoop(core, source, 0U);
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    checkSilence(NativeVocoderCarrierStatus::Stopped);
+    NativeAudioCoreTestAccess::command(core, CommandType::Play);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::Ready);
+    // Prepare/restart retains the official source and BALANCE rather than resetting to a saw.
+    NativeAudioCoreTestAccess::setRunning(core, false);
+    NativeAudioCoreTestAccess::prepareSelectedCatalog(core);
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::Ready);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "vocoder", {}, false, error, NativeCatalogFxPath::Input, 0U, true));
+    NativeAudioCoreTestAccess::setRunning(core, true);
+    NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 256U);
+    assert(NativeAudioCoreTestAccess::carrierStatus(core, 0U) == NativeVocoderCarrierStatus::NotRequested);
+    NativeAudioCoreTestAccess::setRunning(core, false);
+}
+
 } // namespace
 
 int main() {
+    testOfficialMonoSpatialParametersProduceRealStereo();
+    testVocoderTrackCarriersUseSameBlockReadOnlyPlayback();
+    testVocoderTrackCarrierLifecycleAndExplicitSilence();
+    testVocoderMonoInputRetainsStereoCarrierAndRejectsUnroutedControls();
+    testOfficialSourceChunkInvariance();
+    testOfficialSourceReadheadsAndRestoration();
+    testOfficialVinylSustainedSpeedAndUnsupportedModes();
+    testParameterReplacementCannotAcknowledgeStaleState();
+    testVariantQueueUsesProspectiveBranch();
+    testOfficialControlsTraverseLiveHostQueue();
     testOscVocMidiUsesSelectedInputAndSharedTrackSlots();
     testPreampAudioRunsThroughInputAndTrackBanks();
     testTwistCatalogRoutingThroughInputAndSharedTrackSlots();
@@ -2002,7 +2595,7 @@ int main() {
 
     const auto* manualPanDescriptor = findNativeEffectDescriptor("manual_pan");
     assert(manualPanDescriptor != nullptr && manualPanDescriptor->sourceIndex == 30);
-    assert(!manualPanDescriptor->inputAvailable && manualPanDescriptor->trackAvailable);
+    assert(manualPanDescriptor->inputAvailable && manualPanDescriptor->trackAvailable);
     const std::map<std::string, float> manualPanParameters{{"position", -75.0f}};
     for (const auto slot : slots) {
         error.clear();
@@ -2014,16 +2607,47 @@ int main() {
         assert(manualPanTracks.nativeCatalogSlotEffectIds[slot] == "manual_pan");
         assert(!manualPanTracks.nativeCatalogSlotBypassed[slot]);
     }
-    for (const auto slot : slots) {
-        error.clear();
-        assert(!engine.setNativeCatalogSlot(slot, "manual_pan", manualPanParameters,
-            false, error, NativeCatalogFxPath::Input));
-        assert(error.find("not available on the requested input path") != std::string::npos);
+    NativeAudioCore monoPanEngine;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(monoPanEngine);
+    NativeAudioCoreTestAccess::setInputChannels(monoPanEngine, 1U);
+    const std::map<std::string, float> monoInputPanParameters{{"position", 100.0f}};
+    error.clear();
+    assert(monoPanEngine.setNativeCatalogSlot(NativeEffectSlot::A, "manual_pan", monoInputPanParameters,
+        false, error, NativeCatalogFxPath::Input));
+    const auto manualPanInput = monoPanEngine.getStatus();
+    assert(manualPanInput.nativeInputCatalogSlotEffectIds[0] == "manual_pan");
+    assert(!manualPanInput.nativeInputCatalogSlotBypassed[0]);
+    constexpr unsigned int monoPanFrames = 1024U;
+    std::array<float, monoPanFrames> monoPanSource{};
+    monoPanSource.fill(0.25f);
+    unsigned int processedInputChannels = 0U;
+    const float* pannedMono = NativeAudioCoreTestAccess::processInputFx(
+        monoPanEngine, monoPanSource.data(), monoPanFrames, &processedInputChannels);
+    assert(pannedMono != nullptr && processedInputChannels == 2U);
+    for (unsigned int frame = 960U; frame < monoPanFrames; ++frame) {
+        const std::size_t offset = static_cast<std::size_t>(frame) * 2U;
+        assert(std::fabs(pannedMono[offset]) < 1e-5f);
+        assert(std::fabs(pannedMono[offset + 1U] - 0.25f) < 1e-5f);
     }
-    const auto manualPanInputRejected = engine.getStatus();
-    for (std::size_t slot = 0U; slot < slots.size(); ++slot) {
-        assert(manualPanInputRejected.nativeCatalogSlotEffectIds[slot] == "manual_pan");
-        assert(manualPanInputRejected.nativeInputCatalogSlotEffectIds[slot] != "manual_pan");
+    NativeAudioCoreTestAccess::setRunning(monoPanEngine, true);
+    error.clear();
+    assert(NativeAudioCoreTestAccess::queueTrackCommand(monoPanEngine, CommandType::Record, 0U, error));
+    std::array<float, monoPanFrames * 2U> monitorOutput{};
+    assert(NativeAudioCoreTestAccess::callback(monoPanEngine, monoPanSource.data(),
+        monitorOutput.data(), monoPanFrames) == 0);
+    error.clear();
+    assert(NativeAudioCoreTestAccess::queueTrackCommand(
+        monoPanEngine, CommandType::StopRecordOrPlayback, 0U, error));
+    assert(NativeAudioCoreTestAccess::callback(monoPanEngine, monoPanSource.data(),
+        monitorOutput.data(), monoPanFrames) == 0);
+    std::vector<float> recordedStereo(monoPanFrames * 2U);
+    std::size_t recordedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyTrackStereo(monoPanEngine, 0U, recordedStereo.data(),
+        monoPanFrames, recordedFrames));
+    assert(recordedFrames == monoPanFrames);
+    for (unsigned int frame = 0U; frame < monoPanFrames; ++frame) {
+        assert(std::fabs(recordedStereo[static_cast<std::size_t>(frame) * 2U]) < 1e-5f);
+        assert(std::fabs(recordedStereo[static_cast<std::size_t>(frame) * 2U + 1U] - 0.25f) < 1e-5f);
     }
     error.clear();
     assert(!engine.setNativeCatalogSlot(NativeEffectSlot::A, "manual_pan",

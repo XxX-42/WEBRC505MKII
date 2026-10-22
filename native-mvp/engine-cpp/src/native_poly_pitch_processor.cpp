@@ -103,6 +103,17 @@ bool NativePolyPitchProcessor::setSemitones(float semitones) noexcept {
     return true;
 }
 
+bool NativePolyPitchProcessor::setOfficialBendSemitones(float semitones) noexcept {
+    if (!prepared_ || !std::isfinite(semitones) || semitones < -36.0f || semitones > 48.0f) return false;
+    try {
+        engine_.setTransposeSemitones(semitones, 8000.0f / static_cast<float>(sampleRate_));
+    } catch (...) {
+        return false;
+    }
+    targetSemitones_ = semitones;
+    return true;
+}
+
 bool NativePolyPitchProcessor::setFormantSemitones(float semitones, bool compensatePitch) noexcept {
     if (!prepared_ || !validFormantSemitones(semitones)) return false;
     try {

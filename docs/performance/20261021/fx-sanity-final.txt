@@ -1,0 +1,54 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+{"completedEffect":"lpf","casesSoFar":36}
+{"completedEffect":"bpf","casesSoFar":72}
+{"completedEffect":"hpf","casesSoFar":108}
+{"completedEffect":"phaser","casesSoFar":144}
+{"completedEffect":"flanger","casesSoFar":180}
+{"completedEffect":"synth","casesSoFar":216}
+{"completedEffect":"lo-fi","casesSoFar":252}
+{"completedEffect":"radio","casesSoFar":288}
+{"completedEffect":"ring-mod","casesSoFar":324}
+{"completedEffect":"g2b","casesSoFar":360}
+{"completedEffect":"sustainer","casesSoFar":396}
+{"completedEffect":"slow-gear","casesSoFar":432}
+{"completedEffect":"electric","casesSoFar":468}
+{"completedEffect":"vocoder","casesSoFar":504}
+{"completedEffect":"osc-voc-m","casesSoFar":540}
+{"completedEffect":"osc-bot","casesSoFar":576}
+{"completedEffect":"preamp","casesSoFar":612}
+{"completedEffect":"dist","casesSoFar":648}
+{"completedEffect":"dynamics","casesSoFar":684}
+{"completedEffect":"eq","casesSoFar":720}
+{"completedEffect":"isolator","casesSoFar":756}
+{"completedEffect":"auto-pan","casesSoFar":792}
+{"completedEffect":"manual-pan","casesSoFar":828}
+{"completedEffect":"stereo-enhance","casesSoFar":864}
+{"completedEffect":"tremolo","casesSoFar":900}
+{"completedEffect":"vibrato","casesSoFar":936}
+{"completedEffect":"pattern-slicer","casesSoFar":972}
+{"completedEffect":"step-slicer","casesSoFar":1008}
+{"completedEffect":"delay","casesSoFar":1044}
+{"completedEffect":"panning-delay","casesSoFar":1080}
+{"completedEffect":"reverse-delay","casesSoFar":1116}
+{"completedEffect":"mod-delay","casesSoFar":1152}
+{"completedEffect":"tape-echo","casesSoFar":1188}
+{"completedEffect":"granular-delay","casesSoFar":1224}
+{"completedEffect":"warp","casesSoFar":1260}
+{"completedEffect":"twist","casesSoFar":1296}
+{"completedEffect":"roll","casesSoFar":1332}
+{"completedEffect":"freeze","casesSoFar":1368}
+{"completedEffect":"chorus","casesSoFar":1404}
+{"completedEffect":"reverb","casesSoFar":1440}
+{"completedEffect":"gate-reverb","casesSoFar":1476}
+{"completedEffect":"reverse-reverb","casesSoFar":1512}
+{"completedEffect":"beat-scatter","casesSoFar":1548}
+{"completedEffect":"beat-repeat","casesSoFar":1584}
+{"completedEffect":"beat-shift","casesSoFar":1620}
+{"completedEffect":"vinyl-flick","casesSoFar":1656}
+{"status":"PASS_SOFTWARE_FINITE_AND_BYPASS_ONLY","effects":46,"cases":1656,"failures":0,"excluded":["auto-riff","transpose","pitch-bend","robot","hrm-manual","hrm-auto-m","octave"]}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

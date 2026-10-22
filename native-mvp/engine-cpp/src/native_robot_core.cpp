@@ -244,7 +244,15 @@ bool NativeRobotCore::applyRuntimeConfig(const Config& config) noexcept {
 bool NativeRobotCore::setPitchSemitones(float semitones) noexcept {
     Config updated = config_;
     updated.pitchSemitones = semitones;
+    if (!validConfig(updated)) return false;
+    fixedMidiNote_ = -1;
     return applyRuntimeConfig(updated);
+}
+
+bool NativeRobotCore::setFixedMidiNote(unsigned int note) noexcept {
+    if (note < 60U || note > 71U) return false;
+    fixedMidiNote_ = static_cast<int>(note);
+    return !prepared_ || updatePitchTarget();
 }
 
 bool NativeRobotCore::setFormantSemitones(float semitones) noexcept {
@@ -266,6 +274,8 @@ bool NativeRobotCore::setFormantPolicy(FormantPolicy policy) noexcept {
 bool NativeRobotCore::setPitchMode(PitchMode mode) noexcept {
     Config updated = config_;
     updated.pitchMode = mode;
+    if (!validConfig(updated)) return false;
+    fixedMidiNote_ = -1;
     return applyRuntimeConfig(updated);
 }
 
@@ -324,7 +334,10 @@ bool NativeRobotCore::updatePitchTarget() noexcept {
     wetActive_ = tracker_.voiced && sourceMidi >= 0.0f;
     float targetShift = 0.0f;
     if (wetActive_) {
-        if (config_.pitchMode == PitchMode::FixedShift) {
+        if (fixedMidiNote_ >= 0) {
+            targetMidiNote_ = fixedMidiNote_;
+            targetShift = static_cast<float>(fixedMidiNote_) - sourceMidi;
+        } else if (config_.pitchMode == PitchMode::FixedShift) {
             quantizedPitchTargetMidiNote_ = -1;
             targetShift = config_.pitchSemitones;
             targetMidiNote_ = static_cast<int>(std::lround(sourceMidi + targetShift));
@@ -338,7 +351,8 @@ bool NativeRobotCore::updatePitchTarget() noexcept {
             targetMidiNote_ = quantizedPitchTargetMidiNote_;
             targetShift = static_cast<float>(targetMidiNote_) - sourceMidi;
         }
-        targetShift = std::clamp(targetShift, -kMaximumPitchShift, kMaximumPitchShift);
+        targetShift = fixedMidiNote_ >= 0 ? std::clamp(targetShift, -36.0f, 48.0f)
+            : std::clamp(targetShift, -kMaximumPitchShift, kMaximumPitchShift);
         targetMidiNote_ = static_cast<int>(std::lround(sourceMidi + targetShift));
         if (config_.pitchMode == PitchMode::NearestSemitone) {
             quantizedPitchTargetMidiNote_ = targetMidiNote_;
@@ -348,7 +362,8 @@ bool NativeRobotCore::updatePitchTarget() noexcept {
     }
 
     if (std::fabs(pitchProcessor_.semitones() - targetShift) > 0.0001f &&
-        !pitchProcessor_.setSemitones(targetShift)) {
+        !(fixedMidiNote_ >= 0 ? pitchProcessor_.setOfficialBendSemitones(targetShift)
+                             : pitchProcessor_.setSemitones(targetShift))) {
         return false;
     }
     const float psolaShift = std::clamp(targetShift, -kMaximumPsolaShift, kMaximumPsolaShift);

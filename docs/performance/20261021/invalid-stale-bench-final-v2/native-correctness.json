@@ -1,0 +1,26 @@
+{
+  "baselineRevision": "dd7dbea",
+  "sameHarness": true,
+  "candidateSourceManifest": "native-source-sha256.json",
+  "probes": [
+    {
+      "baselinePcmSha256": "0335262669f2b74ef2e240627d3467b30fd4eb553d32c26647dd1cb4c03ade70",
+      "finalPcmSha256": "0335262669f2b74ef2e240627d3467b30fd4eb553d32c26647dd1cb4c03ade70",
+      "exact": true
+    },
+    {
+      "baselinePcmSha256": "3ddf2497488033b4ca546a934916eb145d88a3bee706b799239a32ac2b6b26bf",
+      "finalPcmSha256": "3ddf2497488033b4ca546a934916eb145d88a3bee706b799239a32ac2b6b26bf",
+      "exact": true
+    }
+  ],
+  "binaries": {
+    "native_preamp_ab_probe": "a1330694a10a80ea7b892146e742d1e2097f6a0221f5fa350b217950e84f2472",
+    "native_catalog_ab_probe": "f8642f91cfaab4c92d8495ecf7de736a98d5bc25f7d14dd54fed48a1deb9ffab",
+    "native_performance_matrix": "3d3cf5a87e2c3b8686b14d110ae53a22d03bf9ad7995bbc7fdfdc0fd54bc4d9c",
+    "native_performance_soak": "4f4e743fe0d759b02f8dc7313019e2e337843fac30e62145fba30428963c4fed"
+  },
+  "edgeAndAutomationEvidence": "../native-groups-abi-correctness.json",
+  "unitTests": "46/46 PASS; native-tests.txt",
+  "http": "PASS original suite assertions; native-http.txt; synthetic fake callback source, real same-engine HTTP server; no recovery branch exercised"
+}

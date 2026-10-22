@@ -1,0 +1,22 @@
+[
+  {
+    "case": "header",
+    "status": "PASS",
+    "rejection": "Build manifest header SHA mismatch"
+  },
+  {
+    "case": "unverified",
+    "status": "PASS",
+    "rejection": "Build manifest is not verified"
+  },
+  {
+    "case": "dependency",
+    "status": "PASS",
+    "rejection": "Build manifest dependency SHA mismatch: /workspace/scratch/2230ee2a4571/rc505-gain-recovery/native-mvp/engine-cpp/tests/native_performance_matrix.cpp"
+  },
+  {
+    "case": "unverified round1 remains false; verified candidate true",
+    "status": "PASS",
+    "scope": "Stub callback payload for metadata only, not performance evidence"
+  }
+]

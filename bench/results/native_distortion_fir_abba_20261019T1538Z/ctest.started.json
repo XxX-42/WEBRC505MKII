@@ -1,0 +1,1 @@
+{"startedUtc":"2026-10-19T15:45:53Z","commit":"d668a64aa895de6723a3ca05c4d346d5c06c0da3","buildType":"Release","command":"/tmp/rc505-cmake-tools/cmake/data/bin/ctest --test-dir /tmp/rc505-native-profiler-uninstrumented-0ffe10c --output-on-failure --parallel 1"}

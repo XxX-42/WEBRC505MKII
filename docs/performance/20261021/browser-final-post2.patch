@@ -1,0 +1,23 @@
+--- a/src/audio/fx/dsp/BrowserFxDspCore.ts
++++ b/src/audio/fx/dsp/BrowserFxDspCore.ts
+@@ -3623,14 +3623,18 @@
+       outputSum += dampedState * (line % 2 === 0 ? 1 : -1);
+     }
+ 
++    // These are invariant across the eight lines; preserve the original
++    // multiply order so feedback, decay, and stereo remain sample-identical.
++    const householderSum = HOUSEHOLDER_ROW_SUM_FACTOR * feedbackSum;
++    const injectedInput = input * FDN_INJECTION_GAIN;
+     for (let line = 0; line < 8; line += 1) {
+       const index = lineStart + line;
+       const buffer = this.fdnBuffers[index];
+       if (!buffer) continue;
+       const feedback = this.delayReadScratch[index] ?? 0;
+-      const householderOutput = feedback - HOUSEHOLDER_ROW_SUM_FACTOR * feedbackSum;
++      const householderOutput = feedback - householderSum;
+       const injectionSign = (line & 1) === 0 ? 1 : -1;
+-      let next = householderOutput + input * FDN_INJECTION_GAIN * injectionSign;
++      let next = householderOutput + injectedInput * injectionSign;
+       if (!Number.isFinite(next) || Math.abs(next) < MIN_STATE_MAGNITUDE) next = 0;
+       const writeIndex = this.fdnWriteIndices[index] ?? 0;
+       buffer[writeIndex] = next;

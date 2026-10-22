@@ -1,0 +1,411 @@
+{
+  "schema": "rc505-browser-cpu-functional-simulation-v1",
+  "status": "passed-functional-simulation",
+  "explicitlyNotEvidenceFor": [
+    "browser AudioWorklet execution",
+    "physical device audio",
+    "XRUN/dropout acceptance",
+    "P99/P99.9/deadline compliance",
+    "acoustic latency",
+    "whole-app CPU admission",
+    "30-minute hardware acceptance"
+  ],
+  "environment": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v24.19.0",
+    "sampleRate": 48000,
+    "channels": 2,
+    "blockPatternFrames": [
+      64,
+      96,
+      128,
+      192,
+      256
+    ],
+    "actualElapsedSeconds": 317.385783636
+  },
+  "workload": {
+    "simulatedAudioSeconds": 1800,
+    "simulatedFrames": 86400000,
+    "callbackBlocks": 586958,
+    "fiveTrackPlaybackMix": true,
+    "inputFxBank": [
+      "lpf",
+      "distortion",
+      "vibrato",
+      "sustainer"
+    ],
+    "trackFxBank": [
+      "chorus",
+      "reverb",
+      "delay",
+      "auto-pan"
+    ],
+    "pitch": {
+      "mode": "LIVE_MONO clean-room YIN/PSOLA",
+      "semitones": 5,
+      "minimumFrequencyHz": 110,
+      "maximumFrequencyHz": 700,
+      "latencySamples": 1585
+    },
+    "rhythm": {
+      "patternId": "rhythm-001",
+      "patternName": "SIDE STICK",
+      "kitIndex": 1,
+      "voicesPeak": 2,
+      "voicesStolen": 0
+    },
+    "recording": {
+      "framesCaptured": 86400000,
+      "chunks": 5274,
+      "droppedFrames": 0,
+      "sequenceError": false
+    },
+    "overdub": {
+      "stopAcknowledged": true,
+      "processorOverflowFrames": 0,
+      "patches": 586958,
+      "patchFrames": 86400000,
+      "overflowFrames": 0,
+      "sequenceError": false
+    },
+    "parameterAutomationUpdates": 181
+  },
+  "functionalChecks": {
+    "activePathGate": true,
+    "internalFiniteGate": true,
+    "internalNonFinite": [
+      {
+        "algorithm": "lpf",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "distortion",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "vibrato",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "sustainer",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "chorus",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "reverb",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "delay",
+        "input": 0,
+        "output": 0
+      },
+      {
+        "algorithm": "auto-pan",
+        "input": 0,
+        "output": 0
+      }
+    ],
+    "nonFiniteOutputSamples": 0,
+    "outputPeak": 0.9424946308135986,
+    "checksum": 9108046.708897654,
+    "rhythmProgressCheckpoints": 29
+  },
+  "cpuUsageMicros": {
+    "user": 317618016,
+    "system": 183136
+  },
+  "simulatedPortTraffic": {
+    "byMessageType": {
+      "RECORD_CONFIGURED": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      },
+      "OVERDUB_PATCH": {
+        "messages": 586958,
+        "typedArrayPayloadBytes": 115400638464
+      },
+      "RECORD_CHUNK": {
+        "messages": 5274,
+        "typedArrayPayloadBytes": 691273728
+      },
+      "RECORD_COMPLETE": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      },
+      "OVERDUB_STOPPED": {
+        "messages": 1,
+        "typedArrayPayloadBytes": 0
+      }
+    },
+    "scope": "Production source postMessage calls into same-process mock port; typed-array payload bytes, not actual browser IPC/structured-clone wire bytes."
+  },
+  "resourceCheckpoints": [
+    {
+      "simulatedSeconds": 60.00066666666667,
+      "wallTimeMs": 10985.436078,
+      "rss": 305983488,
+      "heapUsed": 121269528,
+      "cpuUserMicros": 12612550,
+      "cpuSystemMicros": 231317
+    },
+    {
+      "simulatedSeconds": 120.002,
+      "wallTimeMs": 21507.278489999997,
+      "rss": 306880512,
+      "heapUsed": 76036360,
+      "cpuUserMicros": 23145080,
+      "cpuSystemMicros": 241318
+    },
+    {
+      "simulatedSeconds": 180.004,
+      "wallTimeMs": 31677.575252,
+      "rss": 306880512,
+      "heapUsed": 91588992,
+      "cpuUserMicros": 33310841,
+      "cpuSystemMicros": 250526
+    },
+    {
+      "simulatedSeconds": 240.00733333333332,
+      "wallTimeMs": 42474.95091,
+      "rss": 306880512,
+      "heapUsed": 99969920,
+      "cpuUserMicros": 44102904,
+      "cpuSystemMicros": 256143
+    },
+    {
+      "simulatedSeconds": 300.012,
+      "wallTimeMs": 53401.831399,
+      "rss": 306880512,
+      "heapUsed": 123690136,
+      "cpuUserMicros": 55024301,
+      "cpuSystemMicros": 260740
+    },
+    {
+      "simulatedSeconds": 360.0126666666667,
+      "wallTimeMs": 64465.290208,
+      "rss": 306880512,
+      "heapUsed": 139503200,
+      "cpuUserMicros": 66088823,
+      "cpuSystemMicros": 265926
+    },
+    {
+      "simulatedSeconds": 420.014,
+      "wallTimeMs": 75685.774706,
+      "rss": 307589120,
+      "heapUsed": 93820952,
+      "cpuUserMicros": 77338101,
+      "cpuSystemMicros": 270818
+    },
+    {
+      "simulatedSeconds": 480.016,
+      "wallTimeMs": 86218.782985,
+      "rss": 307589120,
+      "heapUsed": 101879760,
+      "cpuUserMicros": 87870803,
+      "cpuSystemMicros": 274258
+    },
+    {
+      "simulatedSeconds": 540.0193333333333,
+      "wallTimeMs": 96943.65664,
+      "rss": 307589120,
+      "heapUsed": 125401792,
+      "cpuUserMicros": 98582776,
+      "cpuSystemMicros": 280966
+    },
+    {
+      "simulatedSeconds": 600.024,
+      "wallTimeMs": 107928.29469899999,
+      "rss": 307589120,
+      "heapUsed": 74441328,
+      "cpuUserMicros": 109563223,
+      "cpuSystemMicros": 285727
+    },
+    {
+      "simulatedSeconds": 660.0246666666667,
+      "wallTimeMs": 118406.38872199999,
+      "rss": 307589120,
+      "heapUsed": 89911384,
+      "cpuUserMicros": 120043681,
+      "cpuSystemMicros": 285727
+    },
+    {
+      "simulatedSeconds": 720.026,
+      "wallTimeMs": 128494.584255,
+      "rss": 307589120,
+      "heapUsed": 97940480,
+      "cpuUserMicros": 130126491,
+      "cpuSystemMicros": 293825
+    },
+    {
+      "simulatedSeconds": 780.028,
+      "wallTimeMs": 138895.00411500002,
+      "rss": 307589120,
+      "heapUsed": 121345040,
+      "cpuUserMicros": 140529106,
+      "cpuSystemMicros": 293825
+    },
+    {
+      "simulatedSeconds": 840.0313333333334,
+      "wallTimeMs": 150149.01446,
+      "rss": 307589120,
+      "heapUsed": 137444480,
+      "cpuUserMicros": 151779576,
+      "cpuSystemMicros": 299243
+    },
+    {
+      "simulatedSeconds": 900.036,
+      "wallTimeMs": 161243.092355,
+      "rss": 307589120,
+      "heapUsed": 86417520,
+      "cpuUserMicros": 162875106,
+      "cpuSystemMicros": 299833
+    },
+    {
+      "simulatedSeconds": 960.0366666666666,
+      "wallTimeMs": 171248.53291100002,
+      "rss": 307589120,
+      "heapUsed": 94398592,
+      "cpuUserMicros": 172881755,
+      "cpuSystemMicros": 300821
+    },
+    {
+      "simulatedSeconds": 1020.038,
+      "wallTimeMs": 181520.889674,
+      "rss": 307589120,
+      "heapUsed": 117631632,
+      "cpuUserMicros": 183149957,
+      "cpuSystemMicros": 304487
+    },
+    {
+      "simulatedSeconds": 1080.04,
+      "wallTimeMs": 192198.943493,
+      "rss": 307589120,
+      "heapUsed": 133729296,
+      "cpuUserMicros": 193814464,
+      "cpuSystemMicros": 320159
+    },
+    {
+      "simulatedSeconds": 1140.0433333333333,
+      "wallTimeMs": 204053.483652,
+      "rss": 307589120,
+      "heapUsed": 82539592,
+      "cpuUserMicros": 205663339,
+      "cpuSystemMicros": 324246
+    },
+    {
+      "simulatedSeconds": 1200.048,
+      "wallTimeMs": 214903.266803,
+      "rss": 307720192,
+      "heapUsed": 90904008,
+      "cpuUserMicros": 216505635,
+      "cpuSystemMicros": 332218
+    },
+    {
+      "simulatedSeconds": 1260.0486666666666,
+      "wallTimeMs": 225472.876598,
+      "rss": 307720192,
+      "heapUsed": 113996624,
+      "cpuUserMicros": 227076948,
+      "cpuSystemMicros": 336179
+    },
+    {
+      "simulatedSeconds": 1320.05,
+      "wallTimeMs": 235691.02867600002,
+      "rss": 307720192,
+      "heapUsed": 129929720,
+      "cpuUserMicros": 237288745,
+      "cpuSystemMicros": 346535
+    },
+    {
+      "simulatedSeconds": 1380.052,
+      "wallTimeMs": 245423.404044,
+      "rss": 307720192,
+      "heapUsed": 78292136,
+      "cpuUserMicros": 247015598,
+      "cpuSystemMicros": 354220
+    },
+    {
+      "simulatedSeconds": 1440.0553333333332,
+      "wallTimeMs": 254472.746748,
+      "rss": 307720192,
+      "heapUsed": 86539280,
+      "cpuUserMicros": 256061916,
+      "cpuSystemMicros": 366361
+    },
+    {
+      "simulatedSeconds": 1500.06,
+      "wallTimeMs": 264662.999142,
+      "rss": 307720192,
+      "heapUsed": 109924448,
+      "cpuUserMicros": 266254072,
+      "cpuSystemMicros": 366361
+    },
+    {
+      "simulatedSeconds": 1560.0606666666667,
+      "wallTimeMs": 275338.085882,
+      "rss": 307720192,
+      "heapUsed": 125588928,
+      "cpuUserMicros": 276924215,
+      "cpuSystemMicros": 374503
+    },
+    {
+      "simulatedSeconds": 1620.062,
+      "wallTimeMs": 285987.08252299996,
+      "rss": 307720192,
+      "heapUsed": 141009104,
+      "cpuUserMicros": 287574165,
+      "cpuSystemMicros": 374836
+    },
+    {
+      "simulatedSeconds": 1680.064,
+      "wallTimeMs": 296560.313651,
+      "rss": 307720192,
+      "heapUsed": 81921704,
+      "cpuUserMicros": 298150003,
+      "cpuSystemMicros": 374974
+    },
+    {
+      "simulatedSeconds": 1740.0673333333334,
+      "wallTimeMs": 307063.72422599996,
+      "rss": 307720192,
+      "heapUsed": 105329208,
+      "cpuUserMicros": 308653191,
+      "cpuSystemMicros": 379241
+    }
+  ],
+  "unavailableMetrics": {
+    "browserCallbackPercentiles": null,
+    "hardwareXruns": null,
+    "mainThreadLongTasks": null,
+    "workletAllocations": null,
+    "actualIpcBytes": null,
+    "gcPauseMs": null,
+    "reason": "Node-hosted synchronous simulation; not browser/driver instrumentation. Resource checkpoints are host process snapshots only."
+  },
+  "memoryBytes": {
+    "startRss": 230744064,
+    "endRss": 307720192,
+    "startHeapUsed": 100501424,
+    "endHeapUsed": 115735584,
+    "processLifetimePeakRss": 310812672,
+    "peakScope": "OS process lifetime high-water RSS, including harness/startup; not audio-worklet-only memory"
+  },
+  "notes": [
+    "Loop data, input, rhythm, and kit timbres are synthetic and clean-room; this is a software simulation only.",
+    "The workload executes production BrowserFxDspCore, LiveMonoPitchProcessor, RhythmWorkletCore, and source recording/overdub AudioWorklet processor code in a Node VM with a same-process simulated MessagePort.",
+    "The actual audio callback worklet thread, structured-clone timing, browser scheduling, UI, browser memory, and audio hardware are not exercised.",
+    "No callback timing percentile, XRUN, latency, fidelity or acoustic claim is reported."
+  ]
+}

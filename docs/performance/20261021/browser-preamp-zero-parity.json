@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "models": 5,
+  "rates": [
+    44100,
+    48000
+  ],
+  "stereoFrames": 120000,
+  "sourceHashes": [
+    "282599aef3b78183649b4269b6c140b35990cb02fa7f04bacdaaf7bb8c9455e9",
+    "e2f010c28e38e6b3823f834a85847d9986e71b64bfde1e882e958633a8c1fe03"
+  ],
+  "scope": "Object.is double-precision PREAMP outputs and history indices/cache flags through positive/negative zero silence, model ramps, reset, tiny deltas, channel-swapped tone restoration"
+}

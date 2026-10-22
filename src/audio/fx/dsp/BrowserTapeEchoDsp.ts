@@ -70,6 +70,8 @@ const TONE_ALPHA = 4;
 const MIX = 5;
 
 function clamp(value: number, minimum: number, maximum: number): number {
+  // Keep this module's original min/max order for exceptional or bounded values.
+  if (value !== 0 && value >= minimum && value <= maximum) return value;
   return Math.min(maximum, Math.max(minimum, value));
 }
 
@@ -90,13 +92,16 @@ function coefficientForTone(toneHz: number, sampleRate: number): number {
  */
 export class BrowserTapeEchoDsp {
   readonly sampleRate: number;
-  private readonly buffers: readonly [Float32Array, Float32Array];
+  private buffers: readonly [Float32Array, Float32Array];
   private readonly writeIndices = new Int32Array(2);
   private readonly phases = new Float64Array(4);
   private readonly feedbackToneStates = new Float64Array(2);
   private readonly reproToneStates = new Float64Array(2);
   private readonly previousRecordInputs = new Float64Array(2);
   private readonly previousAdAaInputs = new Float64Array(2);
+  private readonly previousPrimitive = new Float64Array(2);
+  private readonly primitiveSaturation = new Float64Array([Number.NaN, Number.NaN]);
+  private readonly primitiveValid = new Uint8Array(2);
   private readonly hissLowStates = new Float64Array(2);
   private readonly hissBandStates = new Float64Array(2);
   private readonly randomStates = new Uint32Array(2);
@@ -148,6 +153,27 @@ export class BrowserTapeEchoDsp {
   }
 
   /** Update smoothed targets; invalid individual controls are ignored. */
+  /** Official ECHO2 beat sync can exceed the legacy two-second numeric domain.
+   * Grow only on the message handler, preserving source history; never in process.
+   */
+  setOfficialTimeMs(timeMs: number, immediate = false): void {
+    if (!Number.isFinite(timeMs)) return;
+    const time = clamp(timeMs, 1, 6000);
+    const capacity = Math.ceil(3 * time * (1 + MAX_WOW_FRACTION) * this.sampleRate / 1000) + 8;
+    if (capacity > this.buffers[0].length) {
+      const grown: [Float32Array, Float32Array] = [new Float32Array(capacity), new Float32Array(capacity)];
+      for (let channel = 0; channel < 2; channel += 1) {
+        const old = this.buffers[channel]!;
+        const write = this.writeIndices[channel]!;
+        for (let frame = 0; frame < old.length; frame += 1) grown[channel]![frame] = old[(write + frame) % old.length]!;
+        this.writeIndices[channel] = old.length;
+      }
+      this.buffers = grown;
+    }
+    this.target[TIME] = time;
+    if (immediate) this.current[TIME] = time;
+  }
+
   setParameters(parameters: BrowserTapeEchoParameters): void {
     if (Number.isFinite(parameters.timeMs)) this.target[TIME] = clamp(parameters.timeMs as number, 20, 2000);
     if (Number.isFinite(parameters.feedback)) this.target[FEEDBACK] = clamp(parameters.feedback as number, 0, 95);
@@ -166,6 +192,8 @@ export class BrowserTapeEchoDsp {
     this.reproToneStates.fill(0);
     this.previousRecordInputs.fill(0);
     this.previousAdAaInputs.fill(0);
+    this.previousPrimitive.fill(0);
+    this.primitiveValid.fill(0);
     this.hissLowStates.fill(0);
     this.hissBandStates.fill(0);
     this.phases[0] = 0;
@@ -333,6 +361,7 @@ export class BrowserTapeEchoDsp {
     const boundedInput = finiteBounded(input + bandState * HISS_AMPLITUDE, MAX_INPUT_MAGNITUDE);
 
     if (saturation <= 1e-6) {
+      this.primitiveValid[channel] = 0;
       this.previousRecordInputs[channel] = boundedInput;
       this.previousAdAaInputs[channel] = boundedInput;
       return boundedInput;
@@ -350,8 +379,18 @@ export class BrowserTapeEchoDsp {
     const previous = this.previousAdAaInputs[channel] ?? 0;
     const delta = input - previous;
     this.previousAdAaInputs[channel] = input;
-    if (Math.abs(delta) < 1e-5) return this.softSaturator(0.5 * (input + previous), saturation);
-    return (this.saturationPrimitive(input, saturation) - this.saturationPrimitive(previous, saturation)) / delta;
+    if (Math.abs(delta) < 1e-5) {
+      this.primitiveValid[channel] = 0;
+      return this.softSaturator(0.5 * (input + previous), saturation);
+    }
+    const currentPrimitive = this.saturationPrimitive(input, saturation);
+    const previousPrimitive = this.primitiveValid[channel] && this.primitiveSaturation[channel] === saturation
+      ? this.previousPrimitive[channel]!
+      : this.saturationPrimitive(previous, saturation);
+    this.previousPrimitive[channel] = currentPrimitive;
+    this.primitiveSaturation[channel] = saturation;
+    this.primitiveValid[channel] = 1;
+    return (currentPrimitive - previousPrimitive) / delta;
   }
 
   private softSaturator(input: number, saturation: number): number {
@@ -378,3 +417,6 @@ export class BrowserTapeEchoDsp {
     return (state / 0x7fffffff) - 1;
   }
 }
+
+// Exact numerical contract exercised by shared regression cases.
+export { clamp as clampTapeEchoValue };

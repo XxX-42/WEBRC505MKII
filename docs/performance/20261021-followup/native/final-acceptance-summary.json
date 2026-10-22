@@ -1,0 +1,21 @@
+{
+  "cells": 216,
+  "functionalPass": 216,
+  "performancePass": 168,
+  "performanceFail": 48,
+  "failureCountsByFxMode": {
+    "1": 39,
+    "0": 3,
+    "2": 6
+  },
+  "failureCountsByTracks": {
+    "1": 4,
+    "5": 44
+  },
+  "trackedCallbackAllocations": 0,
+  "supplementCells": 6,
+  "supplementPerformanceFail": 6,
+  "performanceCriteria": "p99 < 0.5 * callback period AND max < 0.8 * callback period AND cpuBudgetExceedances == 0",
+  "physicalXruns": null,
+  "crossRunComparison": "Fresh acceptance, not paired evidence of regression relative to old failure counts"
+}

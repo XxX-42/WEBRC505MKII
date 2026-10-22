@@ -12,6 +12,7 @@ export class FXChain {
     public filter: FilterFX;
     public delay: DelayFX;
     public reverb: ReverbFX;
+    private disposed = false;
 
     constructor(context: AudioContext) {
         this.input = context.createGain();
@@ -35,6 +36,18 @@ export class FXChain {
         this.filter.setBypass(true);
         this.delay.setBypass(true);
         this.reverb.setBypass(true);
+    }
+
+    /** Disconnect the complete legacy insert chain when its owning track is retired. */
+    public dispose(): void {
+        if (this.disposed) return;
+        this.disposed = true;
+        this.compressor.dispose();
+        this.filter.dispose();
+        this.delay.dispose();
+        this.reverb.dispose();
+        this.input.disconnect();
+        this.output.disconnect();
     }
 
     // Unified Control Method

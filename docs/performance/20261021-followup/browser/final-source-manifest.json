@@ -1,0 +1,12 @@
+{
+  "files": {
+    "src/audio/fx/dsp/BrowserFxDspCore.ts": "b6aba95c4345240b8c4fab9fa1cad417948604783decbe131751810451e30a0b",
+    "public/worklets/fx-processor.js": "ef9eee02f79425b2c2b3dbb68c64e70638896c449a8294c3e69493a089d350ab",
+    "bench/experiments/verify_gate_cache_parity.mjs": "a3b21244790608abf76b713d66557cdf3f0c97e499ae40f94e83ebf7197db7e5",
+    "bench/experiments/verify_lfo_reuse_parity.mjs": "9a01d76273b8797752bc90d1458ad74775b46ea6af8a77a558c2c92cb1263fdd",
+    "bench/experiments/compare_lfo_reuse_confirm.mjs": "79860ad4a4c3b19298303195ee33de06f3ec017ab2595fc62935e5676ddc6a83",
+    "tests/unit/browser-gate-coefficient-cache.spec.ts": "291877bbf6ea9d470b9934c831ee6c15362da904b801d632f9cf2ccb54ef5025"
+  },
+  "bundleSnapshot": "lfo-candidate.js",
+  "scope": "Browser frozen batch. Full integrated regression owned by parent; no commit/push by Browser worker."
+}

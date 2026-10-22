@@ -74,6 +74,22 @@ export class EqualizerDsp {
     }
   }
 
+  /** Manual-domain path, deliberately not widening the legacy control contract. */
+  setOfficialParameters(parameters: EqualizerDspParameters, rampFrames = Math.round(this.sampleRate * DEFAULT_RAMP_SECONDS)): void {
+    const nyquist = this.sampleRate * 0.45;
+    if (Number.isFinite(parameters.lowGainDb)) this.lowGainDb = clamp(parameters.lowGainDb as number, -20, 20);
+    if (Number.isFinite(parameters.mid1FrequencyHz)) this.mid1FrequencyHz = clamp(parameters.mid1FrequencyHz as number, 20, Math.min(10000, nyquist));
+    if (Number.isFinite(parameters.mid1Q)) this.mid1Q = clamp(parameters.mid1Q as number, 0.5, 16);
+    if (Number.isFinite(parameters.mid1GainDb)) this.mid1GainDb = clamp(parameters.mid1GainDb as number, -20, 20);
+    if (Number.isFinite(parameters.mid2FrequencyHz)) this.mid2FrequencyHz = clamp(parameters.mid2FrequencyHz as number, 20, Math.min(10000, nyquist));
+    if (Number.isFinite(parameters.mid2Q)) this.mid2Q = clamp(parameters.mid2Q as number, 0.5, 16);
+    if (Number.isFinite(parameters.mid2GainDb)) this.mid2GainDb = clamp(parameters.mid2GainDb as number, -20, 20);
+    if (Number.isFinite(parameters.highGainDb)) this.highGainDb = clamp(parameters.highGainDb as number, -20, 20);
+    this.designTargets();
+    this.remainingRampFrames = Math.max(0, Math.floor(rampFrames));
+    if (this.remainingRampFrames === 0) { this.currentCoefficients.set(this.targetCoefficients); this.applyCoefficients(); }
+  }
+
   /** Mutates output state; safe for one stereo sample in an audio render loop. */
   process(inputLeft: number, inputRight: number): void {
     if (this.remainingRampFrames > 0) {

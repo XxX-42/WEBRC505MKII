@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "rc505_browser_fx_worklet_node_vm_relative_kernel_microbenchmark",
+  "generatedAtUtc": "2026-10-21T11:40:57.156Z",
+  "repositoryHead": null,
+  "nodeVersion": "v24.19.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "sourcePath": "public/worklets/fx-processor.js",
+  "sourceSha256": "c793d5a5543b3305260354161fc297dcf3ff35b624c6215ab6ef772b52322d66",
+  "sampleRateHz": 44100,
+  "blockFrames": 128,
+  "warmupBlocks": 64,
+  "measuredBlocksPerPass": 128,
+  "passes": 3,
+  "timingSource": "Node process.hrtime.bigint() around synchronous worklet process() calls in a Node VM; this is a relative kernel diagnostic only.",
+  "exclusions": [
+    "No browser AudioWorklet scheduler, AudioContext, cross-thread scheduling, or device endpoint.",
+    "No 20-slot graph or five Signalsmith LIVE_POLY processors.",
+    "One synthetic stereo signal and one processor instance per algorithm; not a representative audio-quality suite.",
+    "Results rank relative JavaScript DSP cost in this Node VM and do not pass or replace browser/native realtime acceptance."
+  ],
+  "results": [
+    {
+      "catalogName": "PREAMP",
+      "algorithm": "preamp",
+      "measuredBlocksPerPass": 128,
+      "passes": [
+        {
+          "elapsedMilliseconds": 139.873551,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.37649069818725583,
+          "nanosecondsPerInputFrame": 8537.204040527344
+        },
+        {
+          "elapsedMilliseconds": 135.126311,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.3637127877868652,
+          "nanosecondsPerInputFrame": 8247.455505371094
+        },
+        {
+          "elapsedMilliseconds": 146.312988,
+          "audioSeconds": 0.37151927437641724,
+          "realtimeRatio": 0.3938234113037109,
+          "nanosecondsPerInputFrame": 8930.236083984375
+        }
+      ],
+      "medianRealtimeRatio": 0.37649069818725583,
+      "finiteOutput": true,
+      "outputRms": 0.34329919110509777
+    }
+  ]
+}

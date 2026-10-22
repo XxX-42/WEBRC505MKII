@@ -7,6 +7,7 @@ vi.mock('../../src/audio/pitch/vendor/SignalsmithStretch.mjs', () => ({
 }));
 
 import { createLiveInputTransposeNode } from '../../src/audio/pitch/signalsmith';
+import { signalsmithLiveWasmSnapshot } from '../../src/audio/pitch/signalsmithWasmBudget';
 
 describe('Signalsmith LIVE_FX formant scheduling', () => {
   afterEach(() => nodeHarness.create.mockReset());
@@ -17,10 +18,20 @@ describe('Signalsmith LIVE_FX formant scheduling', () => {
       configure: vi.fn(async () => undefined),
       latency: vi.fn(async () => 0.024),
       schedule,
+      wasmHeapBytes: vi.fn(async () => 64 * 1024),
+      disposeWasmMemory: vi.fn(async () => 64 * 1024),
       disconnect: vi.fn(),
+      addEventListener: vi.fn(),
+      port: { close: vi.fn() },
     };
     nodeHarness.create.mockResolvedValue(vendorNode);
-    const context = { sampleRate: 48_000, currentTime: 1 } as unknown as BaseAudioContext;
+    const context = {
+      sampleRate: 48_000,
+      currentTime: 1,
+      state: 'running',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as BaseAudioContext;
     const node = await createLiveInputTransposeNode(context, { mode: 'LIVE_FX', channels: 2, semitones: 0 });
 
     await node.setPitch(0, 1.1, false, 0, 220, true);
@@ -52,5 +63,9 @@ describe('Signalsmith LIVE_FX formant scheduling', () => {
       formantCompensation: true,
       formantBaseHz: 220,
     }));
+
+    expect(signalsmithLiveWasmSnapshot(context).reservedBytes).toBe(20 * 64 * 1024);
+    await node.releaseWasmMemory();
+    expect(signalsmithLiveWasmSnapshot(context).reservedBytes).toBe(0);
   });
 });

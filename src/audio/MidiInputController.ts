@@ -167,6 +167,11 @@ export class MidiInputController {
     this.setState('disconnected');
   }
 
+  /** Release current held keys while retaining the granted MIDI connection. */
+  releaseHeldNotes(): void {
+    this.releaseAllHeldNotes();
+  }
+
   private attachAccess(access: MidiAccessLike): void {
     this.access = access;
     access.addEventListener('statechange', this.handleStateChange);

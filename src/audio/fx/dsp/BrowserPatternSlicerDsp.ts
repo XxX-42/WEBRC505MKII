@@ -1,3 +1,4 @@
+import { BROWSER_AUTHORED_SLICER_PATTERNS, BrowserOfficialPatternSlicerDsp, type BrowserOfficialPatternSlicerParameters } from './BrowserOfficialPatternSlicerDsp';
 export interface BrowserPatternSlicerParameters {
   bpm?: number;
   pattern?: number;
@@ -10,16 +11,7 @@ const RATE_OPTIONS = [0.25, 0.5, 1, 2, 4] as const;
 
 // Authored 16-step gate tables for the documented “preset step table”
 // behavior. These are functional clean-room patterns, not hardware presets.
-const PATTERNS: readonly (readonly number[])[] = [
-  [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
-  [1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0],
-  [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
-  [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-  [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-  [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
-  [1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0],
-  [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1],
-];
+const PATTERNS = BROWSER_AUTHORED_SLICER_PATTERNS;
 
 /**
  * Sample-clocked, tempo-synchronized rhythmic gate. Each 16-step table is
@@ -36,6 +28,7 @@ export class BrowserPatternSlicerDsp {
   boundaryCount = 0;
   lastBoundaryFrame = -1;
 
+  private official: BrowserOfficialPatternSlicerDsp | null = null;
   private currentBpm: number;
   private currentPattern: number;
   private currentRateBeats: number;
@@ -94,7 +87,13 @@ export class BrowserPatternSlicerDsp {
     };
   }
 
+  setOfficialParameters(parameters: BrowserOfficialPatternSlicerParameters): void {
+    this.official ??= new BrowserOfficialPatternSlicerDsp(this.sampleRate, { softwarePattern: this.pendingPattern });
+    this.official.setParameters(parameters);
+  }
+
   setParameters(parameters: BrowserPatternSlicerParameters): void {
+    if (Number.isFinite(parameters.pattern)) this.official?.setParameters({ softwarePattern: parameters.pattern });
     if (Number.isFinite(parameters.bpm)) this.pendingBpm = this.clampBpm(parameters.bpm as number);
     if (Number.isFinite(parameters.pattern)) this.pendingPattern = this.clampPattern(parameters.pattern as number);
     if (Number.isFinite(parameters.rateBeats)) this.pendingRateBeats = this.quantizeRate(parameters.rateBeats as number);
@@ -104,6 +103,10 @@ export class BrowserPatternSlicerDsp {
 
   /** Applies the raised-cosine gate directly to the stereo frame, with no allocations. */
   processSample(left: number, right: number): void {
+    if (this.official) {
+      this.official.processSample(left, right); this.wetLeft = this.official.wetLeft; this.wetRight = this.official.wetRight;
+      this.framesProcessed += 1; return;
+    }
     let gain = this.stepTargetGain;
     const edgeFrames = Math.min(this.stepFrames, Math.max(1, Math.round((this.currentEdgeMs * this.sampleRate) / 1000)));
     if (edgeFrames > 1 && this.stepElapsedFrames < edgeFrames && this.previousStepGain !== this.stepTargetGain) {
@@ -121,6 +124,7 @@ export class BrowserPatternSlicerDsp {
   }
 
   reset(): void {
+    this.official?.reset();
     this.currentBpm = this.pendingBpm;
     this.currentPattern = this.pendingPattern;
     this.currentRateBeats = this.pendingRateBeats;

@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "runId": "shared_input_stopframe_36node_a5bc3c9_20261019T1224Z",
+  "sourceCommit": "a5bc3c9376ba868ff0fb539b0b040b4ed203143e",
+  "benchmarkInstrumentationDirtyTree": true,
+  "runState": "failed",
+  "terminalReason": "Exact overdub capture failed under load: patch ranges had frame gaps and the worklet reported buffer overflow.",
+  "realWallMeasurementSeconds": 61.04115500000119,
+  "requestedMeasurementSeconds": 95,
+  "requestedSampleRateHz": 44100,
+  "actualContextSampleRateHz": 44100,
+  "browser": {
+    "executable": "/tmp/rc505-cft154-restore/extracted/chrome-headless-shell-linux64/chrome-headless-shell",
+    "version": "Google Chrome for Testing 154.0.8037.57",
+    "sandboxRequested": true
+  },
+  "profile": "full-runtime",
+  "topology": {
+    "initialWorkletNodes": 36,
+    "dynamicWorkletNodesAtFailure": 38,
+    "sharedInputCaptureEnabled": true,
+    "privateTrackFxActive": 20,
+    "livePolyTracksActive": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "inputFx": [
+      {
+        "slot": "A",
+        "type": "DSP LPF"
+      },
+      {
+        "slot": "B",
+        "type": "DIST"
+      },
+      {
+        "slot": "C",
+        "type": "VIBRATO"
+      },
+      {
+        "slot": "D",
+        "type": "SUSTAINER"
+      }
+    ],
+    "sharedTrackFx": [
+      {
+        "slot": "A",
+        "type": "CHORUS"
+      },
+      {
+        "slot": "B",
+        "type": "FDN8 REVERB"
+      },
+      {
+        "slot": "C",
+        "type": "DELAY"
+      },
+      {
+        "slot": "D",
+        "type": "AUTO PAN"
+      }
+    ],
+    "syntheticAudioContextWorkload": true,
+    "physicalAudioHardwareOrXRUNTested": false
+  },
+  "operationResults": [
+    {
+      "operation": "clear-record-stereo-live-poly-restore",
+      "trackId": 1,
+      "state": "completed",
+      "scheduledAtElapsedSeconds": 30,
+      "recordedFrames": 31743,
+      "recordCapture": {
+        "requestFrameR": 1435137,
+        "requestedStopFrameS": 1466880,
+        "framesCaptured": 31743,
+        "exactHalfOpenPcmRange": true,
+        "droppedFrames": 0,
+        "overflowEvents": 0
+      },
+      "error": null
+    },
+    {
+      "operation": "overdub-undo-redo",
+      "trackId": 1,
+      "state": "failed",
+      "scheduledAtElapsedSeconds": 60,
+      "recordedFrames": null,
+      "recordCapture": null,
+      "error": "Overdub R/S exact coverage and no-overflow checks failed; see preserved failure JSON."
+    }
+  ],
+  "overdub": {
+    "requestFrameR": 2701824,
+    "firstInputFrameF": 2702464,
+    "startupBackfillFrames": 640,
+    "requestedStopFrameS": 2718080,
+    "expectedFramesRToS": 16256,
+    "processorCallbackStartFrame": null,
+    "processorCallbackStartupDelayFrames": null,
+    "workletPatchMessages": 86,
+    "patchRangesContiguous": false,
+    "rawPatchFramesIncludingPostS": 13952,
+    "postSRawPatchFrames": 256,
+    "workletDroppedInputFrames": 2560,
+    "overflowBursts": 16,
+    "rawTerminalCallbackFrame": 2718464,
+    "terminalCallbackQuantumOvershootFrames": 384,
+    "ackReceivedFrame": 2718336,
+    "ackFrameDeltaFromS": 256,
+    "ackToMainThreadMs": 3.9300000071525574,
+    "appliedFramesAtStopBeforeRollback": 13824,
+    "appliedFramesAfterRollback": 13696,
+    "latestAppliedFrameExclusiveBeforeStop": 2718208,
+    "latestAppliedFrameExclusiveAfterStop": 2718080,
+    "alreadyAppliedPostSFramesRolledBack": 128,
+    "note": "The run failed because overflow and patch-range gaps violated exact [R,S) PCM. The processor terminal quantum and main-thread ACK latency are separate observations, not callback CPU timing."
+  },
+  "interpretation": {
+    "observed": "86 small patch messages (mostly 128 frames each), 2,560 dropped input frames across 16 overflow bursts, noncontiguous R/S patch ranges, and 128 already-applied post-S frames restored to S.",
+    "hypothesisForNextExperiment": "Per-callback partial patch emission may be creating excess transfer/message pressure on the 3-buffer recycle pool. This is a hypothesis, not yet validated as the cause.",
+    "productBehaviorConcern": "Current host records overflow as a diagnostic but this run showed the edit path did not yet reject/rollback the incomplete overdub.",
+    "nextGate": "Batch partial patches within a bounded capacity, preserve chronological gaps/overflow as failure, then rerun >=90 seconds at 30-second cadence before any 30-minute run."
+  },
+  "artifacts": [
+    "bench/results/shared_input_stopframe_36node_a5bc3c9_20261019T1224Z.failure.json",
+    "bench/results/shared_input_stopframe_36node_a5bc3c9_20261019T1224Z.progress.json",
+    "bench/results/shared_input_stopframe_36node_a5bc3c9_20261019T1224Z.status.json"
+  ]
+}

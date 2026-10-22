@@ -88,6 +88,7 @@ bool NativeFdn16ReverbProcessor::prepare(unsigned int sampleRate) noexcept {
     wetMix_.reset(config_.enabled ? config_.wetMix : 0.0f);
     rt60Seconds_.reset(config_.rt60Seconds);
     dampingCutoffHz_.reset(config_.dampingCutoffHz);
+    density_.reset(config_.density); injectionWeights_.fill(kHadamardScale);
     processedFrames_ = 0U;
     updateFeedbackAndDamping(rt60Seconds_.current(), dampingCutoffHz_.current());
     return true;
@@ -98,6 +99,7 @@ bool NativeFdn16ReverbProcessor::setConfig(
     std::uint64_t rampFrames
 ) noexcept {
     if (!std::isfinite(config.wetMix) || !std::isfinite(config.rt60Seconds) ||
+        !std::isfinite(config.density) || config.density < 0.0f || config.density > 1.0f ||
         !std::isfinite(config.dampingCutoffHz) || config.wetMix < 0.0f || config.wetMix > 1.0f ||
         config.rt60Seconds < 0.1f || config.rt60Seconds > 20.0f ||
         config.dampingCutoffHz < 500.0f || config.dampingCutoffHz > 20000.0f) {
@@ -105,6 +107,7 @@ bool NativeFdn16ReverbProcessor::setConfig(
     }
 
     config_ = config;
+    density_.setTarget(config.density, rampFrames);
     wetMix_.setTarget(config.enabled ? config.wetMix : 0.0f, rampFrames);
     rt60Seconds_.setTarget(config.rt60Seconds, rampFrames);
     dampingCutoffHz_.setTarget(config.dampingCutoffHz, rampFrames);
@@ -165,8 +168,16 @@ float NativeFdn16ReverbProcessor::processInPlace(
         const float wetMix = std::clamp(wetMix_.next(), 0.0f, 1.0f);
         const float rt60 = rt60Seconds_.next();
         const float cutoff = dampingCutoffHz_.next();
+        const float density = density_.next();
         if ((processedFrames_ % kControlUpdateInterval) == 0U) {
             updateFeedbackAndDamping(rt60, cutoff);
+            float energy = 0.0f;
+            for (std::size_t line = 0U; line < kLineCount; ++line) {
+                injectionWeights_[line] = std::clamp(2.0f + 14.0f * density - static_cast<float>(line), 0.0f, 1.0f);
+                energy += injectionWeights_[line] * injectionWeights_[line];
+            }
+            const float normalization = 1.0f / std::sqrt(energy);
+            for (auto& weight : injectionWeights_) weight *= normalization;
         }
         ++processedFrames_;
 
@@ -198,7 +209,7 @@ float NativeFdn16ReverbProcessor::processInPlace(
             const float outputLeftBasis = (line & 2U) == 0U ? 1.0f : -1.0f;
             const bool outputRightNegative = ((line & 1U) != 0U) != ((line & 2U) != 0U);
             const float outputRightBasis = outputRightNegative ? -1.0f : 1.0f;
-            injected[line] = kHadamardScale * (injectionLeft + (inputRightBasis * injectionRight));
+            injected[line] = injectionWeights_[line] * (injectionLeft + (inputRightBasis * injectionRight));
             wetLeft += static_cast<double>(sample) * static_cast<double>(outputLeftBasis * kHadamardScale);
             wetRight += static_cast<double>(sample) * static_cast<double>(outputRightBasis * kHadamardScale);
         }
@@ -239,6 +250,7 @@ void NativeFdn16ReverbProcessor::resetState() noexcept {
     wetMix_.reset(config_.enabled ? config_.wetMix : 0.0f);
     rt60Seconds_.reset(config_.rt60Seconds);
     dampingCutoffHz_.reset(config_.dampingCutoffHz);
+    density_.reset(config_.density); injectionWeights_.fill(kHadamardScale);
     processedFrames_ = 0U;
     updateFeedbackAndDamping(rt60Seconds_.current(), dampingCutoffHz_.current());
 }

@@ -171,7 +171,8 @@ bool NativeG2BProcessor::onPrepare() noexcept {
 bool NativeG2BProcessor::onSetParameter(
     std::string_view parameterId, float value, std::uint64_t rampFrames
 ) noexcept {
-    if (parameterId == "tracking_percent") trackingPercent_.setTarget(value, rampFrames);
+    if (parameterId == "official_balance") blendPercent_.setTarget(value, rampFrames);
+    else if (parameterId == "tracking_percent") trackingPercent_.setTarget(value, rampFrames);
     else if (parameterId == "blend_percent") blendPercent_.setTarget(value, rampFrames);
     else if (parameterId == "body_hz") bodyHz_.setTarget(value, rampFrames);
     else return false;

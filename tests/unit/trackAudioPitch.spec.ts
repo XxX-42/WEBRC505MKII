@@ -2,20 +2,41 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockAudioContext } from '../helpers/audioTestUtils';
 
 const pitchHarness = vi.hoisted(() => {
+  const connections = new Set<unknown>();
+  const port = { close: vi.fn() };
+  const releaseWasmMemory = vi.fn(async () => {
+    connections.clear();
+    port.close();
+  });
+  const connect = vi.fn((destination: unknown) => {
+    connections.add(destination);
+  });
+  const disconnect = vi.fn((...args: unknown[]) => {
+    if (args.length === 0) {
+      void releaseWasmMemory();
+      return;
+    }
+    if (!connections.delete(args[0])) {
+      const error = new Error('The requested AudioNode edge is not connected');
+      error.name = 'InvalidAccessError';
+      throw error;
+    }
+  });
   const node = {
     mode: 'LIVE_POLY' as const,
     latencySamples: 6_720,
     latencySeconds: 0.14,
     inputTime: 0,
-    connect: vi.fn(),
-    disconnect: vi.fn(),
+    connect,
+    disconnect,
+    releaseWasmMemory,
     loadBuffer: vi.fn(async () => 1),
     clearBuffers: vi.fn(async () => undefined),
     scheduleLoop: vi.fn(async () => undefined),
     setPitch: vi.fn(async () => undefined),
     startProcessing: vi.fn(async () => undefined),
     stopProcessing: vi.fn(async () => undefined),
-    port: { close: vi.fn() },
+    port,
   };
   const monoNode = {
     latencySamples: 2_206,
@@ -31,6 +52,7 @@ const pitchHarness = vi.hoisted(() => {
     monoNode,
     createLivePolyPitchNode: vi.fn(async () => node),
     createLiveMonoPitchNode: vi.fn(async () => monoNode),
+    connections,
   };
 });
 
@@ -54,6 +76,7 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
       pitchHarness.node.setPitch,
       pitchHarness.node.startProcessing,
       pitchHarness.node.stopProcessing,
+      pitchHarness.node.releaseWasmMemory,
       pitchHarness.node.port.close,
       pitchHarness.monoNode.setPitch,
       pitchHarness.monoNode.connect,
@@ -64,6 +87,7 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     pitchHarness.node.latencySeconds = 0.14;
     pitchHarness.monoNode.latencySamples = 2_206;
     pitchHarness.monoNode.latencySeconds = 2_206 / 48_000;
+    pitchHarness.connections.clear();
   });
 
   async function makeTrack() {
@@ -240,6 +264,81 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     expect(trackAudio.livePolyPitchActive).toBe(false);
     expect(trackAudio.livePolyPitchFallbackReason).toContain('no longer than');
     expect(sourceNodes).toHaveLength(1);
+  });
+
+  it('reuses the LIVE_POLY node across stop and play without releasing its WASM lease', async () => {
+    const { trackAudio, Transport } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 3, playbackRate: 1 });
+    await trackAudio.play();
+    expect(trackAudio.livePolyPitchActive).toBe(true);
+
+    trackAudio.stop();
+    expect(trackAudio.livePolyPitchActive).toBe(false);
+    expect(pitchHarness.node.disconnect).toHaveBeenCalledWith(trackAudio.fxChain.input);
+    expect(pitchHarness.node.releaseWasmMemory).not.toHaveBeenCalled();
+    expect(pitchHarness.node.port.close).not.toHaveBeenCalled();
+
+    await trackAudio.play();
+    expect(trackAudio.livePolyPitchActive).toBe(true);
+    expect(pitchHarness.createLivePolyPitchNode).toHaveBeenCalledTimes(1);
+    expect(pitchHarness.node.loadBuffer).toHaveBeenCalledTimes(2);
+    expect(pitchHarness.node.scheduleLoop).toHaveBeenCalledTimes(2);
+    expect(pitchHarness.node.releaseWasmMemory).not.toHaveBeenCalled();
+    expect(pitchHarness.node.port.close).not.toHaveBeenCalled();
+  });
+
+  it('keeps LIVE_POLY leased while PCM undo and redo restart the selected loop', async () => {
+    const { context, trackAudio, Transport } = await makeTrack();
+    Transport.stop();
+    const original = trackAudio['audioBuffer']!;
+    const edited = context.createBuffer(1, 88_200, context.sampleRate);
+    trackAudio['audioBuffer'] = edited;
+    expect(trackAudio['retainPcmEdit'](trackAudio['capturePcmSnapshot'](original))).toBe(true);
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: -2, playbackRate: 1 });
+    await trackAudio.play();
+    expect(trackAudio.livePolyPitchActive).toBe(true);
+
+    expect(trackAudio.undo()).toBe(true);
+    await vi.waitFor(() => expect(pitchHarness.node.loadBuffer).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(trackAudio.livePolyPitchActive).toBe(true));
+    expect(pitchHarness.node.loadBuffer).toHaveBeenLastCalledWith([original.getChannelData(0)]);
+
+    expect(trackAudio.redo()).toBe(true);
+    await vi.waitFor(() => expect(pitchHarness.node.loadBuffer).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(trackAudio.livePolyPitchActive).toBe(true));
+    expect(pitchHarness.node.loadBuffer).toHaveBeenLastCalledWith([edited.getChannelData(0)]);
+    expect(pitchHarness.createLivePolyPitchNode).toHaveBeenCalledTimes(1);
+    expect(pitchHarness.node.releaseWasmMemory).not.toHaveBeenCalled();
+    expect(pitchHarness.node.port.close).not.toHaveBeenCalled();
+  });
+
+  it('releases the lease only when clearing/disposal truly retires LIVE_POLY', async () => {
+    const { trackAudio, Transport } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 1, playbackRate: 1 });
+    await trackAudio.play();
+    expect(trackAudio.livePolyPitchActive).toBe(true);
+
+    expect(trackAudio.clear()).toBe(true);
+    await vi.waitFor(() => expect(pitchHarness.node.releaseWasmMemory).toHaveBeenCalledTimes(1));
+    expect(pitchHarness.node.port.close).toHaveBeenCalledTimes(1);
+    expect(pitchHarness.node.disconnect).toHaveBeenCalledWith(trackAudio.fxChain.input);
+    expect(pitchHarness.node.disconnect).not.toHaveBeenCalledWith();
+  });
+
+  it('surfaces unexpected graph-disconnect failures while ignoring only absent edges', async () => {
+    const { trackAudio, Transport, TrackState } = await makeTrack();
+    Transport.stop();
+    await trackAudio.setLivePolyPitchEnabled(true, { semitones: 1, playbackRate: 1 });
+    await trackAudio.play();
+    pitchHarness.node.disconnect.mockImplementationOnce(() => {
+      throw new TypeError('unexpected graph disconnect failure');
+    });
+
+    expect(() => trackAudio.stop()).toThrow('unexpected graph disconnect failure');
+    expect(trackAudio.state).toBe(TrackState.PLAYING);
+    expect(pitchHarness.node.releaseWasmMemory).not.toHaveBeenCalled();
   });
 
   it('stops and clears the Worklet on stop/reset without changing default playback', async () => {

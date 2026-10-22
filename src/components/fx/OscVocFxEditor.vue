@@ -37,11 +37,11 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { AudioEngine, type OscVocMidiTarget } from '../../audio/AudioEngine';
+import { AudioEngine, type TrackFxMidiTarget } from '../../audio/AudioEngine';
 import type { MidiInputState } from '../../audio/MidiInputController';
 import { sanitizeOscVocParameters, type OscVocParameters } from '../../audio/oscVocParameters';
 
-const props = defineProps<{ modelValue: OscVocParameters; midiTarget: OscVocMidiTarget }>();
+const props = defineProps<{ modelValue: OscVocParameters; midiTarget: TrackFxMidiTarget }>();
 const emit = defineEmits<{ 'update:modelValue': [value: OscVocParameters] }>();
 const engine = AudioEngine.getInstance();
 const parameters = ref(sanitizeOscVocParameters(props.modelValue));
@@ -53,9 +53,14 @@ let stopListening: (() => void) | undefined;
 
 watch(() => props.modelValue, (value) => { parameters.value = sanitizeOscVocParameters(value); }, { deep: true });
 onMounted(() => { stopListening = engine.onMidiInputStateChange((state) => { midiState.value = state; }); });
-onBeforeUnmount(() => stopListening?.());
-watch(() => [props.midiTarget.path, props.midiTarget.slot] as const, () => {
-  if (midiState.value === 'connected' && engine.getMode() === 'native') engine.disconnectMidiInput();
+onBeforeUnmount(() => {
+  stopListening?.();
+  if (midiState.value === 'connected' && engine.getMode() === 'browser'
+      && (props.midiTarget.trackId ?? 0) > 0) engine.disconnectMidiInput();
+});
+watch(() => [props.midiTarget.path, props.midiTarget.slot, props.midiTarget.trackId] as const, (next, previous) => {
+  const browserPrivateRoute = engine.getMode() === 'browser' && ((next[2] ?? 0) > 0 || (previous[2] ?? 0) > 0);
+  if (midiState.value === 'connected' && (engine.getMode() === 'native' || browserPrivateRoute)) engine.disconnectMidiInput();
 });
 
 const midiStateText = computed(() => {

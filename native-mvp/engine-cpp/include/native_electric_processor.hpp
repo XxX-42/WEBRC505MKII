@@ -97,6 +97,17 @@ private:
     float heldLeft_ = 0.0f;
     float heldRight_ = 0.0f;
     bool pitchLocked_ = false;
+    bool officialActive_ = false;
+    float officialShift_ = 0.0f;
+    float officialFormant_ = 0.0f;
+    float officialSpeed_ = 5.0f;
+    float officialStability_ = 0.0f;
+    unsigned int officialScale_ = 0U;
+    int officialTargetMidi_ = -1;
+    std::array<float, 24U> officialHarmonicWeights_{};
+    float officialHarmonicNormalization_ = 1.0f;
+    unsigned int officialHarmonicCounter_ = 0U;
+    unsigned int officialPitchCounter_ = 0U;
 
     [[nodiscard]] bool configureToneFilters(float cutoffHz) noexcept;
     [[nodiscard]] bool configureVocoder() noexcept;
@@ -107,6 +118,9 @@ private:
     [[nodiscard]] float filteredTone(float sample, unsigned int channel) noexcept;
     [[nodiscard]] float vocoderSample(float mono) noexcept;
     [[nodiscard]] float crushSample(float sample) const noexcept;
+    [[nodiscard]] float officialSnappedFrequency(float frequencyHz) noexcept;
+    [[nodiscard]] float officialCarrier(double phase, double frequencyHz) noexcept;
+    void updateOfficialResponse() noexcept;
 
     [[nodiscard]] bool onPrepare() noexcept override;
     [[nodiscard]] bool onSetParameter(std::string_view parameterId, float value,

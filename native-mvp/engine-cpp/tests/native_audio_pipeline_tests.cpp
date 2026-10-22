@@ -101,7 +101,7 @@ void testCatalogBankOnlyProcessesLoopPlayback() {
     auto& trackFxBank = fxOutputStage.trackFxBank();
     assert(trackFxBank.setEffect(NativeEffectSlot::A, "filter.lpf"));
     assert(trackFxBank.setParameter(NativeEffectSlot::A, "cutoff_hz", 300.0f, 1U));
-    assert(trackFxBank.setParameter(NativeEffectSlot::A, "q", 0.70710678f, 1U));
+    assert(trackFxBank.setParameter(NativeEffectSlot::A, "resonance_percent", 15.0f, 1U));
 
     std::array<float, frames> take{};
     take[0] = 0.7f;

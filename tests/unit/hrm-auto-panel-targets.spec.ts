@@ -95,4 +95,25 @@ describe('HRM AUTO panel MIDI targets', () => {
     track.unmount();
     wrapper.unmount();
   });
+
+  it('passes the independent Browser track ID to the private HRM AUTO slot editor', async () => {
+    localStorage.clear();
+    AudioEngine.getInstance().setMode('browser');
+    const browserTrack = shallowMount(TrackFxPanel, {
+      global: {
+        stubs: {
+          BrowserTrackFxPanel: false,
+          HrmAutoFxEditor: HrmAutoTargetStub,
+          HardwareKnob: KnobMacroStub,
+          NativeTrackFxPanel: false,
+        },
+      },
+    });
+    await browserTrack.get('[aria-label="Track FX target"]').setValue('3');
+    await browserTrack.get('[aria-label="Per-track FX type"]').setValue('HRM AUTO (M) (EXPERIMENTAL)');
+    expect(browserTrack.getComponent(HrmAutoTargetStub).props('midiTarget')).toEqual({
+      path: 'track', trackId: 3, slot: 'A', effectId: 'hrm_auto_m',
+    });
+    browserTrack.unmount();
+  });
 });

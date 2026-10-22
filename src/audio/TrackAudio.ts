@@ -1,4 +1,4 @@
-import type { IAudioEngine } from './AudioEngineInterface';
+import type { IAudioEngine, InputCaptureSession } from './AudioEngineInterface';
 import {
     getBrowserRecordingOffsetConfig,
 } from './browserRecordingOffset';
@@ -7,17 +7,56 @@ import { createLiveMonoPitchNode, createLivePolyPitchNode, type LiveMonoPitchNod
 import { createHqWavExport, type HqWavExportRequestOptions, type HqWavExportResult } from './export/hqWavExport';
 import { Track, TrackState, TransportState } from '../core/types';
 import { Transport } from '../core/Transport';
+import { audioBufferPcmBytes, getBrowserPcmHistoryBudget, PcmHistoryBudget } from './PcmHistoryBudget';
+import type { BrowserRecoveryTrack } from './BrowserRecoverySnapshot';
 
 const RECORDING_CHUNK_SIZE = 16_384;
 const RECORDING_CHUNK_POOL_SIZE = 3;
+// Bound shared-capture stop finalization so a suspended or failed context
+// cannot leave the track permanently busy; timeout discards the incomplete
+// take and preserves incumbent PCM/history.
+const RECORDING_CAPTURE_STOP_ACK_TIMEOUT_MS = 5_000;
 const OVERDUB_TRANSFER_BUFFER_FRAMES = 16_384;
 const OVERDUB_TRANSFER_BUFFER_POOL_SIZE = 3;
-// Bound capture memory to 384 MiB of float samples while supporting 30+ minutes
-// at common 44.1/48 kHz rates. The time limit varies with the selected sample rate.
+// Reduce MessagePort traffic without allowing the live AudioBuffer update to
+// lag by the full 16,384-frame startup-capacity buffer (372 ms at 44.1 kHz).
+// At 44.1 kHz this bounds the normal flush interval to ~11.6 ms; STOP flushes
+// the exact partial tail immediately at its requested sample boundary.
+const OVERDUB_PATCH_FLUSH_FRAMES = 512;
+const OVERDUB_STARTUP_BACKFILL_FRAMES = 8_192;
+const OVERDUB_STARTUP_CAPTURE_TIMEOUT_MS = 1_000;
+// Retain enough exact write-before values to reverse a bounded number of
+// already-applied frames that raced the main-thread STOP request. This is a
+// fixed control-thread allocation, not an AudioWorklet allocation.
+const OVERDUB_STOP_ROLLBACK_JOURNAL_FRAMES = 8_192;
+// A stopped worklet normally publishes its final patch sequence and terminal
+// ACK on the next render quantum. Bound the host-side wait so a closed or
+// disconnected AudioContext cannot leave the track permanently busy.
+const OVERDUB_STOP_ACK_TIMEOUT_MS = 5_000;
+// Bound captured Float32 PCM to 384 MiB per track across every recorded channel.
+// The limit is per-frame adjusted: mono is about 34.9 minutes at 48 kHz, stereo
+// about 17.5 minutes at 48 kHz and 4m22s at 192 kHz. That highest-rate stereo
+// maximum is 262.144s; 300s there would need about 439.5 MiB, so this strict
+// 384 MiB cap does not promise 300s at 192 kHz. Finalization temporarily keeps
+// transferred chunks while assembling contiguous channels, then allocates the playback AudioBuffer: for
+// a same-length master, PCM may peak near 3x this cap (1.125 GiB/track), plus
+// the fixed 384 KiB worklet pool. Slave-loop sizing can allocate a larger final
+// AudioBuffer when it expands a take to an integer master-loop multiple.
 const MAX_RECORDING_CAPTURE_BYTES = 384 * 1024 * 1024;
 const MAX_RECORDING_CHUNKS = MAX_RECORDING_CAPTURE_BYTES / Float32Array.BYTES_PER_ELEMENT / RECORDING_CHUNK_SIZE;
+const MAX_RECORDING_CHANNELS = 2;
 
 export type LoopTransportFxName = 'BEAT SHIFT' | 'VINYL FLICK';
+
+interface OverdubStopRollbackJournal {
+    readonly capacity: number;
+    readonly inputFrames: Float64Array;
+    readonly loopIndices: Uint32Array;
+    readonly leftBefore: Float32Array;
+    readonly rightBefore: Float32Array | null;
+    writeCursor: number;
+    retainedFrames: number;
+}
 
 export interface LoopTransportFxConfiguration {
     /** Global Browser FX slot identity; the reader itself is per TrackAudio. */
@@ -55,8 +94,8 @@ const LOOP_SHIFT_MIN_CROSSFADE_MS = 1;
 const LOOP_SHIFT_MAX_CROSSFADE_MS = 10;
 const LOOP_MOTOR_MIN_RETURN_SECONDS = 0.05;
 const LOOP_MOTOR_MAX_RETURN_SECONDS = 10;
-const LOOP_MOTOR_CURVE_SAMPLES = 65;
-const LOOP_MOTOR_MAX_AUTOMATION_SECONDS = LOOP_MOTOR_MAX_RETURN_SECONDS * 4;
+const LOOP_MOTOR_CURVE_SAMPLES = 1025;
+const LOOP_MOTOR_MAX_AUTOMATION_SECONDS = LOOP_MOTOR_MAX_RETURN_SECONDS * 20;
 const LOOP_MOTOR_INTEGRATION_STEPS = 32;
 const DEFAULT_LOOP_MOTOR_RETURN_SECONDS = 1.5;
 const DEFAULT_LOOP_MOTOR_BRAKE_PERCENT = 35;
@@ -65,16 +104,26 @@ function clampFinite(value: number, minimum: number, maximum: number, fallback: 
     return Number.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
 }
 
+function disconnectAudioNodeIfConnected(node: AudioNode, destination: AudioNode): void {
+    try {
+        node.disconnect(destination);
+    } catch (error) {
+        // Web Audio specifies InvalidAccessError when that exact edge is absent.
+        // Do not hide TypeErrors or other graph failures; those must remain visible.
+        if (error && typeof error === 'object' && 'name' in error
+            && (error as { name?: unknown }).name === 'InvalidAccessError') return;
+        throw error;
+    }
+}
+
 function wrapLoopPhase(phaseSeconds: number, durationSeconds: number): number {
     if (!Number.isFinite(phaseSeconds) || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return 0;
     return ((phaseSeconds % durationSeconds) + durationSeconds) % durationSeconds;
 }
 
-function loopMotorTargetRate(speed: number, mix: number): number {
-    // Source-aware Vinyl Flick is an experimental varispeed read head. The
-    // existing mix macro scales the distance from unity without duplicating
-    // or copying the loop buffer for a second wet/dry stream.
-    return Math.max(0, Math.min(2, 1 + ((speed / 100) * mix)));
+function loopMotorTargetRate(speed: number): number {
+    // Match the Native source stage: mix blends streams and never scales speed.
+    return Math.max(0, Math.min(2, 1 + (speed / 100)));
 }
 
 /** Exact closed-form position, velocity, and rate integral for one second-order motor interval. */
@@ -83,8 +132,8 @@ function evaluateLoopMotor(state: LoopMotorState, seconds: number): { point: Loo
     if (t === 0) return { point: { rate: state.rate, velocity: state.velocity }, integral: 0 };
 
     const returnTime = clampFinite(state.returnTimeSeconds, LOOP_MOTOR_MIN_RETURN_SECONDS, LOOP_MOTOR_MAX_RETURN_SECONDS, DEFAULT_LOOP_MOTOR_RETURN_SECONDS);
-    const omega = Math.min(80, 4 / returnTime);
-    const zeta = 0.55 + (1.65 * (clampFinite(state.brakePercent, 0, 100, DEFAULT_LOOP_MOTOR_BRAKE_PERCENT) / 100));
+    const omega = 2 / returnTime;
+    const zeta = 0.7 + (1.2 * (clampFinite(state.brakePercent, 0, 100, DEFAULT_LOOP_MOTOR_BRAKE_PERCENT) / 100));
     const displacement = state.rate - state.targetRate;
     let rateOffset: number;
     let velocity: number;
@@ -139,11 +188,28 @@ function evaluateLoopMotor(state: LoopMotorState, seconds: number): { point: Loo
 
 type RecordingWorkletMessage =
     | {
+        type: 'RECORD_CONFIGURED';
+        channelCount: number;
+        maxRecordingFrames: number;
+        maxRecordingBytes: number;
+        sessionId?: number;
+        inputGeneration?: number;
+        startReceivedFrame?: number;
+        requestAgeAtStartFrames?: number;
+        preRollCapacityFrames?: number;
+        preRollValidFrames?: number;
+    }
+    | {
         type: 'RECORD_CHUNK';
         chunkIndex: number;
         sequence: number;
         validFrames: number;
-        samples: Float32Array;
+        channelCount?: number;
+        samples?: Float32Array;
+        channels?: Float32Array[];
+        startFrame?: number;
+        sessionId?: number;
+        inputGeneration?: number;
     }
     | {
         type: 'RECORD_COMPLETE';
@@ -151,9 +217,63 @@ type RecordingWorkletMessage =
         droppedFrames: number;
         overflowEvents: number;
         maxRecordingFrames: number;
+        maxRecordingBytes?: number;
+        channelCount?: number;
         limitReached: boolean;
         chunksSent: number;
+        status?: 'complete' | 'incomplete';
+        requestedStartFrame?: number;
+        stopFrame?: number;
+        startReceivedFrame?: number;
+        requestAgeAtStartFrames?: number;
+        preRollCapacityFrames?: number;
+        preRollValidFrames?: number;
+        timelineOverlapEvents?: number;
+        timelineOverlapFrames?: number;
+        sessionId?: number;
+        inputGeneration?: number;
+    }
+    | {
+        type: 'CAPTURE_ERROR' | 'RECORD_ABORTED';
+        sessionId: number;
+        inputGeneration: number;
+        reason?: string;
+        chunksSent?: number;
+        requestedStartFrame?: number;
+        stopFrame?: number;
+        startReceivedFrame?: number;
+        requestAgeAtStartFrames?: number;
+        oldestAvailableFrame?: number;
+        latestAvailableFrame?: number;
+        callbackFrameStart?: number;
+        previousCallbackEndFrame?: number;
+        preRollEndAtCallbackStart?: number;
+        preRollCapacityFrames?: number;
+        preRollValidFrames?: number;
+        inputReady?: boolean;
+        currentInputGeneration?: number;
+        sampleRate?: number;
     };
+
+interface TrackPcmSnapshot {
+    buffer: AudioBuffer | null;
+    isReverse: boolean;
+    master: { bpm: number; measureLength: number; lengthSamples: number } | null;
+}
+
+export interface ProjectTrackPcmSnapshot {
+    readonly revision: number;
+    readonly sampleRate: number;
+    readonly frameCount: number;
+    readonly channels: 1 | 2;
+    /** Read-only views into the completed loop; the archive encoder consumes them synchronously. */
+    readonly channelData: readonly Float32Array[];
+}
+
+export interface ProjectBufferRestoreResult {
+    readonly ok: boolean;
+    readonly reason?: string;
+}
 
 export class TrackAudio {
     public track: Track;
@@ -162,11 +282,30 @@ export class TrackAudio {
     private engine: IAudioEngine;
     private transport: Transport;
     private audioBuffer: AudioBuffer | null = null;
+    private projectPcmRevision = 0;
+    private readonly pcmHistoryBudget: PcmHistoryBudget;
+    private readonly overdubSnapshotBudgetOwner: object = {};
+    private pendingOverdubRollbackSnapshot: TrackPcmSnapshot | null = null;
+    private overdubBaselineSnapshot: TrackPcmSnapshot | null = null;
+    // Only this alternate state is retained. Undo and redo swap ownership with
+    // the live AudioBuffer; overdub makes its one copy before the first patch.
+    private pcmHistory: { snapshot: TrackPcmSnapshot; direction: 'undo' | 'redo' } | null = null;
+    private historyFailureReason: string | null = null;
+    private pendingClear = false;
     private sourceNode: AudioBufferSourceNode | null = null;
     private sourceGainNode: GainNode | null = null;
+    // Vinyl has an independent unity-rate canonical reader and motor-driven wet
+    // reader, sharing PCM. The wet mix gain sits after crossfade envelopes so
+    // parameter edits cannot cancel a pending source-retarget crossfade.
+    private loopTransportDrySourceNode: AudioBufferSourceNode | null = null;
+    private loopTransportDryGainNode: GainNode | null = null;
+    private loopTransportWetMixGainNode: GainNode | null = null;
+    private loopTransportCanonicalPhaseSeconds = 0;
     private retiringSourceNode: AudioBufferSourceNode | null = null;
     private retiringSourceGainNode: GainNode | null = null;
     private readonly loopTransportFxSlots: (LoopTransportFxSlot | null)[] = [null, null, null, null];
+    /** Retain the selected source stage while Browser overdub writes canonical loop frames. */
+    private loopTransportOverdubSnapshot: (LoopTransportFxSlot | null)[] | null = null;
     private readonly loopMotorStates: LoopMotorState[] = Array.from({ length: 4 }, () => ({
         rate: 1,
         velocity: 0,
@@ -208,17 +347,26 @@ export class TrackAudio {
     private gainNode: GainNode;
     private panNode: StereoPannerNode;
     public fxChain: FXChain;
+    /** Playback-only pre-strip bus. Never includes live recording-monitor input. */
+    public readonly playbackSourceOutput: GainNode;
 
     // Recording state
     private isRecording: boolean = false;
     private isFinalizingRecording = false;
+    private recordingStarting = false;
+    private recordingStartGeneration = 0;
+    private recordingCaptureStopAckTimeout: ReturnType<typeof setTimeout> | null = null;
     public isReverse: boolean = false;
 
 
     private workletNode: AudioWorkletNode | null = null;
-    private readonly recordedChunks: Array<Float32Array | null> = new Array(MAX_RECORDING_CHUNKS).fill(null);
+    private recordingInputNode: AudioNode | null = null;
+    private recordingCaptureSession: InputCaptureSession | null = null;
+    private readonly recordedChunks: Array<Float32Array[] | null> = new Array(MAX_RECORDING_CHUNKS).fill(null);
     private readonly recordedChunkLengths = new Uint32Array(MAX_RECORDING_CHUNKS);
     private readonly receivedChunkFlags = new Uint8Array(MAX_RECORDING_CHUNKS);
+    private readonly recordingCaptureChunkIndices = new Int8Array(MAX_RECORDING_CHUNKS).fill(-1);
+    private recordingChannelCount = 1;
     private recordingChunkCount = 0;
     private recordingReceivedChunkMessages = 0;
     private recordingStoredFrames = 0;
@@ -227,8 +375,9 @@ export class TrackAudio {
         type: 'RECYCLE_CHUNK' as const,
         chunkIndex: 0,
         samples: null as Float32Array | null,
+        channels: null as Float32Array[] | null,
     };
-    private readonly recycleChunkTransferList: Transferable[] = [new ArrayBuffer(0)];
+    private readonly recycleChunkTransferList: Transferable[] = [new ArrayBuffer(0), new ArrayBuffer(0)];
     public recordingFramesCaptured = 0;
     public recordingDroppedFrames = 0;
     public recordingOverflowEvents = 0;
@@ -237,12 +386,39 @@ export class TrackAudio {
     public recordingLimitReached = false;
     public recordingDiagnostic: string | null = null;
     private overdubProcessor: AudioWorkletNode | null = null;
+    private overdubInputNode: AudioNode | null = null;
     private overdubMuteGainNode: GainNode | null = null;
     private overdubStartGeneration = 0;
     private overdubStopping = false;
+    private overdubStarting = false;
+    private overdubHasEdited = false;
+    private overdubReceivedPatchMessages = 0;
+    private overdubExpectedPatchMessages: number | null = null;
+    private overdubStopAckTimeout: ReturnType<typeof setTimeout> | null = null;
     private overdubRestartAfterStop = false;
     private overdubSessionAudioBuffer: AudioBuffer | null = null;
     private overdubNextPatchSequence = 0;
+    private overdubStopFrameTarget: number | null = null;
+    private overdubLastAppliedInputFrameExclusive: number | null = null;
+    private overdubLastReceivedPatchEndFrame: number | null = null;
+    private overdubAppliedFrameCount = 0;
+    private overdubStopRollbackJournal: OverdubStopRollbackJournal | null = null;
+    private overdubRollbackAborted = false;
+    private overdubRollbackRestored = false;
+    private overdubCaptureSession: InputCaptureSession | null = null;
+    private overdubCaptureGeneration = 0;
+    private overdubCaptureRequestFrame: number | null = null;
+    private overdubCaptureFirstInputFrame: number | null = null;
+    private overdubCaptureChannelCount = 0;
+    private overdubCaptureStopRequested = false;
+    private overdubCaptureAwaitingCompletion = false;
+    private overdubCaptureAborting = false;
+    private overdubCaptureAbortTimeout: ReturnType<typeof setTimeout> | null = null;
+    private overdubCapturePendingChunkReturns: Array<{ chunkIndex: number; channels: Float32Array[] }> = [];
+    private overdubCaptureBuffers: Float32Array[] | null = null;
+    private overdubCaptureFrames = 0;
+    private overdubCaptureNextSequence = 0;
+    private overdubCaptureTimeout: ReturnType<typeof setTimeout> | null = null;
     /** Readable diagnostic for AudioWorklet-unavailable and bounded-pool overflow cases. */
     public overdubDiagnostic: string | null = null;
     private startTime: number = 0;
@@ -259,20 +435,26 @@ export class TrackAudio {
     private trackIndex: number;
     private sharedStates: Int32Array | null;
     private sharedPositions: Float32Array | null;
+    private positionUpdaterFrame: number | null = null;
+    private disposed = false;
 
-    constructor(engine: IAudioEngine, track: Track, index: number, sharedStates: Int32Array | null, sharedPositions: Float32Array | null) {
+    constructor(engine: IAudioEngine, track: Track, index: number, sharedStates: Int32Array | null, sharedPositions: Float32Array | null, historyBudget = getBrowserPcmHistoryBudget(engine)) {
         this.track = track;
         this.trackIndex = index;
         this.sharedStates = sharedStates;
         this.sharedPositions = sharedPositions;
 
         this.engine = engine;
+        this.pcmHistoryBudget = historyBudget;
         this.transport = Transport.getInstance();
         const ctx = this.engine.context;
 
         this.gainNode = ctx.createGain();
         this.panNode = ctx.createStereoPanner();
         this.fxChain = new FXChain(ctx);
+        this.playbackSourceOutput = ctx.createGain();
+        this.playbackSourceOutput.gain.value = 1;
+        this.playbackSourceOutput.connect(this.fxChain.input);
 
         // Routing: Source (Buffer/Worklet) -> Gain -> FXChain -> Pan -> Destination
         // Wait, usually Gain (Volume) is post FX? Or pre?
@@ -295,8 +477,414 @@ export class TrackAudio {
         return true;
     }
 
+    public get isDisposed(): boolean { return this.disposed; }
+
+    /** Includes worklet startup and final patch/chunk acknowledgement barriers. */
+    public get historyBusy(): boolean {
+        return this.recordingStarting || this.isRecording || this.isFinalizingRecording
+            || this.overdubStarting || this.overdubProcessor !== null || this.pendingClear
+            || this.state === TrackState.REC_STANDBY || this.state === TrackState.REC_FINISHING;
+    }
+
+    public get canUndo(): boolean { return this.canRestoreHistory('undo'); }
+    public get canRedo(): boolean { return this.canRestoreHistory('redo'); }
+    public get historyRetainedBytes(): number { return audioBufferPcmBytes(this.pcmHistory?.snapshot.buffer ?? null); }
+    public get historyTotalRetainedBytes(): number { return this.pcmHistoryBudget.retainedBytes; }
+    public get historyBudgetBytes(): number { return this.pcmHistoryBudget.limitBytes; }
+    public get projectRevision(): number { return this.projectPcmRevision; }
+
+    /** Read-only state needed to plan a new Browser AudioContext without mutating this graph. */
+    public getRecoverySnapshot(): BrowserRecoveryTrack {
+        if (this.historyBusy) {
+            throw new Error(`Track ${this.track.id} is recording, finalizing, overdubbing, or changing history; Browser recovery snapshot was not captured.`);
+        }
+        const history = this.pcmHistory?.snapshot ?? null;
+        const settings = Object.freeze({
+            measure: Object.freeze({ ...this.track.measure }),
+            loopSyncSw: this.track.loopSyncSw,
+            tempoSyncSw: this.track.tempoSyncSw,
+            reverse: this.track.reverse,
+            oneShot: this.track.oneShot,
+            pan: this.track.pan,
+            playLevel: this.track.playLevel,
+            startMode: this.track.startMode,
+            stopMode: this.track.stopMode,
+            dubMode: this.track.dubMode,
+            fxSw: this.track.fxSw,
+            filterEnabled: this.track.filterEnabled,
+            filterValue: this.track.filterValue,
+            filterResonance: this.track.filterResonance,
+        });
+        const sourceTransport = Object.freeze(this.loopTransportFxSlots.map((slot) => slot
+            ? Object.freeze({ ...slot })
+            : null));
+        const pcmHistory = Object.freeze({
+            buffer: history?.buffer ?? null,
+            direction: this.pcmHistory?.direction ?? null,
+            isReverse: history?.isReverse ?? null,
+            master: history?.master ? Object.freeze({ ...history.master }) : null,
+            retainedBytes: audioBufferPcmBytes(history?.buffer ?? null),
+            unavailableReason: this.historyFailureReason,
+        });
+        return Object.freeze({
+            trackId: this.track.id,
+            state: this.state,
+            wasPlaying: this.state === TrackState.PLAYING,
+            projectPcmRevision: this.projectPcmRevision,
+            buffer: this.audioBuffer,
+            bufferBytes: audioBufferPcmBytes(this.audioBuffer),
+            isReverse: this.isReverse,
+            settings,
+            pitch: Object.freeze({
+                mode: this.livePolyPitchEnabledInternal ? 'LIVE_POLY' as const
+                    : this.liveMonoPitchEnabledInternal ? 'LIVE_MONO' as const : 'off' as const,
+                liveMono: Object.freeze({
+                    semitones: this.liveMonoPitchSemitones,
+                    minimumFrequencyHz: this.liveMonoPitchMinimumFrequencyHz,
+                    maximumFrequencyHz: this.liveMonoPitchMaximumFrequencyHz,
+                }),
+                livePoly: Object.freeze({
+                    semitones: this.livePolyPitchSemitones,
+                    playbackRate: this.livePolyPitchPlaybackRate,
+                    tonalityLimitHz: this.livePolyPitchTonalityLimitHz,
+                }),
+            }),
+            history: pcmHistory,
+            sourceTransport,
+        });
+    }
+
+    public getProjectPcmSnapshot(): ProjectTrackPcmSnapshot | null {
+        if (this.historyBusy) throw new Error(`Track ${this.track.id} is recording, finalizing, or overdubbing; finish it before exporting project memory`);
+        const buffer = this.audioBuffer;
+        if (!buffer) return null;
+        if (buffer.numberOfChannels !== 1 && buffer.numberOfChannels !== 2) {
+            throw new Error(`Track ${this.track.id} uses an unsupported ${buffer.numberOfChannels}-channel loop`);
+        }
+        return {
+            revision: this.projectPcmRevision,
+            sampleRate: buffer.sampleRate,
+            frameCount: buffer.length,
+            channels: buffer.numberOfChannels as 1 | 2,
+            channelData: Array.from({ length: buffer.numberOfChannels }, (_, channel) => buffer.getChannelData(channel)),
+        };
+    }
+
+    /** Atomically install all five prepared Browser buffers and make each prior loop its one-step undo. */
+    public static restoreProjectBuffersAtomically(
+        tracks: readonly TrackAudio[],
+        replacements: readonly (AudioBuffer | null)[],
+        expectedRevisions?: readonly number[],
+    ): ProjectBufferRestoreResult {
+        if (tracks.length !== 5 || replacements.length !== 5) {
+            return { ok: false, reason: 'Project memory restore requires exactly five prepared track buffers.' };
+        }
+        const budget = tracks[0]?.pcmHistoryBudget;
+        if (!budget || tracks.some((track) => track.pcmHistoryBudget !== budget)) {
+            return { ok: false, reason: 'Project memory restore could not verify a shared Browser history budget.' };
+        }
+        if (tracks.some((track) => track.historyBusy)) {
+            return { ok: false, reason: 'Stop recording and overdubbing on every track before loading project memory.' };
+        }
+        if (expectedRevisions && (expectedRevisions.length !== 5
+            || tracks.some((track, index) => track.projectPcmRevision !== expectedRevisions[index]))) {
+            return { ok: false, reason: 'Project memory restore was canceled because a track changed during preparation.' };
+        }
+        for (const buffer of replacements) {
+            if (buffer && (!Number.isSafeInteger(buffer.length) || buffer.length < 1
+                || !Number.isFinite(buffer.sampleRate) || buffer.sampleRate <= 0
+                || (buffer.numberOfChannels !== 1 && buffer.numberOfChannels !== 2))) {
+                return { ok: false, reason: 'Project memory contains an unsupported or invalid loop buffer.' };
+            }
+        }
+
+        const snapshots = tracks.map((track) => track.capturePcmSnapshot());
+        const historyReplacements = tracks.map((track, index) => ({
+            owner: track,
+            bytes: audioBufferPcmBytes(snapshots[index]!.buffer),
+        }));
+        if (!budget.canReplaceMany(historyReplacements)) {
+            return {
+                ok: false,
+                reason: `Load canceled: preserving the five current loops for per-track undo would exceed the shared PCM history budget (${budget.limitBytes} bytes, ${Math.round(budget.limitBytes / 1024 / 1024)} MiB). Existing audio is unchanged.`,
+            };
+        }
+
+        // All validation, buffer creation, and the aggregate history-budget check have
+        // completed before any live source or PCM state is changed.
+        tracks[0]!.transport.stop();
+        for (const track of tracks) track.stop();
+        if (!budget.replaceMany(historyReplacements)) {
+            // The budget is only changed on the control thread; this protects against
+            // unexpected reentrancy without partially installing the project.
+            return { ok: false, reason: 'Load canceled because the shared PCM history budget changed during preparation.' };
+        }
+        for (let index = 0; index < tracks.length; index += 1) {
+            const track = tracks[index]!;
+            const previous = snapshots[index]!;
+            track.pcmHistory = { snapshot: previous, direction: 'undo' };
+            track.historyFailureReason = null;
+            track.audioBuffer = replacements[index]!;
+            track.projectPcmRevision += 1;
+            track.isReverse = false;
+            track.startOffset = 0;
+            track.startTime = 0;
+            track.loopTransportStartOffsetShiftSeconds = 0;
+            track.loopTransportPlaybackInitialized = false;
+            track.loopTransportTransitionActive = false;
+            track.loopTransportPendingRetarget = false;
+            track.state = replacements[index] ? TrackState.STOPPED : TrackState.EMPTY;
+            if (track.sharedPositions) track.sharedPositions[track.trackIndex] = 0;
+        }
+        return { ok: true };
+    }
+
+    /**
+     * Install a closed-context recovery snapshot into five pristine tracks.
+     * Candidate buffers are already cloned into the candidate AudioContext;
+     * this method transfers those exact buffer references and restores the
+     * one-step history ledger in one control-thread transaction.
+     */
+    public static restoreRecoverySnapshotsAtomically(
+        tracks: readonly TrackAudio[],
+        snapshots: readonly BrowserRecoveryTrack[],
+    ): ProjectBufferRestoreResult {
+        if (tracks.length !== 5 || snapshots.length !== 5) {
+            return { ok: false, reason: 'Browser recovery requires exactly five prepared track snapshots.' };
+        }
+        const budget = tracks[0]?.pcmHistoryBudget;
+        if (!budget || tracks.some((track) => track.pcmHistoryBudget !== budget)) {
+            return { ok: false, reason: 'Browser recovery could not verify the shared PCM history ledger.' };
+        }
+        if (tracks.some((track) => track.disposed || track.historyBusy || track.audioBuffer !== null || track.pcmHistory !== null
+            || track.projectPcmRevision !== 0 || track.state !== TrackState.EMPTY)) {
+            return { ok: false, reason: 'Browser recovery requires five pristine, stopped candidate tracks.' };
+        }
+
+        const parsePan = (value: string): number | null => {
+            if (value === 'CENTER') return 0;
+            const match = /^(L|R)([0-9]{1,2})$/.exec(value);
+            if (!match) return null;
+            const amount = Number(match[2]);
+            if (amount < 1 || amount > 50) return null;
+            return match[1] === 'L' ? -amount : amount;
+        };
+        const replacements: Array<{ owner: object; bytes: number }> = [];
+        for (let index = 0; index < snapshots.length; index += 1) {
+            const saved = snapshots[index]!;
+            const track = tracks[index]!;
+            const history = saved.history;
+            if (saved.trackId !== index + 1 || !Number.isSafeInteger(saved.projectPcmRevision) || saved.projectPcmRevision < 0
+                || (saved.state !== TrackState.EMPTY && saved.state !== TrackState.STOPPED)
+                || !saved.settings || parsePan(saved.settings.pan) === null
+                || !Number.isFinite(saved.settings.playLevel) || saved.settings.playLevel < 0 || saved.settings.playLevel > 200
+                || !Number.isFinite(saved.settings.filterValue) || saved.settings.filterValue < 0 || saved.settings.filterValue > 1
+                || !Number.isFinite(saved.settings.filterResonance)
+                || (saved.buffer && (!Number.isSafeInteger(saved.buffer.length) || saved.buffer.length < 1
+                    || (saved.buffer.numberOfChannels !== 1 && saved.buffer.numberOfChannels !== 2)
+                    || !Number.isFinite(saved.buffer.sampleRate) || saved.buffer.sampleRate <= 0))
+                || (history.buffer && (!Number.isSafeInteger(history.buffer.length) || history.buffer.length < 1
+                    || (history.buffer.numberOfChannels !== 1 && history.buffer.numberOfChannels !== 2)
+                    || !Number.isFinite(history.buffer.sampleRate) || history.buffer.sampleRate <= 0
+                    || (history.direction !== 'undo' && history.direction !== 'redo')
+                    || typeof history.isReverse !== 'boolean'))
+                || (!history.buffer && (history.direction !== null || history.isReverse !== null || history.master !== null || history.retainedBytes !== 0))
+                || (saved.buffer === null && saved.state !== TrackState.EMPTY)
+                || (saved.buffer !== null && saved.state !== TrackState.STOPPED)
+                || saved.bufferBytes !== audioBufferPcmBytes(saved.buffer)
+                || history.retainedBytes !== audioBufferPcmBytes(history.buffer)
+                || !Array.isArray(saved.sourceTransport) || saved.sourceTransport.length !== 4
+                || !saved.pitch || !['off', 'LIVE_MONO', 'LIVE_POLY'].includes(saved.pitch.mode)) {
+                return { ok: false, reason: `Track ${index + 1} recovery snapshot is malformed; candidate PCM was not installed.` };
+            }
+            if (saved.buffer && saved.buffer.sampleRate !== track.engine.context.sampleRate) {
+                return { ok: false, reason: `Track ${index + 1} loop sample rate does not match the recovery AudioContext.` };
+            }
+            if (history.buffer && history.buffer.sampleRate !== track.engine.context.sampleRate) {
+                return { ok: false, reason: `Track ${index + 1} undo/redo sample rate does not match the recovery AudioContext.` };
+            }
+            replacements.push({ owner: track, bytes: history.retainedBytes });
+        }
+        if (!budget.canReplaceMany(replacements)) {
+            return { ok: false, reason: `Browser recovery history requires more than the shared ${budget.limitBytes}-byte PCM history budget; no candidate track was changed.` };
+        }
+
+        // Ledger admission happens before any track state changes. This budget
+        // belongs only to the unpublished candidate engine; a failed build is
+        // discarded with that engine and never changes the old ledger.
+        if (!budget.replaceMany(replacements)) {
+            return { ok: false, reason: 'Browser recovery was canceled because the candidate history budget changed during preparation.' };
+        }
+        for (let index = 0; index < snapshots.length; index += 1) {
+            const track = tracks[index]!;
+            const saved = snapshots[index]!;
+            const settings = saved.settings;
+            track.track.measure = { ...settings.measure } as Track['measure'];
+            track.track.loopSyncSw = settings.loopSyncSw as Track['loopSyncSw'];
+            track.track.tempoSyncSw = settings.tempoSyncSw as Track['tempoSyncSw'];
+            track.track.reverse = settings.reverse as Track['reverse'];
+            track.track.oneShot = settings.oneShot as Track['oneShot'];
+            track.track.pan = settings.pan === 'CENTER' ? 0 : settings.pan.startsWith('L') ? -Number(settings.pan.slice(1)) : Number(settings.pan.slice(1));
+            track.track.playLevel = settings.playLevel;
+            track.track.startMode = settings.startMode as Track['startMode'];
+            track.track.stopMode = settings.stopMode as Track['stopMode'];
+            track.track.dubMode = settings.dubMode as Track['dubMode'];
+            track.track.fxSw = settings.fxSw as Track['fxSw'];
+            track.track.filterEnabled = settings.filterEnabled;
+            track.track.filterValue = settings.filterValue;
+            track.track.filterResonance = settings.filterResonance;
+            track.isReverse = saved.isReverse;
+            track.audioBuffer = saved.buffer;
+            track.pcmHistory = saved.history.buffer ? {
+                snapshot: {
+                    buffer: saved.history.buffer,
+                    isReverse: saved.history.isReverse!,
+                    master: saved.history.master ? { ...saved.history.master } : null,
+                },
+                direction: saved.history.direction!,
+            } : null;
+            track.historyFailureReason = saved.history.unavailableReason;
+            track.projectPcmRevision = saved.projectPcmRevision;
+            track.state = saved.buffer ? TrackState.STOPPED : TrackState.EMPTY;
+            track.startOffset = 0;
+            track.startTime = 0;
+            track.loopTransportPlaybackInitialized = false;
+            track.loopTransportTransitionActive = false;
+            track.loopTransportPendingRetarget = false;
+            for (let slotIndex = 0; slotIndex < 4; slotIndex += 1) {
+                const savedSlot = saved.sourceTransport[slotIndex];
+                track.loopTransportFxSlots[slotIndex] = savedSlot ? { ...savedSlot } : null;
+                if (savedSlot?.type === 'VINYL FLICK') {
+                    const motor = track.loopMotorStates[slotIndex]!;
+                    motor.targetRate = loopMotorTargetRate(savedSlot.vinylFlickSpeed);
+                    motor.returnTimeSeconds = savedSlot.vinylFlickReturnTimeSeconds;
+                    motor.brakePercent = savedSlot.vinylFlickBrakePercent;
+                }
+            }
+            track.liveMonoPitchEnabledInternal = saved.pitch.mode === 'LIVE_MONO';
+            track.liveMonoPitchSemitones = saved.pitch.liveMono.semitones;
+            track.liveMonoPitchMinimumFrequencyHz = saved.pitch.liveMono.minimumFrequencyHz;
+            track.liveMonoPitchMaximumFrequencyHz = saved.pitch.liveMono.maximumFrequencyHz;
+            track.livePolyPitchEnabledInternal = saved.pitch.mode === 'LIVE_POLY';
+            track.livePolyPitchSemitones = saved.pitch.livePoly.semitones;
+            track.livePolyPitchPlaybackRate = saved.pitch.livePoly.playbackRate;
+            track.livePolyPitchTonalityLimitHz = saved.pitch.livePoly.tonalityLimitHz;
+            track.updateSettings();
+            if (track.sharedStates) Atomics.store(track.sharedStates, track.trackIndex, Object.values(TrackState).indexOf(track.state));
+            if (track.sharedPositions) track.sharedPositions[track.trackIndex] = 0;
+        }
+        return { ok: true };
+    }
+
+    public get historyUnavailableReason(): string | null {
+        if (this.historyBusy) return 'Finish recording or overdubbing before using PCM history.';
+        if (this.historyFailureReason) return this.historyFailureReason;
+        if (this.pcmHistory && !this.pcmHistoryBudget.canReplace(this, audioBufferPcmBytes(this.audioBuffer))) {
+            return this.historyBudgetReason('Undo/redo is unavailable');
+        }
+        return null;
+    }
+
+    /** PCM-only one-step history; unrelated track controls and global FX are unchanged. */
+    public undo(): boolean { return this.restoreHistory('undo'); }
+    public redo(): boolean { return this.restoreHistory('redo'); }
+
+    private canRestoreHistory(direction: 'undo' | 'redo'): boolean {
+        return !this.disposed && !this.historyBusy && this.pcmHistory?.direction === direction
+            && this.pcmHistoryBudget.canReplace(this, audioBufferPcmBytes(this.audioBuffer));
+    }
+
+    private historyBudgetReason(prefix: string): string {
+        return `${prefix}: the shared Browser PCM history budget (${Math.round(this.pcmHistoryBudget.limitBytes / 1024 / 1024)} MiB) cannot retain this loop. Audio is preserved.`;
+    }
+
+    private capturePcmSnapshot(buffer = this.audioBuffer): TrackPcmSnapshot {
+        return {
+            buffer,
+            isReverse: this.isReverse,
+            master: this.transport.masterTrackId === this.track.id ? {
+                bpm: this.transport.bpm,
+                measureLength: this.transport.measureLength,
+                lengthSamples: this.transport.masterLoopLengthSamples,
+            } : null,
+        };
+    }
+
+    private retainPcmEdit(snapshot: TrackPcmSnapshot, clone = false): boolean {
+        const bytes = audioBufferPcmBytes(snapshot.buffer);
+        if (!this.pcmHistoryBudget.canReplace(this, bytes)) {
+            this.historyFailureReason = this.historyBudgetReason('Undo is unavailable for this edit');
+            return false;
+        }
+        // Drop the obsolete alternate before allocating a replacement copy so
+        // transient retained-history PCM also stays within the shared cap.
+        this.pcmHistory = null;
+        this.pcmHistoryBudget.release(this);
+        if (clone && snapshot.buffer) {
+            const source = snapshot.buffer;
+            try {
+                const copy = this.engine.context.createBuffer(source.numberOfChannels, source.length, source.sampleRate);
+                for (let channel = 0; channel < source.numberOfChannels; channel += 1) {
+                    copy.getChannelData(channel).set(source.getChannelData(channel));
+                }
+                snapshot = { ...snapshot, buffer: copy };
+            } catch {
+                this.historyFailureReason = 'PCM history could not allocate its snapshot. The edited audio is preserved; undo is unavailable.';
+                return false;
+            }
+        }
+        this.pcmHistoryBudget.replace(this, bytes);
+        this.pcmHistory = { snapshot, direction: 'undo' };
+        this.historyFailureReason = null;
+        return true;
+    }
+
+    /** An admitted edit invalidates stale redo even when no new snapshot fits. */
+    private invalidatePcmHistoryForEdit(): void {
+        this.pcmHistory = null;
+        this.pcmHistoryBudget.release(this);
+        this.historyFailureReason ??= this.historyBudgetReason('Undo is unavailable for this edit');
+    }
+
+    private restoreHistory(direction: 'undo' | 'redo'): boolean {
+        if (this.disposed || this.historyBusy || this.pcmHistory?.direction !== direction) return false;
+        const current = this.capturePcmSnapshot();
+        if (!this.pcmHistoryBudget.replace(this, audioBufferPcmBytes(current.buffer))) return false;
+        const target = this.pcmHistory.snapshot;
+        const resume = this.state === TrackState.PLAYING;
+        this.cancelQuantizeWait();
+        this.stop();
+        this.pcmHistory = { snapshot: current, direction: direction === 'undo' ? 'redo' : 'undo' };
+        this.audioBuffer = target.buffer;
+        this.projectPcmRevision += 1;
+        this.isReverse = target.isReverse;
+        this.startOffset = 0;
+        this.startTime = 0;
+        this.loopTransportStartOffsetShiftSeconds = 0;
+        this.historyFailureReason = null;
+        this.state = target.buffer ? TrackState.STOPPED : TrackState.EMPTY;
+        if (!target.buffer) {
+            this.engine.checkAndResetMaster(this.track.id);
+        } else if (!this.transport.hasMasterTrack()) {
+            // Restore timing only when this does not overwrite another loop's
+            // current master/tempo. PCM history is per track, not a global undo.
+            if (target.master) {
+                this.transport.masterTrackId = this.track.id;
+                this.transport.masterLoopLengthSamples = target.master.lengthSamples;
+                this.transport.measureLength = target.master.measureLength;
+                this.transport.setBpm(target.master.bpm);
+            } else {
+                this.transport.setMasterTrack(this.track.id, target.buffer.duration, target.buffer.sampleRate, target.buffer.length);
+            }
+        }
+        if (target.buffer && resume) void this.play();
+        this.syncTransportState();
+        return true;
+    }
+
     /** Install a private serial bank after the existing strip FX and before level/pan/TrackMix. */
     public installTrackFxInsert(input: AudioNode, output: AudioNode): void {
+        if (this.disposed) throw new Error(`Track ${this.track.id} has been disposed.`);
         this.fxChain.output.disconnect(this.gainNode);
         this.fxChain.output.connect(input);
         output.connect(this.gainNode);
@@ -313,6 +901,9 @@ export class TrackAudio {
 
     /** Experimental pre-mix read-head status; does not imply full Track A–D serial-order support. */
     public get loopTransportUnavailableReason(): string | null {
+        if (this.state === TrackState.OVERDUBBING && this.loopTransportOverdubSnapshot) {
+            return 'Source-aware loop transport is suspended during overdub so writes stay aligned to canonical loop frames; it resumes after overdub finalization';
+        }
         return this.getLoopTransportConflictReason() ?? this.loopTransportRuntimeFallbackReason;
     }
 
@@ -341,9 +932,14 @@ export class TrackAudio {
         type: LoopTransportFxName | string | null,
         parameters: Readonly<Record<string, number>> = {},
     ): boolean {
+        if (this.disposed) return false;
         if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) return false;
         const normalizedType = type === null ? null : type.trim().toUpperCase();
         if (normalizedType !== null && normalizedType !== 'BEAT SHIFT' && normalizedType !== 'VINYL FLICK') return false;
+        // The Browser overdub writer patches canonical loop-frame indices. Do
+        // not let a live source-readhead change the heard position underneath
+        // that writer; its saved configuration is restored after final ACK.
+        if (this.state === TrackState.OVERDUBBING && normalizedType !== null) return false;
 
         const now = this.engine.context.currentTime;
         const wasPlaying = (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING)
@@ -354,6 +950,7 @@ export class TrackAudio {
         if (wasReaderPlaying) this.advanceLoopTransportTo(now);
 
         const previousSlot = this.loopTransportFxSlots[slotIndex];
+        const previousMotor = { ...this.loopMotorStates[slotIndex]! };
         const previousShiftSeconds = hadReader ? this.loopTransportRenderedBeatShiftSeconds : 0;
         let nextSlot: LoopTransportFxSlot | null;
         if (normalizedType === null) {
@@ -383,7 +980,7 @@ export class TrackAudio {
         const slotMotor = this.loopMotorStates[slotIndex];
         if (slotMotor) {
             if (nextSlot?.type === 'VINYL FLICK') {
-                slotMotor.targetRate = loopMotorTargetRate(nextSlot.vinylFlickSpeed, nextSlot.vinylFlickMix);
+                slotMotor.targetRate = loopMotorTargetRate(nextSlot.vinylFlickSpeed);
                 slotMotor.returnTimeSeconds = nextSlot.vinylFlickReturnTimeSeconds;
                 slotMotor.brakePercent = nextSlot.vinylFlickBrakePercent;
             } else if (previousSlot?.type === 'VINYL FLICK') {
@@ -408,14 +1005,31 @@ export class TrackAudio {
                 // transition remains bounded and crossfadeable.
                 this.loopTransportPlaybackInitialized = true;
                 this.loopTransportPhaseBaseSeconds = positionBeforeConfig;
+                this.loopTransportCanonicalPhaseSeconds = positionBeforeConfig;
                 this.loopTransportPhaseTime = now;
                 this.loopTransportStartOffsetShiftSeconds = 0;
                 this.resetLoopMotorStates();
                 this.loopTransportRenderedBeatShiftSeconds = 0;
             }
 
+            if (this.hasConfiguredVinylFlick() && !this.ensureLoopTransportDryReader(now)) {
+                this.loopTransportFxSlots[slotIndex] = previousSlot ?? null;
+                Object.assign(this.loopMotorStates[slotIndex]!, previousMotor);
+                if (!wasReaderPlaying) this.loopTransportPlaybackInitialized = false;
+                this.loopTransportRuntimeFallbackReason = 'Canonical dry reader creation failed; current loop playback is retained';
+                return false;
+            }
+            const canonicalRetarget = !!this.loopTransportDrySourceNode
+                && !this.hasConfiguredVinylFlick() && hasConfiguredFx;
+            if (canonicalRetarget) {
+                // When changing from Vinyl back to BEAT SHIFT, its source
+                // offset applies to canonical transport, not the old wet phase.
+                this.loopTransportPhaseBaseSeconds = this.loopTransportCanonicalPhaseSeconds;
+                this.resetLoopMotorStates();
+            }
+            this.updateLoopTransportMix(now);
             const nextShiftSeconds = this.getLoopTransportBeatShiftSeconds();
-            if (Math.abs(nextShiftSeconds - (wasReaderPlaying ? previousShiftSeconds : 0)) > 1e-9) {
+            if (canonicalRetarget || Math.abs(nextShiftSeconds - (wasReaderPlaying ? previousShiftSeconds : 0)) > 1e-9) {
                 if (this.loopTransportTransitionActive) {
                     this.loopTransportPendingRetarget = true;
                 } else {
@@ -439,6 +1053,7 @@ export class TrackAudio {
 
     /** Re-anchors a running source after Transport.setBpm emits `bpm-change`. */
     public refreshLoopTransportTempo(): void {
+        if (this.disposed) return;
         if (!this.loopTransportPlaybackInitialized || !this.sourceNode || this.isReverse
             || (this.state !== TrackState.PLAYING && this.state !== TrackState.OVERDUBBING)
             || !this.hasConfiguredLoopTransportFx()) return;
@@ -480,6 +1095,8 @@ export class TrackAudio {
             || normalizedKey === 'vinyl-flick.speed' || normalizedKey === 'vinylFlickSpeed'
             || normalizedKey === 'vinylFlickSpeedPercent') {
             slot.vinylFlickSpeed = clampFinite(value, -100, 100, slot.vinylFlickSpeed);
+        } else if (normalizedKey === 'mixPercent' || normalizedKey === 'vinylFlickMixPercent') {
+            slot.vinylFlickMix = clampFinite(value / 100, 0, 1, slot.vinylFlickMix);
         } else if (normalizedKey === 'mix' || normalizedKey === 'vinyl-flick.mix') {
             const normalizedMix = value > 1 ? value / 100 : value;
             slot.vinylFlickMix = clampFinite(normalizedMix, 0, 1, slot.vinylFlickMix);
@@ -596,6 +1213,7 @@ export class TrackAudio {
         enabled: boolean,
         options: { semitones?: number; playbackRate?: number; tonalityLimitHz?: number } = {},
     ): Promise<void> {
+        if (this.disposed) throw new Error(`Track ${this.track.id} has been disposed.`);
         if (options.semitones !== undefined && (!Number.isFinite(options.semitones) || options.semitones < -24 || options.semitones > 24)) {
             throw new RangeError('semitones must be between -24 and +24');
         }
@@ -609,7 +1227,7 @@ export class TrackAudio {
         const wasPlaying = this.state === TrackState.PLAYING;
         if (wasPlaying) {
             this.startOffset = this.getCurrentPlaybackPosition();
-            this.loopTransportStartOffsetShiftSeconds = this.loopTransportPlaybackInitialized && !this.loopTransportUnavailableReason
+            this.loopTransportStartOffsetShiftSeconds = this.loopTransportPlaybackInitialized && !this.loopTransportDrySourceNode && !this.loopTransportUnavailableReason
                 ? this.getLoopTransportBeatShiftSeconds()
                 : 0;
         }
@@ -617,6 +1235,7 @@ export class TrackAudio {
         if (enabled && this.liveMonoPitchEnabledInternal) {
             this.liveMonoPitchEnabledInternal = false;
             await this.disposeLiveMonoPitchNode();
+            if (this.disposed) return;
         }
 
         this.livePolyPitchEnabledInternal = enabled;
@@ -626,7 +1245,10 @@ export class TrackAudio {
         this.livePolyPitchFallbackReasonValue = null;
 
         if (!enabled) {
-            if (wasPlaying && this.audioBuffer) await this.play();
+            if (wasPlaying && this.audioBuffer) {
+                await this.play();
+                if (this.disposed) return;
+            }
             await this.disposeLivePolyPitchNode();
             return;
         }
@@ -650,13 +1272,14 @@ export class TrackAudio {
         enabled: boolean,
         options: { semitones?: number; minimumFrequencyHz?: number; maximumFrequencyHz?: number } = {},
     ): Promise<void> {
+        if (this.disposed) throw new Error(`Track ${this.track.id} has been disposed.`);
         if (options.semitones !== undefined && (!Number.isFinite(options.semitones) || options.semitones < -12 || options.semitones > 12)) {
             throw new RangeError('LIVE_MONO semitones must be between -12 and +12');
         }
         const wasPlaying = this.state === TrackState.PLAYING;
         if (wasPlaying) {
             this.startOffset = this.getCurrentPlaybackPosition();
-            this.loopTransportStartOffsetShiftSeconds = this.loopTransportPlaybackInitialized && !this.loopTransportUnavailableReason
+            this.loopTransportStartOffsetShiftSeconds = this.loopTransportPlaybackInitialized && !this.loopTransportDrySourceNode && !this.loopTransportUnavailableReason
                 ? this.getLoopTransportBeatShiftSeconds()
                 : 0;
         }
@@ -664,6 +1287,7 @@ export class TrackAudio {
         if (enabled && this.livePolyPitchEnabledInternal) {
             this.livePolyPitchEnabledInternal = false;
             await this.disposeLivePolyPitchNode();
+            if (this.disposed) return;
         }
 
         this.liveMonoPitchEnabledInternal = enabled;
@@ -673,7 +1297,10 @@ export class TrackAudio {
         this.liveMonoPitchFallbackReasonValue = null;
 
         if (!enabled) {
-            if (wasPlaying && this.audioBuffer) await this.play();
+            if (wasPlaying && this.audioBuffer) {
+                await this.play();
+                if (this.disposed) return;
+            }
             await this.disposeLiveMonoPitchNode();
             return;
         }
@@ -703,6 +1330,8 @@ export class TrackAudio {
 
     private startPositionUpdater() {
         const update = () => {
+            this.positionUpdaterFrame = null;
+            if (this.disposed) return;
             // Update State
             if (this.sharedStates) {
                 Atomics.store(this.sharedStates, this.trackIndex, Object.values(TrackState).indexOf(this.state));
@@ -740,12 +1369,122 @@ export class TrackAudio {
                     this.sharedPositions[this.trackIndex] = 0;
                 }
             }
-            requestAnimationFrame(update);
+            if (!this.disposed) this.positionUpdaterFrame = requestAnimationFrame(update);
         };
-        requestAnimationFrame(update);
+        this.positionUpdaterFrame = requestAnimationFrame(update);
+    }
+
+    /**
+     * Retire this context-owned track graph without clearing its PCM/history.
+     * A caller must first finish or cancel capture/overdub so teardown cannot
+     * publish a late edit after a replacement engine has been adopted.
+     */
+    public dispose(): void {
+        if (this.disposed) return;
+        this.assertRetirableAfterContextClosed();
+
+        const frame = this.positionUpdaterFrame;
+        this.positionUpdaterFrame = null;
+        if (frame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+
+        this.cancelQuantizeWait();
+        this.clearRecordingCaptureStopAckTimeout();
+        this.clearOverdubCaptureTimeout();
+        if (this.overdubCaptureAbortTimeout !== null) clearTimeout(this.overdubCaptureAbortTimeout);
+        this.overdubCaptureAbortTimeout = null;
+        if (this.overdubCaptureTimeout !== null) clearTimeout(this.overdubCaptureTimeout);
+        this.overdubCaptureTimeout = null;
+        if (this.overdubStopAckTimeout !== null) clearTimeout(this.overdubStopAckTimeout);
+        this.overdubStopAckTimeout = null;
+
+        // Invalidate outstanding asynchronous route creation before stopping
+        // sources; snapshot buffers and history remain owned by this object.
+        this.playbackRevision += 1;
+        this.recordingStartGeneration += 1;
+        this.overdubStartGeneration += 1;
+        this.livePolyPitchGeneration += 1;
+        this.liveMonoPitchGeneration += 1;
+        this.stop();
+        // stop() is synchronous. Mark retired before returning to the event loop
+        // so no queued port/RAF callback can revive this graph or commit an edit.
+        this.disposed = true;
+        this.abortRecording();
+
+        const recorder = this.workletNode;
+        this.workletNode = null;
+        if (recorder) {
+            recorder.port.onmessage = null;
+            recorder.onprocessorerror = null;
+            try { this.recordingInputNode?.disconnect(recorder); } catch { /* old context may already be closed */ }
+            try { recorder.disconnect(); } catch { /* already disconnected */ }
+            try { recorder.port.close(); } catch { /* already closed */ }
+        }
+        try { this.recordingInputNode?.disconnect(); } catch { /* already disconnected */ }
+        this.recordingInputNode = null;
+
+        const overdub = this.overdubProcessor;
+        this.overdubProcessor = null;
+        if (overdub) {
+            overdub.port.onmessage = null;
+            overdub.onprocessorerror = null;
+            try { this.overdubInputNode?.disconnect(overdub); } catch { /* old context may already be closed */ }
+            try { overdub.disconnect(); } catch { /* already disconnected */ }
+            try { overdub.port.close(); } catch { /* already closed */ }
+        }
+        try { this.overdubInputNode?.disconnect(); } catch { /* already disconnected */ }
+        try { this.overdubMuteGainNode?.disconnect(); } catch { /* already disconnected */ }
+        this.overdubInputNode = null;
+        this.overdubMuteGainNode = null;
+
+        // Context closure is the final Worklet/WASM lifetime barrier. Do not
+        // wait for messages from a closed render thread; disconnect() releases
+        // the Signalsmith lease immediately for an already-closed context.
+        const livePolyNode = this.livePolyPitchNode;
+        this.livePolyPitchNode = null;
+        this.livePolyPitchNodePromise = null;
+        this.livePolyPitchActiveInternal = false;
+        if (livePolyNode) {
+            try { livePolyNode.disconnect(); } catch { /* old context is closed */ }
+            try { livePolyNode.port.close(); } catch { /* already closed */ }
+        }
+        const liveMonoNode = this.liveMonoPitchNode;
+        this.liveMonoPitchNode = null;
+        this.liveMonoPitchNodePromise = null;
+        this.liveMonoPitchActiveInternal = false;
+        if (liveMonoNode) {
+            try { liveMonoNode.disconnect(); } catch { /* old context is closed */ }
+            try { liveMonoNode.port.close(); } catch { /* already closed */ }
+        }
+
+        this.pcmHistoryBudget.release(this.overdubSnapshotBudgetOwner);
+        this.pendingOverdubRollbackSnapshot = null;
+        this.overdubBaselineSnapshot = null;
+        this.overdubStopRollbackJournal = null;
+        this.overdubCapturePendingChunkReturns.length = 0;
+        this.overdubCaptureBuffers = null;
+        this.clearRecordingChunkStorage();
+        this.playbackSourceOutput.disconnect();
+        this.fxChain.dispose();
+        try { this.gainNode.disconnect(); } catch { /* already disconnected */ }
+        try { this.panNode.disconnect(); } catch { /* already disconnected */ }
+        this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+        this.sharedStates = null;
+        this.sharedPositions = null;
+    }
+
+    /** Fail early before a facade publishes a candidate and retires this owner. */
+    public assertRetirableAfterContextClosed(): void {
+        if (this.disposed) return;
+        if (this.engine.context.state !== 'closed') {
+            throw new Error(`Track ${this.track.id} can only be retired after its AudioContext has closed.`);
+        }
+        if (this.historyBusy || this.recordingCaptureSession || this.overdubCaptureSession) {
+            throw new Error(`Track ${this.track.id} is busy; its graph cannot be retired while preserving PCM history.`);
+        }
     }
 
     public updateSettings() {
+        if (this.disposed) return;
         this.gainNode.gain.value = this.track.playLevel / 100;
 
         const panStr = this.track.pan;
@@ -788,11 +1527,14 @@ export class TrackAudio {
     // --- Transport & State Logic ---
 
     public triggerRecord() {
+        if (this.disposed) return;
+        if (this.pendingClear) return;
         if (this.state === TrackState.EMPTY) {
             this.scheduleRecordingStart();
         } else if (this.state === TrackState.RECORDING) {
             this.scheduleRecordingStop();
         } else if (this.state === TrackState.PLAYING) {
+            this.suspendLoopTransportForOverdub();
             this.state = TrackState.OVERDUBBING;
             this.ensureTransportRunning();
             this.startOverdub();
@@ -805,7 +1547,14 @@ export class TrackAudio {
     }
 
     public triggerStop() {
+        if (this.disposed) return;
         this.cancelQuantizeWait();
+        if (this.recordingStarting) {
+            this.abortRecording();
+            this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+            this.syncTransportState();
+            return;
+        }
 
         if (this.state === TrackState.RECORDING || this.state === TrackState.REC_FINISHING) {
             this.resumeAfterRecording = false;
@@ -829,6 +1578,7 @@ export class TrackAudio {
     }
 
     private scheduleRecordingStart() {
+        if (this.disposed) return;
         // ========================================
         // QUANTIZED RECORDING START LOGIC
         // ========================================
@@ -877,6 +1627,7 @@ export class TrackAudio {
     }
 
     private scheduleRecordingStop() {
+        if (this.disposed) return;
         // ========================================
         // QUANTIZED RECORDING STOP LOGIC
         // ========================================
@@ -921,6 +1672,86 @@ export class TrackAudio {
 
     // --- Audio Logic ---
 
+    private hasConfiguredVinylFlick(): boolean {
+        return this.loopTransportFxSlots.some((slot) => slot?.type === 'VINYL FLICK');
+    }
+
+    private updateLoopTransportMix(now: number, immediate = false): void {
+        if (!this.loopTransportWetMixGainNode || !this.loopTransportDryGainNode) return;
+        // Only one source mode is exposed per loop. Legacy multiple-slot motor
+        // routing remains an aggregate source stage, not serial A-D processing.
+        let dry = 1;
+        let hasVinyl = false;
+        for (const slot of this.loopTransportFxSlots) {
+            if (slot?.type !== 'VINYL FLICK') continue;
+            hasVinyl = true;
+            dry *= 1 - slot.vinylFlickMix;
+        }
+        // After removing Vinyl, use the canonical stream immediately; its motor
+        // may continue settling silently. A BEAT SHIFT stage still uses wet.
+        const wet = hasVinyl ? 1 - dry : this.hasConfiguredLoopTransportFx() ? 1 : 0;
+        for (const [gain, target] of [
+            [this.loopTransportWetMixGainNode, wet],
+            [this.loopTransportDryGainNode, 1 - wet],
+        ] as const) {
+            const parameter = gain.gain;
+            if (immediate) {
+                parameter.setValueAtTime(target, now);
+                continue;
+            }
+            // A short linear ramp prevents a mix change or live route promotion
+            // from making a discontinuous jump between unrelated sample values.
+            // Hold an in-flight ramp before replacing it when supported.
+            const current = parameter.value;
+            if (typeof parameter.cancelAndHoldAtTime === 'function') parameter.cancelAndHoldAtTime(now);
+            else {
+                parameter.cancelScheduledValues(now);
+                parameter.setValueAtTime(current, now);
+            }
+            parameter.linearRampToValueAtTime(target, now + 0.005);
+        }
+    }
+
+    private ensureLoopTransportDryReader(now: number): boolean {
+        if (this.loopTransportDrySourceNode) return true;
+        if (!this.audioBuffer) return false;
+        const context = this.engine.context;
+        let source: AudioBufferSourceNode | null = null;
+        let gain: GainNode | null = null;
+        let wetGain: GainNode | null = null;
+        try {
+            source = context.createBufferSource();
+            if (!source) return false;
+            gain = context.createGain();
+            wetGain = context.createGain();
+            source.buffer = this.audioBuffer;
+            source.loop = true;
+            source.playbackRate.value = 1;
+            gain.gain.value = 0;
+            wetGain.gain.value = 1;
+            source.connect(gain);
+            gain.connect(this.playbackSourceOutput);
+            wetGain.connect(this.playbackSourceOutput);
+            source.start(now, wrapLoopPhase(this.loopTransportCanonicalPhaseSeconds, this.audioBuffer.duration));
+            // Publish only after the dry reader started successfully.
+            this.sourceGainNode?.disconnect();
+            this.sourceGainNode?.connect(wetGain);
+            this.retiringSourceGainNode?.disconnect();
+            this.retiringSourceGainNode?.connect(wetGain);
+            this.loopTransportDrySourceNode = source;
+            this.loopTransportDryGainNode = gain;
+            this.loopTransportWetMixGainNode = wetGain;
+            return true;
+        } catch {
+            this.stopAndDisconnectBufferSource(source, gain);
+            try { wetGain?.disconnect(); } catch { /* failed setup */ }
+            // Restore the original live path if reconnecting failed.
+            try { this.sourceGainNode?.connect(this.playbackSourceOutput); } catch { /* unavailable graph */ }
+            try { this.retiringSourceGainNode?.connect(this.playbackSourceOutput); } catch { /* unavailable graph */ }
+            return false;
+        }
+    }
+
     private getLoopTransportBeatShiftSeconds(): number {
         let offsetSeconds = 0;
         for (const slot of this.loopTransportFxSlots) {
@@ -949,7 +1780,7 @@ export class TrackAudio {
             state.rate = 1;
             state.velocity = 0;
             if (slot?.type === 'VINYL FLICK') {
-                state.targetRate = loopMotorTargetRate(slot.vinylFlickSpeed, slot.vinylFlickMix);
+                state.targetRate = loopMotorTargetRate(slot.vinylFlickSpeed);
                 state.returnTimeSeconds = slot.vinylFlickReturnTimeSeconds;
                 state.brakePercent = slot.vinylFlickBrakePercent;
             } else {
@@ -993,6 +1824,7 @@ export class TrackAudio {
             }
             integratedRateSeconds = (weightedRateSum * stepSeconds) / 3;
         }
+        this.loopTransportCanonicalPhaseSeconds += elapsed;
         this.loopTransportPhaseBaseSeconds += Number.isFinite(integratedRateSeconds) ? integratedRateSeconds : elapsed;
 
         for (const state of this.loopMotorStates) {
@@ -1006,9 +1838,10 @@ export class TrackAudio {
     private getLoopMotorAutomationHorizonSeconds(): number {
         let returnTime = LOOP_MOTOR_MIN_RETURN_SECONDS;
         for (const state of this.loopMotorStates) {
+            if (Math.abs(state.rate - state.targetRate) <= 1e-5 && Math.abs(state.velocity) <= 1e-5) continue;
             returnTime = Math.max(returnTime, state.returnTimeSeconds);
         }
-        return Math.min(LOOP_MOTOR_MAX_AUTOMATION_SECONDS, Math.max(0.2, returnTime * 4));
+        return Math.min(LOOP_MOTOR_MAX_AUTOMATION_SECONDS, Math.max(0.2, returnTime * 20));
     }
 
     private scheduleLoopMotorAutomation(source: AudioBufferSourceNode | null, now: number): void {
@@ -1078,7 +1911,7 @@ export class TrackAudio {
             source.loop = true;
             gain.gain.value = gainValue;
             source.connect(gain);
-            gain.connect(this.fxChain.input);
+            gain.connect(this.loopTransportWetMixGainNode ?? this.playbackSourceOutput);
             source.playbackRate.value = this.getLoopMotorProductRate();
             this.scheduleLoopMotorAutomation(source, when);
             source.start(when, wrapLoopPhase(phaseSeconds, this.audioBuffer.duration));
@@ -1140,11 +1973,9 @@ export class TrackAudio {
         this.loopTransportTransitionActive = false;
         if (!this.loopTransportPendingRetarget || !this.loopTransportPlaybackInitialized) return;
         const desiredShift = this.getLoopTransportBeatShiftSeconds();
-        if (Math.abs(desiredShift - this.loopTransportRenderedBeatShiftSeconds) > 1e-9) {
-            this.retargetLoopTransportSource(desiredShift, this.getLoopTransportCrossfadeMs());
-        } else {
-            this.loopTransportPendingRetarget = false;
-        }
+        // A pending change can also reanchor a Vinyl wet head to canonical
+        // transport even when the numeric BEAT SHIFT offset did not change.
+        this.retargetLoopTransportSource(desiredShift, this.getLoopTransportCrossfadeMs());
     }
 
     private stopAndDisconnectBufferSource(source: AudioBufferSourceNode | null, gain: GainNode | null): void {
@@ -1161,57 +1992,243 @@ export class TrackAudio {
     }
 
     public async startRecording() {
-        if (this.isRecording || this.isFinalizingRecording) return;
+        if (this.disposed) return;
+        if (this.recordingStarting || this.isRecording || this.isFinalizingRecording
+            || this.overdubStarting || this.overdubProcessor || this.pendingClear) return;
 
-        const ctx = this.engine.context;
-        const input = await this.engine.getProcessedInputNode();
-        if (this.isRecording || this.isFinalizingRecording) return;
-        this.resumeAfterRecording = true;
+        this.clearRecordingCaptureStopAckTimeout();
+        const generation = ++this.recordingStartGeneration;
+        this.recordingStarting = true;
+        try {
+            const ctx = this.engine.context;
+            // Anchor to the input worklet's AudioContext timeline before any
+            // awaited setup. If input is not already authorized and warm, use
+            // the legacy path rather than pretending a later frame was the
+            // user's requested start boundary.
+            const requestedCaptureFrame = this.engine.getInputCaptureRequestFrame?.() ?? null;
+            const input = await this.engine.getProcessedInputNode();
+            if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
+            this.resumeAfterRecording = true;
 
-        const maxRecordingFrames = RECORDING_CHUNK_SIZE * MAX_RECORDING_CHUNKS;
-        this.clearRecordingChunkStorage();
-        this.pendingRecordingComplete = null;
-        this.recordingFramesCaptured = 0;
-        this.recordingDroppedFrames = 0;
-        this.recordingOverflowEvents = 0;
-        this.recordingMaximumFrames = maxRecordingFrames;
-        this.recordingMaximumDurationSeconds = maxRecordingFrames / ctx.sampleRate;
-        this.recordingLimitReached = false;
-        this.recordingDiagnostic = null;
+            // Begin with the conservative stereo limit until the worklet reports
+            // the source's actual channel count. It recalculates this from the same
+            // 384 MiB total PCM byte cap for mono input.
+            const maxRecordingFrames = Math.floor(MAX_RECORDING_CAPTURE_BYTES / Float32Array.BYTES_PER_ELEMENT / MAX_RECORDING_CHANNELS);
+            this.clearRecordingChunkStorage();
+            this.pendingRecordingComplete = null;
+            this.recordingFramesCaptured = 0;
+            this.recordingDroppedFrames = 0;
+            this.recordingOverflowEvents = 0;
+            this.recordingMaximumFrames = maxRecordingFrames;
+            this.recordingMaximumDurationSeconds = maxRecordingFrames / ctx.sampleRate;
+            this.recordingLimitReached = false;
+            this.recordingDiagnostic = null;
+            this.recordingCaptureChunkIndices.fill(-1);
 
-        const workletNode = new AudioWorkletNode(ctx, 'looper-processor', {
-            processorOptions: {
-                chunkSize: RECORDING_CHUNK_SIZE,
-                chunkPoolSize: RECORDING_CHUNK_POOL_SIZE,
-                maxRecordingFrames,
-            },
-        });
+            if (requestedCaptureFrame !== null && this.engine.beginInputCaptureSession) {
+                let captureSession: InputCaptureSession | null = null;
+                captureSession = this.engine.beginInputCaptureSession(
+                    this.trackIndex,
+                    requestedCaptureFrame,
+                    (message) => {
+                        if (captureSession) this.handleRecordingMessage(captureSession.node, message as RecordingWorkletMessage);
+                    },
+                );
+                if (captureSession) {
+                    this.recordingCaptureSession = captureSession;
+                    this.workletNode = captureSession.node;
 
-        workletNode.port.onmessage = (event) => {
-            this.handleRecordingMessage(workletNode, event.data as RecordingWorkletMessage);
-        };
+                    // Preserve the existing live-input/track-FX route while
+                    // the engine-owned shared tap independently captures PCM.
+                    try {
+                        input.connect(this.fxChain.input);
+                    } catch (error) {
+                        this.recordingDiagnostic = `Could not connect the live recording monitor path: ${error instanceof Error ? error.message : String(error)}.`;
+                        this.abortSharedRecording(captureSession, true);
+                        return;
+                    }
+                    this.recordingInputNode = input;
+                    this.isRecording = true;
+                    this.state = TrackState.RECORDING;
+                    return;
+                }
+                this.recordingDiagnostic = 'Shared capture was unavailable at the requested frame; using the legacy recorder.';
+            } else if (this.engine.getInputCaptureRequestFrame && requestedCaptureFrame === null) {
+                this.recordingDiagnostic = 'Shared input capture was not ready at the request frame; the legacy recorder starts after input setup.';
+            }
 
-        input.connect(workletNode);
-        workletNode.connect(this.fxChain.input);
+            const workletNode = new AudioWorkletNode(ctx, 'looper-processor', {
+                numberOfInputs: 1,
+                numberOfOutputs: 1,
+                outputChannelCount: [MAX_RECORDING_CHANNELS],
+                channelCount: MAX_RECORDING_CHANNELS,
+                channelCountMode: 'max',
+                processorOptions: {
+                    chunkSize: RECORDING_CHUNK_SIZE,
+                    chunkPoolSize: RECORDING_CHUNK_POOL_SIZE,
+                    maxRecordingBytes: MAX_RECORDING_CAPTURE_BYTES,
+                },
+            });
 
-        this.workletNode = workletNode;
+            workletNode.port.onmessage = (event) => {
+                this.handleRecordingMessage(workletNode, event.data as RecordingWorkletMessage);
+            };
 
-        this.isRecording = true;
-        this.state = TrackState.RECORDING;
+            input.connect(workletNode);
+            this.recordingInputNode = input;
+            workletNode.connect(this.fxChain.input);
 
-        workletNode.port.postMessage({ type: 'START_RECORD' });
+            this.workletNode = workletNode;
+
+            this.isRecording = true;
+            this.state = TrackState.RECORDING;
+
+            workletNode.port.postMessage({ type: 'START_RECORD' });
+        } finally {
+            if (generation === this.recordingStartGeneration) this.recordingStarting = false;
+        }
     }
 
     public async stopRecording() {
+        if (this.disposed) return;
         if (!this.isRecording || !this.workletNode) return;
 
         this.isRecording = false;
         this.isFinalizingRecording = true;
+        const captureSession = this.recordingCaptureSession;
+        if (captureSession) {
+            const stopFrame = this.engine.getInputCaptureRequestFrame?.();
+            if (stopFrame === null || stopFrame === undefined
+                || !this.engine.stopInputCaptureSession?.(captureSession, stopFrame)) {
+                this.recordingDiagnostic = 'The shared input capture could not acknowledge the requested stop frame; the take was discarded.';
+                this.abortSharedRecording(captureSession, true);
+            } else {
+                this.armRecordingCaptureStopAckTimeout(captureSession);
+            }
+            return;
+        }
         this.workletNode.port.postMessage({ type: 'STOP_RECORD' });
     }
 
+    /** Stop a capture whose live input has ended without committing silent PCM. */
+    public handleInputUnavailable(reason: string): void {
+        if (this.disposed) return;
+        const detail = reason.trim() || 'The input device became unavailable.';
+        const recordingWasActive = this.recordingStarting || this.isRecording || this.isFinalizingRecording;
+        const captureSession = this.recordingCaptureSession;
+        if (captureSession) {
+            this.recordingDiagnostic = `${detail} The recording was discarded and the previous loop was kept; recording can be retried.`;
+            this.abortSharedRecording(captureSession, true);
+        } else if (recordingWasActive) {
+            this.abortRecording();
+            this.recordingDiagnostic = `${detail} The recording was discarded and the previous loop was kept; recording can be retried.`;
+            this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+            this.syncTransportState();
+        }
+
+        const overdubWasActive = !!this.overdubProcessor || this.overdubStarting
+            || this.overdubCaptureSession !== null || this.state === TrackState.OVERDUBBING;
+        if (!overdubWasActive) return;
+
+        const overdubCaptureSession = this.overdubCaptureSession;
+        if (overdubCaptureSession) this.failOverdubCapture(overdubCaptureSession, 'input-device-ended');
+
+        if (this.overdubProcessor) {
+            const rollbackSucceeded = this.overdubRollbackRestored || this.restorePreOverdubPcm();
+            this.overdubRollbackAborted = true;
+            if (!rollbackSucceeded) this.invalidatePcmHistoryForEdit();
+            if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+            this.stopOverdub();
+            this.overdubDiagnostic = rollbackSucceeded
+                ? `${detail} The overdub was stopped and its complete PCM edit was rolled back; the previous loop and undo history were kept.`
+                : `${detail} The overdub was stopped, but its rollback image was unavailable; partial PCM may remain.`;
+            this.syncTransportState();
+            return;
+        }
+
+        // No processor can have committed an overdub patch yet. Invalidate any
+        // pending asynchronous start and release its reserved history image.
+        this.overdubStartGeneration += 1;
+        this.overdubStarting = false;
+        if (this.overdubCaptureSession) this.releaseOverdubCaptureSession(this.overdubCaptureSession, true);
+        if (!this.overdubHasEdited) this.releasePendingOverdubSnapshot();
+        this.overdubBaselineSnapshot = null;
+        this.overdubStopRollbackJournal = null;
+        this.overdubRollbackAborted = false;
+        this.overdubRollbackRestored = false;
+        if (this.state === TrackState.OVERDUBBING) this.state = this.audioBuffer ? TrackState.PLAYING : TrackState.EMPTY;
+        this.overdubDiagnostic = `${detail} The overdub was cancelled before audio processing; the previous loop and undo history were kept.`;
+        this.syncTransportState();
+        this.restoreLoopTransportAfterOverdub();
+    }
+
     private handleRecordingMessage(workletNode: AudioWorkletNode, message: RecordingWorkletMessage) {
-        if (this.workletNode !== workletNode || !message) return;
+        if (this.disposed || this.workletNode !== workletNode || !message) return;
+        const captureSession = this.recordingCaptureSession;
+        if (captureSession && ('sessionId' in message
+            && (message.sessionId !== captureSession.sessionId
+                || message.inputGeneration !== captureSession.inputGeneration))) return;
+
+        if (message.type === 'CAPTURE_ERROR') {
+            if (captureSession) {
+                const timing = Number.isSafeInteger(message.requestedStartFrame)
+                    && Number.isSafeInteger(message.startReceivedFrame)
+                    && Number.isSafeInteger(message.preRollCapacityFrames)
+                    ? ` Start request R=${message.requestedStartFrame}; tap received it at F=${message.startReceivedFrame}`
+                        + ` (age ${message.startReceivedFrame! - message.requestedStartFrame!} frames, capacity ${message.preRollCapacityFrames} frames)`
+                        + `; retained [${message.oldestAvailableFrame ?? 'unknown'}, ${message.latestAvailableFrame ?? 'unknown'}),`
+                        + ` callback=${message.previousCallbackEndFrame ?? 'unknown'}→${message.callbackFrameStart ?? 'unknown'}`
+                        + ` (pre-roll ended ${message.preRollEndAtCallbackStart ?? 'unknown'}),`
+                        + ` ${message.preRollValidFrames ?? 'unknown'} valid preroll frames, ready=${message.inputReady ?? 'unknown'},`
+                        + ` generation=${message.inputGeneration}/${message.currentInputGeneration ?? 'unknown'},`
+                        + ` rate=${message.sampleRate ?? 'unknown'} Hz.`
+                    : '';
+                this.recordingDiagnostic = `Shared input capture failed: ${message.reason || 'unknown error'}.${timing} The previous track audio was kept; recording can be retried.`;
+                this.abortSharedRecording(captureSession, true);
+            }
+            return;
+        }
+
+        if (message.type === 'RECORD_ABORTED') {
+            if (captureSession) {
+                this.recordingDiagnostic = 'Shared input capture was aborted; the previous track audio was kept.';
+                this.abortSharedRecording(captureSession, false);
+            }
+            return;
+        }
+
+        if (captureSession && message.type === 'RECORD_COMPLETE') {
+            const rangeLength = Number.isSafeInteger(message.requestedStartFrame)
+                && message.requestedStartFrame === captureSession.startFrame
+                && Number.isSafeInteger(message.stopFrame)
+                && message.stopFrame! >= captureSession.startFrame
+                ? message.stopFrame! - captureSession.startFrame
+                : -1;
+            if (rangeLength < 0 || !Number.isSafeInteger(message.framesCaptured)
+                || message.framesCaptured < 0 || message.framesCaptured > rangeLength) {
+                this.recordingDiagnostic = 'Shared capture returned an invalid frame-range acknowledgement; the previous track audio was kept.';
+                this.abortSharedRecording(captureSession, true);
+                return;
+            }
+        }
+
+        if (message.type === 'RECORD_CONFIGURED') {
+            const channelCount = Number.isInteger(message.channelCount)
+                ? Math.max(1, Math.min(MAX_RECORDING_CHANNELS, message.channelCount))
+                : 1;
+            // The worklet config message is ordered before any associated
+            // chunks. Reject a mid-stream format change rather than mixing
+            // incompatible channel layouts in one loop.
+            if (this.recordingStoredFrames === 0) {
+                this.recordingChannelCount = channelCount;
+                this.recordingMaximumFrames = Math.max(0, Math.floor(message.maxRecordingFrames));
+                this.recordingMaximumDurationSeconds = this.recordingMaximumFrames / this.engine.context.sampleRate;
+            } else if (channelCount !== this.recordingChannelCount) {
+                this.recordingDiagnostic = 'Input channel count changed during recording; later audio was ignored.';
+                this.recordingOverflowEvents += 1;
+            }
+            return;
+        }
 
         if (message.type === 'RECORD_CHUNK') {
             this.acceptRecordingChunk(workletNode, message);
@@ -1219,6 +2236,10 @@ export class TrackAudio {
         }
 
         if (message.type === 'RECORD_COMPLETE') {
+            // The worklet also completes itself at the PCM capture limit,
+            // without a preceding control-thread stopRecording() call.
+            this.isRecording = false;
+            this.isFinalizingRecording = true;
             this.pendingRecordingComplete = message;
             this.finishRecordingWhenReady(workletNode);
             return;
@@ -1229,50 +2250,166 @@ export class TrackAudio {
         workletNode: AudioWorkletNode,
         message: Extract<RecordingWorkletMessage, { type: 'RECORD_CHUNK' }>,
     ) {
-        const samples = message.samples;
+        const captureSession = this.recordingCaptureSession;
+        const channels = Array.isArray(message.channels)
+            ? message.channels
+            : message.samples instanceof Float32Array ? [message.samples] : null;
         this.recordingReceivedChunkMessages += 1;
-        if (!(samples instanceof Float32Array)) {
+        if (!channels || channels.length < 1 || channels.length > MAX_RECORDING_CHANNELS
+            || channels.some((samples) => !(samples instanceof Float32Array))
+            || (channels.length === 2 && channels[0]!.length !== channels[1]!.length)) {
             this.recordingOverflowEvents += 1;
+            if (captureSession && channels) this.recycleSharedCaptureChunk(captureSession, message.chunkIndex, channels);
+            this.finishRecordingWhenReady(workletNode);
+            return;
+        }
+
+        const channelCount = typeof message.channelCount === 'number' && Number.isInteger(message.channelCount)
+            ? Math.max(1, Math.min(MAX_RECORDING_CHANNELS, message.channelCount))
+            : channels.length;
+        if (channelCount !== channels.length) {
+            this.recordingOverflowEvents += 1;
+            if (captureSession) this.recycleSharedCaptureChunk(captureSession, message.chunkIndex, channels);
             this.finishRecordingWhenReady(workletNode);
             return;
         }
 
         const sequence = Number.isInteger(message.sequence) ? message.sequence : -1;
         const validFrames = Number.isFinite(message.validFrames)
-            ? Math.max(0, Math.min(Math.floor(message.validFrames), samples.length))
+            ? Math.max(0, Math.min(
+                Math.floor(message.validFrames),
+                ...channels.map((samples) => samples.length),
+            ))
             : 0;
+        if (captureSession) {
+            const expectedStartFrame = captureSession.startFrame + (sequence * RECORDING_CHUNK_SIZE);
+            const frameBoundaryValid = Number.isSafeInteger(expectedStartFrame)
+                && Number.isSafeInteger(message.startFrame) && message.startFrame === expectedStartFrame;
+            const chunkShapeValid = channels.every((samples) => samples.length === RECORDING_CHUNK_SIZE)
+                && Number.isInteger(message.chunkIndex) && message.chunkIndex >= 0
+                && message.chunkIndex < RECORDING_CHUNK_POOL_SIZE;
+            if (!frameBoundaryValid || !chunkShapeValid || validFrames <= 0 || validFrames > RECORDING_CHUNK_SIZE) {
+                this.recordingOverflowEvents += 1;
+                this.recordingDiagnostic = 'Shared capture returned an invalid chunk boundary; the malformed chunk was discarded.';
+                this.recycleSharedCaptureChunk(captureSession, message.chunkIndex, channels);
+                this.finishRecordingWhenReady(workletNode);
+                return;
+            }
+        }
+        if (this.recordingStoredFrames === 0) this.recordingChannelCount = channelCount;
+        if (channelCount !== this.recordingChannelCount) {
+            this.recordingOverflowEvents += 1;
+            this.recordingDiagnostic = 'Input channel count changed during recording; later audio was ignored.';
+            if (captureSession) this.recycleSharedCaptureChunk(captureSession, message.chunkIndex, channels);
+            this.finishRecordingWhenReady(workletNode);
+            return;
+        }
+
         const hasAvailableSlot = sequence >= 0 && sequence < MAX_RECORDING_CHUNKS;
         const isNewSequence = hasAvailableSlot && this.receivedChunkFlags[sequence] === 0;
-        if (isNewSequence && validFrames > 0) {
+        const withinPcmBudget = (this.recordingStoredFrames + validFrames)
+            * channelCount * Float32Array.BYTES_PER_ELEMENT <= MAX_RECORDING_CAPTURE_BYTES;
+        if (isNewSequence && validFrames > 0 && withinPcmBudget) {
             // Keep ownership of the transferred data on the main thread. It remains a
             // fixed-size chunk; only the small reference table grows (and it is preallocated).
-            this.recordedChunks[sequence] = samples;
+            this.recordedChunks[sequence] = channels;
             this.recordedChunkLengths[sequence] = validFrames;
             this.receivedChunkFlags[sequence] = 1;
+            if (captureSession) this.recordingCaptureChunkIndices[sequence] = message.chunkIndex;
             this.recordingChunkCount += 1;
             this.recordingStoredFrames += validFrames;
             this.recordingFramesCaptured = this.recordingStoredFrames;
         } else {
             this.recordingOverflowEvents += 1;
+            if (!withinPcmBudget) this.recordingDiagnostic = 'Recording exceeded the 384 MiB per-track PCM capture budget; excess frames were discarded.';
+            if (captureSession) this.recycleSharedCaptureChunk(captureSession, message.chunkIndex, channels);
         }
 
         // Replenish the worklet's fixed pool with a fresh fixed-size buffer. The original
         // chunk stays main-thread-owned for final assembly. This allocation happens only
         // when a chunk message arrives, never in the audio rendering callback.
         if (
-            isNewSequence && validFrames === samples.length &&
-            samples.length === RECORDING_CHUNK_SIZE &&
-            !this.isFinalizingRecording &&
+            isNewSequence && withinPcmBudget && channels.every((samples) => validFrames === samples.length) &&
+            channels.every((samples) => samples.length === RECORDING_CHUNK_SIZE) &&
+            (captureSession !== null || !this.isFinalizingRecording) &&
             message.chunkIndex >= 0 && message.chunkIndex < RECORDING_CHUNK_POOL_SIZE
         ) {
-            const replacement = new Float32Array(RECORDING_CHUNK_SIZE);
-            this.recycleChunkMessage.chunkIndex = message.chunkIndex;
-            this.recycleChunkMessage.samples = replacement;
-            this.recycleChunkTransferList[0] = replacement.buffer;
-            workletNode.port.postMessage(this.recycleChunkMessage, this.recycleChunkTransferList);
+            const replacements = channels.map(() => new Float32Array(RECORDING_CHUNK_SIZE));
+            if (captureSession) {
+                if (this.recycleSharedCaptureChunk(captureSession, message.chunkIndex, replacements)) {
+                    this.recordingCaptureChunkIndices[sequence] = -1;
+                }
+            } else {
+                this.recycleChunkMessage.chunkIndex = message.chunkIndex;
+                this.recycleChunkMessage.samples = replacements[0] ?? null;
+                this.recycleChunkMessage.channels = replacements;
+                this.recycleChunkTransferList.length = replacements.length;
+                replacements.forEach((replacement, channel) => {
+                    this.recycleChunkTransferList[channel] = replacement.buffer;
+                });
+                workletNode.port.postMessage(this.recycleChunkMessage, this.recycleChunkTransferList);
+            }
         }
 
         this.finishRecordingWhenReady(workletNode);
+    }
+
+    private recycleSharedCaptureChunk(
+        session: InputCaptureSession,
+        chunkIndex: number,
+        channels: Float32Array[],
+    ): boolean {
+        const recycled = this.engine.recycleInputCaptureChunk?.(session, chunkIndex, channels) === true;
+        if (!recycled) {
+            this.recordingDiagnostic = 'A shared-capture buffer could not be returned to its bounded pool; a later recording may be refused.';
+        }
+        return recycled;
+    }
+
+    private returnRetainedSharedCaptureChunks(session: InputCaptureSession): void {
+        for (let sequence = 0; sequence < MAX_RECORDING_CHUNKS; sequence += 1) {
+            const chunkIndex = this.recordingCaptureChunkIndices[sequence];
+            if (chunkIndex === undefined || chunkIndex < 0) continue;
+            const channels = this.recordedChunks[sequence];
+            if (channels) this.recycleSharedCaptureChunk(session, chunkIndex, channels);
+            this.recordingCaptureChunkIndices[sequence] = -1;
+        }
+    }
+
+    private abortSharedRecording(session: InputCaptureSession, requestAbort: boolean): void {
+        if (this.recordingCaptureSession !== session) return;
+        this.clearRecordingCaptureStopAckTimeout();
+        if (requestAbort) this.engine.abortInputCaptureSession?.(session);
+        this.returnRetainedSharedCaptureChunks(session);
+        this.engine.releaseInputCaptureSession?.(session);
+        this.recordingCaptureSession = null;
+        try { this.recordingInputNode?.disconnect(this.fxChain.input); } catch { /* already disconnected */ }
+        this.recordingInputNode = null;
+        if (this.workletNode === session.node) this.workletNode = null;
+        this.recordingStartGeneration += 1;
+        this.recordingStarting = false;
+        this.isRecording = false;
+        this.isFinalizingRecording = false;
+        this.resumeAfterRecording = true;
+        this.clearRecordingChunkStorage();
+        this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+        this.syncTransportState();
+    }
+
+    private armRecordingCaptureStopAckTimeout(session: InputCaptureSession): void {
+        this.clearRecordingCaptureStopAckTimeout();
+        this.recordingCaptureStopAckTimeout = setTimeout(() => {
+            this.recordingCaptureStopAckTimeout = null;
+            if (this.recordingCaptureSession !== session || !this.isFinalizingRecording) return;
+            const contextState = this.engine.context.state ?? 'unknown';
+            this.recordingDiagnostic = `Shared input capture did not complete stop within ${RECORDING_CAPTURE_STOP_ACK_TIMEOUT_MS} ms (AudioContext state: ${contextState}); the incomplete take was discarded and the previous loop/history were preserved. Resume audio and retry.`;
+            this.abortSharedRecording(session, true);
+        }, RECORDING_CAPTURE_STOP_ACK_TIMEOUT_MS);
+    }
+
+    private clearRecordingCaptureStopAckTimeout(): void {
+        if (this.recordingCaptureStopAckTimeout !== null) clearTimeout(this.recordingCaptureStopAckTimeout);
+        this.recordingCaptureStopAckTimeout = null;
     }
 
     private finishRecordingWhenReady(workletNode: AudioWorkletNode) {
@@ -1292,12 +2429,18 @@ export class TrackAudio {
         workletNode: AudioWorkletNode,
         message: Extract<RecordingWorkletMessage, { type: 'RECORD_COMPLETE' }>,
     ) {
+        this.clearRecordingCaptureStopAckTimeout();
+        if (Number.isFinite(message.maxRecordingFrames) && message.maxRecordingFrames > 0) {
+            this.recordingMaximumFrames = Math.floor(message.maxRecordingFrames);
+            this.recordingMaximumDurationSeconds = this.recordingMaximumFrames / this.engine.context.sampleRate;
+        }
         const reportedFrames = Number.isFinite(message.framesCaptured)
             ? Math.max(0, Math.floor(message.framesCaptured))
             : this.recordingStoredFrames;
-        const missingFrames = Math.max(0, reportedFrames - this.recordingStoredFrames);
+        const finalFrames = Math.min(reportedFrames, this.recordingStoredFrames);
+        const missingFrames = Math.max(0, reportedFrames - finalFrames);
 
-        this.recordingFramesCaptured = this.recordingStoredFrames;
+        this.recordingFramesCaptured = finalFrames;
         this.recordingDroppedFrames += Math.max(0, Number.isFinite(message.droppedFrames) ? message.droppedFrames : 0);
         this.recordingDroppedFrames += missingFrames;
         this.recordingOverflowEvents += Math.max(0, Number.isFinite(message.overflowEvents) ? message.overflowEvents : 0);
@@ -1308,37 +2451,89 @@ export class TrackAudio {
             this.recordingDiagnostic = `Recording capacity reached (${Math.ceil(this.recordingMaximumDurationSeconds / 60)} min); ${this.recordingDroppedFrames} frames were dropped.`;
         } else if (this.recordingDroppedFrames > 0) {
             this.recordingDiagnostic = `Audio capture overflow dropped ${this.recordingDroppedFrames} frames.`;
-        } else {
+        } else if (!this.recordingDiagnostic) {
             this.recordingDiagnostic = null;
         }
 
-        if (this.recordingStoredFrames > 0) {
-            const rawBuffer = new Float32Array(this.recordingStoredFrames);
+        const timelineOverlapEvents = Number.isSafeInteger(message.timelineOverlapEvents)
+            ? Math.max(0, message.timelineOverlapEvents ?? 0) : 0;
+        const timelineOverlapFrames = Number.isSafeInteger(message.timelineOverlapFrames)
+            ? Math.max(0, message.timelineOverlapFrames ?? 0) : 0;
+        if (timelineOverlapEvents > 0 || timelineOverlapFrames > 0) {
+            const warning = `The audio timeline repeated or overlapped during capture (${timelineOverlapEvents} block(s), ${timelineOverlapFrames} frame(s) skipped); continuity cannot be verified.`;
+            this.recordingDiagnostic = this.recordingDiagnostic
+                ? `${this.recordingDiagnostic} ${warning}`
+                : warning;
+        }
+
+        // The accepted chunks own the channel layout. A mismatched final
+        // acknowledgement must never silently drop a captured right channel.
+        const completedChannelCount = this.recordingChannelCount;
+        if (this.recordingStoredFrames > 0 && Number.isInteger(message.channelCount)
+            && message.channelCount !== completedChannelCount) {
+            const warning = 'Recording completion channel count differed from captured PCM; all captured channels were preserved.';
+            this.recordingDiagnostic = this.recordingDiagnostic ? `${this.recordingDiagnostic} ${warning}` : warning;
+            this.recordingOverflowEvents += 1;
+        }
+        if (finalFrames > 0) {
+            const rawBuffers = Array.from({ length: completedChannelCount }, () => new Float32Array(finalFrames));
             let writeOffset = 0;
             for (let sequence = 0; sequence < MAX_RECORDING_CHUNKS; sequence += 1) {
                 if (this.receivedChunkFlags[sequence] === 0) continue;
-                const chunk = this.recordedChunks[sequence];
+                const chunks = this.recordedChunks[sequence];
                 const length = this.recordedChunkLengths[sequence];
-                if (!chunk || length === undefined || length === 0) continue;
-                for (let index = 0; index < length; index += 1) {
-                    rawBuffer[writeOffset] = chunk[index] ?? 0;
-                    writeOffset += 1;
+                if (!chunks || length === undefined || length === 0) continue;
+                const copyFrames = Math.min(length, Math.max(0, finalFrames - writeOffset));
+                if (copyFrames <= 0) break;
+                for (let channel = 0; channel < completedChannelCount; channel += 1) {
+                    const chunk = chunks[channel];
+                    const rawBuffer = rawBuffers[channel];
+                    if (!chunk || !rawBuffer) continue;
+                    rawBuffer.set(chunk.subarray(0, copyFrames), writeOffset);
                 }
+                writeOffset += copyFrames;
             }
+
+            const captureSession = this.recordingCaptureSession;
+            if (captureSession) this.returnRetainedSharedCaptureChunks(captureSession);
 
             // Release the retained chunk references as soon as the one-time assembly is done.
             // This keeps finalization to at most the assembled float buffer plus AudioBuffer.
-            const assembledBuffer = writeOffset === rawBuffer.length ? rawBuffer : rawBuffer.subarray(0, writeOffset);
+            const assembledBuffers = rawBuffers.map((rawBuffer) =>
+                writeOffset === rawBuffer.length ? rawBuffer : rawBuffer.subarray(0, writeOffset));
             this.clearRecordingChunkStorage();
-            this.processRecordedBuffer(assembledBuffer);
+            if (assembledBuffers.length === 1) this.processRecordedBuffer(assembledBuffers[0]!);
+            else this.processRecordedBuffers(assembledBuffers);
         } else {
-            this.state = this.resumeAfterRecording ? TrackState.EMPTY : TrackState.STOPPED;
+            const captureSession = this.recordingCaptureSession;
+            if (captureSession) this.returnRetainedSharedCaptureChunks(captureSession);
+            // A zero-frame take never replaces PCM. Keep an existing loop
+            // stopped, but leave a genuinely empty track EMPTY so Record can
+            // start another take instead of routing to play() with no buffer.
+            this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
+            const emptyTakeDiagnostic = this.audioBuffer
+                ? 'No input frames were captured; the previous loop was preserved.'
+                : 'No input frames were captured; the track remains empty and can be recorded again.';
+            this.recordingDiagnostic = this.recordingDiagnostic
+                ? `${this.recordingDiagnostic} ${emptyTakeDiagnostic}`
+                : emptyTakeDiagnostic;
             this.resumeAfterRecording = true;
             this.syncTransportState();
         }
 
-        workletNode.port.onmessage = null;
-        workletNode.disconnect();
+        const captureSession = this.recordingCaptureSession;
+        if (captureSession) {
+            this.engine.releaseInputCaptureSession?.(captureSession);
+            this.recordingCaptureSession = null;
+        } else {
+            workletNode.port.onmessage = null;
+        }
+        try { this.recordingInputNode?.disconnect(captureSession ? this.fxChain.input : workletNode); } catch { /* already disconnected */ }
+        this.recordingInputNode = null;
+        if (!captureSession) {
+            workletNode.disconnect();
+            workletNode.port.close?.();
+        }
         if (this.workletNode === workletNode) this.workletNode = null;
         this.clearRecordingChunkStorage();
         this.isFinalizingRecording = false;
@@ -1350,27 +2545,38 @@ export class TrackAudio {
         }
         this.recordedChunkLengths.fill(0);
         this.receivedChunkFlags.fill(0);
+        this.recordingCaptureChunkIndices.fill(-1);
         this.recordingChunkCount = 0;
         this.recordingReceivedChunkMessages = 0;
         this.recordingStoredFrames = 0;
+        this.recordingChannelCount = 1;
         this.pendingRecordingComplete = null;
     }
 
     private processRecordedBuffer(rawBuffer: Float32Array) {
+        this.processRecordedBuffers([rawBuffer]);
+    }
+
+    private processRecordedBuffers(rawBuffers: Float32Array[]) {
+        const previous = this.capturePcmSnapshot();
         const ctx = this.engine.context;
         const browserOffset = this.getBrowserRecordingOffsetConfig();
         const latencySamples = Math.round(this.engine.roundTripLatency * ctx.sampleRate);
+        const frameCount = rawBuffers[0]?.length ?? 0;
 
         let startOffset = Math.max(0, latencySamples);
-        if (startOffset >= rawBuffer.length) startOffset = 0;
+        if (startOffset >= frameCount) startOffset = 0;
 
-        const processedLength = rawBuffer.length - startOffset;
-        if (startOffset > 0) rawBuffer.copyWithin(0, startOffset);
-        const processedBuffer = rawBuffer.subarray(0, processedLength);
-        shiftSamplesInPlace(processedBuffer, browserOffset.recordingOffsetSamples);
+        const processedLength = frameCount - startOffset;
+        const processedBuffers = rawBuffers.map((rawBuffer) => {
+            if (startOffset > 0) rawBuffer.copyWithin(0, startOffset);
+            const processedBuffer = rawBuffer.subarray(0, processedLength);
+            shiftSamplesInPlace(processedBuffer, browserOffset.recordingOffsetSamples);
+            return processedBuffer;
+        });
 
-        const durationSeconds = processedBuffer.length / ctx.sampleRate;
-        const lengthSamples = processedBuffer.length;
+        const durationSeconds = processedLength / ctx.sampleRate;
+        const lengthSamples = processedLength;
 
         console.log(`Track ${this.track.id} recorded: ${durationSeconds.toFixed(2)}s (${lengthSamples} samples)`);
 
@@ -1380,41 +2586,27 @@ export class TrackAudio {
 
         let finalBufferLength = lengthSamples;
 
-        if (!this.transport.hasMasterTrack()) {
-            // This is the first track - it becomes the master
-            console.log(`\n🎯 Track ${this.track.id} is becoming the MASTER track`);
-
-            // Set master track with enhanced BPM calculation
-            this.transport.setMasterTrack(
-                this.track.id,
-                durationSeconds,
-                ctx.sampleRate,
-                lengthSamples
-            );
-
-            // Start global transport
-            this.transport.start();
-
-            console.log(`✓ Global transport started with calculated BPM\n`);
-        } else {
-            // This is a slave track - Apply Hard Quantization (Drift Fix)
+        const becomesMaster = !this.transport.hasMasterTrack();
+        if (!becomesMaster) {
             const masterLength = this.transport.masterLoopLengthSamples;
-
             if (masterLength > 0 && Number.isFinite(masterLength)) {
-                // Calculate ratio (how many measures), retaining the prior min-one-loop rule.
-                let ratio = Math.round(lengthSamples / masterLength);
-                if (ratio < 1) ratio = 1;
-
+                const ratio = Math.max(1, Math.round(lengthSamples / masterLength));
                 finalBufferLength = ratio * masterLength;
-                console.log(`Track ${this.track.id} recorded as SLAVE track (Master: Track ${this.transport.masterTrackId})`);
-                console.log(`Drift Fix: Resized track from ${lengthSamples} to ${finalBufferLength} (Exact multiple: ${ratio})`);
             }
         }
 
-        // Create final AudioBuffer
-        this.audioBuffer = ctx.createBuffer(1, finalBufferLength, ctx.sampleRate);
-        const audioChannel = this.audioBuffer.getChannelData(0);
-        audioChannel.set(processedBuffer.subarray(0, Math.min(processedBuffer.length, finalBufferLength)));
+        // Allocate before replacing either the live loop or its existing history.
+        const completedBuffer = ctx.createBuffer(processedBuffers.length, finalBufferLength, ctx.sampleRate);
+        processedBuffers.forEach((processedBuffer, channel) => {
+            completedBuffer.getChannelData(channel).set(processedBuffer.subarray(0, Math.min(processedBuffer.length, finalBufferLength)));
+        });
+        if (!this.retainPcmEdit(previous)) this.invalidatePcmHistoryForEdit();
+        this.audioBuffer = completedBuffer;
+        this.projectPcmRevision += 1;
+        if (becomesMaster) {
+            this.transport.setMasterTrack(this.track.id, durationSeconds, ctx.sampleRate, lengthSamples);
+            this.transport.start();
+        }
 
         if (this.resumeAfterRecording) {
             this.state = TrackState.PLAYING;
@@ -1428,6 +2620,7 @@ export class TrackAudio {
     }
 
     private async ensureLivePolyPitchNode(): Promise<LivePolyPitchNode> {
+        if (this.disposed) throw new Error(`Track ${this.track.id} has been disposed.`);
         if (this.livePolyPitchNode) return this.livePolyPitchNode;
         if (this.livePolyPitchNodePromise) return this.livePolyPitchNodePromise;
 
@@ -1446,9 +2639,7 @@ export class TrackAudio {
         }).then(async (node) => {
             if (generation !== this.livePolyPitchGeneration || !this.livePolyPitchEnabledInternal) {
                 try { await node.stopProcessing(this.engine.context.currentTime); } catch { /* stale node */ }
-                try { await node.clearBuffers(); } catch { /* stale node */ }
-                node.disconnect();
-                node.port.close();
+                await node.releaseWasmMemory();
                 throw new Error('Live pitch setup was canceled');
             }
             this.livePolyPitchNode = node;
@@ -1464,6 +2655,7 @@ export class TrackAudio {
     }
 
     private async ensureLiveMonoPitchNode(): Promise<LiveMonoPitchNode> {
+        if (this.disposed) throw new Error(`Track ${this.track.id} has been disposed.`);
         if (this.liveMonoPitchNode) return this.liveMonoPitchNode;
         if (this.liveMonoPitchNodePromise) return this.liveMonoPitchNodePromise;
 
@@ -1510,7 +2702,7 @@ export class TrackAudio {
         this.sourceNode.loop = true;
         this.sourceGainNode = null;
         if (this.isReverse) {
-            this.sourceNode.connect(this.fxChain.input);
+            this.sourceNode.connect(this.playbackSourceOutput);
         } else {
             // A unity per-source gain makes the normal forward BufferSource
             // path crossfadeable if a read-head effect is selected mid-loop.
@@ -1518,7 +2710,7 @@ export class TrackAudio {
             this.sourceGainNode = context.createGain();
             this.sourceGainNode.gain.value = 1;
             this.sourceNode.connect(this.sourceGainNode);
-            this.sourceGainNode.connect(this.fxChain.input);
+            this.sourceGainNode.connect(this.playbackSourceOutput);
         }
         this.sourceNode.playbackRate.value = this.isReverse ? -1 : 1;
         this.sourceNode.start(0, this.startOffset);
@@ -1539,6 +2731,7 @@ export class TrackAudio {
         const baseOffset = this.startOffset - this.loopTransportStartOffsetShiftSeconds;
 
         this.loopTransportPhaseBaseSeconds = baseOffset;
+        this.loopTransportCanonicalPhaseSeconds = baseOffset;
         this.loopTransportPhaseTime = now;
         this.loopTransportPlaybackInitialized = true;
         this.loopTransportRenderedBeatShiftSeconds = beatShiftSeconds;
@@ -1552,6 +2745,14 @@ export class TrackAudio {
         }
         this.sourceNode = initial.source;
         this.sourceGainNode = initial.gain;
+        if (this.hasConfiguredVinylFlick() && !this.ensureLoopTransportDryReader(now)) {
+            this.stopAndDisconnectBufferSource(initial.source, initial.gain);
+            this.sourceNode = null;
+            this.sourceGainNode = null;
+            this.loopTransportPlaybackInitialized = false;
+            return false;
+        }
+        this.updateLoopTransportMix(now, true);
         this.loopTransportStartOffsetShiftSeconds = 0;
         this.startTime = now;
         this.state = TrackState.PLAYING;
@@ -1582,7 +2783,7 @@ export class TrackAudio {
             return;
         }
 
-        node.connect(this.fxChain.input);
+        node.connect(this.playbackSourceOutput);
         try {
             await node.scheduleLoop({
                 inputOffsetSeconds: Math.max(0, Math.min(this.startOffset, Math.max(0, buffer.duration - 1 / buffer.sampleRate))),
@@ -1593,13 +2794,13 @@ export class TrackAudio {
                 tonalityLimitHz: this.livePolyPitchTonalityLimitHz,
             });
         } catch (error) {
-            node.disconnect();
+            disconnectAudioNodeIfConnected(node, this.playbackSourceOutput);
             this.livePolyPitchBufferReset = node.clearBuffers().catch(() => undefined);
             throw error;
         }
 
         if (revision !== this.playbackRevision || !this.livePolyPitchEnabledInternal || this.isReverse) {
-            node.disconnect();
+            disconnectAudioNodeIfConnected(node, this.playbackSourceOutput);
             this.livePolyPitchBufferReset = node.clearBuffers().catch(() => undefined);
             return;
         }
@@ -1626,7 +2827,7 @@ export class TrackAudio {
         source.loop = true;
         source.playbackRate.value = 1;
         source.connect(node);
-        node.connect(this.fxChain.input);
+        node.connect(this.playbackSourceOutput);
         try {
             source.start(0, Math.max(0, Math.min(this.startOffset, Math.max(0, buffer.duration - 1 / buffer.sampleRate))));
         } catch (error) {
@@ -1663,6 +2864,9 @@ export class TrackAudio {
         const duration = this.audioBuffer?.duration ?? 0;
         if (duration <= 0) return 0;
         this.advanceLoopTransportTo(this.engine.context.currentTime);
+        // Native's transport cursor remains canonical while Vinyl's wet head
+        // travels independently. This also keeps overdub frame indices stable.
+        if (this.loopTransportDrySourceNode) return wrapLoopPhase(this.loopTransportCanonicalPhaseSeconds, duration);
         return wrapLoopPhase(this.loopTransportPhaseBaseSeconds + this.loopTransportRenderedBeatShiftSeconds, duration);
     }
 
@@ -1671,7 +2875,7 @@ export class TrackAudio {
         this.livePolyPitchActiveInternal = false;
         if (!node) return;
         try { void node.stopProcessing(this.engine.context.currentTime).catch(() => undefined); } catch { /* node may already be closed */ }
-        node.disconnect();
+        disconnectAudioNodeIfConnected(node, this.playbackSourceOutput);
         this.livePolyPitchBufferReset = node.clearBuffers().catch(() => undefined);
     }
 
@@ -1684,6 +2888,7 @@ export class TrackAudio {
         this.livePolyPitchGeneration += 1;
         const pending = this.livePolyPitchNodePromise;
         const node = this.livePolyPitchNode;
+        const bufferReset = this.livePolyPitchBufferReset;
         this.livePolyPitchNodePromise = null;
         this.livePolyPitchNode = null;
         this.livePolyPitchActiveInternal = false;
@@ -1696,9 +2901,8 @@ export class TrackAudio {
         if (!node) return;
         if (this.livePolyPitchNode === node) this.livePolyPitchNode = null;
         try { await node.stopProcessing(this.engine.context.currentTime); } catch { /* node may already be stopped */ }
-        node.disconnect();
-        try { await node.clearBuffers(); } catch { /* node is being disposed */ }
-        node.port.close();
+        try { await bufferReset; } catch { /* disposal below still owns lease release */ }
+        await node.releaseWasmMemory();
     }
 
     private async disposeLiveMonoPitchNode() {
@@ -1718,7 +2922,7 @@ export class TrackAudio {
     }
 
     public async play() {
-        if (!this.audioBuffer) return;
+        if (this.disposed || !this.audioBuffer || this.pendingClear) return;
 
         this.stop();
 
@@ -1760,14 +2964,21 @@ export class TrackAudio {
     }
 
     public stop() {
+        if (this.disposed) return;
         if (this.loopTransportPlaybackInitialized && this.sourceNode && this.audioBuffer
             && (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING)) {
             this.startOffset = this.getLoopTransportOutputPosition();
-            this.loopTransportStartOffsetShiftSeconds = this.loopTransportRenderedBeatShiftSeconds;
+            this.loopTransportStartOffsetShiftSeconds = this.loopTransportDrySourceNode ? 0 : this.loopTransportRenderedBeatShiftSeconds;
         }
         this.playbackRevision += 1;
         this.stopAndDisconnectBufferSource(this.sourceNode, this.sourceGainNode);
         this.stopAndDisconnectBufferSource(this.retiringSourceNode, this.retiringSourceGainNode);
+        this.stopAndDisconnectBufferSource(this.loopTransportDrySourceNode, this.loopTransportDryGainNode);
+        try { this.loopTransportWetMixGainNode?.gain.cancelScheduledValues(this.engine.context.currentTime); } catch { /* disconnected gain */ }
+        try { this.loopTransportWetMixGainNode?.disconnect(); } catch { /* already disconnected */ }
+        this.loopTransportDrySourceNode = null;
+        this.loopTransportDryGainNode = null;
+        this.loopTransportWetMixGainNode = null;
         this.sourceNode = null;
         this.sourceGainNode = null;
         this.retiringSourceNode = null;
@@ -1780,10 +2991,28 @@ export class TrackAudio {
         this.state = TrackState.STOPPED;
     }
 
-    public clear() {
+    /** True means cleared, or queued until the overdub's final patch acknowledgement. */
+    public clear(): boolean {
+        if (this.disposed) return false;
         this.cancelQuantizeWait();
         this.abortRecording();
-        this.stopOverdub();
+        this.overdubRestartAfterStop = false;
+        if (this.overdubProcessor) {
+            this.pendingClear = true;
+            this.stop();
+            this.stopOverdub();
+            return true;
+        }
+        this.stopOverdub(); // Also cancel an asynchronous overdub startup.
+        return this.completeClear();
+    }
+
+    private completeClear(): boolean {
+        if (this.audioBuffer && !this.retainPcmEdit(this.capturePcmSnapshot())) {
+            this.historyFailureReason = this.historyBudgetReason('Clear was cancelled because undo could not be retained');
+            this.syncTransportState();
+            return false;
+        }
         this.stop();
         this.livePolyPitchEnabledInternal = false;
         this.liveMonoPitchEnabledInternal = false;
@@ -1792,6 +3021,7 @@ export class TrackAudio {
         void this.disposeLivePolyPitchNode();
         void this.disposeLiveMonoPitchNode();
         this.audioBuffer = null;
+        this.projectPcmRevision += 1;
         this.state = TrackState.EMPTY;
         this.isReverse = false;
 
@@ -1809,16 +3039,19 @@ export class TrackAudio {
         this.startOffset = 0;
         this.startTime = 0;
         this.loopTransportStartOffsetShiftSeconds = 0;
+        this.restoreLoopTransportAfterOverdub();
 
         console.log(`Track ${this.track.id} cleared`);
         this.syncTransportState();
+        return true;
     }
 
     public toggleReverse() {
+        if (this.disposed) return;
         const wasPlaying = this.state === TrackState.PLAYING && !!this.audioBuffer;
         if (wasPlaying) {
             this.startOffset = this.getCurrentPlaybackPosition();
-            this.loopTransportStartOffsetShiftSeconds = this.loopTransportPlaybackInitialized && !this.loopTransportUnavailableReason
+            this.loopTransportStartOffsetShiftSeconds = this.loopTransportPlaybackInitialized && !this.loopTransportDrySourceNode && !this.loopTransportUnavailableReason
                 ? this.getLoopTransportBeatShiftSeconds()
                 : 0;
         }
@@ -1837,18 +3070,30 @@ export class TrackAudio {
 
     private async startOverdub() {
         const audioBuffer = this.audioBuffer;
-        if (!audioBuffer) return;
+        if (!audioBuffer || this.pendingClear) return;
         if (this.overdubProcessor) {
             if (this.overdubStopping) this.overdubRestartAfterStop = true;
             return;
         }
 
         const generation = ++this.overdubStartGeneration;
+        this.overdubStarting = true;
         const ctx = this.engine.context;
         let createdWorklet: AudioWorkletNode | null = null;
         let createdMuteGain: GainNode | null = null;
+        let captureSession: InputCaptureSession | null = null;
+        let requestFrame: number | null = null;
 
         try {
+            const hasSharedCapture = typeof this.engine.getInputCaptureRequestFrame === 'function'
+                && typeof this.engine.beginInputCaptureSession === 'function';
+            if (hasSharedCapture) {
+                requestFrame = this.engine.getInputCaptureRequestFrame!();
+                if (requestFrame === null) throw new Error('The shared input capture was not ready at the overdub request frame');
+                captureSession = this.beginOverdubCaptureSession(requestFrame, generation);
+                if (!captureSession) throw new Error('The shared input capture session could not be reserved at the overdub request frame');
+            }
+
             const input = await this.engine.getProcessedInputNode();
             if (generation !== this.overdubStartGeneration || this.state !== TrackState.OVERDUBBING || this.audioBuffer !== audioBuffer) return;
 
@@ -1865,28 +3110,43 @@ export class TrackAudio {
                 throw new Error('AudioWorkletNode is unavailable in this browser context');
             }
 
-            const loopSamples = new Float32Array(audioBuffer.getChannelData(0));
-            if (loopSamples.length === 0) throw new Error('The loop has no audio samples to overdub');
+            const loopChannels = Array.from(
+                { length: Math.max(1, Math.min(MAX_RECORDING_CHANNELS, audioBuffer.numberOfChannels)) },
+                (_, channel) => new Float32Array(audioBuffer.getChannelData(channel)),
+            );
+            if (loopChannels[0]?.length === 0) throw new Error('The loop has no audio samples to overdub');
 
+            const channelCount = loopChannels.length;
+            this.prepareOverdubStopRollback(audioBuffer);
             const patchBuffers = Array.from({ length: OVERDUB_TRANSFER_BUFFER_POOL_SIZE }, (_, slotIndex) => ({
                 slotIndex,
                 indices: new Uint32Array(OVERDUB_TRANSFER_BUFFER_FRAMES),
                 values: new Float32Array(OVERDUB_TRANSFER_BUFFER_FRAMES),
+                oldValues: new Float32Array(OVERDUB_TRANSFER_BUFFER_FRAMES),
+                ...(channelCount > 1 ? { rightValues: new Float32Array(OVERDUB_TRANSFER_BUFFER_FRAMES) } : {}),
+                ...(channelCount > 1 ? { oldRightValues: new Float32Array(OVERDUB_TRANSFER_BUFFER_FRAMES) } : {}),
             }));
-            const transferList: Transferable[] = [loopSamples.buffer];
+            const transferList: Transferable[] = loopChannels.map((samples) => samples.buffer);
             for (const buffer of patchBuffers) {
-                transferList.push(buffer.indices.buffer, buffer.values.buffer);
+                transferList.push(buffer.indices.buffer, buffer.values.buffer, buffer.oldValues.buffer);
+                if (buffer.rightValues) transferList.push(buffer.rightValues.buffer);
+                if (buffer.oldRightValues) transferList.push(buffer.oldRightValues.buffer);
             }
 
             const workletNode = new AudioWorkletNode(ctx, 'rc505-overdub-processor', {
                 numberOfInputs: 1,
                 numberOfOutputs: 1,
-                outputChannelCount: [1],
-                channelCount: 1,
+                outputChannelCount: [channelCount],
+                channelCount,
                 channelCountMode: 'explicit',
                 processorOptions: {
                     transferBufferFrames: OVERDUB_TRANSFER_BUFFER_FRAMES,
                     transferBufferPoolSize: OVERDUB_TRANSFER_BUFFER_POOL_SIZE,
+                    batchPatchMessages: true,
+                    patchFlushFrames: OVERDUB_PATCH_FLUSH_FRAMES,
+                    startupBackfillFrames: OVERDUB_STARTUP_BACKFILL_FRAMES,
+                    startupQueueFrames: OVERDUB_STARTUP_BACKFILL_FRAMES,
+                    startupReplayFramesPerProcess: 256,
                 },
             });
             createdWorklet = workletNode;
@@ -1898,6 +3158,8 @@ export class TrackAudio {
             this.overdubMuteGainNode = muteGain;
             this.overdubSessionAudioBuffer = audioBuffer;
             this.overdubNextPatchSequence = 0;
+            this.overdubReceivedPatchMessages = 0;
+            this.overdubExpectedPatchMessages = null;
             this.overdubStopping = false;
             this.overdubDiagnostic = null;
 
@@ -1913,22 +3175,34 @@ export class TrackAudio {
             };
             workletNode.port.postMessage({
                 type: 'OVERDUB_INIT',
-                samples: loopSamples,
+                // `samples` remains as an alias for the legacy mono processor
+                // protocol; new processors consume the complete `channels` list.
+                samples: loopChannels[0],
+                channels: loopChannels,
+                channelCount,
                 buffers: patchBuffers,
                 startFrame: Math.floor(this.startTime * ctx.sampleRate),
                 startOffsetSamples: Math.floor(this.startOffset * ctx.sampleRate),
                 latencySamples: Math.floor(this.engine.roundTripLatency * ctx.sampleRate),
                 recordingOffsetSamples: this.getBrowserRecordingOffsetConfig().recordingOffsetSamples,
                 reverse: this.isReverse,
+                ...(captureSession && requestFrame !== null ? { requestFrame } : {}),
             }, transferList);
 
             // Preserve the old muted-sink routing. The existing buffer source stays
             // audible while real-time overdub DSP and loop readback remain in the worklet.
             input.connect(workletNode);
+            this.overdubInputNode = input;
             workletNode.connect(muteGain);
             muteGain.connect(ctx.destination);
         } catch (error) {
-            if (generation !== this.overdubStartGeneration) return;
+            if (captureSession) this.releaseOverdubCaptureSession(captureSession, true);
+            if (generation !== this.overdubStartGeneration) {
+                if (!this.overdubHasEdited) this.releasePendingOverdubSnapshot();
+                this.overdubBaselineSnapshot = null;
+                this.overdubStopRollbackJournal = null;
+                return;
+            }
             if (createdWorklet) {
                 if (this.overdubProcessor === createdWorklet) {
                     this.finishOverdubNode(createdWorklet);
@@ -1941,102 +3215,844 @@ export class TrackAudio {
             } else {
                 createdMuteGain?.disconnect();
             }
+            if (!this.overdubHasEdited) this.releasePendingOverdubSnapshot();
+            this.overdubBaselineSnapshot = null;
+            this.overdubStopRollbackJournal = null;
             this.overdubDiagnostic = `Overdub is unavailable: ${error instanceof Error ? error.message : String(error)}. Track playback remains audible.`;
             if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
             this.syncTransportState();
+            this.restoreLoopTransportAfterOverdub();
+        } finally {
+            if (generation === this.overdubStartGeneration) this.overdubStarting = false;
+            else if (captureSession) this.releaseOverdubCaptureSession(captureSession, true);
         }
     }
 
+    private beginOverdubCaptureSession(startFrame: number, generation: number): InputCaptureSession | null {
+        if (!Number.isSafeInteger(startFrame) || startFrame < 0 || this.overdubCaptureSession) return null;
+        let session: InputCaptureSession | null = null;
+        session = this.engine.beginInputCaptureSession?.(
+            this.trackIndex,
+            startFrame,
+            (message) => {
+                if (session) this.handleOverdubCaptureMessage(session, generation, message);
+            },
+            OVERDUB_STARTUP_BACKFILL_FRAMES,
+        ) ?? null;
+        if (!session) return null;
+        this.overdubCaptureSession = session;
+        this.overdubCaptureGeneration = generation;
+        this.overdubCaptureRequestFrame = startFrame;
+        this.overdubCaptureFirstInputFrame = null;
+        this.overdubCaptureChannelCount = 0;
+        this.overdubCaptureStopRequested = false;
+        this.overdubCaptureAwaitingCompletion = false;
+        this.overdubCaptureAborting = false;
+        this.overdubCapturePendingChunkReturns = [];
+        if (this.overdubCaptureAbortTimeout !== null) clearTimeout(this.overdubCaptureAbortTimeout);
+        this.overdubCaptureAbortTimeout = null;
+        this.overdubCaptureBuffers = null;
+        this.overdubCaptureFrames = 0;
+        this.overdubCaptureNextSequence = 0;
+        this.overdubCaptureTimeout = setTimeout(() => {
+            this.failOverdubCapture(session!, 'The exact input backfill did not complete within one second');
+        }, OVERDUB_STARTUP_CAPTURE_TIMEOUT_MS);
+        return session;
+    }
+
+    private clearOverdubCaptureTimeout(): void {
+        if (this.overdubCaptureTimeout !== null) clearTimeout(this.overdubCaptureTimeout);
+        this.overdubCaptureTimeout = null;
+    }
+
+    private releaseOverdubCaptureSession(session: InputCaptureSession, abort: boolean): void {
+        if (this.overdubCaptureSession !== session) return;
+        this.clearOverdubCaptureTimeout();
+        if (abort) {
+            // Keep the input-capture lease until its abort ACK. Chunks posted
+            // before that ACK still need to be recycled, otherwise the shared
+            // tap can lose a pool slot permanently.
+            if (!this.overdubCaptureAborting) {
+                this.overdubCaptureAborting = true;
+                // Once STOP_CAPTURE was accepted, the input worklet may already
+                // have moved its slot to idle and queued RECORD_COMPLETE. Sending
+                // ABORT after that ACK boundary can strand the lease forever.
+                if (!this.overdubCaptureAwaitingCompletion) this.engine.abortInputCaptureSession?.(session);
+                this.overdubCaptureAbortTimeout = setTimeout(() => {
+                    if (this.overdubCaptureSession === session && this.overdubCaptureAborting) {
+                        this.overdubDiagnostic = 'Overdub startup was cancelled; waiting for the shared input tap to acknowledge buffer cleanup.';
+                    }
+                }, OVERDUB_STARTUP_CAPTURE_TIMEOUT_MS);
+            }
+            return;
+        }
+        if (this.overdubCaptureAbortTimeout !== null) clearTimeout(this.overdubCaptureAbortTimeout);
+        this.overdubCaptureAbortTimeout = null;
+        if (this.overdubCapturePendingChunkReturns.length > 0) {
+            const stillPending: Array<{ chunkIndex: number; channels: Float32Array[] }> = [];
+            for (const entry of this.overdubCapturePendingChunkReturns) {
+                if (this.engine.recycleInputCaptureChunk?.(session, entry.chunkIndex, entry.channels) !== true) {
+                    stillPending.push(entry);
+                }
+            }
+            this.overdubCapturePendingChunkReturns = stillPending;
+            if (stillPending.length > 0) {
+                this.overdubDiagnostic = 'Overdub startup remains blocked because an input-capture chunk could not be returned to the shared tap.';
+                return;
+            }
+        }
+        this.engine.releaseInputCaptureSession?.(session);
+        this.overdubCaptureSession = null;
+        this.overdubCaptureGeneration = 0;
+        this.overdubCaptureRequestFrame = null;
+        this.overdubCaptureFirstInputFrame = null;
+        this.overdubCaptureChannelCount = 0;
+        this.overdubCaptureStopRequested = false;
+        this.overdubCaptureAwaitingCompletion = false;
+        this.overdubCaptureAborting = false;
+        this.overdubCaptureBuffers = null;
+        this.overdubCaptureFrames = 0;
+        this.overdubCaptureNextSequence = 0;
+        this.overdubCapturePendingChunkReturns = [];
+    }
+
+    private failOverdubCapture(session: InputCaptureSession, reason: string, captureAlreadyComplete = false): void {
+        if (this.overdubCaptureSession !== session) return;
+        this.overdubDiagnostic = `Overdub startup failed before PCM commit: ${reason}. The existing loop and history were kept.`;
+        this.releaseOverdubCaptureSession(session, !captureAlreadyComplete);
+        const workletNode = this.overdubProcessor;
+        if (workletNode) {
+            try { workletNode.port.postMessage({ type: 'OVERDUB_BACKFILL_ERROR', reason }); }
+            catch { this.finishOverdubNode(workletNode); }
+            return;
+        }
+        this.overdubStartGeneration += 1;
+        this.overdubStarting = false;
+        if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+        this.syncTransportState();
+        this.restoreLoopTransportAfterOverdub();
+    }
+
+    private handleOverdubCaptureMessage(session: InputCaptureSession, generation: number, message: unknown): void {
+        if (!message || typeof message !== 'object') return;
+        const stale = message as { type?: string; chunkIndex?: number; channels?: Float32Array[] };
+        if (this.overdubCaptureSession !== session) {
+            if (stale.type === 'RECORD_CHUNK' && Array.isArray(stale.channels)) {
+                this.engine.recycleInputCaptureChunk?.(session, stale.chunkIndex ?? -1, stale.channels);
+            }
+            return;
+        }
+        if (this.overdubCaptureAborting) {
+            if (stale.type === 'RECORD_CHUNK' && Array.isArray(stale.channels)) {
+                this.returnOverdubCaptureChunk(session, stale.chunkIndex ?? -1, stale.channels);
+            } else if (stale.type === 'CAPTURE_ERROR') {
+                this.overdubCapturePendingChunkReturns = [];
+                this.releaseOverdubCaptureSession(session, false);
+            } else if (stale.type === 'RECORD_ABORTED' || stale.type === 'RECORD_COMPLETE') {
+                this.releaseOverdubCaptureSession(session, false);
+            }
+            return;
+        }
+        if (generation !== this.overdubStartGeneration) {
+            if (stale.type === 'RECORD_CHUNK' && Array.isArray(stale.channels)) {
+                this.returnOverdubCaptureChunk(session, stale.chunkIndex ?? -1, stale.channels);
+            }
+            return;
+        }
+        const payload = message as {
+            type?: string; reason?: string; requestedStartFrame?: number; stopFrame?: number;
+            channelCount?: number; maxRecordingFrames?: number; maxRecordingBytes?: number;
+            chunkIndex?: number; sequence?: number; validFrames?: number; channels?: Float32Array[];
+            startFrame?: number; framesCaptured?: number; droppedFrames?: number; limitReached?: boolean;
+            overflowEvents?: number; chunksSent?: number; status?: string; sessionId?: number; inputGeneration?: number;
+        };
+
+        if ((payload.sessionId !== undefined && payload.sessionId !== session.sessionId)
+            || (payload.inputGeneration !== undefined && payload.inputGeneration !== session.inputGeneration)) return;
+
+        if (payload.type === 'CAPTURE_ERROR' || payload.type === 'RECORD_ABORTED') {
+            const reason = payload.reason || 'shared-input-capture-aborted';
+            if (payload.type === 'CAPTURE_ERROR') {
+                this.overdubCapturePendingChunkReturns = [];
+                this.failOverdubCapture(session, reason, true);
+            }
+            else this.failOverdubCapture(session, reason, true);
+            return;
+        }
+        if (payload.type === 'RECORD_CONFIGURED') {
+            const channelCount = payload.channelCount;
+            if (payload.sessionId !== session.sessionId || payload.inputGeneration !== session.inputGeneration
+                || !Number.isInteger(channelCount) || (channelCount !== 1 && channelCount !== 2)
+                || payload.requestedStartFrame !== session.startFrame
+                || !Number.isSafeInteger(payload.maxRecordingFrames)
+                || payload.maxRecordingFrames !== OVERDUB_STARTUP_BACKFILL_FRAMES
+                || payload.maxRecordingBytes !== MAX_RECORDING_CAPTURE_BYTES
+                || (this.overdubCaptureChannelCount !== 0 && this.overdubCaptureChannelCount !== channelCount)) {
+                this.failOverdubCapture(session, 'input-channel-layout-was-invalid-or-changed');
+                return;
+            }
+            this.overdubCaptureChannelCount = channelCount;
+            if (!this.overdubCaptureBuffers) {
+                this.overdubCaptureBuffers = Array.from({ length: channelCount }, () => new Float32Array(OVERDUB_STARTUP_BACKFILL_FRAMES));
+            }
+            return;
+        }
+        if (payload.type === 'OVERDUB_FIRST_INPUT_FRAME') {
+            const requestFrame = this.overdubCaptureRequestFrame;
+            const firstInputFrame = payload.stopFrame;
+            const channelCount = payload.channelCount;
+            if (requestFrame === null || !Number.isSafeInteger(firstInputFrame)
+                || firstInputFrame! < requestFrame
+                || firstInputFrame! - requestFrame > OVERDUB_STARTUP_BACKFILL_FRAMES
+                || payload.requestedStartFrame !== requestFrame
+                || !Number.isInteger(channelCount) || (channelCount !== 1 && channelCount !== 2)
+                || (this.overdubCaptureFirstInputFrame !== null && this.overdubCaptureFirstInputFrame !== firstInputFrame)
+                || (this.overdubCaptureChannelCount !== 0 && this.overdubCaptureChannelCount !== channelCount)) {
+                this.failOverdubCapture(session, 'overdub-first-input-frame-did-not-match-the-requested-range');
+                return;
+            }
+            this.overdubCaptureFirstInputFrame = firstInputFrame!;
+            this.overdubCaptureChannelCount = channelCount!;
+            if (!this.overdubCaptureBuffers) {
+                this.overdubCaptureBuffers = Array.from({ length: channelCount! }, () => new Float32Array(OVERDUB_STARTUP_BACKFILL_FRAMES));
+            }
+            if (!this.overdubCaptureStopRequested) {
+                if (!this.engine.stopInputCaptureSession?.(session, firstInputFrame!)) {
+                    this.failOverdubCapture(session, 'input-capture-rejected-the-first-input-stop-frame');
+                    return;
+                }
+                this.overdubCaptureStopRequested = true;
+                this.overdubCaptureAwaitingCompletion = true;
+            }
+            return;
+        }
+        if (payload.type === 'RECORD_CHUNK') {
+            const channels = payload.channels;
+            const recycle = () => {
+                if (Array.isArray(channels)) this.engine.recycleInputCaptureChunk?.(session, payload.chunkIndex ?? -1, channels);
+            };
+            const startFrame = session.startFrame + this.overdubCaptureNextSequence * RECORDING_CHUNK_SIZE;
+            const validFrames = Number.isSafeInteger(payload.validFrames) ? payload.validFrames! : -1;
+            const expectedChannelCount = this.overdubCaptureChannelCount;
+            if (!Array.isArray(channels) || expectedChannelCount < 1 || channels.length !== expectedChannelCount
+                || channels.some((samples) => !(samples instanceof Float32Array) || samples.length !== RECORDING_CHUNK_SIZE)
+                || payload.sessionId !== session.sessionId || payload.inputGeneration !== session.inputGeneration
+                || payload.channelCount !== expectedChannelCount
+                || !Number.isInteger(payload.chunkIndex) || payload.chunkIndex! < 0 || payload.chunkIndex! >= RECORDING_CHUNK_POOL_SIZE
+                || payload.sequence !== this.overdubCaptureNextSequence || payload.startFrame !== startFrame
+                || validFrames <= 0 || validFrames > RECORDING_CHUNK_SIZE
+                || this.overdubCaptureFrames + validFrames > OVERDUB_STARTUP_BACKFILL_FRAMES
+                || !this.overdubCaptureBuffers) {
+                recycle();
+                this.failOverdubCapture(session, 'input-backfill-chunk-had-an-invalid-range-or-format');
+                return;
+            }
+            const dst = this.overdubCaptureFrames;
+            for (let channel = 0; channel < expectedChannelCount; channel += 1) {
+                this.overdubCaptureBuffers[channel]!.set(channels[channel]!.subarray(0, validFrames), dst);
+            }
+            this.overdubCaptureFrames += validFrames;
+            this.overdubCaptureNextSequence += 1;
+            if (!this.returnOverdubCaptureChunk(session, payload.chunkIndex!, channels)) {
+                this.failOverdubCapture(session, 'input-backfill-buffer-could-not-be-recycled');
+            }
+            return;
+        }
+        if (payload.type !== 'RECORD_COMPLETE') return;
+
+        const requestFrame = this.overdubCaptureRequestFrame;
+        const firstInputFrame = this.overdubCaptureFirstInputFrame;
+        const expectedFrames = requestFrame !== null && firstInputFrame !== null ? firstInputFrame - requestFrame : -1;
+        const channelCount = this.overdubCaptureChannelCount;
+        if (payload.sessionId !== session.sessionId || payload.inputGeneration !== session.inputGeneration
+            || requestFrame === null || firstInputFrame === null || !this.overdubCaptureStopRequested || expectedFrames < 0
+            || expectedFrames > OVERDUB_STARTUP_BACKFILL_FRAMES
+            || payload.requestedStartFrame !== requestFrame || payload.stopFrame !== firstInputFrame
+            || payload.framesCaptured !== expectedFrames || this.overdubCaptureFrames !== expectedFrames
+            || (expectedFrames > 0 && (channelCount !== 1 && channelCount !== 2
+                || payload.channelCount !== channelCount))
+            // A zero-frame interval may be acknowledged either before the tap
+            // has negotiated its input format (0) or after it has observed the
+            // first block (the same 1/2-channel format reported by the
+            // overdub worklet). Both are valid because no PCM chunk exists to
+            // interpret; any other channel count is a protocol mismatch.
+            || (expectedFrames === 0 && payload.channelCount !== 0 && payload.channelCount !== channelCount)
+            || payload.droppedFrames !== 0 || payload.overflowEvents !== 0 || payload.limitReached !== false
+            || payload.maxRecordingFrames !== OVERDUB_STARTUP_BACKFILL_FRAMES
+            || payload.maxRecordingBytes !== MAX_RECORDING_CAPTURE_BYTES || payload.status !== 'complete'
+            || payload.chunksSent !== this.overdubCaptureNextSequence) {
+            const ackSummary = `expected ${requestFrame ?? 'n/a'}..${firstInputFrame ?? 'n/a'} (${expectedFrames}) ch=${channelCount}, received ${payload.requestedStartFrame}..${payload.stopFrame} (${payload.framesCaptured}) ch=${payload.channelCount}, dropped=${payload.droppedFrames}, chunks=${payload.chunksSent}`;
+            this.failOverdubCapture(session, `input-backfill-completion-acknowledgement-did-not-match-the-requested-frame-range: ${ackSummary}`, true);
+            return;
+        }
+
+        if (!this.overdubCaptureBuffers) {
+            this.overdubCaptureBuffers = Array.from({ length: channelCount }, () => new Float32Array(OVERDUB_STARTUP_BACKFILL_FRAMES));
+        }
+        const channels = this.overdubCaptureBuffers;
+        const workletNode = this.overdubProcessor;
+        if (!workletNode) {
+            this.failOverdubCapture(session, 'overdub-worklet-was-not-ready-to-accept-backfill');
+            return;
+        }
+        try {
+            workletNode.port.postMessage({
+                type: 'OVERDUB_BACKFILL', requestFrame, firstInputFrame,
+                validFrames: expectedFrames, channelCount, channels,
+            }, channels.map((samples) => samples.buffer));
+        } catch (error) {
+            this.failOverdubCapture(session, error instanceof Error ? error.message : 'backfill-transfer-failed');
+            return;
+        }
+        this.releaseOverdubCaptureSession(session, false);
+    }
+
+    private returnOverdubCaptureChunk(session: InputCaptureSession, chunkIndex: number, channels: Float32Array[]): boolean {
+        if (this.engine.recycleInputCaptureChunk?.(session, chunkIndex, channels) === true) return true;
+        if (!this.overdubCapturePendingChunkReturns.some((entry) => entry.chunkIndex === chunkIndex)) {
+            this.overdubCapturePendingChunkReturns.push({ chunkIndex, channels });
+        }
+        this.overdubDiagnostic = 'Overdub startup retained an input-capture buffer because the shared tap did not acknowledge its return.';
+        return false;
+    }
+
     private handleOverdubMessage(workletNode: AudioWorkletNode, audioBuffer: AudioBuffer, message: unknown) {
-        if (!message || typeof message !== 'object' || this.overdubProcessor !== workletNode) return;
+        if (this.disposed || !message || typeof message !== 'object' || this.overdubProcessor !== workletNode) return;
         const payload = message as {
             type?: string;
             sequence?: number;
             slotIndex?: number;
             validFrames?: number;
+            startInputFrame?: number;
+            endInputFrame?: number;
             indices?: Uint32Array;
             values?: Float32Array;
+            rightValues?: Float32Array;
+            oldValues?: Float32Array;
+            oldRightValues?: Float32Array;
             overflowFrames?: number;
             overflowEvents?: number;
+            patchesSent?: number;
             message?: string;
+            requestFrame?: number;
+            requestedStartFrame?: number;
+            firstInputFrame?: number;
+            channelCount?: number;
+            requestedStopFrame?: number;
+            appliedExclusiveEnd?: number;
+            processorStopFrame?: number;
+            stopFrame?: number;
+            startupCancelled?: boolean;
         };
 
+        if (payload.type === 'OVERDUB_FIRST_INPUT_FRAME') {
+            const session = this.overdubCaptureSession;
+            if (!session || this.overdubCaptureAborting
+                || this.overdubCaptureGeneration !== this.overdubStartGeneration) {
+                this.overdubDiagnostic = 'Overdub startup could not recover the exact requested input frame; the existing loop was kept.';
+                if (session) this.releaseOverdubCaptureSession(session, true);
+                if (this.overdubProcessor === workletNode) {
+                    try { workletNode.port.postMessage({ type: 'OVERDUB_BACKFILL_ERROR', reason: 'capture-session-not-current' }); }
+                    catch { this.finishOverdubNode(workletNode); }
+                }
+                if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+                this.syncTransportState();
+                return;
+            }
+            this.handleOverdubCaptureMessage(session, this.overdubCaptureGeneration, {
+                type: payload.type,
+                requestedStartFrame: payload.requestFrame,
+                stopFrame: payload.firstInputFrame,
+                channelCount: payload.channelCount,
+                sessionId: session.sessionId,
+                inputGeneration: session.inputGeneration,
+            });
+            return;
+        }
+
         if (payload.type === 'OVERDUB_PATCH') {
+            this.overdubReceivedPatchMessages += 1;
             const indices = payload.indices;
             const values = payload.values;
-            const validFrames = Number.isFinite(payload.validFrames)
-                ? Math.max(0, Math.min(Math.floor(payload.validFrames as number), indices?.length ?? 0, values?.length ?? 0))
-                : 0;
+            const validFrames = Number.isInteger(payload.validFrames) ? payload.validFrames! : 0;
             if (
                 this.overdubSessionAudioBuffer === audioBuffer && this.audioBuffer === audioBuffer &&
                 indices instanceof Uint32Array && values instanceof Float32Array
             ) {
                 if (payload.sequence !== this.overdubNextPatchSequence) {
-                    this.overdubDiagnostic = 'Overdub patch messages arrived out of sample order; a patch was skipped.';
+                    this.abortOverdubPatchStream(workletNode,
+                        'Overdub patch messages arrived out of sequence; the entire edit was rolled back.');
+                    return;
                 } else {
-                    const trackBuffer = audioBuffer.getChannelData(0);
-                    for (let frame = 0; frame < validFrames; frame += 1) {
-                        const index = indices[frame] ?? trackBuffer.length;
-                        if (index < trackBuffer.length) trackBuffer[index] = values[frame] ?? trackBuffer[index] ?? 0;
+                    const trackBuffers = Array.from(
+                        { length: Math.max(1, Math.min(MAX_RECORDING_CHANNELS, audioBuffer.numberOfChannels)) },
+                        (_, channel) => audioBuffer.getChannelData(channel),
+                    );
+                    const rightValues = payload.rightValues;
+                    const oldValues = payload.oldValues;
+                    const oldRightValues = payload.oldRightValues;
+                    const stereo = trackBuffers.length > 1;
+                    const startInputFrame = payload.startInputFrame;
+                    const endInputFrame = payload.endInputFrame;
+                    let indicesInRange = validFrames > 0 && validFrames <= indices.length;
+                    if (indicesInRange) {
+                        for (let frame = 0; frame < validFrames; frame += 1) {
+                            if (indices[frame]! >= trackBuffers[0]!.length) {
+                                indicesInRange = false;
+                                break;
+                            }
+                        }
                     }
-                    this.overdubNextPatchSequence += 1;
+                    const patchValid = validFrames > 0 && validFrames <= indices.length && validFrames <= values.length
+                        && oldValues instanceof Float32Array && validFrames <= oldValues.length
+                        && Number.isSafeInteger(startInputFrame) && startInputFrame! >= 0
+                        && Number.isSafeInteger(endInputFrame) && endInputFrame! >= 0
+                        && endInputFrame! - startInputFrame! === validFrames
+                        && (!stereo || rightValues instanceof Float32Array && validFrames <= rightValues.length)
+                        && (!stereo || oldRightValues instanceof Float32Array && validFrames <= oldRightValues.length)
+                        && indicesInRange;
+                    const rangesOrdered = patchValid && (this.overdubLastReceivedPatchEndFrame === null
+                        || startInputFrame! >= this.overdubLastReceivedPatchEndFrame);
+                    if (!patchValid || !rangesOrdered) {
+                        this.abortOverdubPatchStream(workletNode, stereo
+                            ? 'Stereo overdub patch data or source-frame order was invalid; the entire edit was rolled back.'
+                            : 'Overdub patch data or source-frame order was invalid; the entire edit was rolled back.');
+                        return;
+                    } else {
+                        this.overdubLastReceivedPatchEndFrame = endInputFrame!;
+                        let applyFrames = this.overdubRollbackAborted ? 0 : validFrames;
+                        if (applyFrames > 0 && this.overdubStopFrameTarget !== null) {
+                            applyFrames = Math.max(0, Math.min(applyFrames, this.overdubStopFrameTarget - startInputFrame!));
+                        }
+                        const journal = this.overdubStopRollbackJournal;
+                        const journalReady = !!journal && !!this.overdubBaselineSnapshot
+                            && (this.pendingOverdubRollbackSnapshot === this.overdubBaselineSnapshot
+                                || this.pcmHistory?.snapshot === this.overdubBaselineSnapshot);
+                        let oldValuesMatch = applyFrames === 0 || journalReady;
+                        if (oldValuesMatch && applyFrames > 0) {
+                            const expectedLeft = new Map<number, number>();
+                            const expectedRight = stereo ? new Map<number, number>() : null;
+                            for (let frame = 0; frame < applyFrames; frame += 1) {
+                                const index = indices[frame]!;
+                                const previousLeft = expectedLeft.has(index)
+                                    ? expectedLeft.get(index)!
+                                    : trackBuffers[0]![index]!;
+                                const previousRight = stereo && expectedRight?.has(index)
+                                    ? expectedRight.get(index)!
+                                    : (stereo ? trackBuffers[1]![index]! : 0);
+                                if (!Number.isFinite(values[frame]!) || !Number.isFinite(oldValues![frame]!)
+                                    || !Object.is(previousLeft, oldValues![frame]!)
+                                    || (stereo && (!Number.isFinite(rightValues![frame]!)
+                                        || !Number.isFinite(oldRightValues![frame]!)
+                                        || !Object.is(previousRight, oldRightValues![frame]!)))) {
+                                    oldValuesMatch = false;
+                                    break;
+                                }
+                                expectedLeft.set(index, values[frame]!);
+                                if (stereo && expectedRight) expectedRight.set(index, rightValues![frame]!);
+                            }
+                        }
+                        if (!oldValuesMatch) {
+                            this.abortOverdubPatchStream(workletNode,
+                                'Overdub stopped because its rollback snapshot or patch predecessor state was unavailable; the entire edit was rolled back.');
+                            return;
+                        }
+                        for (let frame = 0; frame < applyFrames && oldValuesMatch; frame += 1) {
+                            const index = indices[frame]!;
+                            const inputFrame = startInputFrame! + frame;
+                            this.appendOverdubStopJournal(inputFrame, index, oldValues![frame]!, stereo ? oldRightValues![frame]! : 0);
+                            trackBuffers[0]![index] = values[frame]!;
+                            if (stereo && rightValues instanceof Float32Array) {
+                                trackBuffers[1]![index] = rightValues[frame]!;
+                            }
+                            this.overdubAppliedFrameCount += 1;
+                        }
+                        if (applyFrames > 0 && oldValuesMatch) {
+                            this.overdubHasEdited = true;
+                            this.overdubLastAppliedInputFrameExclusive = startInputFrame! + applyFrames;
+                            this.projectPcmRevision += 1;
+                        }
+                        this.overdubNextPatchSequence += 1;
+                    }
                 }
             }
 
             if (!this.overdubStopping && Number.isInteger(payload.slotIndex) && payload.slotIndex! >= 0) {
-                const transferList: Transferable[] = [indices?.buffer, values?.buffer].filter((item): item is ArrayBuffer => item instanceof ArrayBuffer);
-                if (indices instanceof Uint32Array && values instanceof Float32Array && transferList.length === 2) {
+                const transferList: Transferable[] = [indices?.buffer, values?.buffer, payload.rightValues?.buffer]
+                    .concat([payload.oldValues?.buffer, payload.oldRightValues?.buffer])
+                    .filter((item): item is ArrayBuffer => item instanceof ArrayBuffer);
+                const stereoValid = audioBuffer.numberOfChannels <= 1
+                    || payload.rightValues instanceof Float32Array && payload.oldRightValues instanceof Float32Array;
+                const expectedTransfers = audioBuffer.numberOfChannels > 1 ? 5 : 3;
+                if (indices instanceof Uint32Array && values instanceof Float32Array && stereoValid
+                    && payload.oldValues instanceof Float32Array && transferList.length === expectedTransfers) {
                     workletNode.port.postMessage({
                         type: 'RECYCLE_OVERDUB_BUFFER',
                         slotIndex: payload.slotIndex,
                         indices,
                         values,
+                        ...(payload.rightValues ? { rightValues: payload.rightValues } : {}),
+                        oldValues: payload.oldValues,
+                        ...(payload.oldRightValues ? { oldRightValues: payload.oldRightValues } : {}),
                     }, transferList);
                 }
             }
+            this.finishOverdubWhenReady(workletNode);
             return;
         }
 
         if (payload.type === 'OVERDUB_ERROR') {
-            this.overdubDiagnostic = `Overdub failed: ${payload.message ?? 'AudioWorklet error'}. Track playback remains audible.`;
+            const workletReason = payload.message ?? 'AudioWorklet error';
+            this.overdubDiagnostic = this.overdubDiagnostic?.startsWith('Overdub startup failed before PCM commit:')
+                ? `${this.overdubDiagnostic} Worklet: ${workletReason}`
+                : `Overdub failed: ${workletReason}. Track playback remains audible.`;
             if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
-            this.finishOverdubNode(workletNode);
+            // ERROR is explanatory, not the terminal barrier. Wait for the
+            // stopped ACK and its patch count before retiring the processor.
+            if (!this.overdubStopping) {
+                this.overdubStopping = true;
+                this.watchOverdubDrain(workletNode);
+            }
             this.syncTransportState();
             return;
         }
 
         if (payload.type === 'OVERDUB_STOPPED') {
-            if ((payload.overflowFrames ?? 0) > 0) {
-                this.overdubDiagnostic = `Overdub AudioWorklet buffer pool overflow dropped ${payload.overflowFrames} input frames across ${payload.overflowEvents ?? 0} bursts.`;
+            const reportedStopFrame = payload.requestedStopFrame;
+            const stopFrameAcknowledgedExactly = payload.startupCancelled === true
+                || (Number.isSafeInteger(reportedStopFrame) && reportedStopFrame! >= 0
+                    && (this.overdubStopFrameTarget === null || reportedStopFrame === this.overdubStopFrameTarget)
+                    && Number.isSafeInteger(payload.appliedExclusiveEnd)
+                    && payload.appliedExclusiveEnd === reportedStopFrame
+                    && Number.isSafeInteger(payload.processorStopFrame)
+                    && payload.processorStopFrame! >= reportedStopFrame!);
+            if (!stopFrameAcknowledgedExactly) {
+                this.abortOverdubPatchStream(workletNode,
+                    `Overdub worklet did not confirm the requested stop frame ${this.overdubStopFrameTarget} and exclusive PCM boundary; the entire edit was rolled back.`);
             }
+            const patchCountValid = Number.isSafeInteger(payload.patchesSent)
+                && payload.patchesSent! >= this.overdubReceivedPatchMessages;
+            const overflowCountersValid = Number.isSafeInteger(payload.overflowFrames) && payload.overflowFrames! >= 0
+                && Number.isSafeInteger(payload.overflowEvents) && payload.overflowEvents! >= 0;
+            if (!patchCountValid || !overflowCountersValid
+                || (payload.startupCancelled === true && (payload.patchesSent !== 0 || this.overdubReceivedPatchMessages !== 0))) {
+                this.abortOverdubPatchStream(workletNode,
+                    'Overdub worklet sent an invalid terminal patch-count or overflow acknowledgement; the entire edit was rolled back.');
+                // This terminal message is the worklet's final barrier. Since
+                // its counters are invalid, do not wait on an untrusted count;
+                // the edit is already rolled back and the node can be retired.
+                this.overdubExpectedPatchMessages = this.overdubReceivedPatchMessages;
+                this.finishOverdubWhenReady(workletNode);
+                return;
+            }
+            if ((payload.overflowFrames ?? 0) > 0
+                && !this.overdubDiagnostic?.startsWith('Overdub startup failed before PCM commit:')) {
+                const overflowFrames = payload.overflowFrames!;
+                const rollbackSucceeded = this.overdubRollbackRestored || this.restorePreOverdubPcm();
+                if (rollbackSucceeded) {
+                    this.overdubDiagnostic = `Overdub buffer pool overflow dropped ${overflowFrames} input frames across ${payload.overflowEvents ?? 0} bursts; the complete edit was rolled back to pre-overdub PCM and prior history was retained.`;
+                } else {
+                    // Keep the reserved pre-overdub snapshot available as an
+                    // undo image if any PCM had already been patched. Later
+                    // messages are counted/recycled but cannot mutate PCM.
+                    this.overdubRollbackAborted = true;
+                    this.overdubDiagnostic = `Overdub buffer pool overflow dropped ${overflowFrames} input frames across ${payload.overflowEvents ?? 0} bursts, and automatic PCM restoration failed; partial PCM may remain. Use Undo if the pre-overdub snapshot is available.`;
+                }
+                if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+                this.syncTransportState();
+            }
+            this.overdubExpectedPatchMessages = payload.patchesSent!;
+            this.finishOverdubWhenReady(workletNode);
+        }
+    }
+
+    private finishOverdubWhenReady(workletNode: AudioWorkletNode): void {
+        if (this.overdubProcessor === workletNode && this.overdubExpectedPatchMessages !== null
+            && this.overdubReceivedPatchMessages >= this.overdubExpectedPatchMessages) {
             this.finishOverdubNode(workletNode, true);
         }
     }
 
+    private abortOverdubPatchStream(workletNode: AudioWorkletNode, diagnostic: string): void {
+        // A malformed later message can arrive after this same processor has
+        // already triggered rollback. The baseline copy is intentionally
+        // released by the first restore; do not interpret that second call's
+        // missing image as permission to discard the user's prior undo step.
+        if (!this.overdubRollbackAborted && !this.restorePreOverdubPcm()) this.invalidatePcmHistoryForEdit();
+        this.overdubDiagnostic = diagnostic;
+        if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+        if (this.overdubProcessor === workletNode && !this.overdubStopping) this.stopOverdub();
+        this.syncTransportState();
+    }
+
     private finishOverdubNode(workletNode: AudioWorkletNode, allowRestart = false) {
+        if (this.overdubStopAckTimeout !== null) {
+            clearTimeout(this.overdubStopAckTimeout);
+            this.overdubStopAckTimeout = null;
+        }
+        const captureSession = this.overdubCaptureSession;
+        if (captureSession) this.releaseOverdubCaptureSession(captureSession, true);
         const restart = allowRestart && this.overdubRestartAfterStop && this.state === TrackState.OVERDUBBING;
         this.overdubRestartAfterStop = false;
         workletNode.port.onmessage = null;
         workletNode.onprocessorerror = null;
+        try { this.overdubInputNode?.disconnect(workletNode); } catch { /* already disconnected */ }
+        this.overdubInputNode = null;
         workletNode.disconnect();
+        workletNode.port.close?.();
         if (this.overdubMuteGainNode) {
             this.overdubMuteGainNode.disconnect();
             this.overdubMuteGainNode = null;
         }
+        if (this.overdubHasEdited && this.pendingOverdubRollbackSnapshot
+            && !this.activateOverdubUndoSnapshot()) {
+            this.overdubDiagnostic = 'Overdub was rolled back because its reserved PCM history snapshot could not be committed.';
+            if (!this.restorePreOverdubPcm()) this.invalidatePcmHistoryForEdit();
+        }
         if (this.overdubProcessor === workletNode) this.overdubProcessor = null;
         this.overdubSessionAudioBuffer = null;
+        if (!this.overdubHasEdited) this.releasePendingOverdubSnapshot();
+        this.overdubBaselineSnapshot = null;
         this.overdubStopping = false;
-        if (restart) void this.startOverdub();
+        this.overdubExpectedPatchMessages = null;
+        this.overdubStopFrameTarget = null;
+        this.overdubLastAppliedInputFrameExclusive = null;
+        this.overdubLastReceivedPatchEndFrame = null;
+        this.overdubStopRollbackJournal = null;
+        this.overdubAppliedFrameCount = 0;
+        this.overdubRollbackAborted = false;
+        this.overdubRollbackRestored = false;
+        if (this.pendingClear) {
+            this.pendingClear = false;
+            this.completeClear();
+        } else if (restart) void this.startOverdub();
+        else this.restoreLoopTransportAfterOverdub();
+    }
+
+    private watchOverdubDrain(workletNode: AudioWorkletNode): void {
+        if (this.overdubStopAckTimeout !== null) clearTimeout(this.overdubStopAckTimeout);
+        this.overdubStopAckTimeout = setTimeout(() => {
+            if (this.overdubProcessor !== workletNode || !this.overdubStopping) return;
+            const contextState = (this.engine.context as AudioContext).state ?? 'unknown';
+            const pending = this.overdubExpectedPatchMessages === null
+                ? 'the terminal stop acknowledgement'
+                : `final PCM patches (${this.overdubReceivedPatchMessages}/${this.overdubExpectedPatchMessages} received)`;
+            this.overdubDiagnostic = `Overdub stop could not drain ${pending} within ${OVERDUB_STOP_ACK_TIMEOUT_MS} ms (AudioContext state: ${contextState}); the stop-frame cutoff was applied, but missing pre-stop patches may leave a partial overdub. Use Undo to restore the pre-overdub PCM if its history entry was retained.`;
+            if (this.state === TrackState.OVERDUBBING) this.state = TrackState.PLAYING;
+            this.finishOverdubNode(workletNode);
+            this.syncTransportState();
+        }, OVERDUB_STOP_ACK_TIMEOUT_MS);
+    }
+
+    private suspendLoopTransportForOverdub(): void {
+        if (this.loopTransportOverdubSnapshot || !this.hasConfiguredLoopTransportFx()) return;
+        this.loopTransportOverdubSnapshot = this.loopTransportFxSlots.map((slot) => slot ? { ...slot } : null);
+        for (let slotIndex = 0; slotIndex < this.loopTransportFxSlots.length; slotIndex += 1) {
+            if (this.loopTransportFxSlots[slotIndex]) this.configureLoopTransportFx(slotIndex, null);
+        }
+    }
+
+    private prepareOverdubStopRollback(audioBuffer: AudioBuffer): void {
+        const channels = audioBuffer.numberOfChannels;
+        if (channels !== 1 && channels !== 2) throw new Error('Overdub requires a mono or stereo loop');
+        const capacity = OVERDUB_STOP_ROLLBACK_JOURNAL_FRAMES;
+        this.overdubStopRollbackJournal = {
+            capacity,
+            inputFrames: new Float64Array(capacity),
+            loopIndices: new Uint32Array(capacity),
+            leftBefore: new Float32Array(capacity),
+            rightBefore: channels > 1 ? new Float32Array(capacity) : null,
+            writeCursor: 0,
+            retainedFrames: 0,
+        };
+        // The normal one-step undo copy is also the bounded full-rollback image
+        // if STOP arrives after its tail journal has rolled over. Keep existing
+        // history accounted while reserving this candidate; if both cannot fit,
+        // reject before the worklet can publish any PCM patch.
+        const bytes = audioBufferPcmBytes(audioBuffer);
+        const currentBytes = audioBufferPcmBytes(this.pcmHistory?.snapshot.buffer ?? null);
+        if (!this.pcmHistoryBudget.replaceMany([
+            { owner: this, bytes: currentBytes },
+            { owner: this.overdubSnapshotBudgetOwner, bytes },
+        ])) {
+            this.historyFailureReason = this.historyBudgetReason('Overdub is unavailable until PCM history has enough space');
+            throw new Error(this.historyFailureReason);
+        }
+        try {
+            const copy = this.engine.context.createBuffer(audioBuffer.numberOfChannels, audioBuffer.length, audioBuffer.sampleRate);
+            for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
+                copy.getChannelData(channel).set(audioBuffer.getChannelData(channel));
+            }
+            this.pendingOverdubRollbackSnapshot = { ...this.capturePcmSnapshot(audioBuffer), buffer: copy };
+            this.overdubBaselineSnapshot = this.pendingOverdubRollbackSnapshot;
+        } catch (error) {
+            this.pcmHistoryBudget.release(this.overdubSnapshotBudgetOwner);
+            this.pendingOverdubRollbackSnapshot = null;
+            this.overdubBaselineSnapshot = null;
+            this.historyFailureReason = `PCM history could not allocate its pre-overdub snapshot: ${error instanceof Error ? error.message : String(error)}.`;
+            throw new Error(this.historyFailureReason);
+        }
+        this.overdubHasEdited = false;
+        this.overdubRollbackAborted = false;
+        this.overdubRollbackRestored = false;
+        this.overdubStopFrameTarget = null;
+        this.overdubLastAppliedInputFrameExclusive = null;
+        this.overdubLastReceivedPatchEndFrame = null;
+        this.overdubAppliedFrameCount = 0;
+    }
+
+    private activateOverdubUndoSnapshot(): boolean {
+        const snapshot = this.pendingOverdubRollbackSnapshot;
+        if (!snapshot || !this.pcmHistoryBudget.transfer(this.overdubSnapshotBudgetOwner, this)) return false;
+        this.pcmHistory = { snapshot, direction: 'undo' };
+        this.pendingOverdubRollbackSnapshot = null;
+        this.historyFailureReason = null;
+        return true;
+    }
+
+    private releasePendingOverdubSnapshot(): void {
+        if (!this.pendingOverdubRollbackSnapshot) return;
+        this.pendingOverdubRollbackSnapshot = null;
+        this.pcmHistoryBudget.release(this.overdubSnapshotBudgetOwner);
+    }
+
+    private appendOverdubStopJournal(inputFrame: number, loopIndex: number, leftBefore: number, rightBefore: number): void {
+        const journal = this.overdubStopRollbackJournal;
+        if (!journal) throw new Error('Overdub stop rollback journal was not reserved');
+        const slot = journal.writeCursor;
+        journal.inputFrames[slot] = inputFrame;
+        journal.loopIndices[slot] = loopIndex;
+        journal.leftBefore[slot] = leftBefore;
+        if (journal.rightBefore) journal.rightBefore[slot] = rightBefore;
+        journal.writeCursor = (slot + 1) % journal.capacity;
+        journal.retainedFrames = Math.min(journal.capacity, journal.retainedFrames + 1);
+    }
+
+    private restorePreOverdubPcm(): boolean {
+        const current = this.audioBuffer;
+        const baselineIsActiveHistory = !!this.overdubBaselineSnapshot
+            && this.pcmHistory?.snapshot === this.overdubBaselineSnapshot;
+        const snapshot = this.overdubBaselineSnapshot?.buffer;
+        if (!current || !snapshot || current.length !== snapshot.length
+            || current.numberOfChannels !== snapshot.numberOfChannels || current.sampleRate !== snapshot.sampleRate) return false;
+        for (let channel = 0; channel < current.numberOfChannels; channel += 1) {
+            current.getChannelData(channel).set(snapshot.getChannelData(channel));
+        }
+        this.projectPcmRevision += 1;
+        if (this.pendingOverdubRollbackSnapshot) this.releasePendingOverdubSnapshot();
+        // While an overdub is in flight the previous undo/redo entry remains
+        // authoritative. Its budget was reserved alongside this rollback copy;
+        // only discard it if the rollback image itself had already become the
+        // active history entry.
+        if (baselineIsActiveHistory) {
+            this.pcmHistory = null;
+            this.pcmHistoryBudget.release(this);
+        }
+        this.overdubBaselineSnapshot = null;
+        this.overdubRollbackRestored = true;
+        this.overdubDiagnostic = 'The overdub was rolled back because its stop-frame journal exceeded the bounded safety window.';
+        this.overdubHasEdited = false;
+        this.overdubAppliedFrameCount = 0;
+        this.overdubRollbackAborted = true;
+        if (this.overdubStopRollbackJournal) {
+            this.overdubStopRollbackJournal.writeCursor = 0;
+            this.overdubStopRollbackJournal.retainedFrames = 0;
+        }
+        this.overdubLastAppliedInputFrameExclusive = null;
+        return true;
+    }
+
+    private rollbackOverdubTail(stopFrame: number): boolean {
+        const journal = this.overdubStopRollbackJournal;
+        const latest = this.overdubLastAppliedInputFrameExclusive;
+        if (!journal || latest === null || latest <= stopFrame) return true;
+
+        const oldestSlot = (journal.writeCursor - journal.retainedFrames + journal.capacity) % journal.capacity;
+        const oldestFrame = journal.retainedFrames > 0 ? journal.inputFrames[oldestSlot]! : Number.POSITIVE_INFINITY;
+        if (journal.retainedFrames === journal.capacity && oldestFrame > stopFrame) {
+            return this.restorePreOverdubPcm();
+        }
+
+        const buffer = this.audioBuffer;
+        if (!buffer) return false;
+        const left = buffer.getChannelData(0);
+        const right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : null;
+        let rolledFrames = 0;
+        while (journal.retainedFrames > 0) {
+            const slot = (journal.writeCursor - 1 + journal.capacity) % journal.capacity;
+            if (journal.inputFrames[slot]! < stopFrame) break;
+            const index = journal.loopIndices[slot]!;
+            if (index >= left.length || (right && index >= right.length)) return false;
+            left[index] = journal.leftBefore[slot]!;
+            if (right && journal.rightBefore) right[index] = journal.rightBefore[slot]!;
+            journal.writeCursor = slot;
+            journal.retainedFrames -= 1;
+            rolledFrames += 1;
+        }
+        if (rolledFrames > 0) {
+            this.overdubAppliedFrameCount = Math.max(0, this.overdubAppliedFrameCount - rolledFrames);
+            this.projectPcmRevision += 1;
+            const lastSlot = (journal.writeCursor - 1 + journal.capacity) % journal.capacity;
+            this.overdubLastAppliedInputFrameExclusive = journal.retainedFrames > 0
+                ? journal.inputFrames[lastSlot]! + 1 : null;
+            if (this.overdubAppliedFrameCount === 0) {
+                this.overdubHasEdited = false;
+            }
+        }
+        return true;
+    }
+
+    private restoreLoopTransportAfterOverdub(): void {
+        const snapshot = this.loopTransportOverdubSnapshot;
+        this.loopTransportOverdubSnapshot = null;
+        if (!snapshot || this.pendingClear) return;
+        for (let slotIndex = 0; slotIndex < snapshot.length; slotIndex += 1) {
+            const slot = snapshot[slotIndex];
+            if (!slot) continue;
+            const parameters: Record<string, number> = slot.type === 'BEAT SHIFT'
+                ? { offset: slot.beatShiftOffsetBeats, crossfade: slot.beatShiftCrossfadeMs }
+                : {
+                    speed: slot.vinylFlickSpeed,
+                    mix: slot.vinylFlickMix,
+                    'return-time': slot.vinylFlickReturnTimeSeconds,
+                    brake: slot.vinylFlickBrakePercent,
+                };
+            this.configureLoopTransportFx(slotIndex, slot.type, parameters);
+        }
+    }
+
+    private getOverdubStopFrame(): number | null {
+        const fromInputClock = this.engine.getInputCaptureRequestFrame?.();
+        if (Number.isSafeInteger(fromInputClock) && fromInputClock! >= 0) return fromInputClock!;
+        const context = this.engine.context as AudioContext;
+        const currentTime = context.currentTime;
+        const sampleRate = context.sampleRate;
+        if (!Number.isFinite(currentTime) || currentTime < 0 || !Number.isFinite(sampleRate) || sampleRate <= 0) return null;
+        const frame = Math.ceil(currentTime * sampleRate);
+        return Number.isSafeInteger(frame) && frame >= 0 ? frame : null;
     }
 
     private stopOverdub() {
         this.overdubStartGeneration += 1;
+        this.overdubStarting = false;
+        const captureSession = this.overdubCaptureSession;
+        if (captureSession) this.releaseOverdubCaptureSession(captureSession, true);
         const workletNode = this.overdubProcessor;
         if (!workletNode || this.overdubStopping) return;
 
         this.overdubStopping = true;
+        const stopFrame = this.getOverdubStopFrame();
+        this.overdubStopFrameTarget = stopFrame;
+        if (stopFrame === null) {
+            if (!this.overdubRollbackAborted && !this.restorePreOverdubPcm()) this.invalidatePcmHistoryForEdit();
+            this.overdubDiagnostic = 'Overdub was rolled back because the exact stop frame could not be read from the audio clock.';
+        } else if (!this.overdubRollbackAborted && !this.rollbackOverdubTail(stopFrame)) {
+            if (!this.restorePreOverdubPcm()) this.invalidatePcmHistoryForEdit();
+            this.overdubDiagnostic = 'Overdub was rolled back because the stop-frame journal could not restore the post-request tail.';
+        }
+        this.watchOverdubDrain(workletNode);
         try {
-            workletNode.port.postMessage({ type: 'OVERDUB_STOP' });
+            workletNode.port.postMessage({ type: 'OVERDUB_STOP', stopFrame });
         } catch (error) {
             this.overdubDiagnostic = `Overdub stopped with an AudioWorklet error: ${error instanceof Error ? error.message : String(error)}.`;
             this.finishOverdubNode(workletNode);
@@ -2044,6 +4060,9 @@ export class TrackAudio {
     }
 
     private abortRecording() {
+        this.clearRecordingCaptureStopAckTimeout();
+        this.recordingStartGeneration += 1;
+        this.recordingStarting = false;
         this.isRecording = false;
         this.isFinalizingRecording = false;
         this.resumeAfterRecording = false;
@@ -2054,11 +4073,24 @@ export class TrackAudio {
         this.recordingMaximumDurationSeconds = 0;
         this.recordingLimitReached = false;
         this.recordingDiagnostic = null;
+        const captureSession = this.recordingCaptureSession;
+        if (captureSession) {
+            this.engine.abortInputCaptureSession?.(captureSession);
+            this.returnRetainedSharedCaptureChunks(captureSession);
+            this.engine.releaseInputCaptureSession?.(captureSession);
+            this.recordingCaptureSession = null;
+            try { this.recordingInputNode?.disconnect(this.fxChain.input); } catch { /* already disconnected */ }
+            this.recordingInputNode = null;
+            if (this.workletNode === captureSession.node) this.workletNode = null;
+        }
         this.clearRecordingChunkStorage();
 
-        if (this.workletNode) {
+        if (this.workletNode && !captureSession) {
             this.workletNode.port.onmessage = null;
+            try { this.recordingInputNode?.disconnect(this.workletNode); } catch { /* already disconnected */ }
+            this.recordingInputNode = null;
             this.workletNode.disconnect();
+            this.workletNode.port.close?.();
             this.workletNode = null;
         }
     }

@@ -333,9 +333,63 @@ void testStereoFiniteSilenceGateSegmentationAndNoAllocations() {
     assert(blockCore.prepared());
 }
 
+void testOfficialRiffControls() {
+    constexpr unsigned int rate = 16000U;
+    NativeAutoRiffCore core;
+    assert(core.prepare(rate));
+    assert(!core.setParameter("official_phrase", 0.0f));
+    assert(!core.setParameter("official_tempo", -0.25f));
+    assert(core.setParameter("official_tempo", -1.0f));
+    assert(core.stepPeriodSamples() == 8000U);
+    assert(core.setTempoBpm(240.0f));
+    assert(core.stepPeriodSamples() == 4000U);
+    assert(core.setParameter("official_tempo", 0.0f));
+    assert(core.stepPeriodSamples() == 32000U);
+    assert(core.setParameter("official_tempo", 100.0f));
+    assert(core.stepPeriodSamples() == 800U);
+    assert(core.setParameter("official_loop", 0.0f));
+    assert(core.setParameter("official_balance", 100.0f));
+    std::vector<float> tone(rate);
+    fillSine(tone, 0U, tone.size(), 1U, rate, 220.0);
+    processChunks(core, tone, 1U, {64U});
+    assert(core.currentStep() == -1); // Exactly one authored eight-step phrase.
+    core.reset();
+    assert(core.setParameter("official_loop", 1.0f));
+    assert(core.setParameter("official_hold", 1.0f));
+    assert(core.setParameter("official_key", 2.0f));
+    assert(core.setParameter("official_attack", 100.0f));
+    tone.assign(rate / 2U, 0.0f);
+    fillSine(tone, 0U, tone.size(), 1U, rate, 220.0);
+    processChunks(core, tone, 1U, {64U});
+    assert(core.sourceHeld());
+    std::vector<float> silence(rate, 0.0f);
+    processChunks(core, silence, 1U, {31U, 8U, 64U});
+    assert(core.sourceHeld());
+    assert(!core.voiced()); // Live-input tracking does not falsely claim voicing.
+    assert(core.currentStep() >= 0);
+    double heldEnergy = 0.0;
+    for (std::size_t f = rate / 2U; f < silence.size(); ++f) heldEnergy += silence[f] * silence[f];
+    assert(heldEnergy > 0.01);
+    assert(core.setParameter("official_hold", 0.0f));
+    silence.assign(rate / 4U, 0.0f);
+    processChunks(core, silence, 1U, {64U});
+    assert(!core.sourceHeld());
+    double releasedEnergy = 0.0;
+    for (std::size_t f = silence.size() / 2U; f < silence.size(); ++f) releasedEnergy += silence[f] * silence[f];
+    assert(releasedEnergy < 1.0e-7);
+    std::array<float, 128U> block{};
+    test_alloc::beginTracking();
+    assert(core.setParameter("official_tempo", 50.0f));
+    assert(core.setParameter("official_balance", 50.0f));
+    assert(core.processInterleaved(block.data(), 128U, 1U));
+    test_alloc::endTracking();
+    assert(test_alloc::count() == 0U);
+}
+
 } // namespace
 
 int main() {
+    testOfficialRiffControls();
     testPrepareParametersAndLatency();
     testDetectedPitchAndSignalsmithSequenceTransitions();
     testTempoScalingUsesSampleClock();
