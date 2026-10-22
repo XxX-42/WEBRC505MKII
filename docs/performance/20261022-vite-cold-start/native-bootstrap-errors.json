@@ -1,0 +1,68 @@
+[
+  {
+    "mode": "native",
+    "round": 1,
+    "consoleErrors": 28,
+    "responseErrors": 28,
+    "failures": 0,
+    "responseGroups": [
+      {
+        "url": "http://127.0.0.1:17755/v1/native-fx/catalog-slot",
+        "status": 409,
+        "count": 28
+      }
+    ]
+  },
+  {
+    "mode": "native",
+    "round": 2,
+    "consoleErrors": 28,
+    "responseErrors": 28,
+    "failures": 0,
+    "responseGroups": [
+      {
+        "url": "http://127.0.0.1:17755/v1/native-fx/catalog-slot",
+        "status": 409,
+        "count": 28
+      }
+    ]
+  },
+  {
+    "mode": "native",
+    "round": 3,
+    "consoleErrors": 28,
+    "responseErrors": 28,
+    "failures": 0,
+    "responseGroups": [
+      {
+        "url": "http://127.0.0.1:17755/v1/native-fx/catalog-slot",
+        "status": 409,
+        "count": 28
+      }
+    ]
+  },
+  {
+    "mode": "browser",
+    "round": 1,
+    "consoleErrors": 0,
+    "responseErrors": 0,
+    "failures": 0,
+    "responseGroups": []
+  },
+  {
+    "mode": "browser",
+    "round": 2,
+    "consoleErrors": 0,
+    "responseErrors": 0,
+    "failures": 0,
+    "responseGroups": []
+  },
+  {
+    "mode": "browser",
+    "round": 3,
+    "consoleErrors": 0,
+    "responseErrors": 0,
+    "failures": 0,
+    "responseGroups": []
+  }
+]

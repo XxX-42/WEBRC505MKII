@@ -6,7 +6,16 @@ export default defineConfig({
   plugins: [
     vue(),
   ],
+  // Vue is the app's only runtime bare dependency; add new ones to include.
+  optimizeDeps: {
+    include: ['vue'],
+    noDiscovery: true,
+  },
   server: {
+    // Native build and benchmark outputs are not frontend inputs.
+    watch: {
+      ignored: ['**/native-mvp/build*/**', '**/bench/results/**'],
+    },
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',

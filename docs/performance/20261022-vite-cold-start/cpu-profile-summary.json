@@ -1,0 +1,297 @@
+{
+  "scope": "One profiled cold-start diagnostic, not baseline sample. V8 sample time; child process CPU counters also include workers.",
+  "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-profile-isolates\\CPU.20261022.224034.20148.0.001.cpuprofile",
+  "durationMs": 30857.337,
+  "topSelfSamples": [
+    {
+      "function": "FSWatcher.<computed>",
+      "url": "node:internal/fs/watchers",
+      "line": 294,
+      "selfMs": 17187.404
+    },
+    {
+      "function": "wrapSafe",
+      "url": "node:internal/modules/cjs/loader",
+      "line": 1762,
+      "selfMs": 800.514
+    },
+    {
+      "function": "stat",
+      "url": "",
+      "line": 0,
+      "selfMs": 763.668
+    },
+    {
+      "function": "readFileUtf8",
+      "url": "",
+      "line": 0,
+      "selfMs": 521.876
+    },
+    {
+      "function": "(idle)",
+      "url": "",
+      "line": 0,
+      "selfMs": 393.529
+    },
+    {
+      "function": "(garbage collector)",
+      "url": "",
+      "line": 0,
+      "selfMs": 386.111
+    },
+    {
+      "function": "realpath",
+      "url": "",
+      "line": 0,
+      "selfMs": 385.139
+    },
+    {
+      "function": "lstat",
+      "url": "",
+      "line": 0,
+      "selfMs": 342.331
+    },
+    {
+      "function": "internalModuleStat",
+      "url": "",
+      "line": 0,
+      "selfMs": 333.871
+    },
+    {
+      "function": "getReport",
+      "url": "node:internal/process/report",
+      "line": 58,
+      "selfMs": 290.741
+    },
+    {
+      "function": "(program)",
+      "url": "",
+      "line": 0,
+      "selfMs": 263.88
+    },
+    {
+      "function": "makeSyncRequest",
+      "url": "node:internal/modules/esm/hooks",
+      "line": 632,
+      "selfMs": 202.032
+    },
+    {
+      "function": "normalizeString",
+      "url": "node:path",
+      "line": 92,
+      "selfMs": 167.542
+    },
+    {
+      "function": "compileSourceTextModule",
+      "url": "node:internal/modules/esm/utils",
+      "line": 316,
+      "selfMs": 147.773
+    },
+    {
+      "function": "waitForWorker",
+      "url": "node:internal/modules/esm/hooks",
+      "line": 550,
+      "selfMs": 135.25
+    },
+    {
+      "function": "resolve",
+      "url": "node:path",
+      "line": 190,
+      "selfMs": 129.704
+    },
+    {
+      "function": "close",
+      "url": "",
+      "line": 0,
+      "selfMs": 120.945
+    },
+    {
+      "function": "existsSync",
+      "url": "",
+      "line": 0,
+      "selfMs": 114.763
+    },
+    {
+      "function": "join",
+      "url": "node:path",
+      "line": 506,
+      "selfMs": 101.068
+    },
+    {
+      "function": "",
+      "url": "node:internal/dns/utils",
+      "line": 90,
+      "selfMs": 83.994
+    }
+  ],
+  "watcherStacks": [
+    [
+      {
+        "function": "FSWatcher.<computed>",
+        "url": "node:internal/fs/watchers",
+        "line": 294
+      },
+      {
+        "function": "watch",
+        "url": "node:fs",
+        "line": 2584
+      },
+      {
+        "function": "createFsWatchInstance",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13592
+      },
+      {
+        "function": "setFsWatchListener",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13627
+      },
+      {
+        "function": "_watchWithNodeFs",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13740
+      },
+      {
+        "function": "_handleDir",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13902
+      },
+      {
+        "function": "runMicrotasks",
+        "url": "",
+        "line": 0
+      },
+      {
+        "function": "processTicksAndRejections",
+        "url": "node:internal/process/task_queues",
+        "line": 72
+      },
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0
+      }
+    ],
+    [
+      {
+        "function": "FSWatcher.<computed>",
+        "url": "node:internal/fs/watchers",
+        "line": 294
+      },
+      {
+        "function": "watch",
+        "url": "node:fs",
+        "line": 2584
+      },
+      {
+        "function": "setFsWatchListener",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13627
+      },
+      {
+        "function": "_watchWithNodeFs",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13740
+      },
+      {
+        "function": "_handleDir",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13902
+      },
+      {
+        "function": "runMicrotasks",
+        "url": "",
+        "line": 0
+      },
+      {
+        "function": "processTicksAndRejections",
+        "url": "node:internal/process/task_queues",
+        "line": 72
+      },
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0
+      }
+    ],
+    [
+      {
+        "function": "FSWatcher.<computed>",
+        "url": "node:internal/fs/watchers",
+        "line": 294
+      },
+      {
+        "function": "watch",
+        "url": "node:fs",
+        "line": 2584
+      },
+      {
+        "function": "createFsWatchInstance",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13592
+      },
+      {
+        "function": "setFsWatchListener",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13627
+      },
+      {
+        "function": "_watchWithNodeFs",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13740
+      },
+      {
+        "function": "_handleFile",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13769
+      },
+      {
+        "function": "_addToNodeFs",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13935
+      },
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0
+      }
+    ],
+    [
+      {
+        "function": "FSWatcher.<computed>",
+        "url": "node:internal/fs/watchers",
+        "line": 294
+      },
+      {
+        "function": "watch",
+        "url": "node:fs",
+        "line": 2584
+      },
+      {
+        "function": "setFsWatchListener",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13627
+      },
+      {
+        "function": "_watchWithNodeFs",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13740
+      },
+      {
+        "function": "_handleFile",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13769
+      },
+      {
+        "function": "_addToNodeFs",
+        "url": "file:///C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/node_modules/vite/dist/node/chunks/config.js",
+        "line": 13935
+      },
+      {
+        "function": "(root)",
+        "url": "",
+        "line": 0
+      }
+    ]
+  ]
+}

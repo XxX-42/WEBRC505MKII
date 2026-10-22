@@ -237,5 +237,6 @@
     "rawReport": "C:/Users/user1000/AppData/Local/Temp/rc505-classic-led-unit-final.json",
     "rawReportSha256": "126A7FFFD4E81A98E5D0525D17F81D1D5DD930FF5CAB57B88122BA1154ED2DF3",
     "note": "The complete 2397-unit run precedes the final two-line Native LED readback binding; the affected selector, resolver and Bank suites were rerun after it."
-  }
+  },
+  "coldStartupWorkaroundSupersededBy": "../performance/20261022-vite-cold-start/validation.json"
 }

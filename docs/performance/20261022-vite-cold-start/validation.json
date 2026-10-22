@@ -1,0 +1,370 @@
+{
+  "generatedAt": "2026-10-22T14:59:36.9188866Z",
+  "status": "PASS_COLD_START_AND_TARGETED_REGRESSION",
+  "baseSha": "a710f21c4c636eabb6851793c13a8f58311209bc",
+  "branch": "codex/vite-cold-start-20261022",
+  "environment": {
+    "os": "Windows",
+    "node": "24.19.0",
+    "npm": "11.17.0",
+    "vite": "7.2.4",
+    "browser": "Chromium headless shell build 1248"
+  },
+  "coldStart": {
+    "budgetMs": 30000,
+    "budgetStarts": "Before spawning Vite; includes server initialization and optimizer prebundling, browser launch and actual PAGE interaction",
+    "passed": 6,
+    "failed": 0,
+    "cache": "Each sample has a new Vite process, unique empty optimizer cache and fresh Chromium process/context. Windows filesystem caches were not flushed.",
+    "runs": [
+      {
+        "mode": "native",
+        "port": 4174,
+        "round": 1,
+        "budgetMs": 30000,
+        "httpMs": 11635.813900000001,
+        "loadMs": 15927.500199999999,
+        "appRootMs": 15939.1646,
+        "classicInteractiveMs": 16164.312399999999,
+        "nativeReadyMs": 17023.0261,
+        "passed": true,
+        "coop": "same-origin",
+        "coep": "require-corp",
+        "watcherCounts": {
+          "directories": 92,
+          "entries": 1334,
+          "topLevelEntries": {
+            "[root]": 28,
+            "[outside-root]": 1,
+            "public": 18,
+            ".vscode": 1,
+            "native-mvp": 189,
+            "backend": 2,
+            "bench": 76,
+            "tests": 256,
+            "docs": 511,
+            "scripts": 7,
+            "src": 245
+          }
+        }
+      },
+      {
+        "mode": "native",
+        "port": 4174,
+        "round": 2,
+        "budgetMs": 30000,
+        "httpMs": 7631.576300000001,
+        "loadMs": 12955.1266,
+        "appRootMs": 13073.855,
+        "classicInteractiveMs": 13284.923299999999,
+        "nativeReadyMs": 14304.614100000003,
+        "passed": true,
+        "coop": "same-origin",
+        "coep": "require-corp",
+        "watcherCounts": {
+          "directories": 92,
+          "entries": 1334,
+          "topLevelEntries": {
+            "[root]": 28,
+            "[outside-root]": 1,
+            "public": 18,
+            ".vscode": 1,
+            "backend": 2,
+            "native-mvp": 189,
+            "bench": 76,
+            "scripts": 7,
+            "docs": 511,
+            "src": 245,
+            "tests": 256
+          }
+        }
+      },
+      {
+        "mode": "native",
+        "port": 4174,
+        "round": 3,
+        "budgetMs": 30000,
+        "httpMs": 10351.2765,
+        "loadMs": 15631.229999999996,
+        "appRootMs": 15651.979199999994,
+        "classicInteractiveMs": 15890.621299999999,
+        "nativeReadyMs": 16776.8643,
+        "passed": true,
+        "coop": "same-origin",
+        "coep": "require-corp",
+        "watcherCounts": {
+          "directories": 92,
+          "entries": 1334,
+          "topLevelEntries": {
+            "[root]": 28,
+            "[outside-root]": 1,
+            "public": 18,
+            "docs": 511,
+            "bench": 76,
+            ".vscode": 1,
+            "native-mvp": 189,
+            "tests": 256,
+            "src": 245,
+            "backend": 2,
+            "scripts": 7
+          }
+        }
+      },
+      {
+        "mode": "browser",
+        "port": 5186,
+        "round": 1,
+        "budgetMs": 30000,
+        "httpMs": 6706.525100000001,
+        "loadMs": 12471.1718,
+        "appRootMs": 12985.6595,
+        "classicInteractiveMs": 13103.0573,
+        "nativeReadyMs": null,
+        "passed": true,
+        "coop": "same-origin",
+        "coep": "require-corp",
+        "watcherCounts": {
+          "directories": 92,
+          "entries": 1334,
+          "topLevelEntries": {
+            "[root]": 28,
+            "[outside-root]": 1,
+            "public": 18,
+            "bench": 76,
+            ".vscode": 1,
+            "scripts": 7,
+            "native-mvp": 189,
+            "tests": 256,
+            "src": 245,
+            "backend": 2,
+            "docs": 511
+          }
+        }
+      },
+      {
+        "mode": "browser",
+        "port": 5186,
+        "round": 2,
+        "budgetMs": 30000,
+        "httpMs": 6087.4679,
+        "loadMs": 12812.4928,
+        "appRootMs": 12843.495599999998,
+        "classicInteractiveMs": 13134.836899999998,
+        "nativeReadyMs": null,
+        "passed": true,
+        "coop": "same-origin",
+        "coep": "require-corp",
+        "watcherCounts": {
+          "directories": 92,
+          "entries": 1334,
+          "topLevelEntries": {
+            "[root]": 28,
+            "[outside-root]": 1,
+            "public": 18,
+            "bench": 76,
+            "backend": 2,
+            ".vscode": 1,
+            "native-mvp": 189,
+            "docs": 511,
+            "tests": 256,
+            "scripts": 7,
+            "src": 245
+          }
+        }
+      },
+      {
+        "mode": "browser",
+        "port": 5186,
+        "round": 3,
+        "budgetMs": 30000,
+        "httpMs": 9071.414699999998,
+        "loadMs": 18351.459700000003,
+        "appRootMs": 18372.143099999998,
+        "classicInteractiveMs": 18671.328599999997,
+        "nativeReadyMs": null,
+        "passed": true,
+        "coop": "same-origin",
+        "coep": "require-corp",
+        "watcherCounts": {
+          "directories": 92,
+          "entries": 1334,
+          "topLevelEntries": {
+            "[root]": 28,
+            "[outside-root]": 1,
+            "public": 18,
+            "backend": 2,
+            ".vscode": 1,
+            "bench": 76,
+            "native-mvp": 189,
+            "src": 245,
+            "docs": 511,
+            "tests": 256,
+            "scripts": 7
+          }
+        }
+      }
+    ],
+    "baseline": "Three original samples missed UI/load readiness before 30 seconds; see comparison for diagnostic caveats."
+  },
+  "build": {
+    "status": "PASS",
+    "command": "npm run build",
+    "includes": [
+      "vue-tsc -b",
+      "worklet bundle",
+      "Vite production build",
+      "six license file verification"
+    ],
+    "warnings": [
+      "existing large chunk",
+      "existing browser data age"
+    ]
+  },
+  "unit": {
+    "status": "PASS",
+    "passed": 104,
+    "total": 104,
+    "failed": 0,
+    "skipped": 0,
+    "files": 5,
+    "scope": "Focused controls, display, drafts, FX catalog and published-schema tests; not a new full-unit-suite run."
+  },
+  "e2e": {
+    "status": "PASS",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "One restored-default-30-second Native FX/ACK journey plus seven Browser Classic parity cases",
+    "cases": [
+      {
+        "file": "native-classic-schema-parameters.spec.ts",
+        "title": "default Classic LCD exposes Native Input and shared Track named controls with restart and ACK status",
+        "status": "passed",
+        "durationMs": 19605,
+        "timeoutMs": 30000
+      },
+      {
+        "file": "rc505-classic-parity.spec.ts",
+        "title": "seven Play screens wrap in both directions and retain the returning page",
+        "status": "passed",
+        "durationMs": 6235,
+        "timeoutMs": 30000
+      },
+      {
+        "file": "rc505-classic-parity.spec.ts",
+        "title": "LOOP and MENU expose hardware roots; encoder push and EXIT retain context",
+        "status": "passed",
+        "durationMs": 3175,
+        "timeoutMs": 30000
+      },
+      {
+        "file": "rc505-classic-parity.spec.ts",
+        "title": "Classic LCD excludes software tools while Enhanced keeps the tools reachable",
+        "status": "passed",
+        "durationMs": 5354,
+        "timeoutMs": 30000
+      },
+      {
+        "file": "rc505-classic-parity.spec.ts",
+        "title": "FX ordinary, EDIT chord, hold and Bank layers preserve actual switch state",
+        "status": "passed",
+        "durationMs": 8355,
+        "timeoutMs": 30000
+      },
+      {
+        "file": "rc505-classic-parity.spec.ts",
+        "title": "virtual input records, plays, overdubs, stops and uses the Undo secondary layer",
+        "status": "passed",
+        "durationMs": 10322,
+        "timeoutMs": 60000
+      },
+      {
+        "file": "rc505-classic-parity.spec.ts",
+        "title": "fixed Classic layout and LCD at 1920x1080",
+        "status": "passed",
+        "durationMs": 3824,
+        "timeoutMs": 30000
+      },
+      {
+        "file": "rc505-classic-parity.spec.ts",
+        "title": "fixed Classic layout and LCD at 1366x768",
+        "status": "passed",
+        "durationMs": 3454,
+        "timeoutMs": 30000
+      }
+    ],
+    "nativeCaseDurationMs": 19605,
+    "nativeCaseTimeoutMs": 30000,
+    "nativeHost": "explicit no-audio simulation",
+    "browserInput": "virtual"
+  },
+  "watchScope": {
+    "status": "PASS",
+    "receipt": "watch-scope-receipt.json",
+    "actualHmrWithoutReload": true,
+    "docsAndBenchSourceWatchPreserved": true,
+    "artifactWritesIgnored": true,
+    "allFiveProbeFilesRemoved": true
+  },
+  "localDeploy": {
+    "status": "PASS",
+    "verifiedAt": "2026-10-22T14:59:36.9478489Z",
+    "viteProcessId": 51212,
+    "nativeProcessId": 56756,
+    "viteProcessStartedAt": "2026-10-22T22:57:23.874837+08:00",
+    "sourceVerified": true,
+    "browserUrl": "http://127.0.0.1:5173/?audio=browser&ui=classic",
+    "nativeUrl": "http://127.0.0.1:5173/?audio=native&ui=classic",
+    "bridge": "127.0.0.1:17755",
+    "backend": "WASAPI",
+    "nativeEngineRunning": true,
+    "trackCount": 5,
+    "coop": "same-origin",
+    "coep": "require-corp",
+    "uiObserved": [
+      "Browser CLICK START AUDIO",
+      "Native NATIVE AUDIO READY",
+      "Native PAGE to Track Status, ENTER to Mixer, EXIT and return to Memory screen"
+    ],
+    "screenshot": "local-native-ready.png",
+    "screenshotSha256": "AB9B49122BB71F60F947737C7A925711E100E78EFA1C9272312E40BEBC22B999"
+  },
+  "rawReports": [
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-baseline.json",
+      "sha256": "DB46590EC124F9B1302BE0D2F5C692D6713401495122C3AE3921255C9C4602D7",
+      "bytes": 37345
+    },
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-native-final.json",
+      "sha256": "80AC7EDE836EF6D46C1963168EB122DDD8A4CDFDC04924DF6E62F912CB6FF9ED",
+      "bytes": 1624148
+    },
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-browser-final.json",
+      "sha256": "02D3EC0AC60EE74E260FFE9AE1B3185E9C1E5D18A1A3C2D1513BF2CEAE20BB38",
+      "bytes": 1550824
+    },
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-unit.json",
+      "sha256": "755FCE5DEF775EF11BB35CCBE4645933E42E01434C65F47192F75FC7F1612DF9",
+      "bytes": 34136
+    },
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-e2e.json",
+      "sha256": "1D969276FA6B852D0DE339D6204C8E4BD6379DE0AF6AD242D177A8F03C1FDD31",
+      "bytes": 10671
+    },
+    {
+      "path": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-build.log",
+      "sha256": "6B777797FAF9BDDFABE33461942C70DFDF8E20E649D70A4D6BD6D08953C3B6F5",
+      "bytes": 1903
+    }
+  ],
+  "limits": [
+    "Cold-start pass does not certify all FX writes: existing already-running Native host initialization produced 28 catalog-slot HTTP409 responses per measured Native round; see native-bootstrap-errors.json.",
+    "HTTP409 specific rejection text is inferred from unchanged source; response bodies were not captured.",
+    "These are six local samples, not cross-machine/P99 guarantees.",
+    "No DSP, runtime components, protocol or security policy change."
+  ]
+}

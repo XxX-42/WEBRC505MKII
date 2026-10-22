@@ -14,6 +14,8 @@
     "test:rhythm:parity": "vite-node --script bench/compare_rhythm_event_runtime.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:startup": "node scripts/measure-vite-cold-start.mjs",
+    "test:watch-scope": "node scripts/check-vite-watch-scope.mjs",
     "test:e2e:rubberband": "node scripts/test-e2e-rubberband.mjs",
     "test:ci": "npm run build && npm run test:unit && npm run test:e2e",
     "bench:fx-quality": "vite-node bench/run_browser_fx_quality_sweep.ts",

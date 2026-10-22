@@ -6,9 +6,7 @@ const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
 test.skip(!simulationHost, 'Set NATIVE_BRIDGE_SIMULATION_EXECUTABLE to the explicit no-audio Native simulation host.');
 
 test('default Classic LCD exposes Native Input and shared Track named controls with restart and ACK status', async ({ page }) => {
-  // This journey includes cold loading, two FX restarts and both banks' parameter pages.
-  // Individual ACK and expectation timeouts below retain their original limits.
-  test.setTimeout(60_000);
+  // Cold loading and both FX banks must fit the default 30-second test budget.
   if (!simulationHost) return;
   let host: ChildProcess | undefined;
   let hostStartError: Error | undefined;

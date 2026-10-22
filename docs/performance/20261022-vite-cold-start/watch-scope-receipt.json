@@ -1,0 +1,81 @@
+{
+  "id": "b3e97b9f-b138-4a81-be93-bf650aa51608",
+  "root": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC",
+  "port": 5187,
+  "output": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-watch-MFjEcx",
+  "cacheDir": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-watch-MFjEcx\\cache",
+  "files": {
+    "source": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\src\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.ts",
+    "docs": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\docs\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.json",
+    "bench": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\bench\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.ts",
+    "nativeOutput": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\native-mvp\\build\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.txt",
+    "benchOutput": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\bench\\results\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.txt"
+  },
+  "startedAt": "2026-10-22T14:51:12.762Z",
+  "checks": {
+    "watchedInventory": {
+      "directoryCount": 84,
+      "source": true,
+      "docs": true,
+      "bench": true,
+      "publicDirectory": true,
+      "index": true,
+      "config": true,
+      "nativeOutput": false,
+      "benchOutput": false
+    },
+    "hmr": {
+      "version": 2,
+      "accepted": 2,
+      "evaluations": 2,
+      "boot": "b4f15114-25de-42e7-9ece-5a9c3f2be71c",
+      "navigations": 1,
+      "baselineNavigations": 1,
+      "browserErrors": []
+    },
+    "docsChangeVisible": true,
+    "benchChangeVisible": true,
+    "ignoredOutputEvents": []
+  },
+  "events": [
+    {
+      "event": "change",
+      "file": "C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/src/__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.ts",
+      "at": "2026-10-22T14:51:21.800Z"
+    },
+    {
+      "event": "change",
+      "file": "C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/docs/__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.json",
+      "at": "2026-10-22T14:51:21.889Z"
+    },
+    {
+      "event": "change",
+      "file": "C:/Users/user1000/.codex/worktrees/rc505-classic-parity/26_27_WebRC/bench/__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.ts",
+      "at": "2026-10-22T14:51:21.912Z"
+    }
+  ],
+  "cleanup": [
+    {
+      "file": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\src\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.ts",
+      "removed": true
+    },
+    {
+      "file": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\docs\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.json",
+      "removed": true
+    },
+    {
+      "file": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\bench\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.ts",
+      "removed": true
+    },
+    {
+      "file": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\native-mvp\\build\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.txt",
+      "removed": true
+    },
+    {
+      "file": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-classic-parity\\26_27_WebRC\\bench\\results\\__vite_watch_probe_b3e97b9f-b138-4a81-be93-bf650aa51608.txt",
+      "removed": true
+    }
+  ],
+  "ok": true,
+  "finishedAt": "2026-10-22T14:51:23.380Z"
+}

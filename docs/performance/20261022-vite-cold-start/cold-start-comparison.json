@@ -1,0 +1,711 @@
+{
+  "scope": "Local cold-cache Vite process startup; 30000 ms budget from process spawn, including optimizer/startup. Fresh browser process and context per sample. Browser tests UI readiness without starting audio. Native samples on 4174 read an existing real host.",
+  "baselineCaveat": "Initial baseline runner did not yet fail its exit code; missing UI/load phases still mean failure. Watch-only 5186 NativeReady is invalid because origin is outside the host CORS allowlist; UI phases remain diagnostic.",
+  "groups": [
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-baseline.json",
+      "runs": [
+        {
+          "round": 1,
+          "mode": "native",
+          "port": 5186,
+          "httpMs": 2324.0333000000005,
+          "totalMs": 30050.236899999996,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "inflight": [
+            {
+              "url": "http://127.0.0.1:5186/src/main.ts",
+              "durationMs": 25923.865099999995
+            }
+          ],
+          "loadError": "page.goto: Timeout 27008.1332ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:5186/?audio=native&ui=classic\", waiting until \"load\"\u001b[22m\n",
+          "readinessError": "locator.waitFor: Timeout 27006.811ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.app-root') to be visible\u001b[22m\n\u001b[2m    - waiting for\" http://127.0.0.1:5186/?audio=native&ui=classic\" navigation to finish...\u001b[22m\n\u001b[2m    - navigated to \"http://127.0.0.1:5186/?audio=native&ui=classic\"\u001b[22m\n",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/@vite/client",
+              "durationMs": 4779.580199999999
+            },
+            {
+              "url": "http://127.0.0.1:5186/?audio=native&ui=classic",
+              "durationMs": 1125.4764999999998
+            },
+            {
+              "url": "http://127.0.0.1:5186/node_modules/vite/dist/client/env.mjs",
+              "durationMs": 27.06750000000102
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "mode": "native",
+          "port": 5186,
+          "httpMs": 2133.8489999999947,
+          "totalMs": 30021.065499999997,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "inflight": [
+            {
+              "url": "http://127.0.0.1:5186/src/main.ts",
+              "durationMs": 25191.9726
+            }
+          ],
+          "loadError": "page.goto: Timeout 27122.894500000002ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:5186/?audio=native&ui=classic\", waiting until \"load\"\u001b[22m\n",
+          "readinessError": "locator.waitFor: Timeout 27122.4386ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.app-root') to be visible\u001b[22m\n\u001b[2m    - waiting for\" http://127.0.0.1:5186/?audio=native&ui=classic\" navigation to finish...\u001b[22m\n\u001b[2m    - navigated to \"http://127.0.0.1:5186/?audio=native&ui=classic\"\u001b[22m\n",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/@vite/client",
+              "durationMs": 7874.006600000001
+            },
+            {
+              "url": "http://127.0.0.1:5186/?audio=native&ui=classic",
+              "durationMs": 1958.959799999997
+            },
+            {
+              "url": "http://127.0.0.1:5186/node_modules/vite/dist/client/env.mjs",
+              "durationMs": 22.003100000001723
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "mode": "native",
+          "port": 5186,
+          "httpMs": 1913.6220999999932,
+          "totalMs": 30017.176999999996,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "inflight": [
+            {
+              "url": "http://127.0.0.1:5186/src/main.ts",
+              "durationMs": 26252.87419999999
+            }
+          ],
+          "loadError": "page.goto: Timeout 27329.181500000006ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:5186/?audio=native&ui=classic\", waiting until \"load\"\u001b[22m\n",
+          "readinessError": "locator.waitFor: Timeout 27328.851299999995ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.app-root') to be visible\u001b[22m\n\u001b[2m    - waiting for\" http://127.0.0.1:5186/?audio=native&ui=classic\" navigation to finish...\u001b[22m\n\u001b[2m    - navigated to \"http://127.0.0.1:5186/?audio=native&ui=classic\"\u001b[22m\n",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/@vite/client",
+              "durationMs": 4551.6136000000115
+            },
+            {
+              "url": "http://127.0.0.1:5186/?audio=native&ui=classic",
+              "durationMs": 1090.097900000008
+            },
+            {
+              "url": "http://127.0.0.1:5186/node_modules/vite/dist/client/env.mjs",
+              "durationMs": 16.3411000000051
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-watch-baseline.json",
+      "runs": [
+        {
+          "round": 1,
+          "mode": "native",
+          "port": 5186,
+          "httpMs": 2160.6348999999996,
+          "totalMs": 30031.3903,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "watcherReady": {
+            "sinceServerStartMs": 1561.4490999999998,
+            "uptimeMs": 1628.7846
+          },
+          "watcherCounts": {
+            "directories": 374,
+            "entries": 3114,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "bench": 528,
+              ".vscode": 1,
+              "backend": 2,
+              "docs": 511,
+              "tests": 256,
+              "scripts": 6,
+              "native-mvp": 1518,
+              "src": 245
+            }
+          },
+          "inflight": [
+            {
+              "url": "http://127.0.0.1:5186/src/main.ts",
+              "durationMs": 24295.4925
+            }
+          ],
+          "loadError": "page.goto: Timeout 26850.9086ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:5186/?audio=native&ui=classic\", waiting until \"load\"\u001b[22m\n",
+          "readinessError": "locator.waitFor: Timeout 26849.1591ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.app-root') to be visible\u001b[22m\n\u001b[2m    - waiting for\" http://127.0.0.1:5186/?audio=native&ui=classic\" navigation to finish...\u001b[22m\n\u001b[2m    - navigated to \"http://127.0.0.1:5186/?audio=native&ui=classic\"\u001b[22m\n",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/@vite/client",
+              "durationMs": 6440.9082
+            },
+            {
+              "url": "http://127.0.0.1:5186/?audio=native&ui=classic",
+              "durationMs": 2568.5951000000005
+            },
+            {
+              "url": "http://127.0.0.1:5186/node_modules/vite/dist/client/env.mjs",
+              "durationMs": 16.25879999999961
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-native-candidate.json",
+      "runs": [
+        {
+          "round": 1,
+          "mode": "native",
+          "port": 5186,
+          "httpMs": 2711.2747999999997,
+          "totalMs": 30076.399599999997,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": false,
+          "watcherReady": {
+            "sinceServerStartMs": 1896.5649,
+            "uptimeMs": 1982.3914
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1333,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "backend": 2,
+              "docs": 511,
+              ".vscode": 1,
+              "native-mvp": 189,
+              "bench": 76,
+              "scripts": 6,
+              "src": 245,
+              "tests": 256
+            }
+          },
+          "inflight": [
+            {
+              "url": "http://127.0.0.1:5186/src/main.ts",
+              "durationMs": 22187.5311
+            }
+          ],
+          "loadError": "page.goto: Timeout 26182.479ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:5186/?audio=native&ui=classic\", waiting until \"load\"\u001b[22m\n",
+          "readinessError": "locator.waitFor: Timeout 26180.8611ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.app-root') to be visible\u001b[22m\n\u001b[2m    - waiting for\" http://127.0.0.1:5186/?audio=native&ui=classic\" navigation to finish...\u001b[22m\n\u001b[2m    - navigated to \"http://127.0.0.1:5186/?audio=native&ui=classic\"\u001b[22m\n",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/@vite/client",
+              "durationMs": 9036.6964
+            },
+            {
+              "url": "http://127.0.0.1:5186/?audio=native&ui=classic",
+              "durationMs": 3973.309300000001
+            },
+            {
+              "url": "http://127.0.0.1:5186/node_modules/vite/dist/client/env.mjs",
+              "durationMs": 528.3973000000005
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "mode": "native",
+          "port": 5186,
+          "httpMs": 1800.2630999999965,
+          "loadMs": 20408.9689,
+          "navigationLoadMs": 17406.0801,
+          "appRootMs": 20455.387899999994,
+          "classicInteractiveMs": 20856.318499999994,
+          "totalMs": 30274.440599999994,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": false,
+          "watcherReady": {
+            "sinceServerStartMs": 1397.8316,
+            "uptimeMs": 1474.8253
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1333,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "bench": 76,
+              "backend": 2,
+              "scripts": 6,
+              "src": 245,
+              "native-mvp": 189,
+              "docs": 511,
+              "tests": 256,
+              ".vscode": 1
+            }
+          },
+          "inflight": [],
+          "readinessError": "locator.waitFor: Timeout 9143.4551ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.status-pill').filter({ hasText: 'NATIVE AUDIO READY' }) to be visible\u001b[22m\n",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/src/main.ts",
+              "durationMs": 14399.0582
+            },
+            {
+              "url": "http://127.0.0.1:5186/@vite/client",
+              "durationMs": 4101.588500000005
+            },
+            {
+              "url": "http://127.0.0.1:5186/?audio=native&ui=classic",
+              "durationMs": 1900.0414999999994
+            },
+            {
+              "url": "http://127.0.0.1:5186/@fs/C:/Users/user1000/AppData/Local/Temp/rc505-vite-cold-cache-Oo960a/deps/vue.js?v=3ac641b9",
+              "durationMs": 615.2596999999951
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/components/TransportControls.vue",
+              "durationMs": 331.42489999999816
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "mode": "native",
+          "port": 5186,
+          "httpMs": 2074.6299999999974,
+          "loadMs": 23634.242099999996,
+          "navigationLoadMs": 20712.5821,
+          "appRootMs": 23677.557899999993,
+          "classicInteractiveMs": 24218.4015,
+          "totalMs": 30397.773299999993,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": false,
+          "watcherReady": {
+            "sinceServerStartMs": 1612.8737,
+            "uptimeMs": 1696.0704
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1334,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "backend": 2,
+              "bench": 76,
+              "scripts": 7,
+              "native-mvp": 189,
+              "docs": 511,
+              ".vscode": 1,
+              "tests": 256,
+              "src": 245
+            }
+          },
+          "inflight": [],
+          "readinessError": "locator.waitFor: Timeout 5781.509800000007ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.status-pill').filter({ hasText: 'NATIVE AUDIO READY' }) to be visible\u001b[22m\n",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/src/main.ts",
+              "durationMs": 15665.582999999999
+            },
+            {
+              "url": "http://127.0.0.1:5186/?audio=native&ui=classic",
+              "durationMs": 3501.518400000001
+            },
+            {
+              "url": "http://127.0.0.1:5186/@vite/client",
+              "durationMs": 3116.4954
+            },
+            {
+              "url": "http://127.0.0.1:5186/@fs/C:/Users/user1000/AppData/Local/Temp/rc505-vite-cold-cache-Yg26ky/deps/vue.js?v=f1666449",
+              "durationMs": 1021.4381999999896
+            },
+            {
+              "url": "http://127.0.0.1:5186/node_modules/vite/dist/client/env.mjs",
+              "durationMs": 398.6392000000051
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-native-final.json",
+      "runs": [
+        {
+          "round": 1,
+          "mode": "native",
+          "port": 4174,
+          "httpMs": 11635.813900000001,
+          "loadMs": 15927.500199999999,
+          "navigationLoadMs": 3824.8817,
+          "appRootMs": 15939.1646,
+          "classicInteractiveMs": 16164.312399999999,
+          "nativeReadyMs": 17023.0261,
+          "totalMs": 17230.812299999998,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": true,
+          "watcherReady": {
+            "sinceServerStartMs": 2269.3155,
+            "uptimeMs": 2346.0834
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1334,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              ".vscode": 1,
+              "native-mvp": 189,
+              "backend": 2,
+              "bench": 76,
+              "tests": 256,
+              "docs": 511,
+              "scripts": 7,
+              "src": 245
+            }
+          },
+          "inflight": [],
+          "uiStatus": "NATIVE AUDIO READYNATIVE: 5 LOOP TRACKS; INPUT A–D AVAILABLE; TRACK A–D AVAILABLEREADY AUDIO NATIVESETTINGSAUDIO SETTINGSENHANCED TOOLSMONITOR / DIAGNOSTICSRESTART NATIVE / APPLY FXUI CLASSIC",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:4174/src/core/Transport.ts",
+              "durationMs": 1413.5058000000026
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/nativeOscVocMidi.ts",
+              "durationMs": 1407.365899999997
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/NativeAudioEngine.ts",
+              "durationMs": 1300.2423999999992
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/MidiInputController.ts",
+              "durationMs": 1300.2057999999997
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/preampParameters.ts",
+              "durationMs": 1300.1949999999997
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "mode": "native",
+          "port": 4174,
+          "httpMs": 7631.576300000001,
+          "loadMs": 12955.1266,
+          "navigationLoadMs": 4779.877900000003,
+          "appRootMs": 13073.855,
+          "classicInteractiveMs": 13284.923299999999,
+          "nativeReadyMs": 14304.614100000003,
+          "totalMs": 14499.292299999997,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": true,
+          "watcherReady": {
+            "sinceServerStartMs": 892.6016,
+            "uptimeMs": 946.6522000000001
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1334,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              ".vscode": 1,
+              "backend": 2,
+              "native-mvp": 189,
+              "bench": 76,
+              "scripts": 7,
+              "docs": 511,
+              "src": 245,
+              "tests": 256
+            }
+          },
+          "inflight": [],
+          "uiStatus": "NATIVE AUDIO READYNATIVE: 5 LOOP TRACKS; INPUT A–D AVAILABLE; TRACK A–D AVAILABLEREADY AUDIO NATIVESETTINGSAUDIO SETTINGSENHANCED TOOLSMONITOR / DIAGNOSTICSRESTART NATIVE / APPLY FXUI CLASSIC",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:4174/src/audio/projectArchive.ts",
+              "durationMs": 1481.5130999999965
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/RhythmEngine.ts",
+              "durationMs": 1481.3393000000033
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/export/wavEncoder.ts",
+              "durationMs": 1478.0518000000047
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/export/hqWavExport.ts",
+              "durationMs": 1477.8439999999973
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/PcmHistoryBudget.ts",
+              "durationMs": 1477.6483999999982
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "mode": "native",
+          "port": 4174,
+          "httpMs": 10351.2765,
+          "loadMs": 15631.229999999996,
+          "navigationLoadMs": 4717.225599999998,
+          "appRootMs": 15651.979199999994,
+          "classicInteractiveMs": 15890.621299999999,
+          "nativeReadyMs": 16776.8643,
+          "totalMs": 17042.778299999998,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": true,
+          "watcherReady": {
+            "sinceServerStartMs": 1370.5964000000001,
+            "uptimeMs": 1443.1276
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1334,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "docs": 511,
+              "bench": 76,
+              ".vscode": 1,
+              "native-mvp": 189,
+              "tests": 256,
+              "src": 245,
+              "backend": 2,
+              "scripts": 7
+            }
+          },
+          "inflight": [],
+          "uiStatus": "NATIVE AUDIO READYNATIVE: 5 LOOP TRACKS; INPUT A–D AVAILABLE; TRACK A–D AVAILABLEREADY AUDIO NATIVESETTINGSAUDIO SETTINGSENHANCED TOOLSMONITOR / DIAGNOSTICSRESTART NATIVE / APPLY FXUI CLASSIC",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:4174/src/components/TopPanel.vue?vue&type=style&index=0&scoped=05e9b23e&lang.css",
+              "durationMs": 2164.887499999997
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/electricParameters.ts",
+              "durationMs": 2158.3821000000025
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/components/fx/ElectricFxEditor.vue",
+              "durationMs": 2157.621800000001
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/audio/hrmAutoParameters.ts",
+              "durationMs": 2154.9000000000015
+            },
+            {
+              "url": "http://127.0.0.1:4174/src/components/fx/HrmAutoFxEditor.vue",
+              "durationMs": 2154.5697999999975
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "C:\\Users\\user1000\\AppData\\Local\\Temp\\rc505-vite-cold-browser-final.json",
+      "runs": [
+        {
+          "round": 1,
+          "mode": "browser",
+          "port": 5186,
+          "httpMs": 6706.525100000001,
+          "loadMs": 12471.1718,
+          "navigationLoadMs": 5334.8475,
+          "appRootMs": 12985.6595,
+          "classicInteractiveMs": 13103.0573,
+          "totalMs": 13267.0298,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": true,
+          "watcherReady": {
+            "sinceServerStartMs": 884.5296000000001,
+            "uptimeMs": 939.0387
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1334,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "bench": 76,
+              ".vscode": 1,
+              "scripts": 7,
+              "native-mvp": 189,
+              "tests": 256,
+              "src": 245,
+              "backend": 2,
+              "docs": 511
+            }
+          },
+          "inflight": [],
+          "uiStatus": "BROWSER · CLICK START AUDIOBROWSER: 5 TRACKS; LIMITED EFFECTS/RHYTHM; DSP PARITY INCOMPLETESTART AUDIO AUDIO BROWSERSETTINGSAUDIO SETTINGSENHANCED TOOLSMONITOR / DIAGNOSTICSUI CLASSIC",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/src/audio/BrowserTrackFxChain.ts",
+              "durationMs": 2011.9518000000007
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/RhythmEngine.ts",
+              "durationMs": 2011.0863000000008
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/fx/BrowserWorkletFX.ts",
+              "durationMs": 2009.8765999999996
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/BrowserRecoverySnapshot.ts",
+              "durationMs": 2006.2496999999985
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/fx/BrowserVocoderFX.ts",
+              "durationMs": 2006.101200000001
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "mode": "browser",
+          "port": 5186,
+          "httpMs": 6087.4679,
+          "loadMs": 12812.4928,
+          "navigationLoadMs": 6138.909599999999,
+          "appRootMs": 12843.495599999998,
+          "classicInteractiveMs": 13134.836899999998,
+          "totalMs": 13498.530599999998,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": true,
+          "watcherReady": {
+            "sinceServerStartMs": 831.5641,
+            "uptimeMs": 882.7167000000001
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1334,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "bench": 76,
+              "backend": 2,
+              ".vscode": 1,
+              "native-mvp": 189,
+              "docs": 511,
+              "tests": 256,
+              "scripts": 7,
+              "src": 245
+            }
+          },
+          "inflight": [],
+          "uiStatus": "BROWSER · CLICK START AUDIOBROWSER: 5 TRACKS; LIMITED EFFECTS/RHYTHM; DSP PARITY INCOMPLETESTART AUDIO AUDIO BROWSERSETTINGSAUDIO SETTINGSENHANCED TOOLSMONITOR / DIAGNOSTICSUI CLASSIC",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/src/audio/PcmHistoryBudget.ts",
+              "durationMs": 2273.083999999999
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/BrowserTrackFxChain.ts",
+              "durationMs": 2272.9390999999996
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/RhythmEngine.ts",
+              "durationMs": 2272.6617000000006
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/browserAudioStartup.ts",
+              "durationMs": 2271.557499999999
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/fx/BrowserWorkletFX.ts",
+              "durationMs": 2269.618000000002
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "mode": "browser",
+          "port": 5186,
+          "httpMs": 9071.414699999998,
+          "loadMs": 18351.459700000003,
+          "navigationLoadMs": 8452.959300000002,
+          "appRootMs": 18372.143099999998,
+          "classicInteractiveMs": 18671.328599999997,
+          "totalMs": 18958.389699999996,
+          "coop": "same-origin",
+          "coep": "require-corp",
+          "passed": true,
+          "watcherReady": {
+            "sinceServerStartMs": 1377.181,
+            "uptimeMs": 1455.0475000000001
+          },
+          "watcherCounts": {
+            "directories": 92,
+            "entries": 1334,
+            "topLevelEntries": {
+              "[root]": 28,
+              "[outside-root]": 1,
+              "public": 18,
+              "backend": 2,
+              ".vscode": 1,
+              "bench": 76,
+              "native-mvp": 189,
+              "src": 245,
+              "docs": 511,
+              "tests": 256,
+              "scripts": 7
+            }
+          },
+          "inflight": [],
+          "uiStatus": "BROWSER · CLICK START AUDIOBROWSER: 5 TRACKS; LIMITED EFFECTS/RHYTHM; DSP PARITY INCOMPLETESTART AUDIO AUDIO BROWSERSETTINGSAUDIO SETTINGSENHANCED TOOLSMONITOR / DIAGNOSTICSUI CLASSIC",
+          "slowestRequests": [
+            {
+              "url": "http://127.0.0.1:5186/src/audio/RhythmEngine.ts",
+              "durationMs": 2619.2122999999992
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/BrowserTrackFxChain.ts",
+              "durationMs": 2617.1540999999997
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/fx/BrowserWorkletFX.ts",
+              "durationMs": 2615.560400000002
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/fx/BrowserVocoderFX.ts",
+              "durationMs": 2609.4272999999957
+            },
+            {
+              "url": "http://127.0.0.1:5186/src/audio/BrowserRecoverySnapshot.ts",
+              "durationMs": 2609.243699999999
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "exitCodes": {
+    "initialBaseline": 0,
+    "watchBaseline": 0,
+    "watchOnlyCandidate": 1,
+    "nativeFinal": 0,
+    "browserFinal": 0
+  }
+}
