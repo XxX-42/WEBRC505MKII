@@ -1,7 +1,7 @@
 import { webcrypto } from 'node:crypto';
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import { encodeProjectArchive, decodeProjectArchive, PROJECT_ARCHIVE_DEFAULT_TRANSPORT } from '../../src/audio/projectArchive';
-import { Rc505Memory, encodeRc505Memory, decodeRc505Memory, type Rc505MemoryDocument, type Rc505MemoryRuntime, type Rc505MemoryPersistence } from '../../src/audio/Rc505Memory';
+import { Rc505Memory, Rc505MemoryCommittedError, encodeRc505Memory, decodeRc505Memory, type Rc505MemoryDocument, type Rc505MemoryRuntime, type Rc505MemoryPersistence } from '../../src/audio/Rc505Memory';
 
 beforeAll(() => vi.stubGlobal('crypto', webcrypto));
 afterAll(() => vi.unstubAllGlobals());
@@ -60,6 +60,12 @@ async function harness() {
   return { runtime, store, memory, order, mutate: () => epoch++, forbid: () => { allowed = false; } };
 }
 describe('Memory switch transaction guard', () => {
+  it('reports the newly installed identity as unverified if post-commit state synchronization fails', async () => {
+    const h = await harness();
+    vi.mocked(h.runtime.prepare).mockResolvedValue({ commit: async () => { throw new Rc505MemoryCommittedError('Memory installed; readback failed.', 42); }, dispose: async () => {} });
+    await expect(h.memory.load(3)).rejects.toMatchObject({ committed: true, generation: 42 });
+    expect(h.memory.currentNumber).toBe(3); expect(h.memory.currentName).toBe('TEST'); expect(h.memory.dirty).toBe(true);
+  });
   it('tracks unsaved names and preserves the active identity in recovery, independently from archive naming', async () => {
     const h = await harness(); await h.memory.save(4, 'OLD NAME');
     expect(h.memory.dirty).toBe(false);

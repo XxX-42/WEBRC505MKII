@@ -1,5 +1,6 @@
 import type { TrackAudio } from './TrackAudio';
 import type { Rc505MemoryRuntime } from './Rc505Memory';
+import { fenceRc505MemoryRuntime } from './Rc505MemoryRuntimeFence';
 import type { MixerChannel, MixerState } from './Mixer';
 import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
 import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserStepSlicerControl } from './BrowserAudioEngine';
@@ -183,6 +184,8 @@ export class AudioEngine {
   private browserEngine: BrowserAudioEngine | null = null;
   private currentMode: AudioMode = resolveInitialMode();
   private modeGeneration = 0;
+  private memoryPreparations = 0;
+  private readonly memoryRuntimes = new WeakMap<Rc505MemoryRuntime, Rc505MemoryRuntime>();
   private browserOutputLevelPercent = 100;
   private nativeMidiInput: MidiInputController | null = null;
   private nativeMidiTarget: TrackFxMidiTarget | null = null;
@@ -219,6 +222,7 @@ export class AudioEngine {
   }
 
   public setMode(mode: AudioMode) {
+    if (mode !== this.currentMode && this.memoryPreparations > 0) throw new Error('Finish the pending Memory transaction before changing audio backend.');
     if (mode !== this.currentMode) {
       this.disconnectMidiInput();
       this.modeGeneration += 1;
@@ -815,9 +819,25 @@ export class AudioEngine {
 
   public getTrackFxApply(trackId?: number): TrackFxApplyStatus[] { return this.activeEngine.getTrackFxApply(trackId); }
   public createRc505MemoryRuntime(): Rc505MemoryRuntime {
-    const provider = this.activeEngine as unknown as { createRc505MemoryRuntime?: () => Rc505MemoryRuntime };
+    const owner = this.activeEngine;
+    const mode = this.currentMode;
+    const provider = owner as unknown as { createRc505MemoryRuntime?: () => Rc505MemoryRuntime };
     if (!provider.createRc505MemoryRuntime) throw new Error('Semantic Memory is not available on this audio backend.');
-    return provider.createRc505MemoryRuntime();
+    const raw = provider.createRc505MemoryRuntime();
+    let runtime = this.memoryRuntimes.get(raw);
+    if (!runtime) {
+      runtime = fenceRc505MemoryRuntime(raw, {
+        revision: () => String(this.modeGeneration),
+        active: () => this.currentMode === mode && this.activeEngine === owner,
+        acquire: () => {
+          this.memoryPreparations++;
+          let released = false;
+          return () => { if (!released) { released = true; this.memoryPreparations--; } };
+        },
+      });
+      this.memoryRuntimes.set(raw, runtime);
+    }
+    return runtime;
   }
   public getMixerState(): MixerState { return this.activeEngine.getMixerState(); }
   public setMixerLevel(channel: MixerChannel, percent: number): Promise<void> {

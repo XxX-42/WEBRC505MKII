@@ -111,6 +111,13 @@ export interface Rc505MemoryPersistence {
   recovery(bytes: Uint8Array): Promise<void>;
   clear(slot: number): Promise<void>;
 }
+/** PCM/graph already changed; callers must not describe this as a rolled-back load. */
+export class Rc505MemoryCommittedError extends Error {
+  public readonly committed = true;
+  public constructor(message: string, public readonly generation: number | null = null, options?: ErrorOptions) {
+    super(message, options); this.name = 'Rc505MemoryCommittedError';
+  }
+}
 export class Rc505Memory {
   public currentNumber: number | null = null;
   public currentName = '';
@@ -171,7 +178,13 @@ export class Rc505Memory {
       try {
         this.assertStopped();
         if (revision !== this.runtime.revision()) throw new Error('Memory changed before commit.');
-        await prepared.commit();
+        try { await prepared.commit(); }
+        catch (error) {
+          if (error instanceof Rc505MemoryCommittedError) {
+            this.currentNumber = slot; this.currentName = document.name; this.savedName = document.name; this.savedRevision = null;
+          }
+          throw error;
+        }
         this.currentNumber = slot; this.currentName = document.name; this.savedName = document.name; this.savedRevision = this.runtime.revision();
       } finally { await prepared.dispose(); }
     });

@@ -1,16 +1,16 @@
 import { reactive } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
-import { Rc505Memory } from '../audio/Rc505Memory';
+import { Rc505Memory, type Rc505MemoryRuntime } from '../audio/Rc505Memory';
 import { Rc505MemoryStore } from '../audio/Rc505MemoryStore';
 
-const sessions = new Map<string, Rc505Memory>();
+const sessions = new WeakMap<Rc505MemoryRuntime, Rc505Memory>();
 const store = new Rc505MemoryStore();
 const state = reactive({ number: null as number | null, name: '', dirty: true, busy: false, available: false, reason: '', error: '' });
 const getSession = () => {
   const engine = AudioEngine.getInstance();
-  const mode = engine.getMode();
-  let session = sessions.get(mode);
-  if (!session) { session = new Rc505Memory(engine.createRc505MemoryRuntime(), store); sessions.set(mode, session); }
+  const runtime = engine.createRc505MemoryRuntime();
+  let session = sessions.get(runtime);
+  if (!session) { session = new Rc505Memory(runtime, store); sessions.set(runtime, session); }
   return session;
 };
 

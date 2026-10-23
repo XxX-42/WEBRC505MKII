@@ -764,7 +764,7 @@ export class NativeAudioEngine {
    * HTTP reads can never be persisted as a mixed-generation project.
    */
   public createRc505MemoryRuntime(): Rc505MemoryRuntime {
-    return createNativeRc505MemoryRuntime({
+    return this.rc505MemoryRuntime ??= createNativeRc505MemoryRuntime({
       bridge: this.bridge,
       status: () => this.latestStatus,
       editRevision: () => `${this.nativeFxSyncRevision}:${[...this.nativeCatalogSlotEditRevisions.values()].reduce((sum, value) => sum + value, 0)}`,
@@ -784,6 +784,7 @@ export class NativeAudioEngine {
       },
     });
   }
+  private rc505MemoryRuntime: Rc505MemoryRuntime | null = null;
 
   public async exportProjectArchive(name: string): Promise<Uint8Array> {
     const initial = await this.bridge.getStatus();
