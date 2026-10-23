@@ -6,8 +6,10 @@ import ClassicShell from './components/shells/ClassicShell.vue';
 import TechShell from './components/shells/TechShell.vue';
 import { AudioEngine, type AudioMode, type AudioUiStatus } from './audio/AudioEngine';
 import { useUiStyle } from './composables/useUiStyle';
+import { useRc505Memory } from './composables/useRc505Memory';
 
 const engine = AudioEngine.getInstance();
+const semanticMemory = useRc505Memory();
 const isInitialized = ref(false);
 const initError = ref('');
 const actionError = ref('');
@@ -160,6 +162,7 @@ const retryAudio = () => {
 };
 
 const toggleAudioMode = async () => {
+  if (semanticMemory.state.busy) { actionError.value = 'Finish the pending Memory transaction before changing audio backend.'; return; }
   if (engine.hasUnsavedLoops() && !await requestConfirmation('Switching audio mode reloads the app and discards the current unsaved loops. Continue?')) return;
   const nextMode: AudioMode = audioMode.value === 'browser' ? 'native' : 'browser';
   AudioEngine.setPreferredMode(nextMode);
@@ -171,7 +174,7 @@ const toggleAudioMode = async () => {
 const openSettings = () => window.dispatchEvent(new CustomEvent('rc505-open-audio-settings'));
 const toggleTools = () => { toolsOpen.value = !toolsOpen.value; };
 const restartNativeAudio = async () => {
-  if (audioMode.value !== 'native' || initInFlight.value) return;
+  if (audioMode.value !== 'native' || initInFlight.value || semanticMemory.state.busy) return;
   if (engine.hasUnsavedLoops() && !await requestConfirmation('Applying Native FX briefly stops audio. Loops are retained at the current sample rate. Continue?')) return;
   initInFlight.value = true;
   actionError.value = '';
@@ -226,6 +229,7 @@ onUnmounted(() => {
       :ui-style-label="uiStyleLabel"
       :capability-summary="capabilitySummary"
       :ui-status="uiStatus"
+      :memory-busy="semanticMemory.state.busy"
       @retry-audio="retryAudio"
       @toggle-audio-mode="toggleAudioMode"
       @toggle-ui-style="toggleStyle"

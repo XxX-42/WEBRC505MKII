@@ -27,7 +27,7 @@
       <button class="status-action start-action" data-testid="start-audio" type="button" :disabled="isInitialized && (audioModeLabel !== 'BROWSER' || uiStatus.inputReady)" @click="$emit('retry-audio')">
         {{ initInFlight ? 'CONNECTING…' : uiStatus.recoveryAwaitingUserResume ? 'RESUME RECOVERED AUDIO' : uiStatus.inputCaptureWarming ? 'WARMING…' : isInitialized && (audioModeLabel !== 'BROWSER' || uiStatus.inputReady) ? 'READY' : isInitialized ? 'CONNECT INPUT' : initStarted ? 'RETRY AUDIO' : 'START AUDIO' }}
       </button>
-      <button class="status-action" type="button" @click="$emit('toggle-audio-mode')">
+      <button class="status-action" type="button" :disabled="memoryBusy" :title="memoryBusy ? 'Memory transaction is pending' : undefined" @click="$emit('toggle-audio-mode')">
         AUDIO {{ audioModeLabel }}
       </button>
       <details class="app-menu">
@@ -36,7 +36,7 @@
           <button class="status-action" type="button" @click="$emit('open-settings')">AUDIO SETTINGS</button>
           <button class="status-action" type="button" @click="openEnhanced">ENHANCED TOOLS</button>
           <button class="status-action" type="button" @click="$emit('toggle-tools')">MONITOR / DIAGNOSTICS</button>
-          <button v-if="audioModeLabel === 'NATIVE'" class="status-action" type="button" :disabled="initInFlight" @click="$emit('restart-native')">RESTART NATIVE / APPLY FX</button>
+          <button v-if="audioModeLabel === 'NATIVE'" class="status-action" type="button" :disabled="initInFlight || memoryBusy" @click="$emit('restart-native')">RESTART NATIVE / APPLY FX</button>
           <button class="status-action primary" type="button" data-testid="ui-style-toggle" @click="$emit('toggle-ui-style')">UI {{ uiStyleLabel }}</button>
         </div>
       </details>
@@ -61,6 +61,7 @@ defineProps<{
   uiStyleLabel: string;
   capabilitySummary: string;
   uiStatus: AudioUiStatus;
+  memoryBusy?: boolean;
 }>();
 
 defineEmits<{

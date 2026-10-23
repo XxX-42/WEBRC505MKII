@@ -86,7 +86,7 @@
           appearance="classic"
           :model-value="playLevel"
           :led-color="faderLedColor"
-          :disabled="!levelControlEnabled"
+          :disabled="!levelControlEnabled || semanticMemory.state.busy"
           :disabled-reason="trackLevelUnavailableReason"
           :aria-label="levelControlAriaLabel"
           data-testid="track-level-fader"
@@ -224,6 +224,7 @@ const resolvedControls = computed(() => {
   });
 });
 const trackFxDisabledReason = computed(() => resolvedControls.value.fx.unavailableReason);
+watch(() => resolvedControls.value.stop.enabled, (enabled) => { if (!enabled) cancelStopPress(); }, { flush: 'sync' });
 async function handleTrackRecPlay(): Promise<void> {
   if (!resolvedControls.value.record.enabled) return;
   if (!undoLayer.value) { handleRecPlay(); return; }

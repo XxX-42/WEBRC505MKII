@@ -12,7 +12,20 @@ async function writeChord(page: Page) {
 }
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto('/?audio=browser&ui=classic'); await startBrowserAudio(page);
+  await page.goto('/?audio=browser&ui=classic');
+  // This journey accepts virtual input. The app still resumes its actual
+  // AudioContext from START AUDIO and warms the production capture worklet.
+  // Permission rejection/timeout behavior is covered by the startup suite.
+  await page.evaluate(async () => {
+    const { AudioEngine } = await (new Function('return import("/src/audio/AudioEngine.ts")'))();
+    const engine = AudioEngine.getInstance().tracks[0].engine;
+    const source = engine.context.createOscillator(), gain = engine.context.createGain();
+    const destination = engine.context.createMediaStreamDestination();
+    gain.gain.value = .05; source.frequency.value = 220;
+    source.connect(gain); gain.connect(destination); source.start();
+    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', { configurable: true, value: async () => destination.stream });
+  });
+  await startBrowserAudio(page);
 });
 
 test('Classic WRITE chord, NAME and encoder recall preserve real stereo PCM and recovery', async ({ page }) => {
@@ -38,8 +51,13 @@ test('Classic WRITE chord, NAME and encoder recall preserve real stereo PCM and 
     const { AudioEngine } = await (new Function('return import("/src/audio/AudioEngine.ts")'))();
     AudioEngine.getInstance().tracks[0].track.playLevel = 23;
   });
-  // End then Home creates actual semantic edits before recall of Memory 01.
+  await expect(lcd(page)).toContainText('EDITED');
+  // Turning below 01 recalls 01; wait for confirmed content, never an old SAVED label.
   await button(page, 'screen-encoder-1').focus(); await page.keyboard.press('ArrowLeft');
+  await expect.poll(async () => page.evaluate(async () => {
+    const { AudioEngine } = await (new Function('return import("/src/audio/AudioEngine.ts")'))();
+    return AudioEngine.getInstance().tracks[0].track.playLevel;
+  })).toBe(100);
   await expect(lcd(page)).toContainText('SAVED');
   const result = await page.evaluate(async () => {
     const load = (path: string) => (new Function('path', 'return import(path)'))(path);

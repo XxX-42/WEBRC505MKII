@@ -32,3 +32,5 @@ golden-master/
 hil-captures/
 bench/hardware/results/
 bench/audio-parity/results/
+__pycache__/
+*.pyc

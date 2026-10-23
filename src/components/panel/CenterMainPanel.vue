@@ -649,7 +649,7 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
         return [
           { key: 'memory-number', label: 'MEMORY NO.', value: memory.state.number === null ? '--' : String(memory.state.number).padStart(2, '0') },
           { key: 'memory-name', label: 'NAME', value: memory.state.name || '—' },
-          { key: 'memory-support', label: 'MEMORY DATA', value: memory.state.dirty ? 'EDITED · PARTIAL' : 'SAVED · PARTIAL' },
+          { key: 'memory-support', label: 'MEMORY DATA', value: memory.state.busy ? 'PLEASE WAIT' : memory.state.dirty ? 'EDITED · PARTIAL' : 'SAVED · PARTIAL' },
         ];
       case 'track-status':
         return [1, 2, 3, 4, 5].map((trackId) => ({
