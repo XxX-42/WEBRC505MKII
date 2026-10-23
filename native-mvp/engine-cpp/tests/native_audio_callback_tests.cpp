@@ -2161,6 +2161,7 @@ void testMixerIndependentPcmGains() {
     webrc::native::NativeAudioCoreTestAccess::prepareWithoutDevice(core);
     std::vector<float> output(256U * 2U);
     webrc::native::NativeAudioCoreTestAccess::recordLoop(core, 0U, std::vector<float>(2048U, 0.2f), 256U, output.data());
+    webrc::native::NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
     std::string error;
     const auto peak = [&]() {
         webrc::native::NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 256U);
@@ -2182,6 +2183,17 @@ void testMixerIndependentPcmGains() {
     assert(std::fabs(peak() - baseline * 0.125f) < 0.001f);
     assert(!core.setMixerLevel(7U, 100U, error));
     assert(!core.setMixerLevel(0U, 201U, error));
+
+    NativeAudioCore monitor;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(monitor);
+    NativeAudioCoreTestAccess::command(monitor, CommandType::SetMonitoring, true);
+    assert(monitor.setMixerLevel(0U, 0U, error));
+    std::vector<float> input(256U, 0.2f);
+    assert(NativeAudioCoreTestAccess::callback(monitor, input.data(), output.data(), 256U) == 0);
+    assert(std::fabs(output[0U] - 0.2f) < 0.001f); // MAIN does not mute monitoring.
+    assert(monitor.setMixerLevel(1U, 0U, error));
+    assert(NativeAudioCoreTestAccess::callback(monitor, input.data(), output.data(), 256U) == 0);
+    for (float sample : output) assert(sample == 0.0f); // MASTER mutes the final sum.
 }
 
 int main() {
