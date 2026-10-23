@@ -1927,8 +1927,8 @@ export class TrackAudio {
         // ========================================
 
         // Check if there's a master track
-        if (this.engine.getRecordPlaySettings?.().quantize === 'OFF' || !this.transport.hasMasterTrack()) {
-            // No quantization grid requested, or this take establishes the master
+        if (!this.transport.hasMasterTrack()) {
+            // The first take establishes the grid; OFF only disables start quantization.
             console.log(`Track ${this.track.id}: Master track - stopping immediately`);
             this.stopRecording();
             return;
@@ -2887,7 +2887,7 @@ export class TrackAudio {
         let finalBufferLength = lengthSamples;
 
         const becomesMaster = !this.transport.hasMasterTrack();
-        if (!becomesMaster && this.engine.getRecordPlaySettings?.().quantize !== 'OFF') {
+        if (!becomesMaster) {
             const masterLength = this.transport.masterLoopLengthSamples;
             if (masterLength > 0 && Number.isFinite(masterLength)) {
                 const ratio = Math.max(1, Math.round(lengthSamples / masterLength));

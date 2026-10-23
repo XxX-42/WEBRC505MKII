@@ -1173,17 +1173,34 @@ describe('Browser PCM history asynchronous barriers', () => {
 describe('record/play runtime settings', () => {
     beforeEach(() => { Transport.getInstance().resetMasterTrack(); });
     afterEach(() => { Transport.getInstance().stop(); Transport.getInstance().resetMasterTrack(); });
-    it('OFF keeps captured slave PCM length while MEASURE aligns its completed length', () => {
+    it('OFF and MEASURE both align completed slave PCM to the established measure', () => {
         const harness = createHarness();
         const [master, slave] = harness.tracks;
         record(master!, [[0.1, 0.2, 0.3, 0.4]]);
         (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->PLAY'});
         record(slave!, [[0.5, 0.6, 0.7]]);
-        expect(bufferOf(slave!)!.length).toBe(3);
+        expect(bufferOf(slave!)!.length).toBe(4);
         (harness.engine as any).getRecordPlaySettings = () => ({quantize:'MEASURE', recAction:'REC->PLAY'});
         record(slave!, [[0.5, 0.6, 0.7]]);
         expect(bufferOf(slave!)!.length).toBe(4);
         Object.defineProperty(harness.context, 'state', { value: 'closed' });
+        harness.tracks.forEach(track => track.dispose());
+    });
+    it('OFF starts immediately while MEASURE waits for the established grid', () => {
+        const harness = createHarness();
+        const [master, slave] = harness.tracks;
+        record(master!, [[0.1, 0.2, 0.3, 0.4]]);
+        const startRecording = vi.spyOn(slave!, 'startRecording').mockResolvedValue(undefined);
+        (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->PLAY'});
+        (slave as any).scheduleRecordingStart();
+        expect(startRecording).toHaveBeenCalledOnce();
+        startRecording.mockClear();
+        (harness.engine as any).getRecordPlaySettings = () => ({quantize:'MEASURE', recAction:'REC->PLAY'});
+        (slave as any).scheduleRecordingStart();
+        expect(startRecording).not.toHaveBeenCalled();
+        expect(slave!.state).toBe(TrackState.REC_STANDBY);
+        slave!.triggerStop();
+        Object.defineProperty(harness.context, 'state', {value:'closed'});
         harness.tracks.forEach(track => track.dispose());
     });
     it('REC DUB enters the existing overdub provider after recorded PCM publication', async () => {

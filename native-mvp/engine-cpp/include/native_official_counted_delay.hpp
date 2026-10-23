@@ -60,7 +60,8 @@ public:
         timeSamples_.reset(timeSamples_.target());
         depth_.reset(depth_.target());
         activeSegment_ = static_cast<std::size_t>(std::llround(timeSamples_.current()));
-        segmentPosition_ = captureStart_ = completed_ = segmentHead_ = 0U;
+        segmentPosition_ = captureStart_ = segmentHead_ = 0U;
+        completed_ = 0U;
         segmentStarts_.fill(0U);
         segmentLengths_.fill(0U);
     }
