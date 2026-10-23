@@ -65,6 +65,8 @@ interface Props {
   disabledReason?: string;
   /** Optional pointer hold event for controls that intentionally need a chord. */
   longPressMs?: number;
+  /** Explicit two-button hardware chords may use the second touch pointer. */
+  allowSecondaryPointer?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -82,6 +84,7 @@ const props = withDefaults(defineProps<Props>(), {
   appearance: 'standard',
   disabledReason: '',
   longPressMs: 0,
+  allowSecondaryPointer: false,
 });
 
 const emit = defineEmits<{
@@ -192,7 +195,7 @@ const finishInteraction = (cancelled: boolean) => {
 };
 
 const handlePointerDown = (event: PointerEvent) => {
-  if (props.disabled || event.button !== 0 || event.isPrimary === false || activeInteraction.value) return;
+  if (props.disabled || event.button !== 0 || (event.isPrimary === false && !props.allowSecondaryPointer) || activeInteraction.value) return;
   // Focus is explicit below; the browser's later default focus must not pull
   // focus back out of a screen editor opened by this press.
   if (event.cancelable) event.preventDefault();

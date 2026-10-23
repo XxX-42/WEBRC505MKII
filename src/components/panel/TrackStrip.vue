@@ -136,6 +136,7 @@ import { AudioEngine } from '../../audio/AudioEngine';
 import { TrackState } from '../../core/types';
 import { useDevicePanel } from '../../composables/useDevicePanel';
 import { useRc505Controls } from '../../composables/useRc505Controls';
+import { useRc505Memory } from '../../composables/useRc505Memory';
 import { resolveRc505TrackControls } from '../../ui/rc505/Rc505ControlStateResolver';
 import { useTrackStripState } from '../../composables/useTrackStripState';
 import HardwareButton from '../ui/HardwareButton.vue';
@@ -148,6 +149,7 @@ const props = defineProps<{
 
 const device = useDevicePanel();
 const controls = useRc505Controls();
+const semanticMemory = useRc505Memory();
 const undoLayer = computed(() => controls.state.controlLayer === 'UNDO_REDO');
 const audioEngine = AudioEngine.getInstance();
 const audioStatusRevision = ref(0);
@@ -217,7 +219,7 @@ const resolvedControls = computed(() => {
     ready: trackTransportReady.value, recordReady: recordActionReady.value,
     recordUnavailableReason: recordActionDisabledReason.value,
     layer: controls.state.controlLayer, history,
-    mark: audioEngine.getMarkState?.(props.trackId), operationPending: controlOperationPending.value,
+    mark: audioEngine.getMarkState?.(props.trackId), operationPending: controlOperationPending.value || semanticMemory.state.busy,
     fxApplyState: audioEngine.getTrackFxApply?.(props.trackId)[0], fxApplySupported: false, fxApplied: null,
   });
 });

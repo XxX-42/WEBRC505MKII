@@ -38,12 +38,12 @@ export interface Rc505DisplayRootItem {
 
 export const RC505_LOOP_ROOT_ITEMS: readonly Rc505DisplayRootItem[] = [
   { id: 'track', label: 'TRACK', target: 'track' },
-  { id: 'rec', label: 'REC', reason: 'Recording setup is not exposed by the current audio controller.' },
-  { id: 'play', label: 'PLAY', reason: 'Playback behavior settings are not exposed by the current audio controller.' },
+  { id: 'rec', label: 'REC', target: 'memory' },
+  { id: 'play', label: 'PLAY', target: 'memory' },
   { id: 'input-fx', label: 'INPUT FX', target: 'input-fx' },
   { id: 'track-fx', label: 'TRACK FX', target: 'track-fx' },
   { id: 'rhythm', label: 'RHYTHM', target: 'rhythm' },
-  { id: 'name', label: 'NAME', reason: 'Hardware Memory name editing is not available in this build.' },
+  { id: 'name', label: 'NAME', target: 'memory' },
 ];
 
 export const RC505_MENU_ROOT_ITEMS: readonly Rc505DisplayRootItem[] = [

@@ -1,4 +1,7 @@
 import type { TrackAudio } from './TrackAudio';
+import type { Rc505MemoryRuntime } from './Rc505Memory';
+import type { MixerChannel, MixerState } from './Mixer';
+import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
 import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserStepSlicerControl } from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus, type NativeCatalogFxSlotRuntime } from './NativeAudioEngine';
 import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus } from './NativeBridgeClient';
@@ -493,15 +496,17 @@ export class AudioEngine {
   }
 
   public getOutputLevel(): number {
-    return this.currentMode === 'browser' ? this.browserOutputLevelPercent : 0;
+    return this.activeEngine.getMixerState?.().master ?? (this.currentMode === 'browser' ? this.browserOutputLevelPercent : 0);
   }
 
-  public setOutputLevel(percent: number): void {
-    if (this.currentMode !== 'browser') throw new Error('Native master output level is not exposed by this bridge.');
+  public async setOutputLevel(percent: number): Promise<void> {
     if (!Number.isFinite(percent)) throw new RangeError('Output level must be finite.');
-    this.browserOutputLevelPercent = Math.max(0, Math.min(100, percent));
-    this.recoveredBrowserOutputGain = null;
-    this.browser.masterGainNode.gain.setTargetAtTime(this.browserOutputLevelPercent / 100, this.browser.context.currentTime, 0.005);
+    const bounded = Math.max(0, Math.min(100, Math.round(percent)));
+    await this.activeEngine.setMixerLevel('MASTER', bounded);
+    if (this.currentMode === 'browser') {
+      this.browserOutputLevelPercent = bounded;
+      this.recoveredBrowserOutputGain = null;
+    }
   }
 
   public hasUnsavedLoops(): boolean {
@@ -744,8 +749,8 @@ export class AudioEngine {
       rhythmReason: this.nativeEngine.rhythmEngine.unavailableReason,
       beatReason: 'NO BEAT IN NATIVE V1',
       trackLevelReason: 'TRACK MIX IN BROWSER ONLY',
-      supportsOutputLevel: false,
-      outputLevelReason: 'Native master output level is not exposed by this bridge.',
+      supportsOutputLevel: this.nativeEngine.getMixerState?.().available === true,
+      outputLevelReason: this.nativeEngine.getMixerState?.().reason || '',
     };
   }
 
@@ -809,6 +814,17 @@ export class AudioEngine {
   public backToMark(trackId: number): Promise<TrackMarkActionResult> { return this.activeEngine.backToMark(trackId); }
 
   public getTrackFxApply(trackId?: number): TrackFxApplyStatus[] { return this.activeEngine.getTrackFxApply(trackId); }
+  public createRc505MemoryRuntime(): Rc505MemoryRuntime {
+    const provider = this.activeEngine as unknown as { createRc505MemoryRuntime?: () => Rc505MemoryRuntime };
+    if (!provider.createRc505MemoryRuntime) throw new Error('Semantic Memory is not available on this audio backend.');
+    return provider.createRc505MemoryRuntime();
+  }
+  public getMixerState(): MixerState { return this.activeEngine.getMixerState(); }
+  public setMixerLevel(channel: MixerChannel, percent: number): Promise<void> {
+    return Promise.resolve(this.activeEngine.setMixerLevel(channel, percent));
+  }
+  public getRecordPlaySettings(): RecordPlaySettings { return this.activeEngine.getRecordPlaySettings(); }
+  public setRecordPlaySettings(settings: RecordPlaySettingsPatch): void { this.activeEngine.setRecordPlaySettings(settings); }
   public setTrackFxApply(trackId: number, enabled: boolean): Promise<TrackFxApplyStatus> {
     return this.activeEngine.setTrackFxApply(trackId, enabled);
   }

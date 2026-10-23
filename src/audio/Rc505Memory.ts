@@ -116,10 +116,16 @@ export class Rc505Memory {
   public currentName = '';
   public busy = false;
   private savedRevision: string | null = null;
+  private savedName = '';
   private readonly runtime: Rc505MemoryRuntime;
   private readonly store: Rc505MemoryPersistence;
   public constructor(runtime: Rc505MemoryRuntime, store: Rc505MemoryPersistence) { this.runtime = runtime; this.store = store; }
-  public get dirty(): boolean { return this.savedRevision !== this.runtime.revision(); }
+  public get dirty(): boolean { return this.savedRevision !== this.runtime.revision() || this.savedName !== this.currentName; }
+  public setName(name: string): void {
+    if (this.busy) throw new Error('A Memory transaction is already pending.');
+    if ([...name].length > 12 || /[\u0000-\u001f\u007f]/.test(name)) throw new Error('Memory names allow at most 12 visible characters.');
+    this.currentName = name;
+  }
   private assertStopped(): void {
     const state = this.runtime.canSwitch();
     if (!state.allowed) throw new Error(state.reason);
@@ -143,7 +149,7 @@ export class Rc505Memory {
       await this.store.write(slot, bytes);
       // The saved snapshot is valid; a later edit remains dirty.
       if (revision === this.runtime.revision()) {
-        this.currentNumber = slot; this.currentName = name; this.savedRevision = revision;
+        this.currentNumber = slot; this.currentName = name; this.savedName = name; this.savedRevision = revision;
       }
     });
   }
@@ -158,7 +164,7 @@ export class Rc505Memory {
       if (document.memoryNumber !== slot) throw new Error('Memory slot and envelope number disagree.');
       const recovery = await this.runtime.capture();
       if (revision !== this.runtime.revision()) throw new Error('Memory changed while preparing the switch.');
-      await this.store.recovery(await encodeRc505Memory(recovery));
+      await this.store.recovery(await encodeRc505Memory({ ...recovery, memoryNumber: this.currentNumber, name: this.currentName }));
       this.assertStopped();
       if (revision !== this.runtime.revision()) throw new Error('Memory changed before recovery was secured.');
       const prepared = await this.runtime.prepare(document, revision);
@@ -166,9 +172,12 @@ export class Rc505Memory {
         this.assertStopped();
         if (revision !== this.runtime.revision()) throw new Error('Memory changed before commit.');
         await prepared.commit();
-        this.currentNumber = slot; this.currentName = document.name; this.savedRevision = this.runtime.revision();
+        this.currentNumber = slot; this.currentName = document.name; this.savedName = document.name; this.savedRevision = this.runtime.revision();
       } finally { await prepared.dispose(); }
     });
   }
-  public clear(slot: number): Promise<void> { return this.operation(async () => { this.assertSlot(slot); this.assertStopped(); await this.store.clear(slot); }); }
+  public clear(slot: number): Promise<void> { return this.operation(async () => {
+    this.assertSlot(slot); this.assertStopped(); await this.store.clear(slot);
+    if (this.currentNumber === slot) this.savedRevision = null;
+  }); }
 }

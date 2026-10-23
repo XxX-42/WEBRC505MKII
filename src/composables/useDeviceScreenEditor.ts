@@ -27,6 +27,7 @@ import type { DeviceEditorPanel } from './createEnhancedDevicePanel';
 import { useRc505Controls } from './useRc505Controls';
 import { useRc505FxSwitchSettings } from './useRc505FxSwitchSettings';
 import { assertTrackFxApplyConfirmed } from '../audio/TrackFxApplyStatus';
+import { useRc505Memory } from './useRc505Memory';
 
 export type DeviceScreenFieldKind = 'number' | 'enum' | 'boolean' | 'action';
 
@@ -1001,6 +1002,37 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
 
   const pages = computed(() => {
     statusRevision.value;
+    const classicView = classic ? useDevicePanel().classicState.value.view : null;
+    if (classicView?.kind === 'editor' && classicView.target === 'memory') {
+      if (classicView.category === 'name') {
+        const memory = useRc505Memory();
+        // Four characters per page is an accessible software mapping; the
+        // alphabet is an engineering choice, not a claimed Roland charset.
+        const alphabet = ' ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!';
+        const paddedCharacters = () => Array.from({ length: 12 }, (_, index) => [...memory.state.name][index] ?? ' ');
+        const characters = paddedCharacters();
+        const options = [...alphabet].map((character, value) => ({ label: character === ' ' ? 'SPACE' : character, value }));
+        return chunks(Array.from({ length: 12 }, (_, index) => makeEnumField(`memory-name-${index}`, `CHAR ${index + 1}`,
+          Math.max(0, alphabet.indexOf(characters[index]!)), options, (value) => {
+            const next = paddedCharacters();
+            next[index] = alphabet[value] ?? ' ';
+            memory.setName(next.join('').trimEnd());
+          }, { disabled: memory.state.busy, reason: memory.state.busy ? 'Memory operation is pending.' : '',
+            format: () => characters[index] === ' ' ? 'SPACE' : characters[index]!,
+          })));
+      }
+      const settings = engine.getRecordPlaySettings?.();
+      return chunks([
+        makeEnumField('rec-action', 'REC ACTION', settings?.recAction === 'REC->DUB' ? 0 : 1,
+          fieldOptions(['REC→DUB', 'REC→PLAY']), value => engine.setRecordPlaySettings({ recAction: value === 0 ? 'REC->DUB' : 'REC->PLAY' }),
+          { disabled: !settings?.available, reason: settings?.reason || 'Record behavior is unavailable.' }),
+        makeEnumField('record-quantize', 'QUANTIZE', settings?.quantize === 'OFF' ? 0 : 1,
+          fieldOptions(['OFF', 'MEASURE']), value => engine.setRecordPlaySettings({ quantize: value === 0 ? 'OFF' : 'MEASURE' }),
+          { disabled: !settings?.available, reason: settings?.reason || 'Recording quantization is unavailable.' }),
+        makeActionField('auto-rec', 'AUTO REC', () => {}, { disabled: true, reason: 'No automatic input-trigger recording provider is implemented.' }),
+        makeActionField('bounce', 'BOUNCE', () => {}, { disabled: true, reason: 'Hardware Bounce selection has no complete recording provider.' }),
+      ]);
+    }
     switch (device.state.page) {
       case 'input-fx': return inputFxFields();
       case 'track-fx': return classic ? trackFxFields().map((page) => page.filter((field) => field.key !== 'target')).filter((page) => page.length) : trackFxFields();
@@ -1021,6 +1053,8 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     ...(field.activate ? { activate: () => { if (!field.disabled && !fxChangeBlocked()) void runEdit(() => field.activate?.()); } } : {}),
   })));
   const pageTitle = computed(() => {
+    const view = classic ? useDevicePanel().classicState.value.view : null;
+    if (view?.kind === 'editor' && view.target === 'memory') return view.category.toUpperCase();
     const titles: Record<DevicePanelPage, string> = {
       home: 'HOME', mixer: 'MIXER', menu: 'MENU', memory: 'MEMORY · PCM/TEMPO', 'input-fx': `INPUT FX · ${currentInputSlot.value?.type || 'EMPTY'}`,
       'track-fx': `TRACK FX · ${trackFx.target.value === 'shared' ? 'SHARED' : `TRACK ${trackFx.target.value}`}`,
@@ -1052,7 +1086,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     if (device.state.page === 'rhythm') return rhythm.message.value;
     if (device.state.page === 'track' && classic) return '';
     if (device.state.page === 'track') return currentTrackController.value?.hqExportError.value || currentTrackController.value?.livePitchError.value || currentTrackController.value?.livePitchStatus.value || '';
-    if (device.state.page === 'memory') return memoryNotice.value;
+    if (device.state.page === 'memory' && !classic) return memoryNotice.value;
     if (device.actionStatus.error || device.actionStatus.pending) return '';
     const selected = fields.value[selectedFieldIndex.value];
     if (selected?.disabled && selected.reason) return selected.reason;
@@ -1067,7 +1101,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   watch(() => device.state.page, (page) => {
     selectedFieldIndex.value = 0;
     if (page === 'settings' && !settings.loaded && !settings.loading) void refreshDevices();
-    if (page === 'memory') void refreshMemoryMetadata();
+    if (page === 'memory' && !classic) void refreshMemoryMetadata();
   }, { immediate: true });
   watch(fields, (nextFields) => {
     if (selectedFieldIndex.value >= nextFields.length) selectedFieldIndex.value = Math.max(0, nextFields.length - 1);

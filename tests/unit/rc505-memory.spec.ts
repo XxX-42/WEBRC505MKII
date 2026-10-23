@@ -60,6 +60,23 @@ async function harness() {
   return { runtime, store, memory, order, mutate: () => epoch++, forbid: () => { allowed = false; } };
 }
 describe('Memory switch transaction guard', () => {
+  it('tracks unsaved names and preserves the active identity in recovery, independently from archive naming', async () => {
+    const h = await harness(); await h.memory.save(4, 'OLD NAME');
+    expect(h.memory.dirty).toBe(false);
+    h.memory.setName('EDITED'); expect(h.memory.dirty).toBe(true);
+    await h.memory.load(3);
+    const recovery = await decodeRc505Memory(vi.mocked(h.store.recovery).mock.calls[0]![0]);
+    expect(recovery).toMatchObject({ memoryNumber: 4, name: 'EDITED' });
+    expect(h.memory.currentName).toBe('TEST'); expect(h.memory.dirty).toBe(false);
+  });
+  it('rejects invalid names and marks a cleared active slot as unsaved without clearing live audio', async () => {
+    const h = await harness();
+    expect(() => h.memory.setName('1234567890123')).toThrow(/12/);
+    expect(() => h.memory.setName('bad\nname')).toThrow();
+    await h.memory.save(4, 'KEPT'); await h.memory.clear(4);
+    expect(h.memory.currentName).toBe('KEPT'); expect(h.memory.dirty).toBe(true);
+    expect(h.runtime.prepare).not.toHaveBeenCalled();
+  });
   it('secures recovery before preparation and publishes selection only after commit', async () => {
     const h = await harness(); await h.memory.load(3);
     expect(h.order).toEqual(['capture', 'recovery', 'prepare', 'commit', 'dispose']);

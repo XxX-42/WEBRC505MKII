@@ -41,7 +41,7 @@
           :label="isPlaying ? 'ALL STOP' : 'ALL START'"
           :aria-label="isPlaying ? 'Stop all tracks' : 'Start all tracks'"
           data-panel-control="all-transport"
-          :disabled="!audioReady"
+          :disabled="!audioReady || memory.state.busy"
           :disabled-reason="transportDisabledReason"
           data-hardware-control="button"
           @press="toggleAllTransport"
@@ -122,7 +122,10 @@
           aria-label="Exit current page"
           data-panel-control="exit"
           data-hardware-control="button"
-          @press="exitPage"
+          allow-secondary-pointer
+          @press="pressNavigation('EXIT')"
+          @release="releaseNavigation('EXIT')"
+          @cancel="cancelNavigation('EXIT')"
         />
         <HardwareButton
           shape="rect"
@@ -134,7 +137,10 @@
           :led-on="false"
           :data-panel-control="confirmationOpen ? 'confirm' : 'enter'"
           data-hardware-control="button"
-          @press="enterPage"
+          allow-secondary-pointer
+          @press="pressNavigation('ENTER')"
+          @release="releaseNavigation('ENTER')"
+          @cancel="cancelNavigation('ENTER')"
         />
         <span class="page-caption">PAGE</span>
         <HardwareButton
@@ -249,6 +255,8 @@ import { advanceRc505EncoderField } from '../../ui/rc505/Rc505EncoderFields';
 import { resolveNativeFxReadback } from '../../ui/rc505/Rc505FxReadback';
 import { formatRc505TrackMeter } from '../../ui/rc505/Rc505TrackMeter';
 import { assertTrackFxApplyConfirmed } from '../../audio/TrackFxApplyStatus';
+import { useRc505Memory } from '../../composables/useRc505Memory';
+import { Rc505NavigationChord, type Rc505NavigationKey } from '../../ui/rc505/Rc505NavigationChord';
 import { rhythmUiState, useRhythmUiControls } from '../../composables/rhythmUiState';
 import { getRc505RootItems } from '../../ui/rc505/Rc505DisplayStateMachine';
 import { RC505_MIXER_PAGES, RC505_PLAY_SCREENS, type Rc505DisplayAction, type Rc505DisplayEditorTarget, type Rc505DisplayRoot, type Rc505DisplayRootItem, type Rc505DisplayState, type Rc505DisplayView, type Rc505PlayScreenId } from '../../ui/rc505/rc505DisplayTypes';
@@ -277,6 +285,8 @@ const { state: focusState } = usePanelFocus();
 const device = useDevicePanel();
 const classicState = device.classicState;
 const controls = useRc505Controls();
+const memory = useRc505Memory();
+const navigationChord = new Rc505NavigationChord();
 const inputBank = useFxPanelState('input');
 const trackBank = useTrackFxTargetState({ sharedOnly: true });
 const screenEditor = useDeviceScreenEditor({
@@ -293,6 +303,7 @@ const outputLevel = ref(engine.getOutputLevel());
 const trackLevel = ref(engine.tracks[focusState.currentTrackId - 1]?.track.playLevel ?? 100);
 const pageActionHint = ref('');
 const capabilityRevision = ref(0);
+const mixerPending = ref(false);
 const { isPlaying: isRhythmPlaying, volume: rhythmVolume, disabled: rhythmDisabled, pending: rhythmPending, message: rhythmMessage, toggleRhythm, updateVolume, updateSelection } = useRhythmUiControls({ initializeOnMount: false });
 let tapFlashTimer: number | null = null;
 let tapResetTimer: number | null = null;
@@ -363,6 +374,7 @@ const classicScreenId = computed(() => {
   if (view.kind === 'loop-root') return 'loop-root';
   if (view.kind === 'menu-root') return 'menu-root';
   if (view.kind === 'editor') return `editor-${view.category}`;
+  if (view.kind === 'memory-write') return `memory-${view.operation}`;
   return 'confirm';
 });
 const pageLabel = computed(() => {
@@ -372,6 +384,7 @@ const pageLabel = computed(() => {
   if (view.kind === 'loop-root') return 'LOOP';
   if (view.kind === 'menu-root') return 'MENU';
   if (view.kind === 'editor') return 'EDIT';
+  if (view.kind === 'memory-write') return 'MEMORY';
   return 'CONFIRM';
 });
 const pageCounter = computed(() => {
@@ -392,6 +405,7 @@ const pageTitle = computed(() => {
   if (view.kind === 'loop-root') return 'LOOP SETTINGS';
   if (view.kind === 'menu-root') return 'MENU SETTINGS';
   if (view.kind === 'editor') return screenEditor.pageTitle.value;
+  if (view.kind === 'memory-write') return view.operation === 'choose' ? 'WRITE / CLEAR' : `MEMORY ${view.operation.toUpperCase()}`;
   return 'CONFIRM ACTION';
 });
 const capabilities = computed(() => {
@@ -426,6 +440,7 @@ const scopedControlError = computed(() => {
     : view.kind === 'editor' && (view.target === 'input-fx' || view.target === 'track-fx') ? view.target : 'other');
 });
 const statusDetail = computed(() => (scopedControlError.value ? controls.state.errorDetail || scopedControlError.value : '') || classicState.value.notice || (isClassicEditor.value ? screenEditor.status.value : '')
+  || memory.state.error || (memory.state.busy ? 'MEMORY TRANSACTION PENDING' : '')
   || device.actionStatus.error || device.actionStatus.pending || pageActionHint.value || (undoLayerActive.value ? 'UNDO/REDO CONTROLS ACTIVE' : '')
   || (rhythmPending.value ? 'RHYTHM COMMAND PENDING' : !audioReady.value ? uiStatus.value.message || 'AUDIO NOT READY'
     : rhythmMessage.value || (isPlaying.value ? 'TRANSPORT RUNNING' : 'READY')));
@@ -470,8 +485,9 @@ const activeTrackFx = computed(() => trackBank.activeFx.value!);
 const screenFields = computed<ScreenField[]>(() => {
   capabilityRevision.value;
   if (isClassicEditor.value) return screenEditor.fields.value.map((field) => ({
-    min: 0, max: 100, step: 1, color: 'blue' as const, disabled: false,
-    ...field, reason: field.disabled ? field.reason ?? '' : '', setValue: field.setValue ?? (() => undefined),
+    min: 0, max: 100, step: 1, color: 'blue' as const,
+    ...field, disabled: field.disabled || memory.state.busy,
+    reason: memory.state.busy ? 'Memory transaction is pending.' : field.disabled ? field.reason ?? '' : '', setValue: field.setValue ?? (() => undefined),
   }));
   const field = (key: string, label: string, value: number, setValue: (value: number) => void, options: Partial<ScreenField> = {}): ScreenField => ({
     key, label, value, setValue,
@@ -608,6 +624,11 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
   capabilityRevision.value;
   const view = classicView.value;
   if (view.kind === 'confirm') return [{ key: 'confirm', label: 'ACTION', value: 'CONFIRM OR EXIT' }];
+  if (view.kind === 'memory-write') return view.operation === 'choose'
+    ? [{ key: 'write', label: '1 / 2', value: 'WRITE' }, { key: 'clear', label: '3 / 4', value: 'CLEAR' }]
+    : [{ key: 'slot', label: 'MEMORY NO.', value: String(view.slot).padStart(2, '0') },
+      { key: 'name', label: 'NAME', value: memory.state.name || '—' },
+      { key: 'action', label: view.busy ? 'BUSY' : 'ENTER', value: view.busy ? 'PLEASE WAIT' : view.operation.toUpperCase() }];
   if (view.kind === 'loop-root' || view.kind === 'menu-root') {
     const root = view.kind === 'loop-root' ? 'loop' : 'menu';
     const start = view.pageIndex * 4;
@@ -625,9 +646,9 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
     switch (screenId) {
       case 'memory-number':
         return [
-          { key: 'memory-number', label: 'MEMORY NO.', value: '—' },
-          { key: 'memory-support', label: 'MEMORY DATA', value: 'PARTIAL' },
-          { key: 'memory-note', label: 'NUMBER SOURCE', value: 'UNAVAILABLE', disabled: true, reason: 'This runtime has no hardware memory-number semantic.' },
+          { key: 'memory-number', label: 'MEMORY NO.', value: memory.state.number === null ? '--' : String(memory.state.number).padStart(2, '0') },
+          { key: 'memory-name', label: 'NAME', value: memory.state.name || '—' },
+          { key: 'memory-support', label: 'MEMORY DATA', value: memory.state.dirty ? 'EDITED · PARTIAL' : 'SAVED · PARTIAL' },
         ];
       case 'track-status':
         return [1, 2, 3, 4, 5].map((trackId) => ({
@@ -664,7 +685,9 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
       reason: `${channel} input gain and meter data are not exposed by the current audio engine.`,
     }));
     if (page.id === 'outputs') return page.channels.map((channel) => ({
-      key: `mixer-${channel}`, label: channel, value: 'UNAVAILABLE', disabled: true,
+      key: `mixer-${channel}`, label: channel,
+      value: channel === 'MAIN' && engine.getMixerState?.().available ? `${engine.getMixerState().main}%` : 'UNAVAILABLE',
+      disabled: channel !== 'MAIN' || !engine.getMixerState?.().available,
       reason: channel === 'MAIN'
         ? 'Independent MAIN output level is not exposed. The shared master level is shown on the MASTER mixer page.'
         : `${channel} output routing is not exposed by the current audio engine.`,
@@ -684,6 +707,15 @@ function infoControl(key: string, label: string, display: string, reason = 'This
 
 const screenControls = computed<ScreenControl[]>(() => {
   const view = classicView.value;
+  if (view.kind === 'memory-write') return Array.from({ length: 4 }, (_, index) => ({
+    key: `memory-${index}`, label: view.operation === 'choose' ? index < 2 ? 'WRITE' : 'CLEAR' : 'MEMORY NO.',
+    value: view.slot, min: 1, max: 99, step: 1, color: 'white' as const,
+    disabled: view.busy, reason: view.busy ? 'Memory transaction is pending.' : '',
+    display: view.operation === 'choose' ? 'SELECT' : String(view.slot).padStart(2, '0'),
+    canRotate: view.operation !== 'choose',
+    onRotate: delta => { dispatchClassic({ type: 'ENCODER_ROTATE', encoderIndex: index, delta }); },
+    onPress: () => { dispatchClassic({ type: 'ENCODER_PRESS', encoderIndex: index }); },
+  }));
   if (isClassicEditor.value) {
     const fields = screenFields.value.slice(0, 4).map((field, index): ScreenControl => ({
       key: field.key,
@@ -726,15 +758,24 @@ const screenControls = computed<ScreenControl[]>(() => {
     const page = RC505_MIXER_PAGES[view.pageIndex];
     if (!page) return [];
     const controlsForChannels = page.channels.map((channel): ScreenControl => {
+      if (page.id === 'outputs' && channel === 'MAIN') {
+        const mixer = engine.getMixerState?.();
+        return { key: 'mixer-main', label: 'MAIN', value: mixer?.main ?? 100, min: 0, max: 200, step: 1, color: 'green',
+          disabled: !mixer?.available || mixerPending.value || memory.state.busy,
+          reason: memory.state.busy ? 'Memory transaction is pending.' : mixer?.reason || '',
+          display: mixer?.available ? `${mixer.main}%` : 'UNAVAILABLE', canRotate: true,
+          onRotate: (delta, accelerated) => { void setMixerLevel('MAIN', (mixer?.main ?? 100) + delta * (accelerated ? 5 : 1)); } };
+      }
       if (page.id === 'master' && channel === 'RHYTHM') return {
         key: 'mixer-rhythm', label: channel, value: rhythmVolume.value, min: 0, max: 100, step: 1, color: 'green',
         disabled: rhythmDisabled.value, reason: rhythmReason.value, display: `${Math.round(rhythmVolume.value)}%`, canRotate: !rhythmDisabled.value,
         onRotate: (delta, accelerated) => setRhythmVolume(rhythmVolume.value + delta * (accelerated ? 5 : 1)),
       };
       if (page.id === 'master' && channel === 'MASTER') return {
-        key: 'mixer-master', label: channel, value: outputLevel.value, min: 0, max: 100, step: 1, color: 'red',
-        disabled: outputDisabled.value, reason: outputDisabledReason.value, display: `${Math.round(outputLevel.value)}%`, canRotate: !outputDisabled.value,
-        onRotate: (delta, accelerated) => setOutputLevel(outputLevel.value + delta * (accelerated ? 5 : 1)),
+        key: 'mixer-master', label: channel, value: outputLevel.value, min: 0, max: 200, step: 1, color: 'red',
+        disabled: outputDisabled.value || mixerPending.value || memory.state.busy,
+        reason: outputDisabledReason.value, display: `${Math.round(outputLevel.value)}%`, canRotate: !outputDisabled.value,
+        onRotate: (delta, accelerated) => { void setMixerLevel('MASTER', outputLevel.value + delta * (accelerated ? 5 : 1)); },
       };
       const reason = page.id === 'inputs'
         ? `${channel} input gain and meter data are not exposed by the current audio engine.`
@@ -765,8 +806,11 @@ const screenControls = computed<ScreenControl[]>(() => {
       return rows.map((row) => infoControl(row.key, row.label, row.value, row.reason || 'FX details are read-only here; press ENTER to open the FX editor.'));
     }
     if (screenId === 'memory-number') return [
-      infoControl('memory-number', 'MEMORY NO.', '—', 'Memory number is not backed by this runtime.'),
-      infoControl('memory-partial', 'MEMORY DATA', 'PARTIAL', 'Memory number and name are not modeled.'),
+      { key: 'memory-number', label: 'MEMORY NO.', value: memory.state.number ?? 1, min: 1, max: 99, step: 1, color: 'white',
+        disabled: !memory.state.available || memory.state.busy, reason: memory.state.reason,
+        display: memory.state.number === null ? '--' : String(memory.state.number).padStart(2, '0'), canRotate: true,
+        onRotate: delta => { void loadMemory(Math.max(1, Math.min(99, (memory.state.number ?? 1) + Math.trunc(delta)))); } },
+      infoControl('memory-name', 'NAME', memory.state.name || '—', 'Edit NAME from LOOP; WRITE persists the semantic Memory.'),
       infoControl('memory-empty-2', '', ''),
       infoControl('memory-empty-3', '', ''),
     ];
@@ -873,6 +917,25 @@ function exitPage(): void {
   if (view.kind === 'editor') pageActionHint.value = '';
   dispatchClassic({ type: 'EXIT' });
 }
+function pressNavigation(key: Rc505NavigationKey): void {
+  if (!navigationChord.press(key)) return;
+  if (confirmationOpen.value || classicView.value.kind === 'confirm' || memory.state.busy) return;
+  memory.refresh();
+  if (!memory.state.available) { pageActionHint.value = memory.state.reason; return; }
+  dispatchClassic({ type: 'OPEN_MEMORY_WRITE', slot: memory.state.number ?? 1 });
+}
+function releaseNavigation(key: Rc505NavigationKey): void {
+  const action = navigationChord.release(key);
+  if (action === 'ENTER') enterPage();
+  else if (action === 'EXIT') exitPage();
+}
+function cancelNavigation(key: Rc505NavigationKey): void { navigationChord.cancel(key); }
+async function loadMemory(slot: number): Promise<void> {
+  if (classicView.value.kind !== 'play' || memory.state.busy) return;
+  try { await memory.load(slot); pageActionHint.value = ''; }
+  catch (error) { pageActionHint.value = error instanceof Error ? error.message : String(error); }
+  finally { capabilityRevision.value += 1; }
+}
 function setTrackLevel(value: number): void {
   const currentTrack = engine.tracks[currentTrackId.value - 1];
   if (!currentTrack || !engine.getTrackCapabilities(currentTrackId.value).supportsTrackLevel) return;
@@ -918,11 +981,22 @@ function setRhythmVolume(value: number): void {
   rhythmVolume.value = Math.max(0, Math.min(100, Math.round(value)));
   void updateVolume();
 }
-function setOutputLevel(value: number): void {
-  if (outputDisabled.value) return;
+async function setOutputLevel(value: number): Promise<void> {
+  if (outputDisabled.value || mixerPending.value || memory.state.busy) return;
   const bounded = Math.max(0, Math.min(100, Math.round(value)));
-  outputLevel.value = bounded;
-  engine.setOutputLevel(bounded);
+  mixerPending.value = true;
+  try { await engine.setOutputLevel(bounded); outputLevel.value = engine.getOutputLevel(); }
+  catch (error) { controls.reportError('OUTPUT FAILED', error instanceof Error ? error.message : String(error)); }
+  finally { mixerPending.value = false; capabilityRevision.value += 1; }
+}
+async function setMixerLevel(channel: 'MAIN' | 'MASTER', value: number): Promise<void> {
+  if (mixerPending.value || memory.state.busy) return;
+  mixerPending.value = true;
+  try {
+    await engine.setMixerLevel(channel, Math.max(0, Math.min(200, Math.round(value))));
+    outputLevel.value = engine.getOutputLevel();
+  } catch (error) { controls.reportError('MIXER FAILED', error instanceof Error ? error.message : String(error)); }
+  finally { mixerPending.value = false; capabilityRevision.value += 1; }
 }
 
 function toggleAllTransport(): void {
@@ -942,6 +1016,15 @@ function enterPage(): void {
     return;
   }
   pageActionHint.value = '';
+  const view = classicView.value;
+  if (view.kind === 'memory-write') {
+    if (view.operation === 'choose' || view.busy) return;
+    dispatchClassic({ type: 'ENTER' });
+    void (view.operation === 'write' ? memory.save(view.slot) : memory.clear(view.slot))
+      .then(() => { dispatchClassic({ type: 'MEMORY_COMPLETE', success: true }); })
+      .catch((error: unknown) => { dispatchClassic({ type: 'MEMORY_COMPLETE', success: false, message: error instanceof Error ? error.message : String(error) }); });
+    return;
+  }
   if (isClassicEditor.value) {
     screenEditor.enter();
     return;
@@ -984,6 +1067,7 @@ function handleTap(): void {
 function syncTrackLevel(): void {
   trackLevel.value = engine.tracks[currentTrackId.value - 1]?.track.playLevel ?? 100;
   capabilityRevision.value += 1;
+  memory.refresh();
 }
 
 let trackLevelTimer: number | null = null;
@@ -1004,6 +1088,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  navigationChord.cancel();
   window.removeEventListener('rc505-confirmation-state', handleClassicConfirmationState);
   transport.off('bpm-change', syncBpm);
   transport.off('start', syncPlaybackState);
