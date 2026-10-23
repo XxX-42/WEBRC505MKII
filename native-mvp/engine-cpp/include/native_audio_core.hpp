@@ -157,6 +157,7 @@ struct EngineStatus {
     std::array<bool, NativeEffectBank::kSlotCount> nativeInputCatalogSlotBypassed{};
     struct NativePerTrackCatalogSlotStatus {
         std::string effectId;
+        std::map<std::string, float> parameters; // Normalized authored controls for requestedRevision
         bool bypassed = false; // Last accepted control request
         bool appliedBypassed = false; // Published by the DSP owner
         bool prepared = false;
@@ -165,6 +166,8 @@ struct EngineStatus {
         std::uint64_t requestedRevision = 0U;
         std::uint64_t appliedRevision = 0U;
     };
+    std::array<NativePerTrackCatalogSlotStatus, NativeEffectBank::kSlotCount> nativeInputCatalogSlots{};
+    std::array<NativePerTrackCatalogSlotStatus, NativeEffectBank::kSlotCount> nativeCatalogSlots{};
     bool nativePerTrackCatalogAvailable = true;
     std::array<std::array<NativePerTrackCatalogSlotStatus, NativeEffectBank::kSlotCount>, kNativeTrackCount>
         nativePerTrackCatalogSlots{};
@@ -544,6 +547,7 @@ private:
     void applyNativeChorusCommands() noexcept;
     void applyNativePhaserCommands() noexcept;
     void applyNativeCatalogFxCommands() noexcept;
+    void publishSharedCatalogProcessingFaults(std::size_t bankIndex, bool bufferAvailable = true) noexcept;
     [[nodiscard]] const float* processInputFxForCallback(
         const float* inputInterleaved,
         unsigned int frames,
@@ -721,6 +725,9 @@ private:
         std::atomic<std::uint64_t> controlFaultRevision{0U};
     };
     std::array<std::array<PublishedTrackFxSlot, NativeEffectBank::kSlotCount>, kNativeTrackCount> nativePerTrackFxPublished_{};
+    // Input index 0, shared Track index 1; private tracks retain their existing storage.
+    std::array<std::array<PublishedTrackFxSlot, NativeEffectBank::kSlotCount>, 2U> nativeSharedFxPublished_{};
+    std::array<std::array<std::uint64_t, NativeEffectBank::kSlotCount>, 2U> nativeSharedSlotRevision_{};
     std::atomic<std::uint64_t> nativeCatalogControlFaultCount_{0U};
     std::array<float, kMaxCallbackFrames * 2U> nativeInputFxScratch_{};
     NativePitchProcessor nativePitchProcessor_;

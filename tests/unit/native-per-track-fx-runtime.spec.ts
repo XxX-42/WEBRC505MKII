@@ -17,6 +17,11 @@ type Internals = {
   nativePerTrackFxEdited: Set<number>;
   nativeCatalogFxRuntime: Map<string, unknown>;
   nativeCatalogSlotEditRevisions: Map<string, number>;
+  nativeCatalogFxDirtySlots: Set<string>;
+  nativeCatalogFxSubmittedEditRevisions: Map<string, number>;
+  nativeCatalogFxHydratedSlots: Set<string>;
+  nativeCatalogFxUnknownParameterSlots: Set<string>;
+  hydrateNativeCatalogFromStatus(status: NativeStatus): void;
   syncNativeFxCatalogSlots(allowTypeChange: boolean): Promise<void>;
   applyStatus(status: NativeStatus): void;
   handleBridgeFailure(error: unknown): void;
@@ -26,10 +31,13 @@ function install(engine: NativeAudioEngine) {
   const internals = engine as unknown as Internals;
   const banks: NativePerTrackCatalogBank[] = [1, 2, 3, 4, 5].map((trackId) => ({
     trackId, midiSlots: [], slots: slots.map((slot): NativeCatalogSlotStatus => ({
-      slot, effectId: '', bypassed: false, appliedBypassed: false, prepared: false, processingFaulted: false, controlFaulted: false, requestedRevision: 0, appliedRevision: 0,
+      slot, effectId: '', parameters: {}, bypassed: false, appliedBypassed: false, prepared: false, processingFaulted: false, controlFaulted: false, requestedRevision: 0, appliedRevision: 0,
     })),
   }));
-  const shared = slots.map((slot) => ({ slot, effectId: '', bypassed: false }));
+  const emptyShared = (): NativeCatalogSlotStatus[] => slots.map(slot => ({ slot, effectId: '', parameters: {}, bypassed: false,
+    appliedBypassed: false, prepared: false, processingFaulted: false, controlFaulted: false, requestedRevision: 0, appliedRevision: 0 }));
+  const shared = emptyShared();
+  const inputShared = emptyShared();
   let autoApply = true;
   let running = false;
   const parameters = new Map<string, Record<string, number>>();
@@ -41,23 +49,29 @@ function install(engine: NativeAudioEngine) {
     nativeFx: {
       catalogGraphAvailable: true, implementedCatalogEffects: effectIds,
       catalogEffectAvailability: effectIds.map((effectId) => ({ effectId, input: true, track: true })),
-      catalogSlots: shared, inputCatalogSlots: shared, perTrackCatalogAvailable: true,
+      catalogSlots: shared, inputCatalogSlots: inputShared, perTrackCatalogAvailable: true,
       perTrackCatalogBanks: banks, catalogControlFaultCount: 0,
     },
   }));
   const setCatalogSlot = vi.fn(async (config: NativeCatalogSlotConfig) => {
     if (config.trackId) {
       const slot = banks[config.trackId - 1]!.slots.find((entry) => entry.slot === config.slot)!;
-      Object.assign(slot, { effectId: config.effectId, bypassed: config.bypassed, prepared: !!config.effectId, processingFaulted: false, requestedRevision: slot.requestedRevision + 1 });
+      Object.assign(slot, { effectId: config.effectId, parameters: { ...config.parameters }, bypassed: config.bypassed, prepared: !!config.effectId, processingFaulted: false, requestedRevision: slot.requestedRevision + 1 });
       if (autoApply) Object.assign(slot, { appliedBypassed: slot.bypassed, appliedRevision: slot.requestedRevision });
       parameters.set(`${config.trackId}:${config.slot}`, { ...config.parameters });
-    } else Object.assign(shared.find((entry) => entry.slot === config.slot)!, { effectId: config.effectId, bypassed: config.bypassed });
+    } else {
+      const slot = (config.path === 'input' ? inputShared : shared).find(entry => entry.slot === config.slot)!;
+      Object.assign(slot, { effectId: config.effectId, parameters: { ...config.parameters }, bypassed: config.bypassed,
+        prepared: !!config.effectId, processingFaulted: false, controlFaulted: false, requestedRevision: slot.requestedRevision + 1 });
+      if (autoApply) Object.assign(slot, { appliedRevision: slot.requestedRevision, appliedBypassed: slot.bypassed });
+    }
     return status();
   });
   const queueCatalogMidiEvent = vi.fn(async (_event: NativeCatalogMidiEvent) => status());
   const queueOscVocMidiEvent = vi.fn(async () => status());
   internals.bridge = { setCatalogSlot, queueCatalogMidiEvent, queueOscVocMidiEvent } as unknown as NativeBridgeClient;
   internals.applyStatus(status());
+  internals.hydrateNativeCatalogFromStatus(status());
   // Configure desired state without scheduling background work; tests flush explicitly.
   internals.bridgeAvailable = false;
   return {
@@ -66,6 +80,7 @@ function install(engine: NativeAudioEngine) {
     setAutoApply(value: boolean) { autoApply = value; },
     applyPending() {
       for (const bank of banks) for (const slot of bank.slots) Object.assign(slot, { appliedRevision: slot.requestedRevision, appliedBypassed: slot.bypassed });
+      for (const slot of [...shared, ...inputShared]) Object.assign(slot, { appliedRevision: slot.requestedRevision, appliedBypassed: slot.bypassed });
       internals.applyStatus(status());
     },
     async sync(allowTypeChange = false) { internals.bridgeAvailable = true; await internals.syncNativeFxCatalogSlots(allowTypeChange); internals.bridgeAvailable = false; },
@@ -78,6 +93,10 @@ beforeEach(() => {
   internals.nativePerTrackFxEdited.clear();
   internals.nativeCatalogFxRuntime.clear();
   internals.nativeCatalogSlotEditRevisions.clear();
+  internals.nativeCatalogFxDirtySlots.clear();
+  internals.nativeCatalogFxSubmittedEditRevisions.clear();
+  internals.nativeCatalogFxHydratedSlots.clear();
+  internals.nativeCatalogFxUnknownParameterSlots.clear();
   for (const bank of [...Object.values(internals.nativeCatalogFxStates), ...internals.nativePerTrackFxStates]) {
     bank.forEach((state) => Object.assign(state, { type: '', active: false, value: 0, parameters: {} }));
   }
@@ -215,7 +234,7 @@ describe('Native five-track A–D adapter', () => {
     await bridge.sync();
     expect(engine.getCatalogFxSlotStatus('track', 0, 1)).toMatchObject({
       acknowledged: false, pendingApply: true, outcomeUnknown: true,
-      error: expect.stringContaining('does not uniquely confirm'),
+      error: expect.stringContaining('does not confirm the exact slot revision'),
     });
   });
 
@@ -227,7 +246,7 @@ describe('Native five-track A–D adapter', () => {
     const status = bridge.status();
     Object.assign(status.nativeFx!.perTrackCatalogBanks![0]!.slots[0]!, {
       effectId: 'filter.lpf', bypassed: false, appliedBypassed: false, prepared: true,
-      requestedRevision: 1, appliedRevision: 1,
+      requestedRevision: 1, appliedRevision: 1, parameters: engine.getCatalogFxParameterSnapshot('track', 0, 1),
     });
     bridge.setCatalogSlot.mockRejectedValueOnce(new NativeBridgeRequestTimeoutError(
       '/v1/native-fx/catalog-slot', 'POST', 5000, status,
@@ -309,7 +328,7 @@ describe('Native five-track A–D adapter', () => {
     await bridge.sync();
     expect(engine.getCatalogFxSlotStatus('track', 0, 2)).toMatchObject({ acknowledged: false, pendingRestart: true, requestedEffectId: 'preamp', acknowledgedEffectId: 'chorus' });
     expect(engine.getCatalogFxSlotStatus('track', 1, 3)).toMatchObject({ acknowledged: false, pendingRestart: false, error: 'Track 3 B: parameter outside range' });
-    expect(engine.getCatalogFxSlotStatus('track', 2, 4).acknowledged).toBe(true);
+    expect(engine.getCatalogFxSlotStatus('track', 2, 4)).toMatchObject({ acknowledged: true, error: '' });
     expect(bridge.setCatalogSlot.mock.calls.every(([config]) => !!config.trackId)).toBe(true);
     expect(bridge.shared.every((slot) => !slot.effectId)).toBe(true);
   });
@@ -381,15 +400,17 @@ describe('Native five-track A–D adapter', () => {
     expect(engine.getCatalogMidiSlotStatus('track', 3, 4)).toBeNull();
     bridge.banks[4]!.slots[3]!.requestedRevision += 1;
     bridge.internals.applyStatus(bridge.status());
-    expect(engine.getCatalogFxSlotStatus('track', 3, 5)).toMatchObject({ acknowledged: false, error: expect.stringContaining('different per-track slot selection or revision') });
+    expect(engine.getCatalogFxSlotStatus('track', 3, 5)).toMatchObject({ acknowledged: false, error: expect.stringContaining('different FX selection, bypass state, parameter snapshot or revision') });
     const original = bridge.setCatalogSlot.getMockImplementation()!;
     bridge.setCatalogSlot.mockImplementation(async (config) => {
       const result = await original(config);
       if (config.trackId === 5 && config.slot === 'D') result.nativeFx!.perTrackCatalogBanks![4]!.slots = [];
       return result;
     });
+    bridge.internals.bridgeAvailable = false;
+    engine.setTrackFxParameter(5, 3, 77);
     await bridge.sync();
-    expect(engine.getCatalogFxSlotStatus('track', 3, 5)).toMatchObject({ acknowledged: false, error: expect.stringContaining('no per-track slot application acknowledgement') });
+    expect(engine.getCatalogFxSlotStatus('track', 3, 5)).toMatchObject({ acknowledged: false, error: expect.stringContaining('lacks the parameter and revision readback') });
   });
 
   it('dispatches the facade methods to the active runtime and preserves legacy setFxType target zero', () => {

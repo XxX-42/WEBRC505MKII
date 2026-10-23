@@ -30,6 +30,47 @@ def main():
         fx = result['nativeFx']
         require(fx['parameterSchemaVersion'] == 1, 'legacy schema version changed')
         require(fx.get('catalogParameterReplacement') is True, 'replacement contract capability missing')
+        # Uniform request/application metadata for all seven four-slot banks.
+        def slots_for(current, bank):
+            state = current['nativeFx']
+            return (state['inputCatalogSlots'] if bank == 0 else state['catalogSlots'] if bank == 1
+                    else state['perTrackCatalogBanks'][bank - 2]['slots'])
+        for bank in range(7):
+            require([s['slot'] for s in slots_for(result, bank)] == list('ABCD'), 'four-slot bank contract changed')
+            body = {'path': 'input' if bank == 0 else 'track', 'slot': 'D', 'effectId': 'filter.lpf',
+                    'parameters': {'cutoff_hz': 1234}, 'bypassed': True, 'replaceParameters': True}
+            if bank >= 2:
+                body['trackId'] = bank - 1
+            code, configured = request('/v1/native-fx/catalog-slot', 'POST', body)
+            require(code == 200, f'catalog ACK setup failed: {configured}')
+            slot = slots_for(configured, bank)[3]
+            require(slot['parameters'] == {'cutoff_hz': 1234}, 'authored snapshot differs')
+            require(slot['requestedRevision'] == slot['appliedRevision'] and slot['appliedRevision'] > 0,
+                    'stopped write was not acknowledged')
+            require(slot['bypassed'] and slot['appliedBypassed'] and slot['prepared'] and not slot['controlFaulted'],
+                    'stopped bypass/prepared ACK differs')
+            require(request('/v1/engine/start', 'POST', {})[0] == 200, 'ACK test start failed')
+            body['parameters'] = {'cutoff_hz': 2345}
+            body['bypassed'] = False
+            code, accepted = request('/v1/native-fx/catalog-slot', 'POST', body)
+            require(code == 200, f'live same-type write rejected: {accepted}')
+            revision = slots_for(accepted, bank)[3]['requestedRevision']
+            # Pending is tested deterministically in native_catalog_ack_tests;
+            # an asynchronous HTTP response may already include callback completion.
+            for _ in range(100):
+                _, current = request('/v1/status')
+                slot = slots_for(current, bank)[3]
+                if slot['appliedRevision'] == revision:
+                    break
+                time.sleep(0.01)
+            require(slot['requestedRevision'] == slot['appliedRevision'] == revision, 'callback ACK did not arrive')
+            require(slot['parameters'] == {'cutoff_hz': 2345} and not slot['appliedBypassed'] and not slot['controlFaulted'],
+                    'live parameter/bypass ACK differs')
+            clear = dict(body, slot='C', effectId='', parameters={})
+            require(request('/v1/native-fx/catalog-slot', 'POST', clear)[0] == 409, 'live empty clear falsely ACKed')
+            require(request('/v1/engine/stop', 'POST', {})[0] == 200, 'ACK test stop failed')
+            require(request('/v1/native-fx/catalog-slot', 'POST', dict(body, effectId='', parameters={}))[0] == 200,
+                    'ACK fixture cleanup failed')
         entries = fx['catalogEffectAvailability']
         require(sum(len(item['parameters']) for item in entries) == 252, 'legacy controls changed')
         if os.environ.get('NATIVE_OFFICIAL_SCHEMA_OUTPUT'):

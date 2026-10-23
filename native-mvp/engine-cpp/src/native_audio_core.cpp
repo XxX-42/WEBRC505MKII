@@ -316,6 +316,25 @@ EngineStatus NativeAudioCore::getStatus() const {
     collectCatalogMidiSlots(nativeInputFxBank_, status.nativeInputCatalogMidiSlots);
     collectCatalogMidiSlots(outputStage_.trackFxBank(), status.nativeTrackCatalogMidiSlots);
     status.nativeCatalogControlFaultCount = nativeCatalogControlFaultCount_.load(std::memory_order_acquire);
+    for (std::size_t bankIndex = 0U; bankIndex < 2U; ++bankIndex) {
+        const auto& bank = bankIndex == 0U ? nativeInputFxBank_ : outputStage_.trackFxBank();
+        auto& slots = bankIndex == 0U ? status.nativeInputCatalogSlots : status.nativeCatalogSlots;
+        for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
+            auto& destination = slots[slot];
+            const auto* processor = bank.processor(static_cast<NativeEffectSlot>(slot));
+            const auto& published = nativeSharedFxPublished_[bankIndex][slot];
+            destination.effectId = std::string(bank.effectId(static_cast<NativeEffectSlot>(slot)));
+            destination.parameters = nativeCatalogAuthoredParameters_[bankIndex][slot];
+            destination.bypassed = bankIndex == 0U ? nativeInputCatalogSlotBypassed_[slot] : nativeCatalogSlotBypassed_[slot];
+            destination.requestedRevision = nativeSharedSlotRevision_[bankIndex][slot];
+            destination.appliedRevision = published.appliedRevision.load(std::memory_order_acquire);
+            destination.appliedBypassed = published.appliedBypassed.load(std::memory_order_acquire);
+            destination.prepared = processor != nullptr && currentConfig_ && processor->sampleRate() == currentConfig_->sampleRate;
+            destination.controlFaulted = destination.requestedRevision != 0U && destination.requestedRevision ==
+                published.controlFaultRevision.load(std::memory_order_acquire);
+            destination.processingFaulted = published.processingFaulted.load(std::memory_order_acquire);
+        }
+    }
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         const auto& bank = nativePerTrackFxBanks_[track];
         collectCatalogMidiSlots(bank, status.nativePerTrackCatalogMidiSlots[track]);
@@ -323,6 +342,7 @@ EngineStatus NativeAudioCore::getStatus() const {
             auto& destination = status.nativePerTrackCatalogSlots[track][slot];
             const auto* processor = bank.processor(static_cast<NativeEffectSlot>(slot));
             destination.effectId = std::string(bank.effectId(static_cast<NativeEffectSlot>(slot)));
+            destination.parameters = nativeCatalogAuthoredParameters_[track + 2U][slot];
             destination.bypassed = nativePerTrackSlotBypassed_[track][slot];
             destination.appliedBypassed = nativePerTrackFxPublished_[track][slot].appliedBypassed.load(std::memory_order_acquire);
             destination.prepared = processor != nullptr && currentConfig_ && processor->sampleRate() == currentConfig_->sampleRate;
@@ -1388,6 +1408,10 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
         : trackId == 0U ? nativeTrackOfficialVariants_ : nativePerTrackOfficialVariants_[trackId - 1U];
     auto& authored = nativeCatalogAuthoredParameters_[path == NativeCatalogFxPath::Input ? 0U :
         trackId == 0U ? 1U : static_cast<std::size_t>(trackId) + 1U][slotIndex];
+    auto& published = trackId != 0U ? nativePerTrackFxPublished_[trackId - 1U][slotIndex]
+        : nativeSharedFxPublished_[path == NativeCatalogFxPath::Input ? 0U : 1U][slotIndex];
+    auto& requestedRevision = trackId != 0U ? nativePerTrackSlotRevision_[trackId - 1U][slotIndex]
+        : nativeSharedSlotRevision_[path == NativeCatalogFxPath::Input ? 0U : 1U][slotIndex];
     if (effectId.empty()) {
         if (!parameters.empty()) {
             error = "Clearing a Native catalog FX slot cannot include parameters.";
@@ -1405,12 +1429,9 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
         officialVariants[slotIndex] = 0U;
         authored.clear();
         applyOfficialSourceTransports();
-        if (trackId != 0U) {
-            nativePerTrackFxPublished_[trackId - 1U][slotIndex].appliedBypassed.store(false, std::memory_order_release);
-            nativePerTrackFxPublished_[trackId - 1U][slotIndex].processingFaulted.store(false, std::memory_order_release);
-            nativePerTrackFxPublished_[trackId - 1U][slotIndex].appliedRevision.store(
-                ++nativePerTrackSlotRevision_[trackId - 1U][slotIndex], std::memory_order_release);
-        }
+        published.appliedBypassed.store(false, std::memory_order_release);
+        published.processingFaulted.store(false, std::memory_order_release);
+        published.appliedRevision.store(++requestedRevision, std::memory_order_release);
         return true;
     }
 
@@ -1531,7 +1552,7 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
             error = "Native catalog FX command queue is full.";
             return false;
         }
-        const std::uint64_t revision = trackId == 0U ? 0U : ++nativePerTrackSlotRevision_[trackId - 1U][slotIndex];
+        const std::uint64_t revision = ++requestedRevision;
         for (std::size_t orderedIndex = 0U; orderedIndex < orderedCount; ++orderedIndex) {
         const auto& [parameterId, value] = orderedParameters[orderedIndex];
             std::size_t officialCount = 0U;
@@ -1640,12 +1661,9 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
     officialVariants[slotIndex] = selectedVariant;
     authored.swap(nextAuthored);
     applyOfficialSourceTransports();
-    if (trackId != 0U) {
-        nativePerTrackFxPublished_[trackId - 1U][slotIndex].appliedBypassed.store(bypassed, std::memory_order_release);
-        nativePerTrackFxPublished_[trackId - 1U][slotIndex].processingFaulted.store(false, std::memory_order_release);
-        nativePerTrackFxPublished_[trackId - 1U][slotIndex].appliedRevision.store(
-            ++nativePerTrackSlotRevision_[trackId - 1U][slotIndex], std::memory_order_release);
-    }
+    published.appliedBypassed.store(bypassed, std::memory_order_release);
+    published.processingFaulted.store(false, std::memory_order_release);
+    published.appliedRevision.store(++requestedRevision, std::memory_order_release);
     return true;
 }
 
@@ -2983,17 +3001,17 @@ void NativeAudioCore::applyNativeCatalogFxCommands() noexcept {
         }
         auto& bank = command.path == NativeCatalogFxPath::Input ? nativeInputFxBank_
             : command.trackId == 0U ? outputStage_.trackFxBank() : nativePerTrackFxBanks_[command.trackId - 1U];
+        if (static_cast<std::size_t>(command.slot) >= NativeEffectBank::kSlotCount) continue;
+        auto& published = command.trackId != 0U
+            ? nativePerTrackFxPublished_[command.trackId - 1U][static_cast<std::size_t>(command.slot)]
+            : nativeSharedFxPublished_[command.path == NativeCatalogFxPath::Input ? 0U : 1U][static_cast<std::size_t>(command.slot)];
         auto* processor = bank.processor(command.slot);
         bool applied = processor != nullptr;
         if (processor != nullptr && command.type == NativeCatalogFxCommand::Type::SetBypassed) {
             processor->setBypassed(command.value >= 0.5f);
-            if (command.trackId != 0U) {
-                nativePerTrackFxPublished_[command.trackId - 1U][static_cast<std::size_t>(command.slot)]
-                    .appliedBypassed.store(processor->isBypassed(), std::memory_order_release);
-                auto& published = nativePerTrackFxPublished_[command.trackId - 1U][static_cast<std::size_t>(command.slot)];
-                if (published.controlFaultRevision.load(std::memory_order_relaxed) != command.revision) {
-                    published.appliedRevision.store(command.revision, std::memory_order_release);
-                }
+            published.appliedBypassed.store(processor->isBypassed(), std::memory_order_release);
+            if (published.controlFaultRevision.load(std::memory_order_relaxed) != command.revision) {
+                published.appliedRevision.store(command.revision, std::memory_order_release);
             }
         } else if (processor != nullptr && command.type == NativeCatalogFxCommand::Type::SetParameter) {
             const auto* descriptor = findNativeEffectDescriptor(processor->stableId());
@@ -3019,10 +3037,7 @@ void NativeAudioCore::applyNativeCatalogFxCommands() noexcept {
         }
         if (!applied) {
             nativeCatalogControlFaultCount_.fetch_add(1U, std::memory_order_relaxed);
-            if (command.trackId != 0U && static_cast<std::size_t>(command.slot) < NativeEffectBank::kSlotCount) {
-                nativePerTrackFxPublished_[command.trackId - 1U][static_cast<std::size_t>(command.slot)]
-                    .controlFaultRevision.store(command.revision, std::memory_order_release);
-            }
+            published.controlFaultRevision.store(command.revision, std::memory_order_release);
         }
     }
 }
@@ -3051,6 +3066,16 @@ void synchronizeHrmAutoSlotClocks(NativeEffectBank& bank, std::uint64_t frame) n
 
 } // namespace
 
+void NativeAudioCore::publishSharedCatalogProcessingFaults(std::size_t bankIndex, bool bufferAvailable) noexcept {
+    const auto& bank = bankIndex == 0U ? nativeInputFxBank_ : outputStage_.trackFxBank();
+    for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
+        const auto* processor = bank.processor(static_cast<NativeEffectSlot>(slot));
+        const bool faulted = processor != nullptr &&
+            (!bufferAvailable || processor->sampleRate() == 0U || processor->processingFaulted());
+        nativeSharedFxPublished_[bankIndex][slot].processingFaulted.store(faulted, std::memory_order_release);
+    }
+}
+
 const float* NativeAudioCore::processInputFxForCallback(
     const float* inputInterleaved,
     unsigned int frames,
@@ -3059,6 +3084,7 @@ const float* NativeAudioCore::processInputFxForCallback(
     if (processedChannelsOut != nullptr) *processedChannelsOut = inputChannels_;
     if (inputInterleaved == nullptr || !nativeInputFxBank_.hasEffects() ||
         inputChannels_ == 0U || inputChannels_ > 2U || frames > kMaxCallbackFrames) {
+        publishSharedCatalogProcessingFaults(0U);
         return inputInterleaved;
     }
     bool monoStereoRoute = false;
@@ -3087,6 +3113,7 @@ const float* NativeAudioCore::processInputFxForCallback(
         std::copy_n(inputInterleaved, sampleCount, nativeInputFxScratch_.data());
     }
     nativeInputFxBank_.processInPlaceNoPeak(nativeInputFxScratch_.data(), frames, processedChannels);
+    publishSharedCatalogProcessingFaults(0U);
     if (processedChannelsOut != nullptr) *processedChannelsOut = processedChannels;
     return nativeInputFxScratch_.data();
 }
@@ -3202,6 +3229,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     ProcessStats stats{};
     stats.state = static_cast<LooperState>(trackStates_[0U].load(std::memory_order_acquire));
     if (outputInterleaved == nullptr || frames > kMaxCallbackFrames || outputChannels_ == 0U || outputChannels_ > 2U) {
+        publishSharedCatalogProcessingFaults(1U, false);
         if (pitchRouteDecision != nullptr) *pitchRouteDecision = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
         return stats;
     }
@@ -3310,6 +3338,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         }
         for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += playbackBus[sample];
     }
+    publishSharedCatalogProcessingFaults(1U, playbackBufferAvailable);
     if (pitchRouteDecision != nullptr) *pitchRouteDecision = pitchRoute;
 
     nativeRhythmEngine_.processAdditive(outputInterleaved, frames, outputChannels_, callbackFrameCursor_);

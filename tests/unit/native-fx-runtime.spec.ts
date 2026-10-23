@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
-import type { NativeBridgeClient, NativeCatalogSlotConfig, NativeFxSlot, NativeStatus } from '../../src/audio/NativeBridgeClient';
+import type { NativeBridgeClient, NativeCatalogSlotConfig, NativeCatalogSlotStatus, NativeFxSlot, NativeStatus } from '../../src/audio/NativeBridgeClient';
+import { createDefaultNativeStepSlicerParameters } from '../../src/audio/nativeStepSlicerParameters';
 
 const slots = ['A', 'B', 'C', 'D'] as const;
 const effectIds = [
@@ -11,8 +12,8 @@ const effectIds = [
 
 function nativeStatus(
   engineRunning = false,
-  catalogSlots: Array<{ slot: NativeFxSlot; effectId: string; bypassed: boolean }> = slots.map((slot) => ({ slot, effectId: '', bypassed: false })),
-  inputCatalogSlots: Array<{ slot: NativeFxSlot; effectId: string; bypassed: boolean }> = slots.map((slot) => ({ slot, effectId: '', bypassed: false })),
+  catalogSlots: NativeCatalogSlotStatus[] = emptyCatalogSlots(),
+  inputCatalogSlots: NativeCatalogSlotStatus[] = emptyCatalogSlots(),
 ): NativeStatus {
   return {
     ok: true,
@@ -45,11 +46,18 @@ function nativeStatus(
   };
 }
 
+function emptyCatalogSlots(): NativeCatalogSlotStatus[] {
+  return slots.map((slot) => ({
+    slot, effectId: '', parameters: {}, bypassed: false, appliedBypassed: false, prepared: false,
+    processingFaulted: false, controlFaulted: false, requestedRevision: 0, appliedRevision: 0,
+  }));
+}
+
 function installBridge(engine: NativeAudioEngine, startCalls?: string[]) {
-  const byPath: Record<'input' | 'track', Array<{ slot: NativeFxSlot; effectId: string; bypassed: boolean }>> = {
-    input: slots.map((slot) => ({ slot, effectId: '', bypassed: false })),
-    track: slots.map((slot) => ({ slot, effectId: '', bypassed: false })),
+  const byPath: Record<'input' | 'track', NativeCatalogSlotStatus[]> = {
+    input: emptyCatalogSlots(), track: emptyCatalogSlots(),
   };
+  let running = false;
   const status = (running = false) => nativeStatus(running, byPath.track, byPath.input);
   const fakeBridge = {
     health: vi.fn(async () => ({ ok: true, version: 'test', engineRunning: false, backends: ['WASAPI'], lastError: '' })),
@@ -59,17 +67,24 @@ function installBridge(engine: NativeAudioEngine, startCalls?: string[]) {
       outputsByBackend: { WASAPI: [{ id: 'out', name: 'Output', sampleRates: [48000], isDefault: true }] },
       defaultInputIdByBackend: { WASAPI: 'in' }, defaultOutputIdByBackend: { WASAPI: 'out' }, bufferOptions: [64],
     })),
-    applyConfig: vi.fn(async () => { startCalls?.push('applyConfig'); return status(false); }),
-    startEngine: vi.fn(async () => { startCalls?.push('startEngine'); return status(true); }),
-    stopEngine: vi.fn(async () => { startCalls?.push('stopEngine'); return status(false); }),
-    getStatus: vi.fn(async () => status(true)),
+    applyConfig: vi.fn(async () => { startCalls?.push('applyConfig'); running = false; return status(running); }),
+    startEngine: vi.fn(async () => { startCalls?.push('startEngine'); running = true; return status(running); }),
+    stopEngine: vi.fn(async () => { startCalls?.push('stopEngine'); running = false; return status(running); }),
+    getStatus: vi.fn(async () => status(running)),
     setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
       startCalls?.push(`set:${config.path}:${config.slot}:${config.effectId}`);
       const path = config.path ?? 'track';
       const item = byPath[path].find((entry) => entry.slot === config.slot)!;
       item.effectId = config.effectId;
       item.bypassed = config.bypassed;
-      return status(false);
+      item.parameters = { ...(config.parameters ?? {}) };
+      item.appliedBypassed = config.bypassed;
+      item.prepared = Boolean(config.effectId);
+      item.processingFaulted = false;
+      item.controlFaulted = false;
+      item.requestedRevision += 1;
+      item.appliedRevision = item.requestedRevision;
+      return status(running);
     }),
   };
   const internals = engine as unknown as {
@@ -83,10 +98,160 @@ function installBridge(engine: NativeAudioEngine, startCalls?: string[]) {
   for (const path of ['input', 'track'] as const) {
     internals.nativeCatalogFxStates[path].forEach((state) => Object.assign(state, { type: '', value: 0, active: false }));
   }
-  return { fakeBridge, byPath };
+  return { fakeBridge, byPath, setRunning(value: boolean) { running = value; } };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+// A separate instance keeps reconnect fixtures independent of the legacy singleton tests.
+function reconnectFixture() {
+  const engine = new (NativeAudioEngine as unknown as { new(): NativeAudioEngine })();
+  const order: string[] = [];
+  const { fakeBridge, setRunning } = installBridge(engine, order);
+  const hostSlot = (slot: NativeFxSlot, index: number) => ({
+    slot, effectId: 'phaser', bypassed: index % 2 === 1, appliedBypassed: index % 2 === 1,
+    prepared: true, processingFaulted: false, controlFaulted: false,
+    requestedRevision: 17 + index, appliedRevision: 17 + index,
+    parameters: { depth: 36 + index, wet_mix: 47, rate_hz: 2.5 },
+  });
+  const host = nativeStatus(true);
+  host.nativeLooperTrackCount = 5;
+  host.nativeLooperMultiTrackImplemented = true;
+  host.nativeTracks = [1, 2, 3, 4, 5].map(trackId => ({ trackId, state: 'Playing', loopProgress: 0.25, contentRevision: 100 + trackId }));
+  host.state = 'Playing';
+  Object.assign(host.nativeFx!, {
+    catalogSlots: slots.map(hostSlot), inputCatalogSlots: slots.map(hostSlot),
+    perTrackCatalogAvailable: true,
+    perTrackCatalogBanks: [1, 2, 3, 4, 5].map(trackId => ({ trackId, midiSlots: [], slots: slots.map(hostSlot) })),
+  });
+  fakeBridge.health.mockImplementation(async () => { order.push('health'); return { ok: true, version: 'test', engineRunning: true, backends: ['WASAPI'], lastError: '' }; });
+  const devices = fakeBridge.getDevices.getMockImplementation()!;
+  fakeBridge.getDevices.mockImplementation(async () => { order.push('getDevices'); return devices(); });
+  fakeBridge.getStatus.mockImplementation(async () => { order.push('getStatus'); return structuredClone(host); });
+  const internals = engine as unknown as { bridgeAvailable: boolean; latestStatus: NativeStatus | null; applyStatus(status: NativeStatus): void; stopPolling(): void };
+  internals.bridgeAvailable = false;
+  const assertPreserved = () => {
+    expect(engine.getUiStatus()).toMatchObject({ ready: true, engineRunning: true });
+    expect(engine.tracks.map(track => track.state)).toEqual(Array(5).fill('PLAYING'));
+    expect(internals.latestStatus?.nativeTracks?.map(track => track.contentRevision)).toEqual([101, 102, 103, 104, 105]);
+    expect(fakeBridge.applyConfig).not.toHaveBeenCalled();
+    expect(fakeBridge.stopEngine).not.toHaveBeenCalled();
+    expect(fakeBridge.startEngine).not.toHaveBeenCalled();
+  };
+  return { engine, fakeBridge, host, order, internals, assertPreserved, setRunning };
+}
+
+describe('Native reconnect preserves a running host', () => {
+  it('reads health, devices and status before adopting all shared and per-track FX without replaying empty defaults', async () => {
+    const fixture = reconnectFixture();
+    const { engine, fakeBridge, host, order, internals } = fixture;
+    try {
+      await engine.init();
+      expect(order.slice(0, 3)).toEqual(['health', 'getDevices', 'getStatus']);
+      fixture.assertPreserved();
+      expect(fakeBridge.setCatalogSlot).not.toHaveBeenCalled();
+      for (const trackId of [0, 1, 2, 3, 4, 5]) {
+        for (const path of trackId ? ['track'] as const : ['input', 'track'] as const) {
+          for (let index = 0; index < 4; index++) {
+            expect(engine.getCatalogFxSlotStatus(path, index, trackId)).toMatchObject({
+              acknowledged: true, pendingApply: false, pendingRestart: false,
+              requestedEffectId: 'phaser', acknowledgedEffectId: 'phaser',
+              requestedBypassed: index % 2 === 1, appliedBypassed: index % 2 === 1,
+              requestedRevision: 17 + index, appliedRevision: 17 + index,
+              acknowledgedParameters: { depth: 36 + index, wet_mix: 47, rate_hz: 2.5 },
+            });
+          }
+        }
+      }
+      // A historical edit counter alone must not turn an equal authored state dirty.
+      internals.bridgeAvailable = false;
+      engine.setCatalogFxParameters('input', 0, { depth: 36, wet_mix: 47, rate_hz: 2.5 });
+      await settle();
+      await engine.init();
+      expect(fakeBridge.setCatalogSlot).not.toHaveBeenCalled();
+      // A readback is trustworthy only if every part of the applied identity agrees.
+      for (const mismatch of [
+        { appliedRevision: 16 }, { requestedRevision: 18 }, { effectId: 'chorus' },
+        { appliedBypassed: true }, { parameters: { depth: 99, wet_mix: 47, rate_hz: 2.5 } },
+      ]) {
+        internals.applyStatus(structuredClone(host));
+        const changed = structuredClone(host);
+        Object.assign(changed.nativeFx!.inputCatalogSlots![0]!, mismatch);
+        internals.applyStatus(changed);
+        expect(engine.getCatalogFxSlotStatus('input', 0).acknowledged, JSON.stringify(mismatch)).toBe(false);
+      }
+    } finally { internals.stopPolling(); }
+  });
+
+  it('sends only a same-type offline parameter edit and waits for the callback revision ACK', async () => {
+    const fixture = reconnectFixture();
+    const { engine, fakeBridge, host, internals, setRunning } = fixture;
+    try {
+      await engine.init();
+      setRunning(true);
+      fakeBridge.setCatalogSlot.mockClear();
+      internals.bridgeAvailable = false;
+      engine.setCatalogFxParameters('input', 0, { depth: 36, wet_mix: 47, rate_hz: 3.5 });
+      await settle();
+      fakeBridge.setCatalogSlot.mockImplementation(async config => {
+        expect(config).toMatchObject({ path: 'input', slot: 'A', effectId: 'phaser', parameters: { rate_hz: 3.5 } });
+        Object.assign(host.nativeFx!.inputCatalogSlots![0]!, { parameters: config.parameters, requestedRevision: 18, appliedRevision: 17 });
+        return structuredClone(host);
+      });
+      await engine.init();
+      expect(fakeBridge.setCatalogSlot).toHaveBeenCalledTimes(1);
+      expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({ acknowledged: false, pendingApply: true });
+      Object.assign(host.nativeFx!.inputCatalogSlots![0]!, { appliedRevision: 18 });
+      internals.applyStatus(structuredClone(host));
+      expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({ acknowledged: true, pendingApply: false, acknowledgedParameters: { rate_hz: 3.5 } });
+      fixture.assertPreserved();
+    } finally { internals.stopPolling(); }
+  });
+
+  it('retains an offline type change as pendingRestart without writing or interrupting existing loops', async () => {
+    const fixture = reconnectFixture();
+    const { engine, fakeBridge, internals } = fixture;
+    try {
+      await engine.init();
+      fakeBridge.setCatalogSlot.mockClear();
+      internals.bridgeAvailable = false;
+      engine.setFxType('input', 0, 'CHORUS');
+      await settle();
+      await engine.init();
+      expect(fakeBridge.setCatalogSlot).not.toHaveBeenCalled();
+      expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({
+        acknowledged: false, pendingRestart: true, requestedEffectId: 'chorus', acknowledgedEffectId: 'phaser',
+      });
+      fixture.assertPreserved();
+    } finally { internals.stopPolling(); }
+  });
+
+  it('applies typed Step Slicer edits over the hydrated Native parameter snapshot', async () => {
+    const fixture = reconnectFixture();
+    const { engine, fakeBridge, host, internals, setRunning } = fixture;
+    const hostParameters = { ...createDefaultNativeStepSlicerParameters(), step_01: 61, mix: 0.72, bpm: 120 };
+    const inputSlot = host.nativeFx!.inputCatalogSlots![0]!;
+    Object.assign(inputSlot, { effectId: 'step_slicer', parameters: hostParameters, prepared: true });
+    host.nativeFx!.implementedCatalogEffects!.push('step_slicer');
+    host.nativeFx!.catalogEffectAvailability!.push({ effectId: 'step_slicer', input: true, track: true, perTrackInsert: true });
+    try {
+      await engine.init();
+      setRunning(true);
+      fakeBridge.setCatalogSlot.mockClear();
+      internals.bridgeAvailable = false;
+      engine.setCatalogStepSlicerParameters('input', 0, { ...createDefaultNativeStepSlicerParameters(), step_01: 23 });
+      internals.bridgeAvailable = true;
+      await internals.syncNativeFxCatalogSlots(false);
+      expect(fakeBridge.setCatalogSlot).toHaveBeenCalledTimes(1);
+      expect(fakeBridge.setCatalogSlot.mock.calls[0]![0].parameters).toMatchObject({ step_01: 23, mix: 0.72 });
+      expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({ acknowledged: true, acknowledgedParameters: expect.objectContaining({ step_01: 23, mix: 0.72 }) });
+      expect(engine.getUiStatus()).toMatchObject({ ready: true, engineRunning: true });
+      expect(fakeBridge.applyConfig).not.toHaveBeenCalled();
+      expect(fakeBridge.stopEngine).not.toHaveBeenCalled();
+      expect(fakeBridge.startEngine).not.toHaveBeenCalled();
+    } finally { internals.stopPolling(); }
+  });
+});
 
 describe('Native catalog FX runtime and UI adapter', () => {
   it('routes Input and Track A–D selections, maps parameters, and records each API acknowledgement', async () => {
@@ -312,7 +477,7 @@ describe('Native catalog FX runtime and UI adapter', () => {
     expect(engine.getCatalogFxSlotStatus('input', 0).error).toContain('does not support BEAT REPEAT');
   });
 
-  it('applies the desired eight slots after config and before starting Native audio', async () => {
+  it('does not write constructor-default empty slots after config', async () => {
     const engine = NativeAudioEngine.getInstance();
     const order: string[] = [];
     const { fakeBridge } = installBridge(engine, order);
@@ -321,9 +486,8 @@ describe('Native catalog FX runtime and UI adapter', () => {
     await internals.applyAndStart();
 
     expect(order[0]).toBe('applyConfig');
-    expect(order.slice(1, 9)).toHaveLength(8);
-    expect(order[9]).toBe('startEngine');
-    expect(fakeBridge.setCatalogSlot).toHaveBeenCalledTimes(8);
+    expect(order[1]).toBe('startEngine');
+    expect(fakeBridge.setCatalogSlot).not.toHaveBeenCalled();
   });
 
   it('stops a running host before applying saved catalog FX changes and starts it afterward', async () => {
@@ -344,12 +508,10 @@ describe('Native catalog FX runtime and UI adapter', () => {
 
     expect(order[0]).toBe('stopEngine');
     expect(order[1]).toBe('applyConfig');
-    expect(order.slice(2, 10)).toHaveLength(8);
-    expect(order[10]).toBe('startEngine');
+    expect(order[2]).toBe('set:input:A:phaser');
+    expect(order[3]).toBe('startEngine');
     expect(fakeBridge.stopEngine).toHaveBeenCalledTimes(1);
-    expect(fakeBridge.setCatalogSlot).toHaveBeenCalledWith({
-      path: 'input', slot: 'A', effectId: 'phaser', parameters: { depth: 0, wet_mix: 0 }, bypassed: true,
-    });
+    expect(fakeBridge.setCatalogSlot).toHaveBeenCalledTimes(1);
     expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({
       pendingRestart: false, acknowledged: true, acknowledgedEffectId: 'phaser',
     });

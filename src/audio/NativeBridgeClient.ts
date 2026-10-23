@@ -230,16 +230,8 @@ export interface NativeStatus {
       effects: string[];
       statusNote: string;
     };
-    catalogSlots?: Array<{
-      slot: NativeFxSlot;
-      effectId: string;
-      bypassed: boolean;
-    }>;
-    inputCatalogSlots?: Array<{
-      slot: NativeFxSlot;
-      effectId: string;
-      bypassed: boolean;
-    }>;
+    catalogSlots?: NativeCatalogSlotStatus[];
+    inputCatalogSlots?: NativeCatalogSlotStatus[];
     trackOutputBank?: {
       layout: NativeFxSlot[];
       activeSlots: NativeFxSlot[];
@@ -305,6 +297,8 @@ export interface NativeStatus {
 export interface NativeCatalogSlotStatus {
   slot: NativeFxSlot;
   effectId: string;
+  /** Exact authored parameter snapshot associated with requestedRevision. */
+  parameters?: Record<string, number>;
   /** Requested control-thread bypass, which may be waiting for a callback. */
   bypassed: boolean;
   appliedBypassed: boolean;

@@ -16,6 +16,7 @@ import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectRestore
 import { sanitizeNativeStepSlicerParameters, type NativeStepSlicerParameters } from './nativeStepSlicerParameters';
 import {
   NATIVE_CATALOG_EMPTY_LABEL,
+  NATIVE_CATALOG_FX_LABELS,
   NATIVE_FX_SLOT_IDS,
   nativeCatalogEffectId,
   nativeCatalogFxOptions,
@@ -169,6 +170,14 @@ export class NativeAudioEngine {
   private readonly nativePerTrackFxEdited = new Set<number>();
   private readonly nativeCatalogFxRuntime = new Map<string, NativeCatalogFxSlotRuntime>();
   private readonly nativeCatalogSlotEditRevisions = new Map<string, number>();
+  /** Slots explicitly edited in this frontend session and not yet confirmed by host readback. */
+  private readonly nativeCatalogFxDirtySlots = new Set<string>();
+  /** Edit revision associated with each in-flight Native catalog write. */
+  private readonly nativeCatalogFxSubmittedEditRevisions = new Map<string, number>();
+  /** Host-authored snapshots adopted without issuing writes. */
+  private readonly nativeCatalogFxHydratedSlots = new Set<string>();
+  /** Legacy host status can omit parameters; bypass edits must then stay patch-only. */
+  private readonly nativeCatalogFxUnknownParameterSlots = new Set<string>();
   private nativeFxSyncRevision = 0;
   private nativeFxSyncRunning = false;
   private nativeFxSyncScheduled = false;
@@ -946,7 +955,12 @@ export class NativeAudioEngine {
     const state = this.nativeCatalogStates(location, trackId)[slotIndex];
     if (!state || typeof type !== 'string') return;
     const nextType = type === NATIVE_CATALOG_EMPTY_LABEL ? '' : type;
-    if (state.type !== nextType) state.parameters = {};
+    if (state.type !== nextType) {
+      state.parameters = {};
+      const key = this.nativeCatalogSlotKey(location, NATIVE_FX_SLOT_IDS[slotIndex]!, trackId);
+      this.nativeCatalogFxHydratedSlots.delete(key);
+      this.nativeCatalogFxUnknownParameterSlots.delete(key);
+    }
     state.type = nextType;
     this.nativeCatalogSlotEdited(location, slotIndex, trackId);
   }
@@ -955,6 +969,13 @@ export class NativeAudioEngine {
     const state = this.nativeCatalogStates(location, trackId)[slotIndex];
     if (!state || !Number.isFinite(value)) return;
     state.value = Math.max(0, Math.min(100, value));
+    this.nativeCatalogFxUnknownParameterSlots.delete(this.nativeCatalogSlotKey(location, NATIVE_FX_SLOT_IDS[slotIndex]!, trackId));
+    if (this.nativeCatalogFxHydratedSlots.has(this.nativeCatalogSlotKey(location, NATIVE_FX_SLOT_IDS[slotIndex]!, trackId))) {
+      const macro = state.type === 'STEP SLICER'
+        ? this.nativeStepSlicerBridgeParameters(location, slotIndex, trackId)
+        : nativeCatalogMacroParameters(state.type, state.value);
+      state.parameters = { ...state.parameters, ...macro };
+    }
     this.nativeCatalogSlotEdited(location, slotIndex, trackId);
   }
 
@@ -1030,6 +1051,13 @@ export class NativeAudioEngine {
     const bank = trackId ? this.nativePerTrackStepSlicerParameters[trackId - 1]! : this.nativeStepSlicerParameters[path];
     if (!bank[slotIndex]) return;
     bank[slotIndex] = sanitizeNativeStepSlicerParameters(parameters);
+    const key = this.nativeCatalogSlotKey(path, NATIVE_FX_SLOT_IDS[slotIndex]!, trackId);
+    if (this.nativeCatalogFxHydratedSlots.has(key)) {
+      const state = this.nativeCatalogStates(path, trackId)[slotIndex]!;
+      // The typed sequence editor owns these fields even when the slot was
+      // hydrated from Native. Keep unrelated host-authored fields intact.
+      state.parameters = { ...state.parameters, ...this.nativeStepSlicerBridgeParameters(path, slotIndex, trackId) };
+    }
     this.nativeCatalogSlotEdited(path, slotIndex, trackId);
   }
 
@@ -1038,6 +1066,7 @@ export class NativeAudioEngine {
     const state = this.nativeCatalogStates(path, trackId)[slotIndex];
     if (!state || !this.isValidCatalogParameters(parameters) || !this.areOfficialCatalogParametersSupported(state.type, path, trackId, parameters, slotIndex)) return;
     state.parameters = { ...parameters };
+    this.nativeCatalogFxUnknownParameterSlots.delete(this.nativeCatalogSlotKey(path, NATIVE_FX_SLOT_IDS[slotIndex]!, trackId));
     this.nativeCatalogSlotEdited(path, slotIndex, trackId);
   }
 
@@ -1216,6 +1245,11 @@ export class NativeAudioEngine {
 
   private nativeCatalogParameters(path: NativeFxPath, slotIndex: number, trackId: number, overrides?: Record<string, number>): Record<string, number> {
     const state = this.nativeCatalogStates(path, trackId)[slotIndex]!;
+    const key = this.nativeCatalogSlotKey(path, NATIVE_FX_SLOT_IDS[slotIndex]!, trackId);
+    if (this.nativeCatalogFxUnknownParameterSlots?.has(key)) return { ...(overrides ?? {}) };
+    if (this.nativeCatalogFxHydratedSlots?.has(key)) {
+      return { ...state.parameters, ...(overrides ?? {}) };
+    }
     const parameters = state.type === 'STEP SLICER'
       ? { ...this.nativeStepSlicerBridgeParameters(path, slotIndex, trackId), ...(overrides ?? state.parameters) }
       : state.type ? { ...nativeCatalogMacroParameters(state.type, state.value), ...(overrides ?? state.parameters) } : {};
@@ -1235,6 +1269,7 @@ export class NativeAudioEngine {
     if (trackId) this.nativePerTrackFxEdited.add(trackId);
     const slot = NATIVE_FX_SLOT_IDS[slotIndex]!;
     const key = this.nativeCatalogSlotKey(path, slot, trackId);
+    this.nativeCatalogFxDirtySlots.add(key);
     this.nativeCatalogSlotEditRevisions.set(key, (this.nativeCatalogSlotEditRevisions.get(key) ?? 0) + 1);
     const runtime = this.nativeCatalogFxRuntime.get(key);
     if (runtime) {
@@ -1263,7 +1298,17 @@ export class NativeAudioEngine {
       await this.bridge.health();
       this.bridgeAvailable = true;
       await this.refreshCatalog();
-      await this.applyAndStart();
+      const status = await this.bridge.getStatus();
+      this.applyStatus(status);
+      this.hydrateNativeCatalogFromStatus(status);
+      if (status.engineRunning) {
+        // Connecting to an already-running host is observational: applying a
+        // device config here can reopen WASAPI, interrupt transport and make
+        // otherwise valid live FX writes return HTTP 409.
+        await this.syncNativeFxCatalogSlots(false);
+      } else {
+        await this.applyAndStart();
+      }
       await this.refreshStatus();
       this.startPolling();
       this.emitAll();
@@ -1275,6 +1320,80 @@ export class NativeAudioEngine {
 
   private async refreshCatalog() {
     this.deviceCatalog = await this.bridge.getDevices();
+  }
+
+  private hydrateNativeCatalogFromStatus(status: NativeStatus) {
+    const targets: Array<{ path: NativeFxPath; trackId: number }> = [
+      { path: 'input', trackId: 0 }, { path: 'track', trackId: 0 },
+      ...[1, 2, 3, 4, 5].map((trackId) => ({ path: 'track' as const, trackId })),
+    ];
+    for (const { path, trackId } of targets) {
+      for (let slotIndex = 0; slotIndex < NATIVE_FX_SLOT_IDS.length; slotIndex += 1) {
+        const slot = NATIVE_FX_SLOT_IDS[slotIndex]!;
+        const key = this.nativeCatalogSlotKey(path, slot, trackId);
+        if (this.nativeCatalogFxDirtySlots.has(key)) continue;
+        const reported = trackId
+          ? status.nativeFx?.perTrackCatalogBanks?.find((bank) => bank.trackId === trackId)?.slots.find((item) => item.slot === slot)
+          : path === 'input' ? status.nativeFx?.inputCatalogSlots?.find((item) => item.slot === slot)
+            : status.nativeFx?.catalogSlots?.find((item) => item.slot === slot);
+        if (!reported) continue;
+        const effectId = reported.effectId || '';
+        const type = effectId ? (NATIVE_CATALOG_FX_LABELS[effectId] ?? '') : '';
+        const previous = this.nativeCatalogFxRuntime.get(key);
+        const runtime: NativeCatalogFxSlotRuntime = previous ? { ...previous } : {
+          path, slot, trackId, requestedBypassed: reported.bypassed, appliedBypassed: null,
+          prepared: null, processingFaulted: false, controlFaulted: false, pendingApply: false,
+          requestedRevision: null, appliedRevision: null, requestedEffectId: effectId || null,
+          acknowledgedEffectId: effectId || null, requestedParameters: {}, acknowledgedParameters: null,
+          acknowledged: false, pendingRestart: false, error: '',
+        };
+        if (effectId && !type) {
+          runtime.requestedEffectId = effectId;
+          runtime.acknowledgedEffectId = effectId;
+          runtime.acknowledged = false;
+          runtime.pendingApply = false;
+          runtime.error = `Native host effect “${effectId}” is not mapped by this frontend; its slot was preserved without a write.`;
+          this.nativeCatalogFxRuntime.set(key, runtime);
+          continue;
+        }
+
+        const state = this.nativeCatalogStates(path, trackId)[slotIndex]!;
+        const parameters = reported.parameters && typeof reported.parameters === 'object'
+          ? { ...reported.parameters } : {};
+        state.type = type;
+        state.active = Boolean(type) && !reported.bypassed;
+        state.parameters = parameters;
+        state.value = this.nativeCatalogMacroValue(type, parameters, state.value);
+        if (reported.parameters && typeof reported.parameters === 'object') {
+          this.nativeCatalogFxHydratedSlots.add(key);
+          this.nativeCatalogFxUnknownParameterSlots.delete(key);
+        } else {
+          this.nativeCatalogFxHydratedSlots.delete(key);
+          if (effectId) this.nativeCatalogFxUnknownParameterSlots.add(key);
+          else this.nativeCatalogFxUnknownParameterSlots.delete(key);
+        }
+        runtime.requestedEffectId = effectId || null;
+        runtime.requestedParameters = { ...parameters };
+        runtime.requestedBypassed = Boolean(type) && reported.bypassed;
+        runtime.requestedRevision = reported.requestedRevision ?? null;
+        runtime.baselineRequestedRevision = reported.requestedRevision ?? null;
+        runtime.acknowledged = false;
+        runtime.pendingApply = false;
+        runtime.pendingRestart = false;
+        runtime.outcomeUnknown = false;
+        runtime.error = '';
+        this.reconcileNativeCatalogRuntime(runtime);
+        this.nativeCatalogFxRuntime.set(key, runtime);
+      }
+    }
+  }
+
+  private nativeCatalogMacroValue(type: string, parameters: Record<string, number>, fallback: number) {
+    const macroParameter = nativeCatalogEffectId(type) === 'phaser' || nativeCatalogEffectId(type) === 'flanger'
+      ? parameters.depth
+      : nativeCatalogEffectId(type) === 'dist' ? parameters.mix_percent
+        : parameters.mix ?? parameters.wet_mix;
+    return Number.isFinite(macroParameter) ? Math.max(0, Math.min(100, macroParameter! <= 1 ? macroParameter! * 100 : macroParameter!)) : fallback;
   }
 
   private buildSelectionFromCatalog(catalog: NativeDeviceCatalog): NativeDeviceSelection {
@@ -1412,15 +1531,63 @@ export class NativeAudioEngine {
         if (config) config = {
           ...config, ...(trackId ? { trackId } : {}),
           parameters: this.nativeCatalogParameters(path, slotIndex, trackId),
-          ...(this.latestStatus?.nativeFx?.catalogParameterReplacement === true ? { replaceParameters: true } : {}),
+          ...(this.latestStatus?.nativeFx?.catalogParameterReplacement === true && !this.nativeCatalogFxUnknownParameterSlots.has(this.nativeCatalogSlotKey(path, slot, trackId)) ? { replaceParameters: true } : {}),
         };
         const requestedId = config?.effectId || null;
         const currentId = this.nativeCatalogEffectIdFromStatus(path, slot, trackId);
         const key = this.nativeCatalogSlotKey(path, slot, trackId);
         const options = this.getCatalogFxOptions(path, trackId);
         const editRevision = this.nativeCatalogSlotEditRevisions.get(key) ?? 0;
+        const isDirty = this.nativeCatalogFxDirtySlots.has(key);
         const previousRuntime = this.nativeCatalogFxRuntime.get(key);
+        const reportedBeforeWrite = this.nativeCatalogSlotFromStatus(path, slot, trackId);
         let statusToApplyAfterSave: NativeStatus | null = null;
+        if (!isDirty && (!allowTypeChange || !this.nativeCatalogFxHydratedSlots.has(key))) {
+          // A connection must never turn frontend constructor defaults into
+          // writes. Only explicit edits, or a previously hydrated bank being
+          // restored after an intentional stopped reconfiguration, are eligible.
+          continue;
+        }
+        if (isDirty && previousRuntime?.outcomeUnknown) {
+          const runtime = { ...previousRuntime };
+          this.reconcileNativeCatalogRuntime(runtime);
+          if (runtime.acknowledged && (this.nativeCatalogSlotEditRevisions.get(key) ?? 0) === editRevision) {
+            this.nativeCatalogFxDirtySlots.delete(key);
+            this.nativeCatalogFxSubmittedEditRevisions.delete(key);
+            this.nativeCatalogFxHydratedSlots.add(key);
+            this.nativeCatalogFxUnknownParameterSlots.delete(key);
+          }
+          this.nativeCatalogFxRuntime.set(key, runtime);
+          this.emitAll();
+          // A timed-out POST is never replayed automatically. Keep the desired
+          // state pending until status uniquely identifies its callback ACK.
+          continue;
+        }
+        if (config && reportedBeforeWrite && this.nativeCatalogReadbackMatchesConfig(config, reportedBeforeWrite)) {
+          const runtime: NativeCatalogFxSlotRuntime = previousRuntime ? { ...previousRuntime } : {
+            path, slot, trackId, requestedEffectId: requestedId, acknowledgedEffectId: currentId,
+            requestedParameters: {}, acknowledgedParameters: null, requestedBypassed: config.bypassed,
+            appliedBypassed: null, prepared: null, processingFaulted: false, controlFaulted: false,
+            pendingApply: false, requestedRevision: null, appliedRevision: null,
+            acknowledged: false, pendingRestart: false, error: '',
+          };
+          runtime.requestedEffectId = requestedId;
+          runtime.requestedParameters = { ...(config.parameters ?? {}) };
+          runtime.requestedBypassed = config.bypassed;
+          runtime.requestedRevision = reportedBeforeWrite.requestedRevision ?? null;
+          runtime.baselineRequestedRevision = reportedBeforeWrite.requestedRevision ?? null;
+          runtime.outcomeUnknown = false;
+          runtime.error = '';
+          this.reconcileNativeCatalogRuntime(runtime);
+          if (runtime.acknowledged && (this.nativeCatalogSlotEditRevisions.get(key) ?? 0) === editRevision) {
+            this.nativeCatalogFxDirtySlots.delete(key);
+            this.nativeCatalogFxSubmittedEditRevisions.delete(key);
+            this.nativeCatalogFxHydratedSlots.add(key);
+          }
+          this.nativeCatalogFxRuntime.set(key, runtime);
+          this.emitAll();
+          continue;
+        }
         if (trackId && !allowTypeChange && config && previousRuntime &&
             (previousRuntime.acknowledged || previousRuntime.pendingApply) &&
             previousRuntime.requestedEffectId === requestedId && previousRuntime.requestedBypassed === config.bypassed &&
@@ -1447,9 +1614,7 @@ export class NativeAudioEngine {
         runtime.pendingRestart = false;
         runtime.pendingApply = false;
         runtime.outcomeUnknown = false;
-        runtime.baselineRequestedRevision = trackId
-          ? this.nativeCatalogSlotFromStatus(path, slot, trackId)?.requestedRevision ?? null
-          : null;
+        runtime.baselineRequestedRevision = reportedBeforeWrite?.requestedRevision ?? null;
 
         if (trackId && !this.isPerTrackCatalogAvailable(trackId)) {
           runtime.acknowledged = false;
@@ -1471,32 +1636,28 @@ export class NativeAudioEngine {
           runtime.acknowledged = false;
           runtime.pendingRestart = true;
           runtime.error = 'Effect type changes are saved and apply after restarting Native audio; the running engine rejects live slot replacement.';
-        } else if (requestedId === currentId && !requestedId && !allowTypeChange && trackId) {
-          // Clearing even an already-empty slot requires stopped audio. Read its
-          // current application state rather than issuing a live clear command.
-          runtime.requestedRevision = this.nativeCatalogSlotFromStatus(path, slot, trackId)?.requestedRevision ?? null;
-          this.reconcileNativeCatalogRuntime(runtime);
-        } else if (requestedId === currentId && !requestedId && !allowTypeChange && !trackId) {
-          runtime.acknowledgedEffectId = null;
-          runtime.acknowledgedParameters = {};
-          runtime.acknowledged = true;
-          runtime.appliedBypassed = false;
+        } else if (requestedId === currentId && !requestedId) {
+          // An empty selection is acknowledged only by a matching host snapshot;
+          // do not issue an empty-slot write during live reconnect.
+          runtime.requestedRevision = reportedBeforeWrite?.requestedRevision ?? null;
+          runtime.error = 'Native host did not provide a complete readback for the empty FX slot.';
         } else {
           try {
+            this.nativeCatalogFxSubmittedEditRevisions.set(key, editRevision);
             const status = await this.bridge.setCatalogSlot(config);
             this.applyStatus(status);
-            if (trackId) {
-              runtime.requestedRevision = this.nativeCatalogSlotFromStatus(path, slot, trackId)?.requestedRevision ?? null;
-              this.reconcileNativeCatalogRuntime(runtime);
-            } else {
-              const reported = this.nativeCatalogSlotFromStatus(path, slot, 0);
-              runtime.acknowledgedEffectId = reported?.effectId || null;
-              runtime.appliedBypassed = reported?.bypassed ?? null;
-              runtime.acknowledged = reported !== undefined && runtime.acknowledgedEffectId === requestedId &&
-                reported.bypassed === config.bypassed;
-              if (runtime.acknowledged) runtime.acknowledgedParameters = { ...(config.parameters ?? {}) };
-              runtime.error = runtime.acknowledged ? '' : 'Native returned an ACK with a different or missing selected effect/bypass.';
+            const reported = this.nativeCatalogSlotFromStatus(path, slot, trackId);
+            if (this.nativeCatalogFxUnknownParameterSlots.has(key) && reported?.parameters &&
+                reported.effectId === requestedId && reported.bypassed === config.bypassed &&
+                Object.keys(config.parameters ?? {}).length === 0 && !config.replaceParameters) {
+              // Legacy host had no parameter snapshot before this bypass-only
+              // patch. Adopt the returned authored set rather than inventing
+              // macro defaults or claiming an empty replacement.
+              runtime.requestedParameters = { ...reported.parameters };
+              this.nativeCatalogStates(path, trackId)[slotIndex]!.parameters = { ...reported.parameters };
             }
+            runtime.requestedRevision = reported?.requestedRevision ?? null;
+            this.reconcileNativeCatalogRuntime(runtime);
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             runtime.acknowledgedEffectId = currentId;
@@ -1512,7 +1673,8 @@ export class NativeAudioEngine {
               if (error.reconciledStatus) {
                 const reported = trackId
                   ? error.reconciledStatus.nativeFx?.perTrackCatalogBanks?.find((bank) => bank.trackId === trackId)?.slots.find((item) => item.slot === slot)
-                  : undefined;
+                  : path === 'input' ? error.reconciledStatus.nativeFx?.inputCatalogSlots?.find((item) => item.slot === slot)
+                    : error.reconciledStatus.nativeFx?.catalogSlots?.find((item) => item.slot === slot);
                 runtime.requestedRevision = reported?.requestedRevision ?? null;
                 statusToApplyAfterSave = error.reconciledStatus;
               } else {
@@ -1533,6 +1695,12 @@ export class NativeAudioEngine {
           runtime.pendingApply = false;
           runtime.pendingRestart = false;
           runtime.error = '';
+        }
+        if (runtime.acknowledged && (this.nativeCatalogSlotEditRevisions.get(key) ?? 0) === editRevision) {
+          this.nativeCatalogFxDirtySlots.delete(key);
+          this.nativeCatalogFxSubmittedEditRevisions.delete(key);
+          this.nativeCatalogFxHydratedSlots.add(key);
+          this.nativeCatalogFxUnknownParameterSlots.delete(key);
         }
         this.nativeCatalogFxRuntime.set(key, runtime);
         this.emitAll();
@@ -1584,6 +1752,30 @@ export class NativeAudioEngine {
     return trackId ? `${path}:${trackId}:${slot}` : `${path}:${slot}`;
   }
 
+  private nativeCatalogParametersMatch(expected: Record<string, number>, actual: Record<string, number> | undefined) {
+    if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
+    const comparable = (values: Record<string, number>) => Object.fromEntries(
+      Object.entries(values)
+        // Tempo/meter are derived from the live transport and intentionally not
+        // retained in the host's authored FX snapshot.
+        .filter(([key]) => key !== 'official_bpm' && key !== 'official_quarter_notes_per_measure')
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, value]) => [key, Math.fround(value)]),
+    );
+    return JSON.stringify(comparable(expected)) === JSON.stringify(comparable(actual));
+  }
+
+  private nativeCatalogReadbackMatchesConfig(
+    config: NativeCatalogSlotConfig,
+    reported: Pick<NativeCatalogSlotStatus, 'slot' | 'effectId' | 'bypassed'> & Partial<NativeCatalogSlotStatus>,
+  ) {
+    if (reported.effectId !== config.effectId || reported.bypassed !== config.bypassed ||
+        reported.appliedBypassed !== config.bypassed || reported.processingFaulted || reported.controlFaulted ||
+        (config.effectId !== '' && reported.prepared !== true) ||
+        !Number.isSafeInteger(reported.requestedRevision) || reported.requestedRevision !== reported.appliedRevision) return false;
+    return this.nativeCatalogParametersMatch(config.parameters ?? {}, reported.parameters);
+  }
+
   private nativeStepSlicerBridgeParameters(path: NativeFxPath, slotIndex: number, trackId = 0): Record<string, number> {
     const bpm = Transport.getInstance().bpm;
     const bank = trackId ? this.nativePerTrackStepSlicerParameters[trackId - 1]! : this.nativeStepSlicerParameters[path];
@@ -1605,7 +1797,7 @@ export class NativeAudioEngine {
     return this.nativeCatalogSlotFromStatus(path, slot, trackId)?.effectId || null;
   }
 
-  /** HTTP acceptance and callback application are separate for per-track commands. */
+  /** Confirm the complete host snapshot, including callback-applied revision and authored parameters. */
   private reconcileNativeCatalogRuntime(runtime: NativeCatalogFxSlotRuntime) {
     const reported = this.updateNativeCatalogTelemetry(runtime);
     runtime.acknowledged = false;
@@ -1619,30 +1811,39 @@ export class NativeAudioEngine {
         reported?.requestedRevision === expectedRevision && reported.appliedRevision === expectedRevision &&
         reported.effectId === runtime.requestedEffectId && reported.bypassed === runtime.requestedBypassed &&
         reported.appliedBypassed === runtime.requestedBypassed &&
-        (!runtime.requestedEffectId || reported.prepared === true);
+        (!runtime.requestedEffectId || reported.prepared === true) &&
+        !reported.processingFaulted && !reported.controlFaulted &&
+        this.nativeCatalogParametersMatch(runtime.requestedParameters, reported.parameters);
       if (!uniquelyMatchesRequest) {
         runtime.pendingApply = true;
-        runtime.error = 'Native catalog FX write outcome is still unknown; host status does not uniquely confirm this slot revision and selection.';
+        runtime.error = 'Native catalog FX write outcome is still unknown; host status does not confirm the exact slot revision, parameters and applied state.';
         return;
       }
       runtime.requestedRevision = reported?.requestedRevision ?? null;
       runtime.outcomeUnknown = false;
     }
-    if (!reported || !Number.isSafeInteger(runtime.requestedRevision) || runtime.requestedRevision! < 0) {
-      runtime.error = 'Native returned no per-track slot application acknowledgement.';
+    if (!reported || !Number.isSafeInteger(runtime.requestedRevision) || runtime.requestedRevision! < 0 ||
+        !Number.isSafeInteger(reported.requestedRevision) || !Number.isSafeInteger(reported.appliedRevision) ||
+        !reported.parameters || typeof reported.parameters !== 'object') {
+      runtime.error = 'Native host status lacks the parameter and revision readback required to confirm this FX slot.';
     } else if (runtime.controlFaulted) {
-      runtime.error = 'Native per-track slot control application failed; reconfigure the slot to retry.';
+      runtime.error = 'Native FX control application failed; reconfigure the slot to retry.';
     } else if (runtime.processingFaulted) {
-      runtime.error = 'Native per-track slot processor faulted; reconfigure the slot to retry.';
+      runtime.error = 'Native FX processor faulted; reconfigure the slot to retry.';
     } else if (runtime.acknowledgedEffectId !== runtime.requestedEffectId ||
-        reported.bypassed !== runtime.requestedBypassed || reported.requestedRevision !== runtime.requestedRevision) {
-      runtime.error = 'Native returned an ACK for a different per-track slot selection or revision.';
+        reported.bypassed !== runtime.requestedBypassed || reported.requestedRevision !== runtime.requestedRevision ||
+        !this.nativeCatalogParametersMatch(runtime.requestedParameters, reported.parameters)) {
+      runtime.error = 'Native returned an ACK for a different FX selection, bypass state, parameter snapshot or revision.';
+    } else if ((runtime.appliedRevision ?? -1) < (runtime.requestedRevision ?? 0)) {
+      runtime.pendingApply = true;
+      runtime.error = 'Native accepted the FX request but its audio callback has not acknowledged the requested revision yet.';
+    } else if (runtime.appliedRevision !== runtime.requestedRevision || runtime.appliedBypassed !== runtime.requestedBypassed) {
+      runtime.error = 'Native audio callback applied a different FX bypass state or revision.';
     } else {
-      runtime.acknowledged = runtime.appliedRevision === runtime.requestedRevision &&
-        runtime.appliedBypassed === runtime.requestedBypassed && (!runtime.requestedEffectId || runtime.prepared === true);
-      runtime.pendingApply = !runtime.acknowledged;
-      runtime.error = '';
-      if (runtime.acknowledged) runtime.acknowledgedParameters = { ...runtime.requestedParameters };
+      runtime.acknowledged = !runtime.requestedEffectId || runtime.prepared === true;
+      runtime.pendingApply = false;
+      runtime.error = runtime.acknowledged ? '' : 'Native FX processor is not prepared for the requested configuration.';
+      if (runtime.acknowledged) runtime.acknowledgedParameters = { ...reported.parameters };
     }
   }
 
@@ -1689,9 +1890,24 @@ export class NativeAudioEngine {
     this.lastError = status.lastError || '';
     if (synchronizeRhythmBpm) this.syncNativeRhythmBpm();
     for (const runtime of this.nativeCatalogFxRuntime.values()) {
-      if (!runtime.trackId) continue;
-      if (runtime.pendingApply || runtime.acknowledged) this.reconcileNativeCatalogRuntime(runtime);
+      if (runtime.pendingApply || runtime.acknowledged || runtime.outcomeUnknown) this.reconcileNativeCatalogRuntime(runtime);
       else this.updateNativeCatalogTelemetry(runtime);
+      if (runtime.acknowledged) {
+        const key = this.nativeCatalogSlotKey(runtime.path, runtime.slot, runtime.trackId);
+        const submittedRevision = this.nativeCatalogFxSubmittedEditRevisions.get(key);
+        const currentEditRevision = this.nativeCatalogSlotEditRevisions.get(key) ?? 0;
+        if (this.nativeCatalogFxDirtySlots.has(key) && submittedRevision === currentEditRevision) {
+          this.nativeCatalogFxDirtySlots.delete(key);
+          this.nativeCatalogFxSubmittedEditRevisions.delete(key);
+        }
+        if (status.nativeFx) {
+          const reported = this.nativeCatalogSlotFromStatus(runtime.path, runtime.slot, runtime.trackId);
+          if (reported?.parameters && typeof reported.parameters === 'object') {
+            this.nativeCatalogFxHydratedSlots.add(key);
+            this.nativeCatalogFxUnknownParameterSlots.delete(key);
+          }
+        }
+      }
     }
 
     for (const track of this.tracks) {

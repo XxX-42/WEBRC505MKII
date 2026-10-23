@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <string_view>
@@ -299,17 +300,16 @@ json statusToJson(const EngineStatus& status) {
             activeTrackOutputSlots.push_back(NativeTrackOutputBank::kSlotNames[slot]);
         }
     }
+    const auto catalogSlotJson = [](std::size_t slot, const auto& item) {
+        return json{{"slot", NativeEffectBank::kSlotNames[slot]}, {"effectId", item.effectId},
+            {"parameters", item.parameters}, {"bypassed", item.bypassed}, {"appliedBypassed", item.appliedBypassed},
+            {"prepared", item.prepared}, {"processingFaulted", item.processingFaulted},
+            {"controlFaulted", item.controlFaulted}, {"requestedRevision", item.requestedRevision},
+            {"appliedRevision", item.appliedRevision}};
+    };
     for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
-        catalogSlots.push_back({
-            {"slot", NativeEffectBank::kSlotNames[slot]},
-            {"effectId", status.nativeCatalogSlotEffectIds[slot]},
-            {"bypassed", status.nativeCatalogSlotBypassed[slot]},
-        });
-        inputCatalogSlots.push_back({
-            {"slot", NativeEffectBank::kSlotNames[slot]},
-            {"effectId", status.nativeInputCatalogSlotEffectIds[slot]},
-            {"bypassed", status.nativeInputCatalogSlotBypassed[slot]},
-        });
+        catalogSlots.push_back(catalogSlotJson(slot, status.nativeCatalogSlots[slot]));
+        inputCatalogSlots.push_back(catalogSlotJson(slot, status.nativeInputCatalogSlots[slot]));
         const auto& inputOscVoc = status.nativeInputOscVocSlots[slot];
         inputOscVocSlots.push_back({
             {"slot", NativeEffectBank::kSlotNames[slot]},
@@ -360,11 +360,7 @@ json statusToJson(const EngineStatus& status) {
         json midiSlots = json::array();
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
             const auto& item = status.nativePerTrackCatalogSlots[track][slot];
-            slots.push_back({{"slot", NativeEffectBank::kSlotNames[slot]}, {"effectId", item.effectId},
-                {"bypassed", item.bypassed}, {"appliedBypassed", item.appliedBypassed},
-                {"prepared", item.prepared}, {"processingFaulted", item.processingFaulted},
-                {"controlFaulted", item.controlFaulted}, {"requestedRevision", item.requestedRevision},
-                {"appliedRevision", item.appliedRevision}});
+            slots.push_back(catalogSlotJson(slot, item));
             const auto& midi = status.nativePerTrackCatalogMidiSlots[track][slot];
             midiSlots.push_back({{"slot", NativeEffectBank::kSlotNames[slot]}, {"selected", midi.selected},
                 {"effectId", midi.effectId}, {"queueCapacity", midi.queueCapacity}, {"currentFrame", midi.currentFrame},
@@ -2678,9 +2674,20 @@ int main() {
         }
     });
 
-    std::cout << "native_bridge_host listening on http://127.0.0.1:17755" << std::endl;
-    if (!server.listen("127.0.0.1", 17755)) {
-        std::cerr << "Failed to bind native_bridge_host on 127.0.0.1:17755" << std::endl;
+    unsigned int listenPort = 17755U;
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+    if (const char* configuredPort = std::getenv("WEBRC_NATIVE_BRIDGE_PORT")) {
+        const std::string_view text(configuredPort);
+        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), listenPort);
+        if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || listenPort == 0U || listenPort > 65535U) {
+            std::cerr << "WEBRC_NATIVE_BRIDGE_PORT must be an integer from 1 to 65535." << std::endl;
+            return 2;
+        }
+    }
+#endif
+    std::cout << "native_bridge_host listening on http://127.0.0.1:" << listenPort << std::endl;
+    if (!server.listen("127.0.0.1", listenPort)) {
+        std::cerr << "Failed to bind native_bridge_host on 127.0.0.1:" << listenPort << std::endl;
         return 1;
     }
 

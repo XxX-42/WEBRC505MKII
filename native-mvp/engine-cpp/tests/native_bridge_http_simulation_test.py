@@ -5,6 +5,7 @@ import json
 import http.client
 import hashlib
 import math
+import os
 import struct
 import subprocess
 import sys
@@ -14,7 +15,7 @@ import urllib.parse
 import urllib.request
 
 
-HOST_URL = "http://127.0.0.1:17755"
+HOST_URL = f"http://127.0.0.1:{os.environ.get('WEBRC_NATIVE_BRIDGE_PORT', '17755')}"
 
 
 def request(path, method="GET", body=None, headers=None):
