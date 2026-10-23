@@ -66,7 +66,7 @@ struct NativeAudioCoreTestAccess {
         (void)core.outputStage_->trackFxBank().processInPlace(audio, frames, 2U);
     }
 
-    static void prepareSelectedCatalog(NativeAudioCore& core) { assert(core.nativeInputFxBank_.prepare(48000.0)); }
+    static void prepareSelectedCatalog(NativeAudioCore& core) { assert(core.nativeInputFxBank_.prepare(48000U)); }
     static void splitInputCallback(NativeAudioCore& core, const float* input, unsigned int frames) {
         (void)core.handleInputAudioCallback(const_cast<float*>(input), frames, static_cast<RtAudioStreamStatus>(0));
     }
@@ -690,7 +690,7 @@ void testRobotRunsThroughNativeInputAndTrackSlotsAThroughD() {
     };
     std::vector<float> signal(kRobotRouteTestFrames);
     for (unsigned int frame = 0U; frame < kRobotRouteTestFrames; ++frame) {
-        signal[frame] = 0.32f * std::sin(2.0 * kPi * 220.0 * static_cast<double>(frame) / 48000.0);
+        signal[frame] = static_cast<float>(0.32f * std::sin(2.0 * kPi * 220.0 * static_cast<double>(frame) / 48000.0));
     }
     std::string error;
 

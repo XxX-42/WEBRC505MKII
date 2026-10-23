@@ -2327,7 +2327,6 @@ float measureEqualizerTone(
     }
 
     std::vector<float> tone(frames);
-    constexpr double kPi = 3.14159265358979323846;
     for (unsigned int frame = 0U; frame < frames; ++frame) {
         tone[frame] = 0.5f * static_cast<float>(std::sin(
             2.0 * kPi * static_cast<double>(frequencyHz) * static_cast<double>(frame) /
@@ -2805,17 +2804,17 @@ void testWorkingFiltersAndPhaser() {
             assert(mappedPercent && mappedQ && mappedPercent->prepare(48000U) && mappedQ->prepare(48000U));
             assert(mappedPercent->setParameter("resonance_percent", percentValue, 1U));
             assert(mappedQ->setParameter("q", qValue, 1U));
-            std::array<float, 256U> percentSignal{};
+            std::array<float, 256U> mappedPercentSignal{};
             std::array<float, 256U> qSignal{};
-            for (std::size_t frame = 0U; frame < percentSignal.size(); ++frame) {
+            for (std::size_t frame = 0U; frame < mappedPercentSignal.size(); ++frame) {
                 const float sample = 0.2f * std::sin(2.0f * static_cast<float>(kPi) * 1000.0f * static_cast<float>(frame) / 48000.0f);
-                percentSignal[frame] = sample;
+                mappedPercentSignal[frame] = sample;
                 qSignal[frame] = sample;
             }
-            (void)mappedPercent->processInPlace(percentSignal.data(), 256U, 1U);
+            (void)mappedPercent->processInPlace(mappedPercentSignal.data(), 256U, 1U);
             (void)mappedQ->processInPlace(qSignal.data(), 256U, 1U);
-            for (std::size_t frame = 0U; frame < percentSignal.size(); ++frame) {
-                assert(percentSignal[frame] == qSignal[frame]);
+            for (std::size_t frame = 0U; frame < mappedPercentSignal.size(); ++frame) {
+                assert(mappedPercentSignal[frame] == qSignal[frame]);
             }
         }
     }
@@ -3011,7 +3010,7 @@ void testTwistTrajectorySweepFeedbackMixSegmentationAndReset() {
     std::vector<float> rendered;
     rendered.reserve(static_cast<std::size_t>(primingFrames + sweepFrames));
     for (unsigned int frame = 0U; frame < primingFrames; ++frame) {
-        float sample = 0.5f * std::sin(2.0f * kPi * 330.0f * static_cast<float>(frame) / sampleRate);
+        float sample = static_cast<float>(0.5f * std::sin(2.0f * kPi * 330.0f * static_cast<float>(frame) / sampleRate));
         (void)sweep->processInPlace(&sample, 1U, 1U);
         rendered.push_back(sample);
     }
@@ -3023,7 +3022,7 @@ void testTwistTrajectorySweepFeedbackMixSegmentationAndReset() {
         std::array<float, controlQuantum> block{};
         for (unsigned int offset = 0U; offset < blockFrames; ++offset) {
             const unsigned int absoluteFrame = primingFrames + frame + offset;
-            block[offset] = 0.5f * std::sin(2.0f * kPi * 330.0f * static_cast<float>(absoluteFrame) / sampleRate);
+            block[offset] = static_cast<float>(0.5f * std::sin(2.0f * kPi * 330.0f * static_cast<float>(absoluteFrame) / sampleRate));
         }
         (void)sweep->processInPlace(block.data(), blockFrames, 1U);
         rendered.insert(rendered.end(), block.begin(), block.begin() + blockFrames);

@@ -51,10 +51,15 @@ public:
         if (!active_) activateDefaults();
         switch (control) {
         case Control::Rate: rateValue_ = value; updateRate(rampFrames); break;
-        case Control::Count:
-            stepMax_ = static_cast<unsigned int>(value);
-            step_ %= stepMax_;
+        case Control::Count: {
+            const auto count = static_cast<unsigned int>(value);
+            // The public domain already requires 1..16. Keep the divisor's
+            // nonzero invariant explicit for strict optimized MSVC builds.
+            if (count == 0U) return false;
+            stepMax_ = count;
+            step_ %= count;
             break;
+        }
         case Control::Duty: duty_.setTarget(value, rampFrames); break;
         case Control::Level: levels_[levelIndex(key)].setTarget(value, rampFrames); break;
         case Control::Attack: attack_.setTarget(value, rampFrames); break;

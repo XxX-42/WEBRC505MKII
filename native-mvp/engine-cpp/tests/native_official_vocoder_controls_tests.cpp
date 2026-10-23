@@ -108,15 +108,15 @@ void assertAudible(const Audio& a, const Audio& b) {
     assert(difference(a, b) > std::min(rms(a), rms(b)) * 0.05);
 }
 void testAllVocoderControls() {
-    assertAudible(renderVocoder({{"official_tone", -50}}), renderVocoder({{"official_tone", 50}}));
-    const auto fast = renderVocoder({{"official_attack", 0}});
-    const auto slow = renderVocoder({{"official_attack", 100}});
+    assertAudible(renderVocoder({{"official_tone", -50.0f}}), renderVocoder({{"official_tone", 50.0f}}));
+    const auto fast = renderVocoder({{"official_attack", 0.0f}});
+    const auto slow = renderVocoder({{"official_attack", 100.0f}});
     assert(rms(fast, 0U, 4000U) > rms(slow, 0U, 4000U) * 5.0);
-    assert(rms(renderVocoder({{"official_mod_sens", 50}})) >
-        rms(renderVocoder({{"official_mod_sens", -50}})) * 20.0);
-    assert(difference(renderVocoder({{"official_balance", 0}}), modulator()) == 0.0);
+    assert(rms(renderVocoder({{"official_mod_sens", 50.0f}})) >
+        rms(renderVocoder({{"official_mod_sens", -50.0f}})) * 20.0);
+    assert(difference(renderVocoder({{"official_balance", 0.0f}}), modulator()) == 0.0);
     const auto wet = renderVocoder({});
-    const auto half = renderVocoder({{"official_balance", 50}});
+    const auto half = renderVocoder({{"official_balance", 50.0f}});
     auto expected = modulator();
     for (std::size_t i = 0U; i < expected.size(); ++i) expected[i] = 0.5f * (expected[i] + wet[i]);
     assert(difference(half, expected) < 1.0e-8);
@@ -126,21 +126,21 @@ void testAllOscBotControls() {
     for (unsigned int i = 0U; i < waves.size(); ++i) waves[i] = renderBot({{"official_osc", static_cast<float>(i)}});
     for (std::size_t a = 0U; a < waves.size(); ++a)
         for (std::size_t b = a + 1U; b < waves.size(); ++b) assertAudible(waves[a], waves[b]);
-    assertAudible(renderBot({{"official_tone", -50}}), renderBot({{"official_tone", 50}}));
-    assert(rms(renderBot({{"official_attack", 0}}), 0U, 4000U) >
-        rms(renderBot({{"official_attack", 100}}), 0U, 4000U) * 5.0);
-    assert(rms(renderBot({{"official_mod_sens", 50}})) >
-        rms(renderBot({{"official_mod_sens", -50}})) * 20.0);
-    const auto note = renderBot({{"official_note", 69}});
+    assertAudible(renderBot({{"official_tone", -50.0f}}), renderBot({{"official_tone", 50.0f}}));
+    assert(rms(renderBot({{"official_attack", 0.0f}}), 0U, 4000U) >
+        rms(renderBot({{"official_attack", 100.0f}}), 0U, 4000U) * 5.0);
+    assert(rms(renderBot({{"official_mod_sens", 50.0f}})) >
+        rms(renderBot({{"official_mod_sens", -50.0f}})) * 20.0);
+    const auto note = renderBot({{"official_note", 69.0f}});
     assert(spectralPower(note, 440.0) > spectralPower(note, 261.625565) * 100.0);
     assertAudible(note, waves[0U]);
-    assert(difference(renderBot({{"official_balance", 0}}), modulator()) == 0.0);
-    const auto half = renderBot({{"official_balance", 50}});
+    assert(difference(renderBot({{"official_balance", 0.0f}}), modulator()) == 0.0);
+    const auto half = renderBot({{"official_balance", 50.0f}});
     auto expected = modulator();
     for (std::size_t i = 0U; i < expected.size(); ++i) expected[i] = 0.5f * (expected[i] + waves[0U][i]);
     assert(difference(half, expected) < 1.0e-8);
     // Legacy tempo/pattern cannot secretly override the official fixed-note mode.
-    assert(difference(renderBot({{"pattern", 7}, {"tempo", 300}}), waves[0U]) == 0.0);
+    assert(difference(renderBot({{"pattern", 7.0f}, {"tempo", 300.0f}}), waves[0U]) == 0.0);
 }
 void testAllOscVocControlsAndGates() {
     assert(rms(renderVoc({}, false)) == 0.0); // No MIDI note means no carrier.
@@ -148,22 +148,22 @@ void testAllOscVocControlsAndGates() {
     for (unsigned int i = 0U; i < waves.size(); ++i) waves[i] = renderVoc({{"official_carrier", static_cast<float>(i)}});
     for (std::size_t a = 0U; a < waves.size(); ++a)
         for (std::size_t b = a + 1U; b < waves.size(); ++b) assertAudible(waves[a], waves[b]);
-    assertAudible(renderVoc({{"official_tone", -50}}), renderVoc({{"official_tone", 50}}));
-    assert(rms(renderVoc({{"official_attack", 0}}), 0U, 4000U) >
-        rms(renderVoc({{"official_attack", 100}}), 0U, 4000U) * 10.0);
-    assert(rms(renderVoc({{"official_mod_sens", 50}})) >
-        rms(renderVoc({{"official_mod_sens", -50}})) * 20.0);
+    assertAudible(renderVoc({{"official_tone", -50.0f}}), renderVoc({{"official_tone", 50.0f}}));
+    assert(rms(renderVoc({{"official_attack", 0.0f}}), 0U, 4000U) >
+        rms(renderVoc({{"official_attack", 100.0f}}), 0U, 4000U) * 10.0);
+    assert(rms(renderVoc({{"official_mod_sens", 50.0f}})) >
+        rms(renderVoc({{"official_mod_sens", -50.0f}})) * 20.0);
     for (unsigned int octave = 0U; octave < 4U; ++octave) {
         const auto shifted = renderVoc({{"official_octave", static_cast<float>(octave)}});
         const double frequency = 261.625565 * std::exp2(static_cast<double>(octave) - 2.0);
         assert(spectralPower(shifted, frequency) > spectralPower(shifted, frequency + 30.0) * 20.0);
         if (octave != 2U) assertAudible(shifted, waves[0U]);
     }
-    const auto fastRelease = renderVoc({{"official_release", 0}}, true, 6000U);
-    const auto slowRelease = renderVoc({{"official_release", 100}}, true, 6000U);
+    const auto fastRelease = renderVoc({{"official_release", 0.0f}}, true, 6000U);
+    const auto slowRelease = renderVoc({{"official_release", 100.0f}}, true, 6000U);
     assert(rms(slowRelease, 18000U) > rms(fastRelease, 18000U) * 100.0);
-    assert(difference(renderVoc({{"official_balance", 0}}, false), modulator()) == 0.0);
-    const auto half = renderVoc({{"official_balance", 50}});
+    assert(difference(renderVoc({{"official_balance", 0.0f}}, false), modulator()) == 0.0);
+    const auto half = renderVoc({{"official_balance", 50.0f}});
     auto expected = modulator();
     for (std::size_t i = 0U; i < expected.size(); ++i) expected[i] = 0.5f * (expected[i] + waves[0U][i]);
     assert(difference(half, expected) < 1.0e-8);
@@ -206,12 +206,12 @@ void testDomainsDefaultsAndPrepareOrder() {
     assert(defaultBot.setParameter("official_tone", 0) && defaultBot.config().wetMix == 0.5f);
     auto input = modulator(), expected = modulator();
     assert(defaultBot.processMono(input.data(), input.data(), input.size()));
-    const auto defaultWet = renderBot({{"official_note", 36}});
+    const auto defaultWet = renderBot({{"official_note", 36.0f}});
     for (std::size_t i = 0U; i < expected.size(); ++i) expected[i] = 0.5f * (expected[i] + defaultWet[i]);
     assert(difference(input, expected) < 1.0e-8);
-    assert(difference(renderVocoder({{"official_tone", 12}}, true), renderVocoder({{"official_tone", 12}})) == 0.0);
-    assert(difference(renderVoc({{"official_carrier", 2}}, true, 0U, true), renderVoc({{"official_carrier", 2}})) == 0.0);
-    assert(difference(renderBot({{"official_osc", 4}}, true), renderBot({{"official_osc", 4}})) == 0.0);
+    assert(difference(renderVocoder({{"official_tone", 12.0f}}, true), renderVocoder({{"official_tone", 12.0f}})) == 0.0);
+    assert(difference(renderVoc({{"official_carrier", 2.0f}}, true, 0U, true), renderVoc({{"official_carrier", 2.0f}})) == 0.0);
+    assert(difference(renderBot({{"official_osc", 4.0f}}, true), renderBot({{"official_osc", 4.0f}})) == 0.0);
 }
 void testAllocationFreeChangesResetAndRender() {
     NativeVocoderCore vocoder;

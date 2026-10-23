@@ -149,9 +149,9 @@ void testDocumentedDefaultsAndUnknownType() {
 
 void testEveryPreampControlAndNamedProfileIsAudible() {
     const std::array<Control, 8U> minimums{{
-        {"official_gain", 0}, {"official_t_comp", -10}, {"official_bass", 0},
-        {"official_middle", 0}, {"official_treble", 0}, {"official_presence", 0},
-        {"official_mic_dis", 0}, {"official_e_level", 0}
+        {"official_gain", 0.0f}, {"official_t_comp", -10.0f}, {"official_bass", 0.0f},
+        {"official_middle", 0.0f}, {"official_treble", 0.0f}, {"official_presence", 0.0f},
+        {"official_mic_dis", 0.0f}, {"official_e_level", 0.0f}
     }};
     const std::array<float, 8U> maximums{{120, 10, 100, 100, 100, 100, 1, 100}};
     for (std::size_t index = 0U; index < minimums.size(); ++index) {
@@ -178,10 +178,10 @@ void testEveryPreampControlAndNamedProfileIsAudible() {
         assert(minimumDifference > .003);
     }
     // OFF is a true speaker+mic bypass; no microphone control can color it.
-    const auto off = render<NativePreampProcessor>({{"official_spk_type", 0}});
-    const auto offMic = render<NativePreampProcessor>({{"official_spk_type", 0}, {"official_mic_type", 3}, {"official_mic_dis", 1}, {"official_mic_pos", 10}});
+    const auto off = render<NativePreampProcessor>({{"official_spk_type", 0.0f}});
+    const auto offMic = render<NativePreampProcessor>({{"official_spk_type", 0.0f}, {"official_mic_type", 3.0f}, {"official_mic_dis", 1.0f}, {"official_mic_pos", 10.0f}});
     assert(off == offMic);
-    const auto muted = render<NativePreampProcessor>({{"official_e_level", 0}});
+    const auto muted = render<NativePreampProcessor>({{"official_e_level", 0.0f}});
     assert(rms(muted) == 0.0);
 }
 
@@ -189,9 +189,9 @@ void testEveryDynamicsTypeAndMacroIsAudible() {
     std::vector<std::vector<float>> outputs;
     for (unsigned int type = 0U; type < 19U; ++type) {
         // TYPE matters even at the documented macro default of zero.
-        outputs.push_back(render<NativeDynamicsProcessor>({{"official_type", static_cast<float>(type)}, {"official_dynamics", 0}}));
-        const auto softer = render<NativeDynamicsProcessor>({{"official_type", static_cast<float>(type)}, {"official_dynamics", -20}});
-        const auto stronger = render<NativeDynamicsProcessor>({{"official_type", static_cast<float>(type)}, {"official_dynamics", 20}});
+        outputs.push_back(render<NativeDynamicsProcessor>({{"official_type", static_cast<float>(type)}, {"official_dynamics", 0.0f}}));
+        const auto softer = render<NativeDynamicsProcessor>({{"official_type", static_cast<float>(type)}, {"official_dynamics", -20.0f}});
+        const auto stronger = render<NativeDynamicsProcessor>({{"official_type", static_cast<float>(type)}, {"official_dynamics", 20.0f}});
         assert(relativeDifference(softer, stronger) > .003);
     }
     double minimumDifference = 1.0;
@@ -262,7 +262,7 @@ int main() {
     testDocumentedDefaultsAndUnknownType();
     testEveryPreampControlAndNamedProfileIsAudible();
     testEveryDynamicsTypeAndMacroIsAudible();
-    testPartitionResetFiniteAndNoAllocation<NativePreampProcessor>({{"official_amp_type", 8}, {"official_spk_type", 8}, {"official_mic_type", 4}, {"official_gain", 120}, {"official_t_comp", 10}});
-    testPartitionResetFiniteAndNoAllocation<NativeDynamicsProcessor>({{"official_type", 18}, {"official_dynamics", -20}});
+    testPartitionResetFiniteAndNoAllocation<NativePreampProcessor>({{"official_amp_type", 8.0f}, {"official_spk_type", 8.0f}, {"official_mic_type", 4.0f}, {"official_gain", 120.0f}, {"official_t_comp", 10.0f}});
+    testPartitionResetFiniteAndNoAllocation<NativeDynamicsProcessor>({{"official_type", 18.0f}, {"official_dynamics", -20.0f}});
     std::puts("Native official PREAMP/DYNAMICS tests passed");
 }
