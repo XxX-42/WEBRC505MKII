@@ -90,9 +90,21 @@ def main():
         require(before['projectContentRevision'] == baseline and before['nativeTracks'][0]['state'] == 'Empty', before)
         code, rejected = request('/v1/native-track-fx/apply', 'POST', {'trackId': 1, 'enabled': False})
         require(code == 409, rejected)
-        code, cancelled = request_project_archive('/v1/project/import/cancel', 'POST',
-            json.dumps({'generation': generation}).encode(), 'text/plain')
-        require(code == 200 and cancelled['state'] == 'cancelled', cancelled)
+        cancel_path = '/v1/project/import/cancel'
+        cancel_body = json.dumps({'generation': generation}).encode()
+        for content_type in ('text/plainX', 'text/plainX;charset=UTF-8', 'application/json'):
+            code, rejected = request_project_archive(cancel_path, 'POST', cancel_body, content_type)
+            require(code == 415, f'cancel media type {content_type}: {code} {rejected}')
+        for invalid_body in (b'{}', b'{"generation":0}', b'{"generation":true}',
+                             b'{"generation":1,"extra":true}', b'not-json'):
+            code, rejected = request_project_archive(cancel_path, 'POST', invalid_body, 'text/plain;charset=UTF-8')
+            require(code == 400, f'cancel schema accepted: {code} {rejected}')
+        # Match the browser Fetch Content-Type exactly, then prove case/OWS and
+        # bare-token forms on the same idempotently cancelled generation.
+        for content_type in ('text/plain;charset=UTF-8', 'Text/Plain ; Charset=UTF-8', 'text/plain'):
+            code, cancelled = request_project_archive(cancel_path, 'POST', cancel_body, content_type)
+            require(code == 200 and cancelled['state'] == 'cancelled',
+                    f'cancel media type {content_type}: {code} {cancelled}')
         require(request('/v1/status')[1]['projectContentRevision'] == baseline, 'cancel mutated incumbent')
         code, result = request_project_archive(path, 'POST', body, 'application/octet-stream')
         require(code == 202, result)

@@ -1402,7 +1402,11 @@ int main() {
     });
 
     server.Post("/v1/project/import/cancel", [&engine](const httplib::Request& request, httplib::Response& response) {
-        if (normalizedHeaderValue(request.get_header_value("Content-Type")) != "text/plain") {
+        // Fetch supplies a charset parameter for string bodies. Compare only the
+        // media type token here; other routes retain their existing header rules.
+        const auto contentType = request.get_header_value("Content-Type");
+        const auto mediaType = contentType.substr(0U, contentType.find(';'));
+        if (normalizedHeaderValue(mediaType) != "text/plain") {
             response.status = 415;
             writeError(response, "Native project import cancellation requires a text/plain JSON body.");
             return;
