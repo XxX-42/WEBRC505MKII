@@ -142,6 +142,11 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         semanticMeter = {{metadata.at("semantics").at("meter")[0U].get<unsigned int>(), metadata.at("semantics").at("meter")[1U].get<unsigned int>()}};
         const auto& settings = metadata.at("extensions").at("WEBRC").at("nativeMemory");
         auto candidate = std::make_unique<NativeMemorySettings>();
+        if (settings.contains("recAction")) {
+            const auto action = settings.at("recAction").get<std::string>();
+            if (action != "REC->PLAY" && action != "REC->DUB") throw std::runtime_error("Invalid Memory REC ACTION.");
+            candidate->recordActionIncluded = true; candidate->recordActionDub = action == "REC->DUB";
+        }
         const auto& banks = settings.at("banks");
         if (!banks.is_array() || banks.size() != 7U) throw std::runtime_error("Memory requires seven FX banks.");
         for (std::size_t bank = 0U; bank < 7U; ++bank) {
@@ -257,6 +262,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         else throw std::runtime_error("Invalid Memory pitch mode.");
         json expectedFields{{"rhythm.settings", settings.at("rhythm")}, {"inputFx.bank", banks[0U]},
             {"mixer.mainLevel", levels[0U]}, {"mixer.masterLevel", levels[1U]}};
+        if (candidate->recordActionIncluded) expectedFields["record.recAction"] = settings.at("recAction");
         json trackBanks = json::array();
         for (std::size_t bank = 1U; bank < 7U; ++bank) trackBanks.push_back(banks[bank]);
         expectedFields["trackFx.banks"] = std::move(trackBanks);
@@ -704,6 +710,10 @@ json statusToJson(const EngineStatus& status) {
     return json{
         {"ok", true},
         {"mixerLevels", status.mixerLevels},
+        {"nativeRecordPlay", {{"version", 1}, {"recActionAvailable", true}, {"quantizeAvailable", false},
+            {"recAction", status.nativeRecordActionDub ? "REC->DUB" : "REC->PLAY"},
+            {"requestedRevision", status.nativeRecordActionRequestedRevision}, {"appliedRevision", status.nativeRecordActionAppliedRevision},
+            {"finishRequested", status.nativeRecordFinishRequested}, {"finishApplied", status.nativeRecordFinishApplied}, {"finishCancelled", status.nativeRecordFinishCancelled}}},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
         {"backend", backendToString(status.backend)},
@@ -1722,6 +1732,32 @@ int main() {
         writeJson(response, statusToJson(engine.getStatus()));
     });
 
+    server.Post("/v1/record/settings", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || body.size() != 1U || !body.contains("recAction") || !body.at("recAction").is_string()) {
+                response.status = 400; writeError(response, "REC settings require only recAction."); return;
+            }
+            const auto action = body.at("recAction").get<std::string>();
+            if (action != "REC->PLAY" && action != "REC->DUB") { response.status = 400; writeError(response, "Invalid REC ACTION."); return; }
+            std::string error;
+            if (!engine.setRecordAction(action == "REC->DUB", error)) { response.status = 409; writeError(response, error); return; }
+            writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Post("/v1/transport/finish-record", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || body.size() != 1U || !body.contains("trackId") || !body.at("trackId").is_number_unsigned()) {
+                response.status = 400; writeError(response, "REC completion requires trackId 1..5."); return;
+            }
+            const auto trackId = body.at("trackId").get<unsigned int>();
+            if (trackId < 1U || trackId > 5U) { response.status = 400; writeError(response, "Invalid REC completion track."); return; }
+            std::string error;
+            if (!engine.finishRecordingTrack(trackId - 1U, error)) { response.status = 409; writeError(response, error); return; }
+            writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
     server.Post("/v1/transport/stop", [&engine](const httplib::Request& request, httplib::Response& response) {
         std::string error;
         std::size_t trackIndex = 0U;

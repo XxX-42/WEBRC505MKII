@@ -47,7 +47,12 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   if (gates?.length !== 5 || gates.some((gate) => gate.requested !== gate.applied || gate.requestedRevision !== gate.appliedRevision || gate.controlFaulted)) {
     throw new Error('Wait for all five Native FX gate acknowledgements before Memory capture.');
   }
+  const record = status.nativeRecordPlay;
+  if (record && (record.requestedRevision !== record.appliedRevision || !['REC->PLAY', 'REC->DUB'].includes(record.recAction))) {
+    throw new Error('Wait for Native REC ACTION callback acknowledgement.');
+  }
   return {
+    ...(record?.recActionAvailable ? { recAction: record.recAction } : {}),
     trackFxApply: gates.map((gate) => gate.applied), mixerLevels: [...status.mixerLevels],
     banks, loopTransports: copyJson(native.loopTransports),
     rhythm: { enabled: rhythm.enabled, bpm: rhythm.bpm, kitIndex: rhythm.kitIndex, patternIndex: rhythm.patternIndex,
@@ -111,6 +116,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       }
       fields['mixer.mainLevel'] = { value: (settings.mixerLevels as Rc505Json[])[0]!, availability: 'supported' };
       fields['mixer.masterLevel'] = { value: (settings.mixerLevels as Rc505Json[])[1]!, availability: 'supported' };
+      if (settings.recAction !== undefined) fields['record.recAction'] = { value: settings.recAction, availability: 'supported' };
       fields['rhythm.settings'] = { value: settings.rhythm!, availability: 'supported' };
       fields['inputFx.bank'] = { value: (settings.banks as Rc505Json[])[0]!, availability: 'supported' };
       fields['trackFx.banks'] = { value: (settings.banks as Rc505Json[]).slice(1), availability: 'supported' };
@@ -134,6 +140,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         'trackFx.banks': (settings.banks as Rc505Json[]).slice(1),
         'mixer.mainLevel': (settings.mixerLevels as Rc505Json[])[0]!, 'mixer.masterLevel': (settings.mixerLevels as Rc505Json[])[1]!,
       };
+      if (settings.recAction !== undefined) expectedFields['record.recAction'] = settings.recAction;
       for (let track = 1; track <= 5; track += 1) {
         expectedFields[`track.${track}.fxApply`] = (settings.trackFxApply as Rc505Json[])[track - 1]!;
         expectedFields[`track.${track}.level`] = (settings.mixerLevels as Rc505Json[])[track + 1]!;

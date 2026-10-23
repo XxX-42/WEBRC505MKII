@@ -2230,6 +2230,7 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     };
     const auto makeMemory = [] {
         auto memory = std::make_unique<NativeMemorySettings>();
+        memory->recordActionIncluded = true; memory->recordActionDub = true;
         for (auto& bank : memory->banks) bank[0U].effectId = "fractional_delay";
         memory->rhythm.volume = 37U;
         memory->reverb.enabled = true;
@@ -2276,6 +2277,7 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     assert(status.nativeTrackStates[0U] == LooperState::Stopped);
     assert(status.nativeReverbEnabled && std::fabs(status.nativeReverbWetMix - 0.4f) < 1.0e-6f);
     assert(status.nativePitchEnabled && status.nativePitchSemitones == 3.0f);
+    assert(status.nativeRecordActionDub && status.nativeRecordActionRequestedRevision == status.nativeRecordActionAppliedRevision);
     for (std::size_t track = 0U; track < 5U; ++track) {
         assert(status.nativeTrackFxApply[track].requested == (track % 2U == 1U));
         assert(status.nativeTrackFxApply[track].applied == status.nativeTrackFxApply[track].requested);
@@ -2293,7 +2295,68 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
+void testNativeRecActionAtomicCompletionAndBudgetedShadow() {
+    for (const bool dub : {false, true}) {
+        NativeAudioCore core;
+        NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+        NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+        NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+        std::array<float, 128U> input{}, output{}; input.fill(0.25f);
+        std::string error;
+        assert(core.setRecordAction(dub, error));
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+        const auto action = core.getStatus();
+        assert(action.nativeRecordActionDub == dub);
+        assert(action.nativeRecordActionAppliedRevision == action.nativeRecordActionRequestedRevision);
+        assert(core.recordTrack(0U, error));
+        assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 64U) == 0);
+        assert(core.getStatus().nativeTrackStates[0U] == LooperState::Recording);
+        assert(!core.setRecordAction(!dub, error)); // Cannot invalidate the shadow contract mid-take.
+        assert(core.finishRecordingTrack(0U, error));
+        assert(!core.finishRecordingTrack(0U, error));
+        const auto accepted = core.getStatus();
+        assert(accepted.nativeRecordFinishRequested[0U] > accepted.nativeRecordFinishApplied[0U]);
+        input.fill(0.125f);
+        const auto allocations = trackedAllocations, deallocations = trackedDeallocations;
+        trackAllocations = true;
+        assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 64U) == 0);
+        trackAllocations = false;
+        assert(trackedAllocations == allocations && trackedDeallocations == deallocations);
+        const auto applied = core.getStatus();
+        assert(applied.nativeTrackStates[0U] == (dub ? LooperState::Overdubbing : LooperState::Playing));
+        assert(applied.nativeRecordFinishApplied[0U] == applied.nativeRecordFinishRequested[0U]);
+        for (const auto sample : output) assert(std::fabs(sample - (dub ? 0.375f : 0.25f)) < 1.0e-6f);
+        assert(!core.finishRecordingTrack(0U, error));
+        if (dub) {
+            assert(applied.nativeHistoryRetainedBytes == 64U * 2U * sizeof(float));
+            assert(core.toggleTrackOverdub(0U, error));
+            assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+            assert(core.stopTrack(0U, error));
+            assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+            { CallbackPump pump(core); assert(core.undoTrack(0U, error)); }
+            std::array<float, 128U> restored{}; std::size_t frames = 0U;
+            assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, restored.data(), 64U, frames));
+            assert(frames == 64U); for (const auto sample : restored) assert(sample == 0.25f);
+        }
+        NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+    }
+    NativeAudioCore full;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(full);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(full, true);
+    std::array<float, 128U> output{}; std::string error;
+    assert(full.setRecordAction(true, error));
+    assert(NativeAudioCoreTestAccess::callback(full, nullptr, output.data(), 64U) == 0);
+    NativeAudioCoreTestAccess::setHistoryRetainedBytesForBudgetTest(full, kNativeHistoryBudgetBytes);
+    assert(!full.recordTrack(0U, error));
+    assert(error.find("history budget") != std::string::npos);
+    assert(full.getStatus().nativeTrackStates[0U] == LooperState::Empty);
+    assert(NativeAudioCoreTestAccess::commandQueueSize(full) == 0U);
+    NativeAudioCoreTestAccess::setHistoryRetainedBytesForBudgetTest(full, 0U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(full, false);
+}
+
 int main() {
+    testNativeRecActionAtomicCompletionAndBudgetedShadow();
     testMixerIndependentPcmGains();
 #if defined(NATIVE_MEMORY_TESTS_ONLY)
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();

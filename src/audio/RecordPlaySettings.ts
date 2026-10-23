@@ -1,5 +1,7 @@
 export interface RecordPlaySettings {
   readonly available: boolean;
+  readonly recActionAvailable?: boolean;
+  readonly quantizeAvailable?: boolean;
   readonly reason: string;
   readonly recAction: 'REC->DUB' | 'REC->PLAY' | null;
   readonly quantize: 'OFF' | 'MEASURE' | null;

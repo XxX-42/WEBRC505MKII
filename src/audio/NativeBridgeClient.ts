@@ -171,6 +171,9 @@ export interface NativeCallbackTelemetry {
 export interface NativeStatus {
   callbackTelemetry?: NativeCallbackTelemetry;
   mixerLevels?: number[];
+  nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: false;
+    recAction: 'REC->PLAY' | 'REC->DUB'; requestedRevision: number; appliedRevision: number;
+    finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[] };
   ok: boolean;
   bridgeHealthy: boolean;
   engineRunning: boolean;
@@ -970,6 +973,36 @@ export class NativeBridgeClient {
 
   public async stopEngine(): Promise<NativeStatus> {
     return this.request<NativeStatus>('/v1/engine/stop', { method: 'POST' });
+  }
+
+  public async setRecordAction(recAction: 'REC->PLAY' | 'REC->DUB'): Promise<NativeStatus> {
+    if (recAction !== 'REC->PLAY' && recAction !== 'REC->DUB') throw new RangeError('Invalid REC ACTION');
+    let status = await this.request<NativeStatus>('/v1/record/settings', { method: 'POST', body: JSON.stringify({ recAction }) });
+    const revision = status.nativeRecordPlay?.requestedRevision;
+    if (!Number.isSafeInteger(revision)) throw new Error('Native REC ACTION acknowledgement is unavailable.');
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    for (;;) {
+      const settings = status.nativeRecordPlay;
+      if (settings?.requestedRevision === revision && settings.appliedRevision === revision && settings.recAction === recAction) return status;
+      if (Date.now() >= deadline) throw new Error('Native REC ACTION callback acknowledgement timed out; do not resend automatically.');
+      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+    }
+  }
+
+  public async finishRecordingTrack(trackId: number): Promise<NativeStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) throw new RangeError('Invalid Native REC completion track');
+    let status = await this.request<NativeStatus>('/v1/transport/finish-record', { method: 'POST', body: JSON.stringify({ trackId }) });
+    const revision = status.nativeRecordPlay?.finishRequested[trackId - 1];
+    if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native REC completion acknowledgement is unavailable.');
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    for (;;) {
+      if (status.nativeRecordPlay?.finishCancelled?.[trackId - 1] === revision) throw new Error('Native REC completion was cancelled by a runtime reset; recording state must be checked before retry.');
+      const track = status.nativeTracks?.find(track => track.trackId === trackId);
+      const expected = status.nativeRecordPlay?.recAction === 'REC->DUB' ? 'Overdubbing' : 'Playing';
+      if (status.nativeRecordPlay?.finishApplied[trackId - 1] === revision && track && (track.state === expected || track.state === 'Empty')) return status;
+      if (Date.now() >= deadline) throw new Error('Native REC completion callback acknowledgement timed out; do not resend automatically.');
+      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+    }
   }
 
   public async setMixerLevel(channel: number, percent: number): Promise<NativeStatus> {

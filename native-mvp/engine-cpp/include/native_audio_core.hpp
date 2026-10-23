@@ -140,6 +140,12 @@ struct EngineConfig {
 };
 
 struct EngineStatus {
+    bool nativeRecordActionDub = false;
+    std::uint64_t nativeRecordActionRequestedRevision = 0U;
+    std::uint64_t nativeRecordActionAppliedRevision = 0U;
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishRequested{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishApplied{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishCancelled{};
     std::array<unsigned int, 7> mixerLevels{100U, 100U, 100U, 100U, 100U, 100U, 100U};
     bool bridgeHealthy = true;
     bool engineRunning = false;
@@ -389,6 +395,8 @@ struct NativePitchConfig {
 };
 
 struct NativeMemorySettings {
+    bool recordActionDub = false;
+    bool recordActionIncluded = false;
     std::array<std::array<NativeMemoryFxSlot, 4U>, 7U> banks{};
     NativeRhythmConfig rhythm{};
     NativeReverbConfig reverb{};
@@ -485,6 +493,8 @@ public:
     bool toggleOverdub(std::string& error);
     bool clear(std::string& error);
     bool recordTrack(std::size_t trackIndex, std::string& error);
+    bool finishRecordingTrack(std::size_t trackIndex, std::string& error);
+    bool setRecordAction(bool overdub, std::string& error);
     bool stopTrack(std::size_t trackIndex, std::string& error);
     bool playTrack(std::size_t trackIndex, std::string& error);
     bool toggleTrackOverdub(std::size_t trackIndex, std::string& error);
@@ -795,6 +805,17 @@ private:
     unsigned int outputChannels_ = 2;
 
     SpscRingQueue<Command, 64> commandQueue_;
+    bool recordActionDubRequested_ = false;
+    std::uint64_t recordActionRequestedRevision_ = 0U;
+    std::atomic<bool> recordActionDubApplied_{false};
+    std::atomic<std::uint64_t> recordActionAppliedRevision_{0U};
+    std::array<std::uint64_t, kNativeTrackCount> recordFinishRequested_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordFinishApplied_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordFinishRuntimeGeneration_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordFinishCancelled_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> recordingMirrorReserved_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> recordStartPending_{};
+    std::array<std::atomic<std::size_t>, kNativeTrackCount> recordingShadowCompactFrames_{};
     enum class HistoryKind : std::uint8_t { None = 0U, Metadata, Pcm };
     struct TrackHistoryRecord {
         LoopMetadata before{};

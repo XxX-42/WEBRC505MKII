@@ -156,7 +156,8 @@ export class NativeTrackProxy {
     if (this.state === TrackState.EMPTY) {
       void this.engine.recordTrack(this.trackId);
     } else if (this.state === TrackState.RECORDING) {
-      void this.engine.stopTrack(this.trackId);
+      if (this.engine.getRecordPlaySettings().recActionAvailable) void this.engine.finishRecordingTrack(this.trackId);
+      else void this.engine.stopTrack(this.trackId);
     } else if (this.state === TrackState.STOPPED) {
       void this.engine.playTrack(this.trackId);
     } else if (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING) {

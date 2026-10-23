@@ -1065,9 +1065,21 @@ export class NativeAudioEngine {
   }
 
   public getRecordPlaySettings(): RecordPlaySettings {
-    return Object.freeze({ available: false, reason: 'Native does not expose record action or measure recording quantization', recAction: null, quantize: null, autoRecAvailable: false, bounceAvailable: false });
+    const settings = this.latestStatus?.nativeRecordPlay;
+    const available = settings?.version === 1 && settings.recActionAvailable === true &&
+      settings.requestedRevision === settings.appliedRevision && ['REC->PLAY', 'REC->DUB'].includes(settings.recAction);
+    return Object.freeze({ available, recActionAvailable: available, quantizeAvailable: false,
+      reason: available ? 'Native recording quantization is unavailable.' : 'Native REC ACTION readback is unavailable or pending.',
+      recAction: available ? settings!.recAction : null, quantize: null, autoRecAvailable: false, bounceAvailable: false });
   }
-  public setRecordPlaySettings(_patch: RecordPlaySettingsPatch): never { throw new Error(this.getRecordPlaySettings().reason); }
+  public async setRecordPlaySettings(patch: RecordPlaySettingsPatch): Promise<void> {
+    if (patch.quantize !== undefined || Object.keys(patch).some(key => key !== 'recAction')) throw new Error('Native recording quantization is unavailable.');
+    if (!this.getRecordPlaySettings().recActionAvailable) throw new Error(this.getRecordPlaySettings().reason);
+    if (patch.recAction !== undefined) await this.dispatchStatusRequest(() => this.bridge.setRecordAction(patch.recAction!));
+  }
+  public async finishRecordingTrack(trackId: number): Promise<void> {
+    await this.dispatchStatusRequest(() => this.bridge.finishRecordingTrack(trackId));
+  }
   public getMixerState(): MixerState { return mixerState(this.latestStatus?.mixerLevels); }
 
   public async setMixerLevel(channel: MixerChannel, percent: number): Promise<void> {

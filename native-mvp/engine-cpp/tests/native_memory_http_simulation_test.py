@@ -52,6 +52,7 @@ def main():
         baseline = status['projectContentRevision']
         body = envelope(status)
         malformed = [
+            lambda meta: meta['extensions']['WEBRC']['nativeMemory'].update(recAction='INVALID'),
             lambda meta: meta.update(memoryNumber=0),
             lambda meta: meta.update(memoryNumber=100),
             lambda meta: meta.update(memoryNumber=True),
@@ -78,6 +79,8 @@ def main():
                 f'malformed external Memory case {index} changed incumbent')
         body = envelope(status, mutate=lambda meta: (meta.update(name='😀' * 12),
             meta['extensions']['WEBRC'].update({'opaque': {'nested': [1, {'vendorValue': True}]}}),
+            meta['extensions']['WEBRC']['nativeMemory'].update(recAction='REC->DUB'),
+            meta['semantics']['fields'].update({'record.recAction': {'availability': 'supported', 'value': 'REC->DUB'}}),
             meta['semantics']['fields'].update({'assign.vendorField': {'availability': 'unknown', 'value': None, 'reason': 'Opaque foreign provider value.'}})))
         path = f'/v1/project/import?expectedContentRevision={baseline}'
         code, result = request_project_archive(path, 'POST', body, 'application/octet-stream')
@@ -125,6 +128,7 @@ def main():
         require(fx['outputReverbEnabled'] is True and abs(fx['outputReverbWetMix'] - .4) < 1e-5, fx)
         require(after['nativePitch']['enabled'] and after['nativePitch']['semitones'] == 3, after['nativePitch'])
         require(after['nativeRhythm']['volume'] == 37, after['nativeRhythm'])
+        require(after['nativeRecordPlay']['recAction'] == 'REC->DUB' and after['nativeRecordPlay']['requestedRevision'] == after['nativeRecordPlay']['appliedRevision'], after['nativeRecordPlay'])
         require(after['mixerLevels'] == [80, 90, 100, 110, 120, 130, 140], after['mixerLevels'])
         revision = after['projectContentRevision']
         code, rejected = request_project_archive(f'/v1/project/import?expectedContentRevision={revision}', 'POST',

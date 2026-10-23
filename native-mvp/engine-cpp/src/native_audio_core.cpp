@@ -201,6 +201,14 @@ EngineStatus NativeAudioCore::getStatus() const {
 
     const auto projectRevisionAtSnapshotStart = projectContentRevision_.load(std::memory_order_acquire);
     EngineStatus status;
+    status.nativeRecordActionDub = recordActionDubRequested_;
+    status.nativeRecordActionRequestedRevision = recordActionRequestedRevision_;
+    status.nativeRecordActionAppliedRevision = recordActionAppliedRevision_.load(std::memory_order_acquire);
+    for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
+        status.nativeRecordFinishRequested[i] = recordFinishRequested_[i];
+        status.nativeRecordFinishApplied[i] = recordFinishApplied_[i].load(std::memory_order_acquire);
+        status.nativeRecordFinishCancelled[i] = recordFinishCancelled_[i];
+    }
     for (std::size_t i = 0U; i < mixerLevels_.size(); ++i) status.mixerLevels[i] = mixerLevels_[i].load(std::memory_order_acquire);
     status.engineRunning = engineRunning_.load(std::memory_order_acquire);
     if (currentConfig_) {
@@ -602,6 +610,7 @@ bool NativeAudioCore::prepareLoopStorageLocked(
         markBusy_[i].store(false, std::memory_order_release);
         markRequestedGeneration_[i].store(0U, std::memory_order_release);
         markAppliedGeneration_[i].store(0U, std::memory_order_release);
+        recordingMirrorReserved_[i].store(false, std::memory_order_release);
         historyPcmBytes_[i].store(0U, std::memory_order_release);
         historyCanUndo_[i].store(false, std::memory_order_release);
         historyCanRedo_[i].store(false, std::memory_order_release);
@@ -849,6 +858,57 @@ bool NativeAudioCore::record(std::string& error) {
 
 bool NativeAudioCore::recordTrack(std::size_t trackIndex, std::string& error) {
     return queueTrackCommand(CommandType::Record, trackIndex, error);
+}
+
+bool NativeAudioCore::setRecordAction(bool overdub, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U) {
+        error = "Wait for pending Memory/track commands before changing REC ACTION."; return false;
+    }
+    for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
+        const auto state = static_cast<LooperState>(trackStates_[i].load(std::memory_order_acquire));
+        if (state == LooperState::Recording || state == LooperState::Overdubbing || recordStartPending_[i].load(std::memory_order_acquire) || recordingMirrorReserved_[i].load(std::memory_order_acquire)) {
+            error = "Finish recording/overdubbing before changing REC ACTION."; return false;
+        }
+    }
+    if (recordActionDubRequested_ == overdub) return true;
+    if (recordActionRequestedRevision_ >= kMaximumSafeProjectContentRevision) { error = "REC ACTION revision exhausted."; return false; }
+    const auto revision = recordActionRequestedRevision_ + 1U;
+    if (engineRunning_.load(std::memory_order_acquire)) {
+        if (!commandQueue_.push({CommandType::SetRecordAction, overdub, 0U, revision})) {
+            telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed); error = "Command queue is full."; return false;
+        }
+    } else {
+        recordActionDubApplied_.store(overdub, std::memory_order_release);
+        recordActionAppliedRevision_.store(revision, std::memory_order_release);
+    }
+    recordActionDubRequested_ = overdub; recordActionRequestedRevision_ = revision;
+    advanceProjectRevision(projectContentRevision_); error.clear(); return true;
+}
+
+bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (trackIndex >= kNativeTrackCount || !engineRunning_.load(std::memory_order_acquire) ||
+        projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle || commandQueue_.size() != 0U ||
+        static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire)) != LooperState::Recording) {
+        error = "REC completion requires a recording track and no pending track/Memory command."; return false;
+    }
+    if (recordFinishRequested_[trackIndex] != recordFinishApplied_[trackIndex].load(std::memory_order_acquire) &&
+        recordFinishCancelled_[trackIndex] != recordFinishRequested_[trackIndex]) {
+        error = "REC completion is already pending; do not resend."; return false;
+    }
+    if (recordActionDubRequested_ && !recordingMirrorReserved_[trackIndex].load(std::memory_order_acquire)) {
+        error = "REC->DUB has no reserved snapshot; recording unchanged."; return false;
+    }
+    if (recordFinishRequested_[trackIndex] >= kMaximumSafeProjectContentRevision) { error = "REC completion revision exhausted."; return false; }
+    const auto revision = recordFinishRequested_[trackIndex] + 1U;
+    if (!commandQueue_.push({CommandType::FinishRecording, recordActionDubRequested_, static_cast<std::uint8_t>(trackIndex), revision})) {
+        telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed); error = "Command queue is full."; return false;
+    }
+    recordFinishRequested_[trackIndex] = revision;
+    advanceProjectRevision(projectContentRevision_); error.clear(); return true;
 }
 
 bool NativeAudioCore::stopTrack(std::size_t trackIndex, std::string& error) {
@@ -1114,7 +1174,31 @@ bool NativeAudioCore::clearTrackMark(std::size_t trackIndex, std::uint64_t gener
 
 void NativeAudioCore::reclaimInactiveHistoryPcmLocked() noexcept {
     for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
-        if (overdubSnapshotReady_[i].load(std::memory_order_acquire) ||
+        if (!recordingMirrorReserved_[i].load(std::memory_order_acquire)) {
+            const auto frames = recordingShadowCompactFrames_[i].exchange(0U, std::memory_order_acq_rel);
+            const auto bytes = static_cast<std::uint64_t>(frames) * 2U * sizeof(float);
+            const auto owned = historyPcmBytes_[i].load(std::memory_order_acquire);
+            const auto retained = historyRetainedBytes_.load(std::memory_order_acquire);
+            if (frames != 0U && bytes < owned &&
+                (overdubSnapshotReady_[i].load(std::memory_order_acquire) || historyPcmActive_[i].load(std::memory_order_acquire)) &&
+                historyPcm_[i].size() >= frames * 2U && retained <= kNativeHistoryBudgetBytes - bytes) {
+                // Callback detached the mirror before release-publishing frames.
+                // Compact on the control thread and include temporary peak PCM
+                // in the same ledger; a failed compaction retains the full buffer.
+                historyRetainedBytes_.fetch_add(bytes, std::memory_order_acq_rel);
+                try {
+                    std::vector<float> compact(historyPcm_[i].begin(), historyPcm_[i].begin() + static_cast<std::ptrdiff_t>(frames * 2U));
+                    historyPcm_[i].swap(compact);
+                    std::vector<float>().swap(compact); // Reclaim the old full-capacity shadow before releasing its bytes.
+                    historyPcmBytes_[i].store(bytes, std::memory_order_release);
+                    historyRetainedBytes_.fetch_sub(owned, std::memory_order_acq_rel);
+                } catch (const std::exception&) {
+                    historyRetainedBytes_.fetch_sub(bytes, std::memory_order_acq_rel);
+                }
+            }
+        }
+        if (recordingMirrorReserved_[i].load(std::memory_order_acquire) ||
+            overdubSnapshotReady_[i].load(std::memory_order_acquire) ||
             historyPcmActive_[i].load(std::memory_order_acquire)) continue;
         const auto bytes = historyPcmBytes_[i].exchange(0U, std::memory_order_acq_rel);
         if (!historyPcm_[i].empty()) std::vector<float>().swap(historyPcm_[i]);
@@ -1138,12 +1222,37 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         error = "Engine is not running.";
         return false;
     }
+    const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    const bool starting = type == CommandType::Record && state == LooperState::Empty;
+    if (starting && recordStartPending_[trackIndex].load(std::memory_order_acquire)) { error = "Record start is already pending."; return false; }
+    bool reserved = false;
+    if (type == CommandType::Record && state == LooperState::Empty && recordActionDubRequested_) {
+        if (commandQueue_.size() != 0U || recordingMirrorReserved_[trackIndex].load(std::memory_order_acquire)) {
+            error = "Wait for pending recording commands."; return false;
+        }
+        const auto frames = looperForTrack(trackIndex).capacityFrames();
+        const auto bytes = static_cast<std::uint64_t>(frames) * 2U * sizeof(float);
+        const auto retained = historyRetainedBytes_.load(std::memory_order_acquire);
+        if (frames == 0U || bytes > kNativeHistoryBudgetBytes || retained > kNativeHistoryBudgetBytes - bytes) {
+            error = "REC->DUB refused: shadow PCM exceeds history budget; loops unchanged."; return false;
+        }
+        try { historyPcm_[trackIndex].assign(frames * 2U, 0.0f); }
+        catch (const std::exception&) { error = "REC->DUB shadow allocation failed; loops unchanged."; return false; }
+        historyPcmBytes_[trackIndex].store(bytes, std::memory_order_release);
+        historyRetainedBytes_.fetch_add(bytes, std::memory_order_acq_rel);
+        recordingMirrorReserved_[trackIndex].store(true, std::memory_order_release); reserved = true;
+    }
+    if (starting) recordStartPending_[trackIndex].store(true, std::memory_order_release);
     if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex)})) {
+        if (starting) recordStartPending_[trackIndex].store(false, std::memory_order_release);
         telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
+        if (reserved) {
+            recordingMirrorReserved_[trackIndex].store(false, std::memory_order_release);
+            reclaimInactiveHistoryPcmLocked();
+        }
         error = "Command queue is full.";
         return false;
     }
-    const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
     if (type == CommandType::Clear || (type == CommandType::Record && state == LooperState::Empty)) {
         invalidateTrackMarkLocked(trackIndex);
         if (type == CommandType::Record) {
@@ -1197,13 +1306,35 @@ bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
 }
 
 void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexcept {
+    if (command.type == CommandType::SetRecordAction) {
+        recordActionDubApplied_.store(command.boolValue, std::memory_order_release);
+        recordActionAppliedRevision_.store(command.revision, std::memory_order_release); return;
+    }
     if (command.trackIndex >= kNativeTrackCount) return;
     const std::size_t index = command.trackIndex;
     auto& track = looperForTrack(index);
     const LoopMetadata before = track.metadata();
     track.applyCommand(command);
     const LoopMetadata after = track.metadata();
+    if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording &&
+        recordingMirrorReserved_[index].load(std::memory_order_acquire)) {
+        track.setRecordingMirror(historyPcm_[index].data(), historyPcm_[index].size() / 2U);
+    }
+    if (command.type == CommandType::FinishRecording && before.state == LooperState::Recording && after.state != LooperState::Recording) {
+        recordingHistoryPending_[index] = false;
+        if (after.state == LooperState::Overdubbing) {
+            pendingOverdubBefore_[index] = after; pendingOverdubBefore_[index].state = LooperState::Playing;
+            overdubSnapshotFrames_[index].store(after.finalizedFrames, std::memory_order_release);
+            overdubSnapshotReady_[index].store(true, std::memory_order_release);
+            recordingShadowCompactFrames_[index].store(after.finalizedFrames, std::memory_order_release);
+        }
+        recordingMirrorReserved_[index].store(false, std::memory_order_release);
+        recordFinishRuntimeGeneration_[index] = command.revision;
+    } else if ((command.type == CommandType::StopRecordOrPlayback || command.type == CommandType::Clear) && before.state == LooperState::Recording) {
+        recordingMirrorReserved_[index].store(false, std::memory_order_release);
+    }
     const bool changesContent =
+        (command.type == CommandType::FinishRecording && before.state == LooperState::Recording && after.state != LooperState::Recording) ||
         (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording) ||
         (command.type == CommandType::StopRecordOrPlayback &&
             ((before.state == LooperState::Recording && after.state != LooperState::Recording) ||
@@ -1249,6 +1380,8 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
         historyPcmActive_[index].store(false, std::memory_order_release);
         historyCanUndo_[index].store(false, std::memory_order_release);
         historyCanRedo_[index].store(false, std::memory_order_release);
+    } else if (command.type == CommandType::FinishRecording && before.state == LooperState::Recording && after.state == LooperState::Playing) {
+        publish(HistoryKind::Metadata, LoopMetadata{LooperState::Empty, 0U, 0U, 0U}, after, 0U);
     } else if (command.type == CommandType::StopRecordOrPlayback && before.state == LooperState::Recording &&
                after.state == LooperState::Stopped && recordingHistoryPending_[index]) {
         recordingHistoryPending_[index] = false;
@@ -1379,7 +1512,7 @@ bool NativeAudioCore::restoreTrackHistory(std::size_t trackIndex, bool redo, std
         historyPcmActive_[trackIndex].store(false, std::memory_order_release);
     }
     if (history.kind == HistoryKind::Pcm) {
-        if (history.pcmFrames == 0U || historyPcm_[trackIndex].size() != history.pcmFrames * 2U ||
+        if (history.pcmFrames == 0U || historyPcm_[trackIndex].size() < history.pcmFrames * 2U ||
             !track.exchangeFinalizedStereoSamples(historyPcm_[trackIndex].data(), history.pcmFrames)) {
             error = "Native PCM history no longer matches the finalized track; undo or redo was refused.";
             historyFailure_[trackIndex].store(NativeHistoryFailure::SnapshotUnavailable, std::memory_order_release);
@@ -2885,6 +3018,9 @@ bool NativeAudioCore::beginProjectArchiveImport(
         // Candidate preparation never touches an incumbent processor. The same
         // objects retain the old graph after the callback swap, until its ACK.
         try {
+            if (memory->recordActionIncluded && recordActionAppliedRevision_.load(std::memory_order_acquire) >= kMaximumSafeProjectContentRevision) {
+                error = "Memory REC ACTION revision exhausted."; return false;
+            }
             if (std::any_of(memory->mixerLevels.begin(), memory->mixerLevels.end(), [](unsigned int value) { return value > 200U; })) {
                 error = "Memory mixer levels must be 0..200."; return false;
             }
@@ -3061,6 +3197,10 @@ void NativeAudioCore::finalizeProjectImportLocked() {
                     variants[slot] = variant == memory.banks[bank][slot].parameters.end() ? 0U : static_cast<unsigned int>(variant->second);
                     nativeCatalogAuthoredParameters_[bank][slot].swap(memory.banks[bank][slot].parameters);
                 }
+            }
+            if (memory.recordActionIncluded) {
+                recordActionDubRequested_ = memory.recordActionDub;
+                recordActionRequestedRevision_ = recordActionAppliedRevision_.load(std::memory_order_acquire);
             }
             nativeRhythmConfig_ = memory.rhythm;
             nativeMemoryLoopTransportSettings_ = memory.loopTransports;
@@ -3547,9 +3687,20 @@ void NativeAudioCore::closeStreamLocked() noexcept {
 }
 
 void NativeAudioCore::resetRuntimeStateLocked() noexcept {
+    recordActionDubApplied_.store(recordActionDubRequested_, std::memory_order_release);
+    recordActionAppliedRevision_.store(recordActionRequestedRevision_, std::memory_order_release);
     telemetryRuntimeResetCount_.fetch_add(1U,std::memory_order_relaxed);
     for (auto& status : nativeVocoderCarrierStatuses_) status.store(NativeVocoderCarrierStatus::NotRequested, std::memory_order_release);
     commandQueue_.clear();
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        recordStartPending_[track].store(false, std::memory_order_release);
+        if (recordFinishApplied_[track].load(std::memory_order_acquire) != recordFinishRequested_[track]) recordFinishCancelled_[track] = recordFinishRequested_[track];
+        if (recordingMirrorReserved_[track].load(std::memory_order_acquire) && looperForTrack(track).state() != LooperState::Recording) {
+            looperForTrack(track).setRecordingMirror(nullptr, 0U);
+            recordingMirrorReserved_[track].store(false, std::memory_order_release);
+        }
+    }
+    reclaimInactiveHistoryPcmLocked();
     outputStageCommandQueue_.clear();
     nativeReverbCommandQueue_.clear();
     nativeFractionalDelayCommandQueue_.clear();
@@ -3976,6 +4127,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         );
         stats.inputPeak = std::max(stats.inputPeak, trackStats.inputPeak);
         trackStates_[trackIndex].store(static_cast<int>(trackStats.state), std::memory_order_release);
+        recordStartPending_[trackIndex].store(false, std::memory_order_release);
         trackProgress_[trackIndex].store(trackStats.loopProgress, std::memory_order_release);
         trackLoopTransportStatus_[trackIndex].store(nativeOfficialSourcePitchConflict_[trackIndex]
             ? LoopTransportStatus::UnsupportedPitchProcessing : trackStats.loopTransportStatus, std::memory_order_release);
@@ -4062,6 +4214,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     // playback routing. Queue acceptance alone must never light a gate LED.
     if (playbackBufferAvailable && frames > 0U) {
         for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            recordFinishApplied_[track].store(recordFinishRuntimeGeneration_[track], std::memory_order_release);
             nativeTrackFxApplyApplied_[track].store(nativeTrackFxApplyRuntime_[track], std::memory_order_release);
             nativeTrackFxApplyAppliedRevision_[track].store(nativeTrackFxApplyRuntimeRevision_[track], std::memory_order_release);
         }
@@ -4222,6 +4375,10 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
 
     if (transaction->memory) {
         const auto& memory = *transaction->memory;
+        if (memory.recordActionIncluded) {
+            recordActionDubApplied_.store(memory.recordActionDub, std::memory_order_release);
+            recordActionAppliedRevision_.fetch_add(1U, std::memory_order_acq_rel);
+        }
         nativeInputFxBank_.swapPrepared(transaction->candidateFxBanks[0U]);
         outputStage_.swap(transaction->candidateOutputStage);
         nativePitchProcessor_.swap(transaction->candidatePitch);
@@ -4349,7 +4506,7 @@ int NativeAudioCore::handleAudioCallback(
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {
-            if (command.type == CommandType::Record || command.type == CommandType::StopRecordOrPlayback ||
+            if (command.type == CommandType::Record || command.type == CommandType::FinishRecording || command.type == CommandType::StopRecordOrPlayback ||
                 command.type == CommandType::Play || command.type == CommandType::Clear) {
                 nativePitchProcessor_->reset();
                 nativePolyPitchProcessor_->reset();
@@ -4430,7 +4587,7 @@ int NativeAudioCore::handleInputAudioCallback(
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {
-            if (command.type == CommandType::Record || command.type == CommandType::StopRecordOrPlayback ||
+            if (command.type == CommandType::Record || command.type == CommandType::FinishRecording || command.type == CommandType::StopRecordOrPlayback ||
                 command.type == CommandType::Play || command.type == CommandType::Clear) {
                 nativePitchProcessor_->reset();
                 nativePolyPitchProcessor_->reset();

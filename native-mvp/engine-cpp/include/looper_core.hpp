@@ -22,6 +22,8 @@ enum class CommandType : std::uint8_t {
     ToggleOverdub,
     Clear,
     SetMonitoring,
+    FinishRecording,
+    SetRecordAction,
 };
 
 // Source-aware effects that read the stored loop before tracks are summed.
@@ -64,6 +66,7 @@ struct Command {
     CommandType type;
     bool boolValue = false;
     std::uint8_t trackIndex = 0U;
+    std::uint64_t revision = 0U;
 };
 
 struct ProcessStats {
@@ -111,6 +114,7 @@ public:
     // record until a later successful prepare.
     [[nodiscard]] bool prepare(unsigned int sampleRate, std::size_t maxLoopSeconds = 300, unsigned int channels = 1);
     void applyCommand(const Command& command);
+    void setRecordingMirror(float* samples, std::size_t frames) noexcept { recordingMirror_ = samples; recordingMirrorFrames_ = frames; }
     // Called from the callback owner (or while audio is stopped). Invalid
     // ranges and enum values are rejected without changing the active config.
     [[nodiscard]] bool setLoopTransportConfig(const LoopTransportConfig& config) noexcept;
@@ -213,6 +217,8 @@ private:
     std::size_t capacityFrames_;
     unsigned int channels_;
     std::vector<float> loopBuffer_;
+    float* recordingMirror_ = nullptr;
+    std::size_t recordingMirrorFrames_ = 0U;
     LooperState state_;
     bool monitoringEnabled_;
     std::size_t recordedFrames_;

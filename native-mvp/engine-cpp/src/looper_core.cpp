@@ -133,11 +133,30 @@ void LooperCore::applyCommand(const Command& command) {
             updateBeatShiftOffsets();
             playhead_ = 0;
             state_ = finalizedFrames_ > 0 ? LooperState::Stopped : LooperState::Empty;
+            recordingMirror_ = nullptr; recordingMirrorFrames_ = 0U;
         } else if (state_ == LooperState::Playing || state_ == LooperState::Overdubbing) {
             playhead_ = 0;
             state_ = LooperState::Stopped;
         }
         break;
+    case CommandType::FinishRecording:
+        if (state_ == LooperState::Recording) {
+            finalizedFrames_ = recordedFrames_;
+            playhead_ = 0U; vinylReadPosition_ = 0.0;
+            updateBeatShiftOffsets();
+            state_ = finalizedFrames_ == 0U ? LooperState::Empty : LooperState::Stopped;
+            if (finalizedFrames_ != 0U) {
+                // One callback command owns the entire transition. Reuse the
+                // normal source-transport start preparation without publishing
+                // an intermediate Stopped state or accepting another command.
+                applyCommand({CommandType::Play});
+                if (command.boolValue) state_ = LooperState::Overdubbing;
+            }
+            recordingMirror_ = nullptr; recordingMirrorFrames_ = 0U;
+        }
+        break;
+    case CommandType::SetRecordAction:
+        break; // Owned by NativeAudioCore, not an individual looper.
     case CommandType::Play:
         if (state_ == LooperState::Stopped && finalizedFrames_ > 0) {
             playhead_ = 0;
@@ -366,6 +385,10 @@ ProcessStats LooperCore::process(
                 loopBuffer_[recordOffset] = inputLeft;
                 if (channels_ == 2U) {
                     loopBuffer_[recordOffset + 1U] = inputRight;
+                }
+                if (recordingMirror_ != nullptr && recordedFrames_ < recordingMirrorFrames_) {
+                    recordingMirror_[recordedFrames_ * 2U] = inputLeft;
+                    recordingMirror_[recordedFrames_ * 2U + 1U] = inputRight;
                 }
                 ++recordedFrames_;
             }
@@ -656,6 +679,7 @@ bool LooperCore::copyFinalizedStereoLoopSnapshot(
 }
 
 void LooperCore::clearLoop() {
+    recordingMirror_ = nullptr; recordingMirrorFrames_ = 0U;
     state_ = LooperState::Empty;
     recordedFrames_ = 0;
     finalizedFrames_ = 0;

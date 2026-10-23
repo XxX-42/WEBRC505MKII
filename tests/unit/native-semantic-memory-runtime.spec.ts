@@ -103,6 +103,20 @@ describe('Native semantic Memory runtime', () => {
     expect(h.bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
   });
 
+  it('captures and independently validates acknowledged Native REC ACTION in the atomic envelope', async () => {
+    const h = fixture();
+    h.hostStatus().nativeRecordPlay = { version: 1, recActionAvailable: true, quantizeAvailable: false,
+      recAction: 'REC->DUB', requestedRevision: 3, appliedRevision: 3,
+      finishRequested: [0, 0, 0, 0, 0], finishApplied: [0, 0, 0, 0, 0] };
+    const document = await h.runtime.capture();
+    expect((document.extensions.WEBRC.nativeMemory as any).recAction).toBe('REC->DUB');
+    expect(document.semantics.fields['record.recAction']).toEqual({ availability: 'supported', value: 'REC->DUB' });
+    document.semantics.fields['record.recAction']!.value = 'REC->PLAY';
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/inconsistent/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+    h.hostStatus().nativeRecordPlay!.appliedRevision = 2;
+    await expect(h.runtime.capture()).rejects.toThrow(/REC ACTION/);
+  });
   it('captures real banks/gates/output state and marks TrackProxy placeholders unavailable', async () => {
     const { runtime } = fixture();
     const document = await runtime.capture();
