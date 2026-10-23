@@ -104,6 +104,7 @@ struct EngineConfig {
 };
 
 struct EngineStatus {
+    std::array<unsigned int, 7> mixerLevels{100U, 100U, 100U, 100U, 100U, 100U, 100U};
     bool bridgeHealthy = true;
     bool engineRunning = false;
     Backend backend = Backend::Wasapi;
@@ -416,6 +417,8 @@ public:
     DeviceCatalog getDeviceCatalog() const;
     std::optional<EngineConfig> getCurrentConfig() const;
     EngineStatus getStatus() const;
+    // Channels 0 MAIN, 1 MASTER, 2..6 track playback. Software buses only.
+    bool setMixerLevel(unsigned int channel, unsigned int percent, std::string& error);
 
     bool applyConfig(const EngineConfig& config, std::string& error);
     bool start(std::string& error);
@@ -824,6 +827,7 @@ private:
     std::array<unsigned int, NativeEffectBank::kSlotCount> nativeTrackOfficialVariants_{};
     std::array<std::array<unsigned int, NativeEffectBank::kSlotCount>, kNativeTrackCount> nativePerTrackOfficialVariants_{};
     std::array<bool, NativeEffectBank::kSlotCount> nativeInputCatalogSlotBypassed_{};
+    std::array<std::atomic<unsigned int>, 7> mixerLevels_{{100U, 100U, 100U, 100U, 100U, 100U, 100U}};
     NativeRhythmConfig nativeRhythmConfig_{};
     std::uint64_t callbackFrameCursor_ = 0;
     std::atomic<std::uint64_t> publishedCallbackFrameCursor_{0U};

@@ -155,6 +155,7 @@ export function isNativeRhythmConfig(config: NativeRhythmConfig): boolean {
 }
 
 export interface NativeStatus {
+  mixerLevels?: number[];
   ok: boolean;
   bridgeHealthy: boolean;
   engineRunning: boolean;
@@ -947,6 +948,11 @@ export class NativeBridgeClient {
 
   public async stopEngine(): Promise<NativeStatus> {
     return this.request<NativeStatus>('/v1/engine/stop', { method: 'POST' });
+  }
+
+  public async setMixerLevel(channel: number, percent: number): Promise<NativeStatus> {
+    if (!Number.isInteger(channel) || channel < 0 || channel > 6 || !Number.isInteger(percent) || percent < 0 || percent > 200) throw new RangeError("Invalid mixer channel or level");
+    return this.request<NativeStatus>('/v1/mixer/level', { method: 'POST', body: JSON.stringify({ channel, percent }) });
   }
 
   public async record(): Promise<NativeStatus> {

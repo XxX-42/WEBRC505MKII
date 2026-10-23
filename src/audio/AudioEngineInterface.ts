@@ -1,3 +1,4 @@
+import type { RecordPlaySettings } from './RecordPlaySettings';
 export interface InputCaptureSession {
     readonly node: AudioWorkletNode;
     readonly trackIndex: number;
@@ -9,6 +10,7 @@ export interface InputCaptureSession {
 }
 
 export interface IAudioEngine {
+    getRecordPlaySettings?(): RecordPlaySettings;
     context: AudioContext;
     trackMixNode: GainNode;
     roundTripLatency: number;

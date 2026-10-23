@@ -1,5 +1,7 @@
+import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
 import { isOfficialFxSlotAllowed } from './fx/official/parameters';
 import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOfficialEffect, officialParameterDomain, encodeOfficialValue } from './fx/official/parameters';
+import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
 import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
@@ -1019,6 +1021,18 @@ export class NativeAudioEngine {
       && current.masterLoopLengthSamples === expected.masterLoopLengthSamples
       && current.timeSignature[0] === expected.timeSignatureNumerator
       && current.timeSignature[1] === expected.timeSignatureDenominator;
+  }
+
+  public getRecordPlaySettings(): RecordPlaySettings {
+    return Object.freeze({ available: false, reason: 'Native does not expose record action or measure recording quantization', recAction: null, quantize: null, autoRecAvailable: false, bounceAvailable: false });
+  }
+  public setRecordPlaySettings(_patch: RecordPlaySettingsPatch): never { throw new Error(this.getRecordPlaySettings().reason); }
+  public getMixerState(): MixerState { return mixerState(this.latestStatus?.mixerLevels); }
+
+  public async setMixerLevel(channel: MixerChannel, percent: number): Promise<void> {
+    assertMixerLevel(percent);
+    if (!this.getMixerState().available) throw new Error(this.getMixerState().reason);
+    await this.dispatchStatusRequest(() => this.bridge.setMixerLevel(mixerChannelIndex(channel), percent));
   }
 
   public async recordTrack(trackId = 1) {
@@ -2057,6 +2071,7 @@ export class NativeAudioEngine {
 
   private applyStatus(status: NativeStatus, synchronizeRhythmBpm = true) {
     this.latestStatus = status;
+    if (mixerState(status.mixerLevels).available) this.tracks.forEach((track, index) => { track.track.playLevel = status.mixerLevels![index + 2]!; });
     this.nativeOscVocFrameObservedAtMs = performance.now();
     this.bridgeAvailable = true;
     this.engineRunning = status.engineRunning;

@@ -1,3 +1,5 @@
+import { assertRecordPlaySettings, type RecordPlaySettings, type RecordPlaySettingsPatch } from './RecordPlaySettings';
+import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { translateBrowserOfficialSourceParameters } from './fx/dsp/OfficialBrowserSourceParameters';
 import { isOfficialFxSlotAllowed } from './fx/official/parameters';
 import { BROWSER_OFFICIAL_PARAMETER_KEYS } from './fx/official/browserBindings';
@@ -205,6 +207,25 @@ export class BrowserAudioEngine implements IAudioEngine {
     public outputFxChain: FXChain;
     public trackMixNode: GainNode;
     private dryTrackMixGainNode: GainNode;
+    private recordPlaySettings = { recAction: 'REC->PLAY' as const as 'REC->PLAY' | 'REC->DUB', quantize: 'MEASURE' as const as 'MEASURE' | 'OFF' };
+    public getRecordPlaySettings(): RecordPlaySettings {
+        return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: false, bounceAvailable: false });
+    }
+    public setRecordPlaySettings(patch: RecordPlaySettingsPatch): void {
+        assertRecordPlaySettings(patch);
+        if (this.tracks.some(track => track.state === 'RECORDING' || track.state === 'REC_FINISHING' || track.state === 'REC_STANDBY')) throw new Error('Finish or cancel recording before changing record/play settings');
+        this.recordPlaySettings = { recAction: patch.recAction ?? this.recordPlaySettings.recAction, quantize: patch.quantize ?? this.recordPlaySettings.quantize };
+    }
+    public getMixerState(): MixerState {
+        return mixerState([Math.round(this.mainGainNode.gain.value * 100), Math.round(this.masterGainNode.gain.value * 100), ...this.tracks.map(track => track.track.playLevel)]);
+    }
+    public setMixerLevel(channel: MixerChannel, percent: number): void {
+        assertMixerLevel(percent);
+        const index = mixerChannelIndex(channel);
+        if (index < 2) (index === 0 ? this.mainGainNode : this.masterGainNode).gain.setValueAtTime(percent / 100, this.context.currentTime);
+        else { const track = this.tracks[index - 2]!; track.track.playLevel = percent; track.updateSettings(); }
+    }
+    public mainGainNode: GainNode;
     public masterGainNode: GainNode;
     /** Shared Track FX wet sum; each track gates its post-fader signal into this bus. */
     public sharedTrackFxInputBus: GainNode;
@@ -287,13 +308,14 @@ export class BrowserAudioEngine implements IAudioEngine {
         // Create monitor gain node (for software monitoring)
         this.monitorGainNode = this.context.createGain();
         this.monitorGainNode.gain.value = 0; // MUTED by default (SAFETY!)
-        this.monitorGainNode.connect(this.context.destination);
+
 
         // Initialize FX Chains & Mixing
         this.inputFxChain = new FXChain(this.context);
         this.outputFxChain = new FXChain(this.context);
         this.trackMixNode = this.context.createGain();
         this.dryTrackMixGainNode = this.context.createGain();
+        this.mainGainNode = this.context.createGain();
         this.masterGainNode = this.context.createGain();
         this.sharedTrackFxInputBus = this.context.createGain();
         this.dryTrackFxMixBus = this.context.createGain();
@@ -306,13 +328,15 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.outputFxChain.output.connect(this.sharedTrackFxJoinNode);
         this.dryTrackFxMixBus.connect(this.dryTrackMixGainNode);
         this.dryTrackMixGainNode.connect(this.sharedTrackFxJoinNode);
-        this.sharedTrackFxJoinNode.connect(this.masterGainNode);
+        this.sharedTrackFxJoinNode.connect(this.mainGainNode);
+        this.mainGainNode.connect(this.masterGainNode);
+        this.monitorGainNode.connect(this.masterGainNode);
         this.masterGainNode.connect(this.context.destination);
         this.inputFxChain.output.connect(this.monitorGainNode);
 
         // Initialize Rhythm Engine
         this.rhythmEngine = new RhythmEngine(this.context, () => this.emitStatus());
-        this.rhythmEngine.connect(this.masterGainNode);
+        this.rhythmEngine.connect(this.mainGainNode);
 
         // Initialize 5 tracks
         for (let i = 0; i < 5; i++) {
@@ -1017,11 +1041,11 @@ export class BrowserAudioEngine implements IAudioEngine {
         } else {
             // The constructor's direct connection is retained until a DSP node
             // is requested, so ordinary Browser audio is unchanged by default.
-            output.disconnect(this.masterGainNode);
+            output.disconnect(this.mainGainNode);
         }
 
         output.connect(node);
-        node.connect(this.masterGainNode);
+        node.connect(this.mainGainNode);
         this.outputDspFxNode = node;
         this.outputDspAlgorithmValue = algorithm;
         this.outputDspParametersValue = { ...parameters };

@@ -184,7 +184,8 @@ export class NativeTrackProxy {
   }
 
   public updateSettings() {
-    return;
+    if (!this.transportEnabled || !this.engine.getMixerState().available) return;
+    return this.engine.setMixerLevel(this.trackId as 1 | 2 | 3 | 4 | 5, this.track.playLevel);
   }
 
   public syncNativeState(state: NativeLooperState, progress: number) {

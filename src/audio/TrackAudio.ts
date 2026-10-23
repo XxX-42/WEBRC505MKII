@@ -1878,8 +1878,8 @@ export class TrackAudio {
         // ========================================
 
         // Check if there's a master track
-        if (!this.transport.hasMasterTrack()) {
-            // NO MASTER TRACK - This will become the master
+        if (this.engine.getRecordPlaySettings?.().quantize === 'OFF' || !this.transport.hasMasterTrack()) {
+            // No quantization grid requested, or this take establishes the master
             console.log(`Track ${this.track.id}: No master track - starting immediately`);
             this.startRecording();
 
@@ -1927,8 +1927,8 @@ export class TrackAudio {
         // ========================================
 
         // Check if there's a master track
-        if (!this.transport.hasMasterTrack()) {
-            // NO MASTER TRACK - This IS the master, stop immediately
+        if (this.engine.getRecordPlaySettings?.().quantize === 'OFF' || !this.transport.hasMasterTrack()) {
+            // No quantization grid requested, or this take establishes the master
             console.log(`Track ${this.track.id}: Master track - stopping immediately`);
             this.stopRecording();
             return;
@@ -2887,7 +2887,7 @@ export class TrackAudio {
         let finalBufferLength = lengthSamples;
 
         const becomesMaster = !this.transport.hasMasterTrack();
-        if (!becomesMaster) {
+        if (!becomesMaster && this.engine.getRecordPlaySettings?.().quantize !== 'OFF') {
             const masterLength = this.transport.masterLoopLengthSamples;
             if (masterLength > 0 && Number.isFinite(masterLength)) {
                 const ratio = Math.max(1, Math.round(lengthSamples / masterLength));
@@ -2916,6 +2916,10 @@ export class TrackAudio {
             this.syncTransportState();
         }
 
+        if (this.resumeAfterRecording && this.engine.getRecordPlaySettings?.().recAction === 'REC->DUB' && this.state === TrackState.PLAYING) {
+            // Let recording finalization release its capture session before reserving overdub.
+            queueMicrotask(() => { if (!this.disposed && !this.pendingClear && this.state === TrackState.PLAYING) this.triggerRecord(); });
+        }
         this.resumeAfterRecording = true;
     }
 

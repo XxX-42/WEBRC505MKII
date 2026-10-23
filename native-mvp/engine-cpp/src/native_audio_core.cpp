@@ -109,6 +109,12 @@ std::optional<EngineConfig> NativeAudioCore::getCurrentConfig() const {
     return currentConfig_;
 }
 
+bool NativeAudioCore::setMixerLevel(unsigned int channel, unsigned int percent, std::string& error) {
+    if (channel >= mixerLevels_.size() || percent > 200U) { error = "Mixer channel must be 0..6 and level 0..200."; return false; }
+    mixerLevels_[channel].store(percent, std::memory_order_release);
+    return true;
+}
+
 EngineStatus NativeAudioCore::getStatus() const {
     auto& mutableCore = const_cast<NativeAudioCore&>(*this);
     std::lock_guard<std::mutex> producerLock(mutableCore.commandProducerMutex_);
@@ -120,6 +126,7 @@ EngineStatus NativeAudioCore::getStatus() const {
 
     const auto projectRevisionAtSnapshotStart = projectContentRevision_.load(std::memory_order_acquire);
     EngineStatus status;
+    for (std::size_t i = 0U; i < mixerLevels_.size(); ++i) status.mixerLevels[i] = mixerLevels_[i].load(std::memory_order_acquire);
     status.engineRunning = engineRunning_.load(std::memory_order_acquire);
     if (currentConfig_) {
         status.backend = currentConfig_->backend;
@@ -3563,6 +3570,8 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     }
     if (pitchRouteDecision != nullptr) *pitchRouteDecision = pitchRoute;
 
+    std::array<float, 7> mixerGain{};
+    for (std::size_t i = 0U; i < mixerGain.size(); ++i) mixerGain[i] = mixerLevels_[i].load(std::memory_order_acquire) / 100.0f;
     const std::size_t sampleCount = static_cast<std::size_t>(frames) * outputChannels_;
     std::fill_n(outputInterleaved, sampleCount, 0.0f);
     if (playbackBufferAvailable) std::fill_n(playbackBus, sampleCount, 0.0f);
@@ -3615,6 +3624,9 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         if (playbackBufferAvailable && localBank.hasEffects()) {
             localBank.processInPlaceNoPeak(nativeTrackPlaybackScratch_.data(), frames, outputChannels_);
         }
+        if (playbackBufferAvailable) {
+            for (std::size_t sample = 0U; sample < sampleCount; ++sample) nativeTrackPlaybackScratch_[sample] *= mixerGain[trackIndex + 2U];
+        }
         float trackPeak = 0.0f;
         double trackSquareSum = 0.0;
         if (playbackBufferAvailable) {
@@ -3653,16 +3665,23 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
                 : polyProcessor->processInterleaved(playbackBus, frames, outputChannels_);
             if (!processed) pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
         }
-        for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += playbackBus[sample];
+        for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += playbackBus[sample] * mixerGain[0U];
     }
     publishSharedCatalogProcessingFaults(1U, playbackBufferAvailable);
     if (pitchRouteDecision != nullptr) *pitchRouteDecision = pitchRoute;
 
-    nativeRhythmEngine_.processAdditive(outputInterleaved, frames, outputChannels_, callbackFrameCursor_);
+    std::fill_n(nativeTrackMixScratch_.data(), sampleCount, 0.0f);
+    nativeRhythmEngine_.processAdditive(nativeTrackMixScratch_.data(), frames, outputChannels_, callbackFrameCursor_);
+    for (std::size_t sample = 0U; sample < sampleCount; ++sample) outputInterleaved[sample] += nativeTrackMixScratch_[sample] * mixerGain[0U];
     for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
         outputInterleaved[sample] = std::max(-1.0f, std::min(1.0f, outputInterleaved[sample]));
     }
     stats.outputPeak = outputStage_.processInPlace(outputInterleaved, frames, outputChannels_);
+    stats.outputPeak = 0.0f;
+    for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
+        outputInterleaved[sample] *= mixerGain[1U];
+        stats.outputPeak = std::max(stats.outputPeak, std::fabs(outputInterleaved[sample]));
+    }
     // Publish only after this block has rendered both record selection and
     // playback routing. Queue acceptance alone must never light a gate LED.
     if (playbackBufferAvailable && frames > 0U) {

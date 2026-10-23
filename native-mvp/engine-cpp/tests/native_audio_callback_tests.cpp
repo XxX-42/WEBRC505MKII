@@ -2156,7 +2156,36 @@ void testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
+void testMixerIndependentPcmGains() {
+    webrc::native::NativeAudioCore core;
+    webrc::native::NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    std::vector<float> output(256U * 2U);
+    webrc::native::NativeAudioCoreTestAccess::recordLoop(core, 0U, std::vector<float>(2048U, 0.2f), 256U, output.data());
+    std::string error;
+    const auto peak = [&]() {
+        webrc::native::NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 256U);
+        float result = 0.0f;
+        for (float sample : output) result = std::max(result, std::fabs(sample));
+        return result;
+    };
+    const float baseline = peak();
+    assert(baseline > 0.1f);
+    assert(core.setMixerLevel(2U, 50U, error));
+    assert(std::fabs(peak() - baseline * 0.5f) < 0.001f);
+    assert(core.setMixerLevel(0U, 50U, error));
+    assert(std::fabs(peak() - baseline * 0.25f) < 0.001f);
+    assert(core.setMixerLevel(1U, 50U, error));
+    assert(std::fabs(peak() - baseline * 0.125f) < 0.001f);
+    assert(core.getStatus().mixerLevels[0U] == 50U);
+    assert(core.getStatus().mixerLevels[1U] == 50U);
+    assert(core.setMixerLevel(3U, 0U, error));
+    assert(std::fabs(peak() - baseline * 0.125f) < 0.001f);
+    assert(!core.setMixerLevel(7U, 100U, error));
+    assert(!core.setMixerLevel(0U, 201U, error));
+}
+
 int main() {
+    testMixerIndependentPcmGains();
 #if defined(NATIVE_TRACK_MARK_TESTS_ONLY)
     testNativeIndependentMarkRequiresCallbackReleaseAckAndClearKeepsHistory();
     testNativeMarkStatusReportsBudgetFailureWithoutApplyingSnapshot();

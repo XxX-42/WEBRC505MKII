@@ -1168,3 +1168,37 @@ describe('Browser PCM history asynchronous barriers', () => {
         expect(channelsOf(track)).toEqual([[1, 2, 3, 4], [11, 12, 13, 14]]);
     });
 });
+
+
+describe('record/play runtime settings', () => {
+    beforeEach(() => { Transport.getInstance().resetMasterTrack(); });
+    afterEach(() => { Transport.getInstance().stop(); Transport.getInstance().resetMasterTrack(); });
+    it('OFF keeps captured slave PCM length while MEASURE aligns its completed length', () => {
+        const harness = createHarness();
+        const [master, slave] = harness.tracks;
+        record(master!, [[0.1, 0.2, 0.3, 0.4]]);
+        (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->PLAY'});
+        record(slave!, [[0.5, 0.6, 0.7]]);
+        expect(bufferOf(slave!)!.length).toBe(3);
+        (harness.engine as any).getRecordPlaySettings = () => ({quantize:'MEASURE', recAction:'REC->PLAY'});
+        record(slave!, [[0.5, 0.6, 0.7]]);
+        expect(bufferOf(slave!)!.length).toBe(4);
+        Object.defineProperty(harness.context, 'state', { value: 'closed' });
+        harness.tracks.forEach(track => track.dispose());
+    });
+    it('REC DUB enters the existing overdub provider after recorded PCM publication', async () => {
+        const harness = createHarness(undefined, 1);
+        const track = harness.tracks[0]!;
+        (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->DUB'});
+        const startOverdub = vi.fn();
+        (track as any).startOverdub = startOverdub;
+        vi.spyOn(track, 'play').mockImplementation(() => { track.state = TrackState.PLAYING; });
+        (track as any).processRecordedBuffers([Float32Array.of(0.1,0.2,0.3,0.4)]);
+        await settle();
+        expect(bufferOf(track)!.length).toBe(4);
+        expect(track.state).toBe(TrackState.OVERDUBBING);
+        expect(startOverdub).toHaveBeenCalledOnce();
+        Object.defineProperty(harness.context, 'state', { value: 'closed' });
+        track.dispose();
+    });
+});

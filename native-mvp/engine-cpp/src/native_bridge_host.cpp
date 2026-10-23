@@ -397,6 +397,7 @@ json statusToJson(const EngineStatus& status) {
     }
     return json{
         {"ok", true},
+        {"mixerLevels", status.mixerLevels},
         {"bridgeHealthy", status.bridgeHealthy},
         {"engineRunning", status.engineRunning},
         {"backend", backendToString(status.backend)},
@@ -2836,6 +2837,22 @@ int main() {
             response.status = 400;
             writeError(response, error.what());
         }
+    });
+
+    server.Post("/v1/mixer/level", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || !body.contains("channel") || !body.contains("percent") ||
+                !body["channel"].is_number_unsigned() || !body["percent"].is_number_unsigned() ||
+                body["channel"].get<std::uint64_t>() > 6U || body["percent"].get<std::uint64_t>() > 200U) {
+                response.status = 400; writeError(response, "Expected channel 0..6 and percent 0..200."); return;
+            }
+            std::string error;
+            if (!engine.setMixerLevel(body["channel"].get<unsigned int>(), body["percent"].get<unsigned int>(), error)) {
+                response.status = 409; writeError(response, error); return;
+            }
+            writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
 
     unsigned int listenPort = 17755U;
