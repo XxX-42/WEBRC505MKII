@@ -10,6 +10,7 @@ const DEFAULT_CHUNK_SIZE = 16_384;
 const DEFAULT_CHUNK_POOL_SIZE = 3;
 const DEFAULT_PREROLL_FRAMES = 8_192;
 const DEFAULT_MAX_RECORDING_BYTES = 384 * 1024 * 1024;
+const MAX_TRACK_FX_APPLY_COMMANDS = 32;
 const BYTES_PER_SAMPLE = Float32Array.BYTES_PER_ELEMENT;
 const EMPTY_CHANNELS = [];
 
@@ -29,9 +30,36 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     // timeline generation boundary and is never directly returned as a loop.
     this.preRollLeft = new Float32Array(this.preRollFrames);
     this.preRollRight = new Float32Array(this.preRollFrames);
+    this.preRollRawLeft = new Float32Array(this.preRollFrames);
+    this.preRollRawRight = new Float32Array(this.preRollFrames);
+    this.preRollGateMask = new Uint8Array(this.preRollFrames);
     this.preRollEndFrame = 0;
     this.preRollValidFrames = 0;
     this.preRollChannelCount = 0;
+    const initialTrackFxApply = Array.isArray(config.initialTrackFxApply) ? config.initialTrackFxApply : [];
+    this.trackFxApplyEnabled = new Uint8Array(this.trackCount);
+    this.trackFxApplyAppliedRevision = new Float64Array(this.trackCount);
+    for (let track = 0; track < this.trackCount; track += 1) {
+      this.trackFxApplyEnabled[track] = initialTrackFxApply[track] === false ? 0 : 1;
+    }
+    this.trackFxApplyQueueTrack = new Uint8Array(MAX_TRACK_FX_APPLY_COMMANDS);
+    this.trackFxApplyQueueEnabled = new Uint8Array(MAX_TRACK_FX_APPLY_COMMANDS);
+    this.trackFxApplyQueueRevision = new Float64Array(MAX_TRACK_FX_APPLY_COMMANDS);
+    this.trackFxApplyQueueFrame = new Float64Array(MAX_TRACK_FX_APPLY_COMMANDS);
+    this.trackFxApplyQueueLength = 0;
+    this.trackFxApplyAckMessages = new Array(MAX_TRACK_FX_APPLY_COMMANDS);
+    for (let index = 0; index < MAX_TRACK_FX_APPLY_COMMANDS; index += 1) {
+      this.trackFxApplyAckMessages[index] = {
+        type: 'TRACK_FX_APPLY_ACK', route: 'input', ok: false,
+        trackIndex: 0, revision: 0, enabled: false, requestedFrame: 0,
+        appliedFrame: 0, reason: '',
+      };
+    }
+    this.trackFxApplyImmediateAck = {
+      type: 'TRACK_FX_APPLY_ACK', route: 'input', ok: false,
+      trackIndex: 0, revision: 0, enabled: false, requestedFrame: 0,
+      appliedFrame: 0, reason: '',
+    };
     this.lastFrameEnd = null;
     this.diagnosticFrameStart = 0;
     this.diagnosticPreviousFrameEnd = -1;
@@ -148,6 +176,10 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       this.setInputReady(message);
       return;
     }
+    if (message.type === 'SET_TRACK_FX_APPLY') {
+      this.queueTrackFxApply(message);
+      return;
+    }
     const trackIndex = message.trackIndex;
     if (!Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex >= this.slots.length) return;
     const slot = this.slots[trackIndex];
@@ -161,6 +193,76 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       if (slot.sessionId === message.sessionId) this.abortCapture(slot, 'capture-aborted');
     } else if (message.type === 'RECYCLE_CHUNK') {
       this.recycleChunk(slot, message);
+    }
+  }
+
+  postTrackFxApplyFailure(message, reason) {
+    const ack = this.trackFxApplyImmediateAck;
+    ack.trackIndex = Number.isInteger(message?.trackIndex) ? message.trackIndex : -1;
+    ack.revision = Number.isSafeInteger(message?.revision) ? message.revision : 0;
+    ack.enabled = message?.enabled === true;
+    ack.requestedFrame = Number.isSafeInteger(message?.applyFrame) ? message.applyFrame : 0;
+    ack.appliedFrame = typeof currentFrame === 'number' && Number.isSafeInteger(currentFrame)
+      ? currentFrame : this.fallbackCurrentFrame;
+    ack.reason = reason;
+    this.port.postMessage(ack);
+  }
+
+  queueTrackFxApply(message) {
+    const trackIndex = message.trackIndex;
+    if (!Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex >= this.trackCount
+      || typeof message.enabled !== 'boolean'
+      || !Number.isSafeInteger(message.revision) || message.revision <= this.trackFxApplyAppliedRevision[trackIndex]
+      || !Number.isSafeInteger(message.applyFrame) || message.applyFrame < 0) {
+      this.postTrackFxApplyFailure(message, 'invalid-track-fx-apply-command');
+      return;
+    }
+    if (this.trackFxApplyQueueLength >= MAX_TRACK_FX_APPLY_COMMANDS) {
+      this.postTrackFxApplyFailure(message, 'track-fx-apply-queue-full');
+      return;
+    }
+    let insertAt = this.trackFxApplyQueueLength;
+    while (insertAt > 0 && this.trackFxApplyQueueFrame[insertAt - 1] > message.applyFrame) {
+      this.trackFxApplyQueueTrack[insertAt] = this.trackFxApplyQueueTrack[insertAt - 1];
+      this.trackFxApplyQueueEnabled[insertAt] = this.trackFxApplyQueueEnabled[insertAt - 1];
+      this.trackFxApplyQueueRevision[insertAt] = this.trackFxApplyQueueRevision[insertAt - 1];
+      this.trackFxApplyQueueFrame[insertAt] = this.trackFxApplyQueueFrame[insertAt - 1];
+      insertAt -= 1;
+    }
+    this.trackFxApplyQueueTrack[insertAt] = trackIndex;
+    this.trackFxApplyQueueEnabled[insertAt] = message.enabled ? 1 : 0;
+    this.trackFxApplyQueueRevision[insertAt] = message.revision;
+    this.trackFxApplyQueueFrame[insertAt] = message.applyFrame;
+    this.trackFxApplyQueueLength += 1;
+  }
+
+  applyTrackFxApplyChanges(frame) {
+    while (this.trackFxApplyQueueLength > 0 && this.trackFxApplyQueueFrame[0] <= frame) {
+      const trackIndex = this.trackFxApplyQueueTrack[0];
+      const revision = this.trackFxApplyQueueRevision[0];
+      const enabled = this.trackFxApplyQueueEnabled[0] === 1;
+      const requestedFrame = this.trackFxApplyQueueFrame[0];
+      const ok = requestedFrame === frame;
+      if (ok) {
+        this.trackFxApplyEnabled[trackIndex] = enabled ? 1 : 0;
+        this.trackFxApplyAppliedRevision[trackIndex] = revision;
+      }
+      const ack = this.trackFxApplyAckMessages[0];
+      ack.trackIndex = trackIndex;
+      ack.revision = revision;
+      ack.enabled = enabled;
+      ack.requestedFrame = requestedFrame;
+      ack.appliedFrame = frame;
+      ack.ok = ok;
+      ack.reason = ok ? '' : 'track-fx-apply-frame-missed';
+      this.port.postMessage(ack);
+      for (let index = 1; index < this.trackFxApplyQueueLength; index += 1) {
+        this.trackFxApplyQueueTrack[index - 1] = this.trackFxApplyQueueTrack[index];
+        this.trackFxApplyQueueEnabled[index - 1] = this.trackFxApplyQueueEnabled[index];
+        this.trackFxApplyQueueRevision[index - 1] = this.trackFxApplyQueueRevision[index];
+        this.trackFxApplyQueueFrame[index - 1] = this.trackFxApplyQueueFrame[index];
+      }
+      this.trackFxApplyQueueLength -= 1;
     }
   }
 
@@ -332,7 +434,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       }
       if (!this.beginCapture(slot, this.preRollChannelCount)) return;
       for (let frame = slot.requestedStartFrame; frame < stopFrame; frame += 1) {
-        this.recordFrame(slot, this.readPreRoll(frame, 0), this.readPreRoll(frame, 1));
+        this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex), this.readPreRoll(frame, 1, slot.trackIndex));
       }
       this.completeCapture(slot, stopFrame - slot.requestedStartFrame);
       return;
@@ -344,7 +446,9 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
 
   beginCapture(slot, inputChannelCount) {
     if (slot.state !== 'pending') return false;
-    slot.channelCount = Math.max(1, Math.min(2, inputChannelCount));
+    // Both worklet ports are configured stereo. Mono devices are upmixed by
+    // the Web Audio connection before reaching this fixed two-channel tap.
+    slot.channelCount = 2;
     const byteFrameLimit = Math.floor(slot.maxRecordingBytes / BYTES_PER_SAMPLE / slot.channelCount);
     slot.maxFrames = slot.requestedMaxRecordingFrames === null
       ? byteFrameLimit : Math.min(byteFrameLimit, slot.requestedMaxRecordingFrames);
@@ -476,9 +580,11 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     return true;
   }
 
-  readPreRoll(frame, channel) {
+  readPreRoll(frame, channel, trackIndex) {
     const index = frame % this.preRollFrames;
-    return channel === 0 ? this.preRollLeft[index] : this.preRollRight[index];
+    const processed = (this.preRollGateMask[index] & (1 << trackIndex)) !== 0;
+    if (processed) return channel === 0 ? this.preRollLeft[index] : this.preRollRight[index];
+    return channel === 0 ? this.preRollRawLeft[index] : this.preRollRawRight[index];
   }
 
   backfillPending(slot, frameStart, inputChannelCount) {
@@ -498,7 +604,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     if (!channelCount || !this.beginCapture(slot, channelCount)) return;
     const backfillEnd = this.preRollEndFrame < frameStart ? this.preRollEndFrame : frameStart;
     for (let frame = slot.requestedStartFrame; frame < backfillEnd; frame += 1) {
-      this.recordFrame(slot, this.readPreRoll(frame, 0), this.readPreRoll(frame, 1));
+      this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex), this.readPreRoll(frame, 1, slot.trackIndex));
     }
   }
 
@@ -552,10 +658,17 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.state = 'idle';
   }
 
-  storePreRoll(frame, left, right) {
+  storePreRoll(frame, rawLeft, rawRight, processedLeft, processedRight) {
     const index = frame % this.preRollFrames;
-    this.preRollLeft[index] = left;
-    this.preRollRight[index] = right;
+    this.preRollRawLeft[index] = rawLeft;
+    this.preRollRawRight[index] = rawRight;
+    this.preRollLeft[index] = processedLeft;
+    this.preRollRight[index] = processedRight;
+    let mask = 0;
+    for (let track = 0; track < this.trackCount; track += 1) {
+      if (this.trackFxApplyEnabled[track] === 1) mask |= 1 << track;
+    }
+    this.preRollGateMask[index] = mask;
   }
 
   failActiveSessions(reason) {
@@ -566,9 +679,12 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs) {
-    const inputChannels = inputs[0] || EMPTY_CHANNELS;
-    const inputLeft = inputChannels[0] || null;
-    const inputRight = inputChannels[1] || null;
+    const rawChannels = inputs[0] || EMPTY_CHANNELS;
+    const processedChannels = inputs[1] || EMPTY_CHANNELS;
+    const rawLeft = rawChannels[0] || null;
+    const rawRight = rawChannels[1] || rawLeft;
+    const processedLeft = processedChannels[0] || null;
+    const processedRight = processedChannels[1] || processedLeft;
     const outputChannels = outputs[0] || EMPTY_CHANNELS;
     let frames = 0;
     for (let channel = 0; channel < outputChannels.length; channel += 1) {
@@ -585,8 +701,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     this.diagnosticFrameStart = frameStart;
     this.diagnosticPreviousFrameEnd = this.lastFrameEnd === null ? -1 : this.lastFrameEnd;
     this.diagnosticPreRollEndFrame = this.preRollEndFrame;
-    const inputChannelCount = this.inputReady && inputLeft ? Math.min(2, inputChannels.length) : 0;
-    if (inputChannelCount < 1) {
+    const inputChannelCount = this.inputReady && rawLeft && processedLeft ? 2 : 0;
+    if (inputChannelCount !== 2) {
       if (this.inputReady) this.failActiveSessions('input-frame-unavailable');
       this.invalidateCaptureReadiness('input-frame-unavailable', frameStart);
       this.resetPreRoll();
@@ -637,9 +753,12 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       this.backfillPending(this.slots[slotIndex], frameStart + firstNewOffset, inputChannelCount);
     }
     for (let offset = firstNewOffset; offset < frames; offset += 1) {
-      const left = offset < inputLeft.length ? inputLeft[offset] : 0;
-      const right = inputRight && offset < inputRight.length ? inputRight[offset] : left;
+      const rawSampleLeft = offset < rawLeft.length ? rawLeft[offset] : 0;
+      const rawSampleRight = rawRight && offset < rawRight.length ? rawRight[offset] : rawSampleLeft;
+      const processedSampleLeft = offset < processedLeft.length ? processedLeft[offset] : 0;
+      const processedSampleRight = processedRight && offset < processedRight.length ? processedRight[offset] : processedSampleLeft;
       const absoluteFrame = frameStart + offset;
+      this.applyTrackFxApplyChanges(absoluteFrame);
       for (let slotIndex = 0; slotIndex < this.slots.length; slotIndex += 1) {
         const slot = this.slots[slotIndex];
         if (slot.state === 'pending' && absoluteFrame >= slot.requestedStartFrame) {
@@ -647,10 +766,12 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
         }
         if (slot.state === 'recording' && absoluteFrame >= slot.requestedStartFrame
           && (!slot.stopRequested || absoluteFrame < slot.stopFrame)) {
-          this.recordFrame(slot, left, right);
+          const processed = this.trackFxApplyEnabled[slot.trackIndex] === 1;
+          this.recordFrame(slot, processed ? processedSampleLeft : rawSampleLeft,
+            processed ? processedSampleRight : rawSampleRight);
         }
       }
-      this.storePreRoll(absoluteFrame, left, right);
+      this.storePreRoll(absoluteFrame, rawSampleLeft, rawSampleRight, processedSampleLeft, processedSampleRight);
     }
     this.preRollEndFrame = frameEnd;
     this.preRollValidFrames = Math.min(this.preRollFrames, this.preRollValidFrames + frames - firstNewOffset);
@@ -672,7 +793,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
           } else {
             this.beginCapture(slot, inputChannelCount);
             for (let frame = slot.requestedStartFrame; frame < slot.stopFrame; frame += 1) {
-              this.recordFrame(slot, this.readPreRoll(frame, 0), this.readPreRoll(frame, 1));
+              this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex), this.readPreRoll(frame, 1, slot.trackIndex));
             }
             this.completeCapture(slot, slot.stopFrame - slot.requestedStartFrame);
           }

@@ -42,9 +42,15 @@ function createCapture(options: Record<string, number> = {}) {
     },
   });
   processor.port.receive({ type: 'INPUT_READY', ready: true, generation: 1 });
-  const process = (left: number[], right?: number[], frameStart?: number) => {
-    const leftInput = Float32Array.from(left);
-    const inputs = right === undefined ? [[leftInput]] : [[leftInput, Float32Array.from(right)]];
+  const process = (left: number[], right?: number[], frameStart?: number,
+    processedLeftValues: number[] = left, processedRightValues?: number[]) => {
+    const rawLeft = Float32Array.from(left);
+    const rawChannels = right === undefined ? [rawLeft] : [rawLeft, Float32Array.from(right)];
+    const processedLeft = Float32Array.from(processedLeftValues);
+    const defaultProcessedRight = processedLeftValues === left && right !== undefined
+      ? right : processedLeftValues;
+    const processedChannels = [processedLeft, Float32Array.from(processedRightValues ?? defaultProcessedRight)];
+    const inputs = [rawChannels, processedChannels];
     const outputs = [[new Float32Array(left.length), new Float32Array(left.length)]];
     const runtimeGlobal = globalThis as typeof globalThis & { currentFrame?: number };
     const hadCurrentFrame = Object.prototype.hasOwnProperty.call(runtimeGlobal, 'currentFrame');
@@ -108,6 +114,32 @@ describe('Browser shared input capture worklet', () => {
       oldestAvailableFrame: 0, latestAvailableFrame: 8,
       preRollValidFrames: 8, requiredPreRollFrames: 8,
     });
+  });
+
+  it('switches one recording from processed to raw exactly at the acknowledged frame', () => {
+    const capture = createCapture({ chunkSize: 16, preRollFrames: 16 });
+    capture.process([10, 11, 12, 13], [20, 21, 22, 23], 100,
+      [1, 2, 3, 4], [-1, -2, -3, -4]);
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 99, inputGeneration: 1,
+      startFrame: 100, maxRecordingBytes: 256,
+    });
+    capture.processor.port.receive({
+      type: 'SET_TRACK_FX_APPLY', trackIndex: 0, enabled: false, revision: 1, applyFrame: 106,
+    });
+    capture.process([14, 15, 16, 17], [24, 25, 26, 27], 104,
+      [5, 6, 7, 8], [-5, -6, -7, -8]);
+    capture.process([18, 19, 20, 21], [28, 29, 30, 31], 108,
+      [9, 10, 11, 12], [-9, -10, -11, -12]);
+    capture.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 99, stopFrame: 112 });
+
+    const chunk = capture.messages('RECORD_CHUNK').find((message: any) => message.sessionId === 99);
+    expect(Array.from(chunk.channels[0].subarray(0, chunk.validFrames))).toEqual([1, 2, 3, 4, 5, 6, 16, 17, 18, 19, 20, 21]);
+    expect(Array.from(chunk.channels[1].subarray(0, chunk.validFrames))).toEqual([-1, -2, -3, -4, -5, -6, 26, 27, 28, 29, 30, 31]);
+    expect(capture.messages('TRACK_FX_APPLY_ACK')).toContainEqual(expect.objectContaining({
+      route: 'input', trackIndex: 0, revision: 1, enabled: false, requestedFrame: 106,
+      appliedFrame: 106, ok: true,
+    }));
   });
 
   it('publishes readiness only after contiguous pre-roll and invalidates it across a forward gap', () => {

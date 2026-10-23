@@ -356,6 +356,13 @@ export class TrackAudio {
     private playbackRevision = 0;
     private gainNode: GainNode;
     private panNode: StereoPannerNode;
+    private sharedTrackFxWetGain: GainNode | null = null;
+    private sharedTrackFxDryGain: GainNode | null = null;
+    private sharedTrackFxMeterSplit: ChannelSplitterNode | null = null;
+    private sharedTrackFxMeterLeft: AnalyserNode | null = null;
+    private sharedTrackFxMeterRight: AnalyserNode | null = null;
+    private sharedTrackFxMeterSink: GainNode | null = null;
+    private readonly sharedTrackFxMeterSamples = [new Float32Array(256), new Float32Array(256)] as const;
     public fxChain: FXChain;
     /** Playback-only pre-strip bus. Never includes live recording-monitor input. */
     public readonly playbackSourceOutput: GainNode;
@@ -1020,6 +1027,102 @@ export class TrackAudio {
         output.connect(this.gainNode);
     }
 
+    /** Routes the post-fader loop signal into the shared wet or dry playback sum. */
+    public installSharedTrackFxRouting(wetBus: AudioNode, dryBus: AudioNode, initiallyEnabled = true): void {
+        if (this.disposed) throw new Error(`Track ${this.track.id} has been disposed.`);
+        this.sharedTrackFxWetGain?.disconnect();
+        this.sharedTrackFxDryGain?.disconnect();
+        this.sharedTrackFxMeterSplit?.disconnect();
+        this.sharedTrackFxMeterLeft?.disconnect();
+        this.sharedTrackFxMeterRight?.disconnect();
+        this.sharedTrackFxMeterSink?.disconnect();
+        this.panNode.disconnect();
+
+        const context = this.engine.context;
+        const wetGain = context.createGain();
+        const dryGain = context.createGain();
+        wetGain.gain.value = initiallyEnabled ? 1 : 0;
+        dryGain.gain.value = initiallyEnabled ? 0 : 1;
+        this.panNode.connect(wetGain);
+        this.panNode.connect(dryGain);
+        wetGain.connect(wetBus);
+        dryGain.connect(dryBus);
+        this.sharedTrackFxWetGain = wetGain;
+        this.sharedTrackFxDryGain = dryGain;
+
+        // Probe each post-fader stereo channel independently. The analyser
+        // branch is muted at the destination and does not sit in the audio path.
+        const splitter = context.createChannelSplitter(2);
+        const leftAnalyser = context.createAnalyser();
+        const rightAnalyser = context.createAnalyser();
+        const sink = context.createGain();
+        leftAnalyser.fftSize = 256;
+        rightAnalyser.fftSize = 256;
+        leftAnalyser.smoothingTimeConstant = 0;
+        rightAnalyser.smoothingTimeConstant = 0;
+        leftAnalyser.channelCount = 1;
+        rightAnalyser.channelCount = 1;
+        leftAnalyser.channelCountMode = 'explicit';
+        rightAnalyser.channelCountMode = 'explicit';
+        sink.gain.value = 0;
+        this.panNode.connect(splitter);
+        splitter.connect(leftAnalyser, 0);
+        splitter.connect(rightAnalyser, 1);
+        leftAnalyser.connect(sink);
+        rightAnalyser.connect(sink);
+        sink.connect(context.destination);
+        this.sharedTrackFxMeterSplit = splitter;
+        this.sharedTrackFxMeterLeft = leftAnalyser;
+        this.sharedTrackFxMeterRight = rightAnalyser;
+        this.sharedTrackFxMeterSink = sink;
+    }
+
+    public setSharedTrackFxApply(enabled: boolean, atTime = this.engine.context.currentTime): boolean {
+        const wetGain = this.sharedTrackFxWetGain;
+        const dryGain = this.sharedTrackFxDryGain;
+        if (!wetGain || !dryGain || typeof enabled !== 'boolean' || !Number.isFinite(atTime)) return false;
+        try {
+            wetGain.gain.setValueAtTime(enabled ? 1 : 0, atTime);
+            dryGain.gain.setValueAtTime(enabled ? 0 : 1, atTime);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /** Replace the startup gain fallback with the acknowledged render-thread selector. */
+    public installSharedTrackFxRouter(router: AudioWorkletNode, wetBus: AudioNode, dryBus: AudioNode): void {
+        if (this.disposed) throw new Error(`Track ${this.track.id} has been disposed.`);
+        this.sharedTrackFxWetGain?.disconnect();
+        this.sharedTrackFxDryGain?.disconnect();
+        this.sharedTrackFxWetGain = null;
+        this.sharedTrackFxDryGain = null;
+        this.panNode.disconnect();
+        this.panNode.connect(router, 0, this.trackIndex);
+        router.connect(wetBus, this.trackIndex * 2, 0);
+        router.connect(dryBus, (this.trackIndex * 2) + 1, 0);
+        if (this.sharedTrackFxMeterSplit) this.panNode.connect(this.sharedTrackFxMeterSplit);
+    }
+
+    public getPostFaderPreSharedTrackFxMeter(): { peak: number; rms: number } {
+        const left = this.sharedTrackFxMeterLeft;
+        const right = this.sharedTrackFxMeterRight;
+        if (!left || !right) return { peak: 0, rms: 0 };
+        const leftSamples = this.sharedTrackFxMeterSamples[0];
+        const rightSamples = this.sharedTrackFxMeterSamples[1];
+        left.getFloatTimeDomainData(leftSamples);
+        right.getFloatTimeDomainData(rightSamples);
+        let peak = 0;
+        let squareSum = 0;
+        for (let index = 0; index < leftSamples.length; index += 1) {
+            const leftSample = leftSamples[index]!;
+            const rightSample = rightSamples[index]!;
+            peak = Math.max(peak, Math.abs(leftSample), Math.abs(rightSample));
+            squareSum += leftSample * leftSample + rightSample * rightSample;
+        }
+        return { peak, rms: Math.sqrt(squareSum / (leftSamples.length * 2)) };
+    }
+
     public get disabledReason(): string {
         return '';
     }
@@ -1594,6 +1697,12 @@ export class TrackAudio {
         this.overdubCaptureBuffers = null;
         this.clearRecordingChunkStorage();
         this.playbackSourceOutput.disconnect();
+        this.sharedTrackFxWetGain?.disconnect();
+        this.sharedTrackFxDryGain?.disconnect();
+        this.sharedTrackFxMeterSplit?.disconnect();
+        this.sharedTrackFxMeterLeft?.disconnect();
+        this.sharedTrackFxMeterRight?.disconnect();
+        this.sharedTrackFxMeterSink?.disconnect();
         this.fxChain.dispose();
         try { this.gainNode.disconnect(); } catch { /* already disconnected */ }
         try { this.panNode.disconnect(); } catch { /* already disconnected */ }

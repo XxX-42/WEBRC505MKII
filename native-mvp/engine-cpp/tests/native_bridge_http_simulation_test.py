@@ -364,6 +364,23 @@ def main():
         require(status == 200 and started.get("engineRunning") is True, "fake stream did not expose simulated running state")
         status, engine_status = request("/v1/status")
         require(status == 200, "status endpoint failed after start")
+        require(engine_status.get("nativeFx", {}).get("trackFxApplyAvailable") is True,
+                "host omitted callback-acknowledged per-track routing capability")
+        for invalid in [{"trackId": 0, "enabled": False}, {"trackId": 6, "enabled": False},
+                        {"trackId": 1, "enabled": "false"}]:
+            status, rejected = request("/v1/native-track-fx/apply", "POST", invalid)
+            require(status == 400, f"invalid per-track gate accepted: {invalid}: {rejected}")
+        for enabled in [False, True]:
+            status, applied = request("/v1/native-track-fx/apply", "POST", {"trackId": 1, "enabled": enabled})
+            gate = applied.get("nativeFx", {}).get("trackFxApply", [{}])[0]
+            require(status == 200 and gate.get("requested") is enabled and gate.get("applied") is enabled and
+                    gate.get("requestedRevision", 0) > 0 and
+                    gate.get("appliedRevision") == gate.get("requestedRevision") and
+                    gate.get("controlFaulted") is False,
+                    f"HTTP succeeded before callback acknowledged the exact per-track revision: {applied}")
+            require(all(item["applied"] is True and item["requestedRevision"] == 0
+                        for item in applied["nativeFx"]["trackFxApply"][1:]),
+                    "changing track 1 route mutated another track")
         initial_rhythm = engine_status.get("nativeRhythm", {})
         require(initial_rhythm.get("available") is True and
                 initial_rhythm.get("swingPercent") == 50 and

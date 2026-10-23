@@ -129,7 +129,11 @@ public:
         float* playbackOnlyInterleaved = nullptr,
         // Set false when a caller replaces this meter with a later output-stage
         // peak. Input metering and all audio/state processing remain enabled.
-        bool measureOutputPeak = true
+        bool measureOutputPeak = true,
+        // Optional monitoring tap. When present, raw/processed recording input
+        // can be selected independently without changing live monitoring.
+        const float* monitorInputInterleaved = nullptr,
+        unsigned int monitorInputChannels = 0U
     );
 
     // Caller must own audio/transport state; this is not a concurrent snapshot API.

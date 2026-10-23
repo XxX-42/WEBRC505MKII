@@ -320,7 +320,9 @@ ProcessStats LooperCore::process(
     unsigned int inputChannels,
     unsigned int outputChannels,
     float* playbackOnlyInterleaved,
-    bool measureOutputPeak
+    bool measureOutputPeak,
+    const float* monitorInputInterleaved,
+    unsigned int monitorInputChannels
 ) {
     ProcessStats stats;
     stats.state = state_;
@@ -335,6 +337,16 @@ ProcessStats LooperCore::process(
         const float inputRight = inputInterleaved != nullptr && inputChannels > 1U
             ? inputInterleaved[inputOffset + 1U]
             : inputLeft;
+        const unsigned int effectiveMonitorChannels = monitorInputChannels > 0U
+            ? monitorInputChannels : inputChannels;
+        const float monitorLeft = monitorInputInterleaved != nullptr && effectiveMonitorChannels > 0U
+            ? monitorInputInterleaved[static_cast<std::size_t>(frame) * effectiveMonitorChannels]
+            : inputLeft;
+        const float monitorRight = monitorInputInterleaved != nullptr
+            ? (effectiveMonitorChannels > 1U
+                ? monitorInputInterleaved[static_cast<std::size_t>(frame) * effectiveMonitorChannels + 1U]
+                : monitorLeft)
+            : inputRight;
 
         float playbackLeft = 0.0f;
         float playbackRight = 0.0f;
@@ -357,11 +369,11 @@ ProcessStats LooperCore::process(
                 }
                 ++recordedFrames_;
             }
-            outputLeft = monitoringEnabled_ ? inputLeft : 0.0f;
-            outputRight = monitoringEnabled_ ? inputRight : 0.0f;
+            outputLeft = monitoringEnabled_ ? monitorLeft : 0.0f;
+            outputRight = monitoringEnabled_ ? monitorRight : 0.0f;
         } else if (state_ == LooperState::Playing) {
-            outputLeft = playbackLeft + (monitoringEnabled_ ? inputLeft : 0.0f);
-            outputRight = playbackRight + (monitoringEnabled_ ? inputRight : 0.0f);
+            outputLeft = playbackLeft + (monitoringEnabled_ ? monitorLeft : 0.0f);
+            outputRight = playbackRight + (monitoringEnabled_ ? monitorRight : 0.0f);
         } else if (state_ == LooperState::Overdubbing) {
             const float mixedLeft = clampSample(playbackLeft + inputLeft);
             const float mixedRight = clampSample(playbackRight + inputRight);
@@ -371,11 +383,13 @@ ProcessStats LooperCore::process(
                 if (channels_ == 2U) loopBuffer_[loopOffset + 1U] = mixedRight;
                 playhead_ = (playhead_ + 1) % finalizedFrames_;
             }
-            outputLeft = mixedLeft;
-            outputRight = mixedRight;
+            // Keep the established always-audible overdub monitor behavior,
+            // while the recorded contribution may now use a separate source.
+            outputLeft = clampSample(playbackLeft + monitorLeft);
+            outputRight = clampSample(playbackRight + monitorRight);
         } else {
-            outputLeft = monitoringEnabled_ ? inputLeft : 0.0f;
-            outputRight = monitoringEnabled_ ? inputRight : 0.0f;
+            outputLeft = monitoringEnabled_ ? monitorLeft : 0.0f;
+            outputRight = monitoringEnabled_ ? monitorRight : 0.0f;
         }
 
         outputLeft = clampSample(outputLeft);

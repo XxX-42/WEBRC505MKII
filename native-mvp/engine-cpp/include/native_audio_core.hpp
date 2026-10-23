@@ -57,6 +57,17 @@ struct NativeTrackMarkStatus {
     std::uint64_t appliedGeneration = 0U;
 };
 
+struct NativeTrackFxApplyStatus {
+    bool requested = true;
+    bool applied = true;
+    bool controlFaulted = false;
+    std::uint64_t requestedRevision = 0U;
+    std::uint64_t appliedRevision = 0U;
+    std::uint64_t semanticRevision = 0U;
+    float peak = 0.0f;
+    float rms = 0.0f;
+};
+
 enum class NativePitchMode : std::uint8_t { LiveMonoKeepPitch = 0, LivePolyPhaseVocoder };
 
 enum class Backend : std::uint8_t {
@@ -242,6 +253,8 @@ struct EngineStatus {
     bool projectContentRevisionSnapshotStable = false;
     std::array<LoopTransportStatus, kNativeTrackCount> nativeTrackLoopTransportStatus{};
     std::array<NativeTrackHistoryStatus, kNativeTrackCount> nativeTrackHistory{};
+    bool nativeTrackFxApplyAvailable = true;
+    std::array<NativeTrackFxApplyStatus, kNativeTrackCount> nativeTrackFxApply{};
     std::uint64_t nativeHistoryBudgetBytes = kNativeHistoryBudgetBytes;
     std::uint64_t nativeHistoryRetainedBytes = 0U;
     std::uint32_t nativeMarkVersion = 1U;
@@ -314,6 +327,12 @@ struct NativeCatalogFxCommand {
     // Track 0 = legacy shared playback bank; Track 1..5 = pre-sum looper bank.
     // Input accepts only target 0.
     std::uint8_t trackId = 0U;
+    std::uint64_t revision = 0U;
+};
+
+struct NativeTrackFxApplyCommand {
+    std::uint8_t trackIndex = 0U;
+    bool enabled = true;
     std::uint64_t revision = 0U;
 };
 
@@ -449,6 +468,10 @@ public:
         std::uint8_t trackId = 0U,
         bool replaceParameters = false
     );
+    // The shared Track A-D gate is a per-loop selector across the recording
+    // Input FX source and the postmix Track FX playback bus. A running engine
+    // applies and acknowledges it at the next audio callback boundary.
+    bool setNativeTrackFxApply(std::size_t trackId, bool enabled, std::uint64_t& requestedRevision, std::string& error);
     // MIDI channels at the bridge boundary are one-based (1..16). Events are
     // inserted into the selected slot's bounded SPSC queue under the control
     // mutex; no oscillator/filterbank state is changed on this thread.
@@ -564,11 +587,21 @@ private:
     void applyNativeChorusCommands() noexcept;
     void applyNativePhaserCommands() noexcept;
     void applyNativeCatalogFxCommands() noexcept;
+    void applyNativeTrackFxApplyCommands() noexcept;
     void publishSharedCatalogProcessingFaults(std::size_t bankIndex, bool bufferAvailable = true) noexcept;
     [[nodiscard]] const float* processInputFxForCallback(
         const float* inputInterleaved,
         unsigned int frames,
         unsigned int* processedChannels = nullptr
+    ) noexcept;
+    [[nodiscard]] ProcessStats processNativeTracksForCallback(
+        const float* rawInputInterleaved,
+        const float* processedInputInterleaved,
+        float* outputInterleaved,
+        unsigned int frames,
+        unsigned int rawInputChannels,
+        unsigned int processedInputChannels,
+        NativePitchRouteDecision* pitchRouteDecision
     ) noexcept;
     void applyNativePitchCommands() noexcept;
     void applyNativeLoopTransportCommands() noexcept;
@@ -596,13 +629,6 @@ private:
     [[nodiscard]] bool restoreTrackHistory(std::size_t trackIndex, bool redo, std::string& error);
     void invalidateTrackMarkLocked(std::size_t trackIndex) noexcept;
     [[nodiscard]] std::string trackMarkUnavailableReasonLocked(std::size_t trackIndex) const;
-    [[nodiscard]] ProcessStats processNativeTracksForCallback(
-        const float* inputInterleaved,
-        float* outputInterleaved,
-        unsigned int frames,
-        unsigned int inputChannels,
-        NativePitchRouteDecision* pitchRouteDecision
-    ) noexcept;
     bool setOutputEffectEnabled(NativeOutputEffect effect, bool enabled, std::string& error);
     void updateLastErrorLocked(const std::string& error) const;
     const DeviceDescriptor* findDeviceLocked(const std::vector<DeviceDescriptor>& devices, const std::string& id) const;
@@ -678,6 +704,7 @@ private:
     std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeVocoderCarrierScratch_{};
     std::array<std::atomic<NativeVocoderCarrierStatus>, kNativeTrackCount> nativeVocoderCarrierStatuses_{};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackPlaybackScratch_{};
+    std::array<float, kMaxCallbackFrames * 2U> nativeTrackDryPlaybackScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetDryScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetProcessedScratch_{};
     unsigned int inputChannels_ = 1;
@@ -731,6 +758,17 @@ private:
     SpscRingQueue<NativeChorusCommand, 16> nativeChorusCommandQueue_;
     SpscRingQueue<NativePhaserCommand, 16> nativePhaserCommandQueue_;
     SpscRingQueue<NativeCatalogFxCommand, 64> nativeCatalogFxCommandQueue_;
+    SpscRingQueue<NativeTrackFxApplyCommand, 32> nativeTrackFxApplyCommandQueue_;
+    std::array<bool, kNativeTrackCount> nativeTrackFxApplyRequested_{{true, true, true, true, true}};
+    std::array<std::uint64_t, kNativeTrackCount> nativeTrackFxApplyRequestedRevision_{};
+    std::array<bool, kNativeTrackCount> nativeTrackFxApplyRuntime_{{true, true, true, true, true}};
+    std::array<std::uint64_t, kNativeTrackCount> nativeTrackFxApplyRuntimeRevision_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeTrackFxApplyApplied_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeTrackFxApplyAppliedRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeTrackFxApplySemanticRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeTrackFxApplyFaultRevision_{};
+    std::array<std::atomic<float>, kNativeTrackCount> nativeTrackFxApplyPeak_{};
+    std::array<std::atomic<float>, kNativeTrackCount> nativeTrackFxApplyRms_{};
     SpscRingQueue<NativePitchCommand, 16> nativePitchCommandQueue_;
     SpscRingQueue<NativeLoopTransportCommand, 16> nativeLoopTransportCommandQueue_;
     // Callback-owned underlying routes. Official shared Track A is an overlay;

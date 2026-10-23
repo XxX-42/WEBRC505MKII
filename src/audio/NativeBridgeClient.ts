@@ -235,6 +235,9 @@ export interface NativeStatus {
       officialParameters?: NativeFxParameterDescriptor[];
     }>;
     catalogGraphAvailable?: boolean;
+    /** Missing means this host predates callback-acknowledged per-track FX apply. */
+    trackFxApplyAvailable?: boolean;
+    trackFxApply?: NativeTrackFxApplyRuntime[];
     /** Independent pre-sum loop chains, separate from the legacy postmix bank. */
     perTrackCatalogAvailable?: boolean;
     catalogControlFaultCount?: number;
@@ -308,6 +311,18 @@ export interface NativeStatus {
       statusNote: string;
     };
   };
+}
+
+export interface NativeTrackFxApplyRuntime {
+  trackId: number;
+  requested: boolean;
+  applied: boolean;
+  requestedRevision: number;
+  appliedRevision: number;
+  semanticRevision?: number;
+  controlFaulted: boolean;
+  peak: number;
+  rms: number;
 }
 
 export interface NativeCatalogSlotStatus {
@@ -537,6 +552,16 @@ export class NativeBridgeRequestTimeoutError extends Error {
   }
 }
 
+export class NativeTrackFxApplyAcknowledgementError extends Error {
+  public readonly reconciledStatus: NativeStatus | null;
+
+  public constructor(message: string, reconciledStatus: NativeStatus | null = null) {
+    super(message);
+    this.name = 'NativeTrackFxApplyAcknowledgementError';
+    this.reconciledStatus = reconciledStatus;
+  }
+}
+
 export class NativeBridgeClient {
   private readonly baseUrl: string;
 
@@ -554,6 +579,43 @@ export class NativeBridgeClient {
 
   public async getStatus(): Promise<NativeStatus> {
     return this.request<NativeStatus>('/v1/status');
+  }
+
+  /** Writes once and returns only after the Native audio callback has applied the requested revision. */
+  public async setTrackFxApply(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    if (typeof enabled !== 'boolean') throw new TypeError('Native Track FX apply must be a boolean.');
+    try {
+      const status = await this.request<NativeStatus>('/v1/native-track-fx/apply', {
+        method: 'POST',
+        body: JSON.stringify({ trackId, enabled }),
+      });
+      const apply = status.nativeFx?.trackFxApply?.find((item) => item.trackId === trackId);
+      if (status.nativeFx?.trackFxApplyAvailable !== true || !apply ||
+          apply.requested !== enabled || apply.applied !== enabled ||
+          !Number.isSafeInteger(apply.requestedRevision) || apply.requestedRevision <= 0 ||
+          !Number.isSafeInteger(apply.appliedRevision) || apply.appliedRevision !== apply.requestedRevision ||
+          apply.controlFaulted !== false) {
+        throw new NativeTrackFxApplyAcknowledgementError(
+          `Native status did not confirm callback application of Track ${trackId} FX apply.`, status,
+        );
+      }
+      return status;
+    } catch (error) {
+      if (error instanceof NativeBridgeRequestTimeoutError) {
+        // request() already performed its one status readback after timing out.
+        throw new NativeTrackFxApplyAcknowledgementError(error.message, error.reconciledStatus);
+      }
+      if (error instanceof NativeTrackFxApplyAcknowledgementError && error.reconciledStatus) throw error;
+
+      // HTTP 504 and transport errors can leave the command outcome uncertain.
+      // Reconcile once, and never replay the write.
+      let status: NativeStatus | null = null;
+      try { status = await this.getStatus(); } catch { /* Preserve the original write failure. */ }
+      throw new NativeTrackFxApplyAcknowledgementError(
+        error instanceof Error ? error.message : String(error), status,
+      );
+    }
   }
 
   /** Upload a validated v1 archive with its operation-start host revision. */

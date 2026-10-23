@@ -757,6 +757,139 @@ void testNativeInputCatalogBankProcessesBeforeRecordAndMonitor() {
     assert(filteredEnergy > 1.0e-4 && filteredEnergy < 0.49);
 }
 
+void testNativeTrackFxApplySelectsRecordingSourceAtCallbackBoundary() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    std::string error;
+    const std::map<std::string, float> parameters{
+        {"cutoff_hz", 300.0f},
+        {"resonance_percent", 15.0f},
+    };
+    assert(core.setNativeCatalogSlot(
+        NativeEffectSlot::A, "filter.lpf", parameters, false, error, NativeCatalogFxPath::Input));
+
+    std::array<float, 128U> firstInput{};
+    firstInput[0U] = 0.7f;
+    firstInput[1U] = -0.4f;
+    std::array<float, 256U> firstOutput{};
+    NativeAudioCoreTestAccess::command(core, CommandType::SetMonitoring, true);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Record, 0U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::uint64_t rejectedRevision = 17U;
+    assert(!core.setNativeTrackFxApply(6U, false, rejectedRevision, error));
+    assert(rejectedRevision == 17U);
+
+    const auto allocationsBefore = trackedAllocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, firstInput.data(), firstOutput.data(), 64U) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == allocationsBefore);
+
+    // Track 1 starts with the default InputFX recording source. Switch it off
+    // while the same take is recording; the next callback must both ACK and
+    // write the raw lane while monitor output continues through InputFX.
+    std::array<float, 128U> rawInput{};
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        rawInput[frame * 2U] = 0.25f;
+        rawInput[frame * 2U + 1U] = -0.5f;
+    }
+    std::array<float, 256U> secondOutput{};
+    std::uint64_t requestedRevision = 0U;
+    assert(core.setNativeTrackFxApply(1U, false, requestedRevision, error));
+    assert(requestedRevision == 1U);
+    const auto secondAllocationsBefore = trackedAllocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, rawInput.data(), secondOutput.data(), 64U) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == secondAllocationsBefore);
+
+    const auto status = core.getStatus();
+    assert(status.nativeTrackFxApplyAvailable);
+    assert(!status.nativeTrackFxApply[0U].requested);
+    assert(!status.nativeTrackFxApply[0U].applied);
+    assert(status.nativeTrackFxApply[0U].requestedRevision == requestedRevision);
+    assert(status.nativeTrackFxApply[0U].appliedRevision == requestedRevision);
+    assert(status.nativeTrackFxApply[0U].semanticRevision == 1U);
+    assert(std::isfinite(status.nativeTrackFxApply[0U].peak));
+    assert(std::isfinite(status.nativeTrackFxApply[0U].rms));
+
+    // The monitor stays on the processed input path after the recording
+    // selector changes to raw.
+    assert(std::fabs(secondOutput[0U] - rawInput[0U]) > 1.0e-4f);
+    assert(std::fabs(secondOutput[1U] - rawInput[1U]) > 1.0e-4f);
+
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, 0U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, secondOutput.data(), 64U) == 0);
+    std::array<float, 256U> recorded{};
+    std::size_t copiedFrames = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, recorded.data(), 128U, copiedFrames));
+    assert(copiedFrames == 128U);
+    assert(std::fabs(recorded[0U] - firstInput[0U]) > 0.1f);
+    assert(std::fabs(recorded[1U] - firstInput[1U]) > 0.1f);
+    for (std::size_t frame = 0U; frame < 64U; ++frame) {
+        assert(recorded[(frame + 64U) * 2U] == rawInput[frame * 2U]);
+        assert(recorded[(frame + 64U) * 2U + 1U] == rawInput[frame * 2U + 1U]);
+    }
+    std::uint64_t repeatedRevision = 0U;
+    assert(core.setNativeTrackFxApply(1U, false, repeatedRevision, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, secondOutput.data(), 64U) == 0);
+    assert(core.getStatus().nativeTrackFxApply[0U].semanticRevision == 1U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
+void testNativeTrackFxApplyPlaybackPreservesPrivateChainsAndStereoIsolation() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    constexpr unsigned int frames = 64U;
+    std::array<float, frames * 2U> output{};
+    std::string error;
+    NativeAudioCoreTestAccess::recordLoop(core, 0U, std::vector<float>(2048U, 0.1f), frames, output.data());
+    NativeAudioCoreTestAccess::recordLoop(core, 1U, std::vector<float>(2048U, 0.2f), frames, output.data());
+    // Private banks remain before the selector: track 1 right, track 2 left.
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "manual_pan", {{"position", 100.0f}}, false, error, NativeCatalogFxPath::Track, 1U));
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "manual_pan", {{"position", -100.0f}}, false, error, NativeCatalogFxPath::Track, 2U));
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "manual_pan", {{"position", -100.0f}}, false, error, NativeCatalogFxPath::Track));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 1U);
+    const auto render = [&] {
+        const auto allocations = trackedAllocations;
+        const auto deallocations = trackedDeallocations;
+        trackAllocations = true;
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        trackAllocations = false;
+        assert(trackedAllocations == allocations && trackedDeallocations == deallocations);
+    };
+    const auto assertPcm = [&](float left, float right) {
+        for (std::size_t frame = 0U; frame < frames; ++frame) {
+            assert(std::fabs(output[frame * 2U] - left) < 1.0e-6f);
+            assert(std::fabs(output[frame * 2U + 1U] - right) < 1.0e-6f);
+        }
+    };
+    for (unsigned int block = 0U; block < 20U; ++block) render();
+    // Default all-on matches the old summed-bus shared pan result exactly.
+    assertPcm(0.2f, 0.0f);
+    std::uint64_t revision = 0U;
+    assert(core.setNativeTrackFxApply(1U, false, revision, error));
+    assert(core.getStatus().nativeTrackFxApply[0U].appliedRevision < revision);
+    render();
+    assertPcm(0.2f, 0.1f);
+    auto status = core.getStatus();
+    assert(status.nativeTrackFxApply[0U].appliedRevision == revision);
+    assert(!status.nativeTrackFxApply[0U].applied && status.nativeTrackFxApply[1U].applied);
+    for (std::size_t track = 2U; track < kNativeTrackCount; ++track) {
+        assert(status.nativeTrackFxApply[track].peak == 0.0f && status.nativeTrackFxApply[track].rms == 0.0f);
+    }
+    assert(core.setNativeTrackFxApply(2U, false, revision, error));
+    render();
+    assertPcm(0.2f, 0.1f);
+    assert(core.setNativeTrackFxApply(1U, true, revision, error));
+    render();
+    assertPcm(0.2f, 0.0f);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
 void testNativeInputCatalogLoFiProcessesLiveBeforeRecord() {
     NativeAudioCore core;
     NativeAudioCoreTestAccess::prepareWithoutDevice(core);
@@ -2044,6 +2177,8 @@ int main() {
     testNativePitchChangesOnlyLoopPlaybackAndIsRealtimeSafe();
     testNativeLivePolyPitchUsesOnlyPlaybackTap();
     testNativeInputCatalogLoFiProcessesLiveBeforeRecord();
+    testNativeTrackFxApplySelectsRecordingSourceAtCallbackBoundary();
+    testNativeTrackFxApplyPlaybackPreservesPrivateChainsAndStereoIsolation();
     testNativeLoopSnapshotPinsTransportMutations();
     testNativeLoopSnapshotRejectsEmptyRecordingAndOverdubbing();
     testNativeFiveTrackStereoMixAndTrackCommands();

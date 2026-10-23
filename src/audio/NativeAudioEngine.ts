@@ -2,7 +2,7 @@ import { isOfficialFxSlotAllowed } from './fx/official/parameters';
 import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOfficialEffect, officialParameterDomain, encodeOfficialValue } from './fx/official/parameters';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -11,6 +11,7 @@ import {
 } from './export/hqWavExport';
 import { encodeWav } from './export/wavEncoder';
 import { NativeTrackProxy } from './NativeTrackProxy';
+import type { TrackFxApplyStatus } from './TrackFxApplyStatus';
 import { NativeRhythmEngine } from './NativeRhythmEngine';
 import { unsupportedTrackMarkState, type TrackMarkActionResult, type TrackMarkState } from './TrackMark';
 import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectRestoreToken, type ProjectArchive, type ProjectArchiveTrackList } from './projectArchive';
@@ -1148,6 +1149,65 @@ export class NativeAudioEngine {
         }),
       };
     });
+  }
+
+  public getTrackFxApply(trackId?: number): TrackFxApplyStatus[] {
+    if (trackId !== undefined && (!Number.isInteger(trackId) || trackId < 1 || trackId > 5)) return [];
+    const requestedTracks = trackId === undefined ? [1, 2, 3, 4, 5] : [trackId];
+    const advertised = this.latestStatus?.nativeFx?.trackFxApplyAvailable === true;
+    return requestedTracks.map((id) => {
+      const runtime = this.latestStatus?.nativeFx?.trackFxApply?.find((item) => item.trackId === id);
+      const available = advertised && runtime !== undefined && this.isNativeTrackAvailable(id);
+      const requestedRevision = runtime?.requestedRevision ?? 0;
+      const appliedRevision = runtime?.appliedRevision ?? 0;
+      const requested = available ? runtime!.requested : false;
+      const applied = available ? runtime!.applied : false;
+      const pending = available && appliedRevision < requestedRevision;
+      return {
+        trackId: id,
+        available,
+        requested,
+        applied,
+        requestedRevision,
+        appliedRevision,
+        semanticRevision: runtime?.semanticRevision ?? 0,
+        inputAppliedRevision: appliedRevision,
+        trackAppliedRevision: appliedRevision,
+        pending,
+        controlFaulted: available && runtime!.controlFaulted,
+        peak: available ? runtime!.peak : 0,
+        rms: available ? runtime!.rms : 0,
+        error: !available ? 'Native host does not expose callback-acknowledged per-track shared Track FX routing.'
+          : runtime!.controlFaulted ? 'Native callback rejected the requested shared Track FX route.' : '',
+      };
+    });
+  }
+
+  public async setTrackFxApply(trackId: number, enabled: boolean): Promise<TrackFxApplyStatus> {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) {
+      throw new RangeError('Native Track FX apply requires a track ID between 1 and 5.');
+    }
+    if (typeof enabled !== 'boolean') throw new TypeError('Native Track FX apply must be a boolean.');
+    const current = this.getTrackFxApply(trackId)[0];
+    if (!current?.available) throw new Error(current?.error || 'Native per-track shared Track FX routing is unavailable.');
+    try {
+      const status = await this.bridge.setTrackFxApply(trackId, enabled);
+      this.applyStatus(status);
+      const applied = this.getTrackFxApply(trackId)[0]!;
+      if (applied.applied !== enabled || applied.appliedRevision < applied.requestedRevision || applied.pending || applied.controlFaulted) {
+        throw new NativeTrackFxApplyAcknowledgementError(
+          `Native callback did not leave Track ${trackId} shared Track FX at the requested state.`, status,
+        );
+      }
+      return applied;
+    } catch (error) {
+      if (error instanceof NativeBridgeRequestTimeoutError) {
+        if (error.reconciledStatus) this.applyStatus(error.reconciledStatus);
+      } else if (error instanceof NativeTrackFxApplyAcknowledgementError && error.reconciledStatus) {
+        this.applyStatus(error.reconciledStatus);
+      }
+      throw error;
+    }
   }
 
   public isPerTrackCatalogAvailable(trackId: number): boolean {

@@ -16,10 +16,12 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <string_view>
+#include <thread>
 
 #include "httplib.h"
 #include "nlohmann/json.hpp"
@@ -214,6 +216,7 @@ json statusToJson(const EngineStatus& status) {
     json trackOscVocSlots = json::array();
     json inputCatalogMidiSlots = json::array();
     json trackCatalogMidiSlots = json::array();
+    json trackFxApply = json::array();
     json catalogEffectAvailability = json::array();
     std::size_t catalogCount = 0U;
     const auto* catalog = nativeEffectCatalog(catalogCount);
@@ -379,6 +382,18 @@ json statusToJson(const EngineStatus& status) {
                 {"lateEventCount", midi.lateEventCount}, {"rejectedEventCount", midi.rejectedEventCount}});
         }
         perTrackCatalogBanks.push_back({{"trackId", track + 1U}, {"slots", slots}, {"midiSlots", midiSlots}});
+        const auto& apply = status.nativeTrackFxApply[track];
+        trackFxApply.push_back({
+            {"trackId", track + 1U},
+            {"requested", apply.requested},
+            {"applied", apply.applied},
+            {"requestedRevision", apply.requestedRevision},
+            {"appliedRevision", apply.appliedRevision},
+            {"semanticRevision", apply.semanticRevision},
+            {"controlFaulted", apply.controlFaulted},
+            {"peak", apply.peak},
+            {"rms", apply.rms},
+        });
     }
     return json{
         {"ok", true},
@@ -402,6 +417,8 @@ json statusToJson(const EngineStatus& status) {
             {"implementedOutputEffects", {"lowPass", "highPass", "fdn16Reverb", "fractionalDelay", "compressor", "chorus", "phaser"}},
             {"catalogGraphAvailable", status.nativeCatalogGraphAvailable},
             {"catalogSlots", catalogSlots},
+            {"trackFxApplyAvailable", status.nativeTrackFxApplyAvailable},
+            {"trackFxApply", trackFxApply},
             {"perTrackCatalogAvailable", status.nativePerTrackCatalogAvailable},
             {"sourceAwareLoopTransport", {{"experimental", true}, {"stage", "preInsert"},
                 {"orderedInsertPlacementSupported", false}, {"effects", {"beat_shift", "vinyl_flick"}},
@@ -2230,6 +2247,63 @@ int main() {
                 return;
             }
             writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) {
+            response.status = 400;
+            writeError(response, error.what());
+        }
+    });
+
+    server.Post("/v1/native-track-fx/apply", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || !body.contains("trackId") || !body.contains("enabled") ||
+                !body["enabled"].is_boolean()) {
+                response.status = 400;
+                writeError(response, "Fields 'trackId' (1-5) and 'enabled' (boolean) are required.");
+                return;
+            }
+            std::uint64_t trackId = 0U;
+            if (!readUnsignedJsonInteger(body["trackId"], kNativeTrackCount, trackId) || trackId < 1U) {
+                response.status = 400;
+                writeError(response, "'trackId' must be an integer between 1 and 5.");
+                return;
+            }
+            const bool enabled = body["enabled"].get<bool>();
+            std::uint64_t requestedRevision = 0U;
+            std::string error;
+            if (!engine.setNativeTrackFxApply(static_cast<std::size_t>(trackId), enabled, requestedRevision, error)) {
+                response.status = 409;
+                writeError(response, error);
+                return;
+            }
+
+            constexpr auto acknowledgementTimeout = std::chrono::milliseconds(500);
+            const auto deadline = std::chrono::steady_clock::now() + acknowledgementTimeout;
+            EngineStatus latest;
+            const std::size_t trackIndex = static_cast<std::size_t>(trackId - 1U);
+            do {
+                latest = engine.getStatus();
+                const auto& apply = latest.nativeTrackFxApply[trackIndex];
+                if (apply.appliedRevision >= requestedRevision) {
+                    if (apply.requestedRevision != requestedRevision || apply.appliedRevision != requestedRevision ||
+                        apply.controlFaulted || apply.requested != enabled || apply.applied != enabled) {
+                        response.status = 409;
+                        writeError(response, "Native audio callback did not leave the Track FX route at the requested state.");
+                        return;
+                    }
+                    writeJson(response, statusToJson(latest));
+                    return;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            } while (std::chrono::steady_clock::now() < deadline);
+
+            latest = engine.getStatus(); // One authoritative readback; this command is never retried.
+            response.status = 504;
+            auto payload = statusToJson(latest);
+            payload["ok"] = false;
+            payload["error"] = "Native audio callback did not acknowledge Track FX apply revision " +
+                std::to_string(requestedRevision) + " before the deadline; inspect trackFxApply status before any retry.";
+            writeJson(response, payload);
         } catch (const std::exception& error) {
             response.status = 400;
             writeError(response, error.what());

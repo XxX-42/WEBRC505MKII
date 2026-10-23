@@ -29,6 +29,7 @@ import { copyRecoveryFxParameters, type BrowserRecoveryFxSlot, type BrowserRecov
 import { BrowserWorkletFX, BROWSER_WORKLET_FX_TYPES, type BrowserWorkletFxName } from './fx/BrowserWorkletFX';
 import { BrowserTrackFxChain, type BrowserTrackFxStatus } from './BrowserTrackFxChain';
 import { unsupportedTrackMarkState, type TrackMarkActionResult, type TrackMarkState } from './TrackMark';
+import type { TrackFxApplyStatus } from './TrackFxApplyStatus';
 import { createBrowserPcmHistoryBudget, getBrowserPcmHistoryBudget } from './PcmHistoryBudget';
 import {
     encodeProjectArchive,
@@ -148,6 +149,9 @@ export class BrowserAudioEngine implements IAudioEngine {
     private inputTrackEndedHandlers: Array<{ track: MediaStreamTrack; listener: EventListener }> = [];
     private monitorGainNode: GainNode | null = null;
     private inputCaptureNode: AudioWorkletNode | null = null;
+    private inputCaptureRawSource: MediaStreamAudioSourceNode | null = null;
+    private trackFxRouterNode: AudioWorkletNode | null = null;
+    private trackFxRouterUnavailableReason = '';
     private inputCaptureMuteGainNode: GainNode | null = null;
     private inputCaptureGeneration = 0;
     private nextInputCaptureSessionId = 1;
@@ -161,6 +165,21 @@ export class BrowserAudioEngine implements IAudioEngine {
         readonly listener: (message: unknown) => void;
     }>();
     private readonly inputCaptureReadyWaiters = new Map<number, { resolve: () => void; reject: (error: Error) => void }>();
+    private readonly trackFxApplyWaiters = new Map<string, {
+        resolve: () => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout>;
+        readonly enabled: boolean; readonly applyFrame: number; inputAck: boolean; trackAck: boolean;
+    }>();
+    private readonly trackFxApplyRequested = [true, true, true, true, true];
+    private readonly trackFxApplyApplied = [true, true, true, true, true];
+    private readonly trackFxApplyInputValue = [true, true, true, true, true];
+    private readonly trackFxApplyTrackValue = [true, true, true, true, true];
+    private readonly trackFxApplyRequestedRevision = [0, 0, 0, 0, 0];
+    private readonly trackFxApplyInputRevision = [0, 0, 0, 0, 0];
+    private readonly trackFxApplyTrackRevision = [0, 0, 0, 0, 0];
+    private readonly trackFxApplySemanticRevision = [0, 0, 0, 0, 0];
+    private readonly trackFxApplyFaulted = [false, false, false, false, false];
+    private readonly trackFxApplyErrors = ['', '', '', '', ''];
+    private readonly trackFxApplyQueues = new Map<number, Promise<unknown>>();
     private readonly inputCaptureRecycleMessage = {
         type: 'RECYCLE_CHUNK', trackIndex: 0, sessionId: 0, chunkIndex: 0,
         channels: [] as Float32Array[],
@@ -183,7 +202,13 @@ export class BrowserAudioEngine implements IAudioEngine {
     public inputFxChain: FXChain;
     public outputFxChain: FXChain;
     public trackMixNode: GainNode;
+    private dryTrackMixGainNode: GainNode;
     public masterGainNode: GainNode;
+    /** Shared Track FX wet sum; each track gates its post-fader signal into this bus. */
+    public sharedTrackFxInputBus: GainNode;
+    /** Shared Track FX bypass sum, recombined with wet output before TrackMix. */
+    public dryTrackFxMixBus: GainNode;
+    public sharedTrackFxJoinNode: GainNode;
 
     // Rhythm Engine
     public rhythmEngine: RhythmEngine;
@@ -266,11 +291,20 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.inputFxChain = new FXChain(this.context);
         this.outputFxChain = new FXChain(this.context);
         this.trackMixNode = this.context.createGain();
+        this.dryTrackMixGainNode = this.context.createGain();
         this.masterGainNode = this.context.createGain();
+        this.sharedTrackFxInputBus = this.context.createGain();
+        this.dryTrackFxMixBus = this.context.createGain();
+        this.sharedTrackFxJoinNode = this.context.createGain();
 
-        // Master Routing: TrackMix -> OutputFX -> MasterGain -> Destination
+        // Track-only gates split post-fader playback into shared wet and dry
+        // sums. Both paths rejoin before the existing global TrackMix/Pitch/output.
+        this.sharedTrackFxInputBus.connect(this.trackMixNode);
         this.trackMixNode.connect(this.outputFxChain.input);
-        this.outputFxChain.output.connect(this.masterGainNode);
+        this.outputFxChain.output.connect(this.sharedTrackFxJoinNode);
+        this.dryTrackFxMixBus.connect(this.dryTrackMixGainNode);
+        this.dryTrackMixGainNode.connect(this.sharedTrackFxJoinNode);
+        this.sharedTrackFxJoinNode.connect(this.masterGainNode);
         this.masterGainNode.connect(this.context.destination);
         this.inputFxChain.output.connect(this.monitorGainNode);
 
@@ -282,6 +316,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         for (let i = 0; i < 5; i++) {
             const trackData = new Track(i + 1);
             const track = new TrackAudio(this, trackData, i, this.trackStates, this.trackPositions, historyBudget);
+            track.installSharedTrackFxRouting(this.sharedTrackFxInputBus, this.dryTrackFxMixBus, true);
             const bank = new BrowserTrackFxChain(this.context, () => this.ensureFxWorkletModule(), () => this.emitStatus(), () => Transport.getInstance().bpm, () => Transport.getInstance().quarterNotesPerMeasure, (trackId) => this.tracks[trackId - 1]?.playbackSourceOutput ?? null);
             track.installTrackFxInsert(bank.input, bank.output);
             this.perTrackFxChains.push(bank);
@@ -301,6 +336,8 @@ export class BrowserAudioEngine implements IAudioEngine {
             || this.midiInputState !== 'disconnected') {
             throw new Error('Browser recovery graph must be a new, suspended, disconnected five-track engine.');
         }
+        try { await this.ensureTrackFxApplyRouter(); }
+        catch (error) { this.trackFxRouterUnavailableReason = error instanceof Error ? error.message : String(error); }
         if (snapshot.pcmHistoryBudget.limitBytes < 0 || !Number.isSafeInteger(snapshot.pcmHistoryBudget.limitBytes)
             || this.tracks.some((track) => track.historyBudgetBytes !== snapshot.pcmHistoryBudget.limitBytes)) {
             throw new Error('Candidate Browser engine did not receive the saved shared PCM history budget.');
@@ -401,6 +438,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
         this.restoreDisconnectedMidiTarget(snapshot.midi.target);
         this.trackMixNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
+        this.dryTrackMixGainNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
         // AudioParam.value can continue reporting the intrinsic default while
         // a suspended context has a scheduled value at currentTime. Set the
         // immediate value too so the zero-gain invariant is observable and
@@ -514,8 +552,19 @@ export class BrowserAudioEngine implements IAudioEngine {
             try { this.outputDspFxNode.port.close(); } catch { /* already closed */ }
             this.outputDspFxNode = null;
         }
+        if (this.trackFxRouterNode) {
+            this.trackFxRouterNode.port.onmessage = null;
+            this.trackFxRouterNode.onprocessorerror = null;
+            try { this.trackFxRouterNode.disconnect(); } catch { /* old context is closed */ }
+            try { this.trackFxRouterNode.port.close(); } catch { /* already closed */ }
+            this.trackFxRouterNode = null;
+        }
         try { this.monitorGainNode?.disconnect(); } catch { /* old context is closed */ }
         try { this.trackMixNode.disconnect(); } catch { /* old context is closed */ }
+        try { this.dryTrackMixGainNode.disconnect(); } catch { /* old context is closed */ }
+        try { this.sharedTrackFxInputBus.disconnect(); } catch { /* old context is closed */ }
+        try { this.dryTrackFxMixBus.disconnect(); } catch { /* old context is closed */ }
+        try { this.sharedTrackFxJoinNode.disconnect(); } catch { /* old context is closed */ }
         try { this.masterGainNode.disconnect(); } catch { /* old context is closed */ }
         // Do not clear tracks or their history budget: the caller owns this
         // retired object until it no longer needs PCM export/diagnostics.
@@ -646,6 +695,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.masterGainNode.gain.value = 0;
         this.masterGainNode.gain.setValueAtTime(0, this.context.currentTime);
         this.trackMixNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
+        this.dryTrackMixGainNode.gain.setValueAtTime(snapshot.trackMixGainValue, this.context.currentTime);
         this.selectedInputDeviceId = snapshot.source.inputDevicePreference;
         this.selectedOutputDeviceId = snapshot.source.outputDevicePreference;
         this.preparedRecoverySnapshot = snapshot;
@@ -778,6 +828,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
         await this.ensureTrackIoWorkletModule();
         await this.loadAudioWorkletModule('/worklets/browser-block-meter.js');
+        try { await this.ensureTrackFxApplyRouter(); }
+        catch (error) { this.trackFxRouterUnavailableReason = error instanceof Error ? error.message : String(error); }
 
         if (this.workletNode) return;
         const meterNode = new AudioWorkletNode(this.context, 'rc505-browser-block-meter', {
@@ -808,6 +860,60 @@ export class BrowserAudioEngine implements IAudioEngine {
             this.masterGainNode.connect(this.context.destination);
             throw error;
         }
+    }
+
+    private async ensureTrackFxApplyRouter(): Promise<void> {
+        if (this.trackFxRouterNode) return;
+        if (typeof AudioWorkletNode === 'undefined') throw new Error('AudioWorkletNode is unavailable for per-track shared Track FX routing.');
+        await this.loadAudioWorkletModule('/worklets/browser-track-fx-router.js');
+        const node = new AudioWorkletNode(this.context, 'rc505-track-fx-router', {
+            numberOfInputs: 5,
+            numberOfOutputs: 10,
+            outputChannelCount: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            channelCount: 2,
+            channelCountMode: 'explicit',
+            channelInterpretation: 'speakers',
+            processorOptions: { trackCount: 5, initialTrackFxApply: this.trackFxApplyApplied.slice() },
+        });
+        try {
+            for (const track of this.tracks) {
+                track.installSharedTrackFxRouter(node, this.sharedTrackFxInputBus, this.dryTrackFxMixBus);
+            }
+        } catch (error) {
+            try { node.disconnect(); } catch { /* unpublished router */ }
+            for (let index = 0; index < this.tracks.length; index += 1) {
+                this.tracks[index]!.installSharedTrackFxRouting(
+                    this.sharedTrackFxInputBus, this.dryTrackFxMixBus, this.trackFxApplyApplied[index]!,
+                );
+            }
+            throw error;
+        }
+        node.port.onmessage = (event: MessageEvent) => this.handleTrackFxRouterMessage(event.data);
+        node.onprocessorerror = () => {
+            if (this.trackFxRouterNode !== node) return;
+            this.trackFxRouterUnavailableReason = 'The Browser per-track Track FX router worklet stopped unexpectedly.';
+            node.port.onmessage = null;
+            try { node.disconnect(); } catch { /* processor failed */ }
+            this.trackFxRouterNode = null;
+            for (let index = 0; index < this.tracks.length; index += 1) {
+                try {
+                    this.tracks[index]!.installSharedTrackFxRouting(
+                        this.sharedTrackFxInputBus, this.dryTrackFxMixBus, this.trackFxApplyApplied[index]!,
+                    );
+                } catch (error) {
+                    this.trackFxApplyFaulted[index] = true;
+                    this.trackFxApplyErrors[index] = error instanceof Error ? error.message : String(error);
+                }
+            }
+            for (let index = 0; index < 5; index += 1) {
+                this.trackFxApplyFaulted[index] = true;
+                this.trackFxApplyErrors[index] ||= this.trackFxRouterUnavailableReason;
+            }
+            this.rejectAllTrackFxApplyWaiters(new Error(this.trackFxRouterUnavailableReason));
+            this.emitStatus();
+        };
+        this.trackFxRouterNode = node;
+        this.trackFxRouterUnavailableReason = '';
     }
 
     /** Resume the Browser output graph from an explicit user gesture. */
@@ -897,7 +1003,9 @@ export class BrowserAudioEngine implements IAudioEngine {
             return false;
         }
 
-        const output = this.outputFxChain.output;
+        // The global output DSP remains after TrackMix, as before the per-track
+        // wet/dry split was introduced.
+        const output = this.sharedTrackFxJoinNode;
         const previous = this.outputDspFxNode;
         try { if (readinessSink) node.disconnect(readinessSink); } catch { /* already detached */ }
         try { readinessSink?.disconnect(); } catch { /* already detached */ }
@@ -1982,6 +2090,12 @@ export class BrowserAudioEngine implements IAudioEngine {
         // Re-connect Input Source to Head if needed (it should already be connected to inputFxChain.input)
         if (this.currentInputStream) {
             this.currentInputStream.connect(head);
+            // Rebuilding the Input FX insert graph disconnects every edge from
+            // its source. Restore the parallel raw lane to capture as well.
+            if (this.inputCaptureNode) {
+                this.currentInputStream.connect(this.inputCaptureNode, 0, 0);
+                this.inputCaptureRawSource = this.currentInputStream;
+            }
         }
     }
 
@@ -2006,10 +2120,6 @@ export class BrowserAudioEngine implements IAudioEngine {
         });
 
         currentNode.connect(tail);
-
-        // Ensure TrackMix is connected to Head
-        this.trackMixNode.disconnect();
-        this.trackMixNode.connect(head);
     }
 
     /**
@@ -3050,11 +3160,11 @@ export class BrowserAudioEngine implements IAudioEngine {
 
         if (!this.inputCaptureNode) {
             const node = new AudioWorkletNode(this.context, 'rc505-input-capture', {
-                numberOfInputs: 1,
+                numberOfInputs: 2,
                 numberOfOutputs: 1,
                 outputChannelCount: [2],
                 channelCount: 2,
-                channelCountMode: 'max',
+                channelCountMode: 'explicit',
                 channelInterpretation: 'speakers',
                 processorOptions: {
                     trackCount: 5,
@@ -3063,12 +3173,15 @@ export class BrowserAudioEngine implements IAudioEngine {
                     preRollFrames: 8_192,
                     maxRecordingBytes: 384 * 1024 * 1024,
                     sampleRate: this.context.sampleRate,
+                    initialTrackFxApply: this.trackFxApplyApplied.slice(),
                 },
             });
             const mute = this.context.createGain();
             mute.gain.value = 0;
             try {
-                this.inputFxChain.output.connect(node);
+                // Input 0 carries the raw device samples; input 1 carries the
+                // aligned shared Input FX output. Both are stereo at the tap.
+                this.inputFxChain.output.connect(node, 0, 1);
                 node.connect(mute);
                 mute.connect(this.context.destination);
             } catch (error) {
@@ -3094,6 +3207,15 @@ export class BrowserAudioEngine implements IAudioEngine {
             };
             this.inputCaptureNode = node;
             this.inputCaptureMuteGainNode = mute;
+        }
+
+        if (this.inputCaptureRawSource !== expectedSource) {
+            if (this.inputCaptureRawSource) {
+                try { disconnectAudioNodeIfConnected(this.inputCaptureRawSource, this.inputCaptureNode); }
+                catch { /* the source may have been disconnected while switching devices */ }
+            }
+            expectedSource.connect(this.inputCaptureNode, 0, 0);
+            this.inputCaptureRawSource = expectedSource;
         }
 
         const ready = this.postInputCaptureReady(true);
@@ -3160,6 +3282,10 @@ export class BrowserAudioEngine implements IAudioEngine {
 
     private handleInputCaptureMessage(message: any): void {
         if (!message || typeof message !== 'object') return;
+        if (message.type === 'TRACK_FX_APPLY_ACK') {
+            this.handleTrackFxApplyAcknowledgement(message);
+            return;
+        }
         if (message.type === 'INPUT_CAPTURE_NOT_READY') {
             if (message.inputGeneration !== this.inputCaptureGeneration
                 || message.sampleRate !== this.context.sampleRate) return;
@@ -3263,6 +3389,192 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
     }
 
+    /** Current render-confirmed shared Track FX state for one or all loops. */
+    public getTrackFxApply(trackId?: number): TrackFxApplyStatus[] {
+        if (trackId !== undefined && (!Number.isInteger(trackId) || trackId < 1 || trackId > 5)) return [];
+        const trackIds = trackId === undefined ? [1, 2, 3, 4, 5] : [trackId];
+        return trackIds.map((id) => {
+            const index = id - 1;
+            const inputRevision = this.trackFxApplyInputRevision[index]!;
+            const trackRevision = this.trackFxApplyTrackRevision[index]!;
+            const appliedRevision = Math.min(inputRevision, trackRevision);
+            const requestedRevision = this.trackFxApplyRequestedRevision[index]!;
+            const faulted = this.trackFxApplyFaulted[index]!;
+            const available = this.context.state === 'running' && this.trackFxRouterNode !== null
+                && this.inputCaptureNode !== null && this.inputCaptureReady
+                && this.inputCaptureReadyGeneration === this.inputCaptureGeneration
+                && this.hasLiveInputStream() && Boolean(this.tracks[index]);
+            const track = this.tracks[index];
+            const meter = track?.getPostFaderPreSharedTrackFxMeter() ?? { peak: 0, rms: 0 };
+            return {
+                trackId: id,
+                available,
+                requested: this.trackFxApplyRequested[index]!,
+                applied: this.trackFxApplyApplied[index]!,
+                requestedRevision,
+                appliedRevision,
+                semanticRevision: this.trackFxApplySemanticRevision[index]!,
+                inputAppliedRevision: inputRevision,
+                trackAppliedRevision: trackRevision,
+                pending: !faulted && appliedRevision < requestedRevision,
+                controlFaulted: faulted,
+                peak: meter.peak,
+                rms: meter.rms,
+                error: !available ? (this.trackFxRouterUnavailableReason || this.inputCaptureUnavailableReason
+                    || 'Browser per-track Track FX switching requires a running renderer and a ready raw/processed capture tap.')
+                    : this.trackFxApplyErrors[index]!,
+            };
+        });
+    }
+
+    /**
+     * Request a dual-path route change. The capture and playback worklets are
+     * sent one shared future sample frame; the Promise resolves only after both
+     * render threads acknowledge that exact frame.
+     */
+    public setTrackFxApply(trackId: number, enabled: boolean): Promise<TrackFxApplyStatus> {
+        if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) {
+            return Promise.reject(new RangeError('Browser Track FX apply requires a track ID between 1 and 5.'));
+        }
+        if (typeof enabled !== 'boolean') return Promise.reject(new TypeError('Browser Track FX apply must be a boolean.'));
+        const previous = this.trackFxApplyQueues.get(trackId) ?? Promise.resolve();
+        const operation = previous.then(
+            () => this.applyTrackFxApply(trackId, enabled),
+            () => this.applyTrackFxApply(trackId, enabled),
+        );
+        this.trackFxApplyQueues.set(trackId, operation);
+        const clearQueue = () => {
+            if (this.trackFxApplyQueues.get(trackId) === operation) this.trackFxApplyQueues.delete(trackId);
+        };
+        void operation.then(clearQueue, clearQueue);
+        return operation;
+    }
+
+    private async applyTrackFxApply(trackId: number, enabled: boolean): Promise<TrackFxApplyStatus> {
+        const current = this.getTrackFxApply(trackId)[0];
+        if (!current?.available) throw new Error(current?.error || 'Browser per-track shared Track FX routing is unavailable.');
+        if (current.applied === enabled && current.requested === enabled && !current.pending && !current.controlFaulted) return current;
+        const trackIndex = trackId - 1;
+        const revision = this.trackFxApplyRequestedRevision[trackIndex]! + 1;
+        if (!Number.isSafeInteger(revision) || revision <= 0) throw new Error('Browser Track FX apply revision reached its supported limit.');
+        const startFrame = this.getInputCaptureRequestFrame();
+        const capture = this.inputCaptureNode;
+        const router = this.trackFxRouterNode;
+        if (startFrame === null || !capture || !router) throw new Error('Browser capture or playback renderer became unavailable before the route request.');
+        const quantum = Math.max(128, this.selectedBufferFrames || 128);
+        const applyFrame = startFrame + (quantum * 4);
+        if (!Number.isSafeInteger(applyFrame)) throw new Error('Browser Track FX apply frame exceeds the supported AudioContext timeline.');
+        const key = `${trackId}:${revision}`;
+        const acknowledgement = new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                this.trackFxApplyWaiters.delete(key);
+                this.trackFxApplyFaulted[trackIndex] = true;
+                this.trackFxApplyErrors[trackIndex] = 'Browser render callback did not acknowledge both Track FX routes before timeout.';
+                const readback = this.getTrackFxApply(trackId)[0]; // one status readback; never resend the request
+                const error = new Error(`Browser Track ${trackId} Track FX apply outcome is unknown; check status before retrying.`) as Error & { reconciledStatus?: TrackFxApplyStatus };
+                error.reconciledStatus = readback;
+                reject(error);
+                this.emitStatus();
+            }, 1_500);
+            this.trackFxApplyWaiters.set(key, {
+                resolve, reject, timeout, enabled, applyFrame, inputAck: false, trackAck: false,
+            });
+        });
+        this.trackFxApplyRequested[trackIndex] = enabled;
+        this.trackFxApplyRequestedRevision[trackIndex] = revision;
+        this.trackFxApplyFaulted[trackIndex] = false;
+        this.trackFxApplyErrors[trackIndex] = '';
+        try {
+            const request = { type: 'SET_TRACK_FX_APPLY', trackIndex, enabled, revision, applyFrame };
+            capture.port.postMessage(request);
+            router.port.postMessage(request);
+        } catch (error) {
+            const waiter = this.trackFxApplyWaiters.get(key);
+            if (waiter) {
+                clearTimeout(waiter.timeout);
+                waiter.reject(error instanceof Error ? error : new Error(String(error)));
+                void acknowledgement.catch(() => undefined);
+            }
+            this.trackFxApplyWaiters.delete(key);
+            this.trackFxApplyFaulted[trackIndex] = true;
+            this.trackFxApplyErrors[trackIndex] = error instanceof Error ? error.message : String(error);
+            throw new Error(`Browser Track ${trackId} could not queue both render routes: ${this.trackFxApplyErrors[trackIndex]}`);
+        }
+        this.emitStatus();
+        await acknowledgement;
+        const status = this.getTrackFxApply(trackId)[0]!;
+        if (status.applied !== enabled || status.pending || status.controlFaulted) {
+            throw new Error(`Browser Track ${trackId} callback acknowledgement did not confirm both requested FX routes.`);
+        }
+        return status;
+    }
+
+    private handleTrackFxApplyAcknowledgement(message: any): void {
+        if (!message || message.type !== 'TRACK_FX_APPLY_ACK' || !Number.isInteger(message.trackIndex)
+            || message.trackIndex < 0 || message.trackIndex >= 5 || !Number.isSafeInteger(message.revision)
+            || message.revision <= 0 || typeof message.enabled !== 'boolean'
+            || message.revision !== this.trackFxApplyRequestedRevision[message.trackIndex]) return;
+        const index = message.trackIndex as number;
+        const trackId = index + 1;
+        const key = `${trackId}:${message.revision}`;
+        const waiter = this.trackFxApplyWaiters.get(key);
+        if (waiter && (message.enabled !== waiter.enabled || message.requestedFrame !== waiter.applyFrame)) {
+            message.ok = false;
+            message.reason = 'track-fx-apply-ack-mismatch';
+        }
+        if (message.ok === true && Number.isSafeInteger(message.appliedFrame)
+            && message.appliedFrame === message.requestedFrame) {
+            if (message.route === 'input') {
+                this.trackFxApplyInputRevision[index] = message.revision;
+                this.trackFxApplyInputValue[index] = message.enabled === true;
+            } else if (message.route === 'track') {
+                this.trackFxApplyTrackRevision[index] = message.revision;
+                this.trackFxApplyTrackValue[index] = message.enabled === true;
+            } else return;
+            if (waiter) {
+                if (message.route === 'input') waiter.inputAck = true;
+                else waiter.trackAck = true;
+            }
+            if (this.trackFxApplyInputRevision[index] === this.trackFxApplyTrackRevision[index]
+                && this.trackFxApplyInputValue[index] === this.trackFxApplyTrackValue[index]) {
+                const wasEnabled = this.trackFxApplyApplied[index]!;
+                this.trackFxApplyApplied[index] = this.trackFxApplyInputValue[index]!;
+                if (wasEnabled !== this.trackFxApplyApplied[index]) {
+                    this.trackFxApplySemanticRevision[index] = this.trackFxApplySemanticRevision[index]! + 1;
+                }
+                this.trackFxApplyFaulted[index] = false;
+                this.trackFxApplyErrors[index] = '';
+            }
+            if (waiter?.inputAck && waiter.trackAck) {
+                clearTimeout(waiter.timeout);
+                this.trackFxApplyWaiters.delete(key);
+                waiter.resolve();
+            }
+        } else if (message.ok === false) {
+            this.trackFxApplyFaulted[index] = true;
+            this.trackFxApplyErrors[index] = typeof message.reason === 'string'
+                ? message.reason : 'Browser render worklet rejected the Track FX route.';
+            if (waiter) {
+                clearTimeout(waiter.timeout);
+                this.trackFxApplyWaiters.delete(key);
+                waiter.reject(new Error(`Browser Track ${trackId} ${message.route || 'audio'} route was not applied: ${this.trackFxApplyErrors[index]}`));
+            }
+        }
+        this.emitStatus();
+    }
+
+    private handleTrackFxRouterMessage(message: any): void {
+        this.handleTrackFxApplyAcknowledgement(message);
+    }
+
+    private rejectAllTrackFxApplyWaiters(error: Error): void {
+        for (const [key, waiter] of this.trackFxApplyWaiters) {
+            clearTimeout(waiter.timeout);
+            this.trackFxApplyWaiters.delete(key);
+            waiter.reject(error);
+        }
+    }
+
     public getInputCaptureRequestFrame(): number | null {
         if (!this.inputCaptureReady || !this.hasLiveInputStream()) return null;
         return Math.ceil(this.context.currentTime * this.context.sampleRate);
@@ -3342,6 +3654,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     private disposeInputCaptureTap(reason: string): void {
         for (const waiter of this.inputCaptureReadyWaiters.values()) waiter.reject(new Error(reason));
         this.inputCaptureReadyWaiters.clear();
+        this.rejectAllTrackFxApplyWaiters(new Error(reason));
         this.inputCaptureReady = false;
         this.inputCaptureReadyGeneration = 0;
         this.inputCaptureWarmupReason = '';
@@ -3357,11 +3670,15 @@ export class BrowserAudioEngine implements IAudioEngine {
             node.port.onmessage = null;
             node.onprocessorerror = null;
             try { disconnectAudioNodeIfConnected(this.inputFxChain.output, node); } catch { /* context closing */ }
+            if (this.inputCaptureRawSource) {
+                try { disconnectAudioNodeIfConnected(this.inputCaptureRawSource, node); } catch { /* context closing */ }
+            }
             try { node.disconnect(); } catch { /* already disconnected */ }
             try { node.port.close?.(); } catch { /* already closed */ }
         }
         try { this.inputCaptureMuteGainNode?.disconnect(); } catch { /* already disconnected */ }
         this.inputCaptureNode = null;
+        this.inputCaptureRawSource = null;
         this.inputCaptureMuteGainNode = null;
     }
 

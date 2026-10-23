@@ -8,11 +8,11 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
     const context = new AudioContext({ sampleRate: 44_100, latencyHint: 'interactive' });
     await context.audioWorklet.addModule('/worklets/browser-input-capture.js');
     const node = new AudioWorkletNode(context, 'rc505-input-capture', {
-      numberOfInputs: 1,
+      numberOfInputs: 2,
       numberOfOutputs: 1,
       outputChannelCount: [2],
       channelCount: 2,
-      channelCountMode: 'max',
+      channelCountMode: 'explicit',
       processorOptions: {
         trackCount: 1,
         chunkSize: 1024,
@@ -40,7 +40,10 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
     const merger = context.createChannelMerger(2);
     left.connect(merger, 0, 0);
     right.connect(merger, 0, 1);
-    merger.connect(node);
+    // This end-to-end capture exercises the dual-lane worklet with identical
+    // source audio on raw and processed inputs, preserving the legacy default.
+    merger.connect(node, 0, 0);
+    merger.connect(node, 0, 1);
     const mute = context.createGain();
     mute.gain.value = 0;
     node.connect(mute);
