@@ -92,12 +92,13 @@ async function setupNativeBanks() {
   return { engine, input, track, send, runtimes, acknowledge, reject, markUnknown };
 }
 
-beforeEach(() => localStorage.clear());
+let nativeSetup: Awaited<ReturnType<typeof setupNativeBanks>>;
+beforeEach(async () => { localStorage.clear(); nativeSetup = await setupNativeBanks(); });
 afterEach(() => vi.restoreAllMocks());
 
 describe('Native shared Input and Track named parameter controls', () => {
   it('validates host schema and persists controls only after an exact Native ACK for each bank', async () => {
-    const { input, track, engine, send, acknowledge } = await setupNativeBanks();
+    const { input, track, engine, send, acknowledge } = nativeSetup;
     input.slots.value[0]!.type = 'PHASER';
     track.slots.value[0]!.type = 'PHASER';
     await nextTick();
@@ -114,7 +115,7 @@ describe('Native shared Input and Track named parameter controls', () => {
     expect(input.nativeNamedParametersPending.value).toBe(true);
     expect(input.slots.value[0]!.namedParametersByType).toBeUndefined();
     expect(localStorage.getItem(storageKey)).toBe(before);
-    expect(send).toHaveBeenCalledWith('input', 0, { rate_hz: 2 });
+    expect(send).toHaveBeenCalledWith('input', 0, { depth: 0, wet_mix: 0, rate_hz: 2 });
     acknowledge('input', 0);
     expect(input.nativeNamedParametersPending.value).toBe(false);
     expect(input.slots.value[0]!.namedParametersByType?.PHASER).toEqual({ rate_hz: 2 });
@@ -130,7 +131,7 @@ describe('Native shared Input and Track named parameter controls', () => {
   });
 
   it('keeps confirmed parameters on rejection and retains unknown outcomes without retrying', async () => {
-    const { input, send, acknowledge, reject, markUnknown } = await setupNativeBanks();
+    const { input, send, acknowledge, reject, markUnknown } = nativeSetup;
     input.slots.value[0]!.type = 'PHASER';
     await nextTick();
 
@@ -154,7 +155,7 @@ describe('Native shared Input and Track named parameter controls', () => {
     expect(send).toHaveBeenCalledTimes(3);
   });
   it.each(['input', 'track'] as const)('persists %s official ACK despite changing derived tempo and meter', async (path) => {
-    const setup = await setupNativeBanks();
+    const setup = nativeSetup;
     const panel = setup[path];
     panel.slots.value[0]!.type = 'PHASER';
     await nextTick();
@@ -170,7 +171,7 @@ describe('Native shared Input and Track named parameter controls', () => {
   });
 
   it('retains a rejected live reset until restart ACK updates both UI and persisted controls', async () => {
-    const { input, runtimes, acknowledge, reject } = await setupNativeBanks();
+    const { input, runtimes, acknowledge, reject } = nativeSetup;
     input.slots.value[0]!.type = 'PHASER';
     await nextTick();
     expect(input.setNativeNamedParameters(0, { official_depth: 25 })).toBe(true);
@@ -192,7 +193,7 @@ describe('Native shared Input and Track named parameter controls', () => {
   });
 
   it('uses the real typed STEP SLICER submission snapshot rather than rebuilding it from amount', async () => {
-    const { input, engine, runtimes, acknowledge } = await setupNativeBanks();
+    const { input, engine, runtimes, acknowledge } = nativeSetup;
     const { NativeAudioEngine } = await import('../../src/audio/NativeAudioEngine');
     const native = Object.create(NativeAudioEngine.prototype) as InstanceType<typeof NativeAudioEngine>;
     const typed = { depth_percent: 100, step_level_1: 37, step_level_2: 83, rate_index: 4 };
@@ -216,7 +217,7 @@ describe('Native shared Input and Track named parameter controls', () => {
   });
 
   it('cancels a pending reset when its slot is cleared instead of leaving the editor locked', async () => {
-    const { input, runtimes, reject } = await setupNativeBanks();
+    const { input, runtimes, reject } = nativeSetup;
     input.slots.value[0]!.type = 'PHASER';
     await nextTick();
     expect(input.setNativeNamedParameters(0, {})).toBe(true);

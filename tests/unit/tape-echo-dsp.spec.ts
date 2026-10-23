@@ -104,12 +104,11 @@ describe('Browser TAPE ECHO DSP', () => {
     const outputRight = new Float32Array(inputRight.length);
     dsp.processBlock(inputLeft, inputRight, outputLeft, outputRight);
 
-    for (let index = 0; index < outputLeft.length; index += 1) {
-      expect(Number.isFinite(outputLeft[index])).toBe(true);
-      expect(Number.isFinite(outputRight[index])).toBe(true);
-      expect(Math.abs(outputLeft[index] ?? 0)).toBeLessThanOrEqual(8);
-      expect(Math.abs(outputRight[index] ?? 0)).toBeLessThanOrEqual(8);
-    }
+    // Check every sample while reporting its first failure. Creating 96,000
+    // assertion objects dominated this safety test under parallel CI load.
+    const invalid = (sample: number) => !Number.isFinite(sample) || Math.abs(sample) > 8;
+    expect(outputLeft.findIndex(invalid), 'first nonfinite or out-of-bounds left sample').toBe(-1);
+    expect(outputRight.findIndex(invalid), 'first nonfinite or out-of-bounds right sample').toBe(-1);
   });
 
   it('is invariant to render chunk boundaries', () => {

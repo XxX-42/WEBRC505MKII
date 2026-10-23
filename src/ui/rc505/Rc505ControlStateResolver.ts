@@ -26,7 +26,7 @@ export function resolveRc505TrackControls(input: Rc505TrackControlInput) {
   const ready = input.available && input.ready && !input.operationPending;
   if (input.layer === 'UNDO_REDO') {
     const mark = input.mark;
-    const markReady = ready && mark?.supported === true && !mark.busy && !input.history.busy;
+    const markReady = ready && mark?.supported === true && !mark.busy;
     const historyReady = ready && !input.history.busy && !mark?.busy && (input.history.canUndo || input.history.canRedo);
     const markReason = mark?.unavailableReason || 'MARK is not supported by this audio runtime.';
     return {

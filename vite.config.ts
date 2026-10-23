@@ -28,6 +28,9 @@ export default defineConfig({
     include: ['tests/unit/**/*.spec.ts'],
     restoreMocks: true,
     clearMocks: true,
+    // Each file loads the complete DSP/UI module graph in an isolated jsdom.
+    // Bound transform contention without increasing any test's time budget.
+    maxWorkers: 4,
   },
   build: {
     rollupOptions: {

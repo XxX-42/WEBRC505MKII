@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { shallowMount, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
@@ -70,8 +70,10 @@ async function loadPanel(path: 'input' | 'track', options: { mode?: 'native' | '
 }
 
 describe.each(['input', 'track'] as const)('Native RC505 face %s FX official controls', (path) => {
+  let panel: Awaited<ReturnType<typeof loadPanel>>;
+  beforeEach(async () => { panel = await loadPanel(path); });
   it('shows host labels, bounds, enum names and partial limitations for the selected slot', async () => {
-    const { wrapper, title, engine } = await loadPanel(path);
+    const { wrapper, title, engine } = panel;
     const editor = wrapper.get('[data-native-catalog-parameters]');
     expect(editor.text()).toContain('RC · DEPTH');
     expect(editor.text()).toContain('Guide p.34');
@@ -84,7 +86,7 @@ describe.each(['input', 'track'] as const)('Native RC505 face %s FX official con
   });
 
   it('uses the ACK-aware setter for valid drafts and reset without directly saving edits', async () => {
-    const { wrapper, title, panelState } = await loadPanel(path);
+    const { wrapper, title, panelState } = panel;
     const editor = wrapper.get('[data-native-catalog-parameters]');
     const depth = editor.get(`[aria-label="${title} official_depth"]`);
     const apply = editor.get('.native-catalog-actions button');
@@ -113,7 +115,7 @@ describe.each(['input', 'track'] as const)('Native RC505 face %s FX official con
   });
 
   it('blocks pending, unknown and unavailable writes and reports setter rejection', async () => {
-    const { wrapper, title, panelState } = await loadPanel(path);
+    const { wrapper, title, panelState } = panel;
     const editor = wrapper.get('[data-native-catalog-parameters]');
     const apply = editor.get('.native-catalog-actions button');
     for (const status of [{ pendingApply: true, outcomeUnknown: false }, { pendingApply: false, outcomeUnknown: true }]) {

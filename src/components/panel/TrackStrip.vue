@@ -37,6 +37,7 @@
           :aria-label="`Track ${trackId} ${resolvedControls.fx.hardwareRole}: ${resolvedControls.fx.unavailableReason}`"
           data-hardware-control="button"
           :data-hardware-role="resolvedControls.fx.hardwareRole"
+          @press="handleTrackFx"
         />
         <HardwareButton
           shape="rect"
@@ -52,7 +53,7 @@
           data-track-control="select"
           :data-phrase-status="audioEngine.getTrackHasPhrase?.(trackId) === null ? 'unknown' : audioEngine.getTrackHasPhrase?.(trackId) ? 'present' : 'empty'"
           :data-hardware-role="resolvedControls.track.hardwareRole"
-          :aria-label="trackButtonAriaLabel"
+          :aria-label="undoLayer ? `Track ${trackId} ${resolvedControls.track.hardwareRole}: ${resolvedControls.track.unavailableReason}` : trackButtonAriaLabel"
           data-hardware-control="button"
           @press="openTrackEditor"
         />
@@ -63,8 +64,8 @@
           type="button"
           :disabled="!resolvedControls.stop.enabled"
           :data-hardware-role="resolvedControls.stop.hardwareRole"
-          :title="trackInteractionDisabledReason || 'Hold to clear this track'"
-          aria-label="Stop track (hold to clear)"
+          :title="resolvedControls.stop.unavailableReason || trackInteractionDisabledReason || 'Hold to clear this track'"
+          :aria-label="undoLayer ? `Track ${trackId} MARK BACK unavailable` : 'Stop track (hold to clear)'"
           data-hardware-control="button"
           @pointerdown="handleStopPointerDown"
           @pointerup="handleStopPointerUp"
@@ -149,6 +150,7 @@ const controls = useRc505Controls();
 const undoLayer = computed(() => controls.state.controlLayer === 'UNDO_REDO');
 const audioEngine = AudioEngine.getInstance();
 const audioStatusRevision = ref(0);
+const controlOperationPending = ref(false);
 const audioReady = computed(() => {
   audioStatusRevision.value;
   return audioEngine.getUiStatus().ready;
@@ -214,6 +216,7 @@ const resolvedControls = computed(() => {
     ready: trackTransportReady.value, recordReady: recordActionReady.value,
     recordUnavailableReason: recordActionDisabledReason.value,
     layer: controls.state.controlLayer, history,
+    mark: audioEngine.getMarkState?.(props.trackId), operationPending: controlOperationPending.value,
     fxApplySupported: false, fxApplied: null,
   });
 });
@@ -221,16 +224,33 @@ const trackFxDisabledReason = computed(() => resolvedControls.value.fx.unavailab
 async function handleTrackRecPlay(): Promise<void> {
   if (!resolvedControls.value.record.enabled) return;
   if (!undoLayer.value) { handleRecPlay(); return; }
+  controlOperationPending.value = true;
   try {
     const history = audioEngine.getTrackHistoryStatus(props.trackId);
     const success = history.canUndo ? await audioEngine.undoTrack(props.trackId) : await audioEngine.redoTrack(props.trackId);
     if (!success) controls.reportError('HISTORY UNAVAILABLE');
   } catch (error) { controls.reportError(error instanceof Error ? error.message : 'HISTORY FAILED'); }
+  finally { controlOperationPending.value = false; }
   audioStatusRevision.value += 1;
 }
 
+async function performMark(operation: 'set' | 'clear'): Promise<void> {
+  if (controlOperationPending.value) return;
+  controlOperationPending.value = true;
+  try {
+    const result = await (operation === 'set' ? audioEngine.setMark(props.trackId) : audioEngine.clearMark(props.trackId));
+    if (!result.ok) controls.reportError('MARK FAILED', result.reason || 'The runtime did not confirm MARK.');
+    else controls.clearError('general');
+  } catch (error) { controls.reportError('MARK FAILED', error instanceof Error ? error.message : String(error)); }
+  finally { controlOperationPending.value = false; audioStatusRevision.value += 1; }
+}
+function handleTrackFx(): void {
+  if (!resolvedControls.value.fx.enabled) return;
+  if (undoLayer.value) void performMark('clear');
+}
 function openTrackEditor(): void {
   if (!resolvedControls.value.track.enabled) return;
+  if (undoLayer.value) { void performMark('set'); return; }
   handleTrackSelect();
   device.classicDispatch({ type: 'OPEN_EDITOR', target: 'track', category: 'track' });
   device.openSelectedTrack();

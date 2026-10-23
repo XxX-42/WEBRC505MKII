@@ -136,9 +136,20 @@ interface PendingNativeNamedParameters {
   overrides: Record<string, number>;
   expectedParameters: Record<string, number>;
   previousRevision: number | null;
+  removedKeys: string[];
 }
 const pendingNativeNamedParameters = new Map<string, PendingNativeNamedParameters>();
 const nativeNamedParameterKey = (location: FxLocation, slotIndex: number) => `${location}:${slotIndex}`;
+function nativeNamedSubmission(location: FxLocation, index: number, overrides: Record<string, number>, removedKeys: readonly string[] = []): Record<string, number> {
+  const slot = (location === 'input' ? nativeFxState.inputSlots : nativeFxState.trackSlots)[index]!;
+  const complete = engine.getNativeCatalogFxParameterSnapshot?.(location, index, 0, overrides)
+    ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...overrides };
+  // Named edits are patches over the confirmed complete authored snapshot.
+  // Only an explicit reset removes previously authored named keys; the host
+  // retains its requiresRestart policy for that removal.
+  for (const key of removedKeys) delete complete[key];
+  return complete;
+}
 function reconcileNativeNamedParameters() {
   if (engine.getMode() !== 'native' || pendingNativeNamedParameters.size === 0) return;
   let changed = false;
@@ -308,13 +319,12 @@ function syncSlotToEngine(location: FxLocation, index: number, slot: FxSlotState
     if (pending && pending.effectId === nativeCatalogEffectId(slot.type)) {
       // A normal amount/active edit must not replay the persisted old controls
       // over a pending reset (including a host requiresRestart response).
-      pending.expectedParameters = engine.getNativeCatalogFxParameterSnapshot?.(location, index, 0, pending.overrides)
-        ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...pending.overrides };
-      engine.setCatalogFxParameters(location, index, { ...pending.overrides });
+      pending.expectedParameters = nativeNamedSubmission(location, index, pending.overrides, pending.removedKeys);
+      engine.setCatalogFxParameters(location, index, { ...pending.expectedParameters });
     } else {
       if (pending) pendingNativeNamedParameters.delete(key);
       const named = nativeNamedOverridesForSync(location, slot.type, slot.namedParametersByType?.[slot.type], index);
-      if (named && Object.keys(named).length) engine.setCatalogFxParameters(location, index, named);
+      if (named && Object.keys(named).length) engine.setCatalogFxParameters(location, index, nativeNamedSubmission(location, index, named));
     }
   }
   // Install all named controls before enabling a one-shot effect. For PITCH
@@ -776,8 +786,9 @@ export function useFxPanelState(location: FxLocation) {
     }
     const runtime = engine.getNativeCatalogFxSlotStatus(location, slotIndex);
     if (!runtime) return false;
-    const expectedParameters = engine.getNativeCatalogFxParameterSnapshot?.(location, slotIndex, 0, parameters)
-      ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...parameters };
+    const removedKeys = Object.keys(slot.namedParametersByType?.[slot.type] ?? {})
+      .filter(key => !Object.prototype.hasOwnProperty.call(parameters, key));
+    const expectedParameters = nativeNamedSubmission(location, slotIndex, parameters, removedKeys);
     pendingNativeNamedParameters.set(pendingKey, {
       location,
       slotIndex,
@@ -785,8 +796,9 @@ export function useFxPanelState(location: FxLocation) {
       overrides: { ...parameters },
       expectedParameters,
       previousRevision: runtime.requestedRevision,
+      removedKeys,
     });
-    engine.setCatalogFxParameters(location, slotIndex, { ...parameters });
+    engine.setCatalogFxParameters(location, slotIndex, { ...expectedParameters });
     reconcileNativeNamedParameters();
     nativeStatusRevision.value += 1;
     return true;

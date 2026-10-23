@@ -14,6 +14,7 @@ import type { NativeCatalogMidiEvent } from './NativeBridgeClient';
 import { mapMidiNoteToNativeCatalogEvent, type OscVocMidiTarget } from './nativeOscVocMidi';
 import type { ProjectArchive, ProjectRestoreOperationToken } from './projectArchive';
 import { Transport } from '../core/Transport';
+import { unsupportedTrackMarkState, type TrackMarkState, type TrackMarkActionResult } from './TrackMark';
 export type TrackFxMidiTarget = OscVocMidiTarget & { trackId?: number };
 export type { OscVocMidiTarget } from './nativeOscVocMidi';
 
@@ -794,6 +795,17 @@ export class AudioEngine {
   public getBrowserSharedFxSnapshot(path: 'input' | 'track') {
     return this.currentMode === 'browser' ? this.browser.getSharedFxSnapshot(path) : null;
   }
+
+  public getMarkState(trackId: number): TrackMarkState {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !this.isTrackAvailable(trackId)) {
+      return unsupportedTrackMarkState('Select an available track before using MARK.');
+    }
+    return this.activeEngine.getMarkState(trackId);
+  }
+
+  public setMark(trackId: number): Promise<TrackMarkActionResult> { return this.activeEngine.setMark(trackId); }
+  public clearMark(trackId: number): Promise<TrackMarkActionResult> { return this.activeEngine.clearMark(trackId); }
+  public backToMark(trackId: number): Promise<TrackMarkActionResult> { return this.activeEngine.backToMark(trackId); }
 
   /** Last acknowledged one-step PCM history for the selected loop. */
   public getTrackHistoryStatus(trackId: number): TrackPcmHistoryStatus {

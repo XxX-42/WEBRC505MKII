@@ -38,4 +38,12 @@ describe('confirmed Mark controls in the secondary layer', () => {
     state.fxApplied = null;
     expect(resolveRc505TrackControls(state).fx).toMatchObject({ enabled: false, ledOn: false });
   });
+  it('uses the backend Mark capability instead of inheriting stopped-only Undo restrictions', () => {
+    const state = input();
+    state.state = 'PLAYING';
+    state.history.busy = true;
+    const controls = resolveRc505TrackControls(state);
+    expect(controls.track.enabled).toBe(true);
+    expect(controls.record.enabled).toBe(false);
+  });
 });
