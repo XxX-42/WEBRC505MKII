@@ -19,6 +19,9 @@ function harness(supportsReplacement: boolean, parameters: Record<string, number
     return status;
   }), stopEngine: vi.fn() };
   Object.assign(engine, { latestStatus: status, engineRunning: true, bridge, nativeCatalogFxRuntime: new Map(),
+    // Object.create skips constructor fields. This fixture has no outstanding
+    // committed Memory generation; its explicit render helper supplies FX ACKs.
+    nativeMemoryReadbackGeneration: null,
     nativeCatalogSlotEditRevisions: new Map(), nativePerTrackFxEdited: new Set(),
     nativeCatalogFxDirtySlots: new Set(['input:A']), nativeCatalogFxSubmittedEditRevisions: new Map(),
     nativeCatalogFxHydratedSlots: new Set(), nativeCatalogFxUnknownParameterSlots: new Set(),
@@ -40,6 +43,14 @@ describe('Native complete authored snapshots', () => {
     await sync();
     expect(bridge.setCatalogSlot).not.toHaveBeenCalled();
     expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({ acknowledged: false, error: expect.stringContaining('update the Native host') });
+  });
+  it('does not expose a previous slot ACK while committed Memory awaits fresh readback', async () => {
+    const { engine, sync } = harness(true);
+    await sync();
+    expect(engine.getCatalogFxSlotStatus('input', 0).acknowledged).toBe(true);
+    (engine as unknown as { nativeMemoryReadbackGeneration: number | null }).nativeMemoryReadbackGeneration = 7;
+    expect(engine.getCatalogFxSlotStatus('input', 0)).toMatchObject({ acknowledged: false, outcomeUnknown: true,
+      acknowledgedParameters: null, error: expect.stringContaining('Memory generation 7 committed') });
   });
   it('keeps old-host legacy-only writes working without inventing replacement support', async () => {
     const { bridge, sync } = harness(false, { cutoff_hz: 2000 });
