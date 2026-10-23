@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "PARTIAL",
+  "implementedSoftwareAreas": [
+    "Classic LCD state/control flow; selected track and acknowledged FX LEDs are distinct.",
+    "Per-track gate acknowledgement, software mixer readback, semantic Memory transactions and authored bank/switch sidecars.",
+    "MOMENT holds are transient intent; restored switch state must discard stale holds without FX replay."
+  ],
+  "requiredScaleFloor": 0.8,
+  "hardwareEquivalence": "BLOCKED",
+  "scopedChecks": [
+    {
+      "status": "SCOPED_RESULT_REPORTED",
+      "behavior": "26-test scoped set covers track-level async pending/readback/failure, Memory committed-dispose classification and Native strip capabilities.",
+      "sourceContext": "4b9e2fa integration",
+      "source": [
+        "../../src/composables/useTrackStripState.ts",
+        "../../src/audio/Rc505Memory.ts"
+      ],
+      "tests": [
+        "../../tests/unit/useTrackStripState-stop.spec.ts",
+        "../../tests/unit/rc505-memory.spec.ts",
+        "../../tests/unit/native-track-strip-capabilities.spec.ts"
+      ],
+      "evidence": [
+        "STATUS.md#scoped-results-reported-by-integrator"
+      ],
+      "integratorRecord": "Parent tool-output integration record:3files26/26; final regression pending."
+    }
+  ],
+  "coverage": {
+    "source": [
+      "../../src/components/panel/FxBankControls.vue",
+      "../../src/composables/useRc505FxSwitchSettings.ts",
+      "../../src/ui/rc505/Rc505FxSwitchController.ts",
+      "../../src/composables/wrapRc505MemoryUiRuntime.ts"
+    ],
+    "tests": [
+      "../../tests/e2e/rc505-semantic-controls.spec.ts",
+      "../../tests/e2e/rc505-classic-parity.spec.ts",
+      "../../tests/unit/rc505-fx-bank.spec.ts",
+      "../../tests/unit/rc505-memory-ui-runtime.spec.ts"
+    ],
+    "evidence": [
+      "visual-measurement.json"
+    ]
+  },
+  "remaining": [
+    "MARK BACK disabled.",
+    "Playing MARK continuity core fix and final regression pending.",
+    "Physical USB/audio/MIDI, exact hardware timing, calibrated geometry/LED behavior and audio jury blocked.",
+    "Final integrated regression and deployment pending."
+  ]
+}

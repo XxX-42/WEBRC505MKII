@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "PARTIAL_SOFTWARE_CONTRACT_VALIDATED",
+  "contract": [
+    "Five independent gates select record raw/processed input and wet shared Track FX/dry playback paths.",
+    "Input and playback application revisions must both be confirmed before a gate is displayed as applied.",
+    "Private per-track FX precede the shared wet/dry split; meters describe actual software playback taps."
+  ],
+  "scopedChecks": [
+    {
+      "status": "PASS",
+      "behavior": "Native gate acknowledgement/getter and FX readback selector tests, together with semantic Memory runtime tests, passed in a32-test focused run.",
+      "sourceCommit": "193851f",
+      "rootIntegration": "05871f6",
+      "source": [
+        "../../src/audio/NativeAudioEngine.ts",
+        "../../src/audio/NativeRc505MemoryRuntime.ts"
+      ],
+      "tests": [
+        "../../tests/unit/native-track-fx-apply.spec.ts",
+        "../../tests/unit/rc505-fx-readback.spec.ts",
+        "../../tests/unit/native-semantic-memory-runtime.spec.ts"
+      ],
+      "evidence": [
+        "C:/Users/user1000/.codex/scratch/rc505-native-memory-unknown.log"
+      ],
+      "externalEvidenceHashes": {
+        "C:/Users/user1000/.codex/scratch/rc505-native-memory-unknown.log": "748996f2d0513b90135d2a55c0c80375a918678f9ae1b55d3a19bcffaba302ce"
+      }
+    }
+  ],
+  "otherCoverage": {
+    "source": [
+      "../../src/audio/BrowserAudioEngine.ts",
+      "../../src/audio/TrackAudio.ts",
+      "../../native-mvp/engine-cpp/src/native_audio_core.cpp"
+    ],
+    "tests": [
+      "../../tests/unit/browser-track-fx-apply.spec.ts",
+      "../../tests/unit/browser-fx-bank-routing.spec.ts",
+      "../../native-mvp/engine-cpp/tests/native_audio_callback_tests.cpp"
+    ],
+    "evidence": [
+      "native-callback-telemetry.json"
+    ]
+  },
+  "limitations": [
+    "Simulation and software-node tests do not establish hardware routing equivalence.",
+    "Final gate/render regressions after pending core fixes are not yet complete."
+  ]
+}

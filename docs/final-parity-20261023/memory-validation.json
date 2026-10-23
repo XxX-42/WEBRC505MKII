@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "PARTIAL_SCOPED_SOFTWARE_VALIDATION",
+  "format": "Independent RC505 semantic envelope preserves exact embedded legacy v1 PCM archive bytes; legacy ProjectMemory storage/archive remains separate.",
+  "contract": [
+    "Require all five tracks stopped; persist full incumbent recovery envelope before prepare.",
+    "Stage PCM, settings, seven FX banks and output graph before publication.",
+    "Native publishes one callback generation and reclaims old objects on the control thread after ACK.",
+    "Postcommit readback/UI/cleanup failures retain target identity and are reported as committed failures with dirty state.",
+    "Runtime epoch/mode-generation fences reject stale and edit/revert candidates.",
+    "Bank/switch sidecars preserve authored profiles; unknown identity stays unconfirmed; hydration must not replay DSP writes."
+  ],
+  "scopedChecks": [
+    {
+      "status": "PASS",
+      "behavior": "Native semantic runtime12-test final focused retest covered host ACK classification, opaque preservation, all7bank ACK invalidation on readback failure and normal exact reinstallation.",
+      "sourceCommit": "193851f",
+      "source": [
+        "../../src/audio/NativeRc505MemoryRuntime.ts",
+        "../../src/audio/NativeAudioEngine.ts"
+      ],
+      "tests": [
+        "../../tests/unit/native-semantic-memory-runtime.spec.ts"
+      ],
+      "evidence": [
+        "C:/Users/user1000/.codex/scratch/rc505-native-memory-unknown-confirm.log"
+      ],
+      "externalEvidenceHashes": {
+        "C:/Users/user1000/.codex/scratch/rc505-native-memory-unknown-confirm.log": "2510e88e235802458b1b46f92eecfa88d068a4637f08526f4a11bd05375ad2dc"
+      }
+    },
+    {
+      "status": "SCOPED_RESULT_REPORTED",
+      "behavior": "Native UI hydration47-test scoped agent run at original budgets; this is not the final whole-root regression.",
+      "sourceCommit": "9727f6d",
+      "rootIntegration": "b649416",
+      "source": [
+        "../../src/composables/useFxPanelState.ts",
+        "../../src/composables/useNativeTrackFxState.ts",
+        "../../src/composables/wrapRc505MemoryUiRuntime.ts"
+      ],
+      "tests": [
+        "../../tests/unit/native-memory-ui-hydration.spec.ts",
+        "../../tests/unit/rc505-memory-ui-runtime.spec.ts",
+        "../../tests/unit/rc505-fx-bank.spec.ts"
+      ],
+      "evidence": [
+        "STATUS.md#scoped-results-reported-by-integrator"
+      ],
+      "integratorRecord": "Parent integration record: agent scoped47/47 at9727f6d; raw log not included here."
+    },
+    {
+      "status": "SCOPED_RESULT_REPORTED",
+      "behavior": "One earlier real Chromium Browser Memory integration passed in its agent scope; no final-root claim.",
+      "sourceContext": "291de79-era agent tree",
+      "source": [
+        "../../src/audio/BrowserRc505Memory.ts",
+        "../../src/audio/BrowserAudioEngine.ts"
+      ],
+      "tests": [
+        "../../tests/e2e/browser-semantic-memory.spec.ts"
+      ],
+      "evidence": [
+        "STATUS.md#scoped-results-reported-by-integrator"
+      ],
+      "integratorRecord": "Parent integration record: earlier scoped1/1; raw log not included here."
+    }
+  ],
+  "pendingIntegrationTests": [
+    "../../tests/e2e/native-semantic-memory.spec.ts"
+  ],
+  "pendingTestScope": "Native new integration test is written and integrated atd824f11, not executed at documentation cut: five real PCM hashes,7banks,dualACKgates,prepare/cancel,failed prepare retention and UI no-FX-write hydration.",
+  "coverage": {
+    "source": [
+      "../../src/audio/Rc505Memory.ts",
+      "../../src/audio/BrowserRc505Memory.ts",
+      "../../src/audio/Rc505MemoryRuntimeFence.ts",
+      "../../native-mvp/engine-cpp/src/native_audio_core.cpp",
+      "../../native-mvp/engine-cpp/src/native_bridge_host.cpp"
+    ],
+    "tests": [
+      "../../tests/unit/rc505-memory.spec.ts",
+      "../../tests/unit/rc505-memory-fence.spec.ts",
+      "../../tests/unit/rc505-memory-ui-runtime.spec.ts",
+      "../../native-mvp/engine-cpp/tests/native_memory_http_simulation_test.py"
+    ],
+    "evidence": []
+  },
+  "limitations": [
+    "Hardware Memory compatibility and physical device state transitions are BLOCKED.",
+    "Scoped test totals belong to their indicated source trees and cannot be summed as a final regression.",
+    "Complete root regression/deployment remains PENDING; root owns regression.json and final counts."
+  ]
+}

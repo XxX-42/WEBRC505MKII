@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "BLOCKED_PHYSICAL_LATENCY_UNMEASURED",
+  "physicalRoundTripLatencyMs": null,
+  "softwareTimingStatus": "NOT_A_PASS",
+  "measurementSource": "4ef9913",
+  "measurement": {
+    "measuredCallbacks": 80000,
+    "warmupCallbacks": 8000,
+    "legs": 8,
+    "order": "ABBA twice",
+    "samplesPerLeg": 10000,
+    "deadlineExceedances": 43,
+    "p999NanosecondsRange": [
+      1068300,
+      3371700
+    ],
+    "maximumNanoseconds": 20849100
+  },
+  "evidence": [
+    "software-engine-baseline/receipt.json",
+    "software-engine-baseline/callback-abba.json",
+    "hil-audio-harness-evidence.json"
+  ],
+  "interpretation": "Callback compute duration is not physical round-trip latency. Observed deadline exceedances prevent a realtime performance PASS or regression-improvement claim. Final frozen-source timing remains pending."
+}

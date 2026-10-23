@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "BLOCKED",
+  "reason": "Live inventory found no RC-505/Roland/BOSS 505 device match; no physical stream was opened.",
+  "evidence": [
+    "hil-audio-harness-evidence.json"
+  ],
+  "physicalSampleRateHz": null,
+  "physicalBufferFrames": null,
+  "physicalLatencyMs": null,
+  "physicalXruns": null,
+  "releaseCondition": "Connect the intended RC-505 device, record its driver/configuration and run retained physical loopback captures; do not substitute simulation or a virtual endpoint."
+}

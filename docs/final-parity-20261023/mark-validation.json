@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "PARTIAL",
+  "implementedPolicy": [
+    "Independent finalized stereo MARK SET/CLEAR; admission shares the aggregate history budget, including accepted reservations.",
+    "Native shared history budget is512MiB; allocation/copy/reclamation are control-thread work.",
+    "Whole Memory replacement invalidates prior Marks and history as a documented software policy."
+  ],
+  "markBack": {
+    "status": "DISABLED",
+    "reason": "Recording-state transition remains ambiguous; no hardware behavior is invented."
+  },
+  "playingContinuity": {
+    "status": "PENDING_CORE_FIX_AND_FINAL_REGRESSION",
+    "finding": "At documentation snapshotd824f11, Native MARK SET uses a suppressing history pin while Playing. Root is preparing a read-only pin fix; this snapshot must not claim uninterrupted Playing MARK SET."
+  },
+  "coverage": {
+    "source": [
+      "../../src/audio/TrackAudio.ts",
+      "../../src/audio/NativeAudioEngine.ts",
+      "../../native-mvp/engine-cpp/src/native_audio_core.cpp",
+      "../../native-mvp/engine-cpp/include/native_audio_core.hpp"
+    ],
+    "tests": [
+      "../../tests/unit/browser-track-mark.spec.ts",
+      "../../tests/unit/rc505-mark-control-layer.spec.ts",
+      "../../native-mvp/engine-cpp/tests/native_audio_callback_tests.cpp",
+      "../../native-mvp/engine-cpp/tests/native_callback_telemetry_tests.cpp"
+    ],
+    "evidence": [
+      "native-callback-telemetry.json"
+    ]
+  },
+  "scopedTelemetry": "The telemetry receipt exercised committed-overdub MARK callbacks in simulation; it does not certify physical Mark timing, continuous playback or the final source.",
+  "hardwareStateTransitions": "BLOCKED"
+}

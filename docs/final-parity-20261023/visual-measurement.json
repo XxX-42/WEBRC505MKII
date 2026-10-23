@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "PARTIAL_UNCALIBRATED",
+  "minimumScale": 0.8,
+  "policy": "Keep the80%scale floor. At small viewports, clipping with scrolling and a visible size warning is allowed; lowering the fit floor is not an accepted fix.",
+  "visualEvidence": [
+    "../ui-parity/visual/reference.png",
+    "../ui-parity/visual/candidate-review-round2/1920x1080.png",
+    "../ui-parity/visual/candidate-review-round2/1366x768.png",
+    "../ui-parity/visual/candidate-review-round2/scrolled-1366.png",
+    "../ui-parity/visual/candidate-review-round2/center-controls.png"
+  ],
+  "measurementEvidence": [
+    "../ui-parity/visual/measurement.json",
+    "../ui-parity/visual/candidate-review-round2/measurement.json"
+  ],
+  "calibratedHardwareGeometry": false,
+  "hardwareLedPhotometry": false,
+  "pixelTolerancePass": null,
+  "limitations": [
+    "Reference photo affine resizing is not calibrated hardware geometry.",
+    "Color/illumination are engineering approximations, not measured LED photometry or verified blink behavior.",
+    "Round2 screenshots are review evidence; they do not establish final frozen-source geometry or a4px compliance claim."
+  ],
+  "source": [
+    "../../src/components/shells/ClassicShell.vue"
+  ],
+  "tests": [
+    "../../tests/e2e/rc505-classic-parity.spec.ts"
+  ]
+}

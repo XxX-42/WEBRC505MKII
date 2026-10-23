@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "BLOCKED",
+  "reason": "No completed blind listening jury, scored preference panel or matching physical RC-505 captures are available for this integration.",
+  "jurySessions": 0,
+  "preferenceScore": null,
+  "rolandEquivalence": null,
+  "evidence": [
+    "software-engine-baseline/receipt.json",
+    "hil-audio-harness-evidence.json"
+  ],
+  "availableMaterial": "68 software dry/LPF WAV render receipts over17stimuli from source4ef9913 are preparation material only.",
+  "releaseCondition": "Record and identify reference/candidate signal chains and levels; perform a documented blind listening protocol with retained audio and scores."
+}

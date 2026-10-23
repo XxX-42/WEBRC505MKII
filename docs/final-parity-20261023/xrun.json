@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "BLOCKED_HARDWARE_XRUN_UNMEASURED",
+  "driverInputOverflow": null,
+  "driverOutputUnderflow": null,
+  "driverResets": null,
+  "globalDriverStatistics": null,
+  "softwareBaseline": {
+    "source": "4ef9913",
+    "callbacks": 80000,
+    "deadlineExceedances": 43,
+    "acceptance": "NOT_A_PASS"
+  },
+  "telemetry": {
+    "status": "PASS_SCOPED_SIMULATION",
+    "behavior": "Separate simulated callback flags, software queue/deadline/nonfinite events, and real-driver provenance; unavailable driver values remain null.",
+    "sourceBase": "a456b96",
+    "ctestTargets": [
+      "native_callback_telemetry_tests",
+      "native_callback_telemetry_http"
+    ],
+    "passedTargets": 2,
+    "failedTargets": 0,
+    "source": [
+      "../../native-mvp/engine-cpp/src/native_audio_core.cpp",
+      "../../docs/native-callback-telemetry.md"
+    ],
+    "tests": [
+      "../../native-mvp/engine-cpp/tests/native_callback_telemetry_tests.cpp",
+      "../../native-mvp/engine-cpp/tests/native_callback_telemetry_http_test.py"
+    ],
+    "evidence": [
+      "native-callback-telemetry.json"
+    ]
+  },
+  "evidence": [
+    "software-engine-baseline/receipt.json",
+    "native-callback-telemetry.json"
+  ],
+  "limitations": [
+    "Legacy xrunsOrDropouts aggregates different software observations and is not a driver-only XRUN counter.",
+    "Simulated overflow/underflow flags are not physical WASAPI/ASIO measurements.",
+    "Final frozen-source regression and physical counters remain pending."
+  ]
+}

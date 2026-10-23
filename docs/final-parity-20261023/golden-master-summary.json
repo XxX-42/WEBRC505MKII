@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "documentationSource": "d824f11",
+  "finalFrozenSource": null,
+  "finalRegression": "PENDING",
+  "deployment": "PENDING",
+  "hardwareValidated": false,
+  "status": "PARTIAL_SOFTWARE_BASELINE_ONLY",
+  "measurementSource": "4ef9913",
+  "harnessCommit": "9966b81",
+  "renderCount": 68,
+  "stimulusCount": 17,
+  "coverage": [
+    "Browser production DSP core under Node: dry and LPF",
+    "Native actual callback/input-FX/software-monitor with fake RtAudio: dry and LPF"
+  ],
+  "parameters": {
+    "lpfHz": 1200,
+    "resonancePercent": 15
+  },
+  "evidence": [
+    "software-engine-baseline/receipt.json",
+    "software-engine-baseline/native-probe-build.json"
+  ],
+  "scopedChecks": [
+    {
+      "status": "PASS",
+      "behavior": "Two fresh production Browser core instances produced the same impulse output in the same process.",
+      "source": [
+        "../../src/audio/worklet/FxProcessor.ts",
+        "../../bench/audio-parity/render_browser.ts"
+      ],
+      "tests": [
+        "../../bench/audio-parity/tests/test_harness.py"
+      ],
+      "evidence": [
+        "software-engine-baseline/receipt.json"
+      ],
+      "limitation": "Fresh DSP instance proof; not a BrowserAudioEngine scheduling, hardware or complete FX equivalence proof."
+    }
+  ],
+  "limitations": [
+    "Source4ef9913 predates final integration and later callback/Mark/telemetry fixes.",
+    "Only dry/LPF and17stimuli; not all official FX, all settings, Memory end-to-end or Roland algorithm equivalence.",
+    "Browser renders do not execute AudioContext scheduling or the full app export path.",
+    "Native fake RtAudio renders do not execute WASAPI/MMCSS/device drivers.",
+    "Effect tails beyond stimulus duration are truncated; WAVs and hash paths are recorded in the receipt, not embedded in this report."
+  ]
+}
