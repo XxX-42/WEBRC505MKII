@@ -31,10 +31,103 @@ using namespace webrc::native;
 
 namespace {
 
+bool exactMemoryKeys(const json& value, std::initializer_list<const char*> keys) {
+    return value.is_object() && value.size() == keys.size() && std::all_of(keys.begin(), keys.end(),
+        [&value](const char* key) { return value.contains(key); });
+}
+
+std::size_t memoryStringLength(const std::string& value, bool utf16Units = false) noexcept {
+    std::size_t count = 0U;
+    for (const auto character : value) {
+        const auto byte = static_cast<unsigned char>(character);
+        if ((byte & 0xc0U) == 0x80U) continue;
+        count += utf16Units && byte >= 0xf0U ? 2U : 1U;
+    }
+    return count;
+}
+
+bool memoryJsonSafe(const json& value, unsigned int depth = 0U) {
+    if (depth > 12U) return false;
+    if (value.is_null() || value.is_boolean()) return true;
+    if (value.is_number()) return std::isfinite(value.get<double>());
+    if (value.is_string()) return memoryStringLength(value.get_ref<const std::string&>(), true) <= 8192U;
+    if (value.is_array()) return value.size() <= 4096U && std::all_of(value.begin(), value.end(),
+        [depth](const json& child) { return memoryJsonSafe(child, depth + 1U); });
+    if (!value.is_object()) return false;
+    for (auto entry = value.begin(); entry != value.end(); ++entry) {
+        if (entry.key() == "__proto__" || entry.key() == "constructor" || entry.key() == "prototype" ||
+            !memoryJsonSafe(entry.value(), depth + 1U)) return false;
+    }
+    return true;
+}
+
+bool boundedMemoryInteger(const json& value, std::int64_t minimum, std::int64_t maximum) {
+    if (!value.is_number_integer()) return false;
+    if (value.is_number_unsigned()) {
+        const auto number = value.get<std::uint64_t>();
+        return number <= static_cast<std::uint64_t>(maximum) && number >= static_cast<std::uint64_t>(minimum);
+    }
+    const auto number = value.get<std::int64_t>();
+    return number >= minimum && number <= maximum;
+}
+
+void validateNativeMemoryMetadata(const json& metadata) {
+    if (!exactMemoryKeys(metadata, {"version", "memoryNumber", "name", "semantics", "extensions"}) ||
+        !boundedMemoryInteger(metadata.at("version"), 1, 1) ||
+        !(metadata.at("memoryNumber").is_null() || boundedMemoryInteger(metadata.at("memoryNumber"), 1, 99)) ||
+        !metadata.at("name").is_string()) throw std::runtime_error("Invalid Memory metadata schema/version/slot.");
+    const auto& name = metadata.at("name").get_ref<const std::string&>();
+    if (memoryStringLength(name) > 12U || std::any_of(name.begin(), name.end(), [](char character) {
+        const auto byte = static_cast<unsigned char>(character); return byte < 0x20U || byte == 0x7fU;
+    })) throw std::runtime_error("Memory name must contain at most twelve visible characters.");
+    const auto& semantics = metadata.at("semantics");
+    if (!exactMemoryKeys(semantics, {"tempo", "meter", "fields"}) || !semantics.at("tempo").is_number() ||
+        !std::isfinite(semantics.at("tempo").get<double>()) || semantics.at("tempo").get<double>() < 40.0 ||
+        semantics.at("tempo").get<double>() > 300.0 || !semantics.at("meter").is_array() ||
+        semantics.at("meter").size() != 2U || !boundedMemoryInteger(semantics.at("meter")[0U], 1, 32) ||
+        !boundedMemoryInteger(semantics.at("meter")[1U], 1, 32) || !semantics.at("fields").is_object()) {
+        throw std::runtime_error("Invalid Memory semantic tempo/meter/fields.");
+    }
+    const auto denominator = semantics.at("meter")[1U].get<unsigned int>();
+    if ((denominator & (denominator - 1U)) != 0U) throw std::runtime_error("Invalid Memory meter denominator.");
+    const auto& extensions = metadata.at("extensions");
+    if (!exactMemoryKeys(extensions, {"WEBRC"}) || !extensions.at("WEBRC").is_object() || !memoryJsonSafe(extensions)) {
+        throw std::runtime_error("Invalid or unbounded Memory extensions.");
+    }
+    const auto validAddress = [](const std::string& address) {
+        constexpr std::array<std::string_view, 13U> roots{{"track.1", "track.2", "track.3", "track.4", "track.5",
+            "record", "play", "inputFx", "trackFx", "rhythm", "routing", "assign", "mixer"}};
+        for (const auto root : roots) {
+            if (address.size() <= root.size() + 1U || address.compare(0U, root.size(), root) != 0 || address[root.size()] != '.') continue;
+            return std::all_of(address.begin() + static_cast<std::ptrdiff_t>(root.size() + 1U), address.end(), [](char value) {
+                return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z') ||
+                    (value >= '0' && value <= '9') || value == '_' || value == '.' || value == '-';
+            });
+        }
+        return false;
+    };
+    for (auto field = semantics.at("fields").begin(); field != semantics.at("fields").end(); ++field) {
+        const auto& value = field.value();
+        if (!validAddress(field.key()) || !value.is_object() || !value.contains("value") ||
+            !value.contains("availability") || !value.at("availability").is_string() || !memoryJsonSafe(value.at("value"))) {
+            throw std::runtime_error("Invalid Memory semantic field address/value.");
+        }
+        for (auto key = value.begin(); key != value.end(); ++key) {
+            if (key.key() != "value" && key.key() != "availability" && key.key() != "reason") throw std::runtime_error("Unknown Memory semantic field property.");
+        }
+        const auto availability = value.at("availability").get<std::string>();
+        if (availability != "supported" && availability != "unsupported" && availability != "unknown") throw std::runtime_error("Invalid Memory field availability.");
+        if (value.contains("reason") && !value.at("reason").is_string()) throw std::runtime_error("Invalid Memory field reason.");
+        if (availability != "supported" && (!value.at("value").is_null() || !value.contains("reason") || value.at("reason").get_ref<const std::string&>().empty())) {
+            throw std::runtime_error("Unavailable Memory fields require a null value and reason.");
+        }
+    }
+}
+
 // The semantic envelope contains the exact v1 archive as its final byte range.
 // Native settings are additive software metadata, never Roland binary data.
 bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
-                        std::unique_ptr<NativeMemorySettings>& memory, std::string& error) {
+                        std::unique_ptr<NativeMemorySettings>& memory, std::array<unsigned int, 2U>& semanticMeter, std::string& error) {
     constexpr std::string_view magic = "RC505ME1";
     if (bytes.size() < magic.size() || !std::equal(magic.begin(), magic.end(), bytes.begin())) return true;
     try {
@@ -45,7 +138,8 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             (static_cast<std::uint32_t>(bytes[11U]) << 24U);
         if (length == 0U || length > 256U * 1024U || 12U + length >= bytes.size()) throw std::runtime_error("Invalid Memory metadata length.");
         const auto metadata = json::parse(bytes.begin() + 12U, bytes.begin() + 12U + length);
-        if (metadata.at("version") != 1U) throw std::runtime_error("Unsupported Memory version.");
+        validateNativeMemoryMetadata(metadata);
+        semanticMeter = {{metadata.at("semantics").at("meter")[0U].get<unsigned int>(), metadata.at("semantics").at("meter")[1U].get<unsigned int>()}};
         const auto& settings = metadata.at("extensions").at("WEBRC").at("nativeMemory");
         auto candidate = std::make_unique<NativeMemorySettings>();
         const auto& banks = settings.at("banks");
@@ -161,6 +255,22 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         if (pitchMode == "liveMonoKeepPitch") candidate->pitch.mode = NativePitchMode::LiveMonoKeepPitch;
         else if (pitchMode == "livePolyPhaseVocoder") candidate->pitch.mode = NativePitchMode::LivePolyPhaseVocoder;
         else throw std::runtime_error("Invalid Memory pitch mode.");
+        json expectedFields{{"rhythm.settings", settings.at("rhythm")}, {"inputFx.bank", banks[0U]},
+            {"mixer.mainLevel", levels[0U]}, {"mixer.masterLevel", levels[1U]}};
+        json trackBanks = json::array();
+        for (std::size_t bank = 1U; bank < 7U; ++bank) trackBanks.push_back(banks[bank]);
+        expectedFields["trackFx.banks"] = std::move(trackBanks);
+        for (std::size_t track = 0U; track < 5U; ++track) {
+            const auto root = "track." + std::to_string(track + 1U);
+            expectedFields[root + ".fxApply"] = gates[track];
+            expectedFields[root + ".level"] = levels[track + 2U];
+        }
+        for (auto field = metadata.at("semantics").at("fields").begin(); field != metadata.at("semantics").at("fields").end(); ++field) {
+            if (field.value().at("availability") == "supported" &&
+                (!expectedFields.contains(field.key()) || expectedFields.at(field.key()) != field.value().at("value"))) {
+                throw std::runtime_error("Native Memory has unsupported or inconsistent semantic field: " + field.key());
+            }
+        }
         bytes.erase(bytes.begin(), bytes.begin() + 12U + length);
         memory = std::move(candidate);
         return true;
@@ -1182,7 +1292,8 @@ int main() {
 
         std::unique_ptr<NativeMemorySettings> memory;
         std::string memoryError;
-        if (!unwrapNativeMemory(archiveBytes, memory, memoryError)) {
+        std::array<unsigned int, 2U> semanticMeter{};
+        if (!unwrapNativeMemory(archiveBytes, memory, semanticMeter, memoryError)) {
             response.status = 400; writeError(response, memoryError); return;
         }
         auto decoded = decodeProjectArchive(archiveBytes);
@@ -1192,6 +1303,11 @@ int main() {
             return;
         }
 
+        if (memory && (memory->rhythm.bpm != decoded.project->bpm ||
+            semanticMeter[0U] != decoded.project->transport.timeSignatureNumerator ||
+            semanticMeter[1U] != decoded.project->transport.timeSignatureDenominator)) {
+            response.status = 400; writeError(response, "Memory semantic tempo/meter does not match its PCM archive."); return;
+        }
         std::uint64_t generation = 0U;
         std::string error;
         if (!engine.beginProjectArchiveImport(

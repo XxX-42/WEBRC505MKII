@@ -10,7 +10,7 @@ os.environ.setdefault('WEBRC_NATIVE_BRIDGE_PORT', '17759')
 from native_bridge_http_simulation_test import (request, request_project_archive, build_project_archive, require)
 
 
-def envelope(status, invalid=False):
+def envelope(status, invalid=False, mutate=None):
     banks = [[{'effectId': 'fractional_delay' if slot == 0 else '', 'parameters': {}, 'bypassed': False}
               for slot in range(4)] for _ in range(7)]
     if invalid:
@@ -28,6 +28,8 @@ def envelope(status, invalid=False):
                             'variation': 0, 'section': 0, 'quantizeGrid': 0, 'swingPercent': 50, 'volume': 37},
                         'loopTransports': status['nativeMemory']['loopTransports']},
                     'nativeOutputState': {'fx': fx, 'pitch': pitch}}}}
+    if mutate:
+        mutate(metadata)
     metadata_bytes = json.dumps(metadata, separators=(',', ':')).encode()
     archive = build_project_archive([{'channels': 2, 'samples': [.25, -.25, .5, -.5]}, None, None, None, None])
     return b'RC505ME1' + struct.pack('<I', len(metadata_bytes)) + metadata_bytes + archive
@@ -49,6 +51,34 @@ def main():
         require(code == 200, status)
         baseline = status['projectContentRevision']
         body = envelope(status)
+        malformed = [
+            lambda meta: meta.update(memoryNumber=0),
+            lambda meta: meta.update(memoryNumber=100),
+            lambda meta: meta.update(memoryNumber=True),
+            lambda meta: meta.update(name='1234567890123'),
+            lambda meta: meta.update(name='x\x00'),
+            lambda meta: meta.update(name='😀' * 13),
+            lambda meta: meta['semantics'].update(meter=[3, 4]),
+            lambda meta: meta['semantics'].update(meter=[4, 3]),
+            lambda meta: meta['semantics'].update(extra='unknown'),
+            lambda meta: meta['semantics']['fields'].update({'track.1.level': {'availability': 'supported', 'value': 1}}),
+            lambda meta: meta['semantics']['fields'].update({'track.9.level': {'availability': 'unsupported', 'value': None, 'reason': 'unknown'}}),
+            lambda meta: meta['semantics']['fields'].update({'track.1.pan': {'availability': 'unsupported', 'value': 0, 'reason': 'unsupported'}}),
+            lambda meta: meta['semantics']['fields'].update({'track.1.pan': {'availability': 'unknown', 'value': None}}),
+            lambda meta: meta['semantics']['fields'].update({'track.1.pan': {'availability': 'supported', 'value': 'CENTER', 'unexpected': True}}),
+            lambda meta: meta['extensions']['WEBRC'].update({'opaque': {'prototype': 1}}),
+            lambda meta: meta['extensions']['WEBRC'].update({'opaque': 'x' * 8193}),
+        ]
+        for index, mutate in enumerate(malformed):
+            code, rejected = request_project_archive(f'/v1/project/import?expectedContentRevision={baseline}', 'POST',
+                envelope(status, mutate=mutate), 'application/octet-stream')
+            require(code == 400, f'malformed external Memory case {index} accepted: {code} {rejected}')
+            _, unchanged = request('/v1/status')
+            require(unchanged['projectContentRevision'] == baseline and unchanged['nativeTracks'][0]['state'] == 'Empty',
+                f'malformed external Memory case {index} changed incumbent')
+        body = envelope(status, mutate=lambda meta: (meta.update(name='😀' * 12),
+            meta['extensions']['WEBRC'].update({'opaque': {'nested': [1, {'vendorValue': True}]}}),
+            meta['semantics']['fields'].update({'assign.vendorField': {'availability': 'unknown', 'value': None, 'reason': 'Opaque foreign provider value.'}})))
         path = f'/v1/project/import?expectedContentRevision={baseline}'
         code, result = request_project_archive(path, 'POST', body, 'application/octet-stream')
         require(code == 202, result)
@@ -95,7 +125,7 @@ def main():
         code, rejected = request_project_archive(f'/v1/project/import?expectedContentRevision={revision}', 'POST',
             body, 'application/octet-stream')
         require(code == 409 and 'changed' in rejected.get('error', ''), rejected)
-        print('Native whole Memory HTTP: prepare/cancel/atomic PCM+7FX+output+pitch+gates/ACK/invalid/ABA passed')
+        print('Native whole Memory HTTP: external schema/meter/fields/Unicode/opaque + prepare/cancel/atomic PCM+7FX+output+pitch+gates/ACK/invalid/ABA passed')
     finally:
         process.terminate()
         process.wait(timeout=5)
