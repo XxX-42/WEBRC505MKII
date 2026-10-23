@@ -712,4 +712,12 @@ onUnmounted(() => {
   letter-spacing: .06em;
   text-shadow: 0 1px #08090b;
 }
+
+/* Passive machined housing on the two large FX knobs; value and disabled state unchanged. */
+.hardware-knob-wrapper.appearance-classic.fx-bank-knob .knob-stage { width: 140px; height: 140px; }
+.hardware-knob-wrapper.appearance-classic.fx-bank-knob .knob-stage::before { inset: -13px; opacity: 1; background: repeating-conic-gradient(#aeb4bf 0deg .6deg,transparent .8deg 9deg); mask: radial-gradient(farthest-side,transparent 86%,#000 87% 90%,transparent 91%); }
+.hardware-knob-wrapper.appearance-classic.fx-bank-knob .knob-stage::after { content: ''; position: absolute; inset: -17px; border: 3px solid #b8c0ce; border-bottom-color: transparent; border-left-color: transparent; border-radius: 50%; transform: rotate(-43deg); box-shadow: 0 0 0 5px #121418; pointer-events: none; }
+.hardware-knob-wrapper.appearance-classic.fx-bank-knob .knob-cap { background: radial-gradient(circle at 44% 34%,#303238 0 55%,#17191e 68%,#08090c 72%,#363941 74%,#0b0c0f 78%); box-shadow: inset 0 1px 2px #646771,inset 0 -5px 6px #08090c,0 0 0 7px #15171c,0 0 0 9px #080a0d,0 5px 8px #000; }
+.hardware-knob-wrapper.appearance-classic.fx-bank-knob .knob-texture { mask: radial-gradient(farthest-side,transparent 72%,#000 74%); opacity: .8; }
+
 </style>

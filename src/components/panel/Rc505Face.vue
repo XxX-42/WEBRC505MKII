@@ -1,6 +1,7 @@
 <template>
   <section class="rc505-face" data-testid="rc505-physical-face" aria-label="BOSS RC-505mkII top control panel">
     <header class="face-branding" aria-label="BOSS RC-505mkII">
+      <div class="connection-legends" aria-hidden="true"><span>MIC 1　　　MIC 2　　　L—INST 1—R　　　L—INST 2—R</span><span>MAIN　　SUB 1　　SUB 2　　PHONES　　CTL/EXP</span><span>IN　 MIDI　 OUT　　 USB　　 POWER　　 DC IN</span></div>
       <div class="boss-mark">BOSS</div>
       <div class="model-mark">
         <span class="model-name">RC-505mkII</span>
@@ -215,4 +216,14 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
 .rc505-face :deep([data-panel-control="tap-tempo"]) { width: 78px; min-width: 78px; }
 .face-upper > :deep(.center-main-panel) { z-index: 1; }
 .rc505-face :deep([data-panel-control="rhythm-start"]) { left: 766px; }
+
+/* Static front-panel printing: engineering approximation, not an official logo asset. */
+.face-branding { position: relative; background: #202126; border-bottom: 0; }
+.connection-legends { position: absolute; left: 140px; right: 130px; top: 6px; display: flex; justify-content: space-between; gap: 16px; color: #d6d7dc; font: 8px Arial,sans-serif; white-space: nowrap; pointer-events: none; }
+.face-branding::after { content: ''; position: absolute; left: 140px; right: 130px; top: 27px; height: 20px; background: #df2635; clip-path: polygon(0 0,100% 0,100% 9%,73% 9%,70% 100%,32% 100%,29% 9%,0 9%); pointer-events: none; }
+.boss-mark { position: absolute; z-index: 6; top: 54px; left: 225px; display: flex; align-items: center; gap: 5px; color: #d4d7df; font: 900 28px/1 Arial,sans-serif; letter-spacing: -.07em; text-shadow: 0 1px #08090b; pointer-events: none; }
+.boss-mark::before { content: ''; width: 20px; height: 22px; border: 2px solid #c7cbd4; background: linear-gradient(90deg,transparent 40%,#c7cbd4 41% 51%,transparent 52%),linear-gradient(0deg,transparent 45%,#c7cbd4 46% 55%,transparent 56%); box-shadow: inset 0 0 0 3px #24252a; }
+.model-mark { position: absolute; z-index: 2; left: 50%; top: 30px; transform: translateX(-50%); gap: 7px; white-space: nowrap; }
+.model-name,.model-subtitle { color: #17191d; font-family: Arial,sans-serif; font-weight: 900; font-size: 17px; letter-spacing: .015em; text-shadow: none; }
+
 </style>

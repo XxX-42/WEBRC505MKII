@@ -1236,4 +1236,15 @@ onUnmounted(() => {
 .transport-bank :deep([data-panel-control="undo-redo"]) { top: 199px; left: 130px; width: 80px; min-width: 80px; }
 .transport-bank :deep(.button-label) { font-size: 12px; }
 .transport-bank :deep([data-panel-control="all-transport"] .button-label) { white-space: pre-line; line-height: .95; }
+
+/* Fixed centers, broader passive capsule housings; no LED state override. */
+.transport-bank :deep([data-panel-control="menu"]),
+.transport-bank :deep([data-panel-control="loop"]) { width: 82px; min-width: 82px; margin-left: -14px; border-radius: 22px; padding-right: 21px; border: 1px solid #b6bcc5; box-shadow: inset 0 0 0 3px #121519,0 2px 3px #000; }
+.transport-bank :deep([data-panel-control="menu"]::after),
+.transport-bank :deep([data-panel-control="loop"]::after) { content: ''; position: absolute; right: 5px; width: 23px; height: 23px; border-radius: 50%; border: 2px solid #080a0d; background: radial-gradient(circle at 40% 30%,#404650,#20252c); pointer-events: none; }
+.transport-bank :deep([data-panel-control="all-transport"]),
+.transport-bank :deep([data-panel-control="undo-redo"]),
+.rhythm-control-bank :deep([data-panel-control="tap-tempo"]),
+.rhythm-control-bank :deep([data-panel-control="rhythm-start"]) { border-radius: 24px; border: 3px solid #9ca5b1; box-shadow: inset 0 0 0 3px #11151b,0 0 0 3px #090b0f,0 3px 4px #000; }
+
 </style>
