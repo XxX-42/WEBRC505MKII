@@ -36,9 +36,12 @@ async function loadRuntime(mode: 'browser' | 'native', location: 'input' | 'trac
     })));
   }
   const scope = effectScope();
+  const memoryRegistry = await import('../../src/composables/wrapRc505MemoryUiRuntime');
+  const register = vi.spyOn(memoryRegistry, 'registerRc505MemoryBankUiPort');
   const banks = await import('../../src/composables/useRc505FxBanks').then((module) =>
     scope.run(() => module.useRc505FxBanks(location))!);
-  return { engine, panel, banks, scope };
+  const memoryPort = register.mock.calls.at(-1)![2];
+  return { engine, panel, banks, scope, memoryPort };
 }
 
 async function loadNativeBankScenario(unacknowledged = new Set<number>()) {
@@ -103,6 +106,24 @@ afterEach(() => {
 });
 
 describe('RC-505 shared FX preset banks', () => {
+  it('adopts Memory bank documents without DSP writes and confirms blue only from runtime readback', async () => {
+    vi.useFakeTimers();
+    const { engine, banks, scope, memoryPort } = await loadRuntime('browser');
+    const setType = vi.spyOn(engine, 'setFxType');
+    const setAmount = vi.spyOn(engine, 'setFxParam');
+    const setActive = vi.spyOn(engine, 'setFxActive');
+    const document = memoryPort.capture();
+    document.activeBank = 'C'; document.banks.C = structuredClone(document.banks.A);
+    memoryPort.adopt(document);
+    expect(banks.state.requestedBank).toBe('C'); expect(banks.state.appliedBank).toBeNull();
+    await nextTick(); await vi.advanceTimersByTimeAsync(100);
+    expect(banks.state.appliedBank).toBe('C');
+    expect(setType).not.toHaveBeenCalled(); expect(setAmount).not.toHaveBeenCalled(); expect(setActive).not.toHaveBeenCalled();
+    memoryPort.adopt(document, 'Storage failed after audio committed.');
+    await nextTick(); await vi.advanceTimersByTimeAsync(100);
+    expect(banks.state.appliedBank).toBeNull(); expect(banks.canSelect.value).toBe(false);
+    scope.stop();
+  }, 45_000);
   it('migrates the existing four rows to A by deep copy and initializes B–D empty', async () => {
     vi.resetModules();
     const { createFxPresetBankDocument } = await import('../../src/ui/rc505/Rc505FxBankStore');

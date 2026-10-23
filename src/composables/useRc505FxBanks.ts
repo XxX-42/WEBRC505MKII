@@ -3,6 +3,7 @@ import { AudioEngine } from '../audio/AudioEngine';
 import { sameNativeControlSnapshot } from '../audio/nativeFxParameterSnapshots';
 import { nativeCatalogEffectId } from '../audio/nativeFxCatalog';
 import { useFxPanelState, type FxSlotState } from './useFxPanelState';
+import { registerRc505MemoryBankUiPort } from './wrapRc505MemoryUiRuntime';
 import {
   cloneFxPresetSlots,
   createFxPresetBankDocument,
@@ -147,6 +148,8 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
   let pendingCandidate: PendingCandidate | null = null;
   let isDisposed = false;
   let cancelPendingWait: (() => void) | null = null;
+  let memoryEditEpoch = 0n;
+  let memoryReadbackPending = false;
 
   const getLiveSlots = () => cloneFxPresetSlots(panel.slots.value);
   const currentSignature = () => slotsSignature(panel.slots.value);
@@ -187,6 +190,7 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
     try {
       globalThis.localStorage.setItem(key, serialized);
       lastSerialized = serialized;
+      memoryEditEpoch += 1n;
       return true;
     } catch {
       storageUnavailable = true;
@@ -296,12 +300,22 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
 
   const confirmCurrentRequest = (): boolean => {
     if (isDisposed) return false;
+    if (storageUnavailable) { state.appliedBank = null; return false; }
     if (runtimeName(engine) !== runtime) {
       state.appliedBank = null;
       return false;
     }
     if (state.busy || !documentRef.value || state.requestedBank === null) return false;
     const bank = state.requestedBank;
+    if (memoryReadbackPending) {
+      const profile = documentRef.value.banks[bank];
+      if (!slotsMatchRuntime(profile.slots, profile)) { state.appliedBank = null; return false; }
+      // Memory already supplied the complete candidate profile. Readback may
+      // confirm its identity before the separate editor hydration finishes;
+      // never replace it with the previous Memory's still-mounted rows.
+      memoryReadbackPending = false; state.appliedBank = bank; state.error = '';
+      return true;
+    }
     if (pendingCandidate?.bank === bank) {
       const candidate = pendingCandidate;
       if (slotsSignature(getLiveSlots()) !== slotsSignature(candidate.slots) ||
@@ -361,6 +375,7 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
   watch(
     () => slotsSignature(panel.slots.value),
     () => {
+      memoryEditEpoch += 1n;
       if (replacingRows || !documentRef.value || state.requestedBank === null) return;
       const rows = getLiveSlots();
       if (state.busy) {
@@ -396,6 +411,7 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
     state.appliedBank = null;
     state.error = '';
     pendingCandidate = null;
+    memoryReadbackPending = false;
     changedDuringApply = false;
     if (!persist()) return false;
 
@@ -452,7 +468,45 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
     return false;
   };
 
+  const unregisterMemoryPort = registerRc505MemoryBankUiPort(runtime, location, {
+    revision: () => `${memoryEditEpoch}:${serializeFxPresetBankDocument(documentRef.value as FxPresetBankDocument)}:${currentSignature()}`,
+    canCapture: () => !isDisposed && !state.busy && !storageUnavailable && !!documentRef.value && runtimeName(engine) === runtime,
+    capture: () => {
+      if (isDisposed || state.busy || storageUnavailable || !documentRef.value) throw new Error('FX bank state is not ready for Memory capture.');
+      const document = JSON.parse(serializeFxPresetBankDocument(documentRef.value)) as FxPresetBankDocument;
+      const bank = state.requestedBank;
+      const live = getLiveSlots();
+      if (bank && slotsMatchRuntime(live, undefined, false)) {
+        document.activeBank = bank;
+        document.banks[bank].slots = live;
+        const snapshot = runtime === 'browser' ? browserSnapshot() : null;
+        if (snapshot) document.banks[bank].browserParameters = copyBrowserParameters(snapshot);
+      } else document.activeBank = null;
+      return document;
+    },
+    validate: (document) => {
+      const options = panel.fxOptions.value;
+      if (Object.values(document.banks).some((profile) => profile.slots.some((slot) => slot.type !== '' && slot.type !== 'NONE' && !options.includes(slot.type)))) {
+        throw new Error(`Memory ${location} FX bank contains an unsupported ${runtime} effect.`);
+      }
+    },
+    adopt: (document, storageError = '', notice = '') => {
+      replacingRows = true;
+      documentRef.value = JSON.parse(serializeFxPresetBankDocument(document)) as FxPresetBankDocument;
+      lastSerialized = serializeFxPresetBankDocument(documentRef.value);
+      pendingCandidate = null; changedDuringApply = false; state.busy = false;
+      memoryReadbackPending = document.activeBank !== null && !storageError;
+      state.requestedBank = document.activeBank; state.appliedBank = null;
+      state.error = storageError || notice; storageUnavailable = !!storageError; state.unavailableReason = storageError;
+      memoryEditEpoch += 1n;
+      // UI rows are hydrated separately after the confirmed engine commit. Until
+      // their normal readback gate agrees, the bank's blue LED stays cleared.
+      void nextTick().then(() => { replacingRows = false; refreshUnavailableReason(); });
+    },
+  });
+
   onScopeDispose(() => {
+    unregisterMemoryPort();
     isDisposed = true;
     cancelPendingWait?.();
     window.clearInterval(refreshTimer);
