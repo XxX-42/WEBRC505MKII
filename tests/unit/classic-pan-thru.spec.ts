@@ -4,6 +4,7 @@ import { Track } from '../../src/core/types';
 import { TrackAudio } from '../../src/audio/TrackAudio';
 import { useDevicePanel } from '../../src/composables/useDevicePanel';
 import { useDeviceScreenEditor } from '../../src/composables/useDeviceScreenEditor';
+import { useRc505Memory } from '../../src/composables/useRc505Memory';
 
 const fixture = vi.hoisted(() => ({ engine: null as any }));
 vi.mock('../../src/audio/AudioEngine', () => ({ AudioEngine: { getInstance: () => fixture.engine } }));
@@ -34,9 +35,20 @@ beforeEach(() => {
     setMonitoring: vi.fn(async (enabled: boolean) => { fixture.engine.monitoringEnabled = enabled; }),
     getDevices: vi.fn(async () => ({ inputs: [], outputs: [] })) };
 });
-afterEach(() => { scopes.splice(0).forEach(scope => scope.stop()); panel.goHome(); });
+afterEach(() => { scopes.splice(0).forEach(scope => scope.stop()); panel.goHome(); useRc505Memory().state.busy = false; });
 
 describe('Classic existing audio controls', () => {
+  it('blocks stale LCD edit callbacks while Memory is publishing and restores editing afterwards', async () => {
+    const { editor } = createEditor('track');
+    const stalePan = editor.fields.value.find(field => field.key === 'track-pan')!;
+    useRc505Memory().state.busy = true;
+    expect(editor.fields.value.every(field => field.disabled)).toBe(true);
+    stalePan.setValue!(50); await settle();
+    expect(fixture.engine.tracks[0].track.pan).toBe('CENTER');
+    useRc505Memory().state.busy = false;
+    editor.fields.value.find(field => field.key === 'track-pan')!.setValue!(-10); await settle();
+    expect(fixture.engine.tracks[0].track.pan).toBe('L10');
+  });
   it('binds official L50–CENTER–R50 PAN to the real Browser panner update', async () => {
     const { editor } = createEditor('track');
     expect(editor.fields.value.map(field => field.key)).toEqual(['track-level', 'track-reverse', 'track-fx-apply', 'track-pan']);

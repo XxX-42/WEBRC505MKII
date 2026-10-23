@@ -240,6 +240,7 @@ const MONITORING_WARNING = [
  */
 export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const device = options.panel ?? useDevicePanel();
+  const semanticMemory = useRc505Memory();
   const classic = options.surface === 'classic';
   const controls = useRc505Controls();
   const confirmAction = options.confirm ?? ((message: string) => eventConfirmation(message, options.surface ?? 'enhanced'));
@@ -283,6 +284,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const fieldOptions = (labels: readonly string[]): DeviceScreenOption[] => labels.map((label, value) => ({ label, value }));
 
   async function runEdit(action: () => void | boolean | Promise<void | boolean>): Promise<void> {
+    if (semanticMemory.state.busy) { statusText.value = 'MEMORY BUSY'; return; }
     const revision = ++editRevision;
     statusText.value = '';
     editPending.value = true;
@@ -1072,6 +1074,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const fxChangeBlocked = () => (device.state.page === 'input-fx' && controls.state.fxBusy.input) || (device.state.page === 'track-fx' && controls.state.fxBusy.track);
   const fields = computed<readonly DeviceScreenField[]>(() => (pages.value[Math.min(pageIndex.value, pages.value.length - 1)] ?? []).map((field) => ({
     ...field,
+    ...(semanticMemory.state.busy ? { disabled: true, reason: 'Wait for the Memory transaction to finish.' } : {}),
     ...(fxChangeBlocked()
       ? { disabled: true, reason: 'Wait for the current FX bank application.' } : {}),
     ...(field.setValue ? { setValue: (value: number) => { if (!field.disabled && !fxChangeBlocked()) void runEdit(() => field.setValue?.(value)); } } : {}),
