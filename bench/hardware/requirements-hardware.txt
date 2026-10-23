@@ -1,0 +1,2 @@
+-r ../audio-parity/requirements.txt
+sounddevice==0.5.6

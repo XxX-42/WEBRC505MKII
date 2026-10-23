@@ -1,0 +1,302 @@
+{
+  "baseline_external_directory": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-final-harness-20261023\\baseline-final",
+  "evidence_kind": "HARNESS_AND_LIVE_INVENTORY_ONLY",
+  "external_artifact_root": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-final-harness-20261023",
+  "hil_gate": {
+    "actual_buffer_frames": "unknown",
+    "actual_sample_rate_hz": "unknown",
+    "reason": "No present PnP friendly name or instance id matched RC-505/Roland/BOSS 505.",
+    "status": "BLOCKED_NO_RC505_PNP_MATCH",
+    "stream_opened": false,
+    "xrun_evidence": "not_applicable_no_stream_opened"
+  },
+  "inventory_sha256": "d6178afce2e07eb71da15bcb1b0f33d3be8962f143a34af324f2cfec308bc409",
+  "inventory_utc": "2026-10-23T14:16:14.696376+00:00",
+  "limitations": [
+    "No actual Browser/Native engine render in this evidence file.",
+    "No physical route capture or hardware timing, no measured XRUN counts.",
+    "Synthetic unit tests validate math and packaging only."
+  ],
+  "midi": {
+    "pnp_endpoints": [
+      {
+        "Class": "SoftwareDevice",
+        "FriendlyName": "MIDI 2.0 Service Tests",
+        "InstanceId": "SWD\\MIDISRV\\MIDIU_DIAG_TRANSPORT",
+        "Status": "OK"
+      },
+      {
+        "Class": "MidiEndpoint",
+        "FriendlyName": "Service Test Loopback A",
+        "InstanceId": "SWD\\MIDISRV\\MIDIU_DIAG_LOOPBACK_A",
+        "Status": "OK"
+      },
+      {
+        "Class": "MidiEndpoint",
+        "FriendlyName": "Service Test Loopback B",
+        "InstanceId": "SWD\\MIDISRV\\MIDIU_DIAG_LOOPBACK_B",
+        "Status": "OK"
+      },
+      {
+        "Class": "MidiEndpoint",
+        "FriendlyName": "Service Test Ping (Internal)",
+        "InstanceId": "SWD\\MIDISRV\\MIDIU_DIAG_PING",
+        "Status": "OK"
+      },
+      {
+        "Class": "SoftwareDevice",
+        "FriendlyName": "MIDI 2.0 Virtual Devices",
+        "InstanceId": "SWD\\MIDISRV\\MIDIU_APP_TRANSPORT",
+        "Status": "OK"
+      },
+      {
+        "Class": "SoftwareDevice",
+        "FriendlyName": "MIDI 2.0 Loop Devices",
+        "InstanceId": "SWD\\MIDISRV\\MIDIU_LOOP_TRANSPORT",
+        "Status": "OK"
+      }
+    ],
+    "winmm": {
+      "api": "Windows Multimedia MIDI (WinMM)",
+      "input_count": 0,
+      "inputs": [],
+      "output_count": 1,
+      "outputs": [
+        {
+          "index": 0,
+          "name": "Microsoft GS Wavetable Synth",
+          "query_status": 0
+        }
+      ],
+      "status": "available"
+    }
+  },
+  "pnp_audio_endpoint_count": 11,
+  "rc505_device_matches": [],
+  "soaks": [
+    {
+      "actual_blocksize_frames": "unknown",
+      "actual_sample_rate_hz": "unknown",
+      "blocked_reason": "No RC-505 PnP match; physical route and WASAPI device selection unconfirmed",
+      "capture_kind": "NO_CAPTURE",
+      "captured_frames": 0,
+      "captured_seconds": 0.0,
+      "created_utc": "2026-10-23T14:16:40.316270+00:00",
+      "latency_measurements": {
+        "reason": "no physical-route audio was captured",
+        "status": "unavailable"
+      },
+      "output_directory": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-final-harness-20261023\\soak-10",
+      "raw_audio_written": false,
+      "requested_blocksize_frames": 0,
+      "requested_sample_rate_hz": "unknown",
+      "schema_version": 1,
+      "source_engine_note": "not asserted; generated stimuli and identity controls are never labeled as sourceEngine captures",
+      "source_engine_output": null,
+      "status": "BLOCKED",
+      "stream_opened": false,
+      "target_duration_minutes": 10,
+      "xrun_evidence": {
+        "input_overflow_callback_count": null,
+        "interpretation": "No stream ran; counters are null, not zero measured XRUNs.",
+        "output_underflow_callback_count": null,
+        "software_writer_dropped_frames": null,
+        "status": "not_applicable_no_stream_opened"
+      }
+    },
+    {
+      "actual_blocksize_frames": "unknown",
+      "actual_sample_rate_hz": "unknown",
+      "blocked_reason": "No RC-505 PnP match; physical route and WASAPI device selection unconfirmed",
+      "capture_kind": "NO_CAPTURE",
+      "captured_frames": 0,
+      "captured_seconds": 0.0,
+      "created_utc": "2026-10-23T14:16:40.318130+00:00",
+      "latency_measurements": {
+        "reason": "no physical-route audio was captured",
+        "status": "unavailable"
+      },
+      "output_directory": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-final-harness-20261023\\soak-30",
+      "raw_audio_written": false,
+      "requested_blocksize_frames": 0,
+      "requested_sample_rate_hz": "unknown",
+      "schema_version": 1,
+      "source_engine_note": "not asserted; generated stimuli and identity controls are never labeled as sourceEngine captures",
+      "source_engine_output": null,
+      "status": "BLOCKED",
+      "stream_opened": false,
+      "target_duration_minutes": 30,
+      "xrun_evidence": {
+        "input_overflow_callback_count": null,
+        "interpretation": "No stream ran; counters are null, not zero measured XRUNs.",
+        "output_underflow_callback_count": null,
+        "software_writer_dropped_frames": null,
+        "status": "not_applicable_no_stream_opened"
+      }
+    },
+    {
+      "actual_blocksize_frames": "unknown",
+      "actual_sample_rate_hz": "unknown",
+      "blocked_reason": "No RC-505 PnP match; physical route and WASAPI device selection unconfirmed",
+      "capture_kind": "NO_CAPTURE",
+      "captured_frames": 0,
+      "captured_seconds": 0.0,
+      "created_utc": "2026-10-23T14:16:40.319516+00:00",
+      "latency_measurements": {
+        "reason": "no physical-route audio was captured",
+        "status": "unavailable"
+      },
+      "output_directory": "C:\\Users\\user1000\\AppData\\Local\\Temp\\webrc-final-harness-20261023\\soak-60",
+      "raw_audio_written": false,
+      "requested_blocksize_frames": 0,
+      "requested_sample_rate_hz": "unknown",
+      "schema_version": 1,
+      "source_engine_note": "not asserted; generated stimuli and identity controls are never labeled as sourceEngine captures",
+      "source_engine_output": null,
+      "status": "BLOCKED",
+      "stream_opened": false,
+      "target_duration_minutes": 60,
+      "xrun_evidence": {
+        "input_overflow_callback_count": null,
+        "interpretation": "No stream ran; counters are null, not zero measured XRUNs.",
+        "output_underflow_callback_count": null,
+        "software_writer_dropped_frames": null,
+        "status": "not_applicable_no_stream_opened"
+      }
+    }
+  ],
+  "software_baseline": {
+    "analysis_count": 34,
+    "audio_jury_status": "MULTIMODAL_AUDIO_JURY_BLOCKED",
+    "hardware_capture": false,
+    "limitation": "Synthetic identity/gain fixtures exercise math and packaging only; no engine render, hardware parity, listening judgement or XRUN measurement.",
+    "private_mapping_sha256": "02c0cf6a3463fdad623fb1643abffbb3c5911719a1c95b47bf6c050d4d0c68c8",
+    "public_package_sha256": "e3e043188a2da38283fa15568295820395c0aab456ee6876e2429e0fd44eb074",
+    "source_engine_output": false,
+    "status": "SOFTWARE_BASELINE",
+    "stimulus_count": 17,
+    "stimulus_hashes": {
+      "amplitude_staircase": "cab593f9485f77d24b507c92701d5057a6ab7c1a3a03b80fb19926f292c0d323",
+      "antiphase": "d876ce9c107063475e5f6cfd18e4f665bf81c4ccd7aca5ff36e3326b44a791c3",
+      "asymmetric": "177497c514c2f3cce2abdd039e89bd3e9912ad5d1039ba11202721273f5edba8",
+      "bass": "6c8550729b1653877319bc62850c83983f5958a208df1d74d395f506fc9b3de8",
+      "drum": "c09a72a45a1910e496bc2547aac51d2bf893b8ccc582f2d0ec265c1f19313c75",
+      "guitar_like": "44f27b93ed12cbc723e515fa78f43b8db74f701c68a8cc68aa3930587888462e",
+      "impulse": "38be0f9ee428102d53ab78c657361d65fa9a839833a689aa3b26177dd9858e1c",
+      "l_only": "57d9ca4a5df1546d5d439006b7d6b835fd4b21f48c373766116499b67567a524",
+      "logsweep": "b17d8cbc6e9e08d0051c7522157728cb1e74b6028b6ae2b5cec40828dca97945",
+      "multitone": "b3f6333e191ab3ca1960f654aa13b86a1edf76efefd24616a4f4ac11e8cd1979",
+      "pitch_sweep": "997dde34f296147f886e3530d4dfa2a4a623aec57d168e9463491c80af6573f4",
+      "r_only": "0c443cb674d34cae8f56e8f5f0b7717ddda8d6eb1819f089873b2327d2c0924c",
+      "silence": "ede1f6dd33abfce7bb3a45ba79b0ab5f8baae692709dd32214a41da9af55ab13",
+      "tempo_pulse": "83744e9e28d3b377321ace20f21b4675f7c57b40210259ef048099fbe44556a3",
+      "tone_997": "83b843bc50fa1d657bbd1408eab5ca9b1a7c607179b9b548c903fa883240e0e5",
+      "transient": "6f4bfce44e5df48fc9998a72a37230c99f2c26ccadfb001046e4de1ddd0396f5",
+      "vocal_like": "b2c8c728e9a1b3a6c1a1c4c496b05e92f301fe89ac701509a391dffad2435465"
+    }
+  },
+  "software_baseline_json_sha256": "e284e7dfa0934c7a9d7398ff6a2a558f5f298cc2e5526722016ea965db42d9ff",
+  "tests": {
+    "command": "py -3.13 -m unittest discover -s bench/audio-parity/tests -v",
+    "failed": 0,
+    "passed": 8
+  },
+  "wasapi": {
+    "actual_buffer_frames": "unknown",
+    "actual_sample_rate_hz": "unknown",
+    "api": "PortAudio via python-sounddevice",
+    "devices": [
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 26,
+        "max_input_channels": 0,
+        "max_output_channels": 2,
+        "name": "\u626c\u58f0\u5668 (Realtek(R) Audio)"
+      },
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 27,
+        "max_input_channels": 0,
+        "max_output_channels": 2,
+        "name": "AI Noise-cancelling Output (ASUS Utility)"
+      },
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 28,
+        "max_input_channels": 0,
+        "max_output_channels": 2,
+        "name": "VoiceMeeter Aux Input (VB-Audio VoiceMeeter AUX VAIO)"
+      },
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 29,
+        "max_input_channels": 0,
+        "max_output_channels": 2,
+        "name": "VoiceMeeter Input (VB-Audio VoiceMeeter VAIO)"
+      },
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 30,
+        "max_input_channels": 0,
+        "max_output_channels": 2,
+        "name": "VoiceMeeter VAIO3 Input (VB-Audio VoiceMeeter VAIO3)"
+      },
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 31,
+        "max_input_channels": 0,
+        "max_output_channels": 2,
+        "name": "1 - P27Q4 (AMD High Definition Audio Device)"
+      },
+      {
+        "advertised_default_samplerate_hz": 44100.0,
+        "hostapi": "Windows WASAPI",
+        "index": 32,
+        "max_input_channels": 2,
+        "max_output_channels": 0,
+        "name": "VoiceMeeter Output (VB-Audio VoiceMeeter VAIO)"
+      },
+      {
+        "advertised_default_samplerate_hz": 44100.0,
+        "hostapi": "Windows WASAPI",
+        "index": 33,
+        "max_input_channels": 2,
+        "max_output_channels": 0,
+        "name": "VoiceMeeter VAIO3 Output (VB-Audio VoiceMeeter VAIO3)"
+      },
+      {
+        "advertised_default_samplerate_hz": 44100.0,
+        "hostapi": "Windows WASAPI",
+        "index": 34,
+        "max_input_channels": 2,
+        "max_output_channels": 0,
+        "name": "VoiceMeeter Aux Output (VB-Audio VoiceMeeter AUX VAIO)"
+      },
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 35,
+        "max_input_channels": 2,
+        "max_output_channels": 0,
+        "name": "\u9ea6\u514b\u98ce\u9635\u5217 (Realtek(R) Audio)"
+      },
+      {
+        "advertised_default_samplerate_hz": 48000.0,
+        "hostapi": "Windows WASAPI",
+        "index": 36,
+        "max_input_channels": 2,
+        "max_output_channels": 0,
+        "name": "AI Noise-cancelling Input (ASUS Utility)"
+      }
+    ],
+    "format_note": "advertised_default_samplerate_hz is a device default only; no stream was opened, so negotiated rate and buffer remain unknown",
+    "status": "available",
+    "stream_opened": false
+  }
+}
