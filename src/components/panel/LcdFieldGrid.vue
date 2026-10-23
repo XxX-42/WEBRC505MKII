@@ -202,7 +202,7 @@ function activateField(index: number): void {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  color: #24212a;
+  color: var(--lcd-ink, #24212a);
   font-family: var(--font-lcd, 'Lucida Console', monospace);
   text-transform: uppercase;
 }
@@ -223,9 +223,9 @@ function activateField(index: number): void {
 }
 
 .lcd-field-card.is-selected {
-  border-color: #313e55;
-  background: #313e55;
-  color: #e9f1ff;
+  border-color: var(--lcd-selection, #313e55);
+  background: var(--lcd-selection, #313e55);
+  color: var(--lcd-selection-ink, #e9f1ff);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
 .lcd-field-card:has(.lcd-enum-control) { display: grid; grid-template-rows: 12px minmax(0, 1fr); gap: 0; padding: 1px 2px; }
@@ -234,11 +234,11 @@ function activateField(index: number): void {
 
 .lcd-field-card.is-disabled {
   border-style: dashed;
-  color: #615b69;
+  color: var(--lcd-muted, #615b69);
 }
 
 .lcd-field-card.is-disabled.is-selected {
-  color: #f0ebf6;
+  color: var(--lcd-selection-ink, #f0ebf6);
 }
 
 .lcd-field-card.is-empty {
@@ -288,13 +288,13 @@ function activateField(index: number): void {
   min-height: 8px;
   margin: 0;
   padding: 0;
-  accent-color: #344e72;
+  accent-color: var(--lcd-ink, #344e72);
   cursor: pointer;
   touch-action: pan-y;
 }
 
 .is-selected .lcd-field-range {
-  accent-color: #e0e9f7;
+  accent-color: var(--lcd-selection-ink, #e0e9f7);
 }
 
 .lcd-field-range:disabled {
@@ -342,17 +342,17 @@ function activateField(index: number): void {
   height: 5px;
   min-height: 5px;
   margin: 0;
-  accent-color: #344e72;
+  accent-color: var(--lcd-ink, #344e72);
   cursor: pointer;
 }
-.is-selected .lcd-enum-range { accent-color: #e0e9f7; }
+.is-selected .lcd-enum-range { accent-color: var(--lcd-selection-ink, #e0e9f7); }
 .lcd-enum-range:disabled { cursor: not-allowed; }
 .is-disabled .lcd-enum-control { opacity: .6; }
 .is-selected .lcd-enum-control { border-color: rgba(255, 255, 255, .45); }
 .lcd-field-card.is-action { border-color: rgba(37, 50, 72, .24); }
-.lcd-field-card.is-action.is-selected { border-color: #313e55; }
-.lcd-field-card.is-disabled:not(.is-selected) { color: #4f607b; }
-.lcd-field-card.is-disabled.is-selected { color: #d4deef; }
+.lcd-field-card.is-action.is-selected { border-color: var(--lcd-selection, #313e55); }
+.lcd-field-card.is-disabled:not(.is-selected) { color: var(--lcd-muted, #4f607b); }
+.lcd-field-card.is-disabled.is-selected { color: var(--lcd-selection-ink, #d4deef); }
 
 .lcd-field-card :is(input, button):focus-visible {
   outline: 2px solid #273953;
@@ -362,7 +362,7 @@ function activateField(index: number): void {
 .lcd-field-card :is(input, button):disabled { cursor: not-allowed; }
 
 .lcd-field-range {
-  accent-color: #344e72;
+  accent-color: var(--lcd-ink, #344e72);
 }
 
 .lcd-field-toggle {
@@ -371,7 +371,7 @@ function activateField(index: number): void {
   padding: 1px 6px;
   border: 1px solid rgba(37, 50, 72, .5);
   border-radius: 0;
-  color: #222d40;
+  color: var(--lcd-ink, #222d40);
   background: transparent;
   font: 800 13px/1 var(--font-lcd, monospace);
   cursor: pointer;
@@ -379,8 +379,8 @@ function activateField(index: number): void {
 
 .is-selected .lcd-field-toggle {
   border-color: #e4efff;
-  color: #182237;
-  background: #d7e4f7;
+  color: var(--lcd-selection-ink, #182237);
+  background: var(--lcd-selection, #d7e4f7);
 }
 
 .lcd-field-action {

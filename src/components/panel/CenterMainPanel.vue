@@ -149,7 +149,8 @@
           size="sm"
           appearance="classic"
           color="white"
-          label="K ‹"
+          label="◀"
+          title="Previous display page (K)"
           :led-on="false"
           aria-label="Previous display page"
           data-panel-control="page-prev"
@@ -161,7 +162,8 @@
           size="sm"
           appearance="classic"
           color="white"
-          label="J ›"
+          label="▶"
+          title="Next display page (J)"
           :led-on="false"
           aria-label="Next display page"
           data-panel-control="page-next"
@@ -1248,5 +1250,18 @@ onUnmounted(() => {
 .transport-bank :deep([data-panel-control="undo-redo"]),
 .rhythm-control-bank :deep([data-panel-control="tap-tempo"]),
 .rhythm-control-bank :deep([data-panel-control="rhythm-start"]) { border-radius: 24px !important; border: 3px solid #9ca5b1; box-shadow: inset 0 0 0 3px #11151b,0 0 0 3px #090b0f,0 3px 4px #000; }
+
+
+/* Monochrome negative-polarity blue LCD; geometry and text sizes are unchanged. */
+.lcd-display { --lcd-ink: #eef0ff; --lcd-muted: #c0c8e8; --lcd-selection: #e3e8ff; --lcd-selection-ink: #20245f; --lcd-line: #adb8e5; background: linear-gradient(180deg,#24266c,#343282 55%,#25235f); color: var(--lcd-ink); box-shadow: inset 0 0 8px #11133a; }
+.lcd-row.top,.lcd-data-rows,.lcd-parameter-row,.lcd-track-line,.lcd-status { color: var(--lcd-ink); }
+.lcd-data-row.is-selected { color: var(--lcd-selection-ink); background: var(--lcd-selection); }
+.lcd-data-row.is-disabled { color: var(--lcd-muted); }
+.page-navigation :deep(.hardware-button) { width: 32px; min-width: 32px; margin-left: 13px; border-radius: 50% !important; padding: 0; }
+.page-navigation :deep(.button-label) { position: absolute; bottom: 37px; white-space: nowrap; font-size: 11px; }
+.page-navigation :deep(.led-dot) { display: none; }
+.write-caption { top: 63px; font-size: 9px; }
+.page-navigation :deep([data-panel-control="page-prev"] .button-label),
+.page-navigation :deep([data-panel-control="page-next"] .button-label) { font-size: 17px; }
 
 </style>

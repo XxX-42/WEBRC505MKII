@@ -69,6 +69,7 @@
           @release="finishEdit"
           @cancel="cancelEdit"
         />
+        <span class="fx-edit-hold" aria-hidden="true">(FX BANK: HOLD)</span>
       </div>
     </div>
 
@@ -340,4 +341,13 @@ onUnmounted(() => { cancelAll(); controls.setFxBusy(props.location, false); wind
 @media (max-width: 760px) {
   .fx-bank { padding: 0; }
 }
+
+/* Passive ring and printing; edit handlers and LED-off contract are retained. */
+.bank-actions :deep(.fx-edit-button) { border: 4px solid #bcc8d9; background: #23262e; box-shadow: 0 0 0 3px #090c11,inset 0 0 0 2px #0b0e14; }
+.bank-actions :deep(.fx-edit-button .button-label) { position: absolute; top: -39px; border: 1px solid #c7ccd5; border-radius: 9px; padding: 0 8px; font-size: 12px; line-height: 15px; }
+.bank-actions :deep(.fx-edit-button .led-dot) { display: none; }
+.fx-edit-hold { position: absolute; z-index: 4; top: 94px; width: 100px; text-align: center; color: #d6dce5; font: 8px/10px Arial,sans-serif; pointer-events: none; }
+.fx-bank-input .fx-edit-hold { left: 233px; }
+.fx-bank-track .fx-edit-hold { left: 30px; }
+
 </style>
