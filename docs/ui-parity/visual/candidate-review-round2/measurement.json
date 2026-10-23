@@ -1,0 +1,910 @@
+{
+  "1366": {
+    "face": {
+      "x": 75,
+      "y": 123.84375,
+      "width": 1216,
+      "height": 676.7999877929688
+    },
+    "scale": 0.8,
+    "controls": [
+      {
+        "role": "hardware-knob-wrapper hardware-interactive appearance-classic fx-bank-knob",
+        "x": 71.00000381469727,
+        "y": 62.00000762939453,
+        "width": 140,
+        "height": 158.54686737060547
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic is-selected fx-slot-button",
+        "x": 51.000003814697266,
+        "y": 243.00003051757812,
+        "width": 48.0000114440918,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 122.00000762939453,
+        "y": 243.00003051757812,
+        "width": 47.99999237060547,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 188.99999618530273,
+        "y": 243.00003051757812,
+        "width": 48.0000114440918,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 257.00000762939453,
+        "y": 243.00003051757812,
+        "width": 47.99999237060547,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-white shape-rect appearance-classic fx-edit-button",
+        "x": 265,
+        "y": 163.99999618530273,
+        "width": 38.000030517578125,
+        "height": 38.0000114440918
+      },
+      {
+        "role": "menu",
+        "x": 512.9999923706055,
+        "y": 101.00000381469727,
+        "width": 53.999977111816406,
+        "height": 31.999988555908203
+      },
+      {
+        "role": "loop",
+        "x": 512.9999923706055,
+        "y": 167.00000762939453,
+        "width": 53.999977111816406,
+        "height": 32.00000762939453
+      },
+      {
+        "role": "all-transport",
+        "x": 344.00001525878906,
+        "y": 250.99998474121094,
+        "width": 77.99999237060547,
+        "height": 44.00001525878906
+      },
+      {
+        "role": "undo-redo",
+        "x": 460,
+        "y": 250.99998474121094,
+        "width": 80,
+        "height": 32.00004577636719
+      },
+      {
+        "role": "screen-shell",
+        "x": 625,
+        "y": 80,
+        "width": 268.0000305175781,
+        "height": 125
+      },
+      {
+        "role": "screen-encoder-1",
+        "x": 588.0000305175781,
+        "y": 220.99998474121094,
+        "width": 64.00001525878906,
+        "height": 83.09379577636719
+      },
+      {
+        "role": "screen-encoder-2",
+        "x": 675.9999847412109,
+        "y": 220.99998474121094,
+        "width": 64.00001525878906,
+        "height": 83.09379577636719
+      },
+      {
+        "role": "screen-encoder-3",
+        "x": 765.9999847412109,
+        "y": 220.99998474121094,
+        "width": 64.00001525878906,
+        "height": 60
+      },
+      {
+        "role": "screen-encoder-4",
+        "x": 859.0000152587891,
+        "y": 220.99998474121094,
+        "width": 64.00001525878906,
+        "height": 60
+      },
+      {
+        "role": "exit",
+        "x": 913.0000305175781,
+        "y": 101.00000381469727,
+        "width": 57.99995422363281,
+        "height": 31.999988555908203
+      },
+      {
+        "role": "enter",
+        "x": 1000,
+        "y": 101.00000381469727,
+        "width": 58.000030517578125,
+        "height": 31.999988555908203
+      },
+      {
+        "role": "page-prev",
+        "x": 913.0000305175781,
+        "y": 167.00000762939453,
+        "width": 57.99995422363281,
+        "height": 32.00000762939453
+      },
+      {
+        "role": "page-next",
+        "x": 1000,
+        "y": 167.00000762939453,
+        "width": 58.000030517578125,
+        "height": 32.00000762939453
+      },
+      {
+        "role": "output-level",
+        "x": 1100.999984741211,
+        "y": 62.99999237060547,
+        "width": 66.00006103515625,
+        "height": 81.0000228881836
+      },
+      {
+        "role": "rhythm-edit",
+        "x": 1114.000015258789,
+        "y": 169.00001525878906,
+        "width": 40,
+        "height": 31.999969482421875
+      },
+      {
+        "role": "rhythm-start",
+        "x": 1095.999984741211,
+        "y": 250.99998474121094,
+        "width": 78.00003051757812,
+        "height": 32.00004577636719
+      },
+      {
+        "role": "tap-tempo",
+        "x": 995,
+        "y": 250.99998474121094,
+        "width": 78.00003051757812,
+        "height": 32.00004577636719
+      },
+      {
+        "role": "hardware-knob-wrapper hardware-interactive appearance-classic fx-bank-knob",
+        "x": 1305,
+        "y": 62.00000762939453,
+        "width": 140,
+        "height": 158.54686737060547
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic is-selected fx-slot-button",
+        "x": 1216.0000610351562,
+        "y": 243.00003051757812,
+        "width": 47.9998779296875,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 1285,
+        "y": 243.00003051757812,
+        "width": 48.000030517578125,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 1351.0000610351562,
+        "y": 243.00003051757812,
+        "width": 48.000030517578125,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 1421.9999694824219,
+        "y": 243.00003051757812,
+        "width": 48.000030517578125,
+        "height": 47.99995422363281
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-white shape-rect appearance-classic fx-edit-button",
+        "x": 1221.0000610351562,
+        "y": 163.99999618530273,
+        "width": 37.9998779296875,
+        "height": 38.0000114440918
+      },
+      {
+        "role": "track-label",
+        "track": "1",
+        "x": 105.49999237060547,
+        "y": 603.0000305175781,
+        "width": 10.656261444091797,
+        "height": 28.99993896484375
+      },
+      {
+        "role": "fx",
+        "track": "1",
+        "x": 108.50000381469727,
+        "y": 372.00000762939453,
+        "width": 80,
+        "height": 35.99998474121094
+      },
+      {
+        "role": "select",
+        "track": "1",
+        "x": 108.50000381469727,
+        "y": 445,
+        "width": 80,
+        "height": 36.000022888183594
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "1",
+        "x": 108.50000381469727,
+        "y": 521.0000610351562,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "1",
+        "x": 239.50000762939453,
+        "y": 359.00001525878906,
+        "width": 72.99999237060547,
+        "height": 232.9999542236328
+      },
+      {
+        "role": "record-play",
+        "track": "1",
+        "x": 139.00001525878906,
+        "y": 660.5000305175781,
+        "width": 129.00001525878906,
+        "height": 129.00001525878906
+      },
+      {
+        "role": "track-label",
+        "track": "2",
+        "x": 380.49999237060547,
+        "y": 603.0000305175781,
+        "width": 15.984382629394531,
+        "height": 28.99993896484375
+      },
+      {
+        "role": "fx",
+        "track": "2",
+        "x": 383.5000228881836,
+        "y": 372.00000762939453,
+        "width": 80,
+        "height": 35.99998474121094
+      },
+      {
+        "role": "select",
+        "track": "2",
+        "x": 383.5000228881836,
+        "y": 445,
+        "width": 80,
+        "height": 36.000022888183594
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "2",
+        "x": 383.5000228881836,
+        "y": 521.0000610351562,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "2",
+        "x": 514.5000076293945,
+        "y": 359.00001525878906,
+        "width": 72.99999237060547,
+        "height": 232.9999542236328
+      },
+      {
+        "role": "record-play",
+        "track": "2",
+        "x": 414.00001525878906,
+        "y": 660.5000305175781,
+        "width": 128.9999771118164,
+        "height": 129.00001525878906
+      },
+      {
+        "role": "track-label",
+        "track": "3",
+        "x": 655.5000305175781,
+        "y": 603.0000305175781,
+        "width": 16.343765258789062,
+        "height": 28.99993896484375
+      },
+      {
+        "role": "fx",
+        "track": "3",
+        "x": 658.4999847412109,
+        "y": 372.00000762939453,
+        "width": 80,
+        "height": 35.99998474121094
+      },
+      {
+        "role": "select",
+        "track": "3",
+        "x": 658.4999847412109,
+        "y": 445,
+        "width": 80,
+        "height": 36.000022888183594
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "3",
+        "x": 658.4999847412109,
+        "y": 521.0000610351562,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "3",
+        "x": 789.5000457763672,
+        "y": 359.00001525878906,
+        "width": 72.99995422363281,
+        "height": 232.9999542236328
+      },
+      {
+        "role": "record-play",
+        "track": "3",
+        "x": 689.0000152587891,
+        "y": 660.5000305175781,
+        "width": 129.00001525878906,
+        "height": 129.00001525878906
+      },
+      {
+        "role": "track-label",
+        "track": "4",
+        "x": 930.5000305175781,
+        "y": 603.0000305175781,
+        "width": 17.5,
+        "height": 28.99993896484375
+      },
+      {
+        "role": "fx",
+        "track": "4",
+        "x": 933.4999847412109,
+        "y": 372.00000762939453,
+        "width": 80,
+        "height": 35.99998474121094
+      },
+      {
+        "role": "select",
+        "track": "4",
+        "x": 933.4999847412109,
+        "y": 445,
+        "width": 80,
+        "height": 36.000022888183594
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "4",
+        "x": 933.4999847412109,
+        "y": 521.0000610351562,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "4",
+        "x": 1064.5000457763672,
+        "y": 359.00001525878906,
+        "width": 72.99995422363281,
+        "height": 232.9999542236328
+      },
+      {
+        "role": "record-play",
+        "track": "4",
+        "x": 964.0000152587891,
+        "y": 660.5000305175781,
+        "width": 129.00001525878906,
+        "height": 129.00001525878906
+      },
+      {
+        "role": "track-label",
+        "track": "5",
+        "x": 1205.5000305175781,
+        "y": 603.0000305175781,
+        "width": 16.796875,
+        "height": 28.99993896484375
+      },
+      {
+        "role": "fx",
+        "track": "5",
+        "x": 1208.5000610351562,
+        "y": 372.00000762939453,
+        "width": 80,
+        "height": 35.99998474121094
+      },
+      {
+        "role": "select",
+        "track": "5",
+        "x": 1208.5000610351562,
+        "y": 445,
+        "width": 80,
+        "height": 36.000022888183594
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "5",
+        "x": 1208.5000610351562,
+        "y": 521.0000610351562,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "5",
+        "x": 1339.4999694824219,
+        "y": 359.00001525878906,
+        "width": 73.00003051757812,
+        "height": 232.9999542236328
+      },
+      {
+        "role": "record-play",
+        "track": "5",
+        "x": 1238.9999389648438,
+        "y": 660.5000305175781,
+        "width": 129.00009155273438,
+        "height": 129.00001525878906
+      }
+    ]
+  },
+  "1920": {
+    "face": {
+      "x": 200,
+      "y": 123.84375,
+      "width": 1520,
+      "height": 846
+    },
+    "scale": 1,
+    "controls": [
+      {
+        "role": "hardware-knob-wrapper hardware-interactive appearance-classic fx-bank-knob",
+        "x": 71,
+        "y": 62,
+        "width": 140,
+        "height": 158.546875
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic is-selected fx-slot-button",
+        "x": 51,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 122,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 189,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 257,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-white shape-rect appearance-classic fx-edit-button",
+        "x": 265,
+        "y": 164,
+        "width": 38,
+        "height": 38
+      },
+      {
+        "role": "menu",
+        "x": 513,
+        "y": 101,
+        "width": 54,
+        "height": 32
+      },
+      {
+        "role": "loop",
+        "x": 513,
+        "y": 167,
+        "width": 54,
+        "height": 32
+      },
+      {
+        "role": "all-transport",
+        "x": 344,
+        "y": 251,
+        "width": 78,
+        "height": 44
+      },
+      {
+        "role": "undo-redo",
+        "x": 460,
+        "y": 251,
+        "width": 80,
+        "height": 32
+      },
+      {
+        "role": "screen-shell",
+        "x": 625,
+        "y": 80,
+        "width": 268,
+        "height": 125
+      },
+      {
+        "role": "screen-encoder-1",
+        "x": 588,
+        "y": 221,
+        "width": 64,
+        "height": 83.09375
+      },
+      {
+        "role": "screen-encoder-2",
+        "x": 676,
+        "y": 221,
+        "width": 64,
+        "height": 83.09375
+      },
+      {
+        "role": "screen-encoder-3",
+        "x": 766,
+        "y": 221,
+        "width": 64,
+        "height": 60
+      },
+      {
+        "role": "screen-encoder-4",
+        "x": 859,
+        "y": 221,
+        "width": 64,
+        "height": 60
+      },
+      {
+        "role": "exit",
+        "x": 913,
+        "y": 101,
+        "width": 58,
+        "height": 32
+      },
+      {
+        "role": "enter",
+        "x": 1000,
+        "y": 101,
+        "width": 58,
+        "height": 32
+      },
+      {
+        "role": "page-prev",
+        "x": 913,
+        "y": 167,
+        "width": 58,
+        "height": 32
+      },
+      {
+        "role": "page-next",
+        "x": 1000,
+        "y": 167,
+        "width": 58,
+        "height": 32
+      },
+      {
+        "role": "output-level",
+        "x": 1101,
+        "y": 63,
+        "width": 66,
+        "height": 81
+      },
+      {
+        "role": "rhythm-edit",
+        "x": 1114,
+        "y": 169,
+        "width": 40,
+        "height": 32
+      },
+      {
+        "role": "rhythm-start",
+        "x": 1096,
+        "y": 251,
+        "width": 78,
+        "height": 32
+      },
+      {
+        "role": "tap-tempo",
+        "x": 995,
+        "y": 251,
+        "width": 78,
+        "height": 32
+      },
+      {
+        "role": "hardware-knob-wrapper hardware-interactive appearance-classic fx-bank-knob",
+        "x": 1305,
+        "y": 62,
+        "width": 140,
+        "height": 158.546875
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic is-selected fx-slot-button",
+        "x": 1216,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 1285,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 1351,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-red shape-circle appearance-classic fx-slot-button",
+        "x": 1422,
+        "y": 243,
+        "width": 48,
+        "height": 48
+      },
+      {
+        "role": "hardware-button hardware-interactive size-sm color-white shape-rect appearance-classic fx-edit-button",
+        "x": 1221,
+        "y": 164,
+        "width": 38,
+        "height": 38
+      },
+      {
+        "role": "track-label",
+        "track": "1",
+        "x": 105.5,
+        "y": 603,
+        "width": 10.65625,
+        "height": 29
+      },
+      {
+        "role": "fx",
+        "track": "1",
+        "x": 108.5,
+        "y": 372,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "select",
+        "track": "1",
+        "x": 108.5,
+        "y": 445,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "1",
+        "x": 108.5,
+        "y": 521,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "1",
+        "x": 239.5,
+        "y": 359,
+        "width": 73,
+        "height": 233
+      },
+      {
+        "role": "record-play",
+        "track": "1",
+        "x": 139,
+        "y": 660.5,
+        "width": 129,
+        "height": 129
+      },
+      {
+        "role": "track-label",
+        "track": "2",
+        "x": 380.5,
+        "y": 603,
+        "width": 15.984375,
+        "height": 29
+      },
+      {
+        "role": "fx",
+        "track": "2",
+        "x": 383.5,
+        "y": 372,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "select",
+        "track": "2",
+        "x": 383.5,
+        "y": 445,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "2",
+        "x": 383.5,
+        "y": 521,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "2",
+        "x": 514.5,
+        "y": 359,
+        "width": 73,
+        "height": 233
+      },
+      {
+        "role": "record-play",
+        "track": "2",
+        "x": 414,
+        "y": 660.5,
+        "width": 129,
+        "height": 129
+      },
+      {
+        "role": "track-label",
+        "track": "3",
+        "x": 655.5,
+        "y": 603,
+        "width": 16.34375,
+        "height": 29
+      },
+      {
+        "role": "fx",
+        "track": "3",
+        "x": 658.5,
+        "y": 372,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "select",
+        "track": "3",
+        "x": 658.5,
+        "y": 445,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "3",
+        "x": 658.5,
+        "y": 521,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "3",
+        "x": 789.5,
+        "y": 359,
+        "width": 73,
+        "height": 233
+      },
+      {
+        "role": "record-play",
+        "track": "3",
+        "x": 689,
+        "y": 660.5,
+        "width": 129,
+        "height": 129
+      },
+      {
+        "role": "track-label",
+        "track": "4",
+        "x": 930.5,
+        "y": 603,
+        "width": 17.5,
+        "height": 29
+      },
+      {
+        "role": "fx",
+        "track": "4",
+        "x": 933.5,
+        "y": 372,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "select",
+        "track": "4",
+        "x": 933.5,
+        "y": 445,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "4",
+        "x": 933.5,
+        "y": 521,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "4",
+        "x": 1064.5,
+        "y": 359,
+        "width": 73,
+        "height": 233
+      },
+      {
+        "role": "record-play",
+        "track": "4",
+        "x": 964,
+        "y": 660.5,
+        "width": 129,
+        "height": 129
+      },
+      {
+        "role": "track-label",
+        "track": "5",
+        "x": 1205.5,
+        "y": 603,
+        "width": 16.796875,
+        "height": 29
+      },
+      {
+        "role": "fx",
+        "track": "5",
+        "x": 1208.5,
+        "y": 372,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "select",
+        "track": "5",
+        "x": 1208.5,
+        "y": 445,
+        "width": 80,
+        "height": 36
+      },
+      {
+        "role": "STOP_CLEAR",
+        "track": "5",
+        "x": 1208.5,
+        "y": 521,
+        "width": 80,
+        "height": 80
+      },
+      {
+        "role": "hardware-fader hardware-interactive appearance-classic is-disabled",
+        "track": "5",
+        "x": 1339.5,
+        "y": 359,
+        "width": 73,
+        "height": 233
+      },
+      {
+        "role": "record-play",
+        "track": "5",
+        "x": 1239,
+        "y": 660.5,
+        "width": 129,
+        "height": 129
+      }
+    ]
+  }
+}

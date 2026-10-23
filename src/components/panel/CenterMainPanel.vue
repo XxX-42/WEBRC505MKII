@@ -1082,7 +1082,7 @@ onUnmounted(() => {
 .lcd-status { display: -webkit-box; min-height: 0; overflow: hidden; color: #1c3957; font-size: 12px; line-height: 1; letter-spacing: 0.02em; text-align: center; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 
 .soft-control-row { position: absolute; inset: 0; display: block; width: auto; }
-.soft-field { position: absolute; top: 185px; display: grid; justify-items: center; gap: 0; width: 64px; min-width: 64px; }
+.soft-field { position: absolute; top: 169px; display: grid; justify-items: center; gap: 0; width: 64px; min-width: 64px; }
 .soft-field:nth-child(1) { left: 258px; }
 .soft-field:nth-child(2) { left: 346px; }
 .soft-field:nth-child(3) { left: 436px; }
@@ -1097,7 +1097,7 @@ onUnmounted(() => {
 .soft-value { display: none; }
 
 .page-navigation { position: absolute; inset: 0; display: block; }
-.page-caption { position: absolute; top: 115px; left: 636px; width: 60px; color: #c5cad2; font-size: 11px; letter-spacing: 0.08em; text-align: center; }
+.page-caption { position: absolute; top: 91px; left: 636px; width: 60px; color: #c5cad2; font-size: 11px; letter-spacing: 0.08em; text-align: center; }
 .page-navigation :deep(.hardware-button) { position: absolute; width: 58px; min-width: 58px; height: 32px; padding: 0 4px; }
 .page-navigation :deep([data-panel-control="exit"]) { top: 49px; left: 583px; }
 .page-navigation :deep([data-panel-control="enter"]) { top: 49px; left: 670px; }

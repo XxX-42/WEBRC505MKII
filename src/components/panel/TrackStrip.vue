@@ -823,8 +823,8 @@ const stateLabel = computed(() => {
   position: relative;
   z-index: 4;
   margin: 0;
-  color: #edf0f5;
-  font: 700 15px/1 var(--font-hardware);
+  color: #ffffff;
+  font: 700 28px/1 var(--font-hardware);
   letter-spacing: 0.05em;
   text-shadow: 0 1px 2px #050609;
   pointer-events: none;
