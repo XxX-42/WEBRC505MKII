@@ -1,7 +1,7 @@
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createNativeRc505MemoryRuntime } from '../../src/audio/NativeRc505MemoryRuntime';
-import { decodeRc505Memory } from '../../src/audio/Rc505Memory';
+import { Rc505MemoryCommittedError, decodeRc505Memory } from '../../src/audio/Rc505Memory';
 import { encodeProjectArchive } from '../../src/audio/projectArchive';
 import type { NativeBridgeClient, NativeStatus } from '../../src/audio/NativeBridgeClient';
 
@@ -30,10 +30,11 @@ function fixture() {
     waitForProjectArchiveImport: vi.fn(async () => ({ state: 'committed' })),
     cancelProjectArchiveImport: vi.fn(async () => undefined),
   };
+  const install = vi.fn();
   const runtime = createNativeRc505MemoryRuntime({ bridge: bridge as unknown as NativeBridgeClient,
-    status: () => cached, editRevision: () => String(edits), publish: (value) => { cached = value; },
+    status: () => cached, editRevision: () => String(edits), publish: (value) => { cached = value; }, install,
     archive: () => encodeProjectArchive({ name: '', bpm: 120, tracks: [null, null, null, null, null] }) });
-  return { runtime, bridge, edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
+  return { runtime, bridge, install, edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
 }
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
@@ -89,4 +90,29 @@ describe('Native semantic Memory runtime', () => {
     await expect(runtime.prepare(document, runtime.revision())).rejects.toThrow(/inconsistent/);
     expect(bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
   });
+  it('reports readback failure after host ACK as committed and never cancels the installed generation', async () => {
+    const { runtime, bridge } = fixture();
+    const document = await runtime.capture();
+    const prepared = await runtime.prepare(document, runtime.revision());
+    bridge.getStatus.mockRejectedValueOnce(new Error('network readback unavailable'));
+    await expect(prepared.commit()).rejects.toMatchObject({
+      committed: true, generation: 19, message: expect.stringContaining('generation 19 committed'),
+      cause: expect.objectContaining({ message: 'network readback unavailable' }),
+    });
+    await prepared.dispose();
+    expect(bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
+  });
+  it('classifies authored-control installation failure after ACK without claiming a rollback', async () => {
+    const { runtime, bridge, install } = fixture();
+    const document = await runtime.capture();
+    const prepared = await runtime.prepare(document, runtime.revision());
+    install.mockImplementationOnce(() => { throw new Error('UI installation failed'); });
+    const outcome = prepared.commit();
+    await expect(outcome).rejects.toBeInstanceOf(Rc505MemoryCommittedError);
+    await expect(outcome).rejects.toMatchObject({ committed: true, generation: 19,
+      message: expect.stringContaining('application synchronization failed: UI installation failed') });
+    await prepared.dispose();
+    expect(bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
+  });
+
 });

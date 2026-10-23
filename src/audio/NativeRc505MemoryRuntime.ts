@@ -1,6 +1,6 @@
 import { Transport } from '../core/Transport';
 import { decodeProjectArchive } from './projectArchive';
-import { encodeRc505Memory, type Rc505Json, type Rc505MemoryDocument, type Rc505MemoryField, type Rc505MemoryRuntime } from './Rc505Memory';
+import { Rc505MemoryCommittedError, encodeRc505Memory, type Rc505Json, type Rc505MemoryDocument, type Rc505MemoryField, type Rc505MemoryRuntime } from './Rc505Memory';
 import type { NativeBridgeClient, NativeCatalogSlotStatus, NativeStatus } from './NativeBridgeClient';
 
 export interface NativeMemoryPort {
@@ -151,6 +151,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           const result = await port.bridge.waitForProjectArchiveImport(generation, 10_000);
           if (result.state !== 'committed') throw new Error(result.error || 'Native Memory generation was not committed.');
           state = 'committed';
+          try {
           const deadline = Date.now() + 10_000;
           for (;;) {
             const status = await port.bridge.getStatus();
@@ -169,6 +170,10 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           transport.measureLength = savedTransport.measureLengthSeconds;
           transport.masterLoopLengthSamples = savedTransport.masterLoopLengthSamples;
           transport.setBpm(document.semantics.tempo);
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : String(error);
+            throw new Rc505MemoryCommittedError(`Native Memory generation ${generation} committed; application synchronization failed: ${detail}`, generation, { cause: error });
+          }
         },
         dispose: async () => {
           if (state === 'prepared') await port.bridge.cancelProjectArchiveImport(generation);
