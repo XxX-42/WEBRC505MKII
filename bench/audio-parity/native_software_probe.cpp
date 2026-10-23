@@ -89,7 +89,6 @@ int main(int argc, char** argv) {
         if (command != "perf" || argc != 4) throw std::runtime_error("perf arguments");
         const unsigned int count = static_cast<unsigned int>(std::stoul(argv[2])); const std::string scenario = argv[3];
         if (count < 10000U || count > 1000000U || (scenario != "gate-meter" && scenario != "meter" && scenario != "mark-retained")) throw std::runtime_error("perf count/scenario (minimum 10000 callbacks)");
-        NativeAudioCoreTestAccess::setRunning(core);
         std::vector<float> input(256U), output(256U); std::vector<double> times(count);
         for(unsigned int frame=0;frame<128U;++frame) { input[2U*frame]=0.03f*std::sin(static_cast<float>(frame)*6.28318530718f/128.0f);input[2U*frame+1U]=0.025f*std::sin(static_cast<float>(frame)*12.56637061436f/128.0f); }
         for(std::uint8_t track=0;track<5U;++track) {
@@ -98,6 +97,18 @@ int main(int argc, char** argv) {
             NativeAudioCoreTestAccess::command(core, CommandType::StopRecordOrPlayback,track); NativeAudioCoreTestAccess::callback(core,nullptr,output.data(),128U);
             NativeAudioCoreTestAccess::command(core, CommandType::Play,track); NativeAudioCoreTestAccess::callback(core,nullptr,output.data(),128U);
         }
+        std::string configError;
+        for(std::uint8_t track=1U;track<=5U;++track) {
+            if(!core.setNativeCatalogSlot(NativeEffectSlot::A,"chorus",{},false,configError,NativeCatalogFxPath::Track,track) ||
+               !core.setNativeCatalogSlot(NativeEffectSlot::B,"manual_pan",{},false,configError,NativeCatalogFxPath::Track,track)) throw std::runtime_error(configError);
+        }
+        if(!core.setNativeCatalogSlot(NativeEffectSlot::A,"filter.lpf",{{"cutoff_hz",1200.0f}},false,configError,NativeCatalogFxPath::Input,0U) ||
+           !core.setNativeCatalogSlot(NativeEffectSlot::A,"reverb",{},false,configError,NativeCatalogFxPath::Track,0U)) throw std::runtime_error(configError);
+        NativeRhythmConfig rhythm;rhythm.enabled=true;rhythm.volume=20U;
+        if(!core.setNativeRhythmConfig(rhythm,configError)) throw std::runtime_error(configError);
+        NativePitchConfig pitch;pitch.enabled=true;pitch.trackId=1U;pitch.semitones=3.0f;pitch.mode=NativePitchMode::LiveMonoKeepPitch;
+        if(!core.setNativePitchConfig(pitch,configError)) throw std::runtime_error(configError);
+        NativeAudioCoreTestAccess::setRunning(core);
         {
             const auto controlWithCallbackPump = [&](auto operation) {
                 std::atomic<bool> done{false}; bool ok=false; std::string error;
@@ -119,17 +130,6 @@ int main(int argc, char** argv) {
                 if(!core.getStatus().nativeTrackMarks[0U].exists) throw std::runtime_error("MARK snapshot missing");
             }
         }
-        std::string configError;
-        for(std::uint8_t track=1U;track<=5U;++track) {
-            if(!core.setNativeCatalogSlot(NativeEffectSlot::A,"chorus",{},false,configError,NativeCatalogFxPath::Track,track) ||
-               !core.setNativeCatalogSlot(NativeEffectSlot::B,"manual_pan",{},false,configError,NativeCatalogFxPath::Track,track)) throw std::runtime_error(configError);
-        }
-        if(!core.setNativeCatalogSlot(NativeEffectSlot::A,"filter.lpf",{{"cutoff_hz",1200.0f}},false,configError,NativeCatalogFxPath::Input,0U) ||
-           !core.setNativeCatalogSlot(NativeEffectSlot::A,"reverb",{},false,configError,NativeCatalogFxPath::Track,0U)) throw std::runtime_error(configError);
-        NativeRhythmConfig rhythm;rhythm.enabled=true;rhythm.volume=20U;
-        if(!core.setNativeRhythmConfig(rhythm,configError)) throw std::runtime_error(configError);
-        NativePitchConfig pitch;pitch.enabled=true;pitch.trackId=1U;pitch.semitones=3.0f;pitch.mode=NativePitchMode::LiveMonoKeepPitch;
-        if(!core.setNativePitchConfig(pitch,configError)) throw std::runtime_error(configError);
         std::size_t rhythmVoicesObserved=0U;
         for (unsigned int i=0; i<1000U; ++i) { NativeAudioCoreTestAccess::callback(core,input.data(),output.data(),128U);rhythmVoicesObserved=std::max(rhythmVoicesObserved,NativeAudioCoreTestAccess::activeRhythmVoices(core)); }
         const auto accepted=core.getStatus();
