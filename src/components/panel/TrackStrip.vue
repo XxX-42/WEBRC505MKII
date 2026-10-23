@@ -836,4 +836,27 @@ const stateLabel = computed(() => {
 .indicator-chip:nth-child(1).active { color: #ff596b; }
 .indicator-chip:nth-child(2).active { color: #52ef91; }
 .indicator-chip:nth-child(3).active { color: #ffc34a; }
+/* Complete front reference, normalized to the 1520 x 846 face.
+   The photograph is not calibrated; lens colors remain engineering approximations. */
+.track-strip-header { top: 279px; left: 32px; align-items: flex-start; }
+.track-label { font-size: 29px; font-weight: 900; }
+.track-button-stack > :deep([data-track-control="fx"]),
+.track-button-stack > :deep([data-track-control="select"]) { border-radius: 22px !important; background: linear-gradient(#35363c,#17181d) !important; }
+.track-button-stack > :deep([data-track-control="select"]) { top: 121px; }
+.clear-note { top: 178px; }
+.track-button-stack > .stop-disc { top: 197px; left: 35px; width: 80px; height: 80px; border-width: 6px; }
+.stop-disc .stop-square { width: 17px; height: 17px; }
+.slider-column { top: 29px; left: 166px; width: 73px; height: 248px; background: linear-gradient(90deg,#292b30,#08090b 15% 85%,#34363c); border-top: 6px solid #0a0b0d; border-bottom: 9px solid #33353b; }
+:deep(.slider-column .hardware-fader) { height: 233px; min-height: 233px; }
+:deep(.slider-column .fader-track-container) { height: 233px; min-height: 233px; flex: 0 0 233px; }
+:deep(.slider-column .led-strip) { opacity: 0; }
+:deep(.slider-column .fader-groove) { width: 16px; }
+:deep(.slider-column .fader-cap) { width: 73px !important; height: 36px !important; background: linear-gradient(#25272b 0 42%,#d9dde3 43% 54%,#1e2024 55%) !important; border: 1px solid #07080a; border-radius: 2px; }
+:deep(.slider-column .cap-ridge) { opacity: 0; }
+.halo-wrapper { top: 291px; left: 20px; width: 220px; height: 220px; }
+.track-button-stack > :deep(.track-function-button .led-dot) { position: absolute; inset: 2px; width: auto; height: auto; margin: 0; border: 3px solid #8e929c; border-radius: inherit; background: transparent; box-shadow: inset 0 0 1px #15161b; pointer-events: none; }
+.track-button-stack > :deep(.track-function-button .led-dot.led-red) { border-color: var(--led-red-recording); background: transparent; box-shadow: 0 0 4px var(--led-red-recording); }
+.track-button-stack > :deep(.track-function-button .led-dot.led-green) { border-color: var(--led-green-playing); background: transparent; box-shadow: 0 0 4px var(--led-green-playing); }
+.track-button-stack > :deep(.track-function-button .button-label) { position: relative; z-index: 1; }
+:deep(.slider-column .fader-groove::before) { display: none; }
 </style>

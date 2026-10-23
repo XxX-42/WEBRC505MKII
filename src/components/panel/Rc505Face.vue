@@ -199,4 +199,20 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
 .menu-action small { color: #d0d6df; font-size: 14px; line-height: 1.45; }
 .menu-action > span:last-child { color: #75caff; font-size: 25px; }
 
+.rc505-face :deep(.screen-shell) { top: 28px; left: 295px; width: 268px; height: 125px; }
+/* High-confidence physical silhouettes from the complete frontal photograph. */
+.face-upper::after { height: 9px; border-top: 1px solid #d0d1d6; background: linear-gradient(#bebfc8,#8c8e98); box-shadow: 0 1px 2px #090a0d; }
+.rc505-face :deep(.fx-slot-button) { width: 48px !important; min-width: 48px !important; height: 48px !important; transform: translate(-6px,-6px); }
+.rc505-face :deep(.bank-heading) { top: 159px; left: 215px; }
+.rc505-face :deep(.fx-bank-track .bank-heading) { left: 48px; }
+.rc505-face :deep(.bank-heading h2) { color: #d84956; font-size: 16px; }
+.rc505-face :deep(.bank-kicker) { display: none; }
+.rc505-face :deep([data-panel-control="all-transport"]),
+.rc505-face :deep([data-panel-control="undo-redo"]),
+.rc505-face :deep([data-panel-control="rhythm-start"]),
+.rc505-face :deep([data-panel-control="tap-tempo"]) { border-radius: 22px; height: 40px; }
+.rc505-face :deep([data-panel-control="rhythm-start"]),
+.rc505-face :deep([data-panel-control="tap-tempo"]) { width: 78px; min-width: 78px; }
+.face-upper > :deep(.center-main-panel) { z-index: 1; }
+.rc505-face :deep([data-panel-control="rhythm-start"]) { left: 766px; }
 </style>
