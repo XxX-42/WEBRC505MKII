@@ -1159,6 +1159,32 @@ export class TrackAudio {
         if (this.sharedTrackFxMeterSplit) this.panNode.connect(this.sharedTrackFxMeterSplit);
     }
 
+    /** Stage selector edges without allocating or destroying the old fallback/selector. */
+    public prepareMemoryTrackFxRouter(previous: AudioWorkletNode | null, candidate: AudioWorkletNode): { commit(): void; rollback(): void; retire(): void } {
+        const wet = this.sharedTrackFxWetGain, dry = this.sharedTrackFxDryGain;
+        let attached = false;
+        const restore = () => {
+            try { this.panNode.disconnect(candidate); } catch { /* candidate not connected */ }
+            if (previous) this.panNode.connect(previous, 0, this.trackIndex);
+            else { if (wet) this.panNode.connect(wet); if (dry) this.panNode.connect(dry); }
+            attached = false;
+        };
+        return {
+            commit: () => {
+                try {
+                    this.panNode.connect(candidate, 0, this.trackIndex);
+                    if (previous) this.panNode.disconnect(previous);
+                    else { if (wet) this.panNode.disconnect(wet); if (dry) this.panNode.disconnect(dry); }
+                    attached = true;
+                } catch (error) { restore(); throw error; }
+            },
+            rollback: () => { if (attached) restore(); },
+            retire: () => {
+                wet?.disconnect(); dry?.disconnect(); this.sharedTrackFxWetGain = null; this.sharedTrackFxDryGain = null;
+            },
+        };
+    }
+
     public getPostFaderPreSharedTrackFxMeter(): { peak: number; rms: number } {
         const left = this.sharedTrackFxMeterLeft;
         const right = this.sharedTrackFxMeterRight;

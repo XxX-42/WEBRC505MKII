@@ -2502,13 +2502,138 @@ export class BrowserAudioEngine implements IAudioEngine {
         };
     }
 
+    /** Verify a replacement capture/router pair on muted paths, then publish its edges synchronously. */
+    private async prepareMemoryGatePair(values: readonly boolean[]): Promise<{
+        commit(): void; rollback(): void; adopt(): void; dispose(): void;
+    } | null> {
+        if (values.length !== 5 || values.some((value) => typeof value !== 'boolean')) throw new Error('Memory must contain five boolean Track FX gates.');
+        if (values.every((value, index) => value === this.trackFxApplyApplied[index])) return null;
+        if (this.context.state !== 'running') throw new Error('Resume Browser audio before preparing a different Memory gate configuration.');
+        if (typeof AudioWorkletNode === 'undefined') throw new Error('AudioWorklet is required to prepare Memory gate routing.');
+        await this.loadAudioWorkletModule('/worklets/browser-track-fx-router.js');
+        await this.loadAudioWorkletModule('/worklets/browser-input-capture.js');
+        const revisions = this.trackFxApplyRequestedRevision.map((value) => value + 1);
+        if (revisions.some((value) => !Number.isSafeInteger(value))) throw new Error('Memory gate revision exhausted.');
+        const generation = this.inputCaptureGeneration + 1;
+        if (!Number.isSafeInteger(generation)) throw new Error('Memory input generation exhausted.');
+        const source = this.currentInputStream;
+        const oldCapture = this.inputCaptureNode, oldRouter = this.trackFxRouterNode, oldMute = this.inputCaptureMuteGainNode;
+        const oldRaw = this.inputCaptureRawSource;
+        const mute = this.context.createGain(); mute.gain.value = 0;
+        let router: AudioWorkletNode | null = null, capture: AudioWorkletNode | null = null;
+        let adopted = false, wired = false;
+        let captureReady = false;
+        let captureReadyMessage: unknown = null;
+        const acked = new Set<string>();
+        const teardown = () => {
+            if (capture) {
+                try { this.inputFxChain.output.disconnect(capture); } catch { /* unpublished edge */ }
+                try { source?.disconnect(capture); } catch { /* unpublished edge */ }
+                capture.port.onmessage = null; capture.onprocessorerror = null;
+                try { capture.disconnect(); capture.port.close(); } catch { /* unpublished node */ }
+            }
+            if (router) { router.port.onmessage = null; router.onprocessorerror = null; try { router.disconnect(); router.port.close(); } catch { /* unpublished node */ } }
+            mute.disconnect();
+        };
+        try {
+            router = new AudioWorkletNode(this.context, 'rc505-track-fx-router', {
+                numberOfInputs: 5, numberOfOutputs: 10, outputChannelCount: Array(10).fill(2), channelCount: 2, channelCountMode: 'explicit',
+                processorOptions: { trackCount: 5, initialTrackFxApply: values.slice() },
+            });
+            capture = new AudioWorkletNode(this.context, 'rc505-input-capture', {
+                numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit', channelInterpretation: 'speakers',
+                processorOptions: { trackCount: 5, chunkSize: 16384, chunkPoolSize: 3, preRollFrames: 8192, maxRecordingBytes: 384 * 1024 * 1024,
+                    sampleRate: this.context.sampleRate, initialTrackFxApply: values.slice() },
+            });
+            router.connect(mute); capture.connect(mute); mute.connect(this.context.destination);
+            // The candidate tap only observes the already-authorized source. Its output is always silent.
+            if (source) source.connect(capture, 0, 0);
+            this.inputFxChain.output.connect(capture, 0, 1);
+            const applyFrame = Math.ceil(this.context.currentTime * this.context.sampleRate) + Math.max(4096, this.selectedBufferFrames * 8);
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(() => finish(new Error('Memory replacement capture/router did not jointly acknowledge all five gates.')), 3000);
+                let settled = false;
+                const finish = (error?: Error) => {
+                    if (settled) return; settled = true; clearTimeout(timeout);
+                    if (error) reject(error); else resolve();
+                };
+                const receive = (route: 'input' | 'track', data: any) => {
+                    if (data?.type === 'INPUT_CAPTURE_READY') { captureReady = true; captureReadyMessage = data; }
+                    if (data?.type !== 'TRACK_FX_APPLY_ACK') return;
+                    const index = data.trackIndex;
+                    if (!Number.isInteger(index) || index < 0 || index > 4 || data.route !== route || data.revision !== revisions[index]
+                        || data.enabled !== values[index] || data.requestedFrame !== applyFrame || data.appliedFrame !== applyFrame || data.ok !== true) {
+                        finish(new Error('Memory replacement gate acknowledgement disagreed with its prepared render frame.')); return;
+                    }
+                    acked.add(`${route}:${index}`);
+                    if (acked.size === 10) finish();
+                };
+                router!.port.onmessage = (event) => receive('track', event.data);
+                capture!.port.onmessage = (event) => receive('input', event.data);
+                router!.onprocessorerror = capture!.onprocessorerror = () => finish(new Error('Memory replacement gate processor failed before publication.'));
+                if (source) capture!.port.postMessage({ type: 'INPUT_READY', ready: true, generation, sampleRate: this.context.sampleRate });
+                for (let index = 0; index < 5; index++) {
+                    const message = { type: 'SET_TRACK_FX_APPLY', trackIndex: index, enabled: values[index], revision: revisions[index], applyFrame };
+                    router!.port.postMessage(message); capture!.port.postMessage(message);
+                }
+            });
+            const nextRouter = router, nextCapture = capture;
+            const trackEdges = this.tracks.map((track) => track.prepareMemoryTrackFxRouter(oldRouter, nextRouter));
+            // Preconnect silent selector outputs: no track feeds the candidate until the fence.
+            for (let index = 0; index < 5; index++) { nextRouter.connect(this.sharedTrackFxInputBus, index * 2, 0); nextRouter.connect(this.dryTrackFxMixBus, index * 2 + 1, 0); }
+            return {
+                commit: () => {
+                    if (source !== this.currentInputStream || oldCapture !== this.inputCaptureNode || oldRouter !== this.trackFxRouterNode) throw new Error('Input routing changed during Memory preparation.');
+                    try {
+                        for (const edge of trackEdges) edge.commit();
+                        if (oldCapture) {
+                            this.inputFxChain.output.disconnect(oldCapture);
+                            if (oldRaw) oldRaw.disconnect(oldCapture);
+                        }
+                        wired = true;
+                    } catch (error) {
+                        trackEdges.forEach((edge) => edge.rollback());
+                        if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); }
+                        throw error;
+                    }
+                },
+                rollback: () => {
+                    if (!wired) return;
+                    trackEdges.forEach((edge) => edge.rollback());
+                    if (oldCapture) { this.inputFxChain.output.connect(oldCapture, 0, 1); oldRaw?.connect(oldCapture, 0, 0); }
+                    wired = false;
+                },
+                adopt: () => {
+                    adopted = true;
+                    this.trackFxRouterNode = nextRouter; this.inputCaptureNode = nextCapture; this.inputCaptureMuteGainNode = mute;
+                    this.inputCaptureRawSource = source; this.inputCaptureGeneration = generation;
+                    this.inputCaptureReady = captureReady; this.inputCaptureReadyGeneration = captureReady ? generation : 0;
+                    this.inputCaptureUnavailableReason = ''; this.trackFxRouterUnavailableReason = '';
+                    nextRouter.port.onmessage = (event) => this.handleTrackFxRouterMessage(event.data);
+                    nextCapture.port.onmessage = (event) => this.handleInputCaptureMessage(event.data);
+                    nextRouter.onprocessorerror = () => { this.trackFxRouterUnavailableReason = 'Memory Track FX router processor failed.'; this.emitStatus(); };
+                    nextCapture.onprocessorerror = () => { this.inputCaptureReady = false; this.inputCaptureUnavailableReason = 'Memory capture processor failed.'; this.emitStatus(); };
+                    for (let index = 0; index < 5; index++) {
+                        if (this.trackFxApplyApplied[index] !== values[index]) this.trackFxApplySemanticRevision[index]! += 1;
+                        this.trackFxApplyApplied[index] = this.trackFxApplyRequested[index] = this.trackFxApplyInputValue[index] = this.trackFxApplyTrackValue[index] = values[index]!;
+                        this.trackFxApplyRequestedRevision[index] = this.trackFxApplyInputRevision[index] = this.trackFxApplyTrackRevision[index] = revisions[index]!;
+                        this.trackFxApplyFaulted[index] = false; this.trackFxApplyErrors[index] = '';
+                    }
+                    if (captureReadyMessage) this.handleInputCaptureMessage(captureReadyMessage);
+                    try { nextRouter.disconnect(mute); } catch { /* keep silent tap sink */ }
+                    for (const edge of trackEdges) { try { edge.retire(); } catch { /* old fallback detached */ } }
+                    try { oldRouter?.disconnect(); oldRouter?.port.close(); oldCapture?.disconnect(); oldCapture?.port.close(); oldMute?.disconnect(); } catch { /* old nodes detached */ }
+                },
+                dispose: () => { if (!adopted) teardown(); },
+            };
+        } catch (error) { teardown(); throw error; }
+    }
+
     /** Build all seven FX banks off graph. Publication briefly pauses Browser monitoring. */
     public async prepareMemoryConfiguration(saved: BrowserMemoryConfiguration, project: ProjectArchive, archiveBytes: number,
         assertCurrent: () => void): Promise<{ commit(): Promise<void>; dispose(): Promise<void> }> {
         assertCurrent();
-        if (saved.trackFxApply.some((value, index) => typeof value !== 'boolean' || value !== this.trackFxApplyApplied[index])) {
-            throw new Error('Atomic Memory recall of a different Track FX gate requires a staged render router; incumbent audio is unchanged.');
-        }
+        if (saved.trackFxApply.some((value) => typeof value !== 'boolean')) throw new Error('Memory gate value is invalid.');
         if (!Number.isFinite(saved.outputGain) || saved.outputGain < 0 || saved.outputGain > 2
             || !Number.isFinite(saved.trackMixGain) || saved.trackMixGain < 0 || saved.trackMixGain > 2) throw new Error('Memory mixer gain is invalid.');
         const settings = this.tracks.map((track, index) => track.prepareMemorySettings(saved.tracks[index]!));
@@ -2530,6 +2655,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             () => project.transport.timeSignatureNumerator * 4 / project.transport.timeSignatureDenominator,
             (trackId) => this.tracks[trackId - 1]?.playbackSourceOutput ?? null));
         let candidateOutput: AudioWorkletNode | null = null;
+        let gates: Awaited<ReturnType<BrowserAudioEngine['prepareMemoryGatePair']>> = null;
         let committed = false;
         let disposed = false;
         const disposeStage = () => {
@@ -2537,6 +2663,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             for (const fx of [...stage.inputFxInstances, ...stage.trackFxInstances]) fx?.dispose();
             stage.inputFxChain.dispose(); stage.outputFxChain.dispose();
             candidateOutput?.disconnect(); candidateOutput?.port.close(); candidateOutput = null;
+            gates?.dispose();
         };
         try {
             const configure = (location: 'input' | 'track', slots: readonly BrowserRecoveryFxSlot[]) => {
@@ -2557,7 +2684,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             saved.fx.privateTracks.forEach((slots, trackIndex) => {
                 if (slots.length !== 4) throw new Error('Memory private FX bank must have four slots.');
                 slots.forEach((slot, index) => {
-                    if (slot.state === 'loading' || slot.state === 'error' || slot.requestedType || slot.requestedActive !== null) throw new Error('Memory private FX is not acknowledged.');
+                    if (slot.state === 'loading' || slot.state === 'error' || slot.requestedType || slot.requestedActive !== null) throw new Error(`Memory private FX ${trackIndex + 1}/${index} is not acknowledged (${slot.state}, ${slot.requestedType}, ${slot.requestedActive}, ${slot.error}).`);
                     if (!slot.type) return;
                     const bank = stage.perTrackFxChains[trackIndex]!;
                     if (!bank.setType(index, slot.type)) throw new Error('Memory private FX type rejected.');
@@ -2581,6 +2708,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 await this.waitForOutputDspReady(candidateOutput, saved.fx.outputDsp.algorithm as BrowserFxAlgorithm, saved.fx.outputDsp.parameters as BrowserFxParameters);
             }
             for (const { trackId, config } of saved.fx.sourceOverrides) if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !isNativeLoopTransportConfig(config)) throw new Error('Memory loop source override is invalid.');
+            gates = await this.prepareMemoryGatePair(saved.trackFxApply);
             assertCurrent();
         } catch (error) { pcm.dispose(); disposeStage(); throw error; }
         return {
@@ -2609,6 +2737,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                     };
                     try {
                         // Only reversible graph/AudioParam edits occur before PCM publication.
+                        gates?.commit();
                         for (let index = 0; index < 5; index++) {
                             const previous = oldBanks[index]!, next = stage.perTrackFxChains[index]!;
                             this.tracks[index]!.replaceTrackFxInsert(previous.input, previous.output, next.input, next.output); swapped.push(index);
@@ -2626,6 +2755,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                         // No await occurs between the graph edits and all-five PCM publication.
                         pcm.commit();
                     } catch (error) {
+                        gates?.rollback();
                         for (const index of swapped.reverse()) {
                             const previous = oldBanks[index]!, next = stage.perTrackFxChains[index]!;
                             this.tracks[index]!.replaceTrackFxInsert(next.input, next.output, previous.input, previous.output);
@@ -2650,6 +2780,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                     // PCM publication resets its direction; semantic Memory owns the saved direction.
                     this.tracks.forEach((track, index) => { track.isReverse = saved.tracks[index]!.isReverse; });
                     committed = true;
+                    gates?.adopt();
                     // Disposing detached nodes is best effort and cannot turn a published Memory into a failed load.
                     for (const bank of oldBanks) { try { bank.dispose(); } catch { /* detached */ } }
                     for (const fx of [...oldInput, ...oldTrack]) { try { fx?.dispose(); } catch { /* detached */ } }

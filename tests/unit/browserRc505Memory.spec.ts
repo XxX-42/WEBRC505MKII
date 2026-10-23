@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BrowserAudioEngine } from '../../src/audio/BrowserAudioEngine';
 import { TrackAudio } from '../../src/audio/TrackAudio';
 import { Transport } from '../../src/core/Transport';
@@ -22,6 +22,7 @@ function harness() {
 }
 
 beforeEach(() => { Transport.getInstance().stop(); Transport.getInstance().resetMasterTrack(); Transport.getInstance().setBpm(120); });
+afterEach(() => vi.unstubAllGlobals());
 
 describe('Browser semantic Memory', () => {
   it('captures five PCM tracks, settings, private/shared banks and acknowledged gates', async () => {
@@ -78,11 +79,39 @@ describe('Browser semantic Memory', () => {
     await candidate.dispose();
   });
 
-  it('fails closed when a saved gate differs instead of mutating incumbent worklets', async () => {
+  it('fails closed without a render adapter instead of mutating incumbent gates', async () => {
     const { runtime, engine, seed } = harness(); seed(1);
     const doc = await runtime.capture(); (doc.extensions.WEBRC.browserMemory as any).trackFxApply[0] = false;
     const before = runtime.revision();
-    await expect(runtime.prepare(doc, before)).rejects.toThrow(/staged render router/);
+    await expect(runtime.prepare(doc, before)).rejects.toThrow(/AudioWorklet/);
     expect(runtime.revision()).toBe(before); expect(engine.getTrackFxApply(1)[0]!.applied).toBe(true);
+  });
+
+  it('prepares different gates on replacement worklets and publishes both paths with the PCM', async () => {
+    const nodes: any[] = [];
+    class Worklet {
+      onprocessorerror = null;
+      port = { onmessage: null as null | ((event: any) => void), close: vi.fn(), postMessage: (message: any) => {
+        if (message.type !== 'SET_TRACK_FX_APPLY') return;
+        queueMicrotask(() => this.port.onmessage?.({ data: { type: 'TRACK_FX_APPLY_ACK', route: this.name.includes('input') ? 'input' : 'track',
+          trackIndex: message.trackIndex, revision: message.revision, enabled: message.enabled,
+          requestedFrame: message.applyFrame, appliedFrame: message.applyFrame, ok: true } }));
+      } };
+      constructor(_context: AudioContext, readonly name: string) { nodes.push(this); }
+      connect() {} disconnect() {}
+    }
+    vi.stubGlobal('AudioWorkletNode', Worklet);
+    const { runtime, engine, seed } = harness(); seed(1);
+    const doc = await runtime.capture(); (doc.extensions.WEBRC.browserMemory as any).trackFxApply = [false, true, false, true, false];
+    seed(9);
+    const before = runtime.revision();
+    const candidate = await runtime.prepare(doc, before);
+    expect(runtime.revision()).toBe(before);
+    expect(engine.getTrackFxApply().map((gate) => gate.applied)).toEqual([true, true, true, true, true]);
+    await candidate.commit(); await candidate.dispose();
+    expect(engine.getTrackFxApply().map((gate) => gate.applied)).toEqual([false, true, false, true, false]);
+    expect(engine.getTrackFxApply().every((gate) => !gate.pending && gate.inputAppliedRevision === gate.trackAppliedRevision)).toBe(true);
+    expect(engine.tracks[0]!.getProjectPcmSnapshot()!.channelData[0]![0]).toBe(1);
+    expect(nodes).toHaveLength(2);
   });
 });

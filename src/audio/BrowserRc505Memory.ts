@@ -45,7 +45,7 @@ function observeMethods(object: object, names: string[], changed: () => void): v
     const original = target[name];
     if (typeof original !== 'function') continue;
     Object.defineProperty(object, name, { configurable: true, writable: true, value: function (this: unknown, ...args: unknown[]) {
-      changed();
+      if (this === object) changed();
       return original.apply(this, args);
     } });
   }
@@ -77,7 +77,8 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
       && Transport.getInstance().state === TransportState.STOPPED && !engine.rhythmEngine.isRunning
       && engine.tracks.every((track) => !track.historyBusy && [TrackState.EMPTY, TrackState.STOPPED].includes(track.state as typeof TrackState.EMPTY))
       && engine.getTrackFxApply().every((gate) => !gate.pending && !gate.controlFaulted)
-      && engine.getTrackFxStatus().every((bank) => bank.slots.every((slot) => !slot.pendingApply && slot.state !== 'loading'));
+      && engine.getTrackFxStatus().every((bank) => bank.slots.every((slot) => !slot.pendingApply && slot.state !== 'loading' && slot.state !== 'error'))
+      && [...engine.getSharedFxSnapshot('input'), ...engine.getSharedFxSnapshot('track')].every((slot) => slot.state !== 'loading' && slot.state !== 'error');
     return { allowed, reason: allowed ? '' : 'Stop all five tracks and Rhythm, and finish PCM/FX/gate operations before switching Memory.' };
   };
   const assertStable = (expected: string) => {
