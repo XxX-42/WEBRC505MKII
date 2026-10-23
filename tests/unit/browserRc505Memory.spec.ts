@@ -43,6 +43,28 @@ describe('Browser semantic Memory', () => {
     expect(doc.archive.byteLength).toBeGreaterThan(100);
   });
 
+  it.each(['track.1.pan', 'record.recAction', 'mixer.main'])('rejects a %s semantic/configuration contradiction before preparation', async (address) => {
+    const { runtime, engine, seed } = harness(); seed(1);
+    const document = await runtime.capture();
+    document.semantics.fields[address]!.value = 'inconsistent';
+    const prepare = vi.spyOn(engine, 'prepareMemoryConfiguration');
+    await expect(runtime.prepare(document, runtime.revision())).rejects.toThrow(/disagrees/);
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown supported claims but preserves unavailable fields and foreign WEBRC metadata', async () => {
+    const { runtime, seed } = harness(); seed(1);
+    const document = await runtime.capture();
+    document.semantics.fields['routing.hardwareOutput'] = { availability: 'supported', value: 7 };
+    await expect(runtime.prepare(document, runtime.revision())).rejects.toThrow(/unsupported semantic/);
+    document.semantics.fields['routing.hardwareOutput'] = { availability: 'unknown', value: null, reason: 'Hardware output not exposed by Browser.' };
+    document.extensions.WEBRC.customAuthor = { label: 'preserve' };
+    const candidate = await runtime.prepare(document, runtime.revision()); await candidate.commit(); await candidate.dispose();
+    const captured = await runtime.capture();
+    expect(captured.semantics.fields['routing.hardwareOutput']).toEqual(document.semantics.fields['routing.hardwareOutput']);
+    expect(captured.extensions.WEBRC.customAuthor).toEqual({ label: 'preserve' });
+  });
+
   it('rejects settings ABA edits after preparation and retains all five PCM identities', async () => {
     const { runtime, engine, seed } = harness(); seed(1);
     const doc = await runtime.capture(); seed(9);
@@ -113,6 +135,23 @@ describe('Browser semantic Memory', () => {
     expect(Transport.getInstance().bpm).toBe(130);
   });
 
+  it.each(['bpm-change', 'time-signature-change'])('restores transport even when %s observers keep throwing', async (event) => {
+    const { runtime, engine, seed } = harness(); seed(1);
+    const transport = Transport.getInstance();
+    transport.timeSignature = [3, 4]; transport.setBpm(130);
+    const document = await runtime.capture();
+    transport.timeSignature = [4, 4]; transport.setBpm(140); seed(9);
+    const before = engine.tracks.map((track) => track.getRecoverySnapshot().buffer);
+    const candidate = await runtime.prepare(document, runtime.revision());
+    const throwing = () => { throw new Error('observer keeps throwing'); };
+    transport.on(event, throwing);
+    try {
+      await expect(candidate.commit()).rejects.toThrow('observer keeps throwing');
+      expect(transport.bpm).toBe(140); expect(transport.timeSignature).toEqual([4, 4]);
+      expect(engine.tracks.map((track) => track.getRecoverySnapshot().buffer)).toEqual(before);
+    } finally { transport.off(event, throwing); await candidate.dispose(); }
+  });
+
   it('fails closed without a render adapter instead of mutating incumbent gates', async () => {
     const { runtime, engine, seed } = harness(); seed(1);
     const doc = await runtime.capture(); (doc.extensions.WEBRC.browserMemory as any).trackFxApply[0] = false;
@@ -147,5 +186,31 @@ describe('Browser semantic Memory', () => {
     expect(engine.getTrackFxApply().every((gate) => !gate.pending && gate.inputAppliedRevision === gate.trackAppliedRevision)).toBe(true);
     expect(engine.tracks[0]!.getProjectPcmSnapshot()!.channelData[0]![0]).toBe(1);
     expect(nodes).toHaveLength(2);
+  });
+
+  it('rejects a staged gate processor failure after readiness without publishing PCM or gates', async () => {
+    const nodes: any[] = [];
+    class Worklet {
+      onprocessorerror: null | (() => void) = null;
+      port = { onmessage: null as null | ((event: any) => void), close: vi.fn(), postMessage: (message: any) => {
+        if (message.type === 'SET_TRACK_FX_APPLY') queueMicrotask(() => this.port.onmessage?.({ data: {
+          ...message, type: 'TRACK_FX_APPLY_ACK', route: this.name.includes('input') ? 'input' : 'track',
+          requestedFrame: message.applyFrame, appliedFrame: message.applyFrame, ok: true,
+        } }));
+      } };
+      constructor(_context: AudioContext, readonly name: string) { nodes.push(this); }
+      connect() {} disconnect() {}
+    }
+    vi.stubGlobal('AudioWorkletNode', Worklet);
+    const { runtime, engine, seed } = harness(); seed(1);
+    const document = await runtime.capture(); (document.extensions.WEBRC.browserMemory as any).trackFxApply[0] = false;
+    seed(9); const before = runtime.revision();
+    const pcm = engine.tracks.map((track) => track.getRecoverySnapshot().buffer);
+    const candidate = await runtime.prepare(document, before);
+    nodes[1].onprocessorerror();
+    await expect(candidate.commit()).rejects.toThrow(/processor failed/);
+    expect(runtime.revision()).toBe(before); expect(engine.getTrackFxApply(1)[0]!.applied).toBe(true);
+    expect(engine.tracks.map((track) => track.getRecoverySnapshot().buffer)).toEqual(pcm);
+    await candidate.dispose(); expect(nodes.every((node) => node.port.close.mock.calls.length === 1)).toBe(true);
   });
 });

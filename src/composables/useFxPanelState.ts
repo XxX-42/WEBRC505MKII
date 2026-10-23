@@ -209,6 +209,7 @@ function typedControls(slot: FxSlotState): Record<string, number> {
     ...(slot.robotParameters ? toCatalogRobotParameters(slot.robotParameters) : {}),
     ...(slot.hrmAutoParameters ? toCatalogHrmAutoParameters(slot.hrmAutoParameters) : {}),
     ...(slot.electricParameters ? toBrowserElectricParameters(slot.electricParameters) : {}),
+    ...(slot.stepSlicerParameters ?? {}),
   };
 }
 
@@ -236,9 +237,14 @@ function slotFromReadback(saved: BrowserRecoveryFxSlot): FxSlotState {
     case 'VOCODER': slot.vocoderParameters = sanitizeVocoderParameters({ bands: n(16, 'vocoderBands', 'bands'), carrier: n(0, 'vocoderCarrier', 'carrier') as VocoderParameters['carrier'], mixPercent: n(100, 'mix') }); break;
     case 'OSC VOC (M)': slot.oscVocParameters = sanitizeOscVocParameters({ waveform: n(0, 'oscVocWaveform', 'waveform') as OscVocParameters['waveform'], midiChannel: n(1, 'oscVocMidiChannel', 'midi-channel'), octaveSemitones: n(0, 'oscVocOctave', 'octave'), mixPercent: n(70, 'mix') }); break;
     case 'AUTO RIFF': slot.autoRiffParameters = sanitizeAutoRiffParameters({ scale: n(0, 'scale'), rateBeats: n(0.5, 'rate_beats'), sensitivityPercent: n(55, 'sensitivity_percent'), mixPercent: n(65, 'mix_percent') }); break;
-    case 'ROBOT': slot.robotParameters = sanitizeRobotFxParameters({ targetPitchSemitones: n(0, 'pitch_semitones'), formantShiftSemitones: n(0, 'formant_semitones'), mixPercent: n(100, 'mix_percent') }); break;
+    case 'ROBOT': slot.robotParameters = sanitizeRobotFxParameters({ targetPitchSemitones: n(0, 'pitch', 'pitch_semitones'), formantShiftSemitones: n(0, 'formant', 'formant_semitones'), mixPercent: n(100, 'mix', 'mix_percent') }); break;
     case 'HRM AUTO (M)': slot.hrmAutoParameters = sanitizeHrmAutoParameters({ key: n(0, 'key') as HrmAutoParameters['key'], scale: n(0, 'scale') as HrmAutoParameters['scale'], midiChannel: n(1, 'midi-channel'), mixPercent: n(70, 'mix') }); break;
     case 'ELECTRIC': slot.electricParameters = sanitizeElectricParameters({ character: n(0, 'electricCharacter') as ElectricParameters['character'], pitchSnapPercent: n(0, 'electricPitchSnapPercent'), toneHz: n(2000, 'electricToneHz'), mixPercent: n(1, 'mix') * 100 }); break;
+    case 'STEP SLICER': slot.stepSlicerParameters = sanitizeNativeStepSlicerParameters({
+      step_count: n(16, 'stepSlicerStepCount'), rate_beats: n(0.25, 'stepSlicerRateBeats'), depth_percent: n(100, 'stepSlicerDepthPercent'),
+      pan_depth_percent: n(0, 'stepSlicerPanDepthPercent'), filter_hz: n(20000, 'stepSlicerFilterHz'),
+      ...Object.fromEntries(Array.from({ length: 16 }, (_, index) => { const suffix = String(index + 1).padStart(2, '0'); return [`step_${suffix}`, n(100, `stepSlicerStep${suffix}`)]; })),
+    }); break;
   }
   if (saved.amount === null) {
     slot.value = slot.preampParameters?.gainPercent ?? slot.synthParameters?.mix ?? slot.g2bParameters?.blend

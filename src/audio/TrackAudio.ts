@@ -1046,7 +1046,9 @@ export class TrackAudio {
     /** Settings are validated on an isolated Track before touching live AudioParams. */
     public prepareMemorySettings(saved: Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse' | 'sourceTransport'>): { commit(): void; rollback(): void } {
         const settings = saved.settings;
+        const settingKeys = ['measure', 'loopSyncSw', 'tempoSyncSw', 'reverse', 'oneShot', 'pan', 'playLevel', 'startMode', 'stopMode', 'dubMode', 'fxSw', 'filterEnabled', 'filterValue', 'filterResonance'];
         if (!settings || !saved.pitch || typeof saved.isReverse !== 'boolean'
+            || Object.keys(settings).length !== settingKeys.length || Object.keys(settings).some((key) => !settingKeys.includes(key))
             || !['off', 'LIVE_MONO', 'LIVE_POLY'].includes(saved.pitch.mode)
             || !['CENTER', ...Array.from({ length: 50 }, (_, index) => `L${index + 1}`), ...Array.from({ length: 50 }, (_, index) => `R${index + 1}`)].includes(settings.pan)
             || !Number.isFinite(settings.playLevel) || settings.playLevel < 0 || settings.playLevel > 200
