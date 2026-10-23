@@ -28,7 +28,11 @@ def verify_native_manifest(path: Path, root: Path = REPO_ROOT) -> dict:
     binary = Path(value['binary'])
     if sha256_file(binary) != value['binary_sha256']:
         raise ValueError('Native binary SHA mismatch')
-    if value['source_hashes'] != source_hashes(root):
+    # Browser DSP executes from source at render time; only Native compilation
+    # inputs bind this binary. Browser source hashes are recorded separately.
+    native_only=lambda entries:{name:digest for name,digest in entries.items()
+        if name.startswith('native-mvp/') or name=='bench/audio-parity/native_software_probe.cpp'}
+    if native_only(value['source_hashes']) != native_only(source_hashes(root)):
         raise ValueError('Native build source tree changed; rebuild the isolated probe')
     return value
 
@@ -64,8 +68,19 @@ def run(outdir: Path, native_manifest: Path, mode: str = 'lpf') -> dict:
     if not vite_node.is_file():
         raise ValueError('Install the repository dependencies before rendering')
     node = os.environ.get('WEBRC_NODE', 'node')
-    entries = []
+    batch=[]
     for stimulus in manifest['entries']:
+        source=outdir/'stimuli'/stimulus['file']
+        rate,pcm,_=analyze.read_wav(source)
+        raw=outdir/'raw'/(stimulus['name']+'.input.f32')
+        raw.parent.mkdir(parents=True,exist_ok=True);pcm.astype('<f4').tofile(raw)
+        batch.append({'inputPath':str(raw),'outputPath':str(raw.with_name(stimulus['name']+'.browser.f32')),
+            'sampleRate':rate,'mode':mode})
+    batch_path=outdir/'browser-batch.json';write_json(batch_path,{'entries':batch})
+    browser_metadata=run_checked([node,str(vite_node),'--script',str(REPO_ROOT/'bench/audio-parity/render_browser.ts'),'--batch',str(batch_path)])
+    if len(browser_metadata.get('entries',[]))!=len(manifest['entries']):raise ValueError('Browser batch metadata incomplete')
+    entries = []
+    for index,stimulus in enumerate(manifest['entries']):
         source = outdir / 'stimuli' / stimulus['file']
         rate, pcm, _ = analyze.read_wav(source)
         raw = outdir / 'raw' / (stimulus['name'] + '.input.f32')
@@ -73,10 +88,8 @@ def run(outdir: Path, native_manifest: Path, mode: str = 'lpf') -> dict:
         pcm.astype('<f4').tofile(raw)
         for engine in ('browser', 'native'):
             rendered = raw.with_name(stimulus['name'] + '.' + engine + '.f32')
-            command = ([node, str(vite_node), '--script', str(REPO_ROOT / 'bench/audio-parity/render_browser.ts'),
-                        str(raw), str(rendered), str(rate), mode] if engine == 'browser' else
-                       [native['binary'], 'render', str(raw), str(rendered), str(rate), mode])
-            runtime = run_checked(command)
+            runtime = (browser_metadata['entries'][index] if engine=='browser' else
+                run_checked([native['binary'],'render',str(raw),str(rendered),str(rate),mode]))
             samples = validate_render(rendered, len(pcm))
             if np.max(np.abs(pcm)) > 0 and np.max(np.abs(samples)) == 0:
                 raise ValueError('Non-silent stimulus produced a completely silent render')
