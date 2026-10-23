@@ -138,6 +138,14 @@ function(enable_native_preamp_experimental_adaa target)
   endif()
 endfunction()
 
+function(add_native_callback_telemetry_tests core_target)
+  add_executable(native_callback_telemetry_tests tests/native_callback_telemetry_tests.cpp)
+  target_link_libraries(native_callback_telemetry_tests PRIVATE ${core_target})
+  enable_strict_warnings(native_callback_telemetry_tests)
+  add_test(NAME native_callback_telemetry_tests COMMAND native_callback_telemetry_tests)
+  set_tests_properties(native_callback_telemetry_tests PROPERTIES TIMEOUT 60)
+endfunction()
+
 # Native tests use assert() for their checks. Release configurations define
 # NDEBUG globally. Force an assertion header only into test executables rather
 # than overriding /D with /U, which produces MSVC D9025 under /WX.
@@ -450,6 +458,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_include_directories(native_audio_core_test_support BEFORE PUBLIC tests/support include)
   target_link_libraries(native_audio_core_test_support PUBLIC native_dsp_portable)
   enable_strict_warnings(native_audio_core_test_support)
+  target_compile_definitions(native_audio_core_test_support PUBLIC NATIVE_CALLBACK_NO_HARDWARE=1)
+  add_native_callback_telemetry_tests(native_audio_core_test_support)
 
   add_executable(native_catalog_ack_tests tests/native_catalog_ack_tests.cpp)
   target_link_libraries(native_catalog_ack_tests PRIVATE native_audio_core_test_support)
@@ -847,6 +857,8 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
   target_include_directories(native_audio_core_simulation BEFORE PUBLIC tests/simulation_support include)
   target_include_directories(native_audio_core_simulation SYSTEM PUBLIC third_party/signalsmith/include)
   target_link_libraries(native_audio_core_simulation PUBLIC native_project_archive_codec)
+  target_compile_definitions(native_audio_core_simulation PUBLIC NATIVE_CALLBACK_NO_HARDWARE=1)
+  add_native_callback_telemetry_tests(native_audio_core_simulation)
   enable_native_preamp_experimental_adaa(native_audio_core_simulation)
   enable_rubberband_hq(native_audio_core_simulation)
 
@@ -892,6 +904,10 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_memory_http_simulation_test.py
       $<TARGET_FILE:native_bridge_host_simulation>)
   set_tests_properties(native_memory_http_simulation PROPERTIES RUN_SERIAL TRUE)
+  add_test(NAME native_callback_telemetry_http
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_callback_telemetry_http_test.py
+      $<TARGET_FILE:native_bridge_host_simulation>)
+  set_tests_properties(native_callback_telemetry_http PROPERTIES RUN_SERIAL TRUE TIMEOUT 60)
   add_test(NAME native_official_fx_http_simulation
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_official_fx_http_simulation_test.py
       $<TARGET_FILE:native_bridge_host_simulation>)
@@ -982,6 +998,7 @@ add_library(native_audio_core STATIC
 target_include_directories(native_audio_core PUBLIC include)
 target_include_directories(native_audio_core SYSTEM PUBLIC third_party/signalsmith/include)
 target_link_libraries(native_audio_core PUBLIC rtaudio nlohmann_json::nlohmann_json native_project_archive_codec)
+add_native_callback_telemetry_tests(native_audio_core)
 enable_native_preamp_experimental_adaa(native_audio_core)
 enable_rubberband_hq(native_audio_core)
 

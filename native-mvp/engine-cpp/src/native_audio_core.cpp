@@ -21,6 +21,8 @@ constexpr std::uint8_t kOfficialMeterParameterIndex = 0xFDU;
 
 static_assert(std::atomic<std::uint64_t>::is_always_lock_free,
     "project-load revisions are updated on the audio callback and must remain lock-free");
+static_assert(std::atomic<unsigned int>::is_always_lock_free && std::atomic<bool>::is_always_lock_free,
+    "callback telemetry uses only lock-free fixed-size atomics");
 
 void advanceProjectRevision(std::atomic<std::uint64_t>& revision) noexcept {
     auto observed = revision.load(std::memory_order_relaxed);
@@ -107,6 +109,60 @@ DeviceCatalog NativeAudioCore::getDeviceCatalog() const {
 std::optional<EngineConfig> NativeAudioCore::getCurrentConfig() const {
     std::lock_guard<std::mutex> lock(controlMutex_);
     return currentConfig_;
+}
+
+NativeAudioCore::CallbackTelemetryScope::CallbackTelemetryScope(NativeAudioCore& owner, unsigned int callbackKind,
+    void* outputBuffer, const void* inputBuffer, unsigned int bufferFrames, RtAudioStreamStatus status) noexcept
+    : started(std::chrono::steady_clock::now()), core(owner), output(outputBuffer), frames(bufferFrames),
+      kind(callbackKind), sampleRate(owner.currentConfig_ ? owner.currentConfig_->sampleRate : 0U) {
+    core.telemetryCallbacksByKind_[kind].fetch_add(1U, std::memory_order_relaxed);
+    const bool hardware = core.hardwareStreamOpened_.load(std::memory_order_acquire);
+    if (hardware) core.telemetryHardwareCallbacks_.fetch_add(1U, std::memory_order_relaxed);
+    // RtAudio.h defines INPUT_OVERFLOW=0x1, OUTPUT_UNDERFLOW=0x2.
+    const std::array<bool, 3U> flags{{(status & 0x1U) != 0U, (status & 0x2U) != 0U, (status & ~0x3U) != 0U}};
+    for (std::size_t index=0U; index<flags.size(); ++index) if (flags[index]) {
+        core.telemetryStatusFlags_[index].fetch_add(1U, std::memory_order_relaxed);
+        if (hardware) core.telemetryHardwareStatusFlags_[index].fetch_add(1U, std::memory_order_relaxed);
+    }
+    if (frames > kMaxCallbackFrames) core.telemetryOversizeCallback_.fetch_add(1U, std::memory_order_relaxed);
+    if (inputBuffer != nullptr && frames <= kMaxCallbackFrames && core.inputChannels_ <= 2U) {
+        const auto* input = static_cast<const float*>(inputBuffer);
+        const std::size_t samples = static_cast<std::size_t>(frames) * core.inputChannels_;
+        for (std::size_t index=0U; index<samples; ++index) if (!std::isfinite(input[index])) {
+            core.telemetryNonFiniteInput_.fetch_add(1U, std::memory_order_relaxed); break;
+        }
+    }
+}
+
+NativeAudioCore::CallbackTelemetryScope::~CallbackTelemetryScope() noexcept {
+    if (output != nullptr && frames <= kMaxCallbackFrames && core.outputChannels_ <= 2U) {
+        const auto* samples = static_cast<const float*>(output);
+        const std::size_t count = static_cast<std::size_t>(frames) * core.outputChannels_;
+        for (std::size_t index=0U; index<count; ++index) if (!std::isfinite(samples[index])) {
+            core.telemetryNonFiniteOutput_.fetch_add(1U, std::memory_order_relaxed); break;
+        }
+    }
+    const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-started).count();
+    core.recordCallbackDuration(kind, frames, sampleRate, elapsed > 0 ? static_cast<std::uint64_t>(elapsed) : 0U);
+}
+
+void NativeAudioCore::recordCallbackDuration(unsigned int kind, unsigned int frames, unsigned int sampleRate, std::uint64_t durationNs) noexcept {
+    const auto bin=std::min<std::uint64_t>(durationNs/kNativeCallbackDurationBinWidthNs,kNativeCallbackDurationBins-1U);
+    telemetryDurationHistogram_[static_cast<std::size_t>(bin)].fetch_add(1U,std::memory_order_relaxed);
+    // Each RtAudio stream serializes its callbacks. Split input/output have distinct kinds.
+    if (durationNs > telemetryMaximumDurationNs_[kind].load(std::memory_order_relaxed)) telemetryMaximumDurationNs_[kind].store(durationNs,std::memory_order_relaxed);
+    telemetryLatestSampleRate_[kind].store(sampleRate,std::memory_order_relaxed);
+    telemetryLatestBufferFrames_[kind].store(frames,std::memory_order_relaxed);
+    if (sampleRate != 0U && frames != 0U) {
+        telemetryDeadlineEvaluated_[kind].fetch_add(1U,std::memory_order_relaxed);
+        if (durationNs > static_cast<std::uint64_t>(frames)*1000000000ULL/sampleRate) telemetryDeadlineMisses_[kind].fetch_add(1U,std::memory_order_relaxed);
+    }
+}
+
+void NativeAudioCore::markHardwareStreamOpened() noexcept {
+#if !defined(NATIVE_CALLBACK_NO_HARDWARE)
+    hardwareStreamOpened_.store(true,std::memory_order_release);
+#endif
 }
 
 bool NativeAudioCore::setMixerLevel(unsigned int channel, unsigned int percent, std::string& error) {
@@ -327,6 +383,44 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.inputPeak = inputPeak_.load(std::memory_order_acquire);
     status.outputPeak = outputPeak_.load(std::memory_order_acquire);
     status.xrunsOrDropouts = xrunsOrDropouts_.load(std::memory_order_acquire);
+    auto& telemetry=status.callbackTelemetry;
+    for(std::size_t kind=0U;kind<3U;++kind) {
+        telemetry.callbacksByKind[kind]=telemetryCallbacksByKind_[kind].load(std::memory_order_relaxed);
+        telemetry.callbackCount+=telemetry.callbacksByKind[kind];
+        telemetry.statusFlags[kind]=telemetryStatusFlags_[kind].load(std::memory_order_relaxed);
+        telemetry.hardwareStatusFlags[kind]=telemetryHardwareStatusFlags_[kind].load(std::memory_order_relaxed);
+        telemetry.deadlineMiss+=telemetryDeadlineMisses_[kind].load(std::memory_order_relaxed);
+        telemetry.deadlineEvaluatedCallbacks+=telemetryDeadlineEvaluated_[kind].load(std::memory_order_relaxed);
+        telemetry.maximumDurationNs=std::max(telemetry.maximumDurationNs,telemetryMaximumDurationNs_[kind].load(std::memory_order_relaxed));
+        telemetry.latestSampleRate[kind]=telemetryLatestSampleRate_[kind].load(std::memory_order_relaxed);
+        telemetry.latestBufferFrames[kind]=telemetryLatestBufferFrames_[kind].load(std::memory_order_relaxed);
+    }
+    telemetry.observed=telemetry.callbackCount!=0U;
+    telemetry.hardwareCallbackCount=std::min(telemetry.callbackCount,telemetryHardwareCallbacks_.load(std::memory_order_relaxed));
+    telemetry.audioQueueOverflow=telemetryAudioQueueOverflow_.load(std::memory_order_relaxed);
+    telemetry.audioQueueUnderflow=telemetryAudioQueueUnderflow_.load(std::memory_order_relaxed);
+    telemetry.controlQueueReject=telemetryControlQueueReject_.load(std::memory_order_relaxed);
+    telemetry.oversizeCallback=telemetryOversizeCallback_.load(std::memory_order_relaxed);
+    telemetry.nonFiniteInput=telemetryNonFiniteInput_.load(std::memory_order_relaxed);
+    telemetry.nonFiniteOutput=telemetryNonFiniteOutput_.load(std::memory_order_relaxed);
+    telemetry.runtimeResetCount=telemetryRuntimeResetCount_.load(std::memory_order_relaxed);
+    for(std::size_t index=0U;index<kNativeCallbackDurationBins;++index) {
+        telemetry.durationHistogram[index]=telemetryDurationHistogram_[index].load(std::memory_order_relaxed);
+        telemetry.timingSamples+=telemetry.durationHistogram[index];
+    }
+    const auto quantileUpperBound=[&telemetry](std::uint64_t divisor)->std::optional<std::uint64_t> {
+        if(telemetry.timingSamples==0U) return std::nullopt;
+        const auto rank=telemetry.timingSamples-telemetry.timingSamples/divisor;
+        std::uint64_t cumulative=0U;
+        for(std::size_t index=0U;index<kNativeCallbackDurationBins;++index) {
+            cumulative+=telemetry.durationHistogram[index];
+            if(cumulative>=rank) return index+1U==kNativeCallbackDurationBins ? std::nullopt
+                : std::optional<std::uint64_t>((index+1U)*kNativeCallbackDurationBinWidthNs);
+        }
+        return std::nullopt;
+    };
+    telemetry.p99UpperBoundNs=quantileUpperBound(100U);
+    telemetry.p999UpperBoundNs=quantileUpperBound(1000U);
     status.callbackTicks = callbackTicks_.load(std::memory_order_acquire);
     status.nativeSampleFrame = publishedCallbackFrameCursor_.load(std::memory_order_acquire);
     const auto collectOscVocSlots = [](const NativeEffectBank& bank,
@@ -834,9 +928,11 @@ bool NativeAudioCore::toggleTrackOverdub(std::size_t trackIndex, std::string& er
             historyCanUndo_[trackIndex].store(false, std::memory_order_release);
             historyCanRedo_[trackIndex].store(false, std::memory_order_release);
             historyFailure_[trackIndex].store(NativeHistoryFailure::SnapshotUnavailable, std::memory_order_release);
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Overdub refused: the Native command queue is full; no new undo step is available.";
             return false;
         }
+        telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         error = "Command queue is full.";
         return false;
     }
@@ -1038,6 +1134,7 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex)})) {
+        telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         error = "Command queue is full.";
         return false;
     }
@@ -1086,6 +1183,7 @@ bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
     return true;
     }
     if (!commandQueue_.push({CommandType::SetMonitoring, enabled})) {
+        telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         error = "Command queue is full.";
         return false;
     }
@@ -1332,6 +1430,7 @@ bool NativeAudioCore::setNativeReverbConfig(const NativeReverbConfig& config, st
 
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (!nativeReverbCommandQueue_.push({config})) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native reverb command queue is full.";
             return false;
         }
@@ -1369,6 +1468,7 @@ bool NativeAudioCore::setNativeFractionalDelayConfig(const NativeFractionalDelay
 
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (!nativeFractionalDelayCommandQueue_.push({config})) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native fractional-delay command queue is full.";
             return false;
         }
@@ -1411,6 +1511,7 @@ bool NativeAudioCore::setNativeCompressorConfig(const NativeCompressorConfig& co
 
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (!nativeCompressorCommandQueue_.push({config})) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native compressor command queue is full.";
             return false;
         }
@@ -1450,6 +1551,7 @@ bool NativeAudioCore::setNativeChorusConfig(const NativeChorusConfig& config, st
 
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (!nativeChorusCommandQueue_.push({config})) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native chorus command queue is full.";
             return false;
         }
@@ -1490,6 +1592,7 @@ bool NativeAudioCore::setNativePhaserConfig(const NativePhaserConfig& config, st
 
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (!nativePhaserCommandQueue_.push({config})) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native phaser command queue is full.";
             return false;
         }
@@ -1546,6 +1649,7 @@ bool NativeAudioCore::setNativeTrackFxApply(
     }
     const auto nextRevision = nativeTrackFxApplyRequestedRevision_[index] + 1U;
     if (!nativeTrackFxApplyCommandQueue_.push({static_cast<std::uint8_t>(index), enabled, nextRevision})) {
+        telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         error = "Native Track FX apply command queue is full.";
         return false;
     }
@@ -1687,6 +1791,7 @@ bool NativeAudioCore::queueNativeCatalogMidiEvent(
             absoluteFrame < publishedCallbackFrameCursor_.load(std::memory_order_acquire)) {
             error = "Native catalog MIDI event frame is late; use the current or a future sample frame.";
         } else if (overflowCount() != overflowBefore) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native catalog MIDI event queue is full.";
         } else if (rejectedCount() != rejectedBefore) {
             error = "Native catalog MIDI event was rejected for its configured channel or timestamp order.";
@@ -1872,6 +1977,7 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
         const std::size_t requiredCommands = parameters.size() + 1U;
         constexpr std::size_t kUsableQueueCapacity = 63U;
         if (nativeCatalogFxCommandQueue_.size() + requiredCommands > kUsableQueueCapacity) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native catalog FX command queue is full.";
             return false;
         }
@@ -1897,8 +2003,11 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
             if ((parameterIndex >= parameterCount && parameterIndex != kLegacyFilterQParameterIndex &&
                 parameterIndex != kOfficialTempoParameterIndex && parameterIndex != kOfficialMeterParameterIndex) ||
                 parameterCount >= kOfficialMeterParameterIndex ||
-                parameterIndex > 255U ||
-                !nativeCatalogFxCommandQueue_.push({
+                parameterIndex > 255U) {
+                error = "Unable to queue a Native catalog FX parameter update.";
+                return false;
+            }
+            if (!nativeCatalogFxCommandQueue_.push({
                     NativeCatalogFxCommand::Type::SetParameter,
                     path,
                     slot,
@@ -1907,6 +2016,7 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
                     trackId,
                     revision
                 })) {
+                telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
                 error = "Unable to queue a Native catalog FX parameter update.";
                 return false;
             }
@@ -1920,6 +2030,7 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
                 trackId,
                 revision
             })) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Unable to queue a Native catalog FX bypass update.";
             return false;
         }
@@ -2118,6 +2229,7 @@ bool NativeAudioCore::setNativePitchConfig(const NativePitchConfig& config, std:
         config.reversePlayback != nativePitchConfig_.reversePlayback ||
         config.mode != nativePitchConfig_.mode;
     if (!nativePitchCommandQueue_.push({config, resetProcessor})) {
+        telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         error = "Native pitch command queue is full.";
         return false;
     }
@@ -2161,6 +2273,7 @@ bool NativeAudioCore::setNativeLoopTransport(
     }
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (!nativeLoopTransportCommandQueue_.push({trackIndex, config})) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native loop transport command queue is full.";
             return false;
         }
@@ -2200,6 +2313,7 @@ bool NativeAudioCore::setOutputEffectEnabled(NativeOutputEffect effect, bool ena
     }
 
     if (!outputStageCommandQueue_.push({effect, enabled})) {
+        telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         error = "Output DSP command queue is full.";
         return false;
     }
@@ -2281,6 +2395,7 @@ bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, st
     }
     if (engineRunning_.load(std::memory_order_acquire)) {
         if (nativeCatalogFxCommandQueue_.size() + count > 63U || nativeRhythmCommandQueue_.size() >= 15U) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native catalog FX command queue is full while synchronizing tempo-based catalog FX.";
             return false;
         }
@@ -3304,6 +3419,7 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
             return false;
         }
 
+        markHardwareStreamOpened();
         const auto startOutputResult = audio_->startStream();
         if (startOutputResult != RTAUDIO_NO_ERROR) {
             error = audio_->getErrorText();
@@ -3311,6 +3427,7 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
             return false;
         }
 
+        markHardwareStreamOpened();
         const auto startInputResult = captureAudio_->startStream();
         if (startInputResult != RTAUDIO_NO_ERROR) {
             error = captureAudio_->getErrorText();
@@ -3345,6 +3462,7 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
             return false;
         }
 
+        markHardwareStreamOpened();
         const auto startResult = audio_->startStream();
         if (startResult != RTAUDIO_NO_ERROR) {
             error = audio_->getErrorText();
@@ -3400,6 +3518,7 @@ void NativeAudioCore::closeStreamLocked() noexcept {
             audio_->closeStream();
         }
     }
+    hardwareStreamOpened_.store(false,std::memory_order_release);
     engineRunning_.store(false, std::memory_order_release);
     for (auto& status : nativeVocoderCarrierStatuses_) status.store(NativeVocoderCarrierStatus::NotRequested, std::memory_order_release);
     outputStageCommandQueue_.clear();
@@ -3422,6 +3541,7 @@ void NativeAudioCore::closeStreamLocked() noexcept {
 }
 
 void NativeAudioCore::resetRuntimeStateLocked() noexcept {
+    telemetryRuntimeResetCount_.fetch_add(1U,std::memory_order_relaxed);
     for (auto& status : nativeVocoderCarrierStatuses_) status.store(NativeVocoderCarrierStatus::NotRequested, std::memory_order_release);
     commandQueue_.clear();
     outputStageCommandQueue_.clear();
@@ -3439,6 +3559,7 @@ void NativeAudioCore::resetRuntimeStateLocked() noexcept {
         const auto appliedRevision = nativeTrackFxApplyAppliedRevision_[track].load(std::memory_order_acquire);
         if (requestedRevision > appliedRevision && !nativeTrackFxApplyCommandQueue_.push({
                 static_cast<std::uint8_t>(track), nativeTrackFxApplyRequested_[track], requestedRevision})) {
+            telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             nativeTrackFxApplyFaultRevision_[track].store(requestedRevision, std::memory_order_release);
         }
     }
@@ -4196,6 +4317,7 @@ int NativeAudioCore::handleAudioCallback(
     unsigned int nBufferFrames,
     RtAudioStreamStatus status
 ) {
+    CallbackTelemetryScope telemetry(*this, 0U, outputBuffer, inputBuffer, nBufferFrames, status);
     if (status != 0) {
     xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
   }
@@ -4276,6 +4398,7 @@ int NativeAudioCore::handleInputAudioCallback(
     unsigned int nBufferFrames,
     RtAudioStreamStatus status
 ) {
+    CallbackTelemetryScope telemetry(*this, 1U, nullptr, inputBuffer, nBufferFrames, status);
     if (status != 0) {
         xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
     }
@@ -4358,6 +4481,7 @@ int NativeAudioCore::handleInputAudioCallback(
     publishedCallbackFrameCursor_.store(callbackFrameCursor_, std::memory_order_release);
 
     if (!outputQueue_.push(block)) {
+        telemetryAudioQueueOverflow_.fetch_add(1U,std::memory_order_relaxed);
         xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
     }
 
@@ -4379,6 +4503,7 @@ int NativeAudioCore::handleOutputAudioCallback(
     unsigned int nBufferFrames,
     RtAudioStreamStatus status
 ) {
+    CallbackTelemetryScope telemetry(*this, 2U, outputBuffer, nullptr, nBufferFrames, status);
     if (status != 0) {
         xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
     }
@@ -4401,6 +4526,7 @@ int NativeAudioCore::handleOutputAudioCallback(
     AudioBlock block{};
     if (!outputQueue_.pop(block)) {
         if (callbackTicks_.load(std::memory_order_acquire) > 0) {
+            telemetryAudioQueueUnderflow_.fetch_add(1U,std::memory_order_relaxed);
             xrunsOrDropouts_.fetch_add(1, std::memory_order_acq_rel);
         }
         renderPrimed_.store(false, std::memory_order_release);

@@ -1,0 +1,42 @@
+{
+  "status": "SOFTWARE_TELEMETRY_VALIDATED",
+  "source_base": "a456b96",
+  "created_utc": "2026-10-23T15:38:08.159338+00:00",
+  "compiler": "MSVC19.29.30159 x64 Release /W4 /WX globally; no suppression",
+  "ctest": {
+    "passed": 2,
+    "failed": 0,
+    "targets": [
+      "native_callback_telemetry_tests",
+      "native_callback_telemetry_http"
+    ]
+  },
+  "unit_result": {
+    "testCases": 6,
+    "callbacksObserved": 147,
+    "callbackCppNewAllocations": 0,
+    "callbackCppDeallocations": 0,
+    "coreMutexHeldProbeCompleted": true,
+    "hardwareValidated": false
+  },
+  "typescript": "vue-tsc --noEmit -p tsconfig.app.json PASS",
+  "source_sha256": {
+    "native-mvp/engine-cpp/include/native_audio_core.hpp": "60d6c881282b67af987a498b2c213ea3574439c1fb1f38794ce2d80fbf93b071",
+    "native-mvp/engine-cpp/src/native_audio_core.cpp": "2f57a18ed4c95b130759cf6cbc6efdeb931cfa7f7be98001e33a3a64dc16811c",
+    "native-mvp/engine-cpp/src/native_bridge_host.cpp": "456d90458f687fc15d204f4df8e2275238ea79ffe98aa18ad8552c7ac20a92b3",
+    "native-mvp/engine-cpp/tests/native_callback_telemetry_tests.cpp": "037513d7a21846d953c0f3efcdec54ef5892a5e2b893ba21506afa1eb6c7536c",
+    "native-mvp/engine-cpp/tests/native_callback_telemetry_http_test.py": "c06f13b7ca0a9313c82e92a2c548042485b472c3ede22e35b4bca1ea12a219f5"
+  },
+  "binaries_sha256": {
+    "native_callback_telemetry_tests.exe": "71c0b2adebf6b102e1b6d79cb4e67c8e82c49f4de6daf30ec8fed89c89f79a51",
+    "native_bridge_host_simulation.exe": "59dc1d6f9474a180b42f8f5ed22ca73787e0af9d3ffd10573375b3c818d0f2c6"
+  },
+  "hardware_validated": false,
+  "limitations": [
+    "Only callback-thread C++ new/new[] and delete/delete[] intercepted; malloc/aligned allocation and global lock interception unavailable.",
+    "Completed callback while a second thread owns all three core mutexes is a scoped blocking-lock proof.",
+    "Input overflow/output underflow flags simulated through production callback entrypoints; driver hardware counters remain null.",
+    "No physical WASAPI/MMCSS, driver reset or global driver statistics measured.",
+    "Legacy aggregate kept for compatibility; not a driver-only XRUN metric."
+  ]
+}

@@ -10,6 +10,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <limits>
 #include <map>
@@ -27,6 +28,33 @@ namespace webrc::native {
 inline constexpr std::size_t kNativeTrackCount = 5U;
 inline constexpr std::uint64_t kNativeHistoryBudgetBytes = 512ULL * 1024ULL * 1024ULL;
 inline constexpr std::uint64_t kNativeProjectImportPeakBudgetBytes = 3ULL * 1024ULL * 1024ULL * 1024ULL;
+
+inline constexpr std::size_t kNativeCallbackDurationBins = 512U;
+inline constexpr std::uint64_t kNativeCallbackDurationBinWidthNs = 50000U;
+struct NativeCallbackTelemetryStatus {
+    bool observed = false;
+    std::uint64_t callbackCount = 0U;
+    std::uint64_t hardwareCallbackCount = 0U;
+    std::array<std::uint64_t, 3U> callbacksByKind{}; // duplex, input, output
+    std::array<std::uint64_t, 3U> statusFlags{}; // input overflow, output underflow, unknown bits
+    std::array<std::uint64_t, 3U> hardwareStatusFlags{};
+    std::uint64_t audioQueueOverflow = 0U;
+    std::uint64_t audioQueueUnderflow = 0U;
+    std::uint64_t controlQueueReject = 0U;
+    std::uint64_t oversizeCallback = 0U;
+    std::uint64_t nonFiniteInput = 0U;
+    std::uint64_t nonFiniteOutput = 0U;
+    std::uint64_t deadlineMiss = 0U;
+    std::uint64_t deadlineEvaluatedCallbacks = 0U;
+    std::uint64_t runtimeResetCount = 0U;
+    std::uint64_t timingSamples = 0U;
+    std::uint64_t maximumDurationNs = 0U;
+    std::optional<std::uint64_t> p99UpperBoundNs;
+    std::optional<std::uint64_t> p999UpperBoundNs;
+    std::array<unsigned int, 3U> latestSampleRate{};
+    std::array<unsigned int, 3U> latestBufferFrames{};
+    std::array<std::uint64_t, kNativeCallbackDurationBins> durationHistogram{};
+};
 
 enum class NativeProjectImportState : std::uint8_t { Idle = 0U, Prepared, Pending, Claimed, Committed, Cancelled };
 
@@ -251,6 +279,7 @@ struct EngineStatus {
     float inputPeak = 0.0f;
     float outputPeak = 0.0f;
     unsigned int xrunsOrDropouts = 0;
+    NativeCallbackTelemetryStatus callbackTelemetry;
     std::string lastError;
     float loopProgress = 0.0f;
     std::array<LooperState, kNativeTrackCount> nativeTrackStates{};
@@ -716,6 +745,20 @@ private:
         RtAudioStreamStatus status
     );
 
+    struct CallbackTelemetryScope {
+        std::chrono::steady_clock::time_point started;
+        NativeAudioCore& core;
+        void* output;
+        unsigned int frames;
+        unsigned int kind;
+        unsigned int sampleRate;
+        CallbackTelemetryScope(NativeAudioCore& owner, unsigned int callbackKind, void* outputBuffer,
+            const void* inputBuffer, unsigned int bufferFrames, RtAudioStreamStatus status) noexcept;
+        ~CallbackTelemetryScope() noexcept;
+    };
+    void recordCallbackDuration(unsigned int kind, unsigned int frames, unsigned int sampleRate, std::uint64_t durationNs) noexcept;
+    void markHardwareStreamOpened() noexcept;
+
     mutable std::mutex controlMutex_;
     std::mutex loopSnapshotMutex_;
     std::mutex commandProducerMutex_;
@@ -894,6 +937,26 @@ private:
     std::atomic<float> inputPeak_{0.0f};
     std::atomic<float> outputPeak_{0.0f};
     std::atomic<unsigned int> xrunsOrDropouts_{0};
+    // Lifetime diagnostics: resetRuntimeStateLocked does not erase evidence.
+    std::atomic<bool> hardwareStreamOpened_{false};
+    std::array<std::atomic<std::uint64_t>, 3U> telemetryCallbacksByKind_{};
+    std::atomic<std::uint64_t> telemetryHardwareCallbacks_{0U};
+    std::array<std::atomic<std::uint64_t>, 3U> telemetryStatusFlags_{};
+    std::array<std::atomic<std::uint64_t>, 3U> telemetryHardwareStatusFlags_{};
+    std::atomic<std::uint64_t> telemetryAudioQueueOverflow_{0U};
+    std::atomic<std::uint64_t> telemetryAudioQueueUnderflow_{0U};
+    std::atomic<std::uint64_t> telemetryControlQueueReject_{0U};
+    std::atomic<std::uint64_t> telemetryOversizeCallback_{0U};
+    std::atomic<std::uint64_t> telemetryNonFiniteInput_{0U};
+    std::atomic<std::uint64_t> telemetryNonFiniteOutput_{0U};
+    std::array<std::atomic<std::uint64_t>, 3U> telemetryDeadlineMisses_{};
+    std::array<std::atomic<std::uint64_t>, 3U> telemetryDeadlineEvaluated_{};
+    std::atomic<std::uint64_t> telemetryRuntimeResetCount_{0U};
+    std::array<std::atomic<std::uint64_t>, kNativeCallbackDurationBins> telemetryDurationHistogram_{};
+    // RtAudio serializes callbacks within each stream/kind; split streams use separate slots.
+    std::array<std::atomic<std::uint64_t>, 3U> telemetryMaximumDurationNs_{};
+    std::array<std::atomic<unsigned int>, 3U> telemetryLatestSampleRate_{};
+    std::array<std::atomic<unsigned int>, 3U> telemetryLatestBufferFrames_{};
     std::atomic<unsigned long long> callbackTicks_{0};
     std::atomic<bool> renderPrimed_{false};
     std::atomic<bool> loopSnapshotRequested_{false};

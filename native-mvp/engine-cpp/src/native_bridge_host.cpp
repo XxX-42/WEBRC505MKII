@@ -424,6 +424,57 @@ const char* nativeHistoryFailureToString(NativeHistoryFailure failure) {
     return "unknown";
 }
 
+json callbackTelemetryToJson(const NativeCallbackTelemetryStatus& value) {
+    const auto count=[](std::uint64_t number,bool observed) {return observed ? json(number) : json(nullptr);};
+    const bool hardware=value.hardwareCallbackCount!=0U;
+    const auto source=!value.observed ? "NO_CALLBACKS" : !hardware ? "NO_HARDWARE_SIMULATION"
+        : value.hardwareCallbackCount==value.callbackCount ? "RTAUDIO_STREAM" : "MIXED_CALLBACK_SOURCES";
+    json kinds=json::array();
+    const std::array<const char*,3U> names{{"duplex","input","output"}};
+    for(std::size_t kind=0U;kind<names.size();++kind) {
+        const auto rate=value.latestSampleRate[kind];const auto frames=value.latestBufferFrames[kind];
+        kinds.push_back({{"kind",names[kind]},{"callbacks",count(value.callbacksByKind[kind],value.observed)},
+            {"latestSampleRateHz",rate!=0U ? json(rate) : json(nullptr)},
+            {"latestBufferFrames",value.callbacksByKind[kind]!=0U ? json(frames) : json(nullptr)},
+            {"latestBudgetNs",rate!=0U && frames!=0U ? json(static_cast<std::uint64_t>(frames)*1000000000ULL/rate) : json(nullptr)}});
+    }
+    return {{"schemaVersion",1},{"sourceKind",source},{"observed",value.observed},
+        {"counterScope","lifetime; independent relaxed atomic snapshots, not a transactional stream snapshot"},
+        {"callbackCount",count(value.callbackCount,value.observed)},
+        {"hardwareCallbackCount",count(value.hardwareCallbackCount,hardware)},{"byKind",kinds},
+        {"statusFlags",{{"sourceKind",hardware ? "RTAUDIO_CALLBACK_FLAGS_MAY_INCLUDE_MANUAL" : "NO_HARDWARE_CALLBACK_FLAGS"},
+            {"inputOverflow",count(value.statusFlags[0U],value.observed)},
+            {"outputUnderflow",count(value.statusFlags[1U],value.observed)},
+            {"unknownStatus",count(value.statusFlags[2U],value.observed)}}},
+        {"driver",{{"sourceKind",hardware ? "RTAUDIO_OPENED_STREAM_FLAGS" : "UNAVAILABLE_NO_REAL_DRIVER_CALLBACK"},
+            {"inputOverflow",count(value.hardwareStatusFlags[0U],hardware)},
+            {"outputUnderflow",count(value.hardwareStatusFlags[1U],hardware)},
+            {"resetCount",nullptr},{"globalStatistics",nullptr}}},
+        {"software",{{"sourceKind","NATIVE_CORE_INSTRUMENTATION"},
+            {"audioQueueOverflow",count(value.audioQueueOverflow,value.observed)},
+            {"audioQueueUnderflow",count(value.audioQueueUnderflow,value.observed)},
+            {"controlQueueReject",count(value.controlQueueReject,value.observed || value.controlQueueReject!=0U)},
+            {"oversizeCallback",count(value.oversizeCallback,value.observed)},
+            {"nonFiniteInput",count(value.nonFiniteInput,value.observed)},
+            {"nonFiniteOutput",count(value.nonFiniteOutput,value.observed)},
+            {"deadlineMiss",count(value.deadlineMiss,value.deadlineEvaluatedCallbacks!=0U)},
+            {"deadlineEvaluatedCallbacks",count(value.deadlineEvaluatedCallbacks,value.observed)},
+            {"runtimeResetCount",count(value.runtimeResetCount,value.observed || value.runtimeResetCount!=0U)}}},
+        {"duration",{{"sourceKind","STEADY_CLOCK_CALLBACK_ENTRY_TO_POST_OUTPUT_SCAN"},
+            {"scope","all callback kinds and buffer/sample-rate configurations; atomic publication cost excluded"},
+            {"samples",count(value.timingSamples,value.timingSamples!=0U)},
+            {"sampleResolutionFraction",value.timingSamples!=0U ? json(1.0/static_cast<double>(value.timingSamples)) : json(nullptr)},
+            {"recommendedMinimumSamplesForP999",10000},
+            {"binWidthNs",kNativeCallbackDurationBinWidthNs},{"binCount",kNativeCallbackDurationBins},
+            {"overflowSamples",count(value.durationHistogram.back(),value.timingSamples!=0U)},
+            {"histogram",value.timingSamples!=0U ? json(value.durationHistogram) : json(nullptr)},
+            {"p99UpperBoundNs",value.p99UpperBoundNs ? json(*value.p99UpperBoundNs) : json(nullptr)},
+            {"p999UpperBoundNs",value.p999UpperBoundNs ? json(*value.p999UpperBoundNs) : json(nullptr)},
+            {"quantileUnavailableReason",value.timingSamples==0U ? json("NO_COMPLETED_CALLBACK")
+                : !value.p99UpperBoundNs || !value.p999UpperBoundNs ? json("Selected rank is in unbounded overflow bin") : json(nullptr)},
+            {"maximumNs",count(value.maximumDurationNs,value.timingSamples!=0U)}}}};
+}
+
 json statusToJson(const EngineStatus& status) {
     json memoryTransports = json::array();
     for (const auto& config : status.nativeMemoryLoopTransports) {
@@ -823,6 +874,7 @@ json statusToJson(const EngineStatus& status) {
         {"inputPeak", status.inputPeak},
         {"outputPeak", status.outputPeak},
         {"xrunsOrDropouts", status.xrunsOrDropouts},
+        {"callbackTelemetry", callbackTelemetryToJson(status.callbackTelemetry)},
         {"lastError", status.lastError},
         {"loopProgress", status.loopProgress},
         {"nativeLooperTrackCount", status.nativeLooperTrackCount},
@@ -3137,7 +3189,18 @@ int main() {
 
     unsigned int listenPort = 17755U;
 #if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
-    if (const char* configuredPort = std::getenv("WEBRC_NATIVE_BRIDGE_PORT")) {
+#if defined(_MSC_VER)
+    char* configuredPort = nullptr;
+    std::size_t configuredPortLength = 0U;
+    if (_dupenv_s(&configuredPort, &configuredPortLength, "WEBRC_NATIVE_BRIDGE_PORT") != 0) {
+        std::cerr << "Unable to read WEBRC_NATIVE_BRIDGE_PORT." << std::endl;
+        return 2;
+    }
+    const std::unique_ptr<char, decltype(&std::free)> configuredPortOwner(configuredPort, &std::free);
+#else
+    const char* configuredPort = std::getenv("WEBRC_NATIVE_BRIDGE_PORT");
+#endif
+    if (configuredPort != nullptr) {
         const std::string_view text(configuredPort);
         const auto parsed = std::from_chars(text.data(), text.data() + text.size(), listenPort);
         if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || listenPort == 0U || listenPort > 65535U) {

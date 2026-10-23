@@ -154,7 +154,22 @@ export function isNativeRhythmConfig(config: NativeRhythmConfig): boolean {
     && Number.isInteger(config.volume) && config.volume >= 0 && config.volume <= 100;
 }
 
+export interface NativeCallbackTelemetry {
+  schemaVersion: 1;
+  sourceKind: 'NO_CALLBACKS' | 'NO_HARDWARE_SIMULATION' | 'RTAUDIO_STREAM' | 'MIXED_CALLBACK_SOURCES';
+  observed: boolean;
+  counterScope: string;
+  callbackCount: number | null;
+  hardwareCallbackCount: number | null;
+  byKind: Array<{kind: 'duplex' | 'input' | 'output'; callbacks: number | null; latestSampleRateHz: number | null; latestBufferFrames: number | null; latestBudgetNs: number | null}>;
+  statusFlags: {sourceKind: string; inputOverflow: number | null; outputUnderflow: number | null; unknownStatus: number | null};
+  driver: {sourceKind: string; inputOverflow: number | null; outputUnderflow: number | null; resetCount: null; globalStatistics: null};
+  software: {sourceKind: string; audioQueueOverflow: number | null; audioQueueUnderflow: number | null; controlQueueReject: number | null; oversizeCallback: number | null; nonFiniteInput: number | null; nonFiniteOutput: number | null; deadlineMiss: number | null; deadlineEvaluatedCallbacks: number | null; runtimeResetCount: number | null};
+  duration: {sourceKind: string; scope: string; samples: number | null; sampleResolutionFraction: number | null; recommendedMinimumSamplesForP999: number; binWidthNs: number; binCount: number; overflowSamples: number | null; histogram: number[] | null; p99UpperBoundNs: number | null; p999UpperBoundNs: number | null; quantileUnavailableReason: string | null; maximumNs: number | null};
+}
+
 export interface NativeStatus {
+  callbackTelemetry?: NativeCallbackTelemetry;
   mixerLevels?: number[];
   ok: boolean;
   bridgeHealthy: boolean;
