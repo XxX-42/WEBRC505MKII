@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_SOFTWARE_NATIVE_GATES",
+  "sourceRoot": "C:\\Users\\user1000\\.codex\\worktrees\\rc505-final-parity\\26_27_WebRC",
+  "sourceHead": "676eb21",
+  "completedUtc": "2026-10-23T16:22:42.4162567Z",
+  "portable": {
+    "generator": "Visual Studio 16 2019",
+    "ctestTotal": 56,
+    "ctestPassed": 56,
+    "seconds": 31.92,
+    "buildExit": 0,
+    "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e",
+    "scope": "Original frozen Native core portable gate; not repeated for host-only cancel MIME patch."
+  },
+  "hqSimulation": {
+    "generator": "Visual Studio 16 2019",
+    "ctestTotal": 12,
+    "ctestPassed": 12,
+    "seconds": 21.05,
+    "buildExit": 0,
+    "sourceHead": "676eb21",
+    "scope": "Root full 12-test HQ simulation suite after host cancel media type patch, including HTTP charset regression."
+  },
+  "wasapi": {
+    "target": "native_bridge_host",
+    "generator": "Ninja",
+    "buildExit": 0,
+    "started": false,
+    "sourceHead": "676eb21",
+    "scope": "Root host-only incremental rebuild after cancel media type patch; executable not started."
+  },
+  "parallelBuildJobs": 2,
+  "hardwareValidated": false,
+  "fullExternalReceipt": "C:/Users/user1000/.codex/scratch/rc505-final-native-verification/receipt.json",
+  "fullExternalReceiptSha256": "73133c842745aaa8d63ac8aa46ee6986d1e83e1500c90e180001bbb12da16ccf",
+  "binaries": [
+    {
+      "build": "rc505-final-portable-build",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-portable-build\\Release\\native_callback_telemetry_tests.exe",
+      "sha256": "459141acfd570d67b526f12e298df39e887967327833d2b9ace6c11254df87f3",
+      "bytes": 804352,
+      "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e"
+    },
+    {
+      "build": "rc505-final-hq-build",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-hq-build\\Release\\native_bridge_host_simulation.exe",
+      "sha256": "ffa7c6a4528d3802939354c6f933e7c75503d055821c759ba377c072468cd903",
+      "bytes": 1799168,
+      "sourceHead": "676eb21"
+    },
+    {
+      "build": "rc505-final-hq-build",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-hq-build\\Release\\native_callback_telemetry_tests.exe",
+      "sha256": "9c04fedde4104f07950a28ea4cb5ad36e7d2463b06d25619d08cac3f3c015767",
+      "bytes": 809984,
+      "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e"
+    },
+    {
+      "build": "rc505-final-hq-build",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-hq-build\\Release\\native_memory_tests.exe",
+      "sha256": "111f9941515f281c0383c49dde044137b2cafc423606602ae2b1d3786509bb75",
+      "bytes": 811008,
+      "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e"
+    },
+    {
+      "build": "rc505-final-hq-build",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-hq-build\\Release\\native_track_mark_tests.exe",
+      "sha256": "95a97eb81a55e4ee50d4b3a7aac129d4c4f74f1dbb63539d08e9aacb14648652",
+      "bytes": 376320,
+      "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e"
+    },
+    {
+      "build": "rc505-final-wasapi-ninja",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-wasapi-ninja\\native_bridge_host.exe",
+      "sha256": "3af6246476c315556aa6e098c8f4a761793c0e0b901ebd7c32767b9b93df8593",
+      "bytes": 1857024,
+      "sourceHead": "676eb21"
+    }
+  ],
+  "limitations": [
+    "Device-free portable and HTTP simulation tests do not verify RC-505 hardware.",
+    "Real WASAPI executable built successfully; runtime startup is blocked by automatic approval review.",
+    "Portable and unchanged core test binary hashes retain the original c6d5d98 source scope; only root hosts were rebuilt for 676eb21. Later frontend/docs commits do not extend Native test scope."
+  ],
+  "hostOnlyUpdate": {
+    "integratedCommit": "676eb21",
+    "scope": "cancel route media type token only; core unchanged",
+    "portableRepeated": false,
+    "coreModified": false,
+    "externalReceipt": "C:/Users/user1000/.codex/scratch/rc505-cancel-evidence/receipt.json",
+    "externalReceiptSha256": "2f7458bac1320a2ef608a36b67b01e9c497727af91f84c07b6046c1aafc13a86",
+    "rootValidationLogs": [
+      {
+        "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\root-hq-build.log",
+        "sha256": "20b5087e69fd035388f16a9782c370c899e4c6f4172528a2f2ca006566a9b05d",
+        "compilerWarningsOrErrors": 0
+      },
+      {
+        "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\root-hq-ctest.log",
+        "sha256": "2288aa2b18df5796f925a4551ca4595e3445373ad51b1c0b7f132d2ac8a31ce3",
+        "compilerWarningsOrErrors": 0
+      },
+      {
+        "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\root-wasapi-build.log",
+        "sha256": "c0143c947277be034c83757b33cff94d11073e0761ed8ca1587094558e27b79c",
+        "compilerWarningsOrErrors": 0
+      }
+    ]
+  }
+}
