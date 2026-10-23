@@ -1351,7 +1351,16 @@ export class NativeAudioEngine {
   public getCatalogFxParameterSnapshot(path: NativeFxPath, slotIndex: number, trackId = 0, overrides?: Record<string, number>): Record<string, number> | null {
     if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= NATIVE_FX_SLOT_IDS.length) return null;
     if (!this.nativeCatalogStates(path, trackId)[slotIndex]?.type) return null;
-    return { ...this.nativeCatalogParameters(path, slotIndex, trackId, overrides) };
+    const desired = this.nativeCatalogParameters(path, slotIndex, trackId, overrides);
+    // The UI submits named edits as a complete authored snapshot. After an
+    // explicit restart the local override map may be empty while the host
+    // retains macro controls. Preserve that confirmed baseline when composing
+    // an edit; explicit reset/removal remains the caller's separate intent.
+    const reported = overrides === undefined ? undefined
+      : this.nativeCatalogSlotFromStatus(path, NATIVE_FX_SLOT_IDS[slotIndex]!, trackId);
+    const baseline = reported?.effectId === nativeCatalogEffectId(this.nativeCatalogStates(path, trackId)[slotIndex]!.type)
+      ? reported?.parameters : undefined;
+    return { ...baseline, ...desired };
   }
 
   private nativeCatalogParameters(path: NativeFxPath, slotIndex: number, trackId: number, overrides?: Record<string, number>): Record<string, number> {
