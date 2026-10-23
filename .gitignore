@@ -27,3 +27,8 @@ native-mvp/build-v145/
 playwright-report/
 test-results/
 coverage/
+# Raw validation audio lives outside the source tree; guard accidental captures.
+golden-master/
+hil-captures/
+bench/hardware/results/
+bench/audio-parity/results/

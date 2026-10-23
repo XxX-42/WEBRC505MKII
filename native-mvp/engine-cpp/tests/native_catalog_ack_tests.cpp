@@ -46,12 +46,12 @@ int main() {
                 return bank == 0 ? status.nativeInputCatalogSlots[index] : bank == 1 ? status.nativeCatalogSlots[index]
                     : status.nativePerTrackCatalogSlots[track - 1][index];
             };
-            assert(core.setNativeCatalogSlot(slot, "filter.lpf", {{"cutoff_hz", 1000}}, false, error, path, track, true));
+            assert(core.setNativeCatalogSlot(slot, "filter.lpf", {{"cutoff_hz", 1000.0f}}, false, error, path, track, true));
             const auto before = read(core.getStatus());
             assert(before.appliedRevision > 0 && before.appliedRevision == before.requestedRevision);
             assert(before.parameters.at("cutoff_hz") == 1000 && before.prepared);
             NativeAudioCoreTestAccess::running(core, true);
-            assert(core.setNativeCatalogSlot(slot, "filter.lpf", {{"cutoff_hz", 2000}}, true, error, path, track, true));
+            assert(core.setNativeCatalogSlot(slot, "filter.lpf", {{"cutoff_hz", 2000.0f}}, true, error, path, track, true));
             const auto pending = read(core.getStatus());
             assert(pending.requestedRevision == before.requestedRevision + 1 && pending.appliedRevision == before.appliedRevision);
             assert(pending.parameters.at("cutoff_hz") == 2000 && pending.bypassed && !pending.appliedBypassed);
@@ -64,13 +64,13 @@ int main() {
         }
     }
     NativeAudioCoreTestAccess::running(core, true);
-    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf", {{"cutoff_hz", 3000}}, false,
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf", {{"cutoff_hz", 3000.0f}}, false,
         error, NativeCatalogFxPath::Input, 0, true));
     const auto revision = core.getStatus().nativeInputCatalogSlots[0].requestedRevision;
     NativeAudioCoreTestAccess::corrupt(core); NativeAudioCoreTestAccess::drain(core);
     const auto failed = core.getStatus().nativeInputCatalogSlots[0];
     assert(failed.controlFaulted && failed.appliedRevision != revision);
-    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf", {{"cutoff_hz", 4000}}, false,
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "filter.lpf", {{"cutoff_hz", 4000.0f}}, false,
         error, NativeCatalogFxPath::Input, 0, true));
     NativeAudioCoreTestAccess::drain(core);
     const auto retried = core.getStatus().nativeInputCatalogSlots[0];

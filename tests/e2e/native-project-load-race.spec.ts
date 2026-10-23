@@ -10,18 +10,18 @@ test('Native project decode refuses to overwrite a recording completed after loa
 
   let host: ChildProcess | undefined;
   try {
-    host = spawn(simulationHost, [], { stdio: 'ignore' });
+    host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' }, stdio: 'ignore' });
     let ready = false;
     for (let attempt = 0; attempt < 100; attempt += 1) {
       try {
-        const response = await fetch('http://127.0.0.1:17755/health');
+        const response = await fetch('http://127.0.0.1:18755/health');
         ready = response.ok && (await response.json()).ok === true;
         if (ready) break;
       } catch {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
-    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:18755').toBe(true);
 
     await page.goto('/?audio=native');
     await expect(page.locator('.top-status-strip')).toContainText('NATIVE AUDIO READY', { timeout: 20_000 });
@@ -40,7 +40,7 @@ test('Native project decode refuses to overwrite a recording completed after loa
       const memory = new ProjectMemory(engine);
       const originalFetch = window.fetch.bind(window);
       const getStatus = async () => {
-        const response = await originalFetch('http://127.0.0.1:17755/v1/status');
+        const response = await originalFetch('http://127.0.0.1:18755/v1/status');
         if (!response.ok) throw new Error(`Native status failed with HTTP ${response.status}`);
         return await response.json() as {
           sampleRate: number;
@@ -84,7 +84,7 @@ test('Native project decode refuses to overwrite a recording completed after loa
         return { archive: bytes, file: new File([bytes], `${name}.rc505proj`, { type: 'application/x-rc505-project' }) };
       };
       const hashTrack = async (trackId: number) => {
-        const response = await originalFetch(`http://127.0.0.1:17755/v1/export/loop-snapshot?trackId=${trackId}`);
+        const response = await originalFetch(`http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=${trackId}`);
         if (!response.ok) throw new Error(`Native Track ${trackId} snapshot failed with HTTP ${response.status}`);
         const bytes = await response.arrayBuffer();
         return {
@@ -142,7 +142,7 @@ test('Native project decode refuses to overwrite a recording completed after loa
       const importOutcome = await importPromise;
       const after = await getStatus();
       const track1After = await hashTrack(1);
-      const track2AfterResponse = await originalFetch('http://127.0.0.1:17755/v1/export/loop-snapshot?trackId=2');
+      const track2AfterResponse = await originalFetch('http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=2');
       const track2After = track2AfterResponse.ok ? await hashTrack(2) : null;
       const bpmAfterFirstLoad = Transport.getInstance().bpm;
 
@@ -193,7 +193,7 @@ test('Native project decode refuses to overwrite a recording completed after loa
       window.fetch = originalWindowFetch;
       const bpmAfterResolution = Transport.getInstance().bpm;
       const afterTransportRace = await hashTrack(1);
-      const pcmResponse = await originalFetch('http://127.0.0.1:17755/v1/export/loop-snapshot?trackId=1');
+      const pcmResponse = await originalFetch('http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=1');
       const pcmBytes = await pcmResponse.arrayBuffer();
       const pcmSamples = new Float32Array(pcmBytes);
       return {

@@ -20,6 +20,8 @@ const files = {
   bench: path.join(root, 'bench', `${name}.ts`),
   nativeOutput: path.join(root, 'native-mvp', 'build', `${name}.txt`),
   benchOutput: path.join(root, 'bench', 'results', `${name}.txt`),
+  goldenOutput: path.join(root, 'golden-master', `${name}.wav`),
+  captureOutput: path.join(root, 'hil-captures', `${name}.wav`),
 };
 const created = [];
 const events = [];
@@ -99,6 +101,8 @@ try {
     config: entries.has(normalize(path.join(root, 'vite.config.ts'))),
     nativeOutput: entries.has(normalize(files.nativeOutput)),
     benchOutput: entries.has(normalize(files.benchOutput)),
+    goldenOutput: entries.has(normalize(files.goldenOutput)),
+    captureOutput: entries.has(normalize(files.captureOutput)),
   };
   for (const kind of ['source', 'docs', 'bench', 'publicDirectory', 'index', 'config']) {
     assert.equal(receipt.checks.watchedInventory[kind], true, `${kind} must remain watched`);
@@ -139,13 +143,17 @@ try {
   const beforeIgnored = events.length;
   await writeFile(files.nativeOutput, 'version 2\n');
   await writeFile(files.benchOutput, 'version 2\n');
+  await writeFile(files.goldenOutput, 'version 2\n');
+  await writeFile(files.captureOutput, 'version 2\n');
   await pause(1_200);
   const ignoredEvents = events.slice(beforeIgnored).filter((entry) =>
-    entry.file === normalize(files.nativeOutput) || entry.file === normalize(files.benchOutput));
+    [files.nativeOutput, files.benchOutput, files.goldenOutput, files.captureOutput].some(file => entry.file === normalize(file)));
   receipt.checks.ignoredOutputEvents = ignoredEvents;
   assert.deepEqual(ignoredEvents, [], 'ignored build/results writes must not reach the watcher');
   assert.equal(receipt.checks.watchedInventory.nativeOutput, false);
   assert.equal(receipt.checks.watchedInventory.benchOutput, false);
+  assert.equal(receipt.checks.watchedInventory.goldenOutput, false);
+  assert.equal(receipt.checks.watchedInventory.captureOutput, false);
   receipt.ok = true;
 } catch (error) {
   failure = error;

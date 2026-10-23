@@ -13,7 +13,7 @@ test('default Classic LCD exposes Native Input and shared Track named controls w
   const hostStderr: string[] = [];
   const browserErrors: string[] = [];
   try {
-    host = spawn(simulationHost, [], { stdio: ['ignore', 'ignore', 'pipe'] });
+    host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' }, stdio: ['ignore', 'ignore', 'pipe'] });
     host.stderr?.on('data', (chunk: Buffer) => hostStderr.push(chunk.toString()));
     host.once('error', (error) => { hostStartError = error; });
     let ready = false;
@@ -21,14 +21,14 @@ test('default Classic LCD exposes Native Input and shared Track named controls w
       if (hostStartError) throw hostStartError;
       if (host.exitCode !== null) throw new Error(`Native simulation host exited early with code ${host.exitCode}`);
       try {
-        const response = await fetch('http://127.0.0.1:17755/health');
+        const response = await fetch('http://127.0.0.1:18755/health');
         ready = response.ok && (await response.json()).ok === true;
         if (ready) break;
       } catch {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
-    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:18755').toBe(true);
     page.on('pageerror', (error) => browserErrors.push(error.message));
     page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`); });
     await page.goto('/?audio=native');

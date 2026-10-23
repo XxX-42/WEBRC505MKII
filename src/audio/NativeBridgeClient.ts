@@ -1,3 +1,4 @@
+import { nativeBridgeEndpoint } from './nativeBridgeEndpoint';
 import { NATIVE_CATALOG_FX_LABELS } from './nativeFxCatalog';
 import { PROJECT_ARCHIVE_LIMITS } from './projectArchive';
 
@@ -524,7 +525,7 @@ export class NativeBridgeRequestTimeoutError extends Error {
 export class NativeBridgeClient {
   private readonly baseUrl: string;
 
-  constructor(baseUrl = 'http://127.0.0.1:17755') {
+  constructor(baseUrl = nativeBridgeEndpoint()) {
     this.baseUrl = baseUrl;
   }
 

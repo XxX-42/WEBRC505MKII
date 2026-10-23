@@ -451,14 +451,14 @@
   const originalFetch = window.fetch?.bind(window);
   window.fetch = async (input, init) => {
     const url = typeof input === 'string' ? input : input.url;
-    if (!url.startsWith('http://127.0.0.1:17755')) {
+    if (!url.startsWith('http://127.0.0.1:18755')) {
       if (!originalFetch) {
         throw new Error(`Unexpected fetch without original handler: ${url}`);
       }
       return originalFetch(input, init);
     }
 
-    const path = url.replace('http://127.0.0.1:17755', '');
+    const path = url.replace('http://127.0.0.1:18755', '');
     if (path === '/health') {
       return { json: async () => ({ ok: true, version: 'mock', engineRunning: true, backends: ['WASAPI'], lastError: '' }) };
     }

@@ -14,7 +14,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
   const hostStderr: string[] = [];
   const browserErrors: string[] = [];
   try {
-    host = spawn(simulationHost, [], { stdio: ['ignore', 'ignore', 'pipe'] });
+    host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' }, stdio: ['ignore', 'ignore', 'pipe'] });
     host.stderr?.on('data', (chunk: Buffer) => hostStderr.push(chunk.toString()));
     host.once('error', (error) => { hostStartError = error; });
     host.once('exit', (code, signal) => { hostExit = { code, signal }; });
@@ -27,14 +27,14 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
       if (hostStartError) throw hostStartError;
       if (host.exitCode !== null) throw new Error(`Native simulation host exited early with code ${host.exitCode}`);
       try {
-        const response = await fetch('http://127.0.0.1:17755/health');
+        const response = await fetch('http://127.0.0.1:18755/health');
         ready = response.ok && (await response.json()).ok === true;
         if (ready) break;
       } catch {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
-    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:18755').toBe(true);
     await page.goto('/?audio=native&ui=classic');
     const strip = page.locator('[data-track-id="1"]');
     await expect(page.locator('.top-status-strip')).toContainText('NATIVE AUDIO READY', { timeout: 20_000 });
@@ -47,7 +47,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
     await expect(strip.locator('.track-state')).toHaveText('STOP');
 
     const before = await page.evaluate(async () => {
-      const response = await fetch('http://127.0.0.1:17755/v1/status');
+      const response = await fetch('http://127.0.0.1:18755/v1/status');
       const status = await response.json() as { nativeTracks: Array<{ trackId: number; state: string; contentRevision?: number }> };
       return status.nativeTracks.map((track) => ({ ...track }));
     });
@@ -65,7 +65,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
       await expect(status).toContainText(/SAVED SLOT 01|SAVE FAILED/, { timeout: 20_000 });
     } catch (error) {
       await test.info().attach('native-save-diagnostics.txt', {
-        body: JSON.stringify({ hostExit, hostStderr, browserErrors, health: await fetch('http://127.0.0.1:17755/health').then(async (response) => ({ status: response.status, body: await response.text() })).catch((error) => String(error)) }, null, 2),
+        body: JSON.stringify({ hostExit, hostStderr, browserErrors, health: await fetch('http://127.0.0.1:18755/health').then(async (response) => ({ status: response.status, body: await response.text() })).catch((error) => String(error)) }, null, 2),
         contentType: 'application/json',
       });
       throw error;
@@ -109,7 +109,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
     expect(saved.manifest.tracks.slice(1)).toEqual([null, null, null, null]);
 
     const after = await page.evaluate(async () => {
-      const response = await fetch('http://127.0.0.1:17755/v1/status');
+      const response = await fetch('http://127.0.0.1:18755/v1/status');
       return (await response.json()).nativeTracks as Array<{ trackId: number; state: string; contentRevision?: number }>;
     });
     expect(after.map((track) => track.contentRevision)).toEqual(before.map((track) => track.contentRevision));
@@ -122,7 +122,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
       await AudioEngine.getInstance().clearTrack(1);
     });
     const cleared = await page.evaluate(async () => {
-      const response = await fetch('http://127.0.0.1:17755/v1/status');
+      const response = await fetch('http://127.0.0.1:18755/v1/status');
       return (await response.json()).nativeTracks as Array<{ trackId: number; state: string; contentRevision?: number }>;
     });
     expect(cleared[0]).toMatchObject({ trackId: 1, state: 'Empty' });
@@ -131,12 +131,12 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
     await activateEnhancedAction(page, 'memory-load-slot');
     await expect(status).toContainText('LOADED Native Snapshot · 1/5 LOOPS', { timeout: 20_000 });
     const restored = await page.evaluate(async () => {
-      const response = await fetch('http://127.0.0.1:17755/v1/export/loop-snapshot?trackId=1');
+      const response = await fetch('http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=1');
       if (!response.ok) throw new Error(`Restored Native snapshot returned HTTP ${response.status}`);
       const bytes = await response.arrayBuffer();
       const digest = await crypto.subtle.digest('SHA-256', bytes);
       const hash = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('');
-      const status = await (await fetch('http://127.0.0.1:17755/v1/status')).json() as {
+      const status = await (await fetch('http://127.0.0.1:18755/v1/status')).json() as {
         nativeTracks: Array<{ trackId: number; state: string; contentRevision?: number }>;
       };
       return {

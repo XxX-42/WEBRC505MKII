@@ -63,7 +63,8 @@ export type Rc505DisplayView =
   | { kind: 'mixer'; pageIndex: number }
   | { kind: 'loop-root' | 'menu-root'; pageIndex: number; selectedIndex: number }
   | { kind: 'editor'; target: Rc505DisplayEditorTarget; category: string; pageIndex: number; pageCount: number }
-  | { kind: 'confirm'; prompt: string };
+  | { kind: 'confirm'; prompt: string }
+  | { kind: 'memory-write'; operation: 'choose' | 'write' | 'clear'; slot: number; busy: boolean };
 
 export interface Rc505DisplayState {
   view: Rc505DisplayView;
@@ -84,4 +85,6 @@ export type Rc505DisplayAction =
   | { type: 'EDITOR_PAGE_COUNT'; count: number }
   | { type: 'REQUEST_CONFIRMATION'; prompt: string }
   | { type: 'CONFIRM'; accepted: boolean }
+  | { type: 'OPEN_MEMORY_WRITE'; slot: number }
+  | { type: 'MEMORY_COMPLETE'; success: boolean; message?: string }
   | { type: 'CLEAR_NOTICE' };

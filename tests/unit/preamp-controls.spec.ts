@@ -11,6 +11,7 @@ import {
 } from '../../src/audio/preampParameters';
 import { nativeCatalogSlotConfig } from '../../src/audio/nativeFxCatalog';
 import PreampFxEditor from '../../src/components/fx/PreampFxEditor.vue';
+import { renderedCatalogWrite } from '../helpers/nativeCatalogReadback';
 
 describe('PREAMP controls', () => {
   it('provides bounded six-control defaults and safe values for persisted settings', () => {
@@ -102,9 +103,7 @@ describe('PREAMP controls', () => {
     const fakeBridge = {
       setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
         const path = config.path ?? 'track';
-        selected[path][slots.indexOf(config.slot)] = {
-          slot: config.slot, effectId: config.effectId, bypassed: config.bypassed,
-        };
+        selected[path][slots.indexOf(config.slot)] = renderedCatalogWrite(config);
         return status();
       }),
     };

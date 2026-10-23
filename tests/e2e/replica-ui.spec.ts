@@ -143,19 +143,19 @@ test('Native simulation bridge readiness is visible on the shared Classic facepl
   try {
     let preexistingHealth = false;
     try {
-      preexistingHealth = (await fetch('http://127.0.0.1:17755/health')).ok;
+      preexistingHealth = (await fetch('http://127.0.0.1:18755/health')).ok;
     } catch {
       // The simulation must own the port before readiness is checked.
     }
-    expect(preexistingHealth, 'Port 17755 must be free before starting the Native simulation host.').toBe(false);
-    host = spawn(simulationHost, [], { stdio: 'ignore' });
+    expect(preexistingHealth, 'Port 18755 must be free before starting the Native simulation host.').toBe(false);
+    host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' }, stdio: 'ignore' });
     host.once('error', (error) => { hostStartError = error; });
     let ready = false;
     for (let attempt = 0; attempt < 100; attempt += 1) {
       if (hostStartError) throw hostStartError;
       if (host.exitCode !== null) throw new Error(`Native simulation host exited early with code ${host.exitCode}`);
       try {
-        const response = await fetch('http://127.0.0.1:17755/health');
+        const response = await fetch('http://127.0.0.1:18755/health');
         ready = response.ok && (await response.json()).ok === true;
         if (ready) break;
       } catch {
@@ -163,7 +163,7 @@ test('Native simulation bridge readiness is visible on the shared Classic facepl
       }
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:18755').toBe(true);
     await page.goto('/?audio=native&ui=classic');
     await expect(page.locator('.status-pill')).toContainText('NATIVE AUDIO READY', { timeout: 15_000 });
     const face = page.getByTestId('rc505-physical-face');

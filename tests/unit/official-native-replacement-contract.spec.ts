@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
 import { NativeBridgeClient, type NativeCatalogSlotConfig, type NativeStatus } from '../../src/audio/NativeBridgeClient';
+import { renderedCatalogWrite } from '../helpers/nativeCatalogReadback';
 
 function harness(supportsReplacement: boolean, parameters: Record<string, number> = { official_cutoff: 50 }, rejection?: string) {
   const engine = Object.create(NativeAudioEngine.prototype) as NativeAudioEngine;
@@ -12,12 +13,15 @@ function harness(supportsReplacement: boolean, parameters: Record<string, number
   const empty = () => ({ type: '', value: 0, active: false, parameters: {} });
   const input = [{ type: 'DSP LPF', value: 50, active: true, parameters }, empty(), empty(), empty()];
   const track = [empty(), empty(), empty(), empty()];
-  const bridge = { setCatalogSlot: vi.fn(async (_config: NativeCatalogSlotConfig) => {
+  const bridge = { setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
     if (rejection) throw new Error(rejection);
+    status.nativeFx!.inputCatalogSlots![0] = renderedCatalogWrite(config);
     return status;
   }), stopEngine: vi.fn() };
   Object.assign(engine, { latestStatus: status, engineRunning: true, bridge, nativeCatalogFxRuntime: new Map(),
     nativeCatalogSlotEditRevisions: new Map(), nativePerTrackFxEdited: new Set(),
+    nativeCatalogFxDirtySlots: new Set(['input:A']), nativeCatalogFxSubmittedEditRevisions: new Map(),
+    nativeCatalogFxHydratedSlots: new Set(), nativeCatalogFxUnknownParameterSlots: new Set(),
     nativeCatalogStates: (path: string) => path === 'input' ? input : track,
     isPerTrackCatalogAvailable: () => false, getCatalogFxOptions: () => ['DSP LPF'], applyStatus: vi.fn(), emitAll: vi.fn(),
   });

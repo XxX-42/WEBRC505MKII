@@ -11,7 +11,7 @@ test('Native Input and shared Track banks expose schema-backed controls and pers
   const hostStderr: string[] = [];
   const browserErrors: string[] = [];
   try {
-    host = spawn(simulationHost, [], { stdio: ['ignore', 'ignore', 'pipe'] });
+    host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' }, stdio: ['ignore', 'ignore', 'pipe'] });
     host.stderr?.on('data', (chunk: Buffer) => hostStderr.push(chunk.toString()));
     host.once('error', (error) => { hostStartError = error; });
     let ready = false;
@@ -19,14 +19,14 @@ test('Native Input and shared Track banks expose schema-backed controls and pers
       if (hostStartError) throw hostStartError;
       if (host.exitCode !== null) throw new Error(`Native simulation host exited early with code ${host.exitCode}`);
       try {
-        const response = await fetch('http://127.0.0.1:17755/health');
+        const response = await fetch('http://127.0.0.1:18755/health');
         ready = response.ok && (await response.json()).ok === true;
         if (ready) break;
       } catch {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
-    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:18755').toBe(true);
     page.on('pageerror', (error) => browserErrors.push(error.message));
     page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`); });
     // The parameter banks live in the Tech FX panels; the default app shell is
@@ -65,11 +65,11 @@ test('Native Input and shared Track banks expose schema-backed controls and pers
         track?.acknowledged && track.acknowledgedEffectId === 'phaser' && !track.pendingApply);
     }, { timeout: 20_000 }).toBe(true);
     expect(host?.exitCode, `Native host exited after restart: ${hostStderr.join('')}`).toBeNull();
-    expect((await fetch('http://127.0.0.1:17755/health').then((response) => response.ok).catch(() => false)),
+    expect((await fetch('http://127.0.0.1:18755/health').then((response) => response.ok).catch(() => false)),
       `Native health failed after restart; stderr=${hostStderr.join('')}`).toBe(true);
     await inputEditor.locator('summary').click();
     await page.waitForTimeout(500);
-    const healthBeforeFill = await fetch('http://127.0.0.1:17755/health').then((response) => response.ok).catch(() => false);
+    const healthBeforeFill = await fetch('http://127.0.0.1:18755/health').then((response) => response.ok).catch(() => false);
     expect(healthBeforeFill, `Native host unavailable before fill; stderr=${hostStderr.join('')}`).toBe(true);
     const inputRate = inputEditor.getByLabel('INPUT A · PHASER rate_hz');
     await inputRate.fill('1.75');

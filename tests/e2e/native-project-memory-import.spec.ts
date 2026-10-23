@@ -13,7 +13,7 @@ test('Native ProjectMemory import resolves after host commit and leaves imported
   let hostExit: { code: number | null; signal: NodeJS.Signals | null } | undefined;
   const hostStderr: string[] = [];
   try {
-    host = spawn(simulationHost, [], { stdio: ['ignore', 'ignore', 'pipe'] });
+    host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' }, stdio: ['ignore', 'ignore', 'pipe'] });
     host.stderr?.on('data', (chunk: Buffer) => hostStderr.push(chunk.toString()));
     host.once('error', (error) => { hostStartError = error; });
     host.once('exit', (code, signal) => { hostExit = { code, signal }; });
@@ -23,14 +23,14 @@ test('Native ProjectMemory import resolves after host commit and leaves imported
       if (hostStartError) throw hostStartError;
       if (host.exitCode !== null) throw new Error(`Native simulation host exited early with code ${host.exitCode}`);
       try {
-        const response = await fetch('http://127.0.0.1:17755/health');
+        const response = await fetch('http://127.0.0.1:18755/health');
         ready = response.ok && (await response.json()).ok === true;
         if (ready) break;
       } catch {
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
-    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:18755').toBe(true);
 
     await page.goto('/?audio=native');
     await expect(page.locator('.top-status-strip')).toContainText('NATIVE AUDIO READY', { timeout: 20_000 });
@@ -64,7 +64,7 @@ test('Native ProjectMemory import resolves after host commit and leaves imported
         return response;
       };
 
-      const initialResponse = await originalFetch('http://127.0.0.1:17755/v1/status');
+      const initialResponse = await originalFetch('http://127.0.0.1:18755/v1/status');
       if (!initialResponse.ok) throw new Error(`Native host status failed with HTTP ${initialResponse.status}`);
       const initial = await initialResponse.json() as {
         engineRunning: boolean;
@@ -112,11 +112,11 @@ test('Native ProjectMemory import resolves after host commit and leaves imported
       const imported = await new ProjectMemory(engine).importFile(file);
       timeline.push('import-resolved');
 
-      const statusResponse = await originalFetch('http://127.0.0.1:17755/v1/status');
+      const statusResponse = await originalFetch('http://127.0.0.1:18755/v1/status');
       const status = await statusResponse.json() as {
         nativeTracks: Array<{ trackId: number; state: string; contentRevision: number }>;
       };
-      const snapshotResponse = await originalFetch('http://127.0.0.1:17755/v1/export/loop-snapshot?trackId=1');
+      const snapshotResponse = await originalFetch('http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=1');
       if (!snapshotResponse.ok) throw new Error(`Imported Native snapshot failed with HTTP ${snapshotResponse.status}`);
       const actualFrameCount = Number(snapshotResponse.headers.get('X-Native-Loop-Frame-Count'));
       const actualChannels = Number(snapshotResponse.headers.get('X-Native-Loop-Channels'));

@@ -6,6 +6,7 @@ import { nativeCatalogEffectId, nativeCatalogFxOptions, nativeCatalogMacroParame
 import { createDefaultNativeStepSlicerParameters, sanitizeNativeStepSlicerParameters } from '../../src/audio/nativeStepSlicerParameters';
 import NativeStepSlicerEditor from '../../src/components/fx/NativeStepSlicerEditor.vue';
 import { Transport } from '../../src/core/Transport';
+import { renderedCatalogWrite } from '../helpers/nativeCatalogReadback';
 
 const slots = ['A', 'B', 'C', 'D'] as const;
 
@@ -69,9 +70,7 @@ describe('Native STEP SLICER parameters and catalog API', () => {
     };
     const fakeBridge = {
       setCatalogSlot: vi.fn(async (config: NativeCatalogSlotConfig) => {
-        selected[config.path][slots.indexOf(config.slot)] = {
-          slot: config.slot, effectId: config.effectId, bypassed: config.bypassed,
-        };
+        selected[config.path][slots.indexOf(config.slot)] = renderedCatalogWrite(config);
         return statusFor(selected);
       }),
     };

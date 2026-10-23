@@ -10,9 +10,12 @@ export interface Rc505TrackControlInput {
   recordUnavailableReason?: string;
   layer: Rc505ControlLayer;
   history: { canUndo: boolean; canRedo: boolean; busy: boolean; unavailableReason?: string };
-  /** Shared post-mix FX currently has no per-track apply gate. */
+  mark?: { supported: boolean; exists: boolean; canSet: boolean; canClear: boolean; busy: boolean; unavailableReason: string | null };
+  operationPending?: boolean;
+  /** Both recording and playback routes must have a matching render ACK. */
   fxApplied?: boolean | null;
   fxApplySupported?: boolean;
+  fxUnavailableReason?: string;
 }
 
 function resolved(role: string, enabled: boolean, color: Rc505LedColor = 'off', selected = false, reason = ''): Rc505ResolvedControlState {
@@ -20,17 +23,19 @@ function resolved(role: string, enabled: boolean, color: Rc505LedColor = 'off', 
 }
 
 export function resolveRc505TrackControls(input: Rc505TrackControlInput) {
-  const ready = input.available && input.ready;
+  const ready = input.available && input.ready && !input.operationPending;
   if (input.layer === 'UNDO_REDO') {
-    const historyReady = ready && !input.history.busy && (input.history.canUndo || input.history.canRedo);
-    const markReason = 'MARK is not supported by this audio runtime.';
+    const mark = input.mark;
+    const markReady = ready && mark?.supported === true && !mark.busy && !input.history.busy;
+    const historyReady = ready && !input.history.busy && !mark?.busy && (input.history.canUndo || input.history.canRedo);
+    const markReason = mark?.unavailableReason || 'MARK is not supported by this audio runtime.';
     return {
       record: resolved(input.history.canUndo ? 'UNDO' : input.history.canRedo ? 'REDO' : 'UNDO_REDO', historyReady,
         historyReady ? input.history.canUndo ? 'green' : 'red' : 'off', false,
         input.history.unavailableReason || 'No confirmed history step.'),
-      track: resolved('MARK_SET', false, 'off', input.selected, markReason),
-      fx: resolved('MARK_CLEAR', false, 'off', false, markReason),
-      stop: resolved('MARK_BACK', false, 'off', false, markReason),
+      track: resolved('MARK_SET', markReady && mark.canSet, 'off', input.selected, markReason),
+      fx: resolved('MARK_CLEAR', markReady && mark.canClear, 'off', false, markReason),
+      stop: resolved('MARK_BACK', false, 'off', false, 'MARK BACK hardware state transitions are not yet verified.'),
     };
   }
   const colors: Record<string, Rc505LedColor> = { RECORDING: 'red', PLAYING: 'green', OVERDUBBING: 'yellow' };
@@ -41,7 +46,7 @@ export function resolveRc505TrackControls(input: Rc505TrackControlInput) {
     record,
     track: resolved('TRACK_EDIT', input.available, input.hasPhrase === true ? 'green' : 'off', input.selected, 'Track unavailable.'),
     fx: resolved('TRACK_FX_APPLY', ready && input.fxApplySupported === true,
-      input.fxApplied === true ? 'red' : 'off', false, 'Per-track application of the shared Track FX is unavailable.'),
+      input.fxApplied === true ? 'red' : 'off', false, input.fxUnavailableReason || 'Per-track application of the shared Track FX is unavailable.'),
     stop: resolved('STOP_CLEAR', ready, 'off', false, 'Audio transport is not ready.'),
   };
 }

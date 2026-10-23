@@ -13,7 +13,7 @@ test('Native browser bridge captures and exports a synthetic loop through Enhanc
   let host: ChildProcess | undefined;
   let hostStartError: Error | undefined;
   try {
-    host = spawn(simulationHost, [], { stdio: 'ignore' });
+    host = spawn(simulationHost, [], { env: { ...process.env, WEBRC_NATIVE_BRIDGE_PORT: '18755' }, stdio: 'ignore' });
     host.once('error', (error) => { hostStartError = error; });
 
     let ready = false;
@@ -21,7 +21,7 @@ test('Native browser bridge captures and exports a synthetic loop through Enhanc
       if (hostStartError) throw hostStartError;
       if (host.exitCode !== null) throw new Error(`Native simulation host exited early with code ${host.exitCode}`);
       try {
-        const response = await fetch('http://127.0.0.1:17755/health');
+        const response = await fetch('http://127.0.0.1:18755/health');
         ready = response.ok && (await response.json()).ok === true;
         if (ready) break;
       } catch {
@@ -29,7 +29,7 @@ test('Native browser bridge captures and exports a synthetic loop through Enhanc
       }
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    expect(ready, 'Native simulation host did not start on 127.0.0.1:17755').toBe(true);
+    expect(ready, 'Native simulation host did not start on 127.0.0.1:18755').toBe(true);
 
     await page.goto('/');
     const strip = page.locator('[data-track-id="1"]');
@@ -54,7 +54,7 @@ test('Native browser bridge captures and exports a synthetic loop through Enhanc
     await recordPlayButton.click();
     await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'REDO');
     await expect.poll(async () => {
-      const response = await fetch('http://127.0.0.1:17755/v1/status');
+      const response = await fetch('http://127.0.0.1:18755/v1/status');
       const status = await response.json() as { nativeTracks?: Array<{ trackId: number; state: string }> };
       return status.nativeTracks?.find((track) => track.trackId === 1)?.state;
     }).toBe('Empty');
@@ -62,13 +62,13 @@ test('Native browser bridge captures and exports a synthetic loop through Enhanc
     await expect(recordPlayButton).toHaveAttribute('data-hardware-role', 'UNDO');
     await historyLayerButton.click();
     await expect.poll(async () => {
-      const response = await fetch('http://127.0.0.1:17755/v1/status');
+      const response = await fetch('http://127.0.0.1:18755/v1/status');
       const status = await response.json() as { nativeTracks?: Array<{ trackId: number; state: string }> };
       return status.nativeTracks?.find((track) => track.trackId === 1)?.state;
     }).toBe('Stopped');
 
     const metadata = await page.evaluate(async () => {
-      const response = await fetch('http://127.0.0.1:17755/v1/export/track-metadata?trackId=1');
+      const response = await fetch('http://127.0.0.1:18755/v1/export/track-metadata?trackId=1');
       if (!response.ok) throw new Error(`Native metadata endpoint returned HTTP ${response.status}`);
       return await response.json() as { trackId: number; sampleRate: number; frameCount: number; channels: number };
     });

@@ -14,7 +14,8 @@ export default defineConfig({
   server: {
     // Native build and benchmark outputs are not frontend inputs.
     watch: {
-      ignored: ['**/native-mvp/build*/**', '**/bench/results/**'],
+      ignored: ['**/native-mvp/build*/**', '**/bench/results/**', '**/golden-master/**',
+        '**/hil-captures/**', '**/bench/hardware/results/**', '**/bench/audio-parity/results/**', '**/bench/**/*.wav'],
     },
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

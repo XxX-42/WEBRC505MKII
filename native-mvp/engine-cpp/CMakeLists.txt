@@ -5,6 +5,9 @@ project(native_audio_core_mvp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+if(MSVC)
+  add_compile_options(/utf-8 /Zc:lambda)
+endif()
 
 option(ENABLE_ASIO "Enable ASIO backend support when the local SDK is available" OFF)
 set(ASIOSDK_DIR "" CACHE PATH "Path to the Steinberg ASIO SDK root")
@@ -123,7 +126,7 @@ endfunction()
 
 function(enable_strict_warnings target)
     if(MSVC)
-      target_compile_options(${target} PRIVATE /W4 /WX)
+      target_compile_options(${target} PRIVATE /W4 /WX /Zc:lambda)
     else()
       target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
@@ -136,18 +139,22 @@ function(enable_native_preamp_experimental_adaa target)
 endfunction()
 
 # Native tests use assert() for their checks. Release configurations define
-# NDEBUG globally, which would otherwise compile those checks out (and can
-# hide test-only unused-variable diagnostics). Apply the undefinition only to
-# test executables, after each build mode has declared its targets.
+# NDEBUG globally. Force an assertion header only into test executables rather
+# than overriding /D with /U, which produces MSVC D9025 under /WX.
 function(enable_assertions_for_test_executables)
   get_property(test_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
   foreach(test_target IN LISTS test_targets)
     get_target_property(target_type ${test_target} TYPE)
     if(target_type STREQUAL "EXECUTABLE" AND test_target MATCHES "_tests$")
       if(MSVC)
-        target_compile_options(${test_target} PRIVATE /UNDEBUG)
+        target_compile_options(${test_target} PRIVATE
+          "/FI${CMAKE_CURRENT_SOURCE_DIR}/tests/support/enable_test_assertions.hpp")
+        # The callback fixtures include several large fixed scratch arrays.
+        # This is a test-process stack reservation, never an audio allocation.
+        target_link_options(${test_target} PRIVATE /STACK:16777216)
       else()
-        target_compile_options(${test_target} PRIVATE -UNDEBUG)
+        target_compile_options(${test_target} PRIVATE
+          -include "${CMAKE_CURRENT_SOURCE_DIR}/tests/support/enable_test_assertions.hpp")
       endif()
     endif()
   endforeach()
@@ -211,7 +218,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
     src/native_osc_bot_core.cpp
     src/native_osc_bot_processor.cpp
   )
-  target_include_directories(native_dsp_portable PUBLIC include third_party/signalsmith/include)
+  target_include_directories(native_dsp_portable PUBLIC include)
+  target_include_directories(native_dsp_portable SYSTEM PUBLIC third_party/signalsmith/include)
   enable_native_preamp_experimental_adaa(native_dsp_portable)
   enable_rubberband_hq(native_dsp_portable)
   enable_strict_warnings(native_dsp_portable)
@@ -286,9 +294,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_fx_catalog_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_fx_catalog_tests)
   if(MSVC)
-    target_compile_options(native_fx_catalog_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_fx_catalog_tests PRIVATE -UNDEBUG)
   endif()
 
   add_executable(native_vocoder_core_tests
@@ -298,9 +304,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_vocoder_core_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_vocoder_core_tests)
   if(MSVC)
-    target_compile_options(native_vocoder_core_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_vocoder_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_vocoder_core_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_auto_riff_core_tests
@@ -310,9 +315,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_auto_riff_core_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_auto_riff_core_tests)
   if(MSVC)
-    target_compile_options(native_auto_riff_core_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_auto_riff_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_auto_riff_core_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_osc_voc_core_tests
@@ -322,9 +326,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_osc_voc_core_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_osc_voc_core_tests)
   if(MSVC)
-    target_compile_options(native_osc_voc_core_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_osc_voc_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_osc_voc_core_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_osc_voc_processor_tests
@@ -334,9 +337,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_osc_voc_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_osc_voc_processor_tests)
   if(MSVC)
-    target_compile_options(native_osc_voc_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_osc_voc_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_osc_voc_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_hrm_auto_processor_tests
@@ -346,9 +348,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_hrm_auto_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_hrm_auto_processor_tests)
   if(MSVC)
-    target_compile_options(native_hrm_auto_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_hrm_auto_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_hrm_auto_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_hrm_auto_core_tests
@@ -358,9 +359,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_hrm_auto_core_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_hrm_auto_core_tests)
   if(MSVC)
-    target_compile_options(native_hrm_auto_core_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_hrm_auto_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_hrm_auto_core_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_robot_core_tests
@@ -370,9 +370,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_robot_core_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_robot_core_tests)
   if(MSVC)
-    target_compile_options(native_robot_core_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_robot_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_robot_core_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_osc_bot_core_tests
@@ -382,9 +381,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_osc_bot_core_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_osc_bot_core_tests)
   if(MSVC)
-    target_compile_options(native_osc_bot_core_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_osc_bot_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_osc_bot_core_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_osc_bot_processor_tests
@@ -394,9 +392,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_osc_bot_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_osc_bot_processor_tests)
   if(MSVC)
-    target_compile_options(native_osc_bot_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_osc_bot_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_osc_bot_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_g2b_processor_tests
@@ -406,9 +403,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_g2b_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_g2b_processor_tests)
   if(MSVC)
-    target_compile_options(native_g2b_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_g2b_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_g2b_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_synth_processor_tests
@@ -418,9 +414,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_synth_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_synth_processor_tests)
   if(MSVC)
-    target_compile_options(native_synth_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_synth_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_synth_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_executable(native_manual_pan_processor_tests
@@ -450,9 +445,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_slow_gear_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_slow_gear_processor_tests)
   if(MSVC)
-    target_compile_options(native_slow_gear_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_slow_gear_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_slow_gear_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
 
   add_library(native_audio_core_test_support STATIC src/native_audio_core.cpp)
@@ -464,9 +458,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_catalog_ack_tests PRIVATE native_audio_core_test_support)
   enable_strict_warnings(native_catalog_ack_tests)
   if(MSVC)
-    target_compile_options(native_catalog_ack_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_catalog_ack_tests PRIVATE -UNDEBUG)
   endif()
   add_executable(native_audio_callback_tests tests/native_audio_callback_tests.cpp)
   target_link_libraries(native_audio_callback_tests PRIVATE native_audio_core_test_support)
@@ -474,9 +466,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   # Callback assertions are the actual acceptance checks (including the
   # allocation guard), so keep them enabled in Release configurations too.
   if(MSVC)
-    target_compile_options(native_audio_callback_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_audio_callback_tests PRIVATE -UNDEBUG)
   endif()
   # This test intentionally overrides global new/delete with malloc/free to
   # count callback allocations. GCC's mismatched-new-delete heuristic cannot
@@ -499,9 +489,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_catalog_route_tests PRIVATE native_audio_core_test_support)
   enable_strict_warnings(native_catalog_route_tests)
   if(MSVC)
-    target_compile_options(native_catalog_route_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_catalog_route_tests PRIVATE -UNDEBUG)
   endif()
 
   add_executable(native_pitch_processor_tests
@@ -594,9 +582,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_preamp_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_preamp_processor_tests)
   if(MSVC)
-    target_compile_options(native_preamp_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_preamp_processor_tests PRIVATE -UNDEBUG)
     target_compile_options(native_preamp_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
   add_executable(native_beat_repeat_processor_tests
@@ -624,9 +610,8 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   target_link_libraries(native_roll_processor_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_roll_processor_tests)
   if(MSVC)
-    target_compile_options(native_roll_processor_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_roll_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+    target_compile_options(native_roll_processor_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
   add_executable(native_tape_echo_processor_tests
     tests/native_tape_echo_processor_tests.cpp
@@ -716,9 +701,7 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
     target_link_libraries(native_rubberband_renderer_tests PRIVATE native_dsp_portable)
     enable_strict_warnings(native_rubberband_renderer_tests)
     if(MSVC)
-      target_compile_options(native_rubberband_renderer_tests PRIVATE /UNDEBUG)
     else()
-      target_compile_options(native_rubberband_renderer_tests PRIVATE -UNDEBUG)
     endif()
   endif()
 
@@ -876,7 +859,8 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     src/native_osc_bot_processor.cpp
     src/native_audio_core.cpp
   )
-  target_include_directories(native_audio_core_simulation BEFORE PUBLIC tests/simulation_support include third_party/signalsmith/include)
+  target_include_directories(native_audio_core_simulation BEFORE PUBLIC tests/simulation_support include)
+  target_include_directories(native_audio_core_simulation SYSTEM PUBLIC third_party/signalsmith/include)
   target_link_libraries(native_audio_core_simulation PUBLIC native_project_archive_codec)
   enable_native_preamp_experimental_adaa(native_audio_core_simulation)
   enable_rubberband_hq(native_audio_core_simulation)
@@ -889,9 +873,7 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
   target_link_libraries(native_catalog_ack_tests PRIVATE native_audio_core_simulation)
   enable_strict_warnings(native_catalog_ack_tests)
   if(MSVC)
-    target_compile_options(native_catalog_ack_tests PRIVATE /UNDEBUG)
   else()
-    target_compile_options(native_catalog_ack_tests PRIVATE -UNDEBUG)
   endif()
   add_executable(native_bridge_host_simulation src/native_bridge_host.cpp)
   target_link_libraries(native_bridge_host_simulation PRIVATE
@@ -998,7 +980,8 @@ add_library(native_audio_core STATIC
   src/native_osc_bot_processor.cpp
   src/native_audio_core.cpp
 )
-target_include_directories(native_audio_core PUBLIC include third_party/signalsmith/include)
+target_include_directories(native_audio_core PUBLIC include)
+target_include_directories(native_audio_core SYSTEM PUBLIC third_party/signalsmith/include)
 target_link_libraries(native_audio_core PUBLIC rtaudio nlohmann_json::nlohmann_json native_project_archive_codec)
 enable_native_preamp_experimental_adaa(native_audio_core)
 enable_rubberband_hq(native_audio_core)
@@ -1092,7 +1075,8 @@ add_executable(native_audio_pipeline_tests
   src/native_osc_bot_core.cpp
   src/native_osc_bot_processor.cpp
 )
-target_include_directories(native_audio_pipeline_tests PRIVATE include third_party/signalsmith/include)
+target_include_directories(native_audio_pipeline_tests PRIVATE include)
+target_include_directories(native_audio_pipeline_tests SYSTEM PRIVATE third_party/signalsmith/include)
 enable_native_preamp_experimental_adaa(native_audio_pipeline_tests)
 
 add_executable(native_rhythm_tests tests/native_rhythm_tests.cpp src/native_rhythm_engine.cpp)
@@ -1124,9 +1108,8 @@ add_executable(native_vocoder_core_tests
 )
 target_link_libraries(native_vocoder_core_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_vocoder_core_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_vocoder_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_vocoder_core_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 
 add_executable(native_osc_voc_core_tests
@@ -1135,9 +1118,8 @@ add_executable(native_osc_voc_core_tests
 )
 target_link_libraries(native_osc_voc_core_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_osc_voc_core_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_osc_voc_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_osc_voc_core_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 
 add_executable(native_osc_voc_processor_tests
@@ -1146,9 +1128,8 @@ add_executable(native_osc_voc_processor_tests
 )
 target_link_libraries(native_osc_voc_processor_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_osc_voc_processor_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_osc_voc_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_osc_voc_processor_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 
 add_executable(native_osc_bot_core_tests
@@ -1157,9 +1138,8 @@ add_executable(native_osc_bot_core_tests
 )
 target_link_libraries(native_osc_bot_core_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_osc_bot_core_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_osc_bot_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_osc_bot_core_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 
 add_executable(native_osc_bot_processor_tests
@@ -1168,9 +1148,8 @@ add_executable(native_osc_bot_processor_tests
 )
 target_link_libraries(native_osc_bot_processor_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_osc_bot_processor_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_osc_bot_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_osc_bot_processor_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 
 add_executable(native_audio_callback_tests tests/native_audio_callback_tests.cpp)
@@ -1270,9 +1249,7 @@ add_executable(native_preamp_processor_tests
 )
 target_link_libraries(native_preamp_processor_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_preamp_processor_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_preamp_processor_tests PRIVATE -UNDEBUG)
   target_compile_options(native_preamp_processor_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 add_test(NAME native_preamp_processor_tests COMMAND native_preamp_processor_tests)
@@ -1291,10 +1268,10 @@ add_executable(native_roll_processor_tests
 )
 target_link_libraries(native_roll_processor_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_roll_processor_tests PRIVATE /W4 /WX /UNDEBUG)
+  target_compile_options(native_roll_processor_tests PRIVATE /W4 /WX)
 else()
   target_compile_options(native_roll_processor_tests PRIVATE
-    -Wall -Wextra -Wpedantic -Werror -UNDEBUG -Wno-mismatched-new-delete
+    -Wall -Wextra -Wpedantic -Werror -Wno-mismatched-new-delete
   )
 endif()
 add_test(NAME native_roll_processor_tests COMMAND native_roll_processor_tests)
@@ -1304,10 +1281,10 @@ add_executable(native_freeze_processor_tests
 )
 target_link_libraries(native_freeze_processor_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_freeze_processor_tests PRIVATE /W4 /WX /UNDEBUG)
+  target_compile_options(native_freeze_processor_tests PRIVATE /W4 /WX)
 else()
   target_compile_options(native_freeze_processor_tests PRIVATE
-    -Wall -Wextra -Wpedantic -Werror -UNDEBUG -Wno-mismatched-new-delete
+    -Wall -Wextra -Wpedantic -Werror -Wno-mismatched-new-delete
   )
 endif()
 add_test(NAME native_freeze_processor_tests COMMAND native_freeze_processor_tests)
@@ -1371,9 +1348,8 @@ add_executable(native_slow_gear_processor_tests
 )
 target_link_libraries(native_slow_gear_processor_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_slow_gear_processor_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_slow_gear_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_slow_gear_processor_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 add_test(NAME native_slow_gear_processor_tests COMMAND native_slow_gear_processor_tests)
 add_test(NAME native_rhythm_tests COMMAND native_rhythm_tests)
@@ -1390,9 +1366,8 @@ add_executable(native_auto_riff_core_tests
 )
 target_link_libraries(native_auto_riff_core_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_auto_riff_core_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_auto_riff_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_auto_riff_core_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 add_test(NAME native_auto_riff_core_tests COMMAND native_auto_riff_core_tests)
 
@@ -1402,9 +1377,8 @@ add_executable(native_hrm_auto_processor_tests
 )
 target_link_libraries(native_hrm_auto_processor_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_hrm_auto_processor_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_hrm_auto_processor_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_hrm_auto_processor_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 add_test(NAME native_hrm_auto_processor_tests COMMAND native_hrm_auto_processor_tests)
 
@@ -1414,9 +1388,8 @@ add_executable(native_hrm_auto_core_tests
 )
 target_link_libraries(native_hrm_auto_core_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_hrm_auto_core_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_hrm_auto_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_hrm_auto_core_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 add_test(NAME native_hrm_auto_core_tests COMMAND native_hrm_auto_core_tests)
 add_executable(native_robot_core_tests
@@ -1425,9 +1398,8 @@ add_executable(native_robot_core_tests
 )
 target_link_libraries(native_robot_core_tests PRIVATE native_audio_core)
 if(MSVC)
-  target_compile_options(native_robot_core_tests PRIVATE /UNDEBUG)
 else()
-  target_compile_options(native_robot_core_tests PRIVATE -UNDEBUG -Wno-mismatched-new-delete)
+  target_compile_options(native_robot_core_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 add_test(NAME native_robot_core_tests COMMAND native_robot_core_tests)
 add_test(NAME native_third_party_notices
@@ -1446,9 +1418,9 @@ if(NATIVE_ENABLE_RUBBERBAND_HQ)
   )
   target_link_libraries(native_rubberband_renderer_tests PRIVATE native_audio_core)
   if(MSVC)
-    target_compile_options(native_rubberband_renderer_tests PRIVATE /W4 /WX /UNDEBUG)
+    target_compile_options(native_rubberband_renderer_tests PRIVATE /W4 /WX)
   else()
-    target_compile_options(native_rubberband_renderer_tests PRIVATE -Wall -Wextra -Wpedantic -Werror -UNDEBUG)
+    target_compile_options(native_rubberband_renderer_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
   endif()
   add_test(NAME native_rubberband_renderer_tests COMMAND native_rubberband_renderer_tests)
   add_test(NAME native_rubberband_license_notice

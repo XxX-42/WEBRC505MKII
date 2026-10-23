@@ -98,6 +98,7 @@ function enterSelectedRootItem(state: Rc505DisplayState): Rc505DisplayState {
 }
 
 function exitView(state: Rc505DisplayState): Rc505DisplayState {
+  if (state.view.kind === 'memory-write' && state.view.busy) return state;
   if (state.view.kind === 'confirm') {
     return {
       ...state,
@@ -117,7 +118,30 @@ function exitView(state: Rc505DisplayState): Rc505DisplayState {
 }
 
 export function reduceRc505DisplayState(state: Rc505DisplayState, action: Rc505DisplayAction): Rc505DisplayState {
+  if (state.view.kind === 'memory-write') {
+    const view = state.view;
+    if (action.type === 'MEMORY_COMPLETE' && view.busy) {
+      return action.success
+        ? exitView({ ...state, view: { ...view, busy: false } })
+        : withView(state, { ...view, busy: false }, action.message || 'MEMORY FAILED');
+    }
+    if (view.busy) return state;
+    if (action.type === 'ENCODER_PRESS' && action.encoderIndex >= 0 && action.encoderIndex < 4 && view.operation === 'choose') {
+      return withView(state, { ...view, operation: action.encoderIndex < 2 ? 'write' : 'clear' });
+    }
+    if ((action.type === 'ENCODER_ROTATE' || action.type === 'ENCODER_PRESS_ROTATE') && view.operation !== 'choose'
+      && action.encoderIndex >= 0 && action.encoderIndex < 4 && Number.isFinite(action.delta)) {
+      return withView(state, { ...view, slot: Math.max(1, Math.min(99, view.slot + Math.trunc(action.delta))) });
+    }
+    if (action.type === 'ENTER' && view.operation !== 'choose') return withView(state, { ...view, busy: true });
+    if (action.type !== 'EXIT' && action.type !== 'CLEAR_NOTICE') return state;
+  }
   switch (action.type) {
+    case 'OPEN_MEMORY_WRITE':
+      if (state.view.kind === 'confirm' || !Number.isInteger(action.slot) || action.slot < 1 || action.slot > 99) return state;
+      return pushView(state, { kind: 'memory-write', operation: 'choose', slot: action.slot, busy: false });
+    case 'MEMORY_COMPLETE':
+      return state;
     case 'PAGE': {
       if (state.view.kind === 'play') {
         return withView(state, { ...state.view, pageIndex: wrap(state.view.pageIndex + action.direction, RC505_PLAY_SCREENS.length) });
