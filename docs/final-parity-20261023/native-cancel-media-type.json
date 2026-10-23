@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "phase": "cancel-MIME-patch-host-validation",
+  "codeCommit": "14d5f82",
+  "rootIntegratedCommit": "676eb21",
+  "rootCurrentHead": "8b85a082d148c8a7eb94ed637bb0fb81e7c9c4b0",
+  "completedUtc": "2026-10-23T16:22:42.4162567Z",
+  "isolatedSourceRoot": "C:/Users/user1000/.codex/scratch/rc505-cancel-media-type",
+  "rootSourceRoot": "C:/Users/user1000/.codex/worktrees/rc505-final-parity/26_27_WebRC",
+  "changeScope": "cancel route media type token only; core unchanged",
+  "isolatedHqCTest": {
+    "passed": 12,
+    "total": 12,
+    "seconds": 24.5
+  },
+  "rootHqCTest": {
+    "passed": 12,
+    "total": 12,
+    "seconds": 21.05
+  },
+  "allBuildExitCodes": 0,
+  "buildJobs": 2,
+  "realWasapiHostStarted": false,
+  "performanceRun": false,
+  "portable56Repeated": false,
+  "productionWarningSettingsChanged": false,
+  "binaries": [
+    {
+      "path": "C:/Users/user1000/.codex/scratch/rc505-cancel-hq-build/native_bridge_host_simulation.exe",
+      "sha256": "bb57eaf766df4932337c3d40a1bccae5fd98fe610ca449908d398fda95a6383f",
+      "bytes": 1799168
+    },
+    {
+      "path": "C:/Users/user1000/.codex/scratch/rc505-cancel-hq-build/native_bridge_host.exe",
+      "sha256": "dcb495b7f72d420c5ba477068fd04e48692b55c7ecdfcb51c1e4a01fd24336df",
+      "bytes": 1857024
+    },
+    {
+      "path": "C:/Users/user1000/.codex/scratch/rc505-final-hq-build/Release/native_bridge_host_simulation.exe",
+      "sha256": "ffa7c6a4528d3802939354c6f933e7c75503d055821c759ba377c072468cd903",
+      "bytes": 1799168
+    },
+    {
+      "path": "C:/Users/user1000/.codex/scratch/rc505-final-wasapi-ninja/native_bridge_host.exe",
+      "sha256": "3af6246476c315556aa6e098c8f4a761793c0e0b901ebd7c32767b9b93df8593",
+      "bytes": 1857024
+    }
+  ],
+  "logs": [
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\hq-build.log",
+      "sha256": "9712b5718934ff2a9e096fc331a9281f31fc02bf30657ad16951cb563c224777",
+      "compilerWarningsOrErrors": 0
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\isolated-hq-ctest.log",
+      "sha256": "9a232ceb100f98a92c147051c4d68c826e85310be10a8d8fd5ec34c9c3638ec0",
+      "compilerWarningsOrErrors": 0
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\isolated-wasapi-build.log",
+      "sha256": "f21f28251b58c969363b1cc9a558b37b5e7ee2f64aad131698d15f48f58b015b",
+      "compilerWarningsOrErrors": 0
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\root-hq-build.log",
+      "sha256": "20b5087e69fd035388f16a9782c370c899e4c6f4172528a2f2ca006566a9b05d",
+      "compilerWarningsOrErrors": 0
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\root-hq-ctest.log",
+      "sha256": "2288aa2b18df5796f925a4551ca4595e3445373ad51b1c0b7f132d2ac8a31ce3",
+      "compilerWarningsOrErrors": 0
+    },
+    {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-cancel-evidence\\root-wasapi-build.log",
+      "sha256": "c0143c947277be034c83757b33cff94d11073e0761ed8ca1587094558e27b79c",
+      "compilerWarningsOrErrors": 0
+    }
+  ]
+}
