@@ -7,6 +7,11 @@ function send(state: Rc505DisplayState, ...actions: Rc505DisplayAction[]): Rc505
 }
 
 describe('RC-505 Classic LCD state machine', () => {
+  it('keeps identical renderer page-count reports idempotent instead of retriggering reactive editors', () => {
+    const state = send(createRc505DisplayState(), { type: 'OPEN_EDITOR', target: 'memory', category: 'name' },
+      { type: 'EDITOR_PAGE_COUNT', count: 3 });
+    expect(send(state, { type: 'EDITOR_PAGE_COUNT', count: 3 })).toBe(state);
+  });
   it('wraps the seven PLAY variants and the three MIXER pages independently', () => {
     let state = createRc505DisplayState();
     state = send(state, { type: 'PAGE', direction: -1 });

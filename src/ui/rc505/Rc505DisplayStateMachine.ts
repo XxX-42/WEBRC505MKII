@@ -202,6 +202,7 @@ export function reduceRc505DisplayState(state: Rc505DisplayState, action: Rc505D
     case 'EDITOR_PAGE_COUNT': {
       if (state.view.kind !== 'editor') return state;
       const pageCount = Number.isInteger(action.count) ? Math.max(1, action.count) : 1;
+      if (pageCount === state.view.pageCount && state.view.pageIndex < pageCount) return state;
       return withView(state, { ...state.view, pageCount, pageIndex: Math.min(state.view.pageIndex, pageCount - 1) });
     }
     case 'REQUEST_CONFIRMATION':
