@@ -10,6 +10,8 @@ export interface NativeMemoryPort {
   archive(): Promise<Uint8Array>;
   publish(status: NativeStatus): void;
   install?(status: NativeStatus): void;
+  /** Host publication is confirmed; invalidate previous-generation UI ACKs before any readback. */
+  committed?(generation: number): void;
   pendingEdits?(): boolean;
 }
 const copyJson = (value: unknown): Rc505Json => JSON.parse(JSON.stringify(value)) as Rc505Json;
@@ -143,6 +145,8 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       }
       const savedTransport = (await decodeProjectArchive(document.archive)).transport;
       const bytes = await encodeRc505Memory(document);
+      const targetExtensions = structuredClone(document.extensions.WEBRC);
+      const targetFields = structuredClone(document.semantics.fields);
       if (revision() !== expectedRevision) throw new Error('Native Memory changed during preparation.');
       const generation = await port.bridge.beginProjectArchiveImport(bytes, expectedHostRevision!);
       let state: 'prepared' | 'committed' | 'disposed' = 'prepared';
@@ -157,8 +161,9 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           // The host ACK owns the target metadata even if later UI/readback
           // synchronization fails. A future capture combines this opaque data
           // with fresh authoritative Native settings and exact archive bytes.
-          preservedExtensions = structuredClone(document.extensions.WEBRC);
-          preservedFields = structuredClone(document.semantics.fields);
+          preservedExtensions = targetExtensions;
+          preservedFields = targetFields;
+          port.committed?.(generation);
           const deadline = Date.now() + 10_000;
           for (;;) {
             const status = await port.bridge.getStatus();

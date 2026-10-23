@@ -1,5 +1,7 @@
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
+import { resolveNativeFxReadback } from '../../src/ui/rc505/Rc505FxReadback';
 import { createNativeRc505MemoryRuntime } from '../../src/audio/NativeRc505MemoryRuntime';
 import { Rc505MemoryCommittedError, decodeRc505Memory } from '../../src/audio/Rc505Memory';
 import { encodeProjectArchive } from '../../src/audio/projectArchive';
@@ -31,16 +33,76 @@ function fixture() {
     cancelProjectArchiveImport: vi.fn(async () => undefined),
   };
   const install = vi.fn();
+  const committed = vi.fn();
   const runtime = createNativeRc505MemoryRuntime({ bridge: bridge as unknown as NativeBridgeClient,
-    status: () => cached, editRevision: () => String(edits), publish: (value) => { cached = value; }, install,
+    status: () => cached, editRevision: () => String(edits), publish: (value) => { cached = value; }, install, committed,
     archive: () => encodeProjectArchive({ name: '', bpm: 120, tracks: [null, null, null, null, null] }) });
-  return { runtime, bridge, install, edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
+  return { runtime, bridge, install, committed, hostStatus: () => status, edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
 }
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Native semantic Memory runtime', () => {
+  it.each([false, true])('invalidates every old engine bank/gate/Mark ACK at host commit (network failure: %s)', async (failReadback) => {
+    const h = fixture();
+    const status = h.hostStatus();
+    const banks = [status.nativeFx!.inputCatalogSlots!, status.nativeFx!.catalogSlots!,
+      ...status.nativeFx!.perTrackCatalogBanks!.map((bank) => bank.slots)];
+    for (const bank of banks) for (const slot of bank) Object.assign(slot, {
+      effectId: 'filter.lpf', parameters: { cutoffHz: 1000 }, prepared: true,
+    });
+    Object.assign(status, { nativeLooperMultiTrackImplemented: true, nativeLooperTrackCount: 5 });
+    status.nativeFx!.trackFxApplyAvailable = true;
+    (NativeAudioEngine as any).instance = null;
+    const engine = NativeAudioEngine.getInstance();
+    const internal = engine as any;
+    internal.bridge = h.bridge;
+    internal.applyStatus(status);
+    internal.hydrateNativeCatalogFromStatus(status);
+    engine.exportProjectArchive = () => encodeProjectArchive({ name: '', bpm: 120, tracks: [null, null, null, null, null] });
+    const targets = [{ path: 'input' as const, trackId: 0 }, { path: 'track' as const, trackId: 0 },
+      ...[1, 2, 3, 4, 5].map((trackId) => ({ path: 'track' as const, trackId }))];
+    for (const target of targets) for (let index = 0; index < 4; index++) {
+      expect(resolveNativeFxReadback(engine.getCatalogFxSlotStatus(target.path, index, target.trackId)).activeLabel).toBe('ON');
+    }
+    const runtime = engine.createRc505MemoryRuntime();
+    const document = await runtime.capture();
+    const candidate = await runtime.prepare(document, runtime.revision());
+    const freshReadback = h.bridge.getStatus.getMockImplementation()!;
+    h.bridge.getStatus.mockImplementationOnce(async () => {
+      for (const target of targets) for (let index = 0; index < 4; index++) {
+        const slot = engine.getCatalogFxSlotStatus(target.path, index, target.trackId);
+        expect(slot).toMatchObject({ acknowledged: false, outcomeUnknown: true, acknowledgedParameters: null });
+        expect(resolveNativeFxReadback(slot)).toMatchObject({ state: 'UNKNOWN', activeLabel: '—' });
+      }
+      expect(engine.getTrackFxApply().every((gate) => !gate.available && !gate.applied)).toBe(true);
+      expect(engine.getMarkState(1)).toMatchObject({ supported: false, exists: false, canSet: false, canClear: false,
+        unavailableReason: expect.stringContaining('waiting for fresh Native MARK readback') });
+      // Even another status publication cannot resurrect cached ACKs before installation.
+      internal.applyStatus(status);
+      expect(resolveNativeFxReadback(engine.getCatalogFxSlotStatus('input', 0)).state).toBe('UNKNOWN');
+      if (failReadback) throw new Error('post-ACK network failure');
+      return freshReadback();
+    });
+    if (failReadback) {
+      await expect(candidate.commit()).rejects.toMatchObject({ committed: true, generation: 19 });
+      for (const target of targets) for (let index = 0; index < 4; index++) {
+        expect(resolveNativeFxReadback(engine.getCatalogFxSlotStatus(target.path, index, target.trackId)).state).toBe('UNKNOWN');
+      }
+    } else {
+      await candidate.commit();
+      for (const target of targets) for (let index = 0; index < 4; index++) {
+        expect(engine.getCatalogFxSlotStatus(target.path, index, target.trackId)).toMatchObject({
+          acknowledged: true, acknowledgedEffectId: 'filter.lpf', acknowledgedParameters: { cutoffHz: 1000 }, outcomeUnknown: false,
+        });
+      }
+      expect(engine.getTrackFxApply(1)[0]).toMatchObject({ available: true, applied: true });
+    }
+    await candidate.dispose();
+    expect(h.bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
+  });
+
   it('captures real banks/gates/output state and marks TrackProxy placeholders unavailable', async () => {
     const { runtime } = fixture();
     const document = await runtime.capture();
@@ -91,7 +153,7 @@ describe('Native semantic Memory runtime', () => {
     expect(bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
   });
   it('reports readback failure after host ACK as committed and never cancels the installed generation', async () => {
-    const { runtime, bridge } = fixture();
+    const { runtime, bridge, committed } = fixture();
     const document = await runtime.capture();
     const prepared = await runtime.prepare(document, runtime.revision());
     bridge.getStatus.mockRejectedValueOnce(new Error('network readback unavailable'));
@@ -99,6 +161,7 @@ describe('Native semantic Memory runtime', () => {
       committed: true, generation: 19, message: expect.stringContaining('generation 19 committed'),
       cause: expect.objectContaining({ message: 'network readback unavailable' }),
     });
+    expect(committed).toHaveBeenCalledExactlyOnceWith(19);
     await prepared.dispose();
     expect(bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
   });

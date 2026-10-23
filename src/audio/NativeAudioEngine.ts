@@ -572,6 +572,8 @@ export class NativeAudioEngine {
   }
 
   public getMarkState(trackId: number): TrackMarkState {
+    if (this.nativeMemoryReadbackGeneration !== null) return unsupportedTrackMarkState(
+      `Memory generation ${this.nativeMemoryReadbackGeneration} committed; waiting for fresh Native MARK readback.`);
     const nativeMark = this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.mark;
     if (this.latestStatus?.nativeMarkVersion !== 1 || !this.latestStatus.nativeMarks || !nativeMark
       || !this.isNativeTrackAvailable(trackId)) {
@@ -770,6 +772,18 @@ export class NativeAudioEngine {
       editRevision: () => `${this.nativeFxSyncRevision}:${[...this.nativeCatalogSlotEditRevisions.values()].reduce((sum, value) => sum + value, 0)}`,
       archive: () => this.exportProjectArchive(''),
       publish: (status) => this.applyStatus(status),
+      committed: (generation) => {
+        this.nativeMemoryReadbackGeneration = generation;
+        // A host ACK installs a new graph, so every previous status snapshot and
+        // cached slot ACK is obsolete even if the next HTTP read fails.
+        this.latestStatus = null;
+        for (const runtime of this.nativeCatalogFxRuntime.values()) {
+          runtime.acknowledged = false; runtime.outcomeUnknown = true;
+          runtime.acknowledgedEffectId = null; runtime.acknowledgedParameters = null;
+          runtime.appliedBypassed = null; runtime.appliedRevision = null;
+        }
+        this.emitAll();
+      },
       pendingEdits: () => this.nativeFxSyncRunning || this.nativeFxSyncScheduled || this.nativeCatalogFxDirtySlots.size > 0,
       install: (status) => {
         this.nativeCatalogFxDirtySlots.clear();
@@ -780,11 +794,13 @@ export class NativeAudioEngine {
         this.nativePerTrackFxEdited.clear();
         this.applyStatus(status);
         this.hydrateNativeCatalogFromStatus(status);
+        this.nativeMemoryReadbackGeneration = null;
         this.emitAll();
       },
     });
   }
   private rc505MemoryRuntime: Rc505MemoryRuntime | null = null;
+  private nativeMemoryReadbackGeneration: number | null = null;
 
   public async exportProjectArchive(name: string): Promise<Uint8Array> {
     const initial = await this.bridge.getStatus();
@@ -1193,7 +1209,7 @@ export class NativeAudioEngine {
   public getTrackFxApply(trackId?: number): TrackFxApplyStatus[] {
     if (trackId !== undefined && (!Number.isInteger(trackId) || trackId < 1 || trackId > 5)) return [];
     const requestedTracks = trackId === undefined ? [1, 2, 3, 4, 5] : [trackId];
-    const advertised = this.latestStatus?.nativeFx?.trackFxApplyAvailable === true;
+    const advertised = this.nativeMemoryReadbackGeneration === null && this.latestStatus?.nativeFx?.trackFxApplyAvailable === true;
     return requestedTracks.map((id) => {
       const runtime = this.latestStatus?.nativeFx?.trackFxApply?.find((item) => item.trackId === id);
       const available = advertised && runtime !== undefined && this.isNativeTrackAvailable(id);
@@ -1394,6 +1410,14 @@ export class NativeAudioEngine {
     const state = this.nativeCatalogStates(path, trackId)[slotIndex];
     const slot = NATIVE_FX_SLOT_IDS[slotIndex];
     if (!state || !slot) throw new RangeError('Invalid Native catalog slot index; expected 0–3.');
+    if (this.nativeMemoryReadbackGeneration !== null) return {
+      path, slot, trackId, requestedEffectId: null, acknowledgedEffectId: null,
+      requestedParameters: {}, acknowledgedParameters: null, requestedBypassed: false,
+      appliedBypassed: null, prepared: null, processingFaulted: false, controlFaulted: false,
+      pendingApply: false, outcomeUnknown: true, requestedRevision: null, appliedRevision: null,
+      acknowledged: false, pendingRestart: false,
+      error: `Memory generation ${this.nativeMemoryReadbackGeneration} committed; waiting for fresh Native FX readback.`,
+    };
     const reported = this.nativeCatalogSlotFromStatus(path, slot, trackId);
     const runtime = this.nativeCatalogFxRuntime.get(this.nativeCatalogSlotKey(path, slot, trackId));
     return runtime ? {
