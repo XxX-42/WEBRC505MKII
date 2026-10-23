@@ -1,5 +1,7 @@
 # RC-505mkII Classic UI parity
 
+> Historical UI-only milestone from 2026-10-22. Its SHAs, test counts and capability gaps describe that milestone. Current integrated software, Native routing/Memory/Mark and remaining hardware blockers are tracked in the [2026-10-23 final parity dashboard](../final-parity-20261023/STATUS.md) and its [regression receipt](../final-parity-20261023/regression.json).
+
 Overall: **PARTIAL**. A shared display/control layer now drives Browser and Native. This does not certify complete hardware emulation, physical audio loopback, or measured LED color.
 
 ## Baseline

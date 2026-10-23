@@ -1,0 +1,59 @@
+{
+  "status": "PASS_LOCAL_BROWSER_VIRTUAL_INPUT",
+  "origin": "http://127.0.0.1:5173",
+  "startedUtc": "2026-10-23T16:26:22.343Z",
+  "completedUtc": "2026-10-23T16:26:26.841Z",
+  "playScreens": [
+    "memory-number",
+    "track-status",
+    "loop-tracks",
+    "loop-status",
+    "loop-level",
+    "input-fx",
+    "track-fx"
+  ],
+  "result": {
+    "state": "STOPPED",
+    "channels": 2,
+    "frames": 18048,
+    "energy": [
+      44.275558422358074,
+      261.64186952981595
+    ],
+    "differentStereo": true,
+    "mark": {
+      "supported": true,
+      "exists": false,
+      "canSet": true,
+      "canClear": false,
+      "backSupported": false,
+      "busy": false,
+      "retainedPcmBytes": 0,
+      "unavailableReason": null,
+      "requestedGeneration": 2,
+      "appliedGeneration": 2
+    },
+    "gate": {
+      "trackId": 1,
+      "available": true,
+      "requested": false,
+      "applied": false,
+      "requestedRevision": 1,
+      "appliedRevision": 1,
+      "semanticRevision": 1,
+      "inputAppliedRevision": 1,
+      "trackAppliedRevision": 1,
+      "pending": false,
+      "controlFaulted": false,
+      "peak": 0,
+      "rms": 0,
+      "error": ""
+    }
+  },
+  "pageErrors": [],
+  "scope": "Actual 5173 deployment, real AudioContext/capture worklet, distinct virtual stereo input, physical UI record/play/overdub/stop and Mark SET/CLEAR; fresh browser context.",
+  "limitations": [
+    "Chromium process output muted; no physical audio audibility or latency claim.",
+    "Memory and FX Bank are covered separately by the full UI regression."
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-24",
+  "status": "PARTIAL_SOFTWARE_GATES",
+  "source": {
+    "mainBase": "71b58f29f58bf3a9a7e3faf79d5dbe346a4e0114",
+    "featureBranch": "codex/rc505-hil-parity-final-20261023",
+    "validatedUiSource": "9e48f39",
+    "nativeHostMimeSource": "676eb21",
+    "reportHeadBeforeThisReceipt": "12c6997081acfc426f7e106e5762f5b0b619ff06"
+  },
+  "unit": {
+    "status": "PASS",
+    "passed": 2530,
+    "failed": 0,
+    "skipped": 0,
+    "files": 210,
+    "source": "9e48f39",
+    "receipt": "C:/Users/user1000/.codex/scratch/rc505-final-unit-release.json"
+  },
+  "productionBuild": {
+    "status": "PASS",
+    "viteSeconds": 11.12,
+    "licenseFilesVerified": 6,
+    "licenseFilesExpected": 6,
+    "source": "9e48f39",
+    "receipt": "C:/Users/user1000/.codex/scratch/rc505-final-production-build.log"
+  },
+  "playwright": {
+    "targetedNewCases": { "status": "PASS", "passed": 4, "total": 4, "skipped": 0, "retries": 0 },
+    "completeSuite": {
+      "status": "FAIL",
+      "passed": 85,
+      "failed": 27,
+      "skipped": 0,
+      "retries": 0,
+      "total": 112,
+      "durationSeconds": 599.33,
+      "source": "12c6997081acfc426f7e106e5762f5b0b619ff06",
+      "failureGroups": [
+        { "count": 21, "symptom": "Browser startup test could not find the START AUDIO control." },
+        { "count": 1, "symptom": "AudioContext recovery error was not shown in the expected alert." },
+        { "count": 1, "symptom": "Repeated Browser recovery observed output gain 0 instead of the expected 37." },
+        { "count": 1, "symptom": "Browser stereo recording rejected a stale input capture frame." },
+        { "count": 1, "symptom": "Classic LCD Memory display differed from the older expected labels." },
+        { "count": 1, "symptom": "Classic LCD editor focus differed from the expected encoder focus." },
+        { "count": 1, "symptom": "Classic FX editor now shows page 2/4; the test expected 2/3." }
+      ],
+      "receipt": "C:/Users/user1000/.codex/scratch/rc505-final-full-e2e.json"
+    }
+  },
+  "native": {
+    "status": "PASS_SCOPED_SOFTWARE_TESTS",
+    "portableCtest": { "passed": 56, "total": 56, "source": "c6d5d98" },
+    "hqSimulationCtest": { "passed": 12, "total": 12, "source": "676eb21", "seconds": 21.05 },
+    "wasapiBuild": { "status": "PASS", "source": "676eb21", "sha256": "3af6246476c315556aa6e098c8f4a761793c0e0b901ebd7c32767b9b93df8593" },
+    "simulationHost": { "sha256": "ffa7c6a4528d3802939354c6f933e7c75503d055821c759ba377c072468cd903" },
+    "runtime": "LOCAL_DEPLOY_BLOCKED",
+    "hardware": "BLOCKED_NO_RC505_DEVICE"
+  },
+  "localBrowser": {
+    "status": "PASS_ONCE_WITH_LATER_CAPTURE_FAILURE",
+    "url": "http://127.0.0.1:5173/?audio=browser&ui=classic",
+    "checks": [
+      "Seven Classic Play screens cycle and return.",
+      "Two-channel distinct virtual input records, plays, overdubs and stops through panel controls.",
+      "Mark SET and CLEAR complete through the Classic secondary control layer.",
+      "Track FX gate returns to confirmed bypass with matching input and playback revisions."
+    ],
+    "artifacts": "../ui-parity/visual/local-smoke/receipt.json and screenshots",
+    "additionalAttempt": {
+      "status": "FAIL_SHARED_CAPTURE_INPUT_FRAME_DISCONTINUITY",
+      "context": "A second expanded smoke ran while the complete Playwright suite was loading/testing in parallel; the shared capture correctly rejected the requested start frame outside retained pre-roll. No timeout was increased and no retry was used to turn this into PASS.",
+      "diagnostic": "C:/Users/user1000/.codex/scratch/rc505-local-smoke-r4-failure.json",
+      "screenshot": "C:/Users/user1000/.codex/scratch/rc505-local-smoke-r4-failure.png",
+      "runLog": "C:/Users/user1000/.codex/scratch/rc505-final-local-browser-smoke-r4.log"
+    },
+    "limitations": ["No physical loopback, audibility or latency claim.", "Memory and FX Bank have separate browser regression coverage."]
+  },
+  "performance": {
+    "status": "NOT_VERIFIED_FINAL_SOURCE",
+    "physicalLatency": null,
+    "physicalXruns": null,
+    "note": "Historical software ABBA recorded 43 deadline exceedances; no final-source performance PASS is claimed."
+  },
+  "visual": {
+    "status": "PARTIAL",
+    "note": "Independent final screenshot review found no new high-impact issue; physical geometry remains approximate and LED photometry unmeasured."
+  },
+  "unvalidatedWorktreesExcluded": [
+    { "branch": "codex/native-rec-action", "status": "WIP_UNCOMPILED_UNTESTED" },
+    { "branch": "codex/browser-autorec", "status": "FOCUSED_TESTS_PASS_BUT_NOT_BUILT_OR_FULLY_VALIDATED" }
+  ],
+  "hardwareValidated": false
+}
