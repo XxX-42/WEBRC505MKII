@@ -10,10 +10,16 @@ async function loadPanel(search: string, location: 'input' | 'track' = 'track', 
 }
 
 describe('FX panel runtime selection', () => {
+  let runtimeModulesWarmed = false;
   beforeEach(async () => {
     localStorage.clear();
-    // Warm cold transformation in the hook; loadPanel still resets singleton state.
-    await import('../../src/composables/useFxPanelState');
+    if (!runtimeModulesWarmed) {
+      // Compile the lazy runtime graph in the existing setup-hook budget.
+      // Each case still resets its modules/storage and keeps its original budget.
+      window.history.replaceState({}, '', '/?audio=native');
+      await import('../../src/composables/useFxPanelState');
+      runtimeModulesWarmed = true;
+    }
   });
 
   it('keeps Native FX disabled until a bridge status confirms catalog support', async () => {

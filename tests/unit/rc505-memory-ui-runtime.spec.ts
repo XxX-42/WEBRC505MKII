@@ -27,7 +27,7 @@ function harness(mode: FxPresetRuntime = 'browser') {
   const base: Rc505MemoryRuntime = { revision: () => String(audioRevision), canSwitch: () => ({ allowed: true, reason: '' }), capture: async () => structuredClone(document),
     prepare: vi.fn(async (_document, revision) => { expect(revision).toBe(String(audioRevision)); return { commit, dispose: vi.fn(async () => {}) }; }) };
   const runtime = wrapRc505MemoryUiRuntime(base, mode);
-  return { runtime, base, documents, switches: () => switches, adopts, commit, edit: () => { uiRevision++; } };
+  return { runtime, base, sourceDocument: document, documents, switches: () => switches, adopts, commit, edit: () => { uiRevision++; } };
 }
 
 describe('semantic Memory UI sidecars', () => {
@@ -53,6 +53,35 @@ describe('semantic Memory UI sidecars', () => {
     const candidate = await h.runtime.prepare(document, before);
     h.switches().input.A.mode = 'SINGLE'; h.edit(); h.switches().input.A.mode = 'MULTI'; h.edit();
     await expect(candidate.commit()).rejects.toThrow(/changed/); expect(h.commit).not.toHaveBeenCalled(); expect(h.adopts).not.toHaveBeenCalled();
+  });
+
+  it('runs the optional hydration callback after sidecar adoption and classifies callback failure as committed', async () => {
+    const h = harness(), callback = vi.fn(async () => { expect(h.adopts).toHaveBeenCalledTimes(2); throw new Error('hydration failed'); });
+    expect(wrapRc505MemoryUiRuntime(h.base, 'browser', callback)).toBe(h.runtime);
+    const document = await h.runtime.capture(), candidate = await h.runtime.prepare(document, h.runtime.revision());
+    await expect(candidate.commit()).rejects.toBeInstanceOf(Rc505MemoryCommittedError);
+    expect(h.commit).toHaveBeenCalledOnce(); expect(callback).toHaveBeenCalledOnce();
+  });
+
+  it('requires exact Native canonical proof and rejects contradictory saved named controls', async () => {
+    const h = harness('native');
+    const slot = h.documents.input.banks.A.slots[0]; Object.assign(slot, { type: 'DSP LPF', value: 50, active: true, namedParametersByType: { 'DSP LPF': { cutoff_hz: 1000 } } });
+    (h.sourceDocument.extensions.WEBRC.nativeMemory as any).banks[0][0] = { effectId: 'filter.lpf', bypassed: false, parameters: { cutoff_hz: 1000 } };
+    const legacy = await h.runtime.capture(); expect((legacy.extensions.WEBRC.rc505FxUi as any).banks.input.activeBank).toBeNull();
+    h.documents.input.banks.A.nativeParameters = [{ cutoff_hz: 1000 }, {}, {}, {}];
+    const document = await h.runtime.capture(); expect((document.extensions.WEBRC.rc505FxUi as any).banks.input.activeBank).toBe('A');
+    (document.extensions.WEBRC.rc505FxUi as any).banks.input.banks.A.slots[0].namedParametersByType['DSP LPF'].cutoff_hz = 2000;
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/contradict/);
+  });
+
+  it('clears Browser bank identity for unproven typed rows instead of asserting a blue bank', async () => {
+    const h = harness();
+    Object.assign(h.documents.input.banks.A.slots[0], { type: 'FILTER', value: 50, active: true, preampParameters: { gainPercent: 77 } });
+    h.documents.input.banks.A.browserParameters = [{ frequency: 0.4 }, {}, {}, {}];
+    (h.sourceDocument.extensions.WEBRC.browserMemory as any).fx.input[0] = { type: 'FILTER', active: true, amount: 50, parameters: { frequency: 0.4 } };
+    const document = await h.runtime.capture();
+    expect((document.extensions.WEBRC.rc505FxUi as any).banks.input.activeBank).toBeNull();
+    expect(h.documents.input.activeBank).toBe('A');
   });
 
   it('rejects malformed MODE and selected-bank/engine contradictions before preparing audio', async () => {

@@ -10,6 +10,8 @@ export interface FxPresetBankProfile {
   slots: FxSlotState[];
   /** Captured Browser DSP state, present only after the runtime reported all slots ready. */
   browserParameters?: Array<Record<string, FxPresetParameter> | null>;
+  /** Complete confirmed Native host controls; absent legacy profiles have no identity proof. */
+  nativeParameters?: Array<Record<string, number> | null>;
 }
 
 export interface FxPresetBankDocument {
@@ -68,6 +70,11 @@ export function parseFxPresetBankDocument(
           !rawProfile.browserParameters.every(isBrowserParameterRecordOrNull)) return null;
       profile.browserParameters = rawProfile.browserParameters.map((parameters) =>
         parameters === null ? null : { ...parameters });
+    }
+    if (rawProfile.nativeParameters !== undefined) {
+      if (!Array.isArray(rawProfile.nativeParameters) || rawProfile.nativeParameters.length !== 4 || !rawProfile.nativeParameters.every((parameters) =>
+        parameters === null || isRecord(parameters) && Object.values(parameters).every((value) => typeof value === 'number' && Number.isFinite(value)))) return null;
+      profile.nativeParameters = rawProfile.nativeParameters.map((parameters) => parameters === null ? null : { ...parameters });
     }
     banks[id] = profile;
   }

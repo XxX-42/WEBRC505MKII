@@ -295,6 +295,7 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
     const profile = document.banks[bank];
     profile.slots = cloneFxPresetSlots(rows);
     if (runtime === 'browser' && snapshot) profile.browserParameters = copyBrowserParameters(snapshot);
+    if (runtime === 'native') profile.nativeParameters = rows.map((_, index) => ({ ...engine.getNativeCatalogFxSlotStatus(location, index)?.acknowledgedParameters }));
     return persist();
   };
 
@@ -481,6 +482,7 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
         document.banks[bank].slots = live;
         const snapshot = runtime === 'browser' ? browserSnapshot() : null;
         if (snapshot) document.banks[bank].browserParameters = copyBrowserParameters(snapshot);
+        if (runtime === 'native') document.banks[bank].nativeParameters = live.map((_, index) => ({ ...engine.getNativeCatalogFxSlotStatus(location, index)?.acknowledgedParameters }));
       } else document.activeBank = null;
       return document;
     },
@@ -497,11 +499,26 @@ export function useRc505FxBanks(location: FxPresetLocation): Rc505FxBanks {
       pendingCandidate = null; changedDuringApply = false; state.busy = false;
       memoryReadbackPending = document.activeBank !== null && !storageError;
       state.requestedBank = document.activeBank; state.appliedBank = null;
-      state.error = storageError || notice; storageUnavailable = !!storageError; state.unavailableReason = storageError;
+      state.error = storageError || notice || (document.activeBank === null ? 'Memory FX bank identity is unproven; retained profiles remain available, but no bank is confirmed.' : '');
+      storageUnavailable = !!storageError; state.unavailableReason = storageError;
       memoryEditEpoch += 1n;
       // UI rows are hydrated separately after the confirmed engine commit. Until
       // their normal readback gate agrees, the bank's blue LED stays cleared.
       void nextTick().then(() => { replacingRows = false; refreshUnavailableReason(); });
+    },
+    finishAdoption: () => {
+      if (storageUnavailable || !documentRef.value || !state.requestedBank) return;
+      const bank = state.requestedBank, rows = getLiveSlots();
+      if (!slotsMatchRuntime(rows, undefined, false)) { state.appliedBank = null; return; }
+      const profile = documentRef.value.banks[bank];
+      profile.slots = rows;
+      if (runtime === 'browser') { const snapshot = browserSnapshot(); if (snapshot) profile.browserParameters = copyBrowserParameters(snapshot); }
+      else profile.nativeParameters = rows.map((_, index) => ({ ...engine.getNativeCatalogFxSlotStatus(location, index)?.acknowledgedParameters }));
+      const serialized = serializeFxPresetBankDocument(documentRef.value);
+      try { localStorage.setItem(key, serialized); }
+      catch (error) { storageUnavailable = true; state.appliedBank = null; setStorageFailure(state, 'Memory audio committed, but hydrated FX bank rows could not be saved.'); throw error; }
+      lastSerialized = serialized; pendingCandidate = null; memoryReadbackPending = false;
+      state.appliedBank = bank; state.error = ''; memoryEditEpoch += 1n;
     },
   });
 

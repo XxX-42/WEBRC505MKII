@@ -1,7 +1,7 @@
 import { sameNativeControlSnapshot } from '../audio/nativeFxParameterSnapshots';
-import { computed, reactive, readonly, ref } from 'vue';
+import { computed, nextTick, reactive, readonly, ref } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
-import { nativeCatalogEffectId, nativeCatalogMacroParameters, NATIVE_CATALOG_EMPTY_LABEL } from '../audio/nativeFxCatalog';
+import { nativeCatalogEffectId, nativeCatalogMacroParameters, NATIVE_CATALOG_EMPTY_LABEL, NATIVE_CATALOG_FX_LABELS } from '../audio/nativeFxCatalog';
 import type { FxSlotId } from './usePanelFocus';
 
 export const NATIVE_TRACK_FX_STORAGE_KEY = 'webrc505_native_per_track_fx_v1';
@@ -34,6 +34,43 @@ const warnings = reactive<Record<string, string>>({});
 const statusRevision = ref(0);
 let initialized = false;
 let nativeSynced = false;
+let memoryHydrating = false;
+const memoryAdoptedSlots = new WeakSet<NativeTrackFxSlotState>();
+export interface ConfirmedNativeFxUiSlot { id: FxSlotId; type: string; active: boolean; value: number; parameters: Record<string, number> }
+
+/** Read-only, all-four-slot gate. No requested or placeholder controls enter hydration. */
+export function readConfirmedNativeFxUiBank(path: 'input' | 'track', trackId = 0): ConfirmedNativeFxUiSlot[] {
+  const engine = AudioEngine.getInstance();
+  if (engine.getMode() !== 'native') throw new Error('Native FX hydration requires the Native runtime.');
+  return slotIds.map((id, index) => {
+    const slot = engine.getNativeCatalogFxSlotStatus(path, index, trackId);
+    if (!slot || !slot.acknowledged || slot.pendingApply || slot.pendingRestart || slot.outcomeUnknown || slot.processingFaulted || slot.controlFaulted || slot.error
+      || slot.requestedRevision !== slot.appliedRevision || slot.requestedEffectId !== slot.acknowledgedEffectId
+      || slot.requestedBypassed !== slot.appliedBypassed) throw new Error(`Native ${path}/${trackId}/${id} lacks confirmed FX readback.`);
+    const effect = slot.acknowledgedEffectId;
+    const type = effect ? NATIVE_CATALOG_FX_LABELS[effect] : NATIVE_CATALOG_EMPTY_LABEL;
+    const parameters = slot.acknowledgedParameters ?? (effect ? null : {});
+    if (!type || !parameters || effect && slot.prepared !== true || Object.values(parameters).some((value) => !Number.isFinite(value))) throw new Error('Native FX readback contains unsupported authored parameters.');
+    const value = effect === 'transpose' ? ((parameters.shift_semitones ?? 0) + 24) / 48 * 100
+      : effect === 'pitch_bend' ? (parameters.range ?? 0) / 24 * 100
+        : parameters.mix_percent ?? parameters.mix ?? (parameters.wet_mix !== undefined ? parameters.wet_mix * 100 : 0);
+    return { id, type, active: !!effect && !slot.appliedBypassed, value: boundedAmount(value), parameters: { ...parameters } };
+  });
+}
+
+export async function adoptCommittedNativeTrackFxState(banks = Array.from({ length: 5 }, (_, index) => readConfirmedNativeFxUiBank('track', index + 1))): Promise<void> {
+  nativeSynced = true; memoryHydrating = true;
+  try {
+    ensureNativeTrackFxStateInitialized(); pendingNamedParameters.clear();
+    for (const key of Object.keys(warnings)) delete warnings[key];
+    banks.forEach((slots, index) => slots.forEach((saved, slotIndex) => {
+      const slot = state.tracks[index]!.slots[slotIndex]!;
+      Object.assign(slot, { id: saved.id, type: saved.type, value: saved.value, active: saved.active, namedParameters: { ...saved.parameters } });
+      memoryAdoptedSlots.add(slot);
+    }));
+    statusRevision.value += 1; await nextTick(); persist(true);
+  } finally { memoryHydrating = false; }
+}
 interface PendingNamedParameters {
   effectId: string;
   overrides: Record<string, number>;
@@ -63,6 +100,7 @@ function isDefiniteNamedParameterRejection(message: string): boolean {
 }
 
 function reconcilePendingNamedParameters(engine: AudioEngine) {
+  if (memoryHydrating) return;
   if (engine.getMode() !== 'native' || pendingNamedParameters.size === 0) return;
   let changed = false;
   for (const [key, pending] of pendingNamedParameters) {
@@ -98,11 +136,12 @@ function reconcilePendingNamedParameters(engine: AudioEngine) {
   if (changed) persist();
 }
 
-function persist() {
+function persist(throwOnFailure = false) {
   try {
     localStorage.setItem(NATIVE_TRACK_FX_STORAGE_KEY, JSON.stringify({ version: 1, target: state.target, tracks: state.tracks }));
-  } catch {
+  } catch (error) {
     warnings.storage = 'Native per-track FX settings could not be saved in this browser.';
+    if (throwOnFailure) throw error;
   }
 }
 
@@ -150,6 +189,7 @@ function load() {
 }
 
 function syncSlot(trackId: number, slotIndex: number) {
+  if (memoryHydrating) return;
   const engine = AudioEngine.getInstance();
   if (engine.getMode() !== 'native') return;
   const slot = state.tracks[trackId - 1]!.slots[slotIndex]!;
@@ -244,6 +284,7 @@ export function useNativeTrackFxState() {
       if (slot.type === type) return;
       pendingNamedParameters.delete(runtimeKey(trackId, slotIndex));
       slot.type = type;
+      memoryAdoptedSlots.delete(slot);
       slot.value = type === 'TRANSPOSE' || type === 'PITCH BEND' ? 50 : 0;
       slot.active = false;
       slot.namedParameters = {};
@@ -308,7 +349,7 @@ export function useNativeTrackFxState() {
       ?? { ...nativeCatalogMacroParameters(slot.type, slot.value), ...parameters };
     pendingNamedParameters.set(runtimeKey(trackId, slotIndex), {
       effectId,
-      overrides: { ...parameters },
+      overrides: memoryAdoptedSlots.has(slot) && Object.keys(parameters).length ? { ...slot.namedParameters, ...parameters } : { ...parameters },
       expectedRuntimeParameters,
       previousRevision: previous.requestedRevision,
       previousError: previous.error,

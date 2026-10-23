@@ -38,7 +38,7 @@ function create(key: string) {
     } catch { state.error = 'FX switch settings could not be saved; the confirmed configuration was retained.'; return false; }
   };
   return { state: readonly(state), update, adopt: (next: Rc505FxSwitchSettings, error = '') => {
-    state.settings = structuredClone(next); state.error = error; state.adoptionRevision += 1;
+    state.adoptionRevision += 1; state.settings = structuredClone(next); state.error = error;
   } };
 }
 

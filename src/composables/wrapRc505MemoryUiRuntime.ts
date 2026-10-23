@@ -1,5 +1,5 @@
 import { Rc505MemoryCommittedError, type Rc505Json, type Rc505MemoryDocument, type Rc505MemoryRuntime } from '../audio/Rc505Memory';
-import { nativeCatalogEffectId } from '../audio/nativeFxCatalog';
+import { nativeCatalogEffectId, nativeCatalogMacroParameters } from '../audio/nativeFxCatalog';
 import { FX_PRESET_BANK_IDS, fxPresetBankStorageKey, parseFxPresetBankDocument,
   type FxPresetBankDocument, type FxPresetLocation, type FxPresetRuntime } from '../ui/rc505/Rc505FxBankStore';
 import type { Rc505FxSwitchSettings } from '../ui/rc505/Rc505FxSwitchController';
@@ -11,6 +11,7 @@ export interface Rc505MemoryBankUiPort {
   validate(document: FxPresetBankDocument): void;
   /** Pure UI adoption: never submit FX controls or persist storage from this method. */
   adopt(document: FxPresetBankDocument, storageError?: string, notice?: string): void;
+  finishAdoption?(): void;
 }
 export type Rc505MemorySwitchSnapshot = Record<FxPresetLocation, Record<'A' | 'B' | 'C' | 'D', Rc505FxSwitchSettings>>;
 export interface Rc505MemorySwitchUiPort {
@@ -27,6 +28,7 @@ interface UiSnapshot {
 const bankPorts = new Map<string, Set<Rc505MemoryBankUiPort>>();
 const switchPorts = new Map<FxPresetRuntime, Rc505MemorySwitchUiPort>();
 const wrapped = new WeakMap<Rc505MemoryRuntime, Map<FxPresetRuntime, Rc505MemoryRuntime>>();
+const afterCommitCallbacks = new WeakMap<Rc505MemoryRuntime, Map<FxPresetRuntime, () => Promise<void>>>();
 const locations: FxPresetLocation[] = ['input', 'track'];
 const sidecarKey = 'rc505FxUi';
 const keyFor = (runtime: FxPresetRuntime, location: FxPresetLocation) => `${runtime}:${location}`;
@@ -90,6 +92,7 @@ function validateActiveProfiles(snapshot: UiSnapshot, document: Rc505MemoryDocum
     const bankDocument = snapshot.banks[location];
     if (bankDocument.activeBank === null) continue; // Unknown confirmation remains visibly unconfirmed.
     const profile = bankDocument.banks[bankDocument.activeBank];
+    let unproven = false;
     const actual = snapshot.runtime === 'browser'
       ? (location === 'input' ? extension.browserMemory?.fx?.input : extension.browserMemory?.fx?.sharedTrack)
       : extension.nativeMemory?.banks?.[index];
@@ -102,7 +105,25 @@ function validateActiveProfiles(snapshot: UiSnapshot, document: Rc505MemoryDocum
           && (!profile.browserParameters || stable(profile.browserParameters[slotIndex] ?? {}) === stable(saved.parameters))
         : (saved.effectId ?? null) === (type ? nativeCatalogEffectId(type) : null) && saved.bypassed === (type ? !slot.active : false);
       if (!matches) throw new Error(`Memory ${location} selected FX bank disagrees with the captured engine configuration.`);
+      if (!type) return;
+      const authored = slot.namedParametersByType?.[slot.type] ?? {};
+      if (Object.entries(authored).some(([key, value]) => saved.parameters[key] !== value)) throw new Error(`Memory ${location} bank named controls contradict its engine snapshot.`);
+      // Typed editor objects use adapter-specific aliases. Without an exact
+      // conversion proof, retain the profile but never assert its bank identity.
+      if (Object.keys(slot).some((key) => key !== 'namedParametersByType' && key.endsWith('Parameters'))) unproven = true;
+      if (snapshot.runtime === 'native') {
+        const proof = profile.nativeParameters?.[slotIndex];
+        if (!proof) { unproven = true; return; }
+        if (stable(proof) !== stable(saved.parameters)) throw new Error(`Memory ${location} Native FX proof contradicts its engine snapshot.`);
+        const expected = { ...nativeCatalogMacroParameters(slot.type, slot.value), ...authored };
+        const derivedClock = new Set(['bpm', 'tempo', 'quarterNotesPerMeasure', 'official_bpm', 'official_quarter_notes_per_measure']);
+        if (Object.entries(expected).some(([key, value]) => (!derivedClock.has(key) || Object.prototype.hasOwnProperty.call(authored, key)) && proof[key] !== value)) throw new Error(`Memory ${location} Native FX bank controls contradict their confirmed proof.`);
+      } else {
+        if (!profile.browserParameters?.[slotIndex] || saved.amount === null || saved.amount === undefined) unproven = true;
+        else if (slot.value !== saved.amount) throw new Error(`Memory ${location} Browser FX amount contradicts its engine snapshot.`);
+      }
     });
+    if (unproven) bankDocument.activeBank = null;
   }
 }
 function writesFor(snapshot: UiSnapshot): Array<[string, string]> {
@@ -120,7 +141,8 @@ function preflight(writes: Array<[string, string]>): void {
 }
 
 /** Add authored bank/switch sidecars without moving any writes into an audio callback. */
-export function wrapRc505MemoryUiRuntime(base: Rc505MemoryRuntime, runtime: FxPresetRuntime): Rc505MemoryRuntime {
+export function wrapRc505MemoryUiRuntime(base: Rc505MemoryRuntime, runtime: FxPresetRuntime, afterCommit?: () => Promise<void>): Rc505MemoryRuntime {
+  if (afterCommit) { const callbacks = afterCommitCallbacks.get(base) ?? new Map(); callbacks.set(runtime, afterCommit); afterCommitCallbacks.set(base, callbacks); }
   const cache = wrapped.get(base) ?? new Map(); wrapped.set(base, cache);
   const existing = cache.get(runtime); if (existing) return existing;
   const revision = () => JSON.stringify([base.revision(), locations.map((location) => [...(bankPorts.get(keyFor(runtime, location)) ?? [])].map((port) => port.revision())), switchPorts.get(runtime)?.revision() ?? 'uninitialized']);
@@ -180,6 +202,11 @@ export function wrapRc505MemoryUiRuntime(base: Rc505MemoryRuntime, runtime: FxPr
             for (const location of locations) for (const port of ports.banks[location]) port.adopt(ui.banks[location], storageError,
               partial ? 'Older Memory has no FX bank/switch sidecar; existing bank profiles were retained and bank identity is unknown.' : '');
             ports.switches.adopt(ui.switches, { input: ui.banks.input.activeBank, track: ui.banks.track.activeBank }, storageError);
+            const hydrate = afterCommitCallbacks.get(base)?.get(runtime);
+            if (hydrate) {
+              await hydrate();
+              for (const location of locations) for (const port of ports.banks[location]) port.finishAdoption?.();
+            }
           } catch (error) { throw new Rc505MemoryCommittedError('Memory audio committed, but FX UI adoption failed.', null, { cause: error }); }
           if (storageError) throw new Rc505MemoryCommittedError(storageError);
           if (committedFailure) throw committedFailure;

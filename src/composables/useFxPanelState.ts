@@ -23,6 +23,7 @@ import { type FxLocation, type FxSlotId, usePanelFocus } from './usePanelFocus';
 import { adoptCommittedBrowserTrackFxState, ensureBrowserTrackFxStateInitialized } from './useBrowserTrackFxState';
 import type { BrowserMemoryConfiguration } from '../audio/BrowserRc505Memory';
 import type { BrowserRecoveryFxSlot } from '../audio/BrowserRecoverySnapshot';
+import { adoptCommittedNativeTrackFxState, readConfirmedNativeFxUiBank } from './useNativeTrackFxState';
 
 export interface FxSlotState {
   id: FxSlotId;
@@ -141,6 +142,7 @@ interface PendingNativeNamedParameters {
   removedKeys: string[];
 }
 const pendingNativeNamedParameters = new Map<string, PendingNativeNamedParameters>();
+let nativeMemoryHydrating = 0;
 const nativeNamedParameterKey = (location: FxLocation, slotIndex: number) => `${location}:${slotIndex}`;
 function nativeNamedSubmission(location: FxLocation, index: number, overrides: Record<string, number>, removedKeys: readonly string[] = []): Record<string, number> {
   const slot = (location === 'input' ? nativeFxState.inputSlots : nativeFxState.trackSlots)[index]!;
@@ -153,6 +155,7 @@ function nativeNamedSubmission(location: FxLocation, index: number, overrides: R
   return complete;
 }
 function reconcileNativeNamedParameters() {
+  if (nativeMemoryHydrating) return;
   if (engine.getMode() !== 'native' || pendingNativeNamedParameters.size === 0) return;
   let changed = false;
   for (const [key, pending] of pendingNativeNamedParameters) {
@@ -208,7 +211,7 @@ function typedControls(slot: FxSlotState): Record<string, number> {
     ...(slot.autoRiffParameters ? toCatalogAutoRiffParameters(slot.autoRiffParameters) : {}),
     ...(slot.robotParameters ? toCatalogRobotParameters(slot.robotParameters) : {}),
     ...(slot.hrmAutoParameters ? toCatalogHrmAutoParameters(slot.hrmAutoParameters) : {}),
-    ...(slot.electricParameters ? toBrowserElectricParameters(slot.electricParameters) : {}),
+    ...(slot.electricParameters ? engine.getMode() === 'native' ? toNativeElectricParameters(slot.electricParameters) : toBrowserElectricParameters(slot.electricParameters) : {}),
     ...(slot.stepSlicerParameters ?? {}),
   };
 }
@@ -268,6 +271,34 @@ export async function adoptCommittedBrowserFxState(configuration: BrowserMemoryC
   } finally { memoryHydrating -= 1; }
 }
 
+/** Hydrate seven Native banks only from acknowledged host snapshots. */
+export async function adoptCommittedNativeFxState(): Promise<void> {
+  const input = readConfirmedNativeFxUiBank('input'), shared = readConfirmedNativeFxUiBank('track');
+  const privateBanks = Array.from({ length: 5 }, (_, index) => readConfirmedNativeFxUiBank('track', index + 1));
+  const rows = (slots: typeof input) => slots.map((saved): FxSlotState => {
+    const parameters = { ...saved.parameters };
+    if (saved.type === 'VOCODER') parameters.mix = parameters.mix_percent ?? parameters.mix ?? 100;
+    if (saved.type === 'ELECTRIC') Object.assign(parameters, { electricCharacter: parameters.character, electricPitchSnapPercent: parameters['pitch-snap'], electricToneHz: parameters.tone, mix: (parameters.mix ?? 100) / 100 });
+    if (saved.type === 'STEP SLICER') {
+      Object.assign(parameters, { stepSlicerStepCount: parameters.step_count, stepSlicerRateBeats: parameters.rate_beats, stepSlicerDepthPercent: parameters.depth_percent, stepSlicerPanDepthPercent: parameters.pan_depth_percent, stepSlicerFilterHz: parameters.filter_hz });
+      for (let index = 1; index <= 16; index++) { const suffix = String(index).padStart(2, '0'); parameters[`stepSlicerStep${suffix}`] = parameters[`step_${suffix}`]!; }
+    }
+    const slot = slotFromReadback({ slot: saved.id, type: saved.type === NATIVE_CATALOG_EMPTY_LABEL ? null : saved.type,
+      active: saved.active, amount: saved.value, parameters, parametersCaptured: true, requestedType: null, requestedActive: null, state: saved.type === NATIVE_CATALOG_EMPTY_LABEL ? 'empty' : 'ready', error: null });
+    slot.type = saved.type; slot.namedParametersByType = saved.type === NATIVE_CATALOG_EMPTY_LABEL ? undefined : { [saved.type]: { ...saved.parameters } };
+    return slot;
+  });
+  nativeMemoryHydrating += 1;
+  try {
+    pendingNativeNamedParameters.clear();
+    await adoptCommittedNativeTrackFxState(privateBanks);
+    ensureInitialized(); pendingNativeNamedParameters.clear();
+    nativeFxState.inputSlots.splice(0, 4, ...rows(input)); nativeFxState.trackSlots.splice(0, 4, ...rows(shared));
+    for (const slot of [...nativeFxState.inputSlots, ...nativeFxState.trackSlots]) adoptedControls.set(slot, adoptedSnapshot(slot));
+    nativeStatusRevision.value += 1; await nextTick(); persistNativeFxSlots();
+  } finally { nativeMemoryHydrating -= 1; }
+}
+
 function sanitizeValue(rawValue: number) {
   if (typeof rawValue !== 'number' || Number.isNaN(rawValue) || !Number.isFinite(rawValue)) {
     return 0;
@@ -276,9 +307,10 @@ function sanitizeValue(rawValue: number) {
 }
 
 function syncSlotToEngine(location: FxLocation, index: number, slot: FxSlotState) {
+  if (nativeMemoryHydrating && engine.getMode() === 'native') return;
   if (memoryHydrating && engine.getMode() === 'browser') return;
   const adopted = adoptedControls.get(slot);
-  if (engine.getMode() === 'browser' && adopted?.type === slot.type) {
+  if (adopted?.type === slot.type) {
     const current = adoptedSnapshot(slot);
     if (current.value !== adopted.value) engine.setFxParam(location, index, sanitizeValue(current.value));
     const typedPatch = Object.fromEntries(Object.entries(current.typed).filter(([key, value]) => adopted.typed[key] !== value));
@@ -511,7 +543,7 @@ function ensureInitialized() {
       state.inputSlots.forEach((slot, index) => syncSlotToEngine('input', index, slot));
       state.trackSlots.forEach((slot, index) => syncSlotToEngine('track', index, slot));
     }
-  } else {
+  } else if (!nativeMemoryHydrating) {
     nativeFxState.inputSlots.forEach((slot, index) => syncSlotToEngine('input', index, slot));
     nativeFxState.trackSlots.forEach((slot, index) => syncSlotToEngine('track', index, slot));
   }
@@ -559,6 +591,7 @@ function ensureInitialized() {
     });
 
     watch(() => nativeFxState.inputSlots.map((slot) => slot.type), (newTypes, oldTypes) => {
+      if (nativeMemoryHydrating) return;
       newTypes.forEach((type, index) => {
         if (oldTypes[index] !== type && pendingNativeNamedParameters.delete(nativeNamedParameterKey('input', index))) nativeStatusRevision.value += 1;
         if ((type !== 'TRANSPOSE' && type !== 'PITCH BEND') || oldTypes[index] === type) return;
@@ -573,6 +606,7 @@ function ensureInitialized() {
       });
     });
     watch(() => nativeFxState.trackSlots.map((slot) => slot.type), (newTypes, oldTypes) => {
+      if (nativeMemoryHydrating) return;
       newTypes.forEach((type, index) => {
         if (oldTypes[index] !== type && pendingNativeNamedParameters.delete(nativeNamedParameterKey('track', index))) nativeStatusRevision.value += 1;
         if ((type !== 'TRANSPOSE' && type !== 'PITCH BEND') || oldTypes[index] === type) return;
@@ -653,7 +687,7 @@ function ensureInitialized() {
     watch(() => state.trackSlots, persistSlots, { deep: true });
 
     watch(() => nativeFxState.inputSlots.map((slot) => slotControlSnapshot(slot, false)), (newValues, oldValues) => {
-      if (engine.getMode() !== 'native') return;
+      if (engine.getMode() !== 'native' || nativeMemoryHydrating) return;
       nativeFxState.inputSlots.forEach((slot, index) => {
         if (JSON.stringify(newValues[index]) === JSON.stringify(oldValues?.[index])) return;
         syncSlotToEngine('input', index, slot);
@@ -662,7 +696,7 @@ function ensureInitialized() {
     watch(() => nativeFxState.inputSlots, persistNativeFxSlots, { deep: true });
 
     watch(() => nativeFxState.trackSlots.map((slot) => slotControlSnapshot(slot, false)), (newValues, oldValues) => {
-      if (engine.getMode() !== 'native') return;
+      if (engine.getMode() !== 'native' || nativeMemoryHydrating) return;
       nativeFxState.trackSlots.forEach((slot, index) => {
         if (JSON.stringify(newValues[index]) === JSON.stringify(oldValues?.[index])) return;
         syncSlotToEngine('track', index, slot);
@@ -884,14 +918,16 @@ export function useFxPanelState(location: FxLocation) {
     }
     const runtime = engine.getNativeCatalogFxSlotStatus(location, slotIndex);
     if (!runtime) return false;
+    const effectiveOverrides = adoptedControls.has(slot) && Object.keys(parameters).length
+      ? { ...slot.namedParametersByType?.[slot.type], ...parameters } : parameters;
     const removedKeys = Object.keys(slot.namedParametersByType?.[slot.type] ?? {})
-      .filter(key => !Object.prototype.hasOwnProperty.call(parameters, key));
-    const expectedParameters = nativeNamedSubmission(location, slotIndex, parameters, removedKeys);
+      .filter(key => !Object.prototype.hasOwnProperty.call(effectiveOverrides, key));
+    const expectedParameters = nativeNamedSubmission(location, slotIndex, effectiveOverrides, removedKeys);
     pendingNativeNamedParameters.set(pendingKey, {
       location,
       slotIndex,
       effectId,
-      overrides: { ...parameters },
+      overrides: { ...effectiveOverrides },
       expectedParameters,
       previousRevision: runtime.requestedRevision,
       removedKeys,

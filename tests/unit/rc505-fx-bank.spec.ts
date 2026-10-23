@@ -119,6 +119,10 @@ describe('RC-505 shared FX preset banks', () => {
     await nextTick(); await vi.advanceTimersByTimeAsync(100);
     expect(banks.state.appliedBank).toBe('C');
     expect(setType).not.toHaveBeenCalled(); expect(setAmount).not.toHaveBeenCalled(); expect(setActive).not.toHaveBeenCalled();
+    memoryPort.adopt(document); memoryPort.finishAdoption?.();
+    const hydratedRevision = memoryPort.revision();
+    await nextTick(); await vi.advanceTimersByTimeAsync(100);
+    expect(memoryPort.revision()).toBe(hydratedRevision);
     memoryPort.adopt(document, 'Storage failed after audio committed.');
     await nextTick(); await vi.advanceTimersByTimeAsync(100);
     expect(banks.state.appliedBank).toBeNull(); expect(banks.canSelect.value).toBe(false);
