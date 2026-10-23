@@ -1,3 +1,4 @@
+import { browserAutoRecThreshold } from './BrowserAutoRecSettings';
 import type { IAudioEngine, InputCaptureSession } from './AudioEngineInterface';
 import {
     getBrowserRecordingOffsetConfig,
@@ -1866,6 +1867,7 @@ export class TrackAudio {
     public triggerRecord() {
         if (this.disposed) return;
         if (this.pendingClear) return;
+        if (this.autoRecArmed) { this.abortRecording(); this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY; this.syncTransportState(); return; }
         if (this.state === TrackState.EMPTY) {
             this.scheduleRecordingStart();
         } else if (this.state === TrackState.RECORDING) {
@@ -1886,6 +1888,7 @@ export class TrackAudio {
     public triggerStop() {
         if (this.disposed) return;
         this.cancelQuantizeWait();
+        if (this.autoRecArmed) { this.abortRecording(); this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY; this.syncTransportState(); return; }
         if (this.recordingStarting) {
             this.abortRecording();
             this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
@@ -1916,6 +1919,14 @@ export class TrackAudio {
 
     private scheduleRecordingStart() {
         if (this.disposed) return;
+        if (this.engine.getBrowserAutoRecSettings?.().enabled) {
+            if (this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
+                this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
+                return;
+            }
+            void this.startRecording();
+            return;
+        }
         // ========================================
         // QUANTIZED RECORDING START LOGIC
         // ========================================
@@ -2328,9 +2339,11 @@ export class TrackAudio {
         }
     }
 
+    public autoRecArmed = false;
+
     public async startRecording() {
         if (this.disposed) return;
-        if (this.recordingStarting || this.isRecording || this.isFinalizingRecording
+        if (this.autoRecArmed || this.recordingStarting || this.isRecording || this.isFinalizingRecording
             || this.overdubStarting || this.overdubProcessor || this.pendingClear) return;
 
         if (this.state === TrackState.EMPTY) {
@@ -2348,9 +2361,23 @@ export class TrackAudio {
             // awaited setup. If input is not already authorized and warm, use
             // the legacy path rather than pretending a later frame was the
             // user's requested start boundary.
+            const autoRec = this.engine.getBrowserAutoRecSettings?.();
+            const autoRecEnabled = autoRec?.enabled === true;
+            if (autoRecEnabled && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
+                this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
+                return;
+            }
             const requestedCaptureFrame = this.engine.getInputCaptureRequestFrame?.() ?? null;
+            if (autoRecEnabled && (requestedCaptureFrame === null || !this.engine.beginInputCaptureSession)) {
+                this.recordingDiagnostic = 'AutoRec requires ready shared input capture. Enable audio/input and retry; existing loops are preserved.';
+                return;
+            }
             const input = await this.engine.getProcessedInputNode();
             if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
+            if (autoRecEnabled) {
+                const current = this.engine.getBrowserAutoRecSettings?.();
+                if (!current?.enabled || current.sensitivity !== autoRec!.sensitivity) return;
+            }
             this.resumeAfterRecording = true;
 
             // Begin with the conservative stereo limit until the worklet reports
@@ -2376,6 +2403,8 @@ export class TrackAudio {
                     (message) => {
                         if (captureSession) this.handleRecordingMessage(captureSession.node, message as RecordingWorkletMessage);
                     },
+                    undefined,
+                    autoRecEnabled ? browserAutoRecThreshold(autoRec!.sensitivity) : undefined,
                 );
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
@@ -2391,10 +2420,12 @@ export class TrackAudio {
                         return;
                     }
                     this.recordingInputNode = input;
-                    this.isRecording = true;
-                    this.state = TrackState.RECORDING;
+                    this.autoRecArmed = autoRecEnabled;
+                    this.isRecording = !autoRecEnabled;
+                    this.state = autoRecEnabled ? TrackState.REC_STANDBY : TrackState.RECORDING;
                     return;
                 }
+                if (autoRecEnabled) { this.recordingDiagnostic = 'AutoRec could not arm shared capture. Existing loops are preserved.'; return; }
                 this.recordingDiagnostic = 'Shared capture was unavailable at the requested frame; using the legacy recorder.';
             } else if (this.engine.getInputCaptureRequestFrame && requestedCaptureFrame === null) {
                 this.recordingDiagnostic = 'Shared input capture was not ready at the request frame; the legacy recorder starts after input setup.';
@@ -2434,6 +2465,7 @@ export class TrackAudio {
 
     public async stopRecording() {
         if (this.disposed) return;
+        if (this.autoRecArmed) { this.triggerStop(); return; }
         if (!this.isRecording || !this.workletNode) return;
 
         this.isRecording = false;
@@ -2558,6 +2590,10 @@ export class TrackAudio {
         }
 
         if (message.type === 'RECORD_CONFIGURED') {
+            if (this.autoRecArmed) {
+                this.autoRecArmed = false; this.isRecording = true; this.state = TrackState.RECORDING;
+                this.ensureTransportRunning();
+            }
             const channelCount = Number.isInteger(message.channelCount)
                 ? Math.max(1, Math.min(MAX_RECORDING_CHANNELS, message.channelCount))
                 : 1;
@@ -2733,6 +2769,7 @@ export class TrackAudio {
         if (this.workletNode === session.node) this.workletNode = null;
         this.recordingStartGeneration += 1;
         this.recordingStarting = false;
+        this.autoRecArmed = false;
         this.isRecording = false;
         this.isFinalizingRecording = false;
         this.resumeAfterRecording = true;
@@ -3314,6 +3351,7 @@ export class TrackAudio {
 
     public stop() {
         if (this.disposed) return;
+        if (this.autoRecArmed) this.abortRecording();
         if (this.loopTransportPlaybackInitialized && this.sourceNode && this.audioBuffer
             && (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING)) {
             this.startOffset = this.getLoopTransportOutputPosition();
@@ -4422,6 +4460,7 @@ export class TrackAudio {
         this.clearRecordingCaptureStopAckTimeout();
         this.recordingStartGeneration += 1;
         this.recordingStarting = false;
+        this.autoRecArmed = false;
         this.isRecording = false;
         this.isFinalizingRecording = false;
         this.resumeAfterRecording = false;

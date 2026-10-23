@@ -1,3 +1,4 @@
+import { assertBrowserAutoRecSettings, DEFAULT_BROWSER_AUTO_REC, type BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import { assertRecordPlaySettings, type RecordPlaySettings, type RecordPlaySettingsPatch } from './RecordPlaySettings';
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { translateBrowserOfficialSourceParameters } from './fx/dsp/OfficialBrowserSourceParameters';
@@ -207,6 +208,13 @@ export class BrowserAudioEngine implements IAudioEngine {
     public outputFxChain: FXChain;
     public trackMixNode: GainNode;
     private dryTrackMixGainNode: GainNode;
+    private browserAutoRecSettings: BrowserAutoRecSettings = { ...DEFAULT_BROWSER_AUTO_REC };
+    public getBrowserAutoRecSettings(): Readonly<BrowserAutoRecSettings> { return { ...this.browserAutoRecSettings }; }
+    public setBrowserAutoRecSettings(settings: BrowserAutoRecSettings): void {
+        assertBrowserAutoRecSettings(settings);
+        for (const track of this.tracks) if (track.autoRecArmed) track.triggerStop();
+        this.browserAutoRecSettings = { ...settings };
+    }
     private recordPlaySettings = { recAction: 'REC->PLAY' as const as 'REC->PLAY' | 'REC->DUB', quantize: 'MEASURE' as const as 'MEASURE' | 'OFF' };
     public getRecordPlaySettings(): RecordPlaySettings {
         return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: false, bounceAvailable: false });
@@ -2531,6 +2539,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             trackFxApply: this.getTrackFxApply().map((gate) => gate.applied),
             outputGain: this.masterGainNode.gain.value, mainGain: this.mainGainNode.gain.value, trackMixGain: this.trackMixNode.gain.value,
             recordPlay: { ...this.recordPlaySettings },
+            autoRec: { ...this.browserAutoRecSettings },
         };
     }
 
@@ -2688,6 +2697,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (!saved.recordPlay || Object.keys(saved.recordPlay).length !== 2 || !['REC->PLAY', 'REC->DUB'].includes(saved.recordPlay.recAction)
             || !['MEASURE', 'OFF'].includes(saved.recordPlay.quantize)) throw new Error('Memory lacks supported record/play settings.');
         assertRecordPlaySettings(saved.recordPlay);
+        const preparedAutoRec = saved.autoRec ?? { ...DEFAULT_BROWSER_AUTO_REC };
+        assertBrowserAutoRecSettings(preparedAutoRec);
         if (!Number.isFinite(saved.rhythm.volumePercent) || saved.rhythm.volumePercent < 0 || saved.rhythm.volumePercent > 100
             || saved.rhythm.wasRunning !== false) throw new Error('Memory Rhythm must have a valid volume and stopped capture state.');
         const settings = this.tracks.map((track, index) => track.prepareMemorySettings(saved.tracks[index]!));
@@ -2826,6 +2837,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                         this.rhythmEngine.setSettings(saved.rhythm as Parameters<RhythmEngine['setSettings']>[0]); this.rhythmEngine.setVolume(saved.rhythm.volumePercent);
                         this.masterGainNode.gain.value = saved.outputGain; this.mainGainNode.gain.value = saved.mainGain; this.trackMixNode.gain.value = saved.trackMixGain; this.dryTrackMixGainNode.gain.value = saved.trackMixGain;
                         this.recordPlaySettings = { ...saved.recordPlay };
+                        this.browserAutoRecSettings = { ...preparedAutoRec };
                         // No await occurs between the graph edits and all-five PCM publication.
                         pcm.commit();
                     } catch (error) {
@@ -2841,6 +2853,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                         this.rhythmEngine.setSettings(old.rhythm as Parameters<RhythmEngine['setSettings']>[0]); this.rhythmEngine.setVolume(old.rhythm.volumePercent);
                         this.masterGainNode.gain.value = old.outputGain; this.mainGainNode.gain.value = old.mainGain; this.trackMixNode.gain.value = old.trackMixGain; this.dryTrackMixGainNode.gain.value = old.trackMixGain;
                         this.recordPlaySettings = { ...old.recordPlay };
+                        this.browserAutoRecSettings = { ...(old.autoRec ?? DEFAULT_BROWSER_AUTO_REC) };
                         const transport = Transport.getInstance();
                         // The signature setter stores before notifying. A throwing observer must not
                         // interrupt restoration of the remaining transport fields.
@@ -4016,6 +4029,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         startFrame: number,
         listener: (message: unknown) => void,
         maxRecordingFrames?: number,
+        autoRecThreshold?: number,
     ): InputCaptureSession | null {
         const node = this.inputCaptureNode;
         if (!node || !this.inputCaptureReady || this.inputCaptureReadyGeneration !== this.inputCaptureGeneration
@@ -4024,18 +4038,24 @@ export class BrowserAudioEngine implements IAudioEngine {
             || (maxRecordingFrames !== undefined && (!Number.isSafeInteger(maxRecordingFrames)
                 || maxRecordingFrames < 0 || maxRecordingFrames > 1_000_000))) return null;
         if (!Number.isSafeInteger(this.nextInputCaptureSessionId) || this.nextInputCaptureSessionId <= 0) return null;
+        let effectiveStartFrame = startFrame;
         const session: InputCaptureSession = {
             node,
             trackIndex,
             sessionId: this.nextInputCaptureSessionId++,
             inputGeneration: this.inputCaptureGeneration,
-            startFrame,
+            get startFrame() { return effectiveStartFrame; },
             ...(maxRecordingFrames !== undefined ? { maxRecordingFrames } : {}),
         };
-        this.inputCaptureSessions.set(trackIndex, { session, listener });
+        this.inputCaptureSessions.set(trackIndex, { session, listener: (message: any) => {
+            if (autoRecThreshold !== undefined && message.type === 'RECORD_CONFIGURED'
+                && Number.isSafeInteger(message.requestedStartFrame) && message.requestedStartFrame >= startFrame) effectiveStartFrame = message.requestedStartFrame;
+            listener(message);
+        } });
         try {
             node.port.postMessage({
                 type: 'START_CAPTURE', trackIndex, sessionId: session.sessionId,
+                ...(autoRecThreshold !== undefined ? { autoRecThreshold } : {}),
                 inputGeneration: session.inputGeneration, startFrame,
                 ...(maxRecordingFrames !== undefined ? { maxRecordingFrames } : {}),
                 maxRecordingBytes: 384 * 1024 * 1024,

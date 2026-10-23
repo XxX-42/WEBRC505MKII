@@ -1,3 +1,4 @@
+import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { BrowserAudioEngine } from './BrowserAudioEngine';
 import type { BrowserRecoverySnapshot, BrowserRecoveryTrack } from './BrowserRecoverySnapshot';
 import { Transport } from '../core/Transport';
@@ -8,6 +9,8 @@ import type { Rc505Json, Rc505MemoryDocument, Rc505MemoryRuntime } from './Rc505
 /** Authored configuration only: PCM lives exclusively in the legacy archive. */
 export interface BrowserMemoryConfiguration {
   version: 1;
+  /** Missing on older envelopes: disabled with SENS 50. */
+  autoRec?: BrowserAutoRecSettings;
   tracks: Array<Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse' | 'sourceTransport'>>;
   fx: BrowserRecoverySnapshot['fx'];
   rhythm: BrowserRecoverySnapshot['rhythm'];
@@ -29,6 +32,11 @@ function supportedValues(configuration: BrowserMemoryConfiguration): Record<stri
   });
   values['record.recAction'] = configuration.recordPlay.recAction;
   values['record.quantize'] = configuration.recordPlay.quantize;
+  // Legacy envelopes retain their original supported-field set.
+  if (configuration.autoRec) {
+    values['record.autoRecSw'] = configuration.autoRec.enabled;
+    values['record.autoRecSens'] = configuration.autoRec.sensitivity;
+  }
   values['mixer.main'] = Math.round(configuration.mainGain * 100);
   values['mixer.master'] = Math.round(configuration.outputGain * 100);
   return values;
@@ -104,7 +112,7 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
   }
   observeMethods(engine, ['setFxType', 'setFxParam', 'setFxNamedParameters', 'setFxActive', 'setStepSlicerStep',
     'setStepSlicerControl', 'setTrackFxType', 'setTrackFxParameter', 'setTrackFxNamedParameters', 'setTrackFxActive',
-    'setTrackFxApply', 'setLoopTransport', 'clearLoopTransportOverride', 'setOutputDspFx', 'setOutputDspFxEnabled', 'configureOutputDspFx', 'setMixerLevel', 'setRecordPlaySettings'], changed);
+    'setTrackFxApply', 'setLoopTransport', 'clearLoopTransportOverride', 'setOutputDspFx', 'setOutputDspFxEnabled', 'configureOutputDspFx', 'setMixerLevel', 'setRecordPlaySettings', 'setBrowserAutoRecSettings'], changed);
   observeMethods(engine.rhythmEngine, ['setPattern', 'setCatalogPattern', 'setKit', 'setVariation', 'setSection',
     'setSwingPercent', 'setQuantizeGrid', 'setSettings', 'setVolume', 'start', 'stop', 'toggle'], changed);
   const revision = () => JSON.stringify([

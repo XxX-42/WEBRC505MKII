@@ -1,3 +1,4 @@
+import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { RecordPlaySettings } from './RecordPlaySettings';
 export interface InputCaptureSession {
     readonly node: AudioWorkletNode;
@@ -21,11 +22,14 @@ export interface IAudioEngine {
     getProcessedInputNode(): Promise<AudioNode>;
     /** Optional shared Browser input-capture path; Native keeps its own callback recorder. */
     getInputCaptureRequestFrame?(): number | null;
+    getBrowserAutoRecSettings?(): Readonly<BrowserAutoRecSettings>;
     beginInputCaptureSession?(
         trackIndex: number,
         startFrame: number,
         listener: (message: unknown) => void,
         maxRecordingFrames?: number,
+        /** Raw stereo peak trigger, evaluated only by the Browser capture renderer. */
+        autoRecThreshold?: number,
     ): InputCaptureSession | null;
     stopInputCaptureSession?(session: InputCaptureSession, stopFrame: number): boolean;
     abortInputCaptureSession?(session: InputCaptureSession): void;

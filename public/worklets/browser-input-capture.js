@@ -109,6 +109,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       sessionId: 0,
       inputGeneration: 0,
       state: 'idle',
+      autoRecThreshold: null,
       requestedStartFrame: 0,
       startReceivedFrame: 0,
       requestedMaxRecordingFrames: null,
@@ -337,6 +338,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       || !Number.isSafeInteger(message.startFrame) || message.startFrame < 0
       || (message.maxRecordingFrames !== undefined && (!Number.isSafeInteger(message.maxRecordingFrames)
         || message.maxRecordingFrames < 0 || message.maxRecordingFrames > 1_000_000))
+      || (message.autoRecThreshold !== undefined && (!Number.isFinite(message.autoRecThreshold) || message.autoRecThreshold <= 0 || message.autoRecThreshold > 1))
       || !Number.isSafeInteger(message.inputGeneration) || message.inputGeneration !== this.inputGeneration) {
       this.postError(slot, message.sessionId, 'invalid-capture-request', message.startFrame, 0, message.inputGeneration);
       return;
@@ -356,14 +358,15 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     }
 
     const oldestAvailableFrame = this.preRollEndFrame - this.preRollValidFrames;
-    if (message.startFrame < oldestAvailableFrame) {
+    if (message.autoRecThreshold === undefined && message.startFrame < oldestAvailableFrame) {
       this.postError(slot, message.sessionId, 'request-frame-outside-preroll', message.startFrame, 0, message.inputGeneration);
       return;
     }
 
     slot.sessionId = message.sessionId;
     slot.inputGeneration = message.inputGeneration;
-    slot.state = 'pending';
+    slot.autoRecThreshold = message.autoRecThreshold === undefined ? null : message.autoRecThreshold;
+    slot.state = slot.autoRecThreshold === null ? 'pending' : 'armed';
     slot.requestedStartFrame = message.startFrame;
     slot.requestedMaxRecordingFrames = Number.isSafeInteger(message.maxRecordingFrames)
       ? message.maxRecordingFrames : null;
@@ -408,7 +411,8 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
   }
 
   requestStop(slot, stopFrame) {
-    if (slot.state !== 'pending' && slot.state !== 'recording') return;
+    if (slot.state === 'armed') { this.abortCapture(slot, 'auto-rec-canceled', false); return; }
+    if (slot.state !== 'armed' && slot.state !== 'pending' && slot.state !== 'recording') return;
     if (!Number.isSafeInteger(stopFrame) || stopFrame < slot.requestedStartFrame) {
       this.postError(slot, slot.sessionId, 'invalid-stop-frame', slot.requestedStartFrame, stopFrame);
       this.abortCapture(slot, 'invalid-stop-frame');
@@ -609,7 +613,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
   }
 
   abortCapture(slot, reason, postError = true) {
-    if (slot.state !== 'pending' && slot.state !== 'recording') return;
+    if (slot.state !== 'armed' && slot.state !== 'pending' && slot.state !== 'recording') return;
     if (postError) this.postError(slot, slot.sessionId, reason, slot.requestedStartFrame, slot.stopFrame);
     slot.activeChunkIndex = -1;
     slot.activeChunkOffset = 0;
@@ -674,7 +678,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
   failActiveSessions(reason) {
     for (let index = 0; index < this.slots.length; index += 1) {
       const slot = this.slots[index];
-      if (slot.state === 'pending' || slot.state === 'recording') this.abortCapture(slot, reason);
+      if (slot.state === 'armed' || slot.state === 'pending' || slot.state === 'recording') this.abortCapture(slot, reason);
     }
   }
 
@@ -769,6 +773,13 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       this.applyTrackFxApplyChanges(absoluteFrame);
       for (let slotIndex = 0; slotIndex < this.slots.length; slotIndex += 1) {
         const slot = this.slots[slotIndex];
+        // Detect against the raw input sample here, never a main-thread meter.
+        // The triggering frame itself is captured; no pre-trigger audio is added.
+        if (slot.state === 'armed' && absoluteFrame >= slot.requestedStartFrame
+          && Math.max(Math.abs(rawSampleLeft), Math.abs(rawSampleRight)) > slot.autoRecThreshold) {
+          slot.requestedStartFrame = absoluteFrame;
+          slot.state = 'pending';
+        }
         if (slot.state === 'pending' && absoluteFrame >= slot.requestedStartFrame) {
           this.beginCapture(slot, inputChannelCount);
         }

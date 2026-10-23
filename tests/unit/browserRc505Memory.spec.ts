@@ -214,3 +214,31 @@ describe('Browser semantic Memory', () => {
     await candidate.dispose(); expect(nodes.every((node) => node.port.close.mock.calls.length === 1)).toBe(true);
   });
 });
+
+
+describe('Browser AutoRec authored Memory settings', () => {
+  it('captures, restores and validates AutoRec semantic settings independently of live arms', async () => {
+    const { engine, runtime, seed } = harness(); seed(1);
+    engine.setBrowserAutoRecSettings({ enabled: true, sensitivity: 73 });
+    const document = await runtime.capture();
+    expect(document.semantics.fields['record.autoRecSw']).toMatchObject({ availability: 'supported', value: true });
+    expect(document.semantics.fields['record.autoRecSens']).toMatchObject({ availability: 'supported', value: 73 });
+    engine.setBrowserAutoRecSettings({ enabled: false, sensitivity: 50 });
+    const candidate = await runtime.prepare(document, runtime.revision()); await candidate.commit(); await candidate.dispose();
+    expect(engine.getBrowserAutoRecSettings()).toEqual({ enabled: true, sensitivity: 73 });
+    document.semantics.fields['record.autoRecSens']!.value = 5;
+    await expect(runtime.prepare(document, runtime.revision())).rejects.toThrow(/disagrees/);
+  });
+  it('opens older Memory envelopes with AutoRec disabled and rejects stale prepared settings', async () => {
+    const { engine, runtime, seed } = harness(); seed(1);
+    const document = await runtime.capture();
+    delete (document.extensions.WEBRC.browserMemory as any).autoRec;
+    delete document.semantics.fields['record.autoRecSw']; delete document.semantics.fields['record.autoRecSens'];
+    engine.setBrowserAutoRecSettings({ enabled: true, sensitivity: 10 });
+    const candidate = await runtime.prepare(document, runtime.revision()); await candidate.commit(); await candidate.dispose();
+    expect(engine.getBrowserAutoRecSettings()).toEqual({ enabled: false, sensitivity: 50 });
+    const stale = await runtime.prepare(document, runtime.revision());
+    engine.setBrowserAutoRecSettings({ enabled: true, sensitivity: 20 });
+    await expect(stale.commit()).rejects.toThrow(/changed/); await stale.dispose();
+  });
+});

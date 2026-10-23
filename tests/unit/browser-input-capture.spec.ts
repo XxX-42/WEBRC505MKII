@@ -470,3 +470,40 @@ describe('Browser shared input capture worklet', () => {
     });
   });
 });
+
+
+describe('Browser AutoRec sample trigger', () => {
+  it('waits on raw stereo input and captures the exact crossing sample without pre-trigger PCM', () => {
+    const c = createCapture();
+    c.process([0, 0, 0, 0]); c.process([0, 0, 0, 0]);
+    c.processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 1, inputGeneration: 1, startFrame: 8, autoRecThreshold: 0.5 });
+    c.process([0.1, 0.2, 0.5, 0.1], undefined, 8, [1, 1, 1, 1]);
+    expect(c.messages('RECORD_CONFIGURED')).toHaveLength(0); // FX output alone cannot trigger.
+    c.process([0.1, 0.1, 0.1, 0.1], [0.1, -0.75, 0.1, 0.1], 12, [2, 3, 4, 5]);
+    expect(c.messages('RECORD_CONFIGURED')[0]).toMatchObject({ requestedStartFrame: 13 });
+    c.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 1, stopFrame: 16 });
+    const chunk = c.messages('RECORD_CHUNK')[0];
+    expect(chunk.validFrames).toBe(3);
+    expect(Array.from(chunk.channels[0]).slice(0, 3)).toEqual([3, 4, 5]);
+    expect(c.messages('RECORD_COMPLETE')[0]).toMatchObject({ requestedStartFrame: 13, stopFrame: 16, framesCaptured: 3 });
+  });
+  it('cancels an armed session without producing a take and allows rearming', () => {
+    const c = createCapture(); c.process([0, 0, 0, 0]); c.process([0, 0, 0, 0]);
+    c.processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 1, inputGeneration: 1, startFrame: 8, autoRecThreshold: 0.5 });
+    c.processor.port.receive({ type: 'ABORT_CAPTURE', trackIndex: 0, sessionId: 1 });
+    c.process([1, 1, 1, 1]);
+    expect(c.messages('RECORD_CONFIGURED')).toHaveLength(0);
+    expect(c.messages('RECORD_COMPLETE')).toHaveLength(0);
+    c.processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 2, inputGeneration: 1, startFrame: 12, autoRecThreshold: 0.5 });
+    c.process([0, 1, 0, 0]);
+    expect(c.messages('RECORD_CONFIGURED')[0]).toMatchObject({ sessionId: 2, requestedStartFrame: 13 });
+  });
+  it('input generation loss aborts an armed session, with no silent completed loop', () => {
+    const c = createCapture(); c.process([0, 0, 0, 0]); c.process([0, 0, 0, 0]);
+    c.processor.port.receive({ type: 'START_CAPTURE', trackIndex: 0, sessionId: 1, inputGeneration: 1, startFrame: 8, autoRecThreshold: 0.5 });
+    c.processor.port.receive({ type: 'INPUT_READY', ready: false, generation: 2 });
+    c.process([1, 1, 1, 1]);
+    expect(c.messages('RECORD_ABORTED')).toHaveLength(1);
+    expect(c.messages('RECORD_COMPLETE')).toHaveLength(0);
+  });
+});
