@@ -692,6 +692,7 @@ export class TrackAudio {
         tracks: readonly TrackAudio[],
         replacements: readonly (AudioBuffer | null)[],
         expectedRevisions?: readonly number[],
+        historyPolicy: 'retain-undo' | 'memory-boundary' = 'retain-undo',
     ): ProjectBufferRestoreResult {
         if (tracks.length !== 5 || replacements.length !== 5) {
             return { ok: false, reason: 'Project memory restore requires exactly five prepared track buffers.' };
@@ -717,7 +718,7 @@ export class TrackAudio {
 
         const snapshots = tracks.map((track) => track.capturePcmSnapshot());
         const historyReplacements = tracks.flatMap((track, index) => ([
-            { owner: track, bytes: audioBufferPcmBytes(snapshots[index]!.buffer) },
+            { owner: track, bytes: historyPolicy === 'retain-undo' ? audioBufferPcmBytes(snapshots[index]!.buffer) : 0 },
             { owner: track.markBudgetOwner, bytes: 0 },
         ]));
         if (!budget.canReplaceMany(historyReplacements)) {
@@ -739,7 +740,7 @@ export class TrackAudio {
         for (let index = 0; index < tracks.length; index += 1) {
             const track = tracks[index]!;
             const previous = snapshots[index]!;
-            track.pcmHistory = { snapshot: previous, direction: 'undo' };
+            track.pcmHistory = historyPolicy === 'retain-undo' ? { snapshot: previous, direction: 'undo' } : null;
             track.historyFailureReason = null;
             track.markedPcm = null;
             track.hasCommittedOverdub = false;
@@ -1025,6 +1026,60 @@ export class TrackAudio {
         this.fxChain.output.disconnect(this.gainNode);
         this.fxChain.output.connect(input);
         output.connect(this.gainNode);
+    }
+
+    /** Reversible graph edit used only behind the suspended Memory publication fence. */
+    public replaceTrackFxInsert(previousInput: AudioNode, previousOutput: AudioNode, input: AudioNode, output: AudioNode): void {
+        try {
+            this.fxChain.output.connect(input);
+            output.connect(this.gainNode);
+            this.fxChain.output.disconnect(previousInput);
+            previousOutput.disconnect(this.gainNode);
+        } catch (error) {
+            try { this.fxChain.output.disconnect(input); } catch { /* candidate edge was never installed */ }
+            try { output.disconnect(this.gainNode); } catch { /* candidate edge was never installed */ }
+            this.fxChain.output.connect(previousInput); previousOutput.connect(this.gainNode);
+            throw error;
+        }
+    }
+
+    /** Settings are validated on an isolated Track before touching live AudioParams. */
+    public prepareMemorySettings(saved: Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse'>): { commit(): void; rollback(): void } {
+        const settings = saved.settings;
+        if (!settings || !saved.pitch || typeof saved.isReverse !== 'boolean'
+            || !['off', 'LIVE_MONO', 'LIVE_POLY'].includes(saved.pitch.mode)
+            || !['CENTER', ...Array.from({ length: 50 }, (_, index) => `L${index + 1}`), ...Array.from({ length: 50 }, (_, index) => `R${index + 1}`)].includes(settings.pan)
+            || !Number.isFinite(settings.playLevel) || settings.playLevel < 0 || settings.playLevel > 200
+            || !settings.measure || !['AUTO', 'FREE', 'NOTE'].includes(settings.measure.type)
+            || ![settings.loopSyncSw, settings.tempoSyncSw, settings.reverse, settings.oneShot, settings.fxSw].every((value) => value === 'ON' || value === 'OFF')
+            || !['IMMEDIATE', 'FADE'].includes(settings.startMode) || !['IMMEDIATE', 'FADE', 'LOOP'].includes(settings.stopMode)
+            || !['OVERDUB', 'REPLACE1', 'REPLACE2'].includes(settings.dubMode)
+            || typeof settings.filterEnabled !== 'boolean' || !Number.isFinite(settings.filterValue) || settings.filterValue < 0 || settings.filterValue > 1
+            || !Number.isFinite(settings.filterResonance)
+            || !Number.isFinite(saved.pitch.liveMono?.semitones) || Math.abs(saved.pitch.liveMono.semitones) > 12
+            || !Number.isFinite(saved.pitch.liveMono.minimumFrequencyHz) || !Number.isFinite(saved.pitch.liveMono.maximumFrequencyHz)
+            || saved.pitch.liveMono.minimumFrequencyHz <= 0 || saved.pitch.liveMono.maximumFrequencyHz <= saved.pitch.liveMono.minimumFrequencyHz
+            || !Number.isFinite(saved.pitch.livePoly?.semitones) || Math.abs(saved.pitch.livePoly.semitones) > 24
+            || !Number.isFinite(saved.pitch.livePoly.playbackRate) || saved.pitch.livePoly.playbackRate <= 0
+            || !Number.isFinite(saved.pitch.livePoly.tonalityLimitHz) || saved.pitch.livePoly.tonalityLimitHz <= 0) {
+            throw new Error(`Track ${this.track.id} Memory settings are invalid.`);
+        }
+        const previous = this.getRecoverySnapshot();
+        const apply = (value: Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse'>) => {
+            const s = value.settings;
+            Object.assign(this.track, { ...s, measure: { ...s.measure }, pan: s.pan === 'CENTER' ? 0 : s.pan.startsWith('L') ? -Number(s.pan.slice(1)) : Number(s.pan.slice(1)) });
+            this.isReverse = value.isReverse;
+            this.liveMonoPitchEnabledInternal = value.pitch.mode === 'LIVE_MONO';
+            this.liveMonoPitchSemitones = value.pitch.liveMono.semitones;
+            this.liveMonoPitchMinimumFrequencyHz = value.pitch.liveMono.minimumFrequencyHz;
+            this.liveMonoPitchMaximumFrequencyHz = value.pitch.liveMono.maximumFrequencyHz;
+            this.livePolyPitchEnabledInternal = value.pitch.mode === 'LIVE_POLY';
+            this.livePolyPitchSemitones = value.pitch.livePoly.semitones;
+            this.livePolyPitchPlaybackRate = value.pitch.livePoly.playbackRate;
+            this.livePolyPitchTonalityLimitHz = value.pitch.livePoly.tonalityLimitHz;
+            this.updateSettings();
+        };
+        return { commit: () => apply(saved), rollback: () => apply(previous) };
     }
 
     /** Routes the post-fader loop signal into the shared wet or dry playback sum. */

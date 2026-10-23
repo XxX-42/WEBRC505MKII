@@ -4,6 +4,8 @@ import { BROWSER_OFFICIAL_PARAMETER_KEYS } from './fx/official/browserBindings';
 import { BROWSER_OFFICIAL_PARAMETER_KEYS as BROWSER_OFFICIAL_STREAM_KEYS } from './fx/dsp/OfficialBrowserParameters';
 import { findOfficialRuntimeParameter, resolveOfficialEffect, isOfficialRuntimeValueValid, mergeOfficialParameterEdit } from './fx/official/parameters';
 import { TrackAudio } from './TrackAudio';
+import { createBrowserRc505MemoryRuntime, type BrowserMemoryConfiguration } from './BrowserRc505Memory';
+import type { Rc505MemoryRuntime } from './Rc505Memory';
 import { Track, TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
 import { FXChain } from './FXChain';
@@ -2455,6 +2457,189 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     /** Export only the documented v1 project subset: PCM, BPM, transport timing, and project name. */
+    public createRc505MemoryRuntime(): Rc505MemoryRuntime { return createBrowserRc505MemoryRuntime(this); }
+
+    public captureMemoryConfiguration(): BrowserMemoryConfiguration {
+        return {
+            version: 1,
+            tracks: this.tracks.map((track) => {
+                const { settings, pitch, isReverse } = track.getRecoverySnapshot();
+                return { settings, pitch, isReverse };
+            }),
+            fx: {
+                input: this.getSharedFxRecoverySnapshot('input'), sharedTrack: this.getSharedFxRecoverySnapshot('track'),
+                privateTracks: this.perTrackFxChains.map((bank) => bank.getRecoverySnapshot()),
+                sourceOverrides: Array.from(this.trackLoopTransportOverrides, ([trackId, config]) => ({ trackId, config: { ...config } })),
+                outputDsp: { algorithm: this.outputDspAlgorithmValue, parameters: copyRecoveryFxParameters(this.outputDspParametersValue), enabled: this.outputDspEnabledValue },
+            },
+            rhythm: this.rhythmEngine.getRecoverySnapshot(),
+            trackFxApply: this.getTrackFxApply().map((gate) => gate.applied),
+            outputGain: this.masterGainNode.gain.value, trackMixGain: this.trackMixNode.gain.value,
+        };
+    }
+
+    /** Build all seven FX banks off graph. Publication briefly pauses Browser monitoring. */
+    public async prepareMemoryConfiguration(saved: BrowserMemoryConfiguration, project: ProjectArchive, archiveBytes: number,
+        assertCurrent: () => void): Promise<{ commit(): Promise<void>; dispose(): Promise<void> }> {
+        assertCurrent();
+        if (saved.trackFxApply.some((value, index) => typeof value !== 'boolean' || value !== this.trackFxApplyApplied[index])) {
+            throw new Error('Atomic Memory recall of a different Track FX gate requires a staged render router; incumbent audio is unchanged.');
+        }
+        if (!Number.isFinite(saved.outputGain) || saved.outputGain < 0 || saved.outputGain > 2
+            || !Number.isFinite(saved.trackMixGain) || saved.trackMixGain < 0 || saved.trackMixGain > 2) throw new Error('Memory mixer gain is invalid.');
+        const settings = this.tracks.map((track, index) => track.prepareMemorySettings(saved.tracks[index]!));
+        const pcm = this.prepareProjectArchive(project, archiveBytes, this.captureProjectRestoreToken(), 'memory-boundary');
+        // A prototype host reuses adapter factories, but owns every mutable bank and anchor.
+        // It never creates another engine/context or subscribes to transport/device input.
+        const stage = Object.create(this) as BrowserAudioEngine;
+        stage.tracks = [];
+        stage.inputFxInstances = [null, null, null, null]; stage.trackFxInstances = [null, null, null, null];
+        stage.inputFxTypes = [null, null, null, null]; stage.trackFxTypes = [null, null, null, null];
+        stage.inputFxActive = [false, false, false, false]; stage.trackFxActive = [false, false, false, false];
+        stage.inputFxChain = new FXChain(this.context); stage.outputFxChain = new FXChain(this.context);
+        stage.currentInputStream = null; stage.inputCaptureNode = null;
+        stage.statusListeners = new Set(); stage.officialFxParameterOverrides = new WeakMap();
+        stage.trackLoopTransportOverrides = new Map();
+        stage.selectedHrmAutoMidiTarget = null; stage.selectedTrackMidiTarget = null;
+        stage.perTrackFxChains = Array.from({ length: 5 }, () => new BrowserTrackFxChain(this.context,
+            () => this.ensureFxWorkletModule(), () => {}, () => project.bpm,
+            () => project.transport.timeSignatureNumerator * 4 / project.transport.timeSignatureDenominator,
+            (trackId) => this.tracks[trackId - 1]?.playbackSourceOutput ?? null));
+        let candidateOutput: AudioWorkletNode | null = null;
+        let committed = false;
+        let disposed = false;
+        const disposeStage = () => {
+            for (const bank of stage.perTrackFxChains) bank.dispose();
+            for (const fx of [...stage.inputFxInstances, ...stage.trackFxInstances]) fx?.dispose();
+            stage.inputFxChain.dispose(); stage.outputFxChain.dispose();
+            candidateOutput?.disconnect(); candidateOutput?.port.close(); candidateOutput = null;
+        };
+        try {
+            const configure = (location: 'input' | 'track', slots: readonly BrowserRecoveryFxSlot[]) => {
+                if (!Array.isArray(slots) || slots.length !== 4) throw new Error('Memory FX bank must have four slots.');
+                slots.forEach((slot, index) => {
+                    if (slot.state === 'loading' || slot.state === 'error' || slot.requestedType || slot.requestedActive !== null) throw new Error('Memory contains an unacknowledged FX request.');
+                    if (!slot.type) return;
+                    stage.setFxType(location, index, slot.type);
+                    if ((location === 'input' ? stage.inputFxTypes : stage.trackFxTypes)[index] !== slot.type) throw new Error(`Memory ${location} FX type rejected.`);
+                    const parameters = Object.fromEntries(Object.entries(slot.parameters).filter(([key]) => key !== 'bypassed'));
+                    if (Object.values(parameters).some((value) => typeof value !== 'number' || !Number.isFinite(value))) throw new Error('Memory FX has unsupported scalar controls.');
+                    stage.setFxNamedParameters(location, index, parameters as Record<string, number>);
+                    stage.setFxActive(location, index, slot.active);
+                });
+            };
+            configure('input', saved.fx.input); configure('track', saved.fx.sharedTrack);
+            if (saved.fx.privateTracks.length !== 5) throw new Error('Memory needs five private FX banks.');
+            saved.fx.privateTracks.forEach((slots, trackIndex) => {
+                if (slots.length !== 4) throw new Error('Memory private FX bank must have four slots.');
+                slots.forEach((slot, index) => {
+                    if (slot.state === 'loading' || slot.state === 'error' || slot.requestedType || slot.requestedActive !== null) throw new Error('Memory private FX is not acknowledged.');
+                    if (!slot.type) return;
+                    const bank = stage.perTrackFxChains[trackIndex]!;
+                    if (!bank.setType(index, slot.type)) throw new Error('Memory private FX type rejected.');
+                    if (slot.amount !== null && !bank.setParameter(index, slot.amount)) throw new Error('Memory private FX amount rejected.');
+                    if (Object.values(slot.parameters).some((value) => typeof value !== 'number')) throw new Error('Memory private FX controls must be numeric.');
+                    if (Object.keys(slot.parameters).length && !bank.setNamedParameters(index, slot.parameters as Record<string, number>)) throw new Error('Memory private FX parameters rejected.');
+                    if (!bank.setActive(index, slot.active)) throw new Error('Memory private FX active state rejected.');
+                });
+            });
+            const rhythm = new RhythmEngine(this.context);
+            try {
+                if (!rhythm.setSettings(saved.rhythm as Parameters<RhythmEngine['setSettings']>[0])) throw new Error('Memory Rhythm settings rejected.');
+            } finally { rhythm.outputNode.disconnect(); }
+            await stage.waitForRecoveryFxReady({ fx: saved.fx } as BrowserRecoverySnapshot);
+            if (saved.fx.outputDsp.algorithm !== null) {
+                await this.ensureFxWorkletModule();
+                candidateOutput = new AudioWorkletNode(this.context, 'rc505-fx-processor', {
+                    numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit',
+                    processorOptions: { algorithm: saved.fx.outputDsp.algorithm, sampleRate: this.context.sampleRate, parameters: saved.fx.outputDsp.parameters, bypassed: !saved.fx.outputDsp.enabled },
+                });
+                await this.waitForOutputDspReady(candidateOutput, saved.fx.outputDsp.algorithm as BrowserFxAlgorithm, saved.fx.outputDsp.parameters as BrowserFxParameters);
+            }
+            for (const { trackId, config } of saved.fx.sourceOverrides) if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !isNativeLoopTransportConfig(config)) throw new Error('Memory loop source override is invalid.');
+            assertCurrent();
+        } catch (error) { pcm.dispose(); disposeStage(); throw error; }
+        return {
+            commit: async () => {
+                if (disposed || committed) throw new Error('Memory candidate is no longer prepared.');
+                assertCurrent();
+                const wasRunning = this.context.state === 'running';
+                if (wasRunning) await this.context.suspend();
+                try {
+                    assertCurrent();
+                    const old = this.captureMemoryConfiguration();
+                    const oldBanks = this.perTrackFxChains;
+                    const swapped: number[] = [];
+                    const oldInput = this.inputFxInstances, oldTrack = this.trackFxInstances;
+                    const oldOutput = this.outputDspFxNode;
+                    const outputSource = this.sharedTrackFxJoinNode;
+                    const detachShared = (location: 'input' | 'track', effects: Array<FXBase | null>) => {
+                        const head = location === 'input' ? this.inputFxChain.input : this.outputFxChain.input;
+                        head.disconnect();
+                        for (const effect of effects) effect?.output.disconnect();
+                    };
+                    const connectShared = (location: 'input' | 'track', effects: Array<FXBase | null>) => {
+                        let node: AudioNode = location === 'input' ? this.inputFxChain.input : this.outputFxChain.input;
+                        for (const fx of effects) if (fx) { node.connect(fx.input); node = fx.output; }
+                        node.connect(location === 'input' ? this.inputFxChain.output : this.outputFxChain.output);
+                    };
+                    try {
+                        // Only reversible graph/AudioParam edits occur before PCM publication.
+                        for (let index = 0; index < 5; index++) {
+                            const previous = oldBanks[index]!, next = stage.perTrackFxChains[index]!;
+                            this.tracks[index]!.replaceTrackFxInsert(previous.input, previous.output, next.input, next.output); swapped.push(index);
+                        }
+                        detachShared('input', oldInput); detachShared('track', oldTrack);
+                        stage.inputFxChain.input.disconnect(); stage.outputFxChain.input.disconnect();
+                        for (const fx of [...stage.inputFxInstances, ...stage.trackFxInstances]) fx?.output.disconnect();
+                        connectShared('input', stage.inputFxInstances); connectShared('track', stage.trackFxInstances);
+                        outputSource.disconnect(oldOutput ?? this.masterGainNode);
+                        if (candidateOutput) { outputSource.connect(candidateOutput); candidateOutput.connect(this.masterGainNode); }
+                        else outputSource.connect(this.masterGainNode);
+                        settings.forEach((setting) => setting.commit());
+                        this.rhythmEngine.setSettings(saved.rhythm as Parameters<RhythmEngine['setSettings']>[0]); this.rhythmEngine.setVolume(saved.rhythm.volumePercent);
+                        this.masterGainNode.gain.value = saved.outputGain; this.trackMixNode.gain.value = saved.trackMixGain; this.dryTrackMixGainNode.gain.value = saved.trackMixGain;
+                        // No await occurs between the graph edits and all-five PCM publication.
+                        pcm.commit();
+                    } catch (error) {
+                        for (const index of swapped.reverse()) {
+                            const previous = oldBanks[index]!, next = stage.perTrackFxChains[index]!;
+                            this.tracks[index]!.replaceTrackFxInsert(next.input, next.output, previous.input, previous.output);
+                        }
+                        detachShared('input', stage.inputFxInstances); detachShared('track', stage.trackFxInstances);
+                        connectShared('input', oldInput); connectShared('track', oldTrack);
+                        outputSource.disconnect(); outputSource.connect(oldOutput ?? this.masterGainNode);
+                        settings.forEach((setting) => setting.rollback());
+                        this.rhythmEngine.setSettings(old.rhythm as Parameters<RhythmEngine['setSettings']>[0]); this.rhythmEngine.setVolume(old.rhythm.volumePercent);
+                        this.masterGainNode.gain.value = old.outputGain; this.trackMixNode.gain.value = old.trackMixGain; this.dryTrackMixGainNode.gain.value = old.trackMixGain;
+                        throw error;
+                    }
+                    this.inputFxInstances = stage.inputFxInstances; this.trackFxInstances = stage.trackFxInstances;
+                    this.inputFxTypes = stage.inputFxTypes; this.trackFxTypes = stage.trackFxTypes;
+                    this.inputFxActive = stage.inputFxActive; this.trackFxActive = stage.trackFxActive;
+                    this.officialFxParameterOverrides = stage.officialFxParameterOverrides;
+                    this.perTrackFxChains = stage.perTrackFxChains; this.outputDspFxNode = candidateOutput;
+                    this.outputDspAlgorithmValue = saved.fx.outputDsp.algorithm as BrowserFxAlgorithm | null;
+                    this.outputDspParametersValue = { ...saved.fx.outputDsp.parameters } as BrowserFxParameters; this.outputDspEnabledValue = saved.fx.outputDsp.enabled;
+                    this.trackLoopTransportOverrides = new Map(saved.fx.sourceOverrides.map(({ trackId, config }) => [trackId, { ...config }]));
+                    this.syncAllTrackLoopTransportFx();
+                    // PCM publication resets its direction; semantic Memory owns the saved direction.
+                    this.tracks.forEach((track, index) => { track.isReverse = saved.tracks[index]!.isReverse; });
+                    committed = true;
+                    // Disposing detached nodes is best effort and cannot turn a published Memory into a failed load.
+                    for (const bank of oldBanks) { try { bank.dispose(); } catch { /* detached */ } }
+                    for (const fx of [...oldInput, ...oldTrack]) { try { fx?.dispose(); } catch { /* detached */ } }
+                    try { oldOutput?.disconnect(); oldOutput?.port.close(); } catch { /* detached */ }
+                } finally {
+                    if (wasRunning && this.context.state === 'suspended') {
+                        try { await this.context.resume(); } catch { this.lastError = 'Memory published; Browser audio remains suspended. Resume audio to continue monitoring.'; }
+                    }
+                }
+            },
+            dispose: async () => { if (disposed) return; disposed = true; pcm.dispose(); if (!committed) disposeStage(); else { stage.inputFxChain.dispose(); stage.outputFxChain.dispose(); } },
+        };
+    }
+
     public async exportProjectArchive(name: string): Promise<Uint8Array> {
         if (this.tracks.length !== 5) throw new Error('Project memory export requires all five Browser tracks');
         const revisions = this.tracks.map((track) => track.projectRevision);
@@ -2572,7 +2757,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     /** Allocate and validate the complete candidate without publishing PCM. */
-    public prepareProjectArchive(project: ProjectArchive, archiveBytes: number, operationToken: BrowserProjectRestoreToken): {
+    public prepareProjectArchive(project: ProjectArchive, archiveBytes: number, operationToken: BrowserProjectRestoreToken, historyPolicy: 'retain-undo' | 'memory-boundary' = 'retain-undo'): {
         commit(): void; dispose(): void;
     } {
         if (this.tracks.length !== 5 || project.tracks.length !== 5) throw new Error('Project memory import requires exactly five Browser tracks');
@@ -2664,9 +2849,11 @@ export class BrowserAudioEngine implements IAudioEngine {
                 if (!this.matchesProjectRestoreToken(operationToken)) {
                     throw new Error('Project changed after candidate preparation');
                 }
-        const restore = TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions);
-        if (!restore.ok) throw new Error(restore.reason ?? 'Project memory restore was rejected');
-
+        // Semantic Memory has no fallible transport callbacks after PCM publication.
+        // Legacy ProjectMemory keeps its existing retain-undo ordering.
+        const restoreBeforeTransport = historyPolicy === 'retain-undo'
+            ? TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions, historyPolicy) : null;
+        if (restoreBeforeTransport && !restoreBeforeTransport.ok) throw new Error(restoreBeforeTransport.reason ?? 'Project memory restore was rejected');
         transport.stop();
         transport.resetMasterTrack();
         transport.timeSignature = [transportState.timeSignatureNumerator, transportState.timeSignatureDenominator];
@@ -2674,6 +2861,10 @@ export class BrowserAudioEngine implements IAudioEngine {
         transport.measureLength = transportState.measureLengthSeconds;
         transport.masterLoopLengthSamples = transportState.masterLoopLengthSamples;
         transport.setBpm(project.bpm);
+        if (historyPolicy === 'memory-boundary') {
+            const restore = TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions, historyPolicy);
+            if (!restore.ok) throw new Error(restore.reason ?? 'Memory PCM publication was rejected');
+        }
                 state = 'committed';
             },
             dispose: () => {
