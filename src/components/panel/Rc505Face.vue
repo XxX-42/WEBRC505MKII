@@ -223,7 +223,7 @@ function setTrackFxParameter(group: string, key: string, value: number): void {
 .face-branding::after { content: ''; position: absolute; left: 140px; right: 130px; top: 27px; height: 20px; background: #df2635; clip-path: polygon(0 0,100% 0,100% 9%,73% 9%,70% 100%,32% 100%,29% 9%,0 9%); pointer-events: none; }
 .boss-mark { position: absolute; z-index: 6; top: 54px; left: 225px; display: flex; align-items: center; gap: 5px; color: #d4d7df; font: 900 28px/1 Arial,sans-serif; letter-spacing: -.07em; text-shadow: 0 1px #08090b; pointer-events: none; }
 .boss-mark::before { content: ''; width: 20px; height: 22px; border: 2px solid #c7cbd4; background: linear-gradient(90deg,transparent 40%,#c7cbd4 41% 51%,transparent 52%),linear-gradient(0deg,transparent 45%,#c7cbd4 46% 55%,transparent 56%); box-shadow: inset 0 0 0 3px #24252a; }
-.model-mark { position: absolute; z-index: 2; left: 50%; top: 30px; transform: translateX(-50%); gap: 7px; white-space: nowrap; }
+.model-mark { position: absolute; z-index: 2; left: 50%; top: 30px; transform: translateX(-50%); gap: 7px; white-space: nowrap; line-height: 17px; }
 .model-name,.model-subtitle { color: #17191d; font-family: Arial,sans-serif; font-weight: 900; font-size: 17px; letter-spacing: .015em; text-shadow: none; }
 
 </style>
