@@ -60,6 +60,21 @@ async function harness() {
   return { runtime, store, memory, order, mutate: () => epoch++, forbid: () => { allowed = false; } };
 }
 describe('Memory switch transaction guard', () => {
+  it('keeps installed identity dirty when prepared resource cleanup fails', async () => {
+    const h = await harness();
+    vi.mocked(h.runtime.prepare).mockResolvedValue({ commit: async () => {}, dispose: async () => { throw new Error('cleanup failed'); } });
+    await expect(h.memory.load(3)).rejects.toMatchObject({ committed: true, cause: { message: 'cleanup failed' } });
+    expect(h.memory.currentNumber).toBe(3); expect(h.memory.dirty).toBe(true); expect(h.memory.busy).toBe(false);
+  });
+  it('preserves the primary failure and installed generation if cleanup also fails', async () => {
+    const h = await harness(); const original = new Rc505MemoryCommittedError('readback failed', 7);
+    vi.mocked(h.runtime.prepare).mockResolvedValue({ commit: async () => { throw original; }, dispose: async () => { throw new Error('cleanup failed'); } });
+    await expect(h.memory.load(3)).rejects.toBe(original);
+    expect(h.memory.currentNumber).toBe(3); expect(h.memory.dirty).toBe(true);
+    const h2 = await harness(); const rejected = new Error('commit rejected');
+    vi.mocked(h2.runtime.prepare).mockResolvedValue({ commit: async () => { throw rejected; }, dispose: async () => { throw new Error('cleanup failed'); } });
+    await expect(h2.memory.load(3)).rejects.toBe(rejected); expect(h2.memory.currentNumber).toBeNull();
+  });
   it('reports the newly installed identity as unverified if post-commit state synchronization fails', async () => {
     const h = await harness();
     vi.mocked(h.runtime.prepare).mockResolvedValue({ commit: async () => { throw new Rc505MemoryCommittedError('Memory installed; readback failed.', 42); }, dispose: async () => {} });

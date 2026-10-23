@@ -678,7 +678,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const rendererOptions = controller.nativeHqRendererEngines.value.map((name, index) => ({ label: name, value: index }));
     const rendererIndex = rendererOptions.findIndex((option) => option.label === controller.hqNativeEngine.value);
     const fields: DeviceScreenField[] = [
-      makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 100, step: 1, disabled: !controller.levelControlEnabled.value, reason: controller.trackLevelUnavailableReason.value }),
+      makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 200, step: 1, disabled: !controller.levelControlEnabled.value || controller.levelWritePending.value, reason: controller.levelWritePending.value ? 'Waiting for Native level readback.' : controller.trackLevelUnavailableReason.value }),
       makeBooleanField('track-reverse', 'REVERSE', audioTrack?.isReverse === true, (enabled) => {
         if (audioTrack && audioTrack.isReverse !== enabled) engine.toggleReverse(currentTrackId.value - 1);
       }, { disabled: !trackCapabilities.supportsReverse, reason: trackCapabilities.supportsReverse ? '' : trackCapabilities.reverseReason || 'Reverse playback is unavailable on this runtime.' }),

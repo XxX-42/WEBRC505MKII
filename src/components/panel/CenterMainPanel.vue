@@ -180,6 +180,7 @@
           label="MASTER"
           color="red"
           :size="66"
+          :max="200"
           :disabled="outputDisabled"
           :disabled-reason="outputDisabledReason"
           aria-label="Master output level"
@@ -512,7 +513,7 @@ const screenFields = computed<ScreenField[]>(() => {
   });
   const levelReason = engine.getTrackCapabilities(currentTrackId.value).levelReason || 'Track level is unavailable on this audio runtime.';
   const levelField = () => field('track-level', `TR ${currentTrackId.value} LEVEL`, trackLevel.value, setTrackLevel, {
-    color: 'green', disabled: !engine.getTrackCapabilities(currentTrackId.value).supportsTrackLevel,
+    color: 'green', max: 200, disabled: mixerPending.value || !engine.getTrackCapabilities(currentTrackId.value).supportsTrackLevel,
     reason: engine.getTrackCapabilities(currentTrackId.value).supportsTrackLevel ? '' : levelReason,
   });
   const route = engine.getTrackFxApply?.(currentTrackId.value)[0];
@@ -522,7 +523,7 @@ const screenFields = computed<ScreenField[]>(() => {
     format: (value) => value >= 50 ? 'ON' : 'OFF',
   });
   const outputField = () => field('master-out', 'MASTER OUT', outputLevel.value, setOutputLevel, {
-    color: 'red', disabled: outputDisabled.value, reason: outputDisabledReason.value,
+    color: 'red', max: 200, disabled: outputDisabled.value, reason: outputDisabledReason.value,
     format: outputDisabled.value ? () => '—' : (value) => `${Math.round(value)}%`,
   });
   const fxFields = (location: 'input' | 'track') => {
@@ -937,13 +938,15 @@ async function loadMemory(slot: number): Promise<void> {
   catch (error) { pageActionHint.value = error instanceof Error ? error.message : String(error); }
   finally { capabilityRevision.value += 1; }
 }
-function setTrackLevel(value: number): void {
-  const currentTrack = engine.tracks[currentTrackId.value - 1];
-  if (!currentTrack || !engine.getTrackCapabilities(currentTrackId.value).supportsTrackLevel) return;
-  const bounded = Math.max(0, Math.min(100, Math.round(value)));
-  trackLevel.value = bounded;
-  currentTrack.track.playLevel = bounded;
-  currentTrack.updateSettings();
+async function setTrackLevel(value: number): Promise<void> {
+  const trackId = currentTrackId.value as 1 | 2 | 3 | 4 | 5;
+  if (!Number.isFinite(value) || !engine.getTrackCapabilities(trackId).supportsTrackLevel || memory.state.busy || mixerPending.value) return;
+  mixerPending.value = true;
+  try {
+    await engine.setMixerLevel(trackId, Math.max(0, Math.min(200, Math.round(value))));
+    trackLevel.value = engine.getMixerState().tracks[trackId - 1] ?? trackLevel.value;
+  } catch (error) { controls.reportError('LEVEL FAILED', error instanceof Error ? error.message : String(error)); }
+  finally { mixerPending.value = false; capabilityRevision.value += 1; }
 }
 async function setTrackFxApply(value: number): Promise<void> {
   const target = currentTrackId.value;
@@ -984,9 +987,9 @@ function setRhythmVolume(value: number): void {
 }
 async function setOutputLevel(value: number): Promise<void> {
   if (outputDisabled.value || mixerPending.value || memory.state.busy) return;
-  const bounded = Math.max(0, Math.min(100, Math.round(value)));
+  const bounded = Math.max(0, Math.min(200, Math.round(value)));
   mixerPending.value = true;
-  try { await engine.setOutputLevel(bounded); outputLevel.value = engine.getOutputLevel(); }
+  try { await engine.setMixerLevel('MASTER', bounded); outputLevel.value = engine.getOutputLevel(); }
   catch (error) { controls.reportError('OUTPUT FAILED', error instanceof Error ? error.message : String(error)); }
   finally { mixerPending.value = false; capabilityRevision.value += 1; }
 }
@@ -1066,7 +1069,7 @@ function handleTap(): void {
 }
 
 function syncTrackLevel(): void {
-  trackLevel.value = engine.tracks[currentTrackId.value - 1]?.track.playLevel ?? 100;
+  trackLevel.value = engine.getMixerState?.().tracks[currentTrackId.value - 1] ?? engine.tracks[currentTrackId.value - 1]?.track.playLevel ?? 100;
   capabilityRevision.value += 1;
   memory.refresh();
 }

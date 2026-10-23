@@ -10,7 +10,7 @@ describe('useTrackStripState STOP interactions', () => {
     vi.clearAllMocks();
   });
 
-  async function mountStripState(transportEnabled = true) {
+  async function mountStripState(transportEnabled = true, native = false) {
     const trackAudio = {
       state: 'EMPTY',
       track: { playLevel: 100, filterValue: 0.5, filterResonance: 1, filterEnabled: false, fxSw: 'OFF' },
@@ -33,17 +33,17 @@ describe('useTrackStripState STOP interactions', () => {
       supportsReverse: true,
       reverseReason: '',
     };
+    let confirmedLevel = 100;
+    const setMixerLevel = vi.fn(async (_id: number, value: number) => { confirmedLevel = value; });
+    const engine = {
+      tracks: [trackAudio], selectedBackend: native ? 'NATIVE' : 'BROWSER', selectedSampleRate: 48000,
+      getMode: () => native ? 'native' : 'browser', getUiStatus: () => ({ ready: true }),
+      getTrackCapabilities: () => capabilities, getNativeHqRenderer: () => ({ available: false, engines: [] }),
+      getMixerState: () => ({ tracks: [confirmedLevel] }), setMixerLevel,
+    };
     vi.doMock('../../src/audio/AudioEngine', () => ({
       AudioEngine: {
-        getInstance: () => ({
-          tracks: [trackAudio],
-          selectedBackend: 'BROWSER',
-          selectedSampleRate: 48000,
-          getMode: () => 'browser',
-          getUiStatus: () => ({ ready: true }),
-          getTrackCapabilities: () => capabilities,
-          getNativeHqRenderer: () => ({ available: false, engines: [] }),
-        }),
+        getInstance: () => engine,
       },
     }));
 
@@ -56,8 +56,31 @@ describe('useTrackStripState STOP interactions', () => {
       },
     });
     const wrapper = mount(Host);
-    return { wrapper, state, trackAudio };
+    return { wrapper, state, trackAudio, engine, setConfirmed: (value: number) => { confirmedLevel = value; } };
   }
+
+  it('uses the Native mixer command and confirmed readback without mutating the proxy', async () => {
+    const { wrapper, state, trackAudio, engine, setConfirmed } = await mountStripState(true, true);
+    let finish!: () => void;
+    engine.setMixerLevel.mockImplementationOnce(() => new Promise<void>(resolve => { finish = () => { setConfirmed(174); resolve(); }; }));
+    const pending = state.handleLevelChange(175);
+    expect(state.levelWritePending.value).toBe(true); expect(state.playLevel.value).toBe(100);
+    await state.handleLevelChange(120);
+    expect(engine.setMixerLevel).toHaveBeenCalledTimes(1); expect(engine.setMixerLevel).toHaveBeenCalledWith(1, 175);
+    finish(); await pending;
+    expect(state.playLevel.value).toBe(174); expect(state.levelWritePending.value).toBe(false);
+    expect(trackAudio.track.playLevel).toBe(100); expect(trackAudio.updateSettings).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+  it('retains the last confirmed Native level and surfaces a rejected write', async () => {
+    const { wrapper, state, engine, setConfirmed } = await mountStripState(true, true);
+    setConfirmed(43); engine.setMixerLevel.mockRejectedValueOnce(new Error('HTTP 409 level rejected'));
+    await state.handleLevelChange(180);
+    expect(state.playLevel.value).toBe(43); expect(state.levelWritePending.value).toBe(false);
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    expect(JSON.stringify(useRc505Controls().state)).toContain('HTTP 409 level rejected');
+    wrapper.unmount();
+  });
 
   it('stops on a short keyboard release, clears after the long hold, and cancels interrupted pointer holds', async () => {
     const { wrapper, state, trackAudio } = await mountStripState();

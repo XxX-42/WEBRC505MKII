@@ -80,6 +80,7 @@ export function useTrackStripState(trackId: number) {
   const runtimeRevision = ref(0);
   const currentAudioMode = ref(readAudioMode());
   const playLevel = ref(trackAudio.track.playLevel);
+  const levelWritePending = ref(false);
   const trackAvailable = ref(trackAudio.isAvailable);
   const trackTransportEnabled = ref(trackAudio.transportEnabled);
   const disabledReason = ref(trackCapabilities.value.availabilityReason || trackAudio.disabledReason);
@@ -352,7 +353,7 @@ export function useTrackStripState(trackId: number) {
     if (nativeHqRendererAvailable.value && !nativeHqRendererEngines.value.includes(hqNativeEngine.value)) {
       hqNativeEngine.value = nativeHqRendererEngines.value.includes('R3') ? 'R3' : nativeHqRendererEngines.value[0]!;
     }
-    playLevel.value = trackAudio.track.playLevel;
+    playLevel.value = engine.getMixerState?.().tracks[trackId - 1] ?? trackAudio.track.playLevel;
     trackAvailable.value = trackAudio.isAvailable;
     const audioStatus = engine.getUiStatus();
     trackTransportEnabled.value = trackAudio.transportEnabled && audioStatus.ready;
@@ -450,10 +451,23 @@ export function useTrackStripState(trackId: number) {
     trackAudio.triggerRecord();
   };
 
-  const handleLevelChange = (value: number) => {
-    if (!levelControlEnabled.value) return;
+  const handleLevelChange = async (value: number) => {
+    if (!levelControlEnabled.value || levelWritePending.value || !Number.isFinite(value)) return;
 
-    const safeValue = clamp(Math.round(value), 0, 100);
+    const safeValue = clamp(Math.round(value), 0, 200);
+    if (readAudioMode() === 'native') {
+      levelWritePending.value = true;
+      try {
+        await engine.setMixerLevel(trackId as 1 | 2 | 3 | 4 | 5, safeValue);
+        const confirmed = engine.getMixerState().tracks[trackId - 1];
+        if (confirmed === null || confirmed === undefined) throw new Error('Native track level readback is unavailable.');
+        playLevel.value = confirmed;
+      } catch (error) {
+        playLevel.value = engine.getMixerState?.().tracks[trackId - 1] ?? playLevel.value;
+        classicControls.reportError('LEVEL FAILED', error instanceof Error ? error.message : String(error));
+      } finally { levelWritePending.value = false; }
+      return;
+    }
     playLevel.value = safeValue;
     trackAudio.track.playLevel = safeValue;
     trackAudio.updateSettings();
@@ -654,6 +668,7 @@ export function useTrackStripState(trackId: number) {
     buttonLedColor,
     faderLedColor,
     levelControlEnabled,
+    levelWritePending,
     trackFxControlEnabled,
     levelControlAriaLabel,
     trackFxUnavailableReason: computed(() => trackCapabilities.value.supportsTrackFx ? '' : trackCapabilities.value.trackFxReason),

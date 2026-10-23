@@ -177,18 +177,32 @@ export class Rc505Memory {
       this.assertStopped();
       if (revision !== this.runtime.revision()) throw new Error('Memory changed before recovery was secured.');
       const prepared = await this.runtime.prepare(document, revision);
+      let committed = false;
+      let failure: unknown;
+      let failed = false;
       try {
         this.assertStopped();
         if (revision !== this.runtime.revision()) throw new Error('Memory changed before commit.');
-        try { await prepared.commit(); }
-        catch (error) {
-          if (error instanceof Rc505MemoryCommittedError) {
-            this.currentNumber = slot; this.currentName = document.name; this.savedName = document.name; this.savedRevision = null;
-          }
-          throw error;
+        await prepared.commit();
+        committed = true;
+      } catch (error) {
+        committed = error instanceof Rc505MemoryCommittedError;
+        failure = error; failed = true;
+      }
+      try { await prepared.dispose(); }
+      catch (error) {
+        // Cleanup must not hide the primary failure or claim that installed PCM rolled back.
+        if (!failed) {
+          failure = committed ? new Rc505MemoryCommittedError('Memory installed; prepared resource cleanup failed.', null, { cause: error }) : error;
+          failed = true;
         }
-        this.currentNumber = slot; this.currentName = document.name; this.savedName = document.name; this.savedRevision = this.runtime.revision();
-      } finally { await prepared.dispose(); }
+      }
+      if (committed) {
+        this.currentNumber = slot; this.currentName = document.name; this.savedName = document.name; this.savedRevision = null;
+      }
+      if (failed) throw failure;
+      try { this.savedRevision = this.runtime.revision(); }
+      catch (error) { throw new Rc505MemoryCommittedError('Memory installed; its revision could not be confirmed.', null, { cause: error }); }
     });
   }
   public clear(slot: number): Promise<void> { return this.operation(async () => {

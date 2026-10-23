@@ -86,7 +86,8 @@
           appearance="classic"
           :model-value="playLevel"
           :led-color="faderLedColor"
-          :disabled="!levelControlEnabled || semanticMemory.state.busy"
+          :disabled="!levelControlEnabled || semanticMemory.state.busy || levelWritePending"
+          :max="200"
           :disabled-reason="trackLevelUnavailableReason"
           :aria-label="levelControlAriaLabel"
           data-testid="track-level-fader"
@@ -176,6 +177,7 @@ const {
   isCurrentTrack,
   faderLedColor,
   levelControlEnabled,
+  levelWritePending,
   levelControlAriaLabel,
   trackLevelUnavailableReason,
   trackButtonAriaLabel,
