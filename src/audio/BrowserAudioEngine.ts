@@ -2498,7 +2498,8 @@ export class BrowserAudioEngine implements IAudioEngine {
             },
             rhythm: this.rhythmEngine.getRecoverySnapshot(),
             trackFxApply: this.getTrackFxApply().map((gate) => gate.applied),
-            outputGain: this.masterGainNode.gain.value, trackMixGain: this.trackMixNode.gain.value,
+            outputGain: this.masterGainNode.gain.value, mainGain: this.mainGainNode.gain.value, trackMixGain: this.trackMixNode.gain.value,
+            recordPlay: { ...this.recordPlaySettings },
         };
     }
 
@@ -2635,7 +2636,10 @@ export class BrowserAudioEngine implements IAudioEngine {
         assertCurrent();
         if (saved.trackFxApply.some((value) => typeof value !== 'boolean')) throw new Error('Memory gate value is invalid.');
         if (!Number.isFinite(saved.outputGain) || saved.outputGain < 0 || saved.outputGain > 2
+            || !Number.isFinite(saved.mainGain) || saved.mainGain < 0 || saved.mainGain > 2
             || !Number.isFinite(saved.trackMixGain) || saved.trackMixGain < 0 || saved.trackMixGain > 2) throw new Error('Memory mixer gain is invalid.');
+        if (!saved.recordPlay) throw new Error('Memory lacks record/play settings.');
+        assertRecordPlaySettings(saved.recordPlay);
         const settings = this.tracks.map((track, index) => track.prepareMemorySettings(saved.tracks[index]!));
         const pcm = this.prepareProjectArchive(project, archiveBytes, this.captureProjectRestoreToken(), 'memory-boundary');
         // A prototype host reuses adapter factories, but owns every mutable bank and anchor.
@@ -2746,12 +2750,13 @@ export class BrowserAudioEngine implements IAudioEngine {
                         stage.inputFxChain.input.disconnect(); stage.outputFxChain.input.disconnect();
                         for (const fx of [...stage.inputFxInstances, ...stage.trackFxInstances]) fx?.output.disconnect();
                         connectShared('input', stage.inputFxInstances); connectShared('track', stage.trackFxInstances);
-                        outputSource.disconnect(oldOutput ?? this.masterGainNode);
-                        if (candidateOutput) { outputSource.connect(candidateOutput); candidateOutput.connect(this.masterGainNode); }
-                        else outputSource.connect(this.masterGainNode);
+                        outputSource.disconnect(oldOutput ?? this.mainGainNode);
+                        if (candidateOutput) { outputSource.connect(candidateOutput); candidateOutput.connect(this.mainGainNode); }
+                        else outputSource.connect(this.mainGainNode);
                         settings.forEach((setting) => setting.commit());
                         this.rhythmEngine.setSettings(saved.rhythm as Parameters<RhythmEngine['setSettings']>[0]); this.rhythmEngine.setVolume(saved.rhythm.volumePercent);
-                        this.masterGainNode.gain.value = saved.outputGain; this.trackMixNode.gain.value = saved.trackMixGain; this.dryTrackMixGainNode.gain.value = saved.trackMixGain;
+                        this.masterGainNode.gain.value = saved.outputGain; this.mainGainNode.gain.value = saved.mainGain; this.trackMixNode.gain.value = saved.trackMixGain; this.dryTrackMixGainNode.gain.value = saved.trackMixGain;
+                        this.recordPlaySettings = { ...saved.recordPlay };
                         // No await occurs between the graph edits and all-five PCM publication.
                         pcm.commit();
                     } catch (error) {
@@ -2762,10 +2767,11 @@ export class BrowserAudioEngine implements IAudioEngine {
                         }
                         detachShared('input', stage.inputFxInstances); detachShared('track', stage.trackFxInstances);
                         connectShared('input', oldInput); connectShared('track', oldTrack);
-                        outputSource.disconnect(); outputSource.connect(oldOutput ?? this.masterGainNode);
+                        outputSource.disconnect(); outputSource.connect(oldOutput ?? this.mainGainNode);
                         settings.forEach((setting) => setting.rollback());
                         this.rhythmEngine.setSettings(old.rhythm as Parameters<RhythmEngine['setSettings']>[0]); this.rhythmEngine.setVolume(old.rhythm.volumePercent);
-                        this.masterGainNode.gain.value = old.outputGain; this.trackMixNode.gain.value = old.trackMixGain; this.dryTrackMixGainNode.gain.value = old.trackMixGain;
+                        this.masterGainNode.gain.value = old.outputGain; this.mainGainNode.gain.value = old.mainGain; this.trackMixNode.gain.value = old.trackMixGain; this.dryTrackMixGainNode.gain.value = old.trackMixGain;
+                        this.recordPlaySettings = { ...old.recordPlay };
                         throw error;
                     }
                     this.inputFxInstances = stage.inputFxInstances; this.trackFxInstances = stage.trackFxInstances;

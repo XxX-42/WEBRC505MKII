@@ -13,7 +13,9 @@ export interface BrowserMemoryConfiguration {
   rhythm: BrowserRecoverySnapshot['rhythm'];
   trackFxApply: boolean[];
   outputGain: number;
+  mainGain: number;
   trackMixGain: number;
+  recordPlay: { recAction: 'REC->PLAY' | 'REC->DUB'; quantize: 'MEASURE' | 'OFF' };
 }
 
 const runtimes = new WeakMap<BrowserAudioEngine, Rc505MemoryRuntime>();
@@ -55,6 +57,8 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
   const existing = runtimes.get(engine);
   if (existing) return existing;
   let epoch = 0;
+  let preservedExtensions: Record<string, Rc505Json> = {};
+  let preservedFields: Rc505MemoryDocument['semantics']['fields'] = {};
   const changed = () => { if (++epoch >= Number.MAX_SAFE_INTEGER) throw new Error('Browser Memory edit epoch exhausted.'); };
   for (const track of engine.tracks) {
     observeData(track.track, changed);
@@ -63,14 +67,14 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
   }
   observeMethods(engine, ['setFxType', 'setFxParam', 'setFxNamedParameters', 'setFxActive', 'setStepSlicerStep',
     'setStepSlicerControl', 'setTrackFxType', 'setTrackFxParameter', 'setTrackFxNamedParameters', 'setTrackFxActive',
-    'setTrackFxApply', 'setLoopTransport', 'setOutputDspFx', 'setOutputDspFxEnabled', 'configureOutputDspFx'], changed);
+    'setTrackFxApply', 'setLoopTransport', 'setOutputDspFx', 'setOutputDspFxEnabled', 'configureOutputDspFx', 'setMixerLevel', 'setRecordPlaySettings'], changed);
   observeMethods(engine.rhythmEngine, ['setPattern', 'setCatalogPattern', 'setKit', 'setVariation', 'setSection',
     'setSwingPercent', 'setQuantizeGrid', 'setSettings', 'setVolume', 'start', 'stop', 'toggle'], changed);
   const revision = () => JSON.stringify([
     epoch, Transport.getInstance().projectMutationRevision,
     engine.tracks.map((track) => [track.projectRevision, track.state, track.historyBusy]),
     engine.getTrackFxApply().map((gate) => [gate.semanticRevision, gate.requestedRevision, gate.pending]),
-    engine.masterGainNode.gain.value, engine.trackMixNode.gain.value,
+    engine.masterGainNode.gain.value, engine.mainGainNode.gain.value, engine.trackMixNode.gain.value,
   ]);
   const canSwitch = () => {
     const allowed = engine.context.state !== 'closed' && engine.tracks.length === 5
@@ -94,15 +98,19 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
       const archive = await engine.exportProjectArchive('Memory');
       assertStable(expected);
       const transport = Transport.getInstance();
-      const fields: Rc505MemoryDocument['semantics']['fields'] = {};
+      const fields: Rc505MemoryDocument['semantics']['fields'] = structuredClone(preservedFields);
       state.tracks.forEach((track, index) => {
         for (const [key, value] of Object.entries(track.settings)) {
           fields[`track.${index + 1}.${key}`] = { availability: 'supported', value: value as Rc505Json };
         }
       });
+      fields['record.recAction'] = { availability: 'supported', value: state.recordPlay.recAction };
+      fields['record.quantize'] = { availability: 'supported', value: state.recordPlay.quantize };
+      fields['mixer.main'] = { availability: 'supported', value: Math.round(state.mainGain * 100) };
+      fields['mixer.master'] = { availability: 'supported', value: Math.round(state.outputGain * 100) };
       return { version: 1, memoryNumber: null, name: '', archive,
         semantics: { tempo: transport.bpm, meter: [...transport.timeSignature], fields },
-        extensions: { WEBRC: { browserMemory: JSON.parse(JSON.stringify(state)) as Rc505Json } } };
+        extensions: { WEBRC: { ...structuredClone(preservedExtensions), browserMemory: JSON.parse(JSON.stringify(state)) as Rc505Json } } };
     },
     prepare: async (document, expectedRevision) => {
       assertStable(expectedRevision);
@@ -115,7 +123,11 @@ export function createBrowserRc505MemoryRuntime(engine: BrowserAudioEngine): Rc5
       assertStable(expectedRevision);
       const prepared = await engine.prepareMemoryConfiguration(state, project, document.archive.byteLength,
         () => assertStable(expectedRevision));
-      return { commit: async () => { assertStable(expectedRevision); await prepared.commit(); changed(); }, dispose: prepared.dispose };
+      return { commit: async () => {
+        assertStable(expectedRevision); await prepared.commit();
+        preservedExtensions = structuredClone(document.extensions.WEBRC); preservedFields = structuredClone(document.semantics.fields);
+        changed();
+      }, dispose: prepared.dispose };
     },
   };
   runtimes.set(engine, runtime);

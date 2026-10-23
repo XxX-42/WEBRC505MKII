@@ -52,12 +52,18 @@ describe('Browser semantic Memory', () => {
   it('publishes prepared settings and all PCM behind a suspension fence without replacing tracks', async () => {
     const { runtime, engine, context, seed } = harness(); seed(1);
     engine.tracks[1]!.track.playLevel = 42;
+    engine.setMixerLevel('MAIN', 47); engine.setMixerLevel('MASTER', 83);
+    engine.setRecordPlaySettings({ recAction: 'REC->DUB', quantize: 'OFF' });
     const doc = await runtime.capture(); seed(9); engine.tracks[1]!.track.playLevel = 91;
+    engine.setMixerLevel('MAIN', 100); engine.setMixerLevel('MASTER', 100);
+    engine.setRecordPlaySettings({ recAction: 'REC->PLAY', quantize: 'MEASURE' });
     const identities = engine.tracks.slice();
     const candidate = await runtime.prepare(doc, runtime.revision());
     await candidate.commit(); await candidate.dispose();
     expect(engine.tracks).toEqual(identities);
     expect(engine.tracks[1]!.track.playLevel).toBe(42);
+    expect(engine.getMixerState()).toMatchObject({ main: 47, master: 83 });
+    expect(engine.getRecordPlaySettings()).toMatchObject({ recAction: 'REC->DUB', quantize: 'OFF' });
     expect(engine.tracks.map((track) => track.getProjectPcmSnapshot()!.channelData[0]![0])).toEqual([1, 2, 3, 4, 5]);
     expect(engine.tracks.every((track) => !track.canUndo && !track.canRedo)).toBe(true);
     expect(context.suspend).toHaveBeenCalledOnce(); expect(context.resume).toHaveBeenCalledOnce();
