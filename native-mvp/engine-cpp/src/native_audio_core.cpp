@@ -1013,6 +1013,7 @@ bool NativeAudioCore::setTrackMark(std::size_t trackIndex, std::uint64_t generat
     const auto pinGeneration = historyPinNextGeneration_.fetch_add(1U, std::memory_order_acq_rel) + 1U;
     historyPinTrackIndex_.store(trackIndex, std::memory_order_relaxed);
     historyPinCancelledGeneration_.store(0U, std::memory_order_relaxed);
+    historyPinRequestedPurpose_.store(HistoryPinPurpose::ReadOnlyMark,std::memory_order_relaxed);
     historyPinRequestGeneration_.store(pinGeneration, std::memory_order_release);
     const auto pinDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
     while (historyPinAcknowledgedGeneration_.load(std::memory_order_acquire) != pinGeneration) {
@@ -1036,6 +1037,10 @@ bool NativeAudioCore::setTrackMark(std::size_t trackIndex, std::uint64_t generat
     if (historyPinAcknowledgedTrackIndex_.load(std::memory_order_acquire) != trackIndex) {
         (void)releasePin();
         return finishFailure("Native MARK SET callback pin acknowledged the wrong track; no mark was created.");
+    }
+    if (historyPinAcknowledgedPurpose_.load(std::memory_order_acquire) != HistoryPinPurpose::ReadOnlyMark) {
+        (void)releasePin();
+        return finishFailure("Native MARK SET could not acquire a read-only finalized playback pin.");
     }
     auto& track = looperForTrack(trackIndex);
     const auto pinnedState = track.state();
@@ -1326,6 +1331,7 @@ bool NativeAudioCore::restoreTrackHistory(std::size_t trackIndex, bool redo, std
     const auto pinGeneration = historyPinNextGeneration_.fetch_add(1U, std::memory_order_acq_rel) + 1U;
     historyPinTrackIndex_.store(trackIndex, std::memory_order_relaxed);
     historyPinCancelledGeneration_.store(0U, std::memory_order_relaxed);
+    historyPinRequestedPurpose_.store(HistoryPinPurpose::ExclusiveRestore,std::memory_order_relaxed);
     historyPinRequestGeneration_.store(pinGeneration, std::memory_order_release);
     constexpr auto pinTimeout = std::chrono::milliseconds(1000);
     const auto pinDeadline = std::chrono::steady_clock::now() + pinTimeout;
@@ -3837,7 +3843,7 @@ void NativeAudioCore::prepareVocoderCarriers(unsigned int frames) noexcept {
             const bool pitchConflict = (nativePitchRuntimeEnabled_ || nativePitchRuntimeReverse_) &&
                 (nativePitchRuntimeTrackId_ == 0U || nativePitchRuntimeTrackId_ == track + 1U);
             if (frames > kMaxCallbackFrames || frames == 0U) status = NativeVocoderCarrierStatus::BufferUnavailable;
-            else if (track == historyPinnedTrackIndex_) status = NativeVocoderCarrierStatus::HistoryPinned;
+            else if (historyPinSuppressesPlayback(track)) status = NativeVocoderCarrierStatus::HistoryPinned;
             else if (source.state() == LooperState::Recording) status = NativeVocoderCarrierStatus::UnsupportedRecording;
             else if (source.state() == LooperState::Overdubbing) status = NativeVocoderCarrierStatus::UnsupportedOverdubbing;
             else if (source.loopLengthSamples() == 0U) status = NativeVocoderCarrierStatus::Empty;
@@ -3917,7 +3923,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     bool pitchPlaybackRequested = false;
     std::uint64_t shortestPlayingLoop = std::numeric_limits<std::uint64_t>::max();
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
-        if (trackIndex == historyPinnedTrackIndex_) continue;
+        if (historyPinSuppressesPlayback(trackIndex)) continue;
         if (nativePitchRuntimeTrackId_ != 0U && trackIndex + 1U != nativePitchRuntimeTrackId_) continue;
         const auto& track = looperForTrack(trackIndex);
         const auto state = track.state();
@@ -3946,7 +3952,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     if (playbackBufferAvailable) std::fill_n(playbackBus, sampleCount, 0.0f);
     if (playbackBufferAvailable) std::fill_n(nativeTrackDryPlaybackScratch_.data(), sampleCount, 0.0f);
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
-        if (trackIndex == historyPinnedTrackIndex_) {
+        if (historyPinSuppressesPlayback(trackIndex)) {
             std::fill_n(nativeTrackMixScratch_.data(), sampleCount, 0.0f);
             if (playbackBufferAvailable) std::fill_n(nativeTrackPlaybackScratch_.data(), sampleCount, 0.0f);
             nativeTrackFxApplyPeak_[trackIndex].store(0.0f, std::memory_order_release);
@@ -4104,12 +4110,18 @@ bool NativeAudioCore::processLoopSnapshotRequestAtCallback() noexcept {
     return loopSnapshotPinned_;
 }
 
+bool NativeAudioCore::historyPinSuppressesPlayback(std::size_t trackIndex) const noexcept {
+    return trackIndex == historyPinnedTrackIndex_ && historyPinnedPurpose_ != HistoryPinPurpose::ReadOnlyMark;
+}
+
 std::size_t NativeAudioCore::processHistoryPinAtCallback() noexcept {
     const auto generation = historyPinRequestGeneration_.load(std::memory_order_acquire);
     if (generation == 0U) {
         if (historyPinnedGeneration_ != 0U) {
             historyPinnedGeneration_ = 0U;
             historyPinnedTrackIndex_ = kNativeTrackCount;
+            historyPinnedPurpose_ = HistoryPinPurpose::ExclusiveRestore;
+            historyPinAcknowledgedPurpose_.store(HistoryPinPurpose::ExclusiveRestore,std::memory_order_release);
             historyPinTrackIndex_.store(kNativeTrackCount, std::memory_order_release);
             historyPinAcknowledgedTrackIndex_.store(kNativeTrackCount, std::memory_order_release);
             historyPinReleasedGeneration_.store(historyPinReleaseGeneration_.load(std::memory_order_acquire),
@@ -4121,7 +4133,15 @@ std::size_t NativeAudioCore::processHistoryPinAtCallback() noexcept {
     if (historyPinnedGeneration_ != generation) {
         historyPinnedGeneration_ = generation;
         historyPinnedTrackIndex_ = historyPinTrackIndex_.load(std::memory_order_acquire);
+        historyPinnedPurpose_ = HistoryPinPurpose::ExclusiveRestore;
+        if (historyPinRequestedPurpose_.load(std::memory_order_acquire) == HistoryPinPurpose::ReadOnlyMark &&
+            historyPinnedTrackIndex_ < kNativeTrackCount && commandQueue_.size() == 0U &&
+            projectImportState_.load(std::memory_order_acquire) == NativeProjectImportState::Idle) {
+            const auto state = looperForTrack(historyPinnedTrackIndex_).state();
+            if (state == LooperState::Playing || state == LooperState::Stopped) historyPinnedPurpose_ = HistoryPinPurpose::ReadOnlyMark;
+        }
     }
+    historyPinAcknowledgedPurpose_.store(historyPinnedPurpose_,std::memory_order_release);
     historyPinAcknowledgedTrackIndex_.store(historyPinnedTrackIndex_, std::memory_order_release);
     historyPinAcknowledgedGeneration_.store(generation, std::memory_order_release);
     return historyPinnedTrackIndex_;
@@ -4438,7 +4458,7 @@ int NativeAudioCore::handleInputAudioCallback(
 
     bool pitchPlaybackRequested = false;
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
-        if (trackIndex == historyPinnedTrackIndex_) continue;
+        if (historyPinSuppressesPlayback(trackIndex)) continue;
         const auto state = looperForTrack(trackIndex).state();
         pitchPlaybackRequested = pitchPlaybackRequested ||
             (state == LooperState::Playing || state == LooperState::Overdubbing);

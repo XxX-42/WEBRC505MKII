@@ -1,0 +1,54 @@
+{
+  "status": "SOFTWARE_MARK_CONTINUITY_VALIDATED",
+  "parent_telemetry_commit": "1c7e58a",
+  "created_utc": "2026-10-23T15:47:56.762447+00:00",
+  "compiler": "MSVC19.29.30159 x64 Release global /W4 /WX; no suppressions",
+  "ctest": {
+    "passed": 4,
+    "failed": 0,
+    "targets": [
+      "native_callback_telemetry_tests",
+      "native_callback_telemetry_http",
+      "native_track_mark_tests",
+      "native_memory_tests"
+    ]
+  },
+  "unit_result": {
+    "testCases": 7,
+    "callbacksObserved": 2593,
+    "callbackCppNewAllocations": 0,
+    "callbackCppDeallocations": 0,
+    "coreMutexHeldProbeCompleted": true,
+    "hardwareValidated": false
+  },
+  "readonly_copy_probes": {
+    "cases": 3,
+    "callbacks_per_copy_probe": 32,
+    "dry_pcm_samples_checked": 8192,
+    "source_snapshot_comparison": "byte equality on every concurrent copy",
+    "playhead": "128 frames advanced per callback modulo loop length",
+    "pitch": "actual per-track processor remains active while its source is read-pinned",
+    "carrier": "actual selected vocoder carrier remains Ready while its source is read-pinned",
+    "queued_command": "Stop stays deferred until pin release",
+    "exclusive_pin_probes": 2,
+    "writable_recording_readonly_request": "rejected by callback acknowledgement"
+  },
+  "source_sha256": {
+    "native-mvp/engine-cpp/include/native_audio_core.hpp": "6d1d72260adae40cb4a0b1701378d5a48346fd4aa6d81dc2bfe82212a6ce46d2",
+    "native-mvp/engine-cpp/src/native_audio_core.cpp": "a4bb385dc560dfeef51d4979006e3bea4c32a40db18d8239e704c3a70209bd2b",
+    "native-mvp/engine-cpp/tests/native_callback_telemetry_tests.cpp": "ff8ca887d1debc31f1cd2a2691bc503f83b52b612d65d92d5088377e8a2bba3f"
+  },
+  "binary_sha256": {
+    "native_callback_telemetry_tests.exe": "c2c70aa975267fb772a56be05dfc574e22cd63304e8a58b0f1a1a67c948aa773",
+    "native_bridge_host_simulation.exe": "7a7abf4c95afdc5eb1839d4fc6386b703467ee270adb2a101bc456da0773b66c",
+    "native_track_mark_tests.exe": "4e59a8feb3b26e8c7609c7fe03f86084982f177fa991b8919244af084eb4271b",
+    "native_memory_tests.exe": "488ba369fc193bd19d5e9e137552a7f52a65a0467914a8d9476fc78d591492d7"
+  },
+  "limitations": [
+    "No physical hardware or audio-quality test.",
+    "RT heap proof covers callback-thread C++ new/new[] and delete/delete[] only; other allocators unavailable.",
+    "All three existing core mutexes held by the copying control thread; no global mutex interception.",
+    "Deterministic long-copy barrier exercises the real pin/PCM-copy/render paths; public real MARK transaction is covered separately in the same suite.",
+    "Performance benchmark not rerun; final frozen-source measurement remains a separate gate."
+  ]
+}

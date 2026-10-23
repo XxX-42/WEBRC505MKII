@@ -675,6 +675,9 @@ private:
     void prepareVocoderCarriers(unsigned int frames) noexcept;
     [[nodiscard]] bool processLoopSnapshotRequestAtCallback() noexcept;
     [[nodiscard]] std::size_t processHistoryPinAtCallback() noexcept;
+    enum class HistoryPinPurpose : std::uint8_t { ExclusiveRestore, ReadOnlyMark };
+    static_assert(std::atomic<HistoryPinPurpose>::is_always_lock_free, "pin purpose must remain callback-safe");
+    bool historyPinSuppressesPlayback(std::size_t trackIndex) const noexcept;
     [[nodiscard]] bool applyProjectImportAtCallback() noexcept;
     void finalizeProjectImportLocked();
     bool configureNativeCatalogSlotLocked(
@@ -830,8 +833,11 @@ private:
     std::atomic<std::uint64_t> historyPinReleasedGeneration_{0U};
     std::atomic<std::size_t> historyPinTrackIndex_{kNativeTrackCount};
     std::atomic<std::size_t> historyPinAcknowledgedTrackIndex_{kNativeTrackCount};
+    std::atomic<HistoryPinPurpose> historyPinRequestedPurpose_{HistoryPinPurpose::ExclusiveRestore};
+    std::atomic<HistoryPinPurpose> historyPinAcknowledgedPurpose_{HistoryPinPurpose::ExclusiveRestore};
     std::uint64_t historyPinnedGeneration_ = 0U;
     std::size_t historyPinnedTrackIndex_ = kNativeTrackCount;
+    HistoryPinPurpose historyPinnedPurpose_ = HistoryPinPurpose::ExclusiveRestore;
     SpscRingQueue<NativeOutputEffectCommand, 32> outputStageCommandQueue_;
     SpscRingQueue<NativeReverbCommand, 16> nativeReverbCommandQueue_;
     SpscRingQueue<NativeFractionalDelayCommand, 16> nativeFractionalDelayCommandQueue_;

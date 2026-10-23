@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
 #include <iostream>
 #include <new>
@@ -58,7 +59,7 @@ struct NativeAudioCoreTestAccess {
     static void clearAndPrime(NativeAudioCore& core) {core.outputQueue_.clear();core.renderPrimed_.store(true);}
     static void prime(NativeAudioCore& core) {core.renderPrimed_.store(true);}
     static void duration(NativeAudioCore& core,std::uint64_t ns) {core.recordCallbackDuration(0U,128U,48000U,ns);}
-    static void command(NativeAudioCore& core,CommandType type) {assert(core.commandQueue_.push({type,false,0U}));}
+    static void command(NativeAudioCore& core,CommandType type,std::uint8_t track=0U) {assert(core.commandQueue_.push({type,false,track}));}
     static void hardwareOpenForProvenanceTest(NativeAudioCore& core) {core.markHardwareStreamOpened();}
     static void proveCoreLocksNotAcquired(NativeAudioCore& core,void* output,void* input) {
         std::atomic<bool> held{false},release{false};
@@ -70,6 +71,99 @@ struct NativeAudioCoreTestAccess {
         while(!held.load(std::memory_order_acquire)) std::this_thread::yield();
         run(core,0U,output,input);
         release.store(true,std::memory_order_release);holder.join();
+    }
+    static std::vector<float> pcm(NativeAudioCore& core,std::size_t track) {
+        const auto frames=static_cast<std::size_t>(core.looperForTrack(track).loopLengthSamples());
+        std::vector<float> result(frames*2U);std::size_t copied=0U;
+        assert(core.looperForTrack(track).copyFinalizedStereoLoopSnapshot(result.data(),frames,copied));assert(copied==frames);
+        return result;
+    }
+    static void populatedLoop(NativeAudioCore& core,std::uint8_t track) {
+        std::array<float,256U> input{},output{};
+        for(unsigned int frame=0U;frame<128U;++frame) {
+            input[frame*2U]=0.03f*std::sin(static_cast<float>(frame)*6.28318530718f/128.0f);
+            input[frame*2U+1U]=0.025f*std::sin(static_cast<float>(frame)*12.56637061436f/128.0f);
+        }
+        command(core,CommandType::Record,track);
+        for(unsigned int block=0U;block<375U;++block) run(core,0U,output.data(),input.data());
+        command(core,CommandType::StopRecordOrPlayback,track);run(core,0U,output.data(),nullptr);
+        command(core,CommandType::Play,track);run(core,0U,output.data(),nullptr);
+    }
+    static void readOnlyCopyContinuity(NativeAudioCore& core,std::uint8_t track,bool exactPcm,bool processors) {
+        const auto expected=pcm(core,track);const auto frames=expected.size()/2U;
+        std::array<float,256U> output{},input{};input.fill(0.02f);
+        std::atomic<bool> copying{false},release{false},done{false};std::atomic<unsigned int> copies{0U};
+        std::thread reader([&] {
+            std::scoped_lock locks(core.controlMutex_,core.loopSnapshotMutex_,core.commandProducerMutex_);
+            const auto generation=core.historyPinNextGeneration_.fetch_add(1U)+1U;
+            core.historyPinTrackIndex_.store(track,std::memory_order_relaxed);
+            core.historyPinRequestedPurpose_.store(NativeAudioCore::HistoryPinPurpose::ReadOnlyMark,std::memory_order_relaxed);
+            core.historyPinCancelledGeneration_.store(0U,std::memory_order_relaxed);
+            core.historyPinRequestGeneration_.store(generation,std::memory_order_release);
+            while(core.historyPinAcknowledgedGeneration_.load(std::memory_order_acquire)!=generation) std::this_thread::yield();
+            assert(core.historyPinAcknowledgedPurpose_.load()==NativeAudioCore::HistoryPinPurpose::ReadOnlyMark);
+            std::vector<float> candidate(expected.size());
+            while(!release.load(std::memory_order_acquire)) {
+                std::size_t copied=0U;
+                assert(core.looperForTrack(track).copyFinalizedStereoLoopSnapshot(candidate.data(),frames,copied));
+                assert(copied==frames && std::memcmp(candidate.data(),expected.data(),expected.size()*sizeof(float))==0);
+                copies.fetch_add(1U,std::memory_order_relaxed);copying.store(true,std::memory_order_release);
+            }
+            core.historyPinReleaseGeneration_.store(generation,std::memory_order_relaxed);
+            core.historyPinRequestGeneration_.store(0U,std::memory_order_release);
+            while(core.historyPinReleasedGeneration_.load(std::memory_order_acquire)!=generation) std::this_thread::yield();
+            done.store(true,std::memory_order_release);
+        });
+        while(!copying.load(std::memory_order_acquire)) run(core,0U,output.data(),exactPcm ? nullptr : input.data());
+        // A queued writer/transport command must remain deferred for both pin purposes.
+        command(core,CommandType::StopRecordOrPlayback,track);
+        for(unsigned int block=0U;block<32U;++block) {
+            const auto before=core.looperForTrack(track).metadata().playhead;
+            run(core,0U,output.data(),exactPcm ? nullptr : input.data());
+            assert(core.looperForTrack(track).metadata().playhead==(before+128U)%frames);
+            assert(core.looperForTrack(track).state()==LooperState::Playing && core.commandQueue_.size()==1U);
+            if(exactPcm) for(std::size_t frame=0U;frame<128U;++frame) for(std::size_t channel=0U;channel<2U;++channel) {
+                assert(std::fabs(output[frame*2U+channel]-expected[((before+frame)%frames)*2U+channel])<1e-6f);
+            }
+            if(processors) {
+                assert(core.nativePitchActive_.load(std::memory_order_acquire));
+                assert(core.nativeVocoderCarrierStatuses_[1U].load(std::memory_order_acquire)==NativeVocoderCarrierStatus::Ready);
+            }
+        }
+        release.store(true,std::memory_order_release);
+        while(!done.load(std::memory_order_acquire)) run(core,0U,output.data(),exactPcm ? nullptr : input.data());
+        reader.join();assert(copies.load()>0U);
+        assert(pcm(core,track)==expected && core.looperForTrack(track).state()==LooperState::Stopped);
+    }
+    static void exclusivePinStillSuppresses(NativeAudioCore& core,std::size_t track,bool carrier) {
+        const auto generation=core.historyPinNextGeneration_.fetch_add(1U)+1U;
+        core.historyPinTrackIndex_.store(track,std::memory_order_relaxed);
+        core.historyPinRequestedPurpose_.store(NativeAudioCore::HistoryPinPurpose::ExclusiveRestore,std::memory_order_relaxed);
+        core.historyPinRequestGeneration_.store(generation,std::memory_order_release);
+        std::array<float,256U> output{};
+        const auto before=core.looperForTrack(track).metadata().playhead;
+        run(core,0U,output.data(),nullptr);
+        assert(core.historyPinAcknowledgedPurpose_.load()==NativeAudioCore::HistoryPinPurpose::ExclusiveRestore);
+        assert(core.looperForTrack(track).metadata().playhead==before);
+        if(carrier) assert(core.nativeVocoderCarrierStatuses_[track].load()==NativeVocoderCarrierStatus::HistoryPinned);
+        else assert(!core.nativePitchActive_.load());
+        core.historyPinReleaseGeneration_.store(generation,std::memory_order_relaxed);
+        core.historyPinRequestGeneration_.store(0U,std::memory_order_release);run(core,0U,output.data(),nullptr);
+    }
+    static void rejectReadOnlyRequestForRecording(NativeAudioCore& core) {
+        std::array<float,256U> input{},output{};input.fill(0.1f);
+        command(core,CommandType::Record);run(core,0U,output.data(),input.data());
+        const auto frames=core.looper_.metadata().recordedFrames;
+        const auto generation=core.historyPinNextGeneration_.fetch_add(1U)+1U;
+        core.historyPinTrackIndex_.store(0U,std::memory_order_relaxed);
+        core.historyPinRequestedPurpose_.store(NativeAudioCore::HistoryPinPurpose::ReadOnlyMark,std::memory_order_relaxed);
+        core.historyPinRequestGeneration_.store(generation,std::memory_order_release);
+        run(core,0U,output.data(),input.data());
+        assert(core.historyPinAcknowledgedPurpose_.load()==NativeAudioCore::HistoryPinPurpose::ExclusiveRestore);
+        assert(core.looper_.metadata().recordedFrames==frames);
+        core.historyPinReleaseGeneration_.store(generation,std::memory_order_relaxed);
+        core.historyPinRequestGeneration_.store(0U,std::memory_order_release);run(core,0U,output.data(),input.data());
+        assert(core.looper_.metadata().recordedFrames==frames+128U);
     }
 };
 }
@@ -201,11 +295,35 @@ void testGateMeterAndRealMarkCallbacksStayHeapFree() {
     NativeAudioCoreTestAccess::running(core,false);
 }
 
+void testReadOnlyMarkCopyPreservesPcmCursorPitchAndCarrier() {
+    {
+        NativeAudioCore core;NativeAudioCoreTestAccess::prepare(core);NativeAudioCoreTestAccess::populatedLoop(core,0U);
+        NativeAudioCoreTestAccess::readOnlyCopyContinuity(core,0U,true,false);
+    }
+    NativeAudioCore core;NativeAudioCoreTestAccess::prepare(core);
+    NativeAudioCoreTestAccess::populatedLoop(core,0U);NativeAudioCoreTestAccess::populatedLoop(core,1U);
+    std::string error;
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A,"vocoder",{{"official_carrier",7.0f},{"official_balance",100.0f}},false,error,NativeCatalogFxPath::Input,0U));
+    NativePitchConfig pitch;pitch.enabled=true;pitch.trackId=1U;pitch.semitones=3.0f;
+    assert(core.setNativePitchConfig(pitch,error));
+    std::array<float,256U> output{},input{};input.fill(0.02f);
+    for(unsigned int block=0U;block<1000U;++block) NativeAudioCoreTestAccess::run(core,0U,output.data(),input.data());
+    NativeAudioCoreTestAccess::readOnlyCopyContinuity(core,0U,false,true);
+    NativeAudioCoreTestAccess::command(core,CommandType::Play,0U);NativeAudioCoreTestAccess::run(core,0U,output.data(),input.data());
+    NativeAudioCoreTestAccess::readOnlyCopyContinuity(core,1U,false,true);
+    NativeAudioCoreTestAccess::exclusivePinStillSuppresses(core,0U,false);
+    NativeAudioCoreTestAccess::exclusivePinStillSuppresses(core,1U,true);
+    NativeAudioCore writable;NativeAudioCoreTestAccess::prepare(writable);
+    NativeAudioCoreTestAccess::rejectReadOnlyRequestForRecording(writable);
+    assert(callbackAllocations==0U && callbackDeallocations==0U);
+}
+
 int main() {
     testSeparateFlagsAndLifetimeReset();testEarlyReturnsAndOversizeAreTimed();
     testAudioAndControlQueueCausesAreIndependent();testNonFiniteInputAndOutputAreIndependent();
     testDeterministicHistogramAndDeadlineClassification();testGateMeterAndRealMarkCallbacksStayHeapFree();
-    std::cout<<"{\"testCases\":6,\"callbacksObserved\":"<<callbacksObserved
+    testReadOnlyMarkCopyPreservesPcmCursorPitchAndCarrier();
+    std::cout<<"{\"testCases\":7,\"callbacksObserved\":"<<callbacksObserved
         <<",\"callbackCppNewAllocations\":"<<callbackAllocations<<",\"callbackCppDeallocations\":"<<callbackDeallocations
         <<",\"coreMutexHeldProbeCompleted\":true,\"hardwareValidated\":false}\n";
 }
