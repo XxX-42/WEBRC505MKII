@@ -99,7 +99,7 @@ function cloneBuffer(source: AudioBuffer, targetContext: AudioContext, label: st
   return target;
 }
 
-function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: number; historyBytes: number } {
+function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: number; historyBytes: number; markBytes: number } {
   if (!snapshot || snapshot.schemaVersion !== 2 || snapshot.source.contextState !== 'closed') {
     throw new Error('A recovery candidate requires a version-2 snapshot from a closed Browser AudioContext.');
   }
@@ -121,6 +121,7 @@ function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: nu
 
   let currentBytes = 0;
   let historyBytes = 0;
+  let markBytes = 0;
   for (let index = 0; index < snapshot.tracks.length; index += 1) {
     const track = snapshot.tracks[index]!;
     if (track.trackId !== index + 1 || !Number.isSafeInteger(track.projectPcmRevision) || track.projectPcmRevision < 0) {
@@ -135,16 +136,28 @@ function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: nu
       throw new Error(`Track ${track.trackId} history byte count does not match its snapshot.`);
     }
     historyBytes += historyBufferBytes;
+    const mark = track.mark ?? { buffer: null, committedOverdub: false, retainedBytes: 0 };
+    const markBufferBytes = mark.buffer
+      ? validateBuffer(mark.buffer, `Track ${track.trackId} independent mark`) : 0;
+    if (typeof mark.committedOverdub !== 'boolean'
+      || (mark.buffer !== null && !mark.committedOverdub)
+      || (mark.buffer !== null && (mark.buffer === track.buffer || mark.buffer === track.history.buffer))
+      || (!mark.buffer && mark.committedOverdub && track.buffer === null)
+      || markBufferBytes !== mark.retainedBytes) {
+      throw new Error(`Track ${track.trackId} mark PCM does not match its independent snapshot metadata.`);
+    }
+    markBytes += markBufferBytes;
   }
-  if (!Number.isSafeInteger(currentBytes) || !Number.isSafeInteger(historyBytes)
-    || historyBytes !== snapshot.pcmHistoryBudget.retainedBytes) {
+  const retainedBytes = historyBytes + markBytes;
+  if (!Number.isSafeInteger(currentBytes) || !Number.isSafeInteger(historyBytes) || !Number.isSafeInteger(markBytes)
+    || !Number.isSafeInteger(retainedBytes) || retainedBytes !== snapshot.pcmHistoryBudget.retainedBytes) {
     throw new Error('The five tracks do not match their shared PCM-history ledger.');
   }
-  const estimatedPeakPcmBytes = 2 * (currentBytes + historyBytes);
+  const estimatedPeakPcmBytes = 2 * (currentBytes + retainedBytes);
   if (!Number.isSafeInteger(estimatedPeakPcmBytes) || estimatedPeakPcmBytes > MAX_RECOVERY_CANDIDATE_PEAK_PCM_BYTES) {
     throw new Error(`Recovery candidate requires an estimated ${estimatedPeakPcmBytes} PCM bytes, above the 4 GiB operation limit; the old context remains unchanged.`);
   }
-  return { currentBytes, historyBytes };
+  return { currentBytes, historyBytes, markBytes };
 }
 
 /**
@@ -158,15 +171,16 @@ export async function buildBrowserRecoveryCandidate(
   createContext: RecoveryAudioContextFactory = (options) => new AudioContext(options),
   buildOptions: BrowserRecoveryCandidateBuildOptions = {},
 ): Promise<BrowserRecoveryCandidate> {
-  const { currentBytes, historyBytes } = validateSnapshot(sourceSnapshot);
-  const estimatedPeakPcmBytes = 2 * (currentBytes + historyBytes);
+  const { currentBytes, historyBytes, markBytes } = validateSnapshot(sourceSnapshot);
+  const retainedBytes = historyBytes + markBytes;
+  const estimatedPeakPcmBytes = 2 * (currentBytes + retainedBytes);
   // Preflight the complete known PCM + reserved Signalsmith peak before a
   // candidate context, cloned buffer, or worklet can be allocated.
   const restoreFxGraph = buildOptions.restorePrivateTrackFxGraph === true || buildOptions.restoreAllPersistedFxGraph === true;
   const preflightFxGraph = restoreFxGraph || buildOptions.preflightPersistedFxGraph === true;
   const includeSharedFx = buildOptions.restoreAllPersistedFxGraph === true;
   const graphPlan = preflightFxGraph
-    ? planBrowserRecoveryFxGraph(sourceSnapshot, currentBytes + historyBytes, { includeSharedBanks: includeSharedFx || buildOptions.preflightPersistedFxGraph === true })
+    ? planBrowserRecoveryFxGraph(sourceSnapshot, currentBytes + retainedBytes, { includeSharedBanks: includeSharedFx || buildOptions.preflightPersistedFxGraph === true })
     : null;
   const livePolyPitchProcessorCount = sourceSnapshot.tracks.filter((track) => track.pitch.mode === 'LIVE_POLY').length;
   const estimatedLivePolyWasmBytes = livePolyPitchProcessorCount * SIGNALSMITH_LIVE_POLY_MAX_WASM_BYTES;
@@ -199,12 +213,16 @@ export async function buildBrowserRecoveryCandidate(
       const buffer = track.buffer ? cloneBuffer(track.buffer, context, `Track ${track.trackId} current loop`) : null;
       const historyBuffer = track.history.buffer
         ? cloneBuffer(track.history.buffer, context, `Track ${track.trackId} undo/redo loop`) : null;
+      const sourceMark = track.mark ?? { buffer: null, committedOverdub: false, retainedBytes: 0 };
+      const markBuffer = sourceMark.buffer
+        ? cloneBuffer(sourceMark.buffer, context, `Track ${track.trackId} independent mark`) : null;
       return Object.freeze({
         ...track,
         state: buffer ? TrackState.STOPPED : TrackState.EMPTY,
         wasPlaying: false,
         buffer,
         history: Object.freeze({ ...track.history, buffer: historyBuffer }),
+        mark: Object.freeze({ ...sourceMark, buffer: markBuffer }),
       });
     });
     const candidateSnapshot: BrowserRecoverySnapshot = Object.freeze({
@@ -233,8 +251,9 @@ export async function buildBrowserRecoveryCandidate(
     if (buildOptions.prepareRuntime !== false) {
       preparedRuntime = await prepareBrowserRecoveryRuntime(context, silentSink, candidateSnapshot);
     }
-    const copiedHistoryBytes = candidateSnapshot.tracks.reduce((sum, track) => sum + track.history.retainedBytes, 0);
-    if (copiedHistoryBytes !== historyBytes || context.state !== 'suspended' || silentSink.gain.value !== 0) {
+    const copiedRetainedBytes = candidateSnapshot.tracks.reduce((sum, track) =>
+      sum + track.history.retainedBytes + (track.mark?.retainedBytes ?? 0), 0);
+    if (copiedRetainedBytes !== retainedBytes || context.state !== 'suspended' || silentSink.gain.value !== 0) {
       throw new Error('The recovery candidate failed its final PCM, muted-output, or stopped-context verification.');
     }
     const actualWasm = signalsmithLiveWasmSnapshot(context);

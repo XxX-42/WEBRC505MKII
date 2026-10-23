@@ -46,6 +46,17 @@ struct NativeTrackHistoryStatus {
     NativeHistoryFailure unavailableReason = NativeHistoryFailure::None;
 };
 
+struct NativeTrackMarkStatus {
+    bool exists = false;
+    bool canSet = false;
+    bool canClear = false;
+    bool busy = false;
+    std::uint64_t retainedPcmBytes = 0U;
+    std::string unavailableReason = "noCommittedOverdub";
+    std::uint64_t requestedGeneration = 0U;
+    std::uint64_t appliedGeneration = 0U;
+};
+
 enum class NativePitchMode : std::uint8_t { LiveMonoKeepPitch = 0, LivePolyPhaseVocoder };
 
 enum class Backend : std::uint8_t {
@@ -233,6 +244,10 @@ struct EngineStatus {
     std::array<NativeTrackHistoryStatus, kNativeTrackCount> nativeTrackHistory{};
     std::uint64_t nativeHistoryBudgetBytes = kNativeHistoryBudgetBytes;
     std::uint64_t nativeHistoryRetainedBytes = 0U;
+    std::uint32_t nativeMarkVersion = 1U;
+    std::array<NativeTrackMarkStatus, kNativeTrackCount> nativeTrackMarks{};
+    std::uint64_t nativeMarkBudgetBytes = kNativeHistoryBudgetBytes;
+    std::uint64_t nativeMarkRetainedBytes = 0U;
     double streamTimeSeconds = 0.0;
     unsigned long long callbackTicks = 0;
     std::uint64_t nativeSampleFrame = 0U;
@@ -397,6 +412,8 @@ public:
     bool playTrack(std::size_t trackIndex, std::string& error);
     bool toggleTrackOverdub(std::size_t trackIndex, std::string& error);
     bool clearTrack(std::size_t trackIndex, std::string& error);
+    bool setTrackMark(std::size_t trackIndex, std::uint64_t generation, std::string& error);
+    bool clearTrackMark(std::size_t trackIndex, std::uint64_t generation, std::string& error);
     bool undoTrack(std::size_t trackIndex, std::string& error);
     bool redoTrack(std::size_t trackIndex, std::string& error);
     bool setMonitoring(bool enabled, std::string& error);
@@ -577,6 +594,8 @@ private:
     [[nodiscard]] bool queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error);
     void applyTrackCommandAtCallback(const Command& command) noexcept;
     [[nodiscard]] bool restoreTrackHistory(std::size_t trackIndex, bool redo, std::string& error);
+    void invalidateTrackMarkLocked(std::size_t trackIndex) noexcept;
+    [[nodiscard]] std::string trackMarkUnavailableReasonLocked(std::size_t trackIndex) const;
     [[nodiscard]] ProcessStats processNativeTracksForCallback(
         const float* inputInterleaved,
         float* outputInterleaved,
@@ -685,6 +704,15 @@ private:
     std::array<std::atomic<bool>, kNativeTrackCount> historyPcmActive_{};
     std::array<LoopMetadata, kNativeTrackCount> pendingOverdubBefore_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> historyPcmBytes_{};
+    // Marks are separate finalized stereo copies. The callback only publishes
+    // eligibility transitions; it never allocates, copies, or destroys mark PCM.
+    std::array<std::vector<float>, kNativeTrackCount> markPcm_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> markPcmBytes_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> markCandidateBytes_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> markEligibleAfterOverdub_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> markBusy_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> markRequestedGeneration_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> markAppliedGeneration_{};
     std::atomic<std::uint64_t> historyRetainedBytes_{0U};
     std::atomic<std::uint64_t> historyPinNextGeneration_{0U};
     std::atomic<std::uint64_t> historyPinRequestGeneration_{0U};

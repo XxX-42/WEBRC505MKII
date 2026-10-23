@@ -293,9 +293,6 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   )
   target_link_libraries(native_fx_catalog_tests PRIVATE native_dsp_portable)
   enable_strict_warnings(native_fx_catalog_tests)
-  if(MSVC)
-  else()
-  endif()
 
   add_executable(native_vocoder_core_tests
     tests/native_vocoder_core_tests.cpp
@@ -457,17 +454,11 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   add_executable(native_catalog_ack_tests tests/native_catalog_ack_tests.cpp)
   target_link_libraries(native_catalog_ack_tests PRIVATE native_audio_core_test_support)
   enable_strict_warnings(native_catalog_ack_tests)
-  if(MSVC)
-  else()
-  endif()
   add_executable(native_audio_callback_tests tests/native_audio_callback_tests.cpp)
   target_link_libraries(native_audio_callback_tests PRIVATE native_audio_core_test_support)
   enable_strict_warnings(native_audio_callback_tests)
   # Callback assertions are the actual acceptance checks (including the
   # allocation guard), so keep them enabled in Release configurations too.
-  if(MSVC)
-  else()
-  endif()
   # This test intentionally overrides global new/delete with malloc/free to
   # count callback allocations. GCC's mismatched-new-delete heuristic cannot
   # see through that test allocator and otherwise rejects std::map fixtures.
@@ -488,9 +479,6 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
   add_executable(native_catalog_route_tests tests/native_catalog_route_tests.cpp tests/native_alloc_tracker.cpp)
   target_link_libraries(native_catalog_route_tests PRIVATE native_audio_core_test_support)
   enable_strict_warnings(native_catalog_route_tests)
-  if(MSVC)
-  else()
-  endif()
 
   add_executable(native_pitch_processor_tests
     tests/native_pitch_processor_tests.cpp
@@ -700,9 +688,6 @@ if(NATIVE_PORTABLE_TESTS_ONLY)
     add_executable(native_rubberband_renderer_tests tests/native_rubberband_renderer_tests.cpp)
     target_link_libraries(native_rubberband_renderer_tests PRIVATE native_dsp_portable)
     enable_strict_warnings(native_rubberband_renderer_tests)
-    if(MSVC)
-    else()
-    endif()
   endif()
 
   add_executable(native_audio_bench EXCLUDE_FROM_ALL tests/native_audio_bench.cpp)
@@ -872,8 +857,12 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
   add_executable(native_catalog_ack_tests tests/native_catalog_ack_tests.cpp)
   target_link_libraries(native_catalog_ack_tests PRIVATE native_audio_core_simulation)
   enable_strict_warnings(native_catalog_ack_tests)
+  add_executable(native_track_mark_tests tests/native_audio_callback_tests.cpp)
+  target_link_libraries(native_track_mark_tests PRIVATE native_audio_core_simulation)
+  target_compile_definitions(native_track_mark_tests PRIVATE NATIVE_TRACK_MARK_TESTS_ONLY=1)
   if(MSVC)
   else()
+    target_compile_options(native_track_mark_tests PRIVATE -Wno-mismatched-new-delete)
   endif()
   add_executable(native_bridge_host_simulation src/native_bridge_host.cpp)
   target_link_libraries(native_bridge_host_simulation PRIVATE
@@ -887,6 +876,7 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   enable_testing()
   add_test(NAME native_catalog_ack_tests COMMAND native_catalog_ack_tests)
+  add_test(NAME native_track_mark_tests COMMAND native_track_mark_tests)
   add_test(NAME project_archive_codec_tests COMMAND project_archive_codec_tests)
   add_test(
     NAME native_bridge_http_simulation
@@ -1158,6 +1148,14 @@ if(NOT MSVC)
   target_compile_options(native_audio_callback_tests PRIVATE -Wno-mismatched-new-delete)
 endif()
 
+add_executable(native_track_mark_tests tests/native_audio_callback_tests.cpp)
+target_link_libraries(native_track_mark_tests PRIVATE native_audio_core)
+target_compile_definitions(native_track_mark_tests PRIVATE NATIVE_TRACK_MARK_TESTS_ONLY=1)
+if(MSVC)
+else()
+  target_compile_options(native_track_mark_tests PRIVATE -Wno-mismatched-new-delete)
+endif()
+
 add_executable(native_isolator_processor_tests
   tests/native_isolator_processor_tests.cpp
   tests/native_alloc_tracker.cpp
@@ -1189,6 +1187,7 @@ target_link_libraries(project_archive_codec_tests PRIVATE native_project_archive
 enable_strict_warnings(project_archive_codec_tests)
 add_test(NAME project_archive_codec_tests COMMAND project_archive_codec_tests)
 add_test(NAME native_audio_callback_tests COMMAND native_audio_callback_tests)
+add_test(NAME native_track_mark_tests COMMAND native_track_mark_tests)
 add_executable(native_chorus_processor_tests
   tests/native_chorus_processor_tests.cpp
   tests/native_alloc_tracker.cpp

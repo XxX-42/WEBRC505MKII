@@ -178,6 +178,7 @@ json statusToJson(const EngineStatus& status) {
     json nativeTracks = json::array();
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         const auto& history = status.nativeTrackHistory[track];
+        const auto& mark = status.nativeTrackMarks[track];
         nativeTracks.push_back({
             {"trackId", track + 1U},
             {"state", looperStateToString(status.nativeTrackStates[track])},
@@ -190,6 +191,16 @@ json statusToJson(const EngineStatus& status) {
                 {"canRedo", history.canRedo},
                 {"retainedPcmBytes", history.retainedPcmBytes},
                 {"unavailableReason", nativeHistoryFailureToString(history.unavailableReason)},
+            }},
+            {"mark", {
+                {"exists", mark.exists},
+                {"canSet", mark.canSet},
+                {"canClear", mark.canClear},
+                {"busy", mark.busy},
+                {"retainedPcmBytes", mark.retainedPcmBytes},
+                {"unavailableReason", mark.unavailableReason},
+                {"requestedGeneration", mark.requestedGeneration},
+                {"appliedGeneration", mark.appliedGeneration},
             }},
         });
     }
@@ -552,6 +563,11 @@ json statusToJson(const EngineStatus& status) {
             {"budgetBytes", status.nativeHistoryBudgetBytes},
             {"retainedBytes", status.nativeHistoryRetainedBytes},
         }},
+        {"nativeMarkVersion", status.nativeMarkVersion},
+        {"nativeMarks", {
+            {"budgetBytes", status.nativeMarkBudgetBytes},
+            {"retainedBytes", status.nativeMarkRetainedBytes},
+        }},
         {"streamTimeSeconds", status.streamTimeSeconds},
         {"callbackTicks", status.callbackTicks},
 #if defined(NATIVE_RUBBERBAND_HQ_AVAILABLE)
@@ -678,6 +694,46 @@ bool readTrackIndex(const httplib::Request& request, std::size_t& trackIndex, st
         return false;
     }
     trackIndex = static_cast<std::size_t>(trackId - 1U);
+    return true;
+}
+
+bool readTrackMarkRequest(const httplib::Request& request, std::string_view path,
+                          std::size_t& trackIndex, std::uint64_t& generation, std::string& error) {
+    const std::string prefix = std::string(path) + "?trackId=";
+    if (request.target.compare(0U, prefix.size(), prefix) != 0 ||
+        request.get_param_value_count("trackId") != 1U ||
+        request.get_param_value_count("generation") != 1U) {
+        error = "Native MARK requests require exactly one trackId and generation query parameter.";
+        return false;
+    }
+    const auto rawQuery = std::string_view(request.target).substr(prefix.size());
+    const auto separator = rawQuery.find("&generation=");
+    if (separator == std::string_view::npos || rawQuery.find('&', separator + 1U) != std::string_view::npos ||
+        rawQuery.find('?', 0U) != std::string_view::npos) {
+        error = "Native MARK requests require the canonical trackId and generation query.";
+        return false;
+    }
+    const auto rawTrackId = rawQuery.substr(0U, separator);
+    const auto rawGeneration = rawQuery.substr(separator + std::string_view("&generation=").size());
+    if (rawTrackId.empty() || rawGeneration.empty() ||
+        request.get_param_value("trackId") != rawTrackId ||
+        request.get_param_value("generation") != rawGeneration) {
+        error = "Native MARK request query values are invalid.";
+        return false;
+    }
+    const auto [trackEnd, trackStatus] = std::from_chars(rawTrackId.data(), rawTrackId.data() + rawTrackId.size(), trackIndex);
+    if (trackStatus != std::errc{} || trackEnd != rawTrackId.data() + rawTrackId.size() ||
+        trackIndex < 1U || trackIndex > kNativeTrackCount) {
+        error = "Native trackId must be an integer between 1 and 5.";
+        return false;
+    }
+    const auto [generationEnd, generationStatus] =
+        std::from_chars(rawGeneration.data(), rawGeneration.data() + rawGeneration.size(), generation);
+    if (generationStatus != std::errc{} || generationEnd != rawGeneration.data() + rawGeneration.size() || generation == 0U) {
+        error = "Native MARK generation must be a positive integer.";
+        return false;
+    }
+    --trackIndex;
     return true;
 }
 
@@ -1366,6 +1422,40 @@ int main() {
             return;
         }
         if (!engine.clearTrack(trackIndex, error)) {
+            writeError(response, error);
+            return;
+        }
+        writeJson(response, statusToJson(engine.getStatus()));
+    });
+
+    server.Post("/v1/transport/mark-set", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        std::uint64_t generation = 0U;
+        if (!readTrackMarkRequest(request, "/v1/transport/mark-set", trackIndex, generation, error)) {
+            response.status = 400;
+            writeError(response, error);
+            return;
+        }
+        if (!engine.setTrackMark(trackIndex, generation, error)) {
+            response.status = 409;
+            writeError(response, error);
+            return;
+        }
+        writeJson(response, statusToJson(engine.getStatus()));
+    });
+
+    server.Post("/v1/transport/mark-clear", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::string error;
+        std::size_t trackIndex = 0U;
+        std::uint64_t generation = 0U;
+        if (!readTrackMarkRequest(request, "/v1/transport/mark-clear", trackIndex, generation, error)) {
+            response.status = 400;
+            writeError(response, error);
+            return;
+        }
+        if (!engine.clearTrackMark(trackIndex, generation, error)) {
+            response.status = 409;
             writeError(response, error);
             return;
         }

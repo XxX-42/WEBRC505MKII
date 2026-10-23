@@ -9,6 +9,7 @@ import { Track, TrackState, TransportState } from '../core/types';
 import { Transport } from '../core/Transport';
 import { audioBufferPcmBytes, getBrowserPcmHistoryBudget, PcmHistoryBudget } from './PcmHistoryBudget';
 import type { BrowserRecoveryTrack } from './BrowserRecoverySnapshot';
+import type { TrackMarkActionResult, TrackMarkState } from './TrackMark';
 
 const RECORDING_CHUNK_SIZE = 16_384;
 const RECORDING_CHUNK_POOL_SIZE = 3;
@@ -286,6 +287,7 @@ export class TrackAudio {
     private audioBuffer: AudioBuffer | null = null;
     private projectPcmRevision = 0;
     private readonly pcmHistoryBudget: PcmHistoryBudget;
+    private readonly markBudgetOwner: object = {};
     private readonly overdubSnapshotBudgetOwner: object = {};
     private pendingOverdubRollbackSnapshot: TrackPcmSnapshot | null = null;
     private overdubBaselineSnapshot: TrackPcmSnapshot | null = null;
@@ -293,6 +295,12 @@ export class TrackAudio {
     // the live AudioBuffer; overdub makes its one copy before the first patch.
     private pcmHistory: { snapshot: TrackPcmSnapshot; direction: 'undo' | 'redo' } | null = null;
     private historyFailureReason: string | null = null;
+    private markedPcm: AudioBuffer | null = null;
+    private hasCommittedOverdub = false;
+    private markOperationBusy = false;
+    private markRequestedGeneration = 0;
+    private markAppliedGeneration = 0;
+    private markFailureReason: string | null = null;
     private pendingClear = false;
     private sourceNode: AudioBufferSourceNode | null = null;
     private sourceGainNode: GainNode | null = null;
@@ -495,6 +503,101 @@ export class TrackAudio {
     public get historyBudgetBytes(): number { return this.pcmHistoryBudget.limitBytes; }
     public get projectRevision(): number { return this.projectPcmRevision; }
 
+    public getMarkState(): TrackMarkState {
+        const exists = this.markedPcm !== null;
+        const bytes = audioBufferPcmBytes(this.audioBuffer);
+        const stateBusy = this.historyBusy || this.state === TrackState.RECORDING || this.state === TrackState.OVERDUBBING;
+        const withinBudget = this.pcmHistoryBudget.canReplace(this.markBudgetOwner, bytes);
+        const unavailableReason = this.markFailureReason
+            ?? (this.markOperationBusy ? 'A mark operation is still in progress.'
+                : exists ? 'Clear the existing mark before setting another one.'
+                    : stateBusy ? 'Finish recording or overdubbing before setting a mark.'
+                        : !this.audioBuffer ? 'Record a loop before setting a mark.'
+                            : !this.hasCommittedOverdub ? 'Complete an overdub before setting a mark.'
+                                : !withinBudget ? this.historyBudgetReason('The mark is unavailable') : null);
+        return {
+            supported: true,
+            exists,
+            canSet: !exists && !this.disposed && !this.markOperationBusy && !stateBusy
+                && this.audioBuffer !== null && this.hasCommittedOverdub && withinBudget,
+            canClear: exists && !this.disposed && !this.markOperationBusy,
+            backSupported: false,
+            busy: this.markOperationBusy,
+            retainedPcmBytes: audioBufferPcmBytes(this.markedPcm),
+            unavailableReason,
+            requestedGeneration: this.markRequestedGeneration,
+            appliedGeneration: this.markAppliedGeneration,
+        };
+    }
+
+    public setMark(): TrackMarkActionResult {
+        const currentState = this.getMarkState();
+        if (!currentState.canSet) {
+            return { ok: false, reason: currentState.unavailableReason ?? 'A mark cannot be set in the current track state.', state: currentState };
+        }
+        const source = this.audioBuffer;
+        if (!source) return { ok: false, reason: 'Record a loop before setting a mark.', state: this.getMarkState() };
+
+        const revision = this.projectPcmRevision;
+        const bytes = audioBufferPcmBytes(source);
+        this.markRequestedGeneration += 1;
+        this.markOperationBusy = true;
+        this.markFailureReason = null;
+        try {
+            // Marks own a full independent PCM copy; subsequent overdub patches
+            // only mutate the live AudioBuffer and never alias this snapshot.
+            const copy = this.engine.context.createBuffer(source.numberOfChannels, source.length, source.sampleRate);
+            for (let channel = 0; channel < source.numberOfChannels; channel += 1) {
+                copy.getChannelData(channel).set(source.getChannelData(channel));
+            }
+            if (this.disposed || this.audioBuffer !== source || this.projectPcmRevision !== revision || this.historyBusy) {
+                this.markFailureReason = 'Track PCM changed while the mark snapshot was being prepared; no mark was installed.';
+                this.markOperationBusy = false;
+                return { ok: false, reason: this.markFailureReason, state: this.getMarkState() };
+            }
+            if (!this.pcmHistoryBudget.replace(this.markBudgetOwner, bytes)) {
+                this.markFailureReason = this.historyBudgetReason('The mark is unavailable');
+                this.markOperationBusy = false;
+                return { ok: false, reason: this.markFailureReason, state: this.getMarkState() };
+            }
+            this.markedPcm = copy;
+            this.markAppliedGeneration = this.markRequestedGeneration;
+            this.markOperationBusy = false;
+            return { ok: true, reason: null, state: this.getMarkState() };
+        } catch (error) {
+            this.markFailureReason = `Browser could not allocate the independent mark snapshot: ${error instanceof Error ? error.message : String(error)}.`;
+            this.markOperationBusy = false;
+            return { ok: false, reason: this.markFailureReason, state: this.getMarkState() };
+        } finally {
+            this.markOperationBusy = false;
+        }
+    }
+
+    public clearMark(): TrackMarkActionResult {
+        if (this.disposed) {
+            const state = this.getMarkState();
+            return { ok: false, reason: 'This Browser track has been disposed.', state };
+        }
+        if (!this.markedPcm) {
+            const state = this.getMarkState();
+            return { ok: false, reason: 'This track does not have a mark to clear.', state };
+        }
+        if (this.markOperationBusy) {
+            const state = this.getMarkState();
+            return { ok: false, reason: 'A mark operation is still in progress.', state };
+        }
+        this.markRequestedGeneration += 1;
+        this.clearMarkInternal();
+        this.markAppliedGeneration = this.markRequestedGeneration;
+        this.markFailureReason = null;
+        return { ok: true, reason: null, state: this.getMarkState() };
+    }
+
+    private clearMarkInternal(): void {
+        this.markedPcm = null;
+        this.pcmHistoryBudget.release(this.markBudgetOwner);
+    }
+
     /** Read-only state needed to plan a new Browser AudioContext without mutating this graph. */
     public getRecoverySnapshot(): BrowserRecoveryTrack {
         if (this.historyBusy) {
@@ -552,6 +655,11 @@ export class TrackAudio {
                 }),
             }),
             history: pcmHistory,
+            mark: Object.freeze({
+                buffer: this.markedPcm,
+                committedOverdub: this.hasCommittedOverdub,
+                retainedBytes: audioBufferPcmBytes(this.markedPcm),
+            }),
             sourceTransport,
         });
     }
@@ -601,10 +709,10 @@ export class TrackAudio {
         }
 
         const snapshots = tracks.map((track) => track.capturePcmSnapshot());
-        const historyReplacements = tracks.map((track, index) => ({
-            owner: track,
-            bytes: audioBufferPcmBytes(snapshots[index]!.buffer),
-        }));
+        const historyReplacements = tracks.flatMap((track, index) => ([
+            { owner: track, bytes: audioBufferPcmBytes(snapshots[index]!.buffer) },
+            { owner: track.markBudgetOwner, bytes: 0 },
+        ]));
         if (!budget.canReplaceMany(historyReplacements)) {
             return {
                 ok: false,
@@ -626,6 +734,9 @@ export class TrackAudio {
             const previous = snapshots[index]!;
             track.pcmHistory = { snapshot: previous, direction: 'undo' };
             track.historyFailureReason = null;
+            track.markedPcm = null;
+            track.hasCommittedOverdub = false;
+            track.markFailureReason = null;
             track.audioBuffer = replacements[index]!;
             track.projectPcmRevision += 1;
             track.isReverse = false;
@@ -676,6 +787,7 @@ export class TrackAudio {
             const saved = snapshots[index]!;
             const track = tracks[index]!;
             const history = saved.history;
+            const mark = saved.mark ?? { buffer: null, committedOverdub: false, retainedBytes: 0 };
             if (saved.trackId !== index + 1 || !Number.isSafeInteger(saved.projectPcmRevision) || saved.projectPcmRevision < 0
                 || (saved.state !== TrackState.EMPTY && saved.state !== TrackState.STOPPED)
                 || !saved.settings || parsePan(saved.settings.pan) === null
@@ -695,6 +807,14 @@ export class TrackAudio {
                 || (saved.buffer !== null && saved.state !== TrackState.STOPPED)
                 || saved.bufferBytes !== audioBufferPcmBytes(saved.buffer)
                 || history.retainedBytes !== audioBufferPcmBytes(history.buffer)
+                || typeof mark.committedOverdub !== 'boolean'
+                || (mark.buffer && (!Number.isSafeInteger(mark.buffer.length) || mark.buffer.length < 1
+                    || (mark.buffer.numberOfChannels !== 1 && mark.buffer.numberOfChannels !== 2)
+                    || !Number.isFinite(mark.buffer.sampleRate) || mark.buffer.sampleRate <= 0))
+                || (!mark.buffer && mark.committedOverdub && saved.buffer === null)
+                || (mark.buffer !== null && !mark.committedOverdub)
+                || mark.retainedBytes !== audioBufferPcmBytes(mark.buffer)
+                || (mark.buffer !== null && (mark.buffer === saved.buffer || mark.buffer === history.buffer))
                 || !Array.isArray(saved.sourceTransport) || saved.sourceTransport.length !== 4
                 || !saved.pitch || !['off', 'LIVE_MONO', 'LIVE_POLY'].includes(saved.pitch.mode)) {
                 return { ok: false, reason: `Track ${index + 1} recovery snapshot is malformed; candidate PCM was not installed.` };
@@ -705,7 +825,11 @@ export class TrackAudio {
             if (history.buffer && history.buffer.sampleRate !== track.engine.context.sampleRate) {
                 return { ok: false, reason: `Track ${index + 1} undo/redo sample rate does not match the recovery AudioContext.` };
             }
+            if (mark.buffer && mark.buffer.sampleRate !== track.engine.context.sampleRate) {
+                return { ok: false, reason: `Track ${index + 1} mark sample rate does not match the recovery AudioContext.` };
+            }
             replacements.push({ owner: track, bytes: history.retainedBytes });
+            replacements.push({ owner: track.markBudgetOwner, bytes: mark.retainedBytes });
         }
         if (!budget.canReplaceMany(replacements)) {
             return { ok: false, reason: `Browser recovery history requires more than the shared ${budget.limitBytes}-byte PCM history budget; no candidate track was changed.` };
@@ -745,6 +869,10 @@ export class TrackAudio {
                 },
                 direction: saved.history.direction!,
             } : null;
+            const mark = saved.mark ?? { buffer: null, committedOverdub: false, retainedBytes: 0 };
+            track.markedPcm = mark.buffer;
+            track.hasCommittedOverdub = mark.committedOverdub;
+            track.markFailureReason = null;
             track.historyFailureReason = saved.history.unavailableReason;
             track.projectPcmRevision = saved.projectPcmRevision;
             track.state = saved.buffer ? TrackState.STOPPED : TrackState.EMPTY;
@@ -1998,6 +2126,12 @@ export class TrackAudio {
         if (this.recordingStarting || this.isRecording || this.isFinalizingRecording
             || this.overdubStarting || this.overdubProcessor || this.pendingClear) return;
 
+        if (this.state === TrackState.EMPTY) {
+            this.clearMarkInternal();
+            this.hasCommittedOverdub = false;
+            this.markFailureReason = null;
+        }
+
         this.clearRecordingCaptureStopAckTimeout();
         const generation = ++this.recordingStartGeneration;
         this.recordingStarting = true;
@@ -3022,6 +3156,9 @@ export class TrackAudio {
         this.liveMonoPitchFallbackReasonValue = null;
         void this.disposeLivePolyPitchNode();
         void this.disposeLiveMonoPitchNode();
+        this.clearMarkInternal();
+        this.hasCommittedOverdub = false;
+        this.markFailureReason = null;
         this.audioBuffer = null;
         this.projectPcmRevision += 1;
         this.state = TrackState.EMPTY;
@@ -3806,10 +3943,16 @@ export class TrackAudio {
             this.overdubMuteGainNode.disconnect();
             this.overdubMuteGainNode = null;
         }
-        if (this.overdubHasEdited && this.pendingOverdubRollbackSnapshot
-            && !this.activateOverdubUndoSnapshot()) {
-            this.overdubDiagnostic = 'Overdub was rolled back because its reserved PCM history snapshot could not be committed.';
-            if (!this.restorePreOverdubPcm()) this.invalidatePcmHistoryForEdit();
+        let committedOverdub = false;
+        if (this.overdubHasEdited && this.pendingOverdubRollbackSnapshot) {
+            if (!this.activateOverdubUndoSnapshot()) {
+                this.overdubDiagnostic = 'Overdub was rolled back because its reserved PCM history snapshot could not be committed.';
+                if (!this.restorePreOverdubPcm()) this.invalidatePcmHistoryForEdit();
+            } else if (allowRestart && !this.overdubRollbackAborted) {
+                // The terminal message plus every expected patch has arrived,
+                // and the undo baseline has been committed to its own slot.
+                committedOverdub = true;
+            }
         }
         if (this.overdubProcessor === workletNode) this.overdubProcessor = null;
         this.overdubSessionAudioBuffer = null;
@@ -3824,6 +3967,7 @@ export class TrackAudio {
         this.overdubAppliedFrameCount = 0;
         this.overdubRollbackAborted = false;
         this.overdubRollbackRestored = false;
+        if (committedOverdub) this.hasCommittedOverdub = true;
         if (this.pendingClear) {
             this.pendingClear = false;
             this.completeClear();

@@ -2,7 +2,7 @@ import { isOfficialFxSlotAllowed } from './fx/official/parameters';
 import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOfficialEffect, officialParameterDomain, encodeOfficialValue } from './fx/official/parameters';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -12,6 +12,7 @@ import {
 import { encodeWav } from './export/wavEncoder';
 import { NativeTrackProxy } from './NativeTrackProxy';
 import { NativeRhythmEngine } from './NativeRhythmEngine';
+import { unsupportedTrackMarkState, type TrackMarkActionResult, type TrackMarkState } from './TrackMark';
 import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectRestoreToken, type ProjectArchive, type ProjectArchiveTrackList } from './projectArchive';
 import { sanitizeNativeStepSlicerParameters, type NativeStepSlicerParameters } from './nativeStepSlicerParameters';
 import {
@@ -122,6 +123,18 @@ export interface NativeOscVocFrameAnchor {
 }
 
 const TRACK_STATE_VALUES = Object.values(TrackState);
+
+function isNativeTrackMarkStatus(value: NativeTrackMarkStatus): boolean {
+  return typeof value.exists === 'boolean'
+    && typeof value.canSet === 'boolean'
+    && typeof value.canClear === 'boolean'
+    && typeof value.busy === 'boolean'
+    && Number.isSafeInteger(value.retainedPcmBytes) && value.retainedPcmBytes >= 0
+    && typeof value.unavailableReason === 'string'
+    && Number.isSafeInteger(value.requestedGeneration) && value.requestedGeneration >= 0
+    && Number.isSafeInteger(value.appliedGeneration) && value.appliedGeneration >= 0
+    && value.appliedGeneration <= value.requestedGeneration;
+}
 export const DEFAULT_NATIVE_HQ_ENGINE: NativeHqEngine = 'R3';
 
 export class NativeAudioEngine {
@@ -551,6 +564,104 @@ export class NativeAudioEngine {
   public getNativeTrackHistoryStatus(trackId: number): NativeTrackHistoryStatus | null {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
     return this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.history ?? null;
+  }
+
+  public getMarkState(trackId: number): TrackMarkState {
+    const nativeMark = this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.mark;
+    if (this.latestStatus?.nativeMarkVersion !== 1 || !this.latestStatus.nativeMarks || !nativeMark
+      || !this.isNativeTrackAvailable(trackId)) {
+      return unsupportedTrackMarkState('The connected Native host does not advertise MARK SET/CLEAR version 1.');
+    }
+    if (!isNativeTrackMarkStatus(nativeMark)) {
+      return unsupportedTrackMarkState('The connected Native host returned an invalid mark status.');
+    }
+    return {
+      supported: true,
+      exists: nativeMark.exists,
+      canSet: nativeMark.canSet && !nativeMark.exists && !nativeMark.busy,
+      canClear: nativeMark.canClear && nativeMark.exists && !nativeMark.busy,
+      backSupported: false,
+      busy: nativeMark.busy,
+      retainedPcmBytes: nativeMark.retainedPcmBytes,
+      unavailableReason: nativeMark.unavailableReason === 'none' ? null : nativeMark.unavailableReason,
+      requestedGeneration: nativeMark.requestedGeneration,
+      appliedGeneration: nativeMark.appliedGeneration,
+    };
+  }
+
+  public async setMark(trackId: number): Promise<TrackMarkActionResult> {
+    const before = this.getMarkState(trackId);
+    if (!before.supported) return { ok: false, unsupported: true, reason: before.unavailableReason, state: before };
+    if (!before.canSet) {
+      const reason = before.unavailableReason ?? 'Native MARK SET is unavailable for this track.';
+      return { ok: false, reason, state: before };
+    }
+    const generation = before.requestedGeneration + 1;
+    try {
+      this.applyStatus(await this.bridge.setTrackMark(trackId, generation));
+      const state = this.getMarkState(trackId);
+      if (state.appliedGeneration === generation && state.exists) return { ok: true, reason: null, state };
+      const reason = state.unavailableReason ?? 'Native MARK SET did not return its applied-generation acknowledgement.';
+      this.lastError = reason;
+      this.emitAll();
+      return { ok: false, reason, state };
+    } catch (error) {
+      const readback = await this.readBackMarkStatusAfterFailure(error);
+      if (readback) this.applyStatus(readback);
+      const state = this.getMarkState(trackId);
+      if (state.supported && state.appliedGeneration === generation && state.exists) {
+        return { ok: true, reason: null, state };
+      }
+      const reason = error instanceof NativeBridgeRequestTimeoutError && !readback
+        ? 'Native MARK SET timed out and its status could not be read. Check mark status before trying again.'
+        : state.unavailableReason ?? (error instanceof Error ? error.message : String(error));
+      this.lastError = reason;
+      this.emitAll();
+      return { ok: false, unsupported: !state.supported, reason, state };
+    }
+  }
+
+  public async clearMark(trackId: number): Promise<TrackMarkActionResult> {
+    const before = this.getMarkState(trackId);
+    if (!before.supported) return { ok: false, unsupported: true, reason: before.unavailableReason, state: before };
+    if (!before.canClear) {
+      const reason = before.unavailableReason ?? 'Native MARK CLEAR is unavailable for this track.';
+      return { ok: false, reason, state: before };
+    }
+    const generation = before.requestedGeneration + 1;
+    try {
+      this.applyStatus(await this.bridge.clearTrackMark(trackId, generation));
+      const state = this.getMarkState(trackId);
+      if (state.appliedGeneration === generation && !state.exists) return { ok: true, reason: null, state };
+      const reason = state.unavailableReason ?? 'Native MARK CLEAR did not return its applied-generation acknowledgement.';
+      this.lastError = reason;
+      this.emitAll();
+      return { ok: false, reason, state };
+    } catch (error) {
+      const readback = await this.readBackMarkStatusAfterFailure(error);
+      if (readback) this.applyStatus(readback);
+      const state = this.getMarkState(trackId);
+      if (state.supported && state.appliedGeneration === generation && !state.exists) {
+        return { ok: true, reason: null, state };
+      }
+      const reason = error instanceof NativeBridgeRequestTimeoutError && !readback
+        ? 'Native MARK CLEAR timed out and its status could not be read. Check mark status before trying again.'
+        : state.unavailableReason ?? (error instanceof Error ? error.message : String(error));
+      this.lastError = reason;
+      this.emitAll();
+      return { ok: false, unsupported: !state.supported, reason, state };
+    }
+  }
+
+  public async backToMark(_trackId: number): Promise<TrackMarkActionResult> {
+    const state = unsupportedTrackMarkState('MARK BACK is unsupported because its recording-state transition is ambiguous.');
+    return { ok: false, unsupported: true, reason: state.unavailableReason, state };
+  }
+
+  private async readBackMarkStatusAfterFailure(error: unknown): Promise<NativeStatus | null> {
+    if (error instanceof NativeBridgeRequestTimeoutError) return error.reconciledStatus;
+    try { return await this.bridge.getStatus(); }
+    catch { return null; }
   }
 
   public canExportHqWav(trackId = 1) {

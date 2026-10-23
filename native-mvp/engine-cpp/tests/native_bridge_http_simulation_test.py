@@ -249,6 +249,26 @@ def main():
                 time.sleep(0.05)
         require(health is not None and health.get("ok") is True, "health endpoint did not return ok")
 
+        status, initial_status = request("/v1/status")
+        require(status == 200 and initial_status.get("nativeMarkVersion") == 1 and
+                initial_status.get("nativeMarks", {}).get("budgetBytes") == 512 * 1024 * 1024,
+                "Native MARK capability/version or shared budget status is missing")
+        track_one_mark = next((track.get("mark") for track in initial_status.get("nativeTracks", [])
+                               if track.get("trackId") == 1), {})
+        require(track_one_mark.get("exists") is False and track_one_mark.get("appliedGeneration") == 0,
+                "Native MARK status did not initialize as an empty per-track capability")
+        status, rejected_mark = request("/v1/transport/mark-set?trackId=1&generation=1", "POST")
+        require(status == 409 and "running host" in rejected_mark.get("error", ""),
+                "MARK SET did not return a clear failure on a stopped Native host")
+        status, after_rejected_mark = request("/v1/status")
+        rejected_track_mark = next((track.get("mark") for track in after_rejected_mark.get("nativeTracks", [])
+                                    if track.get("trackId") == 1), {})
+        require(status == 200 and rejected_track_mark.get("requestedGeneration") == 1 and
+                rejected_track_mark.get("appliedGeneration") == 0 and rejected_track_mark.get("exists") is False,
+                "Failed MARK SET status advanced applied generation or lost request generation")
+        status, malformed_mark = request("/v1/transport/mark-set?trackId=1&generation=1&generation=2", "POST")
+        require(status == 400, "Native MARK endpoint accepted duplicate generation query parameters")
+
         origin = "http://127.0.0.1:4174"
         status, headers, _ = request_with_headers("/health", headers={"Origin": origin})
         require(status == 200 and headers.get("Access-Control-Allow-Origin") == origin and

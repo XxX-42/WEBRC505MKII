@@ -44,6 +44,17 @@ export interface NativeTrackHistoryStatus {
   unavailableReason: 'none' | 'budgetExceeded' | 'snapshotUnavailable' | 'noUndo' | 'noRedo' | 'trackMustBeStopped' | 'unknown';
 }
 
+export interface NativeTrackMarkStatus {
+  exists: boolean;
+  canSet: boolean;
+  canClear: boolean;
+  busy: boolean;
+  retainedPcmBytes: number;
+  unavailableReason: string;
+  requestedGeneration: number;
+  appliedGeneration: number;
+}
+
 export type NativeProjectImportState = 'pending' | 'claimed' | 'committed' | 'cancelled';
 
 export class NativeProjectImportOutcomeUnknownError extends Error {
@@ -185,8 +196,12 @@ export interface NativeStatus {
     loopTransportStatus?: NativeLoopTransportStatus;
     vocoderCarrierStatus?: NativeVocoderCarrierStatus;
     history?: NativeTrackHistoryStatus;
+    mark?: NativeTrackMarkStatus;
   }>;
   nativeHistory?: { budgetBytes: number; retainedBytes: number };
+  /** Missing or unknown versions mean Native MARK SET/CLEAR is unavailable. */
+  nativeMarkVersion?: number;
+  nativeMarks?: { budgetBytes: number; retainedBytes: number };
   nativePitch?: NativePitchStatus;
   /** Missing status is treated as unavailable; old bridge builds cannot render Native HQ. */
   nativeHqRenderer?: NativeHqRendererCapability;
@@ -920,6 +935,14 @@ export class NativeBridgeClient {
     return this.requestTrackTransport('/v1/transport/redo', trackId);
   }
 
+  public async setTrackMark(trackId: number, generation: number): Promise<NativeStatus> {
+    return this.requestTrackMark('/v1/transport/mark-set', trackId, generation);
+  }
+
+  public async clearTrackMark(trackId: number, generation: number): Promise<NativeStatus> {
+    return this.requestTrackMark('/v1/transport/mark-clear', trackId, generation);
+  }
+
   public async setLoopTransport(trackId: number, config: NativeLoopTransportConfig): Promise<NativeStatus> {
     assertNativeTrackId(trackId);
     if (!isNativeLoopTransportConfig(config)) {
@@ -939,6 +962,14 @@ export class NativeBridgeClient {
     // track IDs use the same command endpoint with an explicit 1-based selector.
     const suffix = trackId === 1 ? '' : `?trackId=${trackId}`;
     return this.request<NativeStatus>(`${path}${suffix}`, { method: 'POST' });
+  }
+
+  private async requestTrackMark(path: string, trackId: number, generation: number): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    if (!Number.isSafeInteger(generation) || generation <= 0) {
+      throw new RangeError('Native mark operation generation must be a positive safe integer.');
+    }
+    return this.request<NativeStatus>(`${path}?trackId=${trackId}&generation=${generation}`, { method: 'POST' });
   }
 
   public async setMonitoring(enabled: boolean): Promise<NativeStatus> {

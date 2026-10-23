@@ -87,6 +87,12 @@ export interface BrowserRecoveryTrack {
     retainedBytes: number;
     unavailableReason: string | null;
   }>;
+  /** Independent MARK SET PCM; it is charged separately from ordinary undo/redo. */
+  readonly mark?: Readonly<{
+    buffer: AudioBuffer | null;
+    committedOverdub: boolean;
+    retainedBytes: number;
+  }>;
   readonly sourceTransport: ReadonlyArray<Readonly<{
     type: 'BEAT SHIFT' | 'VINYL FLICK';
     beatShiftOffsetBeats: number;

@@ -28,6 +28,7 @@ import type { BrowserFxAlgorithm, BrowserFxParameters } from './fx/dsp/BrowserFx
 import { copyRecoveryFxParameters, type BrowserRecoveryFxSlot, type BrowserRecoverySnapshot } from './BrowserRecoverySnapshot';
 import { BrowserWorkletFX, BROWSER_WORKLET_FX_TYPES, type BrowserWorkletFxName } from './fx/BrowserWorkletFX';
 import { BrowserTrackFxChain, type BrowserTrackFxStatus } from './BrowserTrackFxChain';
+import { unsupportedTrackMarkState, type TrackMarkActionResult, type TrackMarkState } from './TrackMark';
 import { createBrowserPcmHistoryBudget, getBrowserPcmHistoryBudget } from './PcmHistoryBudget';
 import {
     encodeProjectArchive,
@@ -555,11 +556,14 @@ export class BrowserAudioEngine implements IAudioEngine {
                 || snapshot.tracks.length !== current.tracks.length) return false;
             return snapshot.tracks.every((saved, index) => {
                 const now = current.tracks[index];
-                if (!now || saved.buffer !== now.buffer || saved.history.buffer !== now.history.buffer) return false;
+                if (!now || saved.buffer !== now.buffer || saved.history.buffer !== now.history.buffer
+                    || (saved.mark?.buffer ?? null) !== (now.mark?.buffer ?? null)) return false;
+                const emptyMark = { buffer: null, committedOverdub: false, retainedBytes: 0 } as const;
                 const strip = (track: typeof saved) => ({
                     ...track,
                     buffer: null,
                     history: { ...track.history, buffer: null },
+                    mark: { ...(track.mark ?? emptyMark), buffer: null },
                 });
                 return JSON.stringify(strip(saved)) === JSON.stringify(strip(now));
             });
@@ -584,13 +588,17 @@ export class BrowserAudioEngine implements IAudioEngine {
             const saved = snapshot.tracks[index];
             if (!saved || track.historyBusy) return true;
             const current = track.getRecoverySnapshot();
+            const savedMark = saved.mark ?? { buffer: null, committedOverdub: false, retainedBytes: 0 };
+            const currentMark = current.mark ?? { buffer: null, committedOverdub: false, retainedBytes: 0 };
             return current.buffer !== saved.buffer || current.history.buffer !== saved.history.buffer
+                || (currentMark.buffer ?? null) !== (savedMark.buffer ?? null)
                 || current.state !== (saved.buffer ? TrackState.STOPPED : TrackState.EMPTY)
                 || current.isReverse !== saved.isReverse
                 || JSON.stringify(current.settings) !== JSON.stringify(saved.settings)
                 || JSON.stringify(current.pitch) !== JSON.stringify(saved.pitch)
                 || JSON.stringify(current.sourceTransport) !== JSON.stringify(saved.sourceTransport)
-                || JSON.stringify({ ...current.history, buffer: null }) !== JSON.stringify({ ...saved.history, buffer: null });
+                || JSON.stringify({ ...current.history, buffer: null }) !== JSON.stringify({ ...saved.history, buffer: null })
+                || JSON.stringify({ ...currentMark, buffer: null }) !== JSON.stringify({ ...savedMark, buffer: null });
         })) {
             throw new Error('Recovery engine does not contain the complete stopped five-track PCM/history snapshot.');
         }
@@ -2781,6 +2789,34 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (this.tracks[trackIndex]) {
             this.tracks[trackIndex].clear();
         }
+    }
+
+    public getMarkState(trackId: number): TrackMarkState {
+        if (!Number.isInteger(trackId) || trackId < 1 || trackId > this.tracks.length) {
+            return unsupportedTrackMarkState('Browser track ID must be an integer between 1 and 5.');
+        }
+        return this.tracks[trackId - 1]!.getMarkState();
+    }
+
+    public async setMark(trackId: number): Promise<TrackMarkActionResult> {
+        if (!Number.isInteger(trackId) || trackId < 1 || trackId > this.tracks.length) {
+            const state = unsupportedTrackMarkState('Browser track ID must be an integer between 1 and 5.');
+            return { ok: false, unsupported: true, reason: state.unavailableReason, state };
+        }
+        return this.tracks[trackId - 1]!.setMark();
+    }
+
+    public async clearMark(trackId: number): Promise<TrackMarkActionResult> {
+        if (!Number.isInteger(trackId) || trackId < 1 || trackId > this.tracks.length) {
+            const state = unsupportedTrackMarkState('Browser track ID must be an integer between 1 and 5.');
+            return { ok: false, unsupported: true, reason: state.unavailableReason, state };
+        }
+        return this.tracks[trackId - 1]!.clearMark();
+    }
+
+    public async backToMark(_trackId: number): Promise<TrackMarkActionResult> {
+        const state = unsupportedTrackMarkState('MARK BACK is unsupported because its recording-state transition is ambiguous.');
+        return { ok: false, unsupported: true, reason: state.unavailableReason, state };
     }
 
     public stopAllTracks() {

@@ -144,6 +144,9 @@ EngineStatus NativeAudioCore::getStatus() const {
         : LooperCore::kDefaultAggregateLoopStorageBudgetBytes;
     status.nativeHistoryBudgetBytes = kNativeHistoryBudgetBytes;
     status.nativeHistoryRetainedBytes = historyRetainedBytes_.load(std::memory_order_acquire);
+    status.nativeMarkVersion = 1U;
+    status.nativeMarkBudgetBytes = kNativeHistoryBudgetBytes;
+    status.nativeMarkRetainedBytes = 0U;
     status.nativeOutputLowPassAvailable = true;
     status.nativeOutputLowPassEnabled = outputLowPassEnabled_.load(std::memory_order_acquire);
     status.nativeOutputHighPassAvailable = true;
@@ -260,6 +263,18 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeTrackHistory[track].canRedo = historyCanRedo_[track].load(std::memory_order_acquire);
         status.nativeTrackHistory[track].retainedPcmBytes = historyPcmBytes_[track].load(std::memory_order_acquire);
         status.nativeTrackHistory[track].unavailableReason = historyFailure_[track].load(std::memory_order_acquire);
+        auto& mark = status.nativeTrackMarks[track];
+        mark.retainedPcmBytes = markPcmBytes_[track].load(std::memory_order_acquire);
+        mark.exists = mark.retainedPcmBytes != 0U;
+        mark.busy = markBusy_[track].load(std::memory_order_acquire);
+        mark.requestedGeneration = markRequestedGeneration_[track].load(std::memory_order_acquire);
+        mark.appliedGeneration = markAppliedGeneration_[track].load(std::memory_order_acquire);
+        mark.canClear = mark.exists && !mark.busy;
+        mark.canSet = !mark.exists && !mark.busy &&
+            trackMarkUnavailableReasonLocked(track) == "none";
+        mark.unavailableReason = mark.exists || mark.canSet
+            ? "none" : trackMarkUnavailableReasonLocked(track);
+        status.nativeMarkRetainedBytes += mark.retainedPcmBytes;
     }
     status.projectContentRevision = projectContentRevision_.load(std::memory_order_acquire);
     status.projectContentRevisionSnapshotStable =
@@ -440,6 +455,13 @@ bool NativeAudioCore::prepareLoopStorageLocked(
     nativeLooperMaxRecordSeconds_ = 0U;
     for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
         std::vector<float>().swap(historyPcm_[i]);
+        std::vector<float>().swap(markPcm_[i]);
+        markPcmBytes_[i].store(0U, std::memory_order_release);
+        markCandidateBytes_[i].store(0U, std::memory_order_release);
+        markEligibleAfterOverdub_[i].store(false, std::memory_order_release);
+        markBusy_[i].store(false, std::memory_order_release);
+        markRequestedGeneration_[i].store(0U, std::memory_order_release);
+        markAppliedGeneration_[i].store(0U, std::memory_order_release);
         historyPcmBytes_[i].store(0U, std::memory_order_release);
         historyCanUndo_[i].store(false, std::memory_order_release);
         historyCanRedo_[i].store(false, std::memory_order_release);
@@ -783,6 +805,166 @@ bool NativeAudioCore::clearTrack(std::size_t trackIndex, std::string& error) {
     return queueTrackCommand(CommandType::Clear, trackIndex, error);
 }
 
+std::string NativeAudioCore::trackMarkUnavailableReasonLocked(std::size_t trackIndex) const {
+    if (trackIndex >= kNativeTrackCount) return "invalidTrack";
+    if (markBusy_[trackIndex].load(std::memory_order_acquire)) return "busy";
+    if (markPcmBytes_[trackIndex].load(std::memory_order_acquire) != 0U) return "none";
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle ||
+        commandQueue_.size() != 0U) return "busy";
+    const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (state == LooperState::Empty) return "emptyTrack";
+    if (state == LooperState::Recording) return "recording";
+    if (state == LooperState::Overdubbing) return "overdubbing";
+    if (state != LooperState::Stopped && state != LooperState::Playing) return "trackUnavailable";
+    if (!markEligibleAfterOverdub_[trackIndex].load(std::memory_order_acquire)) return "noCommittedOverdub";
+    if (!engineRunning_.load(std::memory_order_acquire)) return "engineStopped";
+    const auto bytes = markCandidateBytes_[trackIndex].load(std::memory_order_acquire);
+    const auto retained = historyRetainedBytes_.load(std::memory_order_acquire);
+    if (bytes == 0U || bytes > kNativeHistoryBudgetBytes || retained > kNativeHistoryBudgetBytes - bytes) {
+        return "budgetExceeded";
+    }
+    return "none";
+}
+
+void NativeAudioCore::invalidateTrackMarkLocked(std::size_t trackIndex) noexcept {
+    if (trackIndex >= kNativeTrackCount) return;
+    const auto bytes = markPcmBytes_[trackIndex].exchange(0U, std::memory_order_acq_rel);
+    if (!markPcm_[trackIndex].empty()) std::vector<float>().swap(markPcm_[trackIndex]);
+    if (bytes != 0U) historyRetainedBytes_.fetch_sub(bytes, std::memory_order_acq_rel);
+}
+
+bool NativeAudioCore::setTrackMark(std::size_t trackIndex, std::uint64_t generation, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (trackIndex >= kNativeTrackCount) { error = "Native track index must be between 0 and 4."; return false; }
+    if (generation == 0U || generation != markRequestedGeneration_[trackIndex].load(std::memory_order_acquire) + 1U) {
+        error = "Native MARK SET generation must be the next positive per-track generation.";
+        return false;
+    }
+    markRequestedGeneration_[trackIndex].store(generation, std::memory_order_release);
+    markBusy_[trackIndex].store(true, std::memory_order_release);
+    const auto finishFailure = [this, trackIndex, &error](const char* message) {
+        markBusy_[trackIndex].store(false, std::memory_order_release);
+        error = message;
+        return false;
+    };
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle ||
+        !engineRunning_.load(std::memory_order_acquire) || commandQueue_.size() != 0U) {
+        return finishFailure("Native MARK SET requires an idle, running host with no queued track commands.");
+    }
+    if (markPcmBytes_[trackIndex].load(std::memory_order_acquire) != 0U) {
+        return finishFailure("A Native MARK already exists; clear it before setting another mark.");
+    }
+    if (!markEligibleAfterOverdub_[trackIndex].load(std::memory_order_acquire)) {
+        return finishFailure("Native MARK SET requires a committed overdub in the current recording lineage.");
+    }
+    const auto initialState = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (initialState == LooperState::Empty || initialState == LooperState::Recording ||
+        initialState == LooperState::Overdubbing) {
+        return finishFailure("Native MARK SET requires a stable finalized track outside recording or overdubbing.");
+    }
+    if (initialState != LooperState::Stopped && initialState != LooperState::Playing) {
+        return finishFailure("Native MARK SET is unavailable for the current track state.");
+    }
+
+    std::lock_guard<std::mutex> snapshotLock(loopSnapshotMutex_);
+    const auto pinGeneration = historyPinNextGeneration_.fetch_add(1U, std::memory_order_acq_rel) + 1U;
+    historyPinTrackIndex_.store(trackIndex, std::memory_order_relaxed);
+    historyPinCancelledGeneration_.store(0U, std::memory_order_relaxed);
+    historyPinRequestGeneration_.store(pinGeneration, std::memory_order_release);
+    const auto pinDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
+    while (historyPinAcknowledgedGeneration_.load(std::memory_order_acquire) != pinGeneration) {
+        if (std::chrono::steady_clock::now() >= pinDeadline) {
+            historyPinCancelledGeneration_.store(pinGeneration, std::memory_order_release);
+            historyPinRequestGeneration_.store(0U, std::memory_order_release);
+            return finishFailure("Native MARK SET could not synchronize with the callback; no mark was created.");
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    const auto releasePin = [this, pinGeneration]() {
+        historyPinReleaseGeneration_.store(pinGeneration, std::memory_order_relaxed);
+        historyPinRequestGeneration_.store(0U, std::memory_order_release);
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
+        while (historyPinReleasedGeneration_.load(std::memory_order_acquire) != pinGeneration &&
+               std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return historyPinReleasedGeneration_.load(std::memory_order_acquire) == pinGeneration;
+    };
+    if (historyPinAcknowledgedTrackIndex_.load(std::memory_order_acquire) != trackIndex) {
+        (void)releasePin();
+        return finishFailure("Native MARK SET callback pin acknowledged the wrong track; no mark was created.");
+    }
+    auto& track = looperForTrack(trackIndex);
+    const auto pinnedState = track.state();
+    if ((pinnedState != LooperState::Stopped && pinnedState != LooperState::Playing) ||
+        !markEligibleAfterOverdub_[trackIndex].load(std::memory_order_acquire) || commandQueue_.size() != 0U ||
+        projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        (void)releasePin();
+        return finishFailure("Native MARK SET track state changed before the callback pin; no mark was created.");
+    }
+    const auto frameCount64 = track.loopLengthSamples();
+    if (frameCount64 == 0U || frameCount64 > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max() / 2U) ||
+        frameCount64 > std::numeric_limits<std::uint64_t>::max() / (2U * sizeof(float))) {
+        (void)releasePin();
+        return finishFailure("Native MARK SET requires a non-empty finalized stereo loop.");
+    }
+    const auto frameCount = static_cast<std::size_t>(frameCount64);
+    const auto bytes = frameCount64 * 2U * sizeof(float);
+    const auto retained = historyRetainedBytes_.load(std::memory_order_acquire);
+    // Admission includes undo PCM and any accepted pending reservations. This
+    // check happens before candidate allocation/copy so MARK cannot overrun
+    // the existing 512 MiB aggregate history ledger.
+    if (bytes > kNativeHistoryBudgetBytes || retained > kNativeHistoryBudgetBytes - bytes) {
+        (void)releasePin();
+        return finishFailure("Native MARK SET refused: the shared 512 MiB history budget would be exceeded.");
+    }
+    std::vector<float> candidate;
+    try {
+        candidate.resize(frameCount * 2U);
+    } catch (const std::exception&) {
+        (void)releasePin();
+        return finishFailure("Native MARK SET could not allocate its independent stereo snapshot.");
+    }
+    std::size_t copiedFrames = 0U;
+    if (!track.copyFinalizedStereoLoopSnapshot(candidate.data(), frameCount, copiedFrames) || copiedFrames != frameCount) {
+        (void)releasePin();
+        return finishFailure("Native MARK SET could not copy a stable finalized stereo snapshot.");
+    }
+    if (!releasePin()) {
+        return finishFailure("Native MARK SET snapshot was copied, but the callback has not acknowledged releasing its pin; no mark was committed.");
+    }
+    markPcm_[trackIndex] = std::move(candidate);
+    markPcmBytes_[trackIndex].store(bytes, std::memory_order_release);
+    historyRetainedBytes_.fetch_add(bytes, std::memory_order_acq_rel);
+    markAppliedGeneration_[trackIndex].store(generation, std::memory_order_release);
+    markBusy_[trackIndex].store(false, std::memory_order_release);
+    error.clear();
+    return true;
+}
+
+bool NativeAudioCore::clearTrackMark(std::size_t trackIndex, std::uint64_t generation, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (trackIndex >= kNativeTrackCount) { error = "Native track index must be between 0 and 4."; return false; }
+    if (generation == 0U || generation != markRequestedGeneration_[trackIndex].load(std::memory_order_acquire) + 1U) {
+        error = "Native MARK CLEAR generation must be the next positive per-track generation.";
+        return false;
+    }
+    markRequestedGeneration_[trackIndex].store(generation, std::memory_order_release);
+    markBusy_[trackIndex].store(true, std::memory_order_release);
+    if (markPcmBytes_[trackIndex].load(std::memory_order_acquire) == 0U) {
+        markBusy_[trackIndex].store(false, std::memory_order_release);
+        error = "No Native MARK is available to clear.";
+        return false;
+    }
+    invalidateTrackMarkLocked(trackIndex);
+    markAppliedGeneration_[trackIndex].store(generation, std::memory_order_release);
+    markBusy_[trackIndex].store(false, std::memory_order_release);
+    error.clear();
+    return true;
+}
+
 void NativeAudioCore::reclaimInactiveHistoryPcmLocked() noexcept {
     for (std::size_t i = 0U; i < kNativeTrackCount; ++i) {
         if (overdubSnapshotReady_[i].load(std::memory_order_acquire) ||
@@ -795,6 +977,7 @@ void NativeAudioCore::reclaimInactiveHistoryPcmLocked() noexcept {
 
 bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex, std::string& error) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
         error = "A Native project import is pending; wait for its generation status before changing tracks.";
         return false;
@@ -811,6 +994,14 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex)})) {
         error = "Command queue is full.";
         return false;
+    }
+    const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (type == CommandType::Clear || (type == CommandType::Record && state == LooperState::Empty)) {
+        invalidateTrackMarkLocked(trackIndex);
+        if (type == CommandType::Record) {
+            markEligibleAfterOverdub_[trackIndex].store(false, std::memory_order_release);
+            markCandidateBytes_[trackIndex].store(0U, std::memory_order_release);
+        }
     }
     return true;
 }
@@ -896,6 +1087,8 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     };
 
     if (command.type == CommandType::Record && before.state == LooperState::Empty && after.state == LooperState::Recording) {
+        markEligibleAfterOverdub_[index].store(false, std::memory_order_release);
+        markCandidateBytes_[index].store(0U, std::memory_order_release);
         history.valid = false;
         recordingHistoryPending_[index] = true;
         historyPcmActive_[index].store(false, std::memory_order_release);
@@ -909,8 +1102,13 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
                after.state == LooperState::Stopped && overdubSnapshotReady_[index].load(std::memory_order_acquire)) {
         const auto frames = overdubSnapshotFrames_[index].load(std::memory_order_acquire);
         publish(HistoryKind::Pcm, pendingOverdubBefore_[index], after, frames);
+        markCandidateBytes_[index].store(frames <= std::numeric_limits<std::uint64_t>::max() / (2U * sizeof(float))
+            ? static_cast<std::uint64_t>(frames) * 2U * sizeof(float) : 0U, std::memory_order_release);
+        markEligibleAfterOverdub_[index].store(true, std::memory_order_release);
         overdubSnapshotReady_[index].store(false, std::memory_order_release);
     } else if (command.type == CommandType::Clear && after.state == LooperState::Empty) {
+        markEligibleAfterOverdub_[index].store(false, std::memory_order_release);
+        markCandidateBytes_[index].store(0U, std::memory_order_release);
         overdubSnapshotReady_[index].store(false, std::memory_order_release);
         recordingHistoryPending_[index] = false;
         if (before.finalizedFrames > 0U) {
@@ -930,6 +1128,9 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
                after.state == LooperState::Playing && overdubSnapshotReady_[index].load(std::memory_order_acquire)) {
         const auto frames = overdubSnapshotFrames_[index].load(std::memory_order_acquire);
         publish(HistoryKind::Pcm, pendingOverdubBefore_[index], after, frames);
+        markCandidateBytes_[index].store(frames <= std::numeric_limits<std::uint64_t>::max() / (2U * sizeof(float))
+            ? static_cast<std::uint64_t>(frames) * 2U * sizeof(float) : 0U, std::memory_order_release);
+        markEligibleAfterOverdub_[index].store(true, std::memory_order_release);
         overdubSnapshotReady_[index].store(false, std::memory_order_release);
     }
 }
@@ -2450,6 +2651,9 @@ void NativeAudioCore::finalizeProjectImportLocked() {
         // its full-bank swap. Reclaim them now, on this control thread only.
         for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
             historyRecords_[index] = {};
+            invalidateTrackMarkLocked(index);
+            markEligibleAfterOverdub_[index].store(false, std::memory_order_release);
+            markCandidateBytes_[index].store(0U, std::memory_order_release);
             recordingHistoryPending_[index] = false;
             overdubSnapshotReady_[index].store(false, std::memory_order_release);
             overdubSnapshotFrames_[index].store(0U, std::memory_order_release);
