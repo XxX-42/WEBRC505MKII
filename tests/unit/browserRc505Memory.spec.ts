@@ -6,8 +6,6 @@ import { createMockAudioContext } from '../helpers/audioTestUtils';
 
 function harness() {
   const context = createMockAudioContext();
-  context.createChannelSplitter = () => context.createGain() as unknown as ChannelSplitterNode;
-  context.createAnalyser = () => Object.assign(context.createGain(), { fftSize: 256, getFloatTimeDomainData: (values: Float32Array) => values.fill(0) }) as unknown as AnalyserNode;
   context.suspend = vi.fn(async () => { Object.defineProperty(context, 'state', { configurable: true, value: 'suspended' }); });
   context.resume = vi.fn(async () => { Object.defineProperty(context, 'state', { configurable: true, value: 'running' }); });
   const engine = new BrowserAudioEngine({ context, loadDevicePreferences: false, deferTransportBpmChangeSubscription: true });
@@ -25,6 +23,15 @@ beforeEach(() => { Transport.getInstance().stop(); Transport.getInstance().reset
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Browser semantic Memory', () => {
+  it('uses independent stereo analyser channels for nonzero pre-shared-FX meters', () => {
+    const { engine } = harness();
+    const track = engine.tracks[0] as any;
+    track.sharedTrackFxMeterLeft.samples = Float32Array.of(0.25, -0.25);
+    track.sharedTrackFxMeterRight.samples = Float32Array.of(0.75, -0.75);
+    expect(track.getPostFaderPreSharedTrackFxMeter()).toEqual({ peak: 0.75, rms: Math.sqrt((0.25 ** 2 + 0.75 ** 2) / 2) });
+    const other = engine.tracks[1] as any;
+    expect(other.getPostFaderPreSharedTrackFxMeter()).toEqual({ peak: 0, rms: 0 });
+  });
   it('captures five PCM tracks, settings, private/shared banks and acknowledged gates', async () => {
     const { runtime, engine, seed } = harness(); seed(1);
     engine.tracks[2]!.track.pan = -23;
@@ -83,6 +90,27 @@ describe('Browser semantic Memory', () => {
     expect(engine.tracks.map((track) => track.getRecoverySnapshot().buffer)).toEqual(before);
     expect(engine.tracks[0]!.track.playLevel).toBe(77);
     await candidate.dispose();
+  });
+
+  it('recalls CENTER/L/R pans through the Track setter and restores them on a late publication rejection', async () => {
+    const { runtime, engine, seed } = harness(); seed(1);
+    [0, -50, 31, -12, 50].forEach((pan, index) => { engine.tracks[index]!.track.pan = pan; });
+    Transport.getInstance().setBpm(130);
+    const document = await runtime.capture();
+    [15, 0, -20, 22, -50].forEach((pan, index) => { engine.tracks[index]!.track.pan = pan; });
+    Transport.getInstance().setBpm(140);
+    const beforePcm = engine.tracks.map((track) => track.getRecoverySnapshot().buffer);
+    const candidate = await runtime.prepare(document, runtime.revision());
+    const restore = vi.spyOn(TrackAudio, 'restoreProjectBuffersAtomically').mockReturnValueOnce({ ok: false, reason: 'injected publication rejection' });
+    await expect(candidate.commit()).rejects.toThrow('injected publication rejection');
+    expect(engine.tracks.map((track) => track.track.pan)).toEqual(['R15', 'CENTER', 'L20', 'R22', 'L50']);
+    expect(engine.tracks.map((track) => track.getRecoverySnapshot().buffer)).toEqual(beforePcm);
+    expect(Transport.getInstance().bpm).toBe(140);
+    restore.mockRestore(); await candidate.dispose();
+    const valid = await runtime.prepare(document, runtime.revision());
+    await valid.commit(); await valid.dispose();
+    expect(engine.tracks.map((track) => track.track.pan)).toEqual(['CENTER', 'L50', 'R31', 'L12', 'R50']);
+    expect(Transport.getInstance().bpm).toBe(130);
   });
 
   it('fails closed without a render adapter instead of mutating incumbent gates', async () => {

@@ -8,7 +8,7 @@ import type { Rc505Json, Rc505MemoryDocument, Rc505MemoryRuntime } from './Rc505
 /** Authored configuration only: PCM lives exclusively in the legacy archive. */
 export interface BrowserMemoryConfiguration {
   version: 1;
-  tracks: Array<Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse'>>;
+  tracks: Array<Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse' | 'sourceTransport'>>;
   fx: BrowserRecoverySnapshot['fx'];
   rhythm: BrowserRecoverySnapshot['rhythm'];
   trackFxApply: boolean[];

@@ -1,5 +1,5 @@
 import { sameNativeControlSnapshot } from '../audio/nativeFxParameterSnapshots';
-import { computed, effectScope, reactive, ref, watch } from 'vue';
+import { computed, effectScope, nextTick, reactive, ref, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { FX_CATALOG } from '../audio/fx/catalog';
 import { nativeCatalogEffectId, nativeCatalogMacroParameters, NATIVE_CATALOG_EMPTY_LABEL } from '../audio/nativeFxCatalog';
@@ -20,7 +20,9 @@ import { createDefaultHrmAutoParameters, sanitizeHrmAutoParameters, toCatalogHrm
 import { createDefaultElectricParameters, sanitizeElectricParameters, toBrowserElectricParameters, toNativeElectricParameters, type ElectricParameters } from '../audio/electricParameters';
 import { getBrowserInputFxControls, getBrowserTrackFxControls, sanitizeBrowserTrackFxParameters } from './browserTrackFxParameters';
 import { type FxLocation, type FxSlotId, usePanelFocus } from './usePanelFocus';
-import { ensureBrowserTrackFxStateInitialized } from './useBrowserTrackFxState';
+import { adoptCommittedBrowserTrackFxState, ensureBrowserTrackFxStateInitialized } from './useBrowserTrackFxState';
+import type { BrowserMemoryConfiguration } from '../audio/BrowserRc505Memory';
+import type { BrowserRecoveryFxSlot } from '../audio/BrowserRecoverySnapshot';
 
 export interface FxSlotState {
   id: FxSlotId;
@@ -187,6 +189,78 @@ engine.onStatusChange(() => {
 });
 
 let initialized = false;
+let memoryHydrating = 0;
+interface AdoptedSlotControls { type: string; value: number; active: boolean; typed: Record<string, number>; named: Record<string, number> }
+const adoptedControls = new WeakMap<FxSlotState, AdoptedSlotControls>();
+
+function typedControls(slot: FxSlotState): Record<string, number> {
+  return {
+    ...(slot.preampParameters ? { model: slot.preampParameters.model, gain: slot.preampParameters.gainPercent, bass: slot.preampParameters.bassDb, middle: slot.preampParameters.middleDb, treble: slot.preampParameters.trebleDb, level: slot.preampParameters.levelDb } : {}),
+    ...(slot.synthParameters ?? {}),
+    ...(slot.g2bParameters ? toCatalogG2bParameters(slot.g2bParameters) : {}),
+    ...(slot.rollParameters ? toCatalogRollParameters(slot.rollParameters) : {}),
+    ...(slot.freezeParameters ? toCatalogFreezeParameters(slot.freezeParameters) : {}),
+    ...(slot.pitchBendParameters ? toCatalogPitchBendParameters(slot.pitchBendParameters) : {}),
+    ...(slot.manualHarmonistParameters ? toCatalogManualHarmonistParameters(slot.manualHarmonistParameters) : {}),
+    ...(slot.octaveParameters ? toCatalogOctaveParameters(slot.octaveParameters) : {}),
+    ...(slot.vocoderParameters ? toCatalogVocoderParameters(slot.vocoderParameters) : {}),
+    ...(slot.oscVocParameters ? toCatalogOscVocParameters(slot.oscVocParameters) : {}),
+    ...(slot.autoRiffParameters ? toCatalogAutoRiffParameters(slot.autoRiffParameters) : {}),
+    ...(slot.robotParameters ? toCatalogRobotParameters(slot.robotParameters) : {}),
+    ...(slot.hrmAutoParameters ? toCatalogHrmAutoParameters(slot.hrmAutoParameters) : {}),
+    ...(slot.electricParameters ? toBrowserElectricParameters(slot.electricParameters) : {}),
+  };
+}
+
+function adoptedSnapshot(slot: FxSlotState): AdoptedSlotControls {
+  return { type: slot.type, value: slot.value, active: slot.active, typed: typedControls(slot), named: { ...slot.namedParametersByType?.[slot.type] } };
+}
+
+function slotFromReadback(saved: BrowserRecoveryFxSlot): FxSlotState {
+  const p = Object.fromEntries(Object.entries(saved.parameters).filter((entry): entry is [string, number] => typeof entry[1] === 'number'));
+  const n = (fallback: number, ...keys: string[]): number => {
+    for (const key of keys) if (p[key] !== undefined) return p[key]!;
+    return fallback;
+  };
+  const slot: FxSlotState = { id: saved.slot, type: saved.type ?? '', value: saved.amount ?? 0, active: saved.active,
+    namedParametersByType: saved.type ? { [saved.type]: p } : undefined };
+  switch (slot.type.replace(' (EXPERIMENTAL)', '')) {
+    case 'PREAMP': slot.preampParameters = sanitizePreampParameters({ model: n(0, 'preampModel', 'model'), gainPercent: n(35, 'preampGainPercent', 'gain'), bassDb: n(0, 'preampBassDb', 'bass'), middleDb: n(0, 'preampMiddleDb', 'middle'), trebleDb: n(0, 'preampTrebleDb', 'treble'), levelDb: n(0, 'preampLevelDb', 'level') }); break;
+    case 'SYNTH': slot.synthParameters = sanitizeSynthParameters({ sensitivity: n(50, 'synthSensitivity', 'sensitivity'), waveform: n(0, 'synthWaveform', 'waveform'), octave: n(0, 'synthOctave', 'octave'), tone: n(2000, 'synthToneHz', 'tone'), mix: n(50, 'synthMixPercent', 'mix') }); break;
+    case 'G2B': slot.g2bParameters = sanitizeG2bParameters({ tracking: n(50, 'g2bTrackingPercent', 'tracking_percent'), blend: n(50, 'g2bBlendPercent', 'blend_percent'), body: n(200, 'g2bBodyHz', 'body_hz') }); break;
+    case 'ROLL': slot.rollParameters = sanitizeRollParameters({ sliceBeats: n(0.25, 'rollSliceBeats', 'slice_beats'), decayPercent: n(100, 'rollDecayPercent', 'decay_percent'), pitchSemitones: n(0, 'rollPitchSemitones', 'pitch_semitones'), direction: n(0, 'rollDirection', 'direction') }); break;
+    case 'FREEZE': slot.freezeParameters = sanitizeFreezeParameters({ captureLengthMs: n(500, 'freezeCaptureLengthMs', 'capture_ms'), pitchSemitones: n(0, 'freezePitchSemitones', 'pitch_semitones'), frozen: n(0, 'freezeEnabled', 'freeze') !== 0 }); break;
+    case 'PITCH BEND': slot.pitchBendParameters = sanitizePitchBendParameters({ rangeSemitones: n(12, 'range'), timeMs: n(500, 'time_ms'), direction: n(0, 'direction'), mixPercent: n(100, 'mix_percent') }); break;
+    case 'HRM MANUAL': slot.manualHarmonistParameters = sanitizeManualHarmonistParameters({ voice1Interval: n(0, 'voice_1_interval'), voice2Interval: n(0, 'voice_2_interval'), panPercent: n(0, 'pan_percent'), mixPercent: n(100, 'mix_percent') }); break;
+    case 'OCTAVE': slot.octaveParameters = sanitizeOctaveParameters({ minus24Level: n(0, 'minus_24_level'), minus12Level: n(0, 'minus_12_level'), plus12Level: n(0, 'plus_12_level'), mixPercent: n(100, 'mix_percent') }); break;
+    case 'VOCODER': slot.vocoderParameters = sanitizeVocoderParameters({ bands: n(16, 'vocoderBands', 'bands'), carrier: n(0, 'vocoderCarrier', 'carrier') as VocoderParameters['carrier'], mixPercent: n(100, 'mix') }); break;
+    case 'OSC VOC (M)': slot.oscVocParameters = sanitizeOscVocParameters({ waveform: n(0, 'oscVocWaveform', 'waveform') as OscVocParameters['waveform'], midiChannel: n(1, 'oscVocMidiChannel', 'midi-channel'), octaveSemitones: n(0, 'oscVocOctave', 'octave'), mixPercent: n(70, 'mix') }); break;
+    case 'AUTO RIFF': slot.autoRiffParameters = sanitizeAutoRiffParameters({ scale: n(0, 'scale'), rateBeats: n(0.5, 'rate_beats'), sensitivityPercent: n(55, 'sensitivity_percent'), mixPercent: n(65, 'mix_percent') }); break;
+    case 'ROBOT': slot.robotParameters = sanitizeRobotFxParameters({ targetPitchSemitones: n(0, 'pitch_semitones'), formantShiftSemitones: n(0, 'formant_semitones'), mixPercent: n(100, 'mix_percent') }); break;
+    case 'HRM AUTO (M)': slot.hrmAutoParameters = sanitizeHrmAutoParameters({ key: n(0, 'key') as HrmAutoParameters['key'], scale: n(0, 'scale') as HrmAutoParameters['scale'], midiChannel: n(1, 'midi-channel'), mixPercent: n(70, 'mix') }); break;
+    case 'ELECTRIC': slot.electricParameters = sanitizeElectricParameters({ character: n(0, 'electricCharacter') as ElectricParameters['character'], pitchSnapPercent: n(0, 'electricPitchSnapPercent'), toneHz: n(2000, 'electricToneHz'), mixPercent: n(1, 'mix') * 100 }); break;
+  }
+  if (saved.amount === null) {
+    slot.value = slot.preampParameters?.gainPercent ?? slot.synthParameters?.mix ?? slot.g2bParameters?.blend
+      ?? (slot.pitchBendParameters ? slot.pitchBendParameters.rangeSemitones / 24 * 100
+        : n(0, 'mix') * (slot.type === 'VOCODER' || slot.type.includes('(M)') ? 1 : 100));
+  }
+  return slot;
+}
+
+/** Hydrate mounted Browser editors from the successfully published Memory, without replaying DSP writes. */
+export async function adoptCommittedBrowserFxState(configuration: BrowserMemoryConfiguration): Promise<void> {
+  memoryHydrating += 1;
+  try {
+    adoptCommittedBrowserTrackFxState(configuration);
+    ensureInitialized();
+    state.inputSlots.splice(0, 4, ...configuration.fx.input.map(slotFromReadback));
+    state.trackSlots.splice(0, 4, ...configuration.fx.sharedTrack.map(slotFromReadback));
+    for (const slot of [...state.inputSlots, ...state.trackSlots]) adoptedControls.set(slot, adoptedSnapshot(slot));
+    await nextTick();
+    persistSlots();
+  } finally { memoryHydrating -= 1; }
+}
 
 function sanitizeValue(rawValue: number) {
   if (typeof rawValue !== 'number' || Number.isNaN(rawValue) || !Number.isFinite(rawValue)) {
@@ -196,6 +270,19 @@ function sanitizeValue(rawValue: number) {
 }
 
 function syncSlotToEngine(location: FxLocation, index: number, slot: FxSlotState) {
+  if (memoryHydrating && engine.getMode() === 'browser') return;
+  const adopted = adoptedControls.get(slot);
+  if (engine.getMode() === 'browser' && adopted?.type === slot.type) {
+    const current = adoptedSnapshot(slot);
+    if (current.value !== adopted.value) engine.setFxParam(location, index, sanitizeValue(current.value));
+    const typedPatch = Object.fromEntries(Object.entries(current.typed).filter(([key, value]) => adopted.typed[key] !== value));
+    const namedPatch = Object.fromEntries(Object.entries(current.named).filter(([key, value]) => adopted.named[key] !== value));
+    if (Object.keys(typedPatch).length || Object.keys(namedPatch).length) engine.setCatalogFxParameters(location, index, { ...typedPatch, ...namedPatch });
+    if (current.active !== adopted.active) engine.setFxActive(location, index, current.active);
+    adoptedControls.set(slot, current);
+    return;
+  }
+  adoptedControls.delete(slot);
   if (engine.getMode() === 'native') {
     const key = nativeNamedParameterKey(location, index);
     const pending = pendingNativeNamedParameters.get(key);
@@ -414,8 +501,10 @@ function ensureInitialized() {
   loadSlots();
   loadNativeFxSlots();
   if (engine.getMode() === 'browser') {
-    state.inputSlots.forEach((slot, index) => syncSlotToEngine('input', index, slot));
-    state.trackSlots.forEach((slot, index) => syncSlotToEngine('track', index, slot));
+    if (!memoryHydrating) {
+      state.inputSlots.forEach((slot, index) => syncSlotToEngine('input', index, slot));
+      state.trackSlots.forEach((slot, index) => syncSlotToEngine('track', index, slot));
+    }
   } else {
     nativeFxState.inputSlots.forEach((slot, index) => syncSlotToEngine('input', index, slot));
     nativeFxState.trackSlots.forEach((slot, index) => syncSlotToEngine('track', index, slot));
@@ -427,6 +516,7 @@ function ensureInitialized() {
     // capture-based beat FX never opts it in implicitly; the user must press
     // the slot's activation button after choosing it.
     watch(() => state.trackSlots.map((slot) => slot.type), (newTypes, oldTypes) => {
+      if (memoryHydrating) return;
       newTypes.forEach((type, index) => {
         if (oldTypes[index] === type) return;
         const slot = state.trackSlots[index];
@@ -444,6 +534,7 @@ function ensureInitialized() {
       });
     });
     watch(() => state.inputSlots.map((slot) => slot.type), (newTypes, oldTypes) => {
+      if (memoryHydrating) return;
       newTypes.forEach((type, index) => {
         if (oldTypes[index] === type) return;
         const slot = state.inputSlots[index];
@@ -496,6 +587,7 @@ function ensureInitialized() {
     // previous processor installed.
     const slotControlSnapshot = (slot: FxSlotState, includeNamedParameters = true) => [
       slot.type, slot.value, slot.active,
+      JSON.stringify(typedControls(slot)),
       includeNamedParameters ? JSON.stringify(slot.namedParametersByType ?? {}) : '',
       slot.pitchBendParameters?.rangeSemitones ?? null,
       slot.pitchBendParameters?.timeMs ?? null,
@@ -533,7 +625,7 @@ function ensureInitialized() {
       slot.electricParameters?.mixPercent ?? null,
     ] as const;
     watch(() => state.inputSlots.map((slot) => slotControlSnapshot(slot)), (newValues, oldValues) => {
-      if (engine.getMode() !== 'browser') return;
+      if (engine.getMode() !== 'browser' || memoryHydrating) return;
       state.inputSlots.forEach((slot, index) => {
         const previous = oldValues?.[index];
         const current = newValues[index];
@@ -544,7 +636,7 @@ function ensureInitialized() {
     watch(() => state.inputSlots, persistSlots, { deep: true });
 
     watch(() => state.trackSlots.map((slot) => slotControlSnapshot(slot)), (newValues, oldValues) => {
-      if (engine.getMode() !== 'browser') return;
+      if (engine.getMode() !== 'browser' || memoryHydrating) return;
       state.trackSlots.forEach((slot, index) => {
         const previous = oldValues?.[index];
         const current = newValues[index];

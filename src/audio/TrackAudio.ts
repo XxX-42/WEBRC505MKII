@@ -1044,7 +1044,7 @@ export class TrackAudio {
     }
 
     /** Settings are validated on an isolated Track before touching live AudioParams. */
-    public prepareMemorySettings(saved: Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse'>): { commit(): void; rollback(): void } {
+    public prepareMemorySettings(saved: Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse' | 'sourceTransport'>): { commit(): void; rollback(): void } {
         const settings = saved.settings;
         if (!settings || !saved.pitch || typeof saved.isReverse !== 'boolean'
             || !['off', 'LIVE_MONO', 'LIVE_POLY'].includes(saved.pitch.mode)
@@ -1064,8 +1064,13 @@ export class TrackAudio {
             || !Number.isFinite(saved.pitch.livePoly.tonalityLimitHz) || saved.pitch.livePoly.tonalityLimitHz <= 0) {
             throw new Error(`Track ${this.track.id} Memory settings are invalid.`);
         }
+        if (!Array.isArray(saved.sourceTransport) || saved.sourceTransport.length !== 4
+            || saved.sourceTransport.some((slot) => slot && (!['BEAT SHIFT', 'VINYL FLICK'].includes(slot.type)
+                || Object.entries(slot).some(([key, value]) => key !== 'type' && value !== null && (typeof value !== 'number' || !Number.isFinite(value)))))) {
+            throw new Error(`Track ${this.track.id} Memory source transport is invalid.`);
+        }
         const previous = this.getRecoverySnapshot();
-        const apply = (value: Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse'>) => {
+        const apply = (value: Pick<BrowserRecoveryTrack, 'settings' | 'pitch' | 'isReverse' | 'sourceTransport'>) => {
             const s = value.settings;
             Object.assign(this.track, { ...s, measure: { ...s.measure }, pan: s.pan === 'CENTER' ? 0 : s.pan.startsWith('L') ? -Number(s.pan.slice(1)) : Number(s.pan.slice(1)) });
             this.isReverse = value.isReverse;
@@ -1077,6 +1082,16 @@ export class TrackAudio {
             this.livePolyPitchSemitones = value.pitch.livePoly.semitones;
             this.livePolyPitchPlaybackRate = value.pitch.livePoly.playbackRate;
             this.livePolyPitchTonalityLimitHz = value.pitch.livePoly.tonalityLimitHz;
+            for (let index = 0; index < 4; index++) {
+                const slot = value.sourceTransport[index];
+                this.loopTransportFxSlots[index] = slot ? { ...slot } : null;
+                if (slot?.type === 'VINYL FLICK') {
+                    const motor = this.loopMotorStates[index]!;
+                    motor.targetRate = loopMotorTargetRate(slot.vinylFlickSpeed);
+                    motor.returnTimeSeconds = slot.vinylFlickReturnTimeSeconds;
+                    motor.brakePercent = slot.vinylFlickBrakePercent;
+                }
+            }
             this.updateSettings();
         };
         return { commit: () => apply(saved), rollback: () => apply(previous) };

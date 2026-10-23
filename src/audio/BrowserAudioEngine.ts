@@ -263,6 +263,8 @@ export class BrowserAudioEngine implements IAudioEngine {
     private preparedRecoverySnapshot: BrowserRecoverySnapshot | null = null;
     /** Real private A–D banks before TrackMix; legacy trackFxInstances stay postmix. */
     private perTrackFxChains: BrowserTrackFxChain[] = [];
+    private inputFxAmounts: Array<number | null> = [null, null, null, null];
+    private trackFxAmounts: Array<number | null> = [null, null, null, null];
     /** Explicit one-track source-transport overrides; they never enter shared A–D processing. */
     private trackLoopTransportOverrides = new Map<number, NativeLoopTransportConfig>();
     private handleTransportBpmChange(): void {
@@ -1327,7 +1329,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 requestedActive: null,
                 state: !effect ? 'empty' as const : error ? 'error' as const
                     : effectState?.processorReady === false ? 'loading' as const : 'ready' as const,
-                amount: null,
+                amount: (location === 'input' ? this.inputFxAmounts : this.trackFxAmounts)?.[index] ?? null,
                 parameters: copyRecoveryFxParameters(parameters),
                 parametersCaptured: Boolean(parameters),
                 error,
@@ -1462,6 +1464,7 @@ export class BrowserAudioEngine implements IAudioEngine {
     public setFxType(location: 'input' | 'track', slotIndex: number, type: string) {
         if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3 || typeof type !== 'string') return;
         this.trackFxActive ??= [false, false, false, false];
+        this.inputFxAmounts ??= [null, null, null, null]; this.trackFxAmounts ??= [null, null, null, null];
 
         // Reject stale/manual calls too: Browser Track-only beat FX never enter Input.
         const normalizedType = type.trim().toUpperCase();
@@ -1485,6 +1488,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             if (previousFx instanceof BrowserWorkletFX && previousFx.algorithm === 'osc-voc') previousFx.clearMidiNotes(this.nextMidiFrame());
             previousFx?.dispose();
             fxInstances[slotIndex] = null;
+            (location === 'input' ? this.inputFxAmounts : this.trackFxAmounts)[slotIndex] = null;
             fxTypes[slotIndex] = null;
             if (location === 'track') {
                 this.trackFxActive[slotIndex] = false;
@@ -1506,6 +1510,7 @@ export class BrowserAudioEngine implements IAudioEngine {
             console.warn(`Unknown FX type: ${type}`);
             return;
         }
+        (location === 'input' ? this.inputFxAmounts : this.trackFxAmounts)[slotIndex] = null;
 
         const previousFx = (location === 'input' ? this.inputFxInstances : this.trackFxInstances)[slotIndex];
         if (previousFx instanceof BrowserHrmAutoFX && previousFx === this.selectedHrmAutoMidiTarget?.effect) {
@@ -2155,6 +2160,7 @@ export class BrowserAudioEngine implements IAudioEngine {
      * @param value 0-100
      */
     public setFxParam(location: 'input' | 'track', slotIndex: number, value: number) {
+        this.inputFxAmounts ??= [null, null, null, null]; this.trackFxAmounts ??= [null, null, null, null];
         // SAFETY CHECK: Ensure value is a finite number
         if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
             console.error(`FX Error: Invalid param value received for slot ${slotIndex}:`, value);
@@ -2164,6 +2170,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         const instances = location === 'input' ? this.inputFxInstances : this.trackFxInstances;
         const fx = instances[slotIndex];
         if (fx) {
+            (location === 'input' ? this.inputFxAmounts : this.trackFxAmounts)[slotIndex] = value;
             // Map 0-100 to 0-1 or appropriate range
             // Most FX expect 0-1 for "amount" or "mix"
             // Let's assume a generic 'amount' parameter for now, 
@@ -2487,8 +2494,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         return {
             version: 1,
             tracks: this.tracks.map((track) => {
-                const { settings, pitch, isReverse } = track.getRecoverySnapshot();
-                return { settings, pitch, isReverse };
+                const { settings, pitch, isReverse, sourceTransport } = track.getRecoverySnapshot();
+                return { settings, pitch, isReverse, sourceTransport };
             }),
             fx: {
                 input: this.getSharedFxRecoverySnapshot('input'), sharedTrack: this.getSharedFxRecoverySnapshot('track'),
@@ -2638,7 +2645,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (!Number.isFinite(saved.outputGain) || saved.outputGain < 0 || saved.outputGain > 2
             || !Number.isFinite(saved.mainGain) || saved.mainGain < 0 || saved.mainGain > 2
             || !Number.isFinite(saved.trackMixGain) || saved.trackMixGain < 0 || saved.trackMixGain > 2) throw new Error('Memory mixer gain is invalid.');
-        if (!saved.recordPlay) throw new Error('Memory lacks record/play settings.');
+        if (!saved.recordPlay || Object.keys(saved.recordPlay).length !== 2 || !['REC->PLAY', 'REC->DUB'].includes(saved.recordPlay.recAction)
+            || !['MEASURE', 'OFF'].includes(saved.recordPlay.quantize)) throw new Error('Memory lacks supported record/play settings.');
         assertRecordPlaySettings(saved.recordPlay);
         const settings = this.tracks.map((track, index) => track.prepareMemorySettings(saved.tracks[index]!));
         const pcm = this.prepareProjectArchive(project, archiveBytes, this.captureProjectRestoreToken(), 'memory-boundary');
@@ -2649,6 +2657,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         stage.inputFxInstances = [null, null, null, null]; stage.trackFxInstances = [null, null, null, null];
         stage.inputFxTypes = [null, null, null, null]; stage.trackFxTypes = [null, null, null, null];
         stage.inputFxActive = [false, false, false, false]; stage.trackFxActive = [false, false, false, false];
+        stage.inputFxAmounts = [null, null, null, null]; stage.trackFxAmounts = [null, null, null, null];
         stage.inputFxChain = new FXChain(this.context); stage.outputFxChain = new FXChain(this.context);
         stage.currentInputStream = null; stage.inputCaptureNode = null;
         stage.statusListeners = new Set(); stage.officialFxParameterOverrides = new WeakMap();
@@ -2679,6 +2688,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                     if ((location === 'input' ? stage.inputFxTypes : stage.trackFxTypes)[index] !== slot.type) throw new Error(`Memory ${location} FX type rejected.`);
                     const parameters = Object.fromEntries(Object.entries(slot.parameters).filter(([key]) => key !== 'bypassed'));
                     if (Object.values(parameters).some((value) => typeof value !== 'number' || !Number.isFinite(value))) throw new Error('Memory FX has unsupported scalar controls.');
+                    if (slot.amount !== null) stage.setFxParam(location, index, slot.amount);
                     stage.setFxNamedParameters(location, index, parameters as Record<string, number>);
                     stage.setFxActive(location, index, slot.active);
                 });
@@ -2724,6 +2734,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 try {
                     assertCurrent();
                     const old = this.captureMemoryConfiguration();
+                    const oldTransport = this.captureProjectRestoreToken().transport;
                     const oldBanks = this.perTrackFxChains;
                     const swapped: number[] = [];
                     const oldInput = this.inputFxInstances, oldTrack = this.trackFxInstances;
@@ -2772,17 +2783,21 @@ export class BrowserAudioEngine implements IAudioEngine {
                         this.rhythmEngine.setSettings(old.rhythm as Parameters<RhythmEngine['setSettings']>[0]); this.rhythmEngine.setVolume(old.rhythm.volumePercent);
                         this.masterGainNode.gain.value = old.outputGain; this.mainGainNode.gain.value = old.mainGain; this.trackMixNode.gain.value = old.trackMixGain; this.dryTrackMixGainNode.gain.value = old.trackMixGain;
                         this.recordPlaySettings = { ...old.recordPlay };
+                        const transport = Transport.getInstance();
+                        transport.timeSignature = [oldTransport.timeSignatureNumerator, oldTransport.timeSignatureDenominator];
+                        transport.masterTrackId = oldTransport.masterTrackId; transport.masterLoopLengthSamples = oldTransport.masterLoopLengthSamples;
+                        transport.measureLength = oldTransport.measureLengthSeconds; transport.setBpm(oldTransport.bpm);
                         throw error;
                     }
                     this.inputFxInstances = stage.inputFxInstances; this.trackFxInstances = stage.trackFxInstances;
                     this.inputFxTypes = stage.inputFxTypes; this.trackFxTypes = stage.trackFxTypes;
                     this.inputFxActive = stage.inputFxActive; this.trackFxActive = stage.trackFxActive;
+                    this.inputFxAmounts = stage.inputFxAmounts; this.trackFxAmounts = stage.trackFxAmounts;
                     this.officialFxParameterOverrides = stage.officialFxParameterOverrides;
                     this.perTrackFxChains = stage.perTrackFxChains; this.outputDspFxNode = candidateOutput;
                     this.outputDspAlgorithmValue = saved.fx.outputDsp.algorithm as BrowserFxAlgorithm | null;
                     this.outputDspParametersValue = { ...saved.fx.outputDsp.parameters } as BrowserFxParameters; this.outputDspEnabledValue = saved.fx.outputDsp.enabled;
                     this.trackLoopTransportOverrides = new Map(saved.fx.sourceOverrides.map(({ trackId, config }) => [trackId, { ...config }]));
-                    this.syncAllTrackLoopTransportFx();
                     // PCM publication resets its direction; semantic Memory owns the saved direction.
                     this.tracks.forEach((track, index) => { track.isReverse = saved.tracks[index]!.isReverse; });
                     committed = true;

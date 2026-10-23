@@ -39,13 +39,29 @@ test('real Browser Memory stages FX and jointly acknowledged gates before replac
     const preparationUntouched = runtime.revision() === before && engine.getTrackFxApply(1)[0].applied === true
       && tracks[0].getProjectPcmSnapshot().channelData[0][0] === Math.fround(0.7);
     await prepared.commit(); await prepared.dispose();
+    const panelModule = await load('/src/composables/useFxPanelState.ts');
+    const privateModule = await load('/src/composables/useBrowserTrackFxState.ts');
+    const beforeHydration = runtime.revision();
+    await panelModule.adoptCommittedBrowserFxState(engine.captureMemoryConfiguration());
+    const hydrationDidNotWrite = beforeHydration === runtime.revision();
+    const sharedUi = panelModule.useFxPanelState('input');
+    const privateUi = privateModule.useBrowserTrackFxState();
+    privateUi.selectTarget(2);
+    const hydratedUi = { sharedType: sharedUi.slots.value[0].type, sharedActive: sharedUi.slots.value[0].active,
+      privateType: privateUi.slots.value[0].type, privateCutoff: privateUi.slots.value[0].namedParameters.cutoffHz };
+    const fxEqual = JSON.stringify(engine.captureMemoryConfiguration().fx) === savedFx;
+    sharedUi.slots.value[0].namedParametersByType.FILTER.frequency = 0.55;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const afterParameterEdit = engine.captureMemoryConfiguration();
     return {
       preparationUntouched,
       identitiesRetained: tracks.every((track: unknown, index: number) => engine.tracks[index] === track),
       pcm: tracks.map((track: any) => track.getProjectPcmSnapshot().channelData[0][0]),
       level: tracks[0].track.playLevel,
       gate: engine.getTrackFxApply(1)[0],
-      fxEqual: JSON.stringify(engine.captureMemoryConfiguration().fx) === savedFx,
+      fxEqual, hydrationDidNotWrite, hydratedUi,
+      editedParameters: afterParameterEdit.fx.input[0].parameters,
+      privateCutoffAfterEdit: afterParameterEdit.fx.privateTracks[1][0].parameters.cutoffHz,
       noOldUndo: tracks.every((track: any) => !track.canUndo && !track.canRedo),
       contextState: engine.context.state,
     };
@@ -56,5 +72,9 @@ test('real Browser Memory stages FX and jointly acknowledged gates before replac
   expect(result.level).toBe(73); expect(result.gate.applied).toBe(false);
   expect(result.gate.inputAppliedRevision).toBe(result.gate.trackAppliedRevision);
   expect(result.gate.pending).toBe(false); expect(result.fxEqual).toBe(true); expect(result.noOldUndo).toBe(true);
+  expect(result.hydrationDidNotWrite).toBe(true);
+  expect(result.hydratedUi).toEqual({ sharedType: 'FILTER', sharedActive: true, privateType: 'DSP LPF', privateCutoff: 700 });
+  expect(result.editedParameters).toMatchObject({ frequency: 0.55, resonance: 0.2 });
+  expect(result.privateCutoffAfterEdit).toBe(700);
   expect(result.contextState).toBe('running');
 });

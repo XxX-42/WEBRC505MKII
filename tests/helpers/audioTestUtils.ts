@@ -95,6 +95,16 @@ class MockScriptProcessorNode extends MockAudioNode {
 
 class MockMediaStreamSourceNode extends MockAudioNode {}
 
+class MockAnalyserNode extends MockAudioNode {
+  public fftSize = 256;
+  public smoothingTimeConstant = 0;
+  public samples = new Float32Array(0);
+  public getFloatTimeDomainData(target: Float32Array) {
+    target.fill(0);
+    for (let index = 0; index < target.length && this.samples.length; index++) target[index] = this.samples[index % this.samples.length]!;
+  }
+}
+
 class MockAudioBuffer {
   public readonly numberOfChannels: number;
   public readonly length: number;
@@ -136,6 +146,8 @@ export function createMockAudioContext() {
     resume: async () => undefined,
     createGain: () => new MockGainNode() as unknown as GainNode,
     createStereoPanner: () => new MockStereoPannerNode() as unknown as StereoPannerNode,
+    createChannelSplitter: () => new MockAudioNode() as unknown as ChannelSplitterNode,
+    createAnalyser: () => new MockAnalyserNode() as unknown as AnalyserNode,
     createDelay: () => new MockDelayNode() as unknown as DelayNode,
     createBiquadFilter: () => new MockBiquadFilterNode() as unknown as BiquadFilterNode,
     createDynamicsCompressor: () => new MockDynamicsCompressorNode() as unknown as DynamicsCompressorNode,

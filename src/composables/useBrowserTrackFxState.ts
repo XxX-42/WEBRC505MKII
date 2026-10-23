@@ -6,6 +6,7 @@ import type { FxSlotId } from './usePanelFocus';
 import { getBrowserTrackFxControls, getBrowserTrackFxMacroKeys, sanitizeBrowserTrackFxParameters } from './browserTrackFxParameters';
 import { createDefaultAutoRiffParameters } from '../audio/autoRiffParameters';
 import { createDefaultOscVocParameters } from '../audio/oscVocParameters';
+import type { BrowserMemoryConfiguration } from '../audio/BrowserRc505Memory';
 
 export const BROWSER_TRACK_FX_STORAGE_KEY = 'webrc505_browser_per_track_fx_v1';
 export type BrowserTrackFxTarget = 'shared' | 1 | 2 | 3 | 4 | 5;
@@ -36,6 +37,25 @@ const pendingTypeSnapshots = new Map<string, BrowserTrackFxSlotState>();
 const statusRevision = ref(0);
 let initialized = false;
 let browserSynced = false;
+
+/** Adopt only a confirmed graph readback. This path never submits DSP controls. */
+export function adoptCommittedBrowserTrackFxState(configuration: BrowserMemoryConfiguration): void {
+  browserSynced = true;
+  ensureBrowserTrackFxStateInitialized();
+  pendingTypeSnapshots.clear();
+  for (const key of Object.keys(warnings)) delete warnings[key];
+  configuration.fx.privateTracks.forEach((slots, trackIndex) => {
+    slots.forEach((saved, slotIndex) => {
+      const slot = state.tracks[trackIndex]!.slots[slotIndex]!;
+      slot.type = saved.type ? menuType(saved.type) : 'NONE';
+      slot.active = saved.active;
+      slot.value = saved.amount ?? defaultAmountForType(slot.type);
+      slot.namedParameters = Object.fromEntries(Object.entries(saved.parameters).filter((entry): entry is [string, number] => typeof entry[1] === 'number'));
+    });
+  });
+  statusRevision.value += 1;
+  persist();
+}
 
 const validTrack = (trackId: number) => Number.isInteger(trackId) && trackId >= 1 && trackId <= 5;
 const validSlot = (slotIndex: number) => Number.isInteger(slotIndex) && slotIndex >= 0 && slotIndex < 4;
