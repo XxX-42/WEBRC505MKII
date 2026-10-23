@@ -48,7 +48,7 @@ export const RC505_LOOP_ROOT_ITEMS: readonly Rc505DisplayRootItem[] = [
 
 export const RC505_MENU_ROOT_ITEMS: readonly Rc505DisplayRootItem[] = [
   { id: 'input', label: 'INPUT', reason: 'Input routing settings are not exposed by the current audio controller.' },
-  { id: 'output', label: 'OUTPUT', reason: 'Output routing settings are not exposed by the current audio controller.' },
+  { id: 'output', label: 'OUTPUT', target: 'menu' },
   { id: 'mixer', label: 'MIXER', target: 'mixer' },
   { id: 'ctl-func', label: 'CTL FUNC', reason: 'Controller and function assignment are not exposed by the current audio controller.' },
   { id: 'assign', label: 'ASSIGN', reason: 'Assign settings are not exposed by the current audio controller.' },

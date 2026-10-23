@@ -7,6 +7,11 @@ function send(state: Rc505DisplayState, ...actions: Rc505DisplayAction[]): Rc505
 }
 
 describe('RC-505 Classic LCD state machine', () => {
+  it('opens the OUTPUT category for its partial software routing editor', () => {
+    const state = send(createRc505DisplayState(), { type: 'OPEN_ROOT', root: 'menu' }, { type: 'ENCODER_PRESS', encoderIndex: 1 });
+    expect(state.view).toEqual({ kind: 'editor', target: 'menu', category: 'output', pageIndex: 0, pageCount: 1 });
+    expect(getRc505RootItems('menu').find(item => item.id === 'input')?.reason).toBeTruthy();
+  });
   it('keeps identical renderer page-count reports idempotent instead of retriggering reactive editors', () => {
     const state = send(createRc505DisplayState(), { type: 'OPEN_EDITOR', target: 'memory', category: 'name' },
       { type: 'EDITOR_PAGE_COUNT', count: 3 });

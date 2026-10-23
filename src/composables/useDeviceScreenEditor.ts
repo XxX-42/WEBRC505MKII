@@ -677,6 +677,8 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const modeValue = livePitchOptions.find((option) => option.mode === controller.livePitchMode.value)?.value ?? 0;
     const rendererOptions = controller.nativeHqRendererEngines.value.map((name, index) => ({ label: name, value: index }));
     const rendererIndex = rendererOptions.findIndex((option) => option.label === controller.hqNativeEngine.value);
+    const pan = audioTrack?.track.pan ?? 'CENTER';
+    const panValue = pan === 'CENTER' ? 0 : (pan.startsWith('L') ? -1 : 1) * Number(pan.slice(1));
     const fields: DeviceScreenField[] = [
       makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 200, step: 1, disabled: !controller.levelControlEnabled.value || controller.levelWritePending.value, reason: controller.levelWritePending.value ? 'Waiting for Native level readback.' : controller.trackLevelUnavailableReason.value }),
       makeBooleanField('track-reverse', 'REVERSE', audioTrack?.isReverse === true, (enabled) => {
@@ -704,7 +706,18 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       makeEnumField('wav-engine', 'NATIVE RENDERER', Math.max(0, rendererIndex), rendererOptions, (index) => { const selected = rendererOptions[index]; if (selected) { controller.hqNativeEngine.value = selected.label as typeof controller.hqNativeEngine.value; controller.handleHqNativeEngineChange(); } }, { disabled: controller.isNativeAudioMode.value && !controller.nativeHqRendererAvailable.value, reason: 'A Native HQ renderer is not available.' }),
       makeActionField('wav-export', controller.isHqExporting.value ? `EXPORTING ${controller.hqExportProgress.value}%` : 'EXPORT HQ WAV', async () => { await controller.exportHqWav(); }, { disabled: !controller.canExportHqWav.value || controller.isHqExporting.value, reason: controller.hqExportError.value || 'Record a loop and wait for the supported renderer before exporting.' }),
     ];
-    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply'].includes(field.key)) : fields);
+    // Roland Parameter Guide v1.3+, p.2: TRACK PAN L50–CENTER–R50.
+    // https://static.roland.com/assets/media/pdf/RC-505mk2_Parameter_eng04_W.pdf
+    if (classic) fields.push(makeNumberField('track-pan', 'PAN', panValue, (value) => {
+      if (engine.getMode() !== 'browser' || !audioTrack) throw new Error('Native track pan has no audio provider.');
+      if (!Number.isFinite(value)) throw new Error('PAN requires a finite value.');
+      audioTrack.track.pan = Math.max(-50, Math.min(50, Math.round(value)));
+      audioTrack.updateSettings();
+    }, { min: -50, max: 50, step: 1,
+      format: (value) => value === 0 ? 'CENTER' : `${value < 0 ? 'L' : 'R'}${Math.abs(value)}`,
+      disabled: engine.getMode() !== 'browser' || !audioTrack,
+      reason: engine.getMode() !== 'browser' ? 'Native track pan has no audio provider.' : '' }));
+    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan'].includes(field.key)) : fields);
   }
 
   function deviceOptions(devices: readonly AudioDeviceInfo[]): DeviceScreenOption[] {
@@ -1003,6 +1016,18 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const pages = computed(() => {
     statusRevision.value;
     const classicView = classic ? useDevicePanel().classicState.value.view : null;
+    // Official guide p.12: OUTPUT / ROUTING / INPUT/RHYTHM, INPUT THRU.
+    // Only the existing global software monitoring route is expressible here.
+    if (classicView?.kind === 'editor' && classicView.target === 'menu' && classicView.category.startsWith('output')) {
+      const openOutput = (category: string) => { useDevicePanel().classicDispatch({ type: 'OPEN_EDITOR', target: 'menu', category }); };
+      if (classicView.category === 'output') return [[makeActionField('output-routing', 'ROUTING', () => openOutput('output-routing'))]];
+      if (classicView.category === 'output-routing') return [[makeActionField('output-input-rhythm', 'INPUT/RHYTHM', () => openOutput('output-input-rhythm')),
+        makeActionField('output-track-route', 'TRACK', () => {}, { disabled: true, reason: 'Physical output routing has no provider.' }),
+        makeActionField('output-phones-route', 'PHONES OUT', () => {}, { disabled: true, reason: 'Physical headphone routing has no provider.' })]];
+      return [[makeBooleanField('output-input-thru', 'INPUT THRU', engine.monitoringEnabled, (enabled) => setMonitoring(enabled),
+        { disabled: !engine.getUiStatus().ready || editPending.value, reason: 'PARTIAL SOFTWARE ROUTE: global input monitoring only; no physical jack routing.' }),
+        makeActionField('output-physical-route', 'OUTPUT JACKS', () => {}, { disabled: true, reason: 'MAIN/SUB/PHONES input and rhythm routing has no provider.' })]];
+    }
     if (classicView?.kind === 'editor' && classicView.target === 'memory') {
       if (classicView.category === 'name') {
         const memory = useRc505Memory();
@@ -1055,6 +1080,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const pageTitle = computed(() => {
     const view = classic ? useDevicePanel().classicState.value.view : null;
     if (view?.kind === 'editor' && view.target === 'memory') return view.category.toUpperCase();
+    if (view?.kind === 'editor' && view.target === 'menu' && view.category.startsWith('output')) return view.category === 'output' ? 'OUTPUT' : view.category === 'output-routing' ? 'OUTPUT / ROUTING' : 'ROUTING / INPUT/RHYTHM';
     const titles: Record<DevicePanelPage, string> = {
       home: 'HOME', mixer: 'MIXER', menu: 'MENU', memory: 'MEMORY · PCM/TEMPO', 'input-fx': `INPUT FX · ${currentInputSlot.value?.type || 'EMPTY'}`,
       'track-fx': `TRACK FX · ${trackFx.target.value === 'shared' ? 'SHARED' : `TRACK ${trackFx.target.value}`}`,
@@ -1066,6 +1092,8 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     statusRevision.value;
     if (statusText.value) return statusText.value;
     if (settings.error) return settings.error;
+    const classicView = classic ? useDevicePanel().classicState.value.view : null;
+    if (classicView?.kind === 'editor' && classicView.category === 'output-input-rhythm') return 'PARTIAL SOFTWARE ROUTE · GLOBAL INPUT THRU';
     const runtime = device.state.page === 'input-fx'
       ? input.runtimeStatus.value as (typeof input.runtimeStatus.value & { pendingRestart?: boolean; pendingApply?: boolean; acknowledged?: boolean })
       : device.state.page === 'track-fx' ? trackFx.runtimeStatus.value : null;
