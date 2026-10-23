@@ -67,6 +67,8 @@ function outputSettings(status: NativeStatus): Rc505Json {
 }
 
 export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505MemoryRuntime {
+  let preservedExtensions: Record<string, Rc505Json> = {};
+  let preservedFields: Rc505MemoryDocument['semantics']['fields'] = {};
   const revision = () => `${port.status()?.projectContentRevision ?? 'unknown'}:${Transport.getInstance().projectMutationRevision}:${port.editRevision()}`;
   const assertStopped = (status: NativeStatus | null) => { const result = stopped(status); if (!result.allowed) throw new Error(result.reason); };
   return {
@@ -91,15 +93,15 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         || local !== port.editRevision() || transportRevision !== Transport.getInstance().projectMutationRevision) {
         throw new Error('Native Memory changed during capture.');
       }
-      const fields: Record<string, Rc505MemoryField> = {};
+      const fields: Record<string, Rc505MemoryField> = structuredClone(preservedFields);
       // NativeTrackProxy defaults are display placeholders, never device evidence.
       for (let track = 1; track <= 5; track += 1) {
         for (const key of ['level', 'pan', 'reverse', 'oneShot', 'tempoSync', 'loopSync', 'measure', 'startMode', 'stopMode']) {
-          fields[`track.${track}.${key}`] = { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
+          fields[`track.${track}.${key}`] ??= { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
         }
       }
       for (const address of ['record.overdubMode', 'record.quantize', 'play.allStart', 'play.allStop', 'routing.output', 'assign.controls', 'mixer.level']) {
-        fields[address] = { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
+        fields[address] ??= { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
       }
       for (let track = 1; track <= 5; track += 1) {
         fields[`track.${track}.level`] = { value: (settings.mixerLevels as Rc505Json[])[track + 1]!, availability: 'supported' };
@@ -113,7 +115,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       port.publish(after);
       return { version: 1, memoryNumber: null, name: '', archive,
         semantics: { tempo, meter, fields },
-        extensions: { WEBRC: { nativeMemory: settings, nativeOutputState: outputSettings(initial) } } };
+        extensions: { WEBRC: { ...structuredClone(preservedExtensions), nativeMemory: settings, nativeOutputState: outputSettings(initial) } } };
     },
     prepare: async (document: Rc505MemoryDocument, expectedRevision: string) => {
       if (port.pendingEdits?.() || revision() !== expectedRevision) throw new Error('Native Memory changed before preparation.');
@@ -152,6 +154,11 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           if (result.state !== 'committed') throw new Error(result.error || 'Native Memory generation was not committed.');
           state = 'committed';
           try {
+          // The host ACK owns the target metadata even if later UI/readback
+          // synchronization fails. A future capture combines this opaque data
+          // with fresh authoritative Native settings and exact archive bytes.
+          preservedExtensions = structuredClone(document.extensions.WEBRC);
+          preservedFields = structuredClone(document.semantics.fields);
           const deadline = Date.now() + 10_000;
           for (;;) {
             const status = await port.bridge.getStatus();

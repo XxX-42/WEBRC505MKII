@@ -115,4 +115,38 @@ describe('Native semantic Memory runtime', () => {
     expect(bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
   });
 
+  it('round-trips opaque extensions and unavailable fields while capturing real current Native values', async () => {
+    const { runtime } = fixture();
+    const document = await runtime.capture();
+    document.extensions.WEBRC.vendorOpaque = { nested: [1, { keep: true }] };
+    document.semantics.fields['assign.vendorMode'] = { availability: 'unknown', value: null, reason: 'Foreign provider owns this field.' };
+    document.semantics.fields['track.1.pan'] = { availability: 'unknown', value: null, reason: 'Unknown on original provider.' };
+    const prepared = await runtime.prepare(document, runtime.revision());
+    await prepared.commit(); await prepared.dispose();
+    const recaptured = await runtime.capture();
+    expect(recaptured.extensions.WEBRC.vendorOpaque).toEqual(document.extensions.WEBRC.vendorOpaque);
+    expect(recaptured.semantics.fields['assign.vendorMode']).toEqual(document.semantics.fields['assign.vendorMode']);
+    expect(recaptured.semantics.fields['track.1.pan']).toEqual(document.semantics.fields['track.1.pan']);
+    expect(recaptured.semantics.fields['track.2.level']).toEqual({ availability: 'supported', value: 110 });
+    expect(recaptured.archive).toEqual(document.archive);
+  });
+  it('adopts opaque target metadata on host ACK even when subsequent UI installation fails', async () => {
+    const { runtime, install } = fixture();
+    const document = await runtime.capture();
+    document.extensions.WEBRC.vendorOpaque = { committedMetadata: true };
+    const prepared = await runtime.prepare(document, runtime.revision());
+    install.mockImplementationOnce(() => { throw new Error('UI unavailable'); });
+    await expect(prepared.commit()).rejects.toMatchObject({ committed: true });
+    await prepared.dispose();
+    expect((await runtime.capture()).extensions.WEBRC.vendorOpaque).toEqual({ committedMetadata: true });
+  });
+  it('does not adopt opaque metadata from a cancelled candidate', async () => {
+    const { runtime } = fixture();
+    const document = await runtime.capture();
+    document.extensions.WEBRC.vendorOpaque = { neverInstalled: true };
+    const prepared = await runtime.prepare(document, runtime.revision());
+    await prepared.dispose();
+    expect((await runtime.capture()).extensions.WEBRC.vendorOpaque).toBeUndefined();
+  });
+
 });
