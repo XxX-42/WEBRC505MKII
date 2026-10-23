@@ -38,7 +38,7 @@
           :color="isPlaying ? 'red' : 'green'"
           :active="isPlaying"
           :led-on="false"
-          :label="isPlaying ? 'ALL STOP' : 'ALL START'"
+          :label="'ALL START/' + '\n' + 'STOP'"
           :aria-label="isPlaying ? 'Stop all tracks' : 'Start all tracks'"
           data-panel-control="all-transport"
           :disabled="!audioReady || memory.state.busy"
@@ -112,6 +112,7 @@
       </div>
 
       <div class="page-navigation">
+        <span class="write-caption" title="Hold EXIT and ENTER together">WRITE</span>
         <HardwareButton
           shape="rect"
           size="sm"
@@ -1195,6 +1196,7 @@ onUnmounted(() => {
 .soft-value { display: none; }
 
 .page-navigation { position: absolute; inset: 0; display: block; }
+.write-caption { position: absolute; top: 31px; left: 622px; width: 64px; border-inline: 1px solid #c5cad2; color: #c5cad2; font-size: 11px; line-height: 11px; letter-spacing: .05em; text-align: center; }
 .page-caption { position: absolute; top: 91px; left: 636px; width: 60px; color: #c5cad2; font-size: 11px; letter-spacing: 0.08em; text-align: center; }
 .page-navigation :deep(.hardware-button) { position: absolute; width: 58px; min-width: 58px; height: 32px; padding: 0 4px; }
 .page-navigation :deep([data-panel-control="exit"]) { top: 49px; left: 583px; }
@@ -1230,4 +1232,5 @@ onUnmounted(() => {
 .transport-bank :deep([data-panel-control="all-transport"]) { top: 199px; left: 14px; width: 78px; min-width: 78px; }
 .transport-bank :deep([data-panel-control="undo-redo"]) { top: 199px; left: 130px; width: 80px; min-width: 80px; }
 .transport-bank :deep(.button-label) { font-size: 12px; }
+.transport-bank :deep([data-panel-control="all-transport"] .button-label) { white-space: pre-line; line-height: .95; }
 </style>

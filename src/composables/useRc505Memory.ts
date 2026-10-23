@@ -2,6 +2,7 @@ import { reactive } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { Rc505Memory, type Rc505MemoryRuntime } from '../audio/Rc505Memory';
 import { Rc505MemoryStore } from '../audio/Rc505MemoryStore';
+import { adoptCommittedBrowserFxState } from './useFxPanelState';
 
 const sessions = new WeakMap<Rc505MemoryRuntime, Rc505Memory>();
 const store = new Rc505MemoryStore();
@@ -36,7 +37,11 @@ export function useRc505Memory() {
   return { state, refresh,
     setName: (name: string) => { getSession().setName(name); refresh(); },
     save: (slot: number) => perform(session => session.save(slot, session.currentName)),
-    load: (slot: number) => perform(session => session.load(slot)),
+    load: (slot: number) => perform(async session => {
+      await session.load(slot);
+      const configuration = AudioEngine.getInstance().getBrowserMemoryConfiguration();
+      if (configuration) await adoptCommittedBrowserFxState(configuration);
+    }),
     clear: (slot: number) => perform(session => session.clear(slot)),
   };
 }

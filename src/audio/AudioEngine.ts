@@ -805,6 +805,9 @@ export class AudioEngine {
   public getBrowserSharedFxSnapshot(path: 'input' | 'track') {
     return this.currentMode === 'browser' ? this.browser.getSharedFxSnapshot(path) : null;
   }
+  public getBrowserMemoryConfiguration() {
+    return this.currentMode === 'browser' ? this.browser.captureMemoryConfiguration() : null;
+  }
 
   public getMarkState(trackId: number): TrackMarkState {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5 || !this.isTrackAvailable(trackId)) {

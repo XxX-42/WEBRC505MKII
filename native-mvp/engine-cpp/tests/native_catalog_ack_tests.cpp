@@ -12,7 +12,7 @@ struct NativeAudioCoreTestAccess {
     static void running(NativeAudioCore& c, bool v) { c.engineRunning_.store(v); }
     static void drain(NativeAudioCore& c) { c.applyNativeCatalogFxCommands(); }
     static void unavailableSharedOutput(NativeAudioCore& c) {
-        (void)c.processNativeTracksForCallback(nullptr, nullptr, 1U, 1U, nullptr);
+        (void)c.processNativeTracksForCallback(nullptr, nullptr, nullptr, 1U, 1U, 1U, nullptr);
     }
     static void processSharedFault(NativeAudioCore& c, bool input) {
         auto& bank = input ? c.nativeInputFxBank_ : c.outputStage_->trackFxBank();
@@ -23,7 +23,7 @@ struct NativeAudioCoreTestAccess {
         (void)processor->processInPlace(samples.data(), 1U, 3U);
         assert(processor->processingFaulted());
         if (input) (void)c.processInputFxForCallback(samples.data(), 1U);
-        else (void)c.processNativeTracksForCallback(nullptr, samples.data(), 1U, 1U, nullptr);
+        else (void)c.processNativeTracksForCallback(nullptr, nullptr, samples.data(), 1U, 1U, 1U, nullptr);
     }
     static void corrupt(NativeAudioCore& c) {
         std::array<NativeCatalogFxCommand, 64> commands{}; std::size_t count = 0;

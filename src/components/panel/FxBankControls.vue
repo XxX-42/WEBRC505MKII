@@ -84,6 +84,7 @@ import { AudioEngine } from '../../audio/AudioEngine';
 import { useFxPanelState } from '../../composables/useFxPanelState';
 import { useTrackFxTargetState } from '../../composables/useTrackFxTargetState';
 import { useRc505Controls } from '../../composables/useRc505Controls';
+import { useRc505Memory } from '../../composables/useRc505Memory';
 import { useRc505FxBanks } from '../../composables/useRc505FxBanks';
 import { resolveRc505FxSlot } from '../../ui/rc505/Rc505ControlStateResolver';
 import { resolveNativeFxReadback } from '../../ui/rc505/Rc505FxReadback';
@@ -99,6 +100,7 @@ const sharedBank = useFxPanelState(props.location);
 const controls = useRc505Controls();
 const banks = useRc505FxBanks(props.location);
 const engine = AudioEngine.getInstance();
+const memory = useRc505Memory();
 const trackTarget = useTrackFxTargetState();
 const revision = ref(0);
 const poll = window.setInterval(() => revision.value++, 100);
@@ -110,10 +112,10 @@ const switchController = new Rc505FxSwitchController();
 const heldRows = new Map<FxSlotId, typeof slots.value[number]>();
 const fxUnavailableReason = computed(() => switchSettings.value.state.error || banks.state.error || banks.state.unavailableReason || sharedBank.fxUnavailableReason.value);
 const controlLayer = computed(() => controls.state.fxLayers[props.location]);
-const slotsDisabled = computed(() => fxDisabled.value || !!switchSettings.value.state.error || banks.state.busy
+const slotsDisabled = computed(() => memory.state.busy || fxDisabled.value || !!switchSettings.value.state.error || banks.state.busy
   || (controlLayer.value === 'BANK_SELECT' && !banks.canSelect.value));
 const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlot.value) ?? slots.value[0]);
-const valueDisabled = computed(() => fxDisabled.value || banks.state.busy || !activeFx.value?.type || activeFx.value.type === 'NONE');
+const valueDisabled = computed(() => memory.state.busy || fxDisabled.value || banks.state.busy || !activeFx.value?.type || activeFx.value.type === 'NONE');
 const valueDisabledReason = computed(() => fxUnavailableReason.value || 'Select an effect before editing its value.');
 const slotStates = computed(() => {
   revision.value;
@@ -159,7 +161,7 @@ function dispatch(event: Rc505FxEvent): void {
   }
 }
 function beginEdit(): void {
-  if (interaction.editHeld || banks.state.busy) return;
+  if (interaction.editHeld || banks.state.busy || memory.state.busy) return;
   releaseAllSlots();
   dispatch({ type: 'EDIT_DOWN' });
   // Engineering hold duration selected by the user; no official time is published.
@@ -204,6 +206,7 @@ watch(() => banks.state.error, (error) => {
 });
 watch(() => banks.state.busy, (busy) => controls.setFxBusy(props.location, busy), { immediate: true, flush: 'sync' });
 watch(fxDisabled, (disabled) => { if (disabled) { releaseAllSlots(); cancelEdit(); } });
+watch(() => memory.state.busy, (busy) => { if (busy) { releaseAllSlots(); cancelEdit(); } }, { flush: 'sync' });
 watch(() => banks.state.requestedBank, releaseAllSlots, { flush: 'sync' });
 watch(() => banks.state.requestedBank, (bank) => selectRc505FxSwitchBank(engine.getMode(), props.location, bank ?? 'A'), { immediate: true, flush: 'sync' });
 watch(() => switchSettings.value.state.settings, releaseAllSlots, { deep: true, flush: 'sync' });

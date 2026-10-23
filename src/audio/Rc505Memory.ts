@@ -114,8 +114,10 @@ export interface Rc505MemoryPersistence {
 /** PCM/graph already changed; callers must not describe this as a rolled-back load. */
 export class Rc505MemoryCommittedError extends Error {
   public readonly committed = true;
-  public constructor(message: string, public readonly generation: number | null = null, options?: ErrorOptions) {
-    super(message, options); this.name = 'Rc505MemoryCommittedError';
+  public readonly generation: number | null;
+  public readonly cause: unknown;
+  public constructor(message: string, generation: number | null = null, options?: { cause?: unknown }) {
+    super(message); this.name = 'Rc505MemoryCommittedError'; this.generation = generation; this.cause = options?.cause;
   }
 }
 export class Rc505Memory {
