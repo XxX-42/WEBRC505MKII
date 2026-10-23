@@ -1,4 +1,5 @@
 import type { Rc505ControlLayer, Rc505LedColor, Rc505ResolvedControlState } from './rc505ControlTypes';
+import type { TrackFxApplyStatus } from '../../audio/TrackFxApplyStatus';
 
 export interface Rc505TrackControlInput {
   state: string;
@@ -16,6 +17,7 @@ export interface Rc505TrackControlInput {
   fxApplied?: boolean | null;
   fxApplySupported?: boolean;
   fxUnavailableReason?: string;
+  fxApplyState?: TrackFxApplyStatus;
 }
 
 function resolved(role: string, enabled: boolean, color: Rc505LedColor = 'off', selected = false, reason = ''): Rc505ResolvedControlState {
@@ -42,11 +44,15 @@ export function resolveRc505TrackControls(input: Rc505TrackControlInput) {
   const record = resolved('REC_PLAY', ready && input.recordReady !== false, colors[input.state] ?? 'off', false,
     input.recordUnavailableReason || 'Audio input or transport is not ready.');
   if (input.state === 'REC_STANDBY' || input.state === 'REC_FINISHING') record.blink = 'UNVERIFIED';
+  const fx = input.fxApplyState;
+  const fxSupported = fx ? fx.available && !fx.pending && !fx.controlFaulted : input.fxApplySupported === true;
+  const fxApplied = fx ? fx.available && !fx.controlFaulted && fx.applied : input.fxApplied === true;
   return {
     record,
     track: resolved('TRACK_EDIT', input.available, input.hasPhrase === true ? 'green' : 'off', input.selected, 'Track unavailable.'),
-    fx: resolved('TRACK_FX_APPLY', ready && input.fxApplySupported === true,
-      input.fxApplied === true ? 'red' : 'off', false, input.fxUnavailableReason || 'Per-track application of the shared Track FX is unavailable.'),
+    fx: resolved('TRACK_FX_APPLY', ready && fxSupported,
+      fxApplied ? 'red' : 'off', false, fx?.pending ? 'Waiting for both audio routes to confirm the FX switch.'
+        : fx?.error || input.fxUnavailableReason || 'Per-track application of the shared Track FX is unavailable.'),
     stop: resolved('STOP_CLEAR', ready, 'off', false, 'Audio transport is not ready.'),
   };
 }

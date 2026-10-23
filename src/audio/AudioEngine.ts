@@ -15,6 +15,7 @@ import { mapMidiNoteToNativeCatalogEvent, type OscVocMidiTarget } from './native
 import type { ProjectArchive, ProjectRestoreOperationToken } from './projectArchive';
 import { Transport } from '../core/Transport';
 import { unsupportedTrackMarkState, type TrackMarkState, type TrackMarkActionResult } from './TrackMark';
+import type { TrackFxApplyStatus } from './TrackFxApplyStatus';
 export type TrackFxMidiTarget = OscVocMidiTarget & { trackId?: number };
 export type { OscVocMidiTarget } from './nativeOscVocMidi';
 
@@ -806,6 +807,24 @@ export class AudioEngine {
   public setMark(trackId: number): Promise<TrackMarkActionResult> { return this.activeEngine.setMark(trackId); }
   public clearMark(trackId: number): Promise<TrackMarkActionResult> { return this.activeEngine.clearMark(trackId); }
   public backToMark(trackId: number): Promise<TrackMarkActionResult> { return this.activeEngine.backToMark(trackId); }
+
+  public getTrackFxApply(trackId?: number): TrackFxApplyStatus[] { return this.activeEngine.getTrackFxApply(trackId); }
+  public setTrackFxApply(trackId: number, enabled: boolean): Promise<TrackFxApplyStatus> {
+    return this.activeEngine.setTrackFxApply(trackId, enabled);
+  }
+  public getTrackMeter(trackId: number): { available: boolean; peak: number; rms: number; reason: string } {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return { available: false, peak: 0, rms: 0, reason: 'Select an available track.' };
+    if (this.currentMode === 'browser') {
+      const track = this.browser.tracks[trackId - 1];
+      const available = this.browser.context.state === 'running' && Boolean(track);
+      const meter = track?.getPostFaderPreSharedTrackFxMeter() ?? { peak: 0, rms: 0 };
+      return { available, ...meter, reason: available ? '' : 'Start Browser audio to read the track meter.' };
+    }
+    const gate = this.nativeEngine.getTrackFxApply(trackId)[0];
+    const available = this.nativeEngine.getUiStatus().ready && gate?.available === true;
+    return { available, peak: available ? gate.peak : 0, rms: available ? gate.rms : 0,
+      reason: available ? '' : gate?.error || 'Native host does not publish post-fader track meters.' };
+  }
 
   /** Last acknowledged one-step PCM history for the selected loop. */
   public getTrackHistoryStatus(trackId: number): TrackPcmHistoryStatus {

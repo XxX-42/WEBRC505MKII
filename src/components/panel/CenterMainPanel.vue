@@ -247,6 +247,8 @@ import { useRc505Controls } from '../../composables/useRc505Controls';
 import { useTrackFxTargetState } from '../../composables/useTrackFxTargetState';
 import { advanceRc505EncoderField } from '../../ui/rc505/Rc505EncoderFields';
 import { resolveNativeFxReadback } from '../../ui/rc505/Rc505FxReadback';
+import { formatRc505TrackMeter } from '../../ui/rc505/Rc505TrackMeter';
+import { assertTrackFxApplyConfirmed } from '../../audio/TrackFxApplyStatus';
 import { rhythmUiState, useRhythmUiControls } from '../../composables/rhythmUiState';
 import { getRc505RootItems } from '../../ui/rc505/Rc505DisplayStateMachine';
 import { RC505_MIXER_PAGES, RC505_PLAY_SCREENS, type Rc505DisplayAction, type Rc505DisplayEditorTarget, type Rc505DisplayRoot, type Rc505DisplayRootItem, type Rc505DisplayState, type Rc505DisplayView, type Rc505PlayScreenId } from '../../ui/rc505/rc505DisplayTypes';
@@ -496,10 +498,11 @@ const screenFields = computed<ScreenField[]>(() => {
     color: 'green', disabled: !engine.getTrackCapabilities(currentTrackId.value).supportsTrackLevel,
     reason: engine.getTrackCapabilities(currentTrackId.value).supportsTrackLevel ? '' : levelReason,
   });
-  const fxApplyField = () => field('track-fx-apply', 'FX APPLY', 0, setTrackFxApply, {
-    color: 'red', disabled: true,
-    reason: 'The shared Track FX bank has no per-track apply route. Use the independent Track FX target editor.',
-    format: () => '—',
+  const route = engine.getTrackFxApply?.(currentTrackId.value)[0];
+  const fxApplyField = () => field('track-fx-apply', 'FX APPLY', route?.applied ? 100 : 0, (value) => { void setTrackFxApply(value); }, {
+    color: 'red', step: 100, disabled: !route?.available || route.pending || route.controlFaulted,
+    reason: route?.pending ? 'Waiting for both FX routes.' : route?.error || 'Start audio to switch both FX routes.',
+    format: (value) => value >= 50 ? 'ON' : 'OFF',
   });
   const outputField = () => field('master-out', 'MASTER OUT', outputLevel.value, setOutputLevel, {
     color: 'red', disabled: outputDisabled.value, reason: outputDisabledReason.value,
@@ -570,9 +573,7 @@ function phraseLabel(trackId: number): string {
 }
 
 function trackLevelLabel(trackId: number): string {
-  if (engine.getTrackCapabilities(trackId).supportsTrackLevel === false) return 'UNAVAILABLE';
-  const level = engine.tracks[trackId - 1]?.track.playLevel;
-  return typeof level === 'number' && Number.isFinite(level) ? `${Math.round(level)}%` : '—';
+  return formatRc505TrackMeter(engine.getTrackMeter?.(trackId));
 }
 
 function fxDisplayRows(location: 'input' | 'track'): LcdDataRow[] {
@@ -642,11 +643,12 @@ const lcdDataRows = computed<LcdDataRow[]>(() => {
         }));
       case 'loop-level':
         return [1, 2, 3, 4, 5].map((trackId) => {
-          const unavailable = engine.getTrackCapabilities(trackId).supportsTrackLevel === false;
+          const meter = engine.getTrackMeter?.(trackId);
+          const unavailable = !meter?.available;
           return {
             key: `loop-level-${trackId}`, label: `TR ${trackId} LEVEL`, value: trackLevelLabel(trackId),
             disabled: unavailable,
-            reason: unavailable ? `Track ${trackId} level control is not exposed by the current audio runtime.` : undefined,
+            reason: unavailable ? meter?.reason || 'Track meter data is unavailable.' : 'Post-fader/pre-shared-FX peak/RMS.',
           };
         });
       case 'input-fx': return fxDisplayRows('input');
@@ -751,8 +753,9 @@ const screenControls = computed<ScreenControl[]>(() => {
         const label = screenId === 'loop-level' ? `TR ${trackId} LEVEL` : `TR ${trackId}`;
         const display = screenId === 'loop-tracks' ? phraseLabel(trackId)
           : screenId === 'loop-level' ? trackLevelLabel(trackId) : trackStateLabel(trackId);
-        const unavailable = screenId === 'loop-level' && engine.getTrackCapabilities(trackId).supportsTrackLevel === false;
-        const reason = unavailable ? `Track ${trackId} level control is not exposed by the current audio runtime.` : 'This screen item is read-only.';
+        const meter = screenId === 'loop-level' ? engine.getTrackMeter?.(trackId) : undefined;
+        const unavailable = screenId === 'loop-level' && !meter?.available;
+        const reason = unavailable ? meter?.reason || 'Track meter data is unavailable.' : 'This screen item is read-only.';
         return infoControl(`play-${screenId}-${trackId}`, label, display, reason);
       });
       return controlsForTracks;
@@ -878,7 +881,16 @@ function setTrackLevel(value: number): void {
   currentTrack.track.playLevel = bounded;
   currentTrack.updateSettings();
 }
-function setTrackFxApply(): void {}
+async function setTrackFxApply(value: number): Promise<void> {
+  const target = currentTrackId.value;
+  const before = engine.getTrackFxApply(target)[0];
+  if (!before?.available || before.pending || before.controlFaulted) return;
+  try {
+    assertTrackFxApplyConfirmed(await engine.setTrackFxApply(target, value >= 50), value >= 50);
+    controls.clearError('general');
+  } catch (error) { controls.reportError('FX ROUTE FAILED', error instanceof Error ? error.message : String(error)); }
+  finally { capabilityRevision.value += 1; }
+}
 
 function hasActiveTracks(): boolean {
   const activeStates: TrackState[] = [
@@ -971,6 +983,7 @@ function handleTap(): void {
 
 function syncTrackLevel(): void {
   trackLevel.value = engine.tracks[currentTrackId.value - 1]?.track.playLevel ?? 100;
+  capabilityRevision.value += 1;
 }
 
 let trackLevelTimer: number | null = null;

@@ -26,6 +26,7 @@ import { useTrackFxTargetState } from './useTrackFxTargetState';
 import type { DeviceEditorPanel } from './createEnhancedDevicePanel';
 import { useRc505Controls } from './useRc505Controls';
 import { useRc505FxSwitchSettings } from './useRc505FxSwitchSettings';
+import { assertTrackFxApplyConfirmed } from '../audio/TrackFxApplyStatus';
 
 export type DeviceScreenFieldKind = 'number' | 'enum' | 'boolean' | 'action';
 
@@ -668,6 +669,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     if (!controller) return [[makeActionField('track-controller-missing', 'TRACK CONTROLS UNAVAILABLE', () => {}, { disabled: true, reason: 'Track controller has not mounted yet.' })]];
     const trackCapabilities = engine.getTrackCapabilities(currentTrackId.value);
     const audioTrack = engine.tracks[currentTrackId.value - 1];
+    const fxRoute = engine.getTrackFxApply?.(currentTrackId.value)[0];
     const modeOptions = livePitchOptions.filter((option) => option.value === 0
       || (option.value === 1 && controller.liveMonoPitchSupported.value)
       || (option.value === 2 && controller.livePolyPitchSupported.value));
@@ -679,6 +681,11 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       makeBooleanField('track-reverse', 'REVERSE', audioTrack?.isReverse === true, (enabled) => {
         if (audioTrack && audioTrack.isReverse !== enabled) engine.toggleReverse(currentTrackId.value - 1);
       }, { disabled: !trackCapabilities.supportsReverse, reason: trackCapabilities.supportsReverse ? '' : trackCapabilities.reverseReason || 'Reverse playback is unavailable on this runtime.' }),
+      makeBooleanField('track-fx-apply', 'FX', fxRoute?.applied === true, async (enabled) => {
+        const target = currentTrackId.value;
+        assertTrackFxApplyConfirmed(await engine.setTrackFxApply(target, enabled), enabled);
+      }, { disabled: !fxRoute?.available || fxRoute.pending || fxRoute.controlFaulted,
+        reason: fxRoute?.pending ? 'Waiting for both FX routes.' : fxRoute?.error || 'Start audio to switch input and playback FX together.' }),
       makeEnumField('keep-pitch', 'KEEP PITCH', modeValue, modeOptions, (value) => {
         const selected = modeOptions.find((option) => option.value === value);
         if (!selected) return;
@@ -696,7 +703,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       makeEnumField('wav-engine', 'NATIVE RENDERER', Math.max(0, rendererIndex), rendererOptions, (index) => { const selected = rendererOptions[index]; if (selected) { controller.hqNativeEngine.value = selected.label as typeof controller.hqNativeEngine.value; controller.handleHqNativeEngineChange(); } }, { disabled: controller.isNativeAudioMode.value && !controller.nativeHqRendererAvailable.value, reason: 'A Native HQ renderer is not available.' }),
       makeActionField('wav-export', controller.isHqExporting.value ? `EXPORTING ${controller.hqExportProgress.value}%` : 'EXPORT HQ WAV', async () => { await controller.exportHqWav(); }, { disabled: !controller.canExportHqWav.value || controller.isHqExporting.value, reason: controller.hqExportError.value || 'Record a loop and wait for the supported renderer before exporting.' }),
     ];
-    return chunks(classic ? fields.filter((field) => field.key === 'track-level' || field.key === 'track-reverse') : fields);
+    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply'].includes(field.key)) : fields);
   }
 
   function deviceOptions(devices: readonly AudioDeviceInfo[]): DeviceScreenOption[] {

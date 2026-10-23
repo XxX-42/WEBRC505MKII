@@ -129,6 +129,7 @@
 </template>
 
 <script setup lang="ts">
+import { assertTrackFxApplyConfirmed } from '../../audio/TrackFxApplyStatus';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { registerDeviceTrackController } from '../../composables/deviceTrackControllers';
 import { AudioEngine } from '../../audio/AudioEngine';
@@ -217,7 +218,7 @@ const resolvedControls = computed(() => {
     recordUnavailableReason: recordActionDisabledReason.value,
     layer: controls.state.controlLayer, history,
     mark: audioEngine.getMarkState?.(props.trackId), operationPending: controlOperationPending.value,
-    fxApplySupported: false, fxApplied: null,
+    fxApplyState: audioEngine.getTrackFxApply?.(props.trackId)[0], fxApplySupported: false, fxApplied: null,
   });
 });
 const trackFxDisabledReason = computed(() => resolvedControls.value.fx.unavailableReason);
@@ -244,9 +245,18 @@ async function performMark(operation: 'set' | 'clear'): Promise<void> {
   } catch (error) { controls.reportError('MARK FAILED', error instanceof Error ? error.message : String(error)); }
   finally { controlOperationPending.value = false; audioStatusRevision.value += 1; }
 }
-function handleTrackFx(): void {
+async function handleTrackFx(): Promise<void> {
   if (!resolvedControls.value.fx.enabled) return;
-  if (undoLayer.value) void performMark('clear');
+  if (undoLayer.value) { await performMark('clear'); return; }
+  controlOperationPending.value = true;
+  try {
+    const before = audioEngine.getTrackFxApply(props.trackId)[0];
+    if (!before) throw new Error('Track FX routing is unavailable.');
+    const result = await audioEngine.setTrackFxApply(props.trackId, !before.applied);
+    assertTrackFxApplyConfirmed(result, !before.applied);
+    controls.clearError('general');
+  } catch (error) { controls.reportError('FX ROUTE FAILED', error instanceof Error ? error.message : String(error)); }
+  finally { controlOperationPending.value = false; audioStatusRevision.value += 1; }
 }
 function openTrackEditor(): void {
   if (!resolvedControls.value.track.enabled) return;
