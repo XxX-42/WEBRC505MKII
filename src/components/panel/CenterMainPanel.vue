@@ -1238,6 +1238,8 @@ onUnmounted(() => {
 .transport-bank :deep([data-panel-control="all-transport"] .button-label) { white-space: pre-line; line-height: .95; }
 
 /* Fixed centers, broader passive capsule housings; no LED state override. */
+.transport-bank :deep([data-panel-control="menu"] .button-label),
+.transport-bank :deep([data-panel-control="loop"] .button-label) { transform: translateX(-6px); font-size: 11px; letter-spacing: .03em; }
 .transport-bank :deep([data-panel-control="menu"]),
 .transport-bank :deep([data-panel-control="loop"]) { width: 82px; min-width: 82px; margin-left: -14px; border-radius: 22px !important; padding: 0 27px 0 3px; border: 1px solid #b6bcc5; box-shadow: inset 0 0 0 3px #121519,0 2px 3px #000; }
 .transport-bank :deep([data-panel-control="menu"]::after),
