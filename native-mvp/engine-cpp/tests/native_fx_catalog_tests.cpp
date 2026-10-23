@@ -3696,7 +3696,31 @@ void testWarpGranularFdnFreezeChunkingBypassResetAndAllocation() {
 
 } // namespace
 
+void testPreparedBankSwapPreservesOwnershipWithoutAllocation() {
+    NativeEffectBank incumbent;
+    NativeEffectBank candidate;
+    assert(incumbent.prepare(48000U));
+    assert(candidate.prepare(48000U));
+    assert(incumbent.setEffect(NativeEffectSlot::A, "delay"));
+    assert(candidate.setEffect(NativeEffectSlot::D, "phaser"));
+    auto* oldProcessor = incumbent.processor(NativeEffectSlot::A);
+    auto* newProcessor = candidate.processor(NativeEffectSlot::D);
+    const auto before = test_alloc::count();
+    test_alloc::beginTracking();
+    incumbent.swapPrepared(candidate);
+    test_alloc::endTracking();
+    assert(test_alloc::count() == before);
+    assert(incumbent.processor(NativeEffectSlot::D) == newProcessor);
+    assert(candidate.processor(NativeEffectSlot::A) == oldProcessor);
+    assert(incumbent.processor(NativeEffectSlot::A) == nullptr);
+    // A rollback is the same bounded exchange; neither graph was destroyed.
+    incumbent.swapPrepared(candidate);
+    assert(incumbent.processor(NativeEffectSlot::A) == oldProcessor);
+    assert(candidate.processor(NativeEffectSlot::D) == newProcessor);
+}
+
 int main() {
+    testPreparedBankSwapPreservesOwnershipWithoutAllocation();
     testCatalogAndBounds();
     testEveryAdvertisedPerTrackInsertFactoryRuns64FrameBlockInAThroughD();
     testElectricPitchConfidenceCharactersSmoothingAndRealtimeSafety();

@@ -191,6 +191,15 @@ public:
     ) noexcept;
     [[nodiscard]] bool setBypassed(NativeEffectSlot slot, bool bypassed, std::uint64_t rampFrames = 0U) noexcept;
     void resetState() noexcept;
+    // Bounded ownership exchange only: candidate retains the incumbent processors
+    // until the control thread observes the transaction ACK and destroys it.
+    // No allocation, processor destruction, or DSP reset occurs here.
+    void swapPrepared(NativeEffectBank& candidate) noexcept {
+        slots_.swap(candidate.slots_);
+        const auto previousRate = sampleRate_;
+        sampleRate_ = candidate.sampleRate_;
+        candidate.sampleRate_ = previousRate;
+    }
 
     [[nodiscard]] std::string_view effectId(NativeEffectSlot slot) const noexcept;
     [[nodiscard]] bool isBypassed(NativeEffectSlot slot) const noexcept;

@@ -2457,6 +2457,14 @@ export class BrowserAudioEngine implements IAudioEngine {
 
     /** Prepare five new AudioBuffers off to the side, then atomically publish them. */
     public restoreProjectArchive(project: ProjectArchive, archiveBytes: number, operationToken: BrowserProjectRestoreToken): void {
+        const prepared = this.prepareProjectArchive(project, archiveBytes, operationToken);
+        try { prepared.commit(); } finally { prepared.dispose(); }
+    }
+
+    /** Allocate and validate the complete candidate without publishing PCM. */
+    public prepareProjectArchive(project: ProjectArchive, archiveBytes: number, operationToken: BrowserProjectRestoreToken): {
+        commit(): void; dispose(): void;
+    } {
         if (this.tracks.length !== 5 || project.tracks.length !== 5) throw new Error('Project memory import requires exactly five Browser tracks');
         if (!Number.isSafeInteger(archiveBytes) || archiveBytes < 1 || archiveBytes > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
             throw new Error('Project archive size is outside the supported import limit');
@@ -2539,6 +2547,13 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (this.tracks.some((track, index) => track.projectRevision !== revisions[index] || track.historyBusy)) {
             throw new Error('Load canceled because a track changed while new AudioBuffers were being prepared');
         }
+        let state: 'prepared' | 'committed' | 'disposed' = 'prepared';
+        return {
+            commit: () => {
+                if (state !== 'prepared') throw new Error('Project candidate is no longer prepared');
+                if (!this.matchesProjectRestoreToken(operationToken)) {
+                    throw new Error('Project changed after candidate preparation');
+                }
         const restore = TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions);
         if (!restore.ok) throw new Error(restore.reason ?? 'Project memory restore was rejected');
 
@@ -2549,6 +2564,13 @@ export class BrowserAudioEngine implements IAudioEngine {
         transport.measureLength = transportState.measureLengthSeconds;
         transport.masterLoopLengthSamples = transportState.masterLoopLengthSamples;
         transport.setBpm(project.bpm);
+                state = 'committed';
+            },
+            dispose: () => {
+                if (state === 'prepared') state = 'disposed';
+                replacements.length = 0;
+            },
+        };
     }
 
     // ========================================
