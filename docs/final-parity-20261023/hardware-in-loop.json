@@ -1,10 +1,13 @@
 {
   "schemaVersion": 1,
-  "date": "2026-10-23",
-  "documentationSource": "d824f11",
+  "date": "2026-10-24",
+  "documentationSource": "9e48f39",
   "finalFrozenSource": null,
-  "finalRegression": "PENDING",
-  "deployment": "PENDING",
+  "finalRegression": "PARTIAL_COMPLETED_UNIT_BUILD_NATIVE; E2E_PERFORMANCE_COLD_LOCAL_SMOKE_PENDING",
+  "deployment": {
+    "browser": "HTTP_200_CONFIRMED_SMOKE_PENDING",
+    "native": "LOCAL_DEPLOY_BLOCKED"
+  },
   "hardwareValidated": false,
   "status": "BLOCKED",
   "reason": "Live inventory found no RC-505/Roland/BOSS 505 device match; no physical stream was opened.",
@@ -15,5 +18,33 @@
   "physicalBufferFrames": null,
   "physicalLatencyMs": null,
   "physicalXruns": null,
-  "releaseCondition": "Connect the intended RC-505 device, record its driver/configuration and run retained physical loopback captures; do not substitute simulation or a virtual endpoint."
+  "releaseCondition": "Connect the intended RC-505 device, record its driver/configuration and run retained physical loopback captures; do not substitute simulation or a virtual endpoint.",
+  "finalRegressionReceipt": {
+    "path": "regression.json",
+    "owner": "root",
+    "status": "PENDING"
+  },
+  "nativeVerification": {
+    "status": "PASS_SOFTWARE_NATIVE_GATES",
+    "portablePassed": 56,
+    "portableTotal": 56,
+    "hqSimulationPassed": 12,
+    "hqSimulationTotal": 12,
+    "wasapiBuild": "PASS",
+    "wasapiRuntime": "LOCAL_DEPLOY_BLOCKED",
+    "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e",
+    "evidence": [
+      "native-verification.json"
+    ],
+    "note": "Root-owned receipt exists in integration workspace; not edited or copied by this docs branch. Build success does not establish live device/runtime acceptance."
+  },
+  "nativeLocalRuntime": {
+    "status": "LOCAL_DEPLOY_BLOCKED",
+    "reason": "Actual WASAPI background start was blocked by tool automatic approval policy; no finer reason was provided. No bypass attempted.",
+    "binaryBuild": "PASS",
+    "streamOpened": false,
+    "evidence": [
+      "native-verification.json"
+    ]
+  }
 }

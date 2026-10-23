@@ -1,42 +1,52 @@
-# RC-505 最终集成证据状态（2026-10-23）
+# RC-505 最终集成证据状态（2026-10-24）
 
-本页文档快照基于 `d824f11`。**整体 PARTIAL；最终完整回归、最终源码冻结及部署均为 PENDING。** 根任务拥有后续 `regression.json` 和最终统计；本页不使用历史累计数字充当最终门禁。
+文档快照基于 `9e48f39`。**软件交付仍为 PARTIAL：完整 unit、生产 build 和 Native 软件门禁已通过；最终 E2E、性能、冷启动及本地完整 smoke 尚待完成。** 根任务拥有 [最终回归回执](regression.json)（待写入）和 [Native 验证回执](native-verification.json)；本次不修改这两份文件。
 
-| 项目 | 当前结论 | 可审阅证据 |
+| 项目 | 当前结论 | 证据 |
 |---|---|---|
-| Classic UI / 软件控制 | PARTIAL；保留 80% 缩放下限，小窗口允许滚动、裁切及提示 | [UI parity](ui-parity.json)、[视觉测量](visual-measurement.json) |
-| 实体 RC-505 USB / 模拟回环 | BLOCKED：设备清单未发现目标设备，未打开实体流 | [硬件门禁](hardware-in-loop.json)、[原始清单回执](hil-audio-harness-evidence.json) |
-| 物理端到端延迟 | BLOCKED：没有物理测量值 | [延迟](latency.json) |
-| XRUN / 回调预算 | 物理计数未知；软件 ABBA 观察到 43 次超预算，不能 PASS | [XRUN](xrun.json)、[ABBA 原始数据](software-engine-baseline/callback-abba.json) |
-| 软件音频基线 | 仅旧源码 `4ef9913` 的 dry/LPF、17 类刺激、68 个渲染 | [范围与限制](golden-master-summary.json)、[带哈希回执](software-engine-baseline/receipt.json) |
-| 听音评审 / Roland 音质等价 | BLOCKED：没有完成盲听评审或匹配的实体参考录音 | [Audio jury](audio-jury.json) |
-| MARK SET/CLEAR | 软件预算、独立 PCM 和确认逻辑有专项覆盖；Playing 连续性修复及最终回归待完成 | [Mark](mark-validation.json) |
+| Release 完整 unit | PASS：210 文件，2530/2530，0 skip；最终 CSS/导航/LCD/FX EDIT 修改之后执行 | [原始 JSON](C:/Users/user1000/.codex/scratch/rc505-final-unit-release.json)、[日志](C:/Users/user1000/.codex/scratch/rc505-final-unit-release.log)、[UI 报告](ui-parity.json) |
+| 生产 build | PASS：Vite 11.12 秒；许可证文件核对 6/6 | [构建日志](C:/Users/user1000/.codex/scratch/rc505-final-production-build.log)、[Memory 报告中的哈希](memory-validation.json) |
+| Native 软件验证 | PASS：便携 CTest 56/56、HQ 仿真 12/12、真实 WASAPI 目标构建成功；回执源码为 `41f20db6` | [根任务 Native 回执](native-verification.json) |
+| Native 本地运行验收 | LOCAL_DEPLOY_BLOCKED：实际 WASAPI 后台启动被工具自动审批策略阻止，未给出细因；未绕过 | [硬件/本地边界](hardware-in-loop.json) |
+| Browser 本地服务 | `5173` HTTP 200、根服务 PID `7668` 已确认；完整虚拟 UI 本地 smoke PENDING | 根任务运行态记录；最终结果待 [regression.json](regression.json) |
+| 新 4 项 E2E / 完整 112 项 E2E | PENDING：新专项正在运行，完整套件随后执行；不能预填 PASS | [Memory 范围](memory-validation.json) |
+| 实体 RC-505 USB / 模拟回环 | BLOCKED：设备清单未发现目标设备，未打开实体流 | [硬件门禁](hardware-in-loop.json)、[原始清单](hil-audio-harness-evidence.json) |
+| 延迟 / XRUN / 回调预算 | 物理值未知；旧软件 ABBA 有 43 次超预算，不能 PASS；最终 ABBA 未运行 | [延迟](latency.json)、[XRUN](xrun.json) |
+| 软件音频基线 | 历史 68 个渲染仅覆盖旧源码 `4ef9913` 的 dry/LPF、17 类刺激；最终重建 probe 尚无新渲染结果 | [范围与哈希](golden-master-summary.json)、[旧回执](software-engine-baseline/receipt.json) |
+| 听音评审 / Roland 音质等价 | BLOCKED：未完成盲听评审或匹配的实体参考录音 | [Audio jury](audio-jury.json) |
+| MARK SET/CLEAR | 软件预算、独立 PCM、确认及 Playing 连续性专项已验证；`c6d5d98` 已修复只读 pin | [Mark](mark-validation.json)、[连续性回执](native-mark-readonly-pin.json) |
 | MARK BACK | DISABLED；状态转移存在歧义，未虚构硬件行为 | [Mark](mark-validation.json) |
-| 五轨双路径 gate / meter | 软件 ACK 和路由有专项覆盖，硬件等价未证实 | [Shared Track FX](shared-track-fx-validation.json) |
-| 整体 Memory | 软件原子提交、PCM、七组 FX、恢复及失败分类有专项覆盖；新 Native E2E 尚待统一运行 | [Memory](memory-validation.json) |
+| 五轨双路径 gate / meter、整体 Memory | 软件 ACK、PCM、七组 FX、原子提交、恢复及失败分类有专项和 Native 门禁覆盖；最终浏览器 E2E 仍 PENDING | [Shared Track FX](shared-track-fx-validation.json)、[Memory](memory-validation.json) |
+| 视觉 / 硬件光度 | 新截图两尺寸独立复核无新高项；几何/光度仍 PARTIAL / UNMEASURED | [视觉测量](visual-measurement.json)、[三项外观修复截图](../ui-parity/visual/p1-known-three/README.md) |
 
-## 证据口径
+## 已完成的软件修复与剩余 provider
 
-`PASS` 只适用于条目中列明的源码、测试和证据所证明的软件行为。它不表示最终整仓回归、全部 FX 音质、完整硬件行为或实体设备验收通过。专项数字不能相加成为最终总数。
+PAN/THRU 绑定已实现于 `69fd105`；Memory busy 时陈旧 LCD 写入保护已实现于 `b46fb7b`。`c6d5d98` 的 MARK 只读 pin 允许 Playing 正常渲染，同时继续阻挡写入命令；历史 restore 的独占 pin 仍保留抑制策略。这些已完成项不再标作等待实现。
 
-软件 WAV 回执的 Browser 路径直接执行 production DSP core 于 Node；Native 路径执行真实回调及软件监听，但使用 fake RtAudio。它们不证明完整 BrowserAudioEngine 调度、WASAPI/MMCSS、物理延迟、实体 XRUN 或听音偏好。特效尾音被截断到刺激长度。旧快照上观察到的 43 次回调 deadline exceedance 明确阻止性能 PASS 或性能改善结论。
+**Native REC、quantize、AutoRec、Bounce 和完整 routing provider 仍缺失。** 对应控件禁用只是诚实呈现能力边界，不代表这些功能已经实现。实体 USB/audio/MIDI、物理状态转移、准确 LED/闪烁与 Roland 算法或音质等价也未验证。
 
-[新回调遥测回执](native-callback-telemetry.json) 记录 **两个模拟 CTest 目标**，源码基线为 `a456b96`。其 C++ new/new[]、delete/delete[] 跟踪及持有核心互斥量时回调仍完成的证明均有明确范围；没有覆盖 malloc、aligned allocator 或全局互斥量拦截。模拟驱动状态位不等于实体驱动计数，未知值保留为 null。
+## 性能与证据口径
+
+最终软件 probe 已重建，二进制 SHA-256 为 `c7378d0a5d97ca6bc7b2b1011589394663bc5caac80bdc8832bcb9b36483489c`；[新 manifest](C:/Users/user1000/.codex/scratch/rc505-final-software-probe-build/native-probe-build.json) 仅证明构建产物。**最终 68 渲染和 ABBA 尚未运行。** 不覆盖历史 [build manifest](software-engine-baseline/native-probe-build.json)、[WAV 哈希回执](software-engine-baseline/receipt.json) 或 [ABBA 数据](software-engine-baseline/callback-abba.json)。
+
+历史 Browser WAV 路径直接在 Node 执行 production DSP core；Native 执行真实回调及软件监听，但使用 fake RtAudio。它们不证明完整 BrowserAudioEngine 调度、WASAPI/MMCSS、物理延迟、实体 XRUN 或听音偏好。尾音被截断至刺激长度。旧 80,000 次测量回调的 43 次 deadline exceedance 明确阻止性能 PASS 或性能改善结论。
+
+[遥测回执](native-callback-telemetry.json) 的两个模拟 CTest 目标与 [Mark 连续性回执](native-mark-readonly-pin.json) 均为有范围的软件证据。C++ new/new[]、delete/delete[] 跟踪和持有核心互斥量时回调完成，不等于覆盖 malloc、aligned allocator 或全局互斥量。模拟驱动状态位不等于实体驱动计数，未知值保留为 null。
+
+`PASS` 仅适用于条目指定的源码、测试和证据。历史专项数字不能相加成为最终总数；Native 构建成功也不能替代尚被策略阻止的本地运行验收。
 
 ## Scoped results reported by integrator
 
-以下为根任务传入的专项运行记录；本次文档整理未重新运行这些测试，且原始工具日志未全部随仓库提供，因此 JSON 标为 `SCOPED_RESULT_REPORTED`，不冒充最终源上的独立重跑：
+以下历史专项记录保留，不替代上面的 release unit 或后续完整 E2E；原始工具日志未全部随仓库提供，因此相关 JSON 保留 `SCOPED_RESULT_REPORTED`：
 
-- `4b9e2fa` 附近：三文件 26/26，包括 [推子 pending/readback/failure](../../tests/unit/useTrackStripState-stop.spec.ts)、[Memory 提交后 cleanup 分类](../../tests/unit/rc505-memory.spec.ts)、[Native strip 能力](../../tests/unit/native-track-strip-capabilities.spec.ts)。
-- `9727f6d`（根集成 `b649416`）：Native UI hydrate 相关专项 47/47，原超时预算；见 [hydration 测试](../../tests/unit/native-memory-ui-hydration.spec.ts)。
-- 早期 `291de79` 附近 agent 树：真实 Chromium [Browser Memory 集成用例](../../tests/e2e/browser-semantic-memory.spec.ts) 1/1，仅该树的专项结果。
+- `4b9e2fa` 附近三文件 26/26：[推子异步行为](../../tests/unit/useTrackStripState-stop.spec.ts)、[Memory cleanup 分类](../../tests/unit/rc505-memory.spec.ts)、[Native strip 能力](../../tests/unit/native-track-strip-capabilities.spec.ts)。
+- `9727f6d`（根集成 `b649416`）Native UI hydrate 相关专项 47/47，原超时预算：[测试](../../tests/unit/native-memory-ui-hydration.spec.ts)。
+- 早期 `291de79` 附近 agent 树真实 Chromium [Browser Memory](../../tests/e2e/browser-semantic-memory.spec.ts) 1/1，仅该树专项。
 
-可访问的 Native 专项原始日志另列于 [Memory](memory-validation.json) 与 [gate](shared-track-fx-validation.json)，并记录外部日志哈希。外部路径不会自动随 Git 部署。
+Native ACK 缓存专项原始日志与哈希仍见 [Memory](memory-validation.json) 和 [gate](shared-track-fx-validation.json)。外部日志路径不会自动随 Git 部署。
 
-## 最终交付仍待记录
+## 最终待补录
 
-- 最终 frozen source SHA、完整单元/浏览器/Native 门禁与失败分类由根任务写入 `regression.json`。
-- [新 Native Memory E2E](../../tests/e2e/native-semantic-memory.spec.ts) 已集成 `d824f11`，截至本页证据切点尚未执行。
-- 本快照仍包含 Native Playing MARK SET 的 suppressing history pin；根任务已安排连续播放修复，不能以旧测试证明修复后的最终源码。
-- 生产构建、最终可运行产物、部署路径、部署哈希和运行态验证均为 PENDING。
-- 旧 [UI parity 入口](../ui-parity/RC505_UI_PARITY.md) 保留原样，由根任务后续更新入口。
+最终 E2E、性能/冷启动、本地完整虚拟 UI smoke、部署产物路径/哈希与最终冻结源码由根任务补入 [regression.json](regression.json)。Browser 服务可访问不等于完整交互通过；Native 实际启动被工具自动审批阻止，也不得绕过或报告为通过。
+
+旧 [UI parity 入口](../ui-parity/RC505_UI_PARITY.md) 保留原样，由根任务维护入口。

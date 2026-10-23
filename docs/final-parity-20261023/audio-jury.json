@@ -1,10 +1,13 @@
 {
   "schemaVersion": 1,
-  "date": "2026-10-23",
-  "documentationSource": "d824f11",
+  "date": "2026-10-24",
+  "documentationSource": "9e48f39",
   "finalFrozenSource": null,
-  "finalRegression": "PENDING",
-  "deployment": "PENDING",
+  "finalRegression": "PARTIAL_COMPLETED_UNIT_BUILD_NATIVE; E2E_PERFORMANCE_COLD_LOCAL_SMOKE_PENDING",
+  "deployment": {
+    "browser": "HTTP_200_CONFIRMED_SMOKE_PENDING",
+    "native": "LOCAL_DEPLOY_BLOCKED"
+  },
   "hardwareValidated": false,
   "status": "BLOCKED",
   "reason": "No completed blind listening jury, scored preference panel or matching physical RC-505 captures are available for this integration.",
@@ -16,5 +19,24 @@
     "hil-audio-harness-evidence.json"
   ],
   "availableMaterial": "68 software dry/LPF WAV render receipts over17stimuli from source4ef9913 are preparation material only.",
-  "releaseCondition": "Record and identify reference/candidate signal chains and levels; perform a documented blind listening protocol with retained audio and scores."
+  "releaseCondition": "Record and identify reference/candidate signal chains and levels; perform a documented blind listening protocol with retained audio and scores.",
+  "finalRegressionReceipt": {
+    "path": "regression.json",
+    "owner": "root",
+    "status": "PENDING"
+  },
+  "nativeVerification": {
+    "status": "PASS_SOFTWARE_NATIVE_GATES",
+    "portablePassed": 56,
+    "portableTotal": 56,
+    "hqSimulationPassed": 12,
+    "hqSimulationTotal": 12,
+    "wasapiBuild": "PASS",
+    "wasapiRuntime": "LOCAL_DEPLOY_BLOCKED",
+    "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e",
+    "evidence": [
+      "native-verification.json"
+    ],
+    "note": "Root-owned receipt exists in integration workspace; not edited or copied by this docs branch. Build success does not establish live device/runtime acceptance."
+  }
 }

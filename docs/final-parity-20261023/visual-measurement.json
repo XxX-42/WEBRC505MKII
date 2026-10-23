@@ -1,10 +1,13 @@
 {
   "schemaVersion": 1,
-  "date": "2026-10-23",
-  "documentationSource": "d824f11",
+  "date": "2026-10-24",
+  "documentationSource": "9e48f39",
   "finalFrozenSource": null,
-  "finalRegression": "PENDING",
-  "deployment": "PENDING",
+  "finalRegression": "PARTIAL_COMPLETED_UNIT_BUILD_NATIVE; E2E_PERFORMANCE_COLD_LOCAL_SMOKE_PENDING",
+  "deployment": {
+    "browser": "HTTP_200_CONFIRMED_SMOKE_PENDING",
+    "native": "LOCAL_DEPLOY_BLOCKED"
+  },
   "hardwareValidated": false,
   "status": "PARTIAL_UNCALIBRATED",
   "minimumScale": 0.8,
@@ -33,5 +36,38 @@
   ],
   "tests": [
     "../../tests/e2e/rc505-classic-parity.spec.ts"
-  ]
+  ],
+  "finalRegressionReceipt": {
+    "path": "regression.json",
+    "owner": "root",
+    "status": "PENDING"
+  },
+  "nativeVerification": {
+    "status": "PASS_SOFTWARE_NATIVE_GATES",
+    "portablePassed": 56,
+    "portableTotal": 56,
+    "hqSimulationPassed": 12,
+    "hqSimulationTotal": 12,
+    "wasapiBuild": "PASS",
+    "wasapiRuntime": "LOCAL_DEPLOY_BLOCKED",
+    "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e",
+    "evidence": [
+      "native-verification.json"
+    ],
+    "note": "Root-owned receipt exists in integration workspace; not edited or copied by this docs branch. Build success does not establish live device/runtime acceptance."
+  },
+  "latestReview": {
+    "source": "9e48f39",
+    "status": "SCOPED_INDEPENDENT_REVIEW_NO_NEW_HIGH_FINDINGS",
+    "viewports": [
+      "1920",
+      "1366"
+    ],
+    "evidence": [
+      "../ui-parity/visual/p1-known-three/README.md",
+      "../ui-parity/visual/p1-known-three/1920-viewport.png",
+      "../ui-parity/visual/p1-known-three/1366-viewport.png"
+    ],
+    "note": "Three known appearance fixes reviewed after final CSS changes. This is not a calibrated geometry/photometry or4px tolerance PASS."
+  }
 }

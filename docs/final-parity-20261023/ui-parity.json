@@ -1,16 +1,22 @@
 {
   "schemaVersion": 1,
-  "date": "2026-10-23",
-  "documentationSource": "d824f11",
+  "date": "2026-10-24",
+  "documentationSource": "9e48f39",
   "finalFrozenSource": null,
-  "finalRegression": "PENDING",
-  "deployment": "PENDING",
+  "finalRegression": "PARTIAL_COMPLETED_UNIT_BUILD_NATIVE; E2E_PERFORMANCE_COLD_LOCAL_SMOKE_PENDING",
+  "deployment": {
+    "browser": "HTTP_200_CONFIRMED_SMOKE_PENDING",
+    "native": "LOCAL_DEPLOY_BLOCKED"
+  },
   "hardwareValidated": false,
   "status": "PARTIAL",
   "implementedSoftwareAreas": [
     "Classic LCD state/control flow; selected track and acknowledged FX LEDs are distinct.",
     "Per-track gate acknowledgement, software mixer readback, semantic Memory transactions and authored bank/switch sidecars.",
-    "MOMENT holds are transient intent; restored switch state must discard stale holds without FX replay."
+    "MOMENT holds are transient intent; restored switch state must discard stale holds without FX replay.",
+    "PAN/THRU bindings implemented at69fd105.",
+    "Memory-busy stale LCD write guard implemented atb46fb7b.",
+    "Native read-only MARK Playing continuity implemented atc6d5d98."
   ],
   "requiredScaleFloor": 0.8,
   "hardwareEquivalence": "BLOCKED",
@@ -53,8 +59,52 @@
   },
   "remaining": [
     "MARK BACK disabled.",
-    "Playing MARK continuity core fix and final regression pending.",
-    "Physical USB/audio/MIDI, exact hardware timing, calibrated geometry/LED behavior and audio jury blocked.",
-    "Final integrated regression and deployment pending."
-  ]
+    "Native REC/quantize/AutoRec/Bounce/full routing providers missing; disabled does not mean implemented.",
+    "Physical USB/audio/MIDI, exact hardware timing, calibrated geometry/LED photometry and audio jury blocked.",
+    "Final E2E/performance/cold/local smoke and complete regression receipt pending.",
+    "Native live runtime LOCAL_DEPLOY_BLOCKED by tool approval policy; no bypass attempted."
+  ],
+  "finalRegressionReceipt": {
+    "path": "regression.json",
+    "owner": "root",
+    "status": "PENDING"
+  },
+  "nativeVerification": {
+    "status": "PASS_SOFTWARE_NATIVE_GATES",
+    "portablePassed": 56,
+    "portableTotal": 56,
+    "hqSimulationPassed": 12,
+    "hqSimulationTotal": 12,
+    "wasapiBuild": "PASS",
+    "wasapiRuntime": "LOCAL_DEPLOY_BLOCKED",
+    "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e",
+    "evidence": [
+      "native-verification.json"
+    ],
+    "note": "Root-owned receipt exists in integration workspace; not edited or copied by this docs branch. Build success does not establish live device/runtime acceptance."
+  },
+  "releaseUnit": {
+    "status": "PASS",
+    "sourceContext": "9e48f39 release integration after final CSS/navigation/LCD/FX EDIT changes",
+    "files": 210,
+    "passed": 2530,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": [
+      "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-unit-release.json",
+      "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-unit-release.log"
+    ],
+    "sha256": "114cb9ced4bb54e4d8975cfc0c334bca023e90ab7b49e9139dd42a3afe86f2ca"
+  },
+  "productionBuild": {
+    "status": "PASS",
+    "sourceContext": "9e48f39 release integration",
+    "viteSeconds": 11.12,
+    "licenseFilesVerified": 6,
+    "licenseFilesExpected": 6,
+    "evidence": [
+      "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-production-build.log"
+    ],
+    "sha256": "f52480249d074b023d68c37c62dd899113cde809bb35e55129f8bcc9bfdb993d"
+  }
 }

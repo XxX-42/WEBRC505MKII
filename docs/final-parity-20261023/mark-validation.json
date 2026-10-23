@@ -1,12 +1,15 @@
 {
   "schemaVersion": 1,
-  "date": "2026-10-23",
-  "documentationSource": "d824f11",
+  "date": "2026-10-24",
+  "documentationSource": "9e48f39",
   "finalFrozenSource": null,
-  "finalRegression": "PENDING",
-  "deployment": "PENDING",
+  "finalRegression": "PARTIAL_COMPLETED_UNIT_BUILD_NATIVE; E2E_PERFORMANCE_COLD_LOCAL_SMOKE_PENDING",
+  "deployment": {
+    "browser": "HTTP_200_CONFIRMED_SMOKE_PENDING",
+    "native": "LOCAL_DEPLOY_BLOCKED"
+  },
   "hardwareValidated": false,
-  "status": "PARTIAL",
+  "status": "SOFTWARE_SET_CLEAR_VALIDATED_HARDWARE_BLOCKED",
   "implementedPolicy": [
     "Independent finalized stereo MARK SET/CLEAR; admission shares the aggregate history budget, including accepted reservations.",
     "Native shared history budget is512MiB; allocation/copy/reclamation are control-thread work.",
@@ -17,8 +20,23 @@
     "reason": "Recording-state transition remains ambiguous; no hardware behavior is invented."
   },
   "playingContinuity": {
-    "status": "PENDING_CORE_FIX_AND_FINAL_REGRESSION",
-    "finding": "At documentation snapshotd824f11, Native MARK SET uses a suppressing history pin while Playing. Root is preparing a read-only pin fix; this snapshot must not claim uninterrupted Playing MARK SET."
+    "status": "PASS_SCOPED_SOFTWARE",
+    "sourceCommit": "c6d5d98",
+    "behavior": "Read-only MARK pin preserves Playing PCM and playhead advance, per-track pitch and selected vocoder carrier. Writer commands remain deferred; exclusive restore pins retain playback suppression.",
+    "evidence": [
+      "native-mark-readonly-pin.json",
+      "native-verification.json"
+    ],
+    "source": [
+      "../../native-mvp/engine-cpp/src/native_audio_core.cpp"
+    ],
+    "tests": [
+      "../../native-mvp/engine-cpp/tests/native_callback_telemetry_tests.cpp"
+    ],
+    "limitations": [
+      "Software/simulated callback evidence only; no physical hardware or audio-jury result.",
+      "Final ABBA performance rerun remains pending."
+    ]
   },
   "coverage": {
     "source": [
@@ -34,9 +52,29 @@
       "../../native-mvp/engine-cpp/tests/native_callback_telemetry_tests.cpp"
     ],
     "evidence": [
-      "native-callback-telemetry.json"
+      "native-callback-telemetry.json",
+      "native-mark-readonly-pin.json"
     ]
   },
   "scopedTelemetry": "The telemetry receipt exercised committed-overdub MARK callbacks in simulation; it does not certify physical Mark timing, continuous playback or the final source.",
-  "hardwareStateTransitions": "BLOCKED"
+  "hardwareStateTransitions": "BLOCKED",
+  "finalRegressionReceipt": {
+    "path": "regression.json",
+    "owner": "root",
+    "status": "PENDING"
+  },
+  "nativeVerification": {
+    "status": "PASS_SOFTWARE_NATIVE_GATES",
+    "portablePassed": 56,
+    "portableTotal": 56,
+    "hqSimulationPassed": 12,
+    "hqSimulationTotal": 12,
+    "wasapiBuild": "PASS",
+    "wasapiRuntime": "LOCAL_DEPLOY_BLOCKED",
+    "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e",
+    "evidence": [
+      "native-verification.json"
+    ],
+    "note": "Root-owned receipt exists in integration workspace; not edited or copied by this docs branch. Build success does not establish live device/runtime acceptance."
+  }
 }

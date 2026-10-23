@@ -1,10 +1,13 @@
 {
   "schemaVersion": 1,
-  "date": "2026-10-23",
-  "documentationSource": "d824f11",
+  "date": "2026-10-24",
+  "documentationSource": "9e48f39",
   "finalFrozenSource": null,
-  "finalRegression": "PENDING",
-  "deployment": "PENDING",
+  "finalRegression": "PARTIAL_COMPLETED_UNIT_BUILD_NATIVE; E2E_PERFORMANCE_COLD_LOCAL_SMOKE_PENDING",
+  "deployment": {
+    "browser": "HTTP_200_CONFIRMED_SMOKE_PENDING",
+    "native": "LOCAL_DEPLOY_BLOCKED"
+  },
   "hardwareValidated": false,
   "status": "PARTIAL_SCOPED_SOFTWARE_VALIDATION",
   "format": "Independent RC505 semantic envelope preserves exact embedded legacy v1 PCM archive bytes; legacy ProjectMemory storage/archive remains separate.",
@@ -75,7 +78,7 @@
   "pendingIntegrationTests": [
     "../../tests/e2e/native-semantic-memory.spec.ts"
   ],
-  "pendingTestScope": "Native new integration test is written and integrated atd824f11, not executed at documentation cut: five real PCM hashes,7banks,dualACKgates,prepare/cancel,failed prepare retention and UI no-FX-write hydration.",
+  "pendingTestScope": "Native real-app integration test covers five PCM hashes,7banks,dualACKgates,prepare/cancel,failed prepare retention and UI no-FX-write hydration. Execution result is pending root final E2E receipt.",
   "coverage": {
     "source": [
       "../../src/audio/Rc505Memory.ts",
@@ -94,7 +97,59 @@
   },
   "limitations": [
     "Hardware Memory compatibility and physical device state transitions are BLOCKED.",
-    "Scoped test totals belong to their indicated source trees and cannot be summed as a final regression.",
-    "Complete root regression/deployment remains PENDING; root owns regression.json and final counts."
+    "Native REC/quantize/AutoRec/Bounce/full-routing disabled controls reflect missing providers, not completed implementations.",
+    "Scoped historical test totals cannot be summed as a final regression.",
+    "Release unit/build/Native gates completed; final E2E/performance/cold/local smoke and root regression.json remain pending."
+  ],
+  "finalRegressionReceipt": {
+    "path": "regression.json",
+    "owner": "root",
+    "status": "PENDING"
+  },
+  "nativeVerification": {
+    "status": "PASS_SOFTWARE_NATIVE_GATES",
+    "portablePassed": 56,
+    "portableTotal": 56,
+    "hqSimulationPassed": 12,
+    "hqSimulationTotal": 12,
+    "wasapiBuild": "PASS",
+    "wasapiRuntime": "LOCAL_DEPLOY_BLOCKED",
+    "sourceHead": "41f20db649730e69112e92f2aacbfd368860074e",
+    "evidence": [
+      "native-verification.json"
+    ],
+    "note": "Root-owned receipt exists in integration workspace; not edited or copied by this docs branch. Build success does not establish live device/runtime acceptance."
+  },
+  "releaseUnit": {
+    "status": "PASS",
+    "sourceContext": "9e48f39 release integration after final CSS/navigation/LCD/FX EDIT changes",
+    "files": 210,
+    "passed": 2530,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": [
+      "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-unit-release.json",
+      "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-unit-release.log"
+    ],
+    "sha256": "114cb9ced4bb54e4d8975cfc0c334bca023e90ab7b49e9139dd42a3afe86f2ca"
+  },
+  "productionBuild": {
+    "status": "PASS",
+    "sourceContext": "9e48f39 release integration",
+    "viteSeconds": 11.12,
+    "licenseFilesVerified": 6,
+    "licenseFilesExpected": 6,
+    "evidence": [
+      "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-production-build.log"
+    ],
+    "sha256": "f52480249d074b023d68c37c62dd899113cde809bb35e55129f8bcc9bfdb993d"
+  },
+  "pendingIntegrationTestsStatus": "PENDING: new4-case E2E run in progress; complete112-case suite follows. No E2E PASS inferred.",
+  "providerGaps": [
+    "Native REC settings provider missing",
+    "Native quantize provider missing",
+    "Native AutoRec provider missing",
+    "Native Bounce provider missing",
+    "Native full routing provider missing"
   ]
 }
