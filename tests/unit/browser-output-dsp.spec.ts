@@ -38,6 +38,10 @@ function mockBrowserEngine(): {
   const engine = Object.create(BrowserAudioEngine.prototype) as BrowserAudioEngine;
   const output = { connect: vi.fn(), disconnect: vi.fn() };
   const master = {};
+  const wet = { connect: vi.fn() };
+  const dry = { connect: vi.fn() };
+  wet.connect(output);
+  dry.connect(output);
   const addModule = vi.fn(async (_url: string) => undefined);
   const destination = {};
   const context = {
@@ -48,8 +52,10 @@ function mockBrowserEngine(): {
   } as unknown as AudioContext;
   Object.assign(engine, {
     context,
-    outputFxChain: { output },
-    masterGainNode: master,
+    outputFxChain: { output: wet },
+    sharedTrackFxJoinNode: output,
+    dryTrackMixGainNode: dry,
+    mainGainNode: master,
     outputDspFxNode: null,
     fxWorkletModuleReady: null,
     fxWorkletGeneration: 0,
@@ -65,7 +71,7 @@ describe('Browser master output DSP routing', () => {
     MockWorkletNode.failNextConfigure = false;
   });
 
-  it('loads the checked-in worklet and routes the selected algorithm between output FX and master', async () => {
+  it('loads the checked-in worklet and routes the selected algorithm after the joined wet/dry paths and before MAIN', async () => {
     vi.stubGlobal('AudioWorkletNode', MockWorkletNode);
     const { engine, output, master, addModule } = mockBrowserEngine();
 
@@ -83,6 +89,8 @@ describe('Browser master output DSP routing', () => {
       parameters: { mix: 0.32, decaySeconds: 3.5 },
       bypassed: false,
     });
+    expect((engine as any).outputFxChain.output.connect).toHaveBeenCalledExactlyOnceWith(output);
+    expect((engine as any).dryTrackMixGainNode.connect).toHaveBeenCalledExactlyOnceWith(output);
     expect(output.disconnect).toHaveBeenCalledWith(master);
     expect(output.connect).toHaveBeenCalledWith(node);
     expect(node.connect).toHaveBeenCalledWith(master);

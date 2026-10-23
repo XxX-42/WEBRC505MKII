@@ -9,27 +9,55 @@ async function loadEngineForSearch(search: string) {
 }
 
 describe('AudioEngine capabilities', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
+    // Transform cold dependencies in the hook; each loader still resets module state.
+    await import('../../src/audio/AudioEngine');
   });
 
   it('routes the Browser output knob through the master gain and bounds its value', async () => {
     const engine = await loadEngineForSearch('/?audio=browser');
     expect(engine.getCapabilities().supportsOutputLevel).toBe(true);
     expect(engine.getOutputLevel()).toBe(100);
-    engine.setOutputLevel(35);
+    await engine.setOutputLevel(35);
     expect(engine.getOutputLevel()).toBe(35);
     expect((engine as any).browser.masterGainNode.gain.value).toBe(0.35);
-    engine.setOutputLevel(180);
+    await engine.setOutputLevel(180);
     expect(engine.getOutputLevel()).toBe(100);
-    expect(() => engine.setOutputLevel(NaN)).toThrow('finite');
+    await expect(engine.setOutputLevel(NaN)).rejects.toThrow('finite');
   });
 
-  it('explains that the Native output knob has no exposed backing command', async () => {
+  it('keeps the Native output knob unavailable for an older host without mixer readback', async () => {
     const engine = await loadEngineForSearch('/?audio=native');
     expect(engine.getCapabilities().supportsOutputLevel).toBe(false);
-    expect(engine.getCapabilities().outputLevelReason).toContain('not exposed');
-    expect(() => engine.setOutputLevel(50)).toThrow('not exposed');
+    expect(engine.getCapabilities().outputLevelReason).toContain('does not expose software mixer levels');
+    await expect(engine.setOutputLevel(50)).rejects.toThrow('does not expose software mixer levels');
+    expect(engine.getOutputLevel()).toBe(0);
+  });
+
+  it('publishes Native output levels only from confirmed mixer readback', async () => {
+    const engine = await loadEngineForSearch('/?audio=native');
+    const native = (engine as any).nativeEngine;
+    const status = {
+      ok: true, bridgeHealthy: true, engineRunning: true, backend: 'WASAPI',
+      inputDeviceId: 'in', outputDeviceId: 'out', sampleRate: 48000, bufferFrames: 256,
+      nativeSampleFrame: 48000, monitoringEnabled: false, state: 'Empty',
+      inputLatencyMs: 0, outputLatencyMs: 0, roundTripEstimateMs: 0,
+      inputPeak: 0, outputPeak: 0, xrunsOrDropouts: 0, lastError: '', loopProgress: 0,
+      mixerLevels: [100, 100, 100, 100, 100, 100, 100],
+    };
+    native.latestStatus = status;
+    let acknowledge!: (value: typeof status) => void;
+    native.bridge.setMixerLevel = vi.fn(() => new Promise<typeof status>((resolve) => { acknowledge = resolve; }));
+    expect(engine.getCapabilities().supportsOutputLevel).toBe(true);
+    const pending = engine.setOutputLevel(35);
+    expect(native.bridge.setMixerLevel).toHaveBeenCalledExactlyOnceWith(1, 35);
+    expect(engine.getOutputLevel()).toBe(100);
+    acknowledge({ ...status, mixerLevels: [100, 34, 100, 100, 100, 100, 100] });
+    await pending;
+    expect(engine.getOutputLevel()).toBe(34);
+    await expect(engine.setOutputLevel(NaN)).rejects.toThrow('finite');
+    expect(engine.getOutputLevel()).toBe(34);
   });
 
   it('reports browser track capabilities and incomplete DSP parity', async () => {

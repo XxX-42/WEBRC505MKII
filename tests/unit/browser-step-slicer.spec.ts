@@ -46,6 +46,8 @@ function makeEngine(): BrowserAudioEngine {
     statusListeners: new Set(),
     currentInputStream: null,
   });
+  // Match the fixed constructor anchor before exercising dynamic FX replacement.
+  engine.trackMixNode.connect(engine.outputFxChain.input);
   return engine;
 }
 
@@ -245,7 +247,8 @@ describe('Browser STEP SLICER (catalog source ID 35)', () => {
     const trackMix = (engine as unknown as { trackMixNode: MockAudioNode }).trackMixNode;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[0]!.input);
     expect(inputFx[3]!.output.connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect(trackFx[3]!.output.connect).toHaveBeenCalledWith(trackTail);
   });

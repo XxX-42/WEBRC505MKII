@@ -10,8 +10,10 @@ async function loadPanel(search: string, location: 'input' | 'track' = 'track', 
 }
 
 describe('FX panel runtime selection', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
+    // Warm cold transformation in the hook; loadPanel still resets singleton state.
+    await import('../../src/composables/useFxPanelState');
   });
 
   it('keeps Native FX disabled until a bridge status confirms catalog support', async () => {

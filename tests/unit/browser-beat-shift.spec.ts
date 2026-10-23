@@ -37,6 +37,8 @@ function makeEngine(): {
   const trackHead = new MockAudioNode();
   const trackTail = new MockAudioNode();
   const trackMix = new MockAudioNode();
+  // The constructor owns this fixed anchor; FX rebuilds only replace the chain inside it.
+  trackMix.connect(trackHead);
   const context = {
     sampleRate: 48000,
     audioWorklet: { addModule: vi.fn(async (_url: string) => undefined) },
@@ -238,7 +240,8 @@ describe('Browser clean-room BEAT SHIFT (catalog source ID 52)', () => {
     engine.setFxType('track', 0, 'BEAT SHIFT');
     engine.setFxType('track', 1, 'BEAT SHIFT');
     await vi.waitFor(() => expect(MockWorkletNode.instances).toHaveLength(2));
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     const trackFx = (engine as unknown as { trackFxInstances: Array<{ input: AudioNode; output: AudioNode; setParam(key: string, value: number): void } | null> }).trackFxInstances;
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect((trackFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackFx[1]!.input);

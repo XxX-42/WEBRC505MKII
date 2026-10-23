@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BrowserAudioEngine } from '../../src/audio/BrowserAudioEngine';
 import { FX_CATALOG_BY_ID } from '../../src/audio/fx/catalog';
 import { Transport } from '../../src/core/Transport';
+import { createMockAudioContext } from '../helpers/audioTestUtils';
 
 class MockAudioNode {
   readonly connect = vi.fn();
@@ -39,6 +40,8 @@ function makeEngine(): {
   const trackHead = new MockAudioNode();
   const trackTail = new MockAudioNode();
   const trackMix = new MockAudioNode();
+  // The constructor owns this fixed anchor; FX rebuilds only replace the chain inside it.
+  trackMix.connect(trackHead);
   const addModule = vi.fn(async (_url: string) => undefined);
   const context = {
     sampleRate: 48000,
@@ -73,6 +76,29 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     MockWorkletNode.instances = [];
   });
 
+  it('constructs separate wet shared FX and dry bypass buses that join before MAIN and MASTER', () => {
+    const context = createMockAudioContext();
+    const createGain = context.createGain.bind(context);
+    context.createGain = (() => {
+      const node = createGain();
+      vi.spyOn(node, 'connect');
+      return node;
+    }) as typeof context.createGain;
+    const engine = new BrowserAudioEngine({ context });
+    const b = engine as any;
+    const connected = (source: any, target: AudioNode) =>
+      source.connect.mock.calls.some((call: unknown[]) => call[0] === target);
+    expect(connected(b.sharedTrackFxInputBus, b.trackMixNode)).toBe(true);
+    expect(connected(b.trackMixNode, b.outputFxChain.input)).toBe(true);
+    expect(connected(b.outputFxChain.output, b.sharedTrackFxJoinNode)).toBe(true);
+    expect(connected(b.dryTrackFxMixBus, b.dryTrackMixGainNode)).toBe(true);
+    expect(connected(b.dryTrackMixGainNode, b.sharedTrackFxJoinNode)).toBe(true);
+    expect(connected(b.sharedTrackFxJoinNode, b.mainGainNode)).toBe(true);
+    expect(connected(b.mainGainNode, b.masterGainNode)).toBe(true);
+    expect(connected(b.masterGainNode, context.destination)).toBe(true);
+    expect(connected(b.dryTrackMixGainNode, b.outputFxChain.input)).toBe(false);
+  });
+
   it('routes four selected effects through each existing input and shared track A–D bank', async () => {
     vi.stubGlobal('AudioWorkletNode', MockWorkletNode);
     const { engine, inputHead, inputTail, trackHead, trackTail, trackMix, addModule } = makeEngine();
@@ -96,7 +122,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     expect((inputFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputFx[2]!.input);
     expect((inputFx[2]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputFx[3]!.input);
     expect((inputFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect((trackFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackFx[1]!.input);
     expect((trackFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackFx[2]!.input);
@@ -120,7 +147,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const trackFx = (engine as unknown as { trackFxInstances: { input: AudioNode; output: AudioNode }[] }).trackFxInstances;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[0]!.input);
     expect((inputFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[2]!.input);
     expect((trackFx[2]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -172,7 +200,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     expect((inputFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputFx[2]!.input);
     expect((inputFx[2]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputFx[3]!.input);
     expect((inputFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect((trackFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackFx[1]!.input);
     expect((trackFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackFx[2]!.input);
@@ -208,7 +237,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const trackFx = (engine as unknown as { trackFxInstances: { input: AudioNode; output: AudioNode }[] }).trackFxInstances;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[1]!.input);
     expect((inputFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[3]!.input);
     expect((trackFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -243,7 +273,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const trackFx = (engine as unknown as { trackFxInstances: { input: AudioNode; output: AudioNode }[] }).trackFxInstances;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[0]!.input);
     expect((inputFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[2]!.input);
     expect((trackFx[2]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -280,7 +311,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const trackFx = (engine as unknown as { trackFxInstances: { input: AudioNode; output: AudioNode }[] }).trackFxInstances;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[1]!.input);
     expect((inputFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[3]!.input);
     expect((trackFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -350,7 +382,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const trackFx = (engine as unknown as { trackFxInstances: { input: AudioNode; output: AudioNode }[] }).trackFxInstances;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[1]!.input);
     expect((inputFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[3]!.input);
     expect((trackFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -387,7 +420,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const trackFx = (engine as unknown as { trackFxInstances: { input: AudioNode; output: AudioNode }[] }).trackFxInstances;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[0]!.input);
     expect((inputFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[2]!.input);
     expect((trackFx[2]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -432,7 +466,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     });
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[0]!.input);
     expect((inputFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect((trackFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -467,7 +502,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     expect((inputFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputFx[2]!.input);
     expect((inputFx[2]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputFx[3]!.input);
     expect((inputFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect((trackFx[0]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackFx[1]!.input);
     expect((trackFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackFx[2]!.input);
@@ -501,7 +537,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     const trackFx = (engine as unknown as { trackFxInstances: { input: AudioNode; output: AudioNode }[] }).trackFxInstances;
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[2]!.input);
     expect((inputFx[2]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[1]!.input);
     expect((trackFx[1]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });
@@ -562,7 +599,8 @@ describe('Browser clean-room DSP in dynamic FX banks', () => {
     });
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[0]!.input);
     expect((inputFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect((trackFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
 

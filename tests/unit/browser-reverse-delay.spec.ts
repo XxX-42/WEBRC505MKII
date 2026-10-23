@@ -40,6 +40,8 @@ function makeEngine(): {
   const trackHead = new MockAudioNode();
   const trackTail = new MockAudioNode();
   const trackMix = new MockAudioNode();
+  // The constructor owns the fixed bus anchor, outside dynamic FX rebuilds.
+  trackMix.connect(trackHead);
   const context = {
     sampleRate: 48000,
     audioWorklet: { addModule: vi.fn(async (_url: string) => undefined) },
@@ -276,7 +278,8 @@ describe('Browser clean-room REVERSE DELAY (catalog source ID 38)', () => {
 
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx[0]!.input);
     expect((inputFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect((trackFx[3]!.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
   });

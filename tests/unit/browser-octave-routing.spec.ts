@@ -36,6 +36,8 @@ function makeEngine() {
   const trackHead = new MockAudioNode();
   const trackTail = new MockAudioNode();
   const trackMix = new MockAudioNode();
+  // The constructor owns the fixed bus anchor, outside dynamic FX rebuilds.
+  trackMix.connect(trackHead);
   const context = {
     sampleRate: 48_000,
     currentTime: 0,
@@ -95,7 +97,8 @@ describe('Browser OCTAVE dynamic-bank integration', () => {
     expect(pitchHarness.create).toHaveBeenCalledTimes(6);
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx.input);
     expect((inputFx.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx.input);
     expect((trackFx.output as unknown as MockAudioNode).connect).toHaveBeenCalledWith(trackTail);
 

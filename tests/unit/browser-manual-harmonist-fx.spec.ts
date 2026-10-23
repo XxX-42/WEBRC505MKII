@@ -66,6 +66,8 @@ function makeEngine() {
   const trackHead = new MockAudioNode();
   const trackTail = new MockAudioNode();
   const trackMix = new MockAudioNode();
+  // The constructor owns the fixed bus anchor, outside dynamic FX rebuilds.
+  trackMix.connect(trackHead);
   Object.assign(engine, {
     context: makeContext(),
     inputFxChain: { input: inputHead, output: inputTail },
@@ -117,7 +119,8 @@ describe('Browser HRM MANUAL FX', () => {
     expect(pitchHarness.create.mock.calls[3]![1]).toMatchObject({ mode: 'LIVE_FX', channels: 2, semitones: 12 });
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx.input);
     expect(inputFx.output.connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx[0]!.input);
     expect(trackFx[0]!.output.connect).toHaveBeenCalledWith(trackFx[1]!.input);
     expect(trackFx[1]!.output.connect).toHaveBeenCalledWith(trackFx[2]!.input);

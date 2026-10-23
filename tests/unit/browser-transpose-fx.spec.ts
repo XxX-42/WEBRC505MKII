@@ -57,6 +57,8 @@ function makeEngine() {
   const trackHead = new MockAudioNode();
   const trackTail = new MockAudioNode();
   const trackMix = new MockAudioNode();
+  // The constructor owns the fixed bus anchor, outside dynamic FX rebuilds.
+  trackMix.connect(trackHead);
   Object.assign(engine, {
     context: makeContext(),
     inputFxChain: { input: inputHead, output: inputTail },
@@ -103,7 +105,8 @@ describe('Browser TRANSPOSE FX', () => {
     expect(transposeHarness.create).toHaveBeenCalledTimes(2);
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx.input);
     expect(inputFx.output.connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx.input);
     expect(trackFx.output.connect).toHaveBeenCalledWith(trackTail);
     expect(inputNode.setPitch).toHaveBeenCalledTimes(6);
@@ -133,7 +136,8 @@ describe('Browser TRANSPOSE FX', () => {
     expect(transposeHarness.create).toHaveBeenCalledTimes(2);
     expect(inputHead.connect).toHaveBeenCalledWith(inputFx.input);
     expect(inputFx.output.connect).toHaveBeenCalledWith(inputTail);
-    expect(trackMix.connect).toHaveBeenCalledWith(trackHead);
+    expect(trackMix.connect).toHaveBeenCalledExactlyOnceWith(trackHead);
+    expect(trackMix.disconnect).not.toHaveBeenCalled();
     expect(trackHead.connect).toHaveBeenCalledWith(trackFx.input);
     expect(trackFx.output.connect).toHaveBeenCalledWith(trackTail);
     expect(trackNode.connect).toHaveBeenCalledWith(expect.any(MockGainNode));
