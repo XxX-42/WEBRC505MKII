@@ -154,14 +154,14 @@ export class NativeTrackProxy {
     if (!this.transportEnabled) return;
 
     if (this.state === TrackState.EMPTY) {
-      void this.engine.recordTrack(this.trackId);
+      return this.engine.recordTrack(this.trackId);
     } else if (this.state === TrackState.RECORDING) {
-      if (this.engine.getRecordPlaySettings().recActionAvailable) void this.engine.finishRecordingTrack(this.trackId);
-      else void this.engine.stopTrack(this.trackId);
+      if (this.engine.getRecordPlaySettings().recActionAvailable) return this.engine.finishRecordingTrack(this.trackId);
+      else return this.engine.stopTrack(this.trackId);
     } else if (this.state === TrackState.STOPPED) {
-      void this.engine.playTrack(this.trackId);
+      return this.engine.playTrack(this.trackId);
     } else if (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING) {
-      void this.engine.toggleOverdub(this.trackId);
+      return this.engine.toggleOverdub(this.trackId);
     }
   }
 
