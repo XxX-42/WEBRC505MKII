@@ -2,14 +2,26 @@ import { reactive } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { Rc505Memory, type Rc505MemoryRuntime } from '../audio/Rc505Memory';
 import { Rc505MemoryStore } from '../audio/Rc505MemoryStore';
-import { adoptCommittedBrowserFxState } from './useFxPanelState';
+import { adoptCommittedBrowserFxState, adoptCommittedNativeFxState } from './useFxPanelState';
+import { wrapRc505MemoryUiRuntime } from './wrapRc505MemoryUiRuntime';
 
 const sessions = new WeakMap<Rc505MemoryRuntime, Rc505Memory>();
 const store = new Rc505MemoryStore();
 const state = reactive({ number: null as number | null, name: '', dirty: true, busy: false, available: false, reason: '', error: '' });
-const getSession = () => {
+const getRuntime = () => {
   const engine = AudioEngine.getInstance();
-  const runtime = engine.createRc505MemoryRuntime();
+  const mode = engine.getMode();
+  return wrapRc505MemoryUiRuntime(engine.createRc505MemoryRuntime(), mode, async () => {
+    if (mode === 'native') await adoptCommittedNativeFxState();
+    else {
+      const configuration = engine.getBrowserMemoryConfiguration();
+      if (!configuration) throw new Error('Committed Browser Memory configuration is unavailable.');
+      await adoptCommittedBrowserFxState(configuration);
+    }
+  });
+};
+const getSession = () => {
+  const runtime = getRuntime();
   let session = sessions.get(runtime);
   if (!session) { session = new Rc505Memory(runtime, store); sessions.set(runtime, session); }
   return session;
@@ -19,9 +31,8 @@ const getSession = () => {
 export function useRc505Memory() {
   function refresh(): void {
     try {
-      const engine = AudioEngine.getInstance();
       const session = getSession();
-      const readiness = engine.createRc505MemoryRuntime().canSwitch();
+      const readiness = getRuntime().canSwitch();
       Object.assign(state, { number: session.currentNumber, name: session.currentName, dirty: session.dirty,
         busy: session.busy, available: typeof indexedDB !== 'undefined' && readiness.allowed,
         reason: typeof indexedDB === 'undefined' ? 'Persistent Memory storage is unavailable.' : readiness.reason });
@@ -37,11 +48,7 @@ export function useRc505Memory() {
   return { state, refresh,
     setName: (name: string) => { getSession().setName(name); refresh(); },
     save: (slot: number) => perform(session => session.save(slot, session.currentName)),
-    load: (slot: number) => perform(async session => {
-      await session.load(slot);
-      const configuration = AudioEngine.getInstance().getBrowserMemoryConfiguration();
-      if (configuration) await adoptCommittedBrowserFxState(configuration);
-    }),
+    load: (slot: number) => perform(session => session.load(slot)),
     clear: (slot: number) => perform(session => session.clear(slot)),
   };
 }

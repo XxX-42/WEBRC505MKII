@@ -189,6 +189,11 @@ function releaseAllSlots(): void {
   }
   heldRows.clear();
 }
+function discardRecalledHolds(): void {
+  // Memory already installed the recalled switches. A late release must not
+  // submit OFF against that new graph or mutate its adopted slot rows.
+  switchController.cancel(); heldRows.clear();
+}
 function pressSlot(slotId: FxSlotId): void {
   if (slotsDisabled.value) return;
   dispatch({ type: 'SLOT', slot: slotId });
@@ -209,6 +214,7 @@ watch(fxDisabled, (disabled) => { if (disabled) { releaseAllSlots(); cancelEdit(
 watch(() => memory.state.busy, (busy) => { if (busy) { releaseAllSlots(); cancelEdit(); } }, { flush: 'sync' });
 watch(() => banks.state.requestedBank, releaseAllSlots, { flush: 'sync' });
 watch(() => banks.state.requestedBank, (bank) => selectRc505FxSwitchBank(engine.getMode(), props.location, bank ?? 'A'), { immediate: true, flush: 'sync' });
+watch(() => switchSettings.value.state.adoptionRevision, discardRecalledHolds, { flush: 'sync' });
 watch(() => switchSettings.value.state.settings, releaseAllSlots, { deep: true, flush: 'sync' });
 function cancelAll(): void { releaseAllSlots(); cancelEdit(); }
 window.addEventListener('blur', cancelAll);
