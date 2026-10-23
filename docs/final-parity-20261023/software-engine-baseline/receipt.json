@@ -1,0 +1,793 @@
+{
+  "status": "SOFTWARE_BASELINE",
+  "hardware_capture": false,
+  "source_snapshot_base": "4ef9913",
+  "harness_commit": "9966b81",
+  "final_regression_status": "NOT_RUN_FINAL_SOURCE_NOT_FROZEN",
+  "unit_tests": {
+    "passed": 11,
+    "failed": 0
+  },
+  "native_build": {
+    "compiler": {
+      "CMAKE_CXX_COMPILER_ARCHITECTURE_ID": "x64",
+      "CMAKE_CXX_COMPILER_ID": "MSVC",
+      "CMAKE_CXX_COMPILER_VERSION": "19.29.30159.0"
+    },
+    "binary_path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\build\\Release\\native_software_probe.exe",
+    "binary_sha256": "a7b03c3b4f9b0daaf1384b3fc5f7f7de49bb2fe4af16903746d0af42c4ec6561",
+    "strict_warnings": "/W4 /WX, no suppression"
+  },
+  "render_count": 68,
+  "stimulus_count": 17,
+  "stimuli": {
+    "silence": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\silence.wav",
+      "sha256": "ede1f6dd33abfce7bb3a45ba79b0ab5f8baae692709dd32214a41da9af55ab13"
+    },
+    "impulse": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\impulse.wav",
+      "sha256": "38be0f9ee428102d53ab78c657361d65fa9a839833a689aa3b26177dd9858e1c"
+    },
+    "logsweep": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\logsweep.wav",
+      "sha256": "b17d8cbc6e9e08d0051c7522157728cb1e74b6028b6ae2b5cec40828dca97945"
+    },
+    "multitone": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\multitone.wav",
+      "sha256": "b3f6333e191ab3ca1960f654aa13b86a1edf76efefd24616a4f4ac11e8cd1979"
+    },
+    "tone_997": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\tone_997.wav",
+      "sha256": "83b843bc50fa1d657bbd1408eab5ca9b1a7c607179b9b548c903fa883240e0e5"
+    },
+    "amplitude_staircase": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\amplitude_staircase.wav",
+      "sha256": "cab593f9485f77d24b507c92701d5057a6ab7c1a3a03b80fb19926f292c0d323"
+    },
+    "transient": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\transient.wav",
+      "sha256": "6f4bfce44e5df48fc9998a72a37230c99f2c26ccadfb001046e4de1ddd0396f5"
+    },
+    "l_only": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\l_only.wav",
+      "sha256": "57d9ca4a5df1546d5d439006b7d6b835fd4b21f48c373766116499b67567a524"
+    },
+    "r_only": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\r_only.wav",
+      "sha256": "0c443cb674d34cae8f56e8f5f0b7717ddda8d6eb1819f089873b2327d2c0924c"
+    },
+    "antiphase": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\antiphase.wav",
+      "sha256": "d876ce9c107063475e5f6cfd18e4f665bf81c4ccd7aca5ff36e3326b44a791c3"
+    },
+    "asymmetric": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\asymmetric.wav",
+      "sha256": "177497c514c2f3cce2abdd039e89bd3e9912ad5d1039ba11202721273f5edba8"
+    },
+    "vocal_like": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\vocal_like.wav",
+      "sha256": "b2c8c728e9a1b3a6c1a1c4c496b05e92f301fe89ac701509a391dffad2435465"
+    },
+    "guitar_like": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\guitar_like.wav",
+      "sha256": "44f27b93ed12cbc723e515fa78f43b8db74f701c68a8cc68aa3930587888462e"
+    },
+    "bass": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\bass.wav",
+      "sha256": "6c8550729b1653877319bc62850c83983f5958a208df1d74d395f506fc9b3de8"
+    },
+    "drum": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\drum.wav",
+      "sha256": "c09a72a45a1910e496bc2547aac51d2bf893b8ccc582f2d0ec265c1f19313c75"
+    },
+    "pitch_sweep": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\pitch_sweep.wav",
+      "sha256": "997dde34f296147f886e3530d4dfa2a4a623aec57d168e9463491c80af6573f4"
+    },
+    "tempo_pulse": {
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\stimuli\\tempo_pulse.wav",
+      "sha256": "83744e9e28d3b377321ace20f21b4675f7c57b40210259ef048099fbe44556a3"
+    }
+  },
+  "render_manifests": [
+    {
+      "mode": "dry",
+      "manifest_path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\engine-baseline.json",
+      "manifest_sha256": "56cf5683966d0170435f986bf10550468b791726bee3732b17bcb59f9d117d71",
+      "created_utc": "2026-10-23T15:07:45.138836+00:00",
+      "finished_utc": "2026-10-23T15:08:39.904778+00:00",
+      "render_count": 34
+    },
+    {
+      "mode": "lpf",
+      "manifest_path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\engine-baseline.json",
+      "manifest_sha256": "14783f9335c9922f4e14c2d3106939fb9e63f56108c6eaa2429d2c94ddfe43d2",
+      "created_utc": "2026-10-23T15:08:51.502681+00:00",
+      "finished_utc": "2026-10-23T15:09:22.074673+00:00",
+      "render_count": 34
+    }
+  ],
+  "render_receipts": [
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "silence",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\silence.wav",
+      "sha256": "c9b516be9443685e5b2257873161e98a494fc78908832ee85c818ab146d556aa",
+      "frames": 48000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "silence",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\silence.wav",
+      "sha256": "c9b516be9443685e5b2257873161e98a494fc78908832ee85c818ab146d556aa",
+      "frames": 48000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "impulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\impulse.wav",
+      "sha256": "40d310aaaaaecb9781b0af71a0040361e7dd7a86e4ebe666a89922f038d1173a",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "impulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\impulse.wav",
+      "sha256": "40d310aaaaaecb9781b0af71a0040361e7dd7a86e4ebe666a89922f038d1173a",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "logsweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\logsweep.wav",
+      "sha256": "1a2e3539558fcf73cdebf1a4320796ec15e86057065bb20a46b223bc3186b751",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "logsweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\logsweep.wav",
+      "sha256": "1a2e3539558fcf73cdebf1a4320796ec15e86057065bb20a46b223bc3186b751",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "multitone",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\multitone.wav",
+      "sha256": "c88cb0ef9f6bd31eee96d06b88703044e469cf2bc0fac68697845ab7567bb62b",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "multitone",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\multitone.wav",
+      "sha256": "c88cb0ef9f6bd31eee96d06b88703044e469cf2bc0fac68697845ab7567bb62b",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "tone_997",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\tone_997.wav",
+      "sha256": "1b0953ae99a2885341d7bf742cb8baa1f22494a731a8649a71d11d233f089055",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "tone_997",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\tone_997.wav",
+      "sha256": "1b0953ae99a2885341d7bf742cb8baa1f22494a731a8649a71d11d233f089055",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "amplitude_staircase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\amplitude_staircase.wav",
+      "sha256": "7f11c417ff033422c04b60539de19432a18f5cfe39b1bdf013c8d0643edce744",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "amplitude_staircase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\amplitude_staircase.wav",
+      "sha256": "7f11c417ff033422c04b60539de19432a18f5cfe39b1bdf013c8d0643edce744",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "transient",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\transient.wav",
+      "sha256": "24c219f2f48fde2641b2103302b65e0234573e2e535c4a1dcdd8642163116ca5",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "transient",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\transient.wav",
+      "sha256": "24c219f2f48fde2641b2103302b65e0234573e2e535c4a1dcdd8642163116ca5",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "l_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\l_only.wav",
+      "sha256": "07abb4f80db568b1da2c8cdae498e8307564636550af614a6d1cfbc980e56b69",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "l_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\l_only.wav",
+      "sha256": "07abb4f80db568b1da2c8cdae498e8307564636550af614a6d1cfbc980e56b69",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "r_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\r_only.wav",
+      "sha256": "59b097173dc2a52d05c5eacb12e4ed98f106f048d669fbd491b4e8fb5b765e4c",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "r_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\r_only.wav",
+      "sha256": "59b097173dc2a52d05c5eacb12e4ed98f106f048d669fbd491b4e8fb5b765e4c",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "antiphase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\antiphase.wav",
+      "sha256": "5df54eb9139325a29a535c4cc0e72070d0aedaa580ff323c7f3c3b0fa5a312c2",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "antiphase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\antiphase.wav",
+      "sha256": "5df54eb9139325a29a535c4cc0e72070d0aedaa580ff323c7f3c3b0fa5a312c2",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "asymmetric",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\asymmetric.wav",
+      "sha256": "8ec2e52bf5b41a1fe61d93a1f399b386e860b29a0e0976250fa1f0935f1cb420",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "asymmetric",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\asymmetric.wav",
+      "sha256": "8ec2e52bf5b41a1fe61d93a1f399b386e860b29a0e0976250fa1f0935f1cb420",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "vocal_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\vocal_like.wav",
+      "sha256": "affa07fc423f8deccb5232065cefc1d287451d57c0bea2d14a4e10498560a4da",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "vocal_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\vocal_like.wav",
+      "sha256": "affa07fc423f8deccb5232065cefc1d287451d57c0bea2d14a4e10498560a4da",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "guitar_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\guitar_like.wav",
+      "sha256": "ce1f87f5b7e7a94384054d7681ef8db2a992ce44b3ee23dce62cd2009a6579b5",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "guitar_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\guitar_like.wav",
+      "sha256": "ce1f87f5b7e7a94384054d7681ef8db2a992ce44b3ee23dce62cd2009a6579b5",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "bass",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\bass.wav",
+      "sha256": "9c17e0a4f8fafc37beb2956a53f2c9f134225bfafe7f840495c1cc8e4076f3ae",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "bass",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\bass.wav",
+      "sha256": "9c17e0a4f8fafc37beb2956a53f2c9f134225bfafe7f840495c1cc8e4076f3ae",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "drum",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\drum.wav",
+      "sha256": "eddcc2efe864cccc5fb380f82fdc6694a2bfc81a0abe4613a7e1ef347e06213b",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "drum",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\drum.wav",
+      "sha256": "eddcc2efe864cccc5fb380f82fdc6694a2bfc81a0abe4613a7e1ef347e06213b",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "pitch_sweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\pitch_sweep.wav",
+      "sha256": "ac928d945d269cc95df82ee0a71a87b81412e3629e2c01392b293a295dfe9da1",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "pitch_sweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\pitch_sweep.wav",
+      "sha256": "ac928d945d269cc95df82ee0a71a87b81412e3629e2c01392b293a295dfe9da1",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "browser",
+      "stimulus": "tempo_pulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\browser\\tempo_pulse.wav",
+      "sha256": "ea297a524a0e6316fee7ae632f1f3d7903772e5caca6189c158e3a0fc59c1195",
+      "frames": 384000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "dry",
+      "engine": "native",
+      "stimulus": "tempo_pulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-dry-batched\\native\\tempo_pulse.wav",
+      "sha256": "ea297a524a0e6316fee7ae632f1f3d7903772e5caca6189c158e3a0fc59c1195",
+      "frames": 384000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "silence",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\silence.wav",
+      "sha256": "c9b516be9443685e5b2257873161e98a494fc78908832ee85c818ab146d556aa",
+      "frames": 48000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "silence",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\silence.wav",
+      "sha256": "c9b516be9443685e5b2257873161e98a494fc78908832ee85c818ab146d556aa",
+      "frames": 48000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "impulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\impulse.wav",
+      "sha256": "228a7f4c79f0c434abdba8e8edaa9c23002eeaaac6cb0b4ca55e82e43e2b95d7",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "impulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\impulse.wav",
+      "sha256": "91b9b64f78cd10d468f0f20b248f166552644f6f533d7b800091fad953e15f34",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "logsweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\logsweep.wav",
+      "sha256": "bb5bed6ade375ebc089578b15464354f60810b20c92726d8f200a37a6eccbc71",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "logsweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\logsweep.wav",
+      "sha256": "e5b3bd5bb3958a0cbb0ad33ea1b89958dc319e3e4661f8d79a97111ac1d4e9e8",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "multitone",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\multitone.wav",
+      "sha256": "202758e193bfb8f6d1399b2c3a9a1a0d209b368cf781731119511462495e4b50",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "multitone",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\multitone.wav",
+      "sha256": "aa274e43bec61c413619b220498a00176f053f71de9bb43bb6ce0b4d0dbbe63b",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "tone_997",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\tone_997.wav",
+      "sha256": "ef1baf7b7dea0ab83ae6d79f7498657eab3721bc47ece021739524babbb813f0",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "tone_997",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\tone_997.wav",
+      "sha256": "2016fabf3491b7ebf49375452b1727975ae85c04a30cfa0ca862b202c8246e3a",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "amplitude_staircase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\amplitude_staircase.wav",
+      "sha256": "c4d6900a69fa08771589d95fd6e33ab9c690f6046eb0d3c2a2cc0f511bc1598e",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "amplitude_staircase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\amplitude_staircase.wav",
+      "sha256": "09fcff77affa76547789df3e220bc662fed7809c31d993481074ab0bc646ea1a",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "transient",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\transient.wav",
+      "sha256": "8c28a3ad92d4ee765d013371bd594dd4a008197348018b25225a3edbd25f6660",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "transient",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\transient.wav",
+      "sha256": "93061db4b983d04f3a92e51199fad4596c4d810e11334ac9c443cf6cf2c5ad2a",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "l_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\l_only.wav",
+      "sha256": "f7bb5d75bb22377238bd3e0b94700d543bda886d7a95f3896aee98a3218cfb25",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "l_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\l_only.wav",
+      "sha256": "ff5141079e0261f8676db4ea94cd4c71d5d3c66927b9be657621303c0442a03f",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "r_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\r_only.wav",
+      "sha256": "67f8479c49b0f7b6c54e1ee8921b35c2b757ec0fdfcc9df1abc578dc5f2c698e",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "r_only",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\r_only.wav",
+      "sha256": "09b416810f19c5356a1876efc3d4694f945508776d67d89520d4c460eb751857",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "antiphase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\antiphase.wav",
+      "sha256": "7c421896261c65be02d09692929fd52f8ba303a2fbc1b213e493035b78e52994",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "antiphase",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\antiphase.wav",
+      "sha256": "99b1f7edc6ee1204a32a2967eb6d0f909285ea1ea953db7bc7f44a8662679fb1",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "asymmetric",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\asymmetric.wav",
+      "sha256": "3fba25cda554a51819d40689130ecf531e50867e29519511d30f9cd61a6ae44c",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "asymmetric",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\asymmetric.wav",
+      "sha256": "10cf27e48027e582f8385a79a69b55333c353009603f38d42ccad9bebc34d93c",
+      "frames": 96000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "vocal_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\vocal_like.wav",
+      "sha256": "80f4e0333efce051416aab8dbbb54c7059ab9e97da057facd83d50d7577824d7",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "vocal_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\vocal_like.wav",
+      "sha256": "6198a124c4be209adc0d189ebb317f1af69ccefa731a49e5f168d0144d37ac17",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "guitar_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\guitar_like.wav",
+      "sha256": "0b8bb59af8b5dd4246f1ac95cc79ec33b96021a40540fa75746c088b50d48cc1",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "guitar_like",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\guitar_like.wav",
+      "sha256": "d441d1a0f536638e974ddffd667cc5ba92cd07c4a616938ca7dbfd53d41adb97",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "bass",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\bass.wav",
+      "sha256": "6f224123f3550d2def7e4dee20f242f9128d32e58850b6fd585ca95c2cab5f03",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "bass",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\bass.wav",
+      "sha256": "5f602e41c345c167171eaba63a53fa2386aa3b2e2665e91c6d947a3f4434ad92",
+      "frames": 144000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "drum",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\drum.wav",
+      "sha256": "2d67c1cc661d8faa3617ebee93c49ac31f18d0cbb5a2ba228f16663a5674a9c3",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "drum",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\drum.wav",
+      "sha256": "7d5af7068365d17795476f89a4fbd8ad23924209672dd86ccb0474c197ba5aaa",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "pitch_sweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\pitch_sweep.wav",
+      "sha256": "95cc63a715e4771829eb0f0a14cb3d94c470daef0eba334d586be09d14f71956",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "pitch_sweep",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\pitch_sweep.wav",
+      "sha256": "2a3955f08ea96828d174db853942a90a21ca10d5fb19ba06f2829418b2588e05",
+      "frames": 192000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "browser",
+      "stimulus": "tempo_pulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\browser\\tempo_pulse.wav",
+      "sha256": "0b137bbf37c6489389f439c913c25c02b6798a3d0f6cc18dba88d2a39f43b58e",
+      "frames": 384000,
+      "sample_rate_hz": 48000
+    },
+    {
+      "mode": "lpf",
+      "engine": "native",
+      "stimulus": "tempo_pulse",
+      "path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\engine-lpf-batched\\native\\tempo_pulse.wav",
+      "sha256": "84d208bbb2829cc0dfd5e4f4545de151bc6548240524519c5105ff6f03547e01",
+      "frames": 384000,
+      "sample_rate_hz": 48000
+    }
+  ],
+  "fresh_browser_state_proof": {
+    "status": "PASS",
+    "repeatedStimulus": "impulse",
+    "productionCoreInstances": 2,
+    "sameProcess": true,
+    "outputSha256": "97030f83dc068efbe729523f5844f2f2850dcf7484e9526637bcb8f3005ca019"
+  },
+  "callback_measurement": {
+    "started_utc": "2026-10-23T15:03:22.954604+00:00",
+    "finished_utc": "2026-10-23T15:04:02.449952+00:00",
+    "measured_callbacks": 80000,
+    "warmup_callbacks": 8000,
+    "legs": 8,
+    "order": "ABBA twice",
+    "sample_count_per_leg": 10000,
+    "tail_resolution_fraction": 0.0001,
+    "software_deadline_exceedances": 43,
+    "p999_ns_range": [
+      1068300.0,
+      3371700.0
+    ],
+    "maximum_ns": 20849100.0,
+    "tracked_new_allocations": 0,
+    "core_mutexes_held_during_completed_callback_per_leg": 3,
+    "global_mutex_acquisitions": null,
+    "hardware_xruns": null,
+    "performance_acceptance": "NOT_A_PASS: software deadline exceedances observed; no regression-improvement conclusion from noisy legs."
+  },
+  "concurrent_process_checks": [
+    {
+      "snapshot_path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\processes-before.json",
+      "snapshot_sha256": "23569e04165dcdce64828c0fa22e72e860b628ea3f049c2180858767a89b16bc",
+      "observed_process_names": {
+        "node.exe": 68,
+        "MSBuild.exe": 4,
+        "python.exe": 1
+      },
+      "scope": "Process presence snapshot only; root coordinated idle window. Idle NodeReuse MSBuild workers are not proof of active compilation."
+    },
+    {
+      "snapshot_path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\processes-after-abba.json",
+      "snapshot_sha256": "46867dcd46692b5a9ddec109832efcb9598cf63def19c4f92d48d72f5c2504d9",
+      "observed_process_names": {
+        "node.exe": 68,
+        "MSBuild.exe": 4
+      },
+      "scope": "Process presence snapshot only; root coordinated idle window. Idle NodeReuse MSBuild workers are not proof of active compilation."
+    },
+    {
+      "snapshot_path": "C:\\Users\\user1000\\.codex\\scratch\\rc505-final-software-probe-build\\processes-after-all.json",
+      "snapshot_sha256": "acaa9db1e63189213aa62ad0fdfb305407e8d46403ac381188482a70e6523ab2",
+      "observed_process_names": {
+        "node.exe": 62,
+        "MSBuild.exe": 2,
+        "python.exe": 2
+      },
+      "scope": "Process presence snapshot only; root coordinated idle window. Idle NodeReuse MSBuild workers are not proof of active compilation."
+    }
+  ],
+  "limitations": [
+    "Browser outputs production AudioWorklet DSP directly under Node, not full BrowserAudioEngine or AudioContext scheduling/app exports.",
+    "Native outputs real callback/input-FX/software-monitor PCM with fake RtAudio; no WASAPI/MMCSS/device driver execution.",
+    "LPF uses1200Hz/15percent resonance; dry route verified to preserve decoded PCM within1e-6. No complete FX/Memory end-to-end claim.",
+    "C++ new/new[] only; malloc/aligned allocation and global mutex instrumentation unavailable. Held-core-mutex completion is a scoped blocking-lock proof.",
+    "Effect tails after input length truncated. No hardware capture, listening jury, preference score or physical latency claim.",
+    "Initial preflight rejected running-engine FX type setup before collecting measurements; corrected setup then restarted complete ABBA. Slow partial per-file render directory is not accepted evidence.",
+    "Native baseline source4ef9913 predates root final conservative warning guards; all source hashes preserved, final frozen-source rerun remains required."
+  ]
+}
