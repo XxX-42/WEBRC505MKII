@@ -1,0 +1,9 @@
+{
+  "url": "https://static.roland.com/assets/images/articles/thumbnails/rc-505mk2_F_gal.jpg",
+  "sourceSha256": "80908616f829a507388a3e0b0059dbb564d083228d8fc84cdad194b7998c17e1",
+  "width": 1680,
+  "height": 920,
+  "kind": "OFFICIAL_FRONT_PHOTO",
+  "photometry": "UNMEASURED",
+  "note": "Use this complete front view for geometry; top_gal is an angled cropped scene and cannot define whole-panel pixel positions."
+}

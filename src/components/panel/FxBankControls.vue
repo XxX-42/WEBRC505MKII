@@ -47,6 +47,8 @@
             :data-testid="`${location}-fx-slot-${slot.id.toLowerCase()}`"
             data-hardware-control="button"
             @press="pressSlot(slot.id)"
+            @release="releaseSlot(slot.id)"
+            @cancel="releaseSlot(slot.id)"
           />
         </div>
 
@@ -85,6 +87,8 @@ import { useRc505Controls } from '../../composables/useRc505Controls';
 import { useRc505FxBanks } from '../../composables/useRc505FxBanks';
 import { resolveRc505FxSlot } from '../../ui/rc505/Rc505ControlStateResolver';
 import { resolveNativeFxReadback } from '../../ui/rc505/Rc505FxReadback';
+import { Rc505FxSwitchController } from '../../ui/rc505/Rc505FxSwitchController';
+import { selectRc505FxSwitchBank, useRc505FxSwitchSettings } from '../../composables/useRc505FxSwitchSettings';
 import type { FxLocation, FxSlotId } from '../../composables/usePanelFocus';
 import HardwareButton from '../ui/HardwareButton.vue';
 import HardwareKnob from '../ui/HardwareKnob.vue';
@@ -101,9 +105,12 @@ const poll = window.setInterval(() => revision.value++, 100);
 const slots = sharedBank.slots;
 const activeSlot = sharedBank.activeSlot;
 const fxDisabled = sharedBank.fxDisabled;
-const fxUnavailableReason = computed(() => banks.state.error || banks.state.unavailableReason || sharedBank.fxUnavailableReason.value);
+const switchSettings = computed(() => useRc505FxSwitchSettings(engine.getMode(), props.location, banks.state.requestedBank ?? 'A'));
+const switchController = new Rc505FxSwitchController();
+const heldRows = new Map<FxSlotId, typeof slots.value[number]>();
+const fxUnavailableReason = computed(() => switchSettings.value.state.error || banks.state.error || banks.state.unavailableReason || sharedBank.fxUnavailableReason.value);
 const controlLayer = computed(() => controls.state.fxLayers[props.location]);
-const slotsDisabled = computed(() => fxDisabled.value || banks.state.busy
+const slotsDisabled = computed(() => fxDisabled.value || !!switchSettings.value.state.error || banks.state.busy
   || (controlLayer.value === 'BANK_SELECT' && !banks.canSelect.value));
 const activeFx = computed(() => slots.value.find((slot) => slot.id === activeSlot.value) ?? slots.value[0]);
 const valueDisabled = computed(() => fxDisabled.value || banks.state.busy || !activeFx.value?.type || activeFx.value.type === 'NONE');
@@ -141,18 +148,45 @@ function dispatch(event: Rc505FxEvent): void {
     } else {
       sharedBank.selectSlot(effect.slot);
       const slot = slots.value.find((item) => item.id === effect.slot);
-      if (slot?.type && slot.type !== 'NONE') slot.active = !slot.active;
+      if (slot?.type && slot.type !== 'NONE') {
+        const active = Object.fromEntries(slots.value.map((row) => [row.id, row.active])) as Record<FxSlotId, boolean>;
+        const result = switchController.press(effect.slot, switchSettings.value.state.settings, active);
+        if (switchSettings.value.state.settings.switchModes[effect.slot] === 'MOMENT' && result.writes.some((write) => write.slot === effect.slot && write.active)) heldRows.set(effect.slot, slot);
+        applySwitchWrites(result.writes);
+        if (result.reason) controls.reportError('FX HOLD UNAVAILABLE', result.reason, props.location === 'input' ? 'input-fx' : 'track-fx');
+      }
     }
   }
 }
 function beginEdit(): void {
   if (interaction.editHeld || banks.state.busy) return;
+  releaseAllSlots();
   dispatch({ type: 'EDIT_DOWN' });
   // Engineering hold duration selected by the user; no official time is published.
   if (!interaction.consumed) editTimer = window.setTimeout(() => { editTimer = null; dispatch({ type: 'EDIT_HOLD' }); }, 1500);
 }
 function finishEdit(): void { clearEditTimer(); dispatch({ type: 'EDIT_UP' }); }
 function cancelEdit(): void { clearEditTimer(); dispatch({ type: 'CANCEL' }); }
+function applySwitchWrites(writes: { slot: FxSlotId; active: boolean }[]): void {
+  for (const write of writes) {
+    const row = slots.value.find((slot) => slot.id === write.slot);
+    if (row) row.active = write.active;
+  }
+}
+function releaseSlot(id: FxSlotId): void {
+  for (const write of switchController.release(id)) {
+    const original = heldRows.get(write.slot);
+    if (original) original.active = false;
+    heldRows.delete(write.slot);
+  }
+}
+function releaseAllSlots(): void {
+  for (const write of switchController.cancel()) {
+    const original = heldRows.get(write.slot);
+    if (original) original.active = false;
+  }
+  heldRows.clear();
+}
 function pressSlot(slotId: FxSlotId): void {
   if (slotsDisabled.value) return;
   dispatch({ type: 'SLOT', slot: slotId });
@@ -169,9 +203,13 @@ watch(() => banks.state.error, (error) => {
   else controls.clearError(scope);
 });
 watch(() => banks.state.busy, (busy) => controls.setFxBusy(props.location, busy), { immediate: true, flush: 'sync' });
-watch(fxDisabled, (disabled) => { if (disabled) cancelEdit(); });
-window.addEventListener('blur', cancelEdit);
-onUnmounted(() => { cancelEdit(); controls.setFxBusy(props.location, false); window.clearInterval(poll); window.removeEventListener('blur', cancelEdit); });
+watch(fxDisabled, (disabled) => { if (disabled) { releaseAllSlots(); cancelEdit(); } });
+watch(() => banks.state.requestedBank, releaseAllSlots, { flush: 'sync' });
+watch(() => banks.state.requestedBank, (bank) => selectRc505FxSwitchBank(engine.getMode(), props.location, bank ?? 'A'), { immediate: true, flush: 'sync' });
+watch(() => switchSettings.value.state.settings, releaseAllSlots, { deep: true, flush: 'sync' });
+function cancelAll(): void { releaseAllSlots(); cancelEdit(); }
+window.addEventListener('blur', cancelAll);
+onUnmounted(() => { cancelAll(); controls.setFxBusy(props.location, false); window.clearInterval(poll); window.removeEventListener('blur', cancelAll); });
 </script>
 
 <style scoped>

@@ -25,6 +25,7 @@ import { useRhythmUiControls, rhythmUiState } from './rhythmUiState';
 import { useTrackFxTargetState } from './useTrackFxTargetState';
 import type { DeviceEditorPanel } from './createEnhancedDevicePanel';
 import { useRc505Controls } from './useRc505Controls';
+import { useRc505FxSwitchSettings } from './useRc505FxSwitchSettings';
 
 export type DeviceScreenFieldKind = 'number' | 'enum' | 'boolean' | 'action';
 
@@ -540,7 +541,22 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         ));
       } else if (params) details.push(...sharedParameterFields('input', slot, params));
     }
-    return [base, ...chunks(details)].filter((page, index) => index === 0 || page.length > 0);
+    return [base, ...chunks(details), ...(classic ? [switchModeFields('input', slot?.id ?? 'A')] : [])].filter((page, index) => index === 0 || page.length > 0);
+  }
+
+  function switchModeFields(location: 'input' | 'track', slot: FxSlotId): DeviceScreenField[] {
+    const configuration = useRc505FxSwitchSettings(engine.getMode(), location);
+    const value = configuration.state.settings;
+    const disabled = !!configuration.state.error;
+    const reason = configuration.state.error;
+    return [
+      makeEnumField('fx-bank-mode', 'MODE', value.mode === 'MULTI' ? 1 : 0,
+        [{ label: 'SINGLE', value: 0 }, { label: 'MULTI', value: 1 }],
+        (next) => configuration.update({ ...value, mode: next === 1 ? 'MULTI' : 'SINGLE', switchModes: { ...value.switchModes } }), { disabled, reason }),
+      makeEnumField('fx-switch-mode', `${slot} SW MODE`, value.switchModes[slot] === 'MOMENT' ? 1 : 0,
+        [{ label: 'TOGGLE', value: 0 }, { label: 'MOMENT', value: 1 }],
+        (next) => configuration.update({ ...value, switchModes: { ...value.switchModes, [slot]: next === 1 ? 'MOMENT' : 'TOGGLE' } }), { disabled, reason }),
+    ];
   }
 
   function trackFxFields(): DeviceScreenField[][] {
@@ -607,7 +623,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         ));
       }
     }
-    return [...chunks(base), ...chunks(details)].filter((page, index) => index < chunks(base).length || page.length > 0);
+    return [...chunks(base), ...chunks(details), ...(classic && trackFx.isSharedTarget.value ? [switchModeFields('track', fx.id)] : [])].filter((page, index) => index < chunks(base).length || page.length > 0);
   }
 
   function inputParameterObjectKey(slot: FxSlotState): keyof FxSlotState | null {
