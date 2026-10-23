@@ -26,10 +26,10 @@ struct NativeAudioCoreTestAccess {
         core.nativeLooperMaxRecordSeconds_ = 1U;
         core.nativeLooperPreallocatedBytes_ = core.looper_.storageBytes();
         for (const auto& track : core.additionalLoopers_) core.nativeLooperPreallocatedBytes_ += track.storageBytes();
-        assert(core.outputStage_.prepare(config.sampleRate));
+        assert(core.outputStage_->prepare(config.sampleRate));
         assert(core.nativeInputFxBank_.prepare(config.sampleRate));
-        assert(core.nativePitchProcessor_.prepare(config.sampleRate, 70.0f, 1200.0f));
-        assert(core.nativePolyPitchProcessor_.prepare(config.sampleRate));
+        assert(core.nativePitchProcessor_->prepare(config.sampleRate, 70.0f, 1200.0f));
+        assert(core.nativePolyPitchProcessor_->prepare(config.sampleRate));
         assert(core.nativeRhythmEngine_.prepare(config.sampleRate));
         assert(core.nativeRhythmEngine_.setConfig(core.nativeRhythmConfig_, 0U));
     }
@@ -63,7 +63,7 @@ struct NativeAudioCoreTestAccess {
 
     static void processSharedTrackFx(NativeAudioCore& core, float* audio, unsigned int frames) {
         core.applyNativeCatalogFxCommands();
-        (void)core.outputStage_.trackFxBank().processInPlace(audio, frames, 2U);
+        (void)core.outputStage_->trackFxBank().processInPlace(audio, frames, 2U);
     }
 
     static void prepareSelectedCatalog(NativeAudioCore& core) { assert(core.nativeInputFxBank_.prepare(48000.0)); }

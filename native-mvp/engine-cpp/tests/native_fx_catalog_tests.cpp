@@ -3701,7 +3701,7 @@ void testPreparedBankSwapPreservesOwnershipWithoutAllocation() {
     NativeEffectBank candidate;
     assert(incumbent.prepare(48000U));
     assert(candidate.prepare(48000U));
-    assert(incumbent.setEffect(NativeEffectSlot::A, "delay"));
+    assert(incumbent.setEffect(NativeEffectSlot::A, "fractional_delay"));
     assert(candidate.setEffect(NativeEffectSlot::D, "phaser"));
     auto* oldProcessor = incumbent.processor(NativeEffectSlot::A);
     auto* newProcessor = candidate.processor(NativeEffectSlot::D);

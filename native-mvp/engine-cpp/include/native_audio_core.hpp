@@ -28,7 +28,15 @@ inline constexpr std::size_t kNativeTrackCount = 5U;
 inline constexpr std::uint64_t kNativeHistoryBudgetBytes = 512ULL * 1024ULL * 1024ULL;
 inline constexpr std::uint64_t kNativeProjectImportPeakBudgetBytes = 3ULL * 1024ULL * 1024ULL * 1024ULL;
 
-enum class NativeProjectImportState : std::uint8_t { Idle = 0U, Pending, Claimed, Committed, Cancelled };
+enum class NativeProjectImportState : std::uint8_t { Idle = 0U, Prepared, Pending, Claimed, Committed, Cancelled };
+
+struct NativeMemoryFxSlot {
+    std::string effectId;
+    std::map<std::string, float> parameters;
+    bool bypassed = false;
+};
+// Control-thread description, ordered Input/shared Track/private Track 1..5.
+
 
 struct NativeProjectImportStatus {
     bool found = false;
@@ -174,6 +182,7 @@ struct EngineStatus {
     float nativeAutoPanDepth = 0.7f;
     NativeAutoPanWaveform nativeAutoPanWaveform = NativeAutoPanWaveform::Sine;
     float nativeAutoPanWetMix = 1.0f;
+    std::array<LoopTransportConfig, kNativeTrackCount> nativeMemoryLoopTransports{};
     std::array<std::string, NativeEffectBank::kSlotCount> nativeCatalogSlotEffectIds{};
     std::array<bool, NativeEffectBank::kSlotCount> nativeCatalogSlotBypassed{};
     std::array<std::string, NativeEffectBank::kSlotCount> nativeInputCatalogSlotEffectIds{};
@@ -348,6 +357,23 @@ struct NativePitchConfig {
     // route hint from the host so KeepPitch always falls back for reversed
     // playback until the pitch path supports reverse traversal.
     bool reversePlayback = false;
+};
+
+struct NativeMemorySettings {
+    std::array<std::array<NativeMemoryFxSlot, 4U>, 7U> banks{};
+    NativeRhythmConfig rhythm{};
+    NativeReverbConfig reverb{};
+    NativeFractionalDelayConfig delay{};
+    NativeCompressorConfig compressor{};
+    NativeChorusConfig chorus{};
+    NativePhaserConfig phaser{};
+    NativeAutoPanConfig autoPan{};
+    NativePitchConfig pitch{};
+    bool lowPass = false;
+    bool highPass = false;
+    std::array<unsigned int, 7U> mixerLevels{{100U, 100U, 100U, 100U, 100U, 100U, 100U}};
+    std::array<bool, kNativeTrackCount> trackFxApply{{true, true, true, true, true}};
+    std::array<LoopTransportConfig, kNativeTrackCount> loopTransports{};
 };
 
 struct NativePitchCommand {
@@ -544,8 +570,10 @@ public:
         std::uint64_t encodedBytes,
         std::uint64_t expectedProjectContentRevision,
         std::uint64_t& generation,
-        std::string& error
+        std::string& error,
+        std::unique_ptr<NativeMemorySettings> memory = nullptr
     );
+    bool commitPreparedMemory(std::uint64_t generation, std::string& error);
     [[nodiscard]] NativeProjectImportStatus getProjectArchiveImportStatus(std::uint64_t generation);
     bool cancelProjectArchiveImport(
         std::uint64_t generation,
@@ -569,6 +597,12 @@ private:
         std::array<std::vector<float>, kNativeTrackCount> candidateStereoStorage{};
         std::array<std::size_t, kNativeTrackCount> frameCounts{};
         std::array<LoopMetadata, kNativeTrackCount> previousMetadata{};
+        std::unique_ptr<NativeMemorySettings> memory;
+        std::array<NativeEffectBank, 7U> candidateFxBanks{};
+        std::unique_ptr<NativeOutputStage> candidateOutputStage;
+        std::unique_ptr<NativePitchProcessor> candidatePitch;
+        std::unique_ptr<NativePolyPitchProcessor> candidatePolyPitch;
+        std::array<std::uint64_t, kNativeTrackCount> gateRevisions{};
     };
 
     DeviceCatalog buildCatalog() const;
@@ -696,6 +730,7 @@ private:
     std::uint64_t nativeLooperPreallocatedBytes_ = 0U;
     std::unique_ptr<ProjectImportTransaction> projectImportTransaction_;
     std::atomic<ProjectImportTransaction*> projectImportTransactionPointer_{nullptr};
+    mutable std::atomic<unsigned int> projectGraphReaders_{0U};
     std::atomic<NativeProjectImportState> projectImportState_{NativeProjectImportState::Idle};
     std::atomic<std::uint64_t> projectImportActiveGeneration_{0U};
     std::uint64_t projectImportNextGeneration_ = 0U;
@@ -777,10 +812,11 @@ private:
     // Callback-owned underlying routes. Official shared Track A is an overlay;
     // bypass/removal restores each independently authored route, not generic OFF.
     std::array<LoopTransportConfig, kNativeTrackCount> nativeBaseLoopTransportConfigs_{};
+    std::array<LoopTransportConfig, kNativeTrackCount> nativeMemoryLoopTransportSettings_{};
     std::array<bool, kNativeTrackCount> nativeOfficialSourcePitchConflict_{};
     SpscRingQueue<NativeRhythmConfig, 16> nativeRhythmCommandQueue_;
     SpscRingQueue<AudioBlock, 8> outputQueue_;
-    NativeOutputStage outputStage_;
+    std::unique_ptr<NativeOutputStage> outputStage_{std::make_unique<NativeOutputStage>()};
     NativeEffectBank nativeInputFxBank_{};
     // Exactly 5 x 4 individually owned processor slots. Selection and all
     // storage preparation happen while stopped, on the control thread.
@@ -799,8 +835,8 @@ private:
     std::array<std::array<std::uint64_t, NativeEffectBank::kSlotCount>, 2U> nativeSharedSlotRevision_{};
     std::atomic<std::uint64_t> nativeCatalogControlFaultCount_{0U};
     std::array<float, kMaxCallbackFrames * 2U> nativeInputFxScratch_{};
-    NativePitchProcessor nativePitchProcessor_;
-    NativePolyPitchProcessor nativePolyPitchProcessor_;
+    std::unique_ptr<NativePitchProcessor> nativePitchProcessor_{std::make_unique<NativePitchProcessor>()};
+    std::unique_ptr<NativePolyPitchProcessor> nativePolyPitchProcessor_{std::make_unique<NativePolyPitchProcessor>()};
     NativeRhythmEngine nativeRhythmEngine_;
     NativeReverbConfig nativeReverbConfig_{};
     NativeFractionalDelayConfig nativeFractionalDelayConfig_{};

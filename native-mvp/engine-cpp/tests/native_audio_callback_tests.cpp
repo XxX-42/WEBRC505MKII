@@ -59,6 +59,21 @@ void operator delete[](void* memory, std::size_t) noexcept {
 namespace webrc::native {
 
 struct NativeAudioCoreTestAccess {
+    static std::uint64_t setMemoryBudgetEstimate(NativeAudioCore& core, std::uint64_t bytes) {
+        const auto previous = core.nativeLooperPreallocatedBytes_;
+        core.nativeLooperPreallocatedBytes_ = bytes; return previous;
+    }
+    static const NativeEffectProcessor* memoryProcessor(const NativeAudioCore& core, std::size_t bank) {
+        return bank == 0U ? core.nativeInputFxBank_.processor(NativeEffectSlot::A) :
+            bank == 1U ? core.outputStage_->trackFxBank().processor(NativeEffectSlot::A) :
+            core.nativePerTrackFxBanks_[bank - 2U].processor(NativeEffectSlot::A);
+    }
+    static bool retainsMemoryGraph(const NativeAudioCore& core) {
+        return core.projectImportTransaction_ && core.projectImportTransaction_->memory;
+    }
+    static void reserveGraphReader(NativeAudioCore& core, bool reserve) {
+        core.projectGraphReaders_.store(reserve ? 1U : 0U, std::memory_order_seq_cst);
+    }
     static void prepareWithoutDevice(NativeAudioCore& core) {
         EngineConfig config;
         config.sampleRate = 48000;
@@ -68,11 +83,11 @@ struct NativeAudioCoreTestAccess {
         core.nativeLooperMaxRecordSeconds_ = 1U;
         core.nativeLooperPreallocatedBytes_ = core.looper_.storageBytes();
         for (const auto& track : core.additionalLoopers_) core.nativeLooperPreallocatedBytes_ += track.storageBytes();
-        assert(core.outputStage_.prepare(config.sampleRate));
+        assert(core.outputStage_->prepare(config.sampleRate));
         assert(core.nativeInputFxBank_.prepare(config.sampleRate));
-        assert(core.nativePitchProcessor_.prepare(config.sampleRate, 70.0f, 1200.0f));
-        assert(core.nativePolyPitchProcessor_.prepare(config.sampleRate));
-        core.outputStage_.setLowPassEnabled(false, 0);
+        assert(core.nativePitchProcessor_->prepare(config.sampleRate, 70.0f, 1200.0f));
+        assert(core.nativePolyPitchProcessor_->prepare(config.sampleRate));
+        core.outputStage_->setLowPassEnabled(false, 0);
         assert(core.nativeRhythmEngine_.prepare(config.sampleRate));
         assert(core.nativeRhythmEngine_.setConfig(core.nativeRhythmConfig_, 0));
     }
@@ -191,7 +206,7 @@ struct NativeAudioCoreTestAccess {
     }
 
     static float monoPitchSemitones(const NativeAudioCore& core) {
-        return core.nativePitchProcessor_.semitones();
+        return core.nativePitchProcessor_->semitones();
     }
 
     static bool captureLoopSnapshot(
@@ -2161,7 +2176,7 @@ void testMixerIndependentPcmGains() {
     webrc::native::NativeAudioCoreTestAccess::prepareWithoutDevice(core);
     std::vector<float> output(256U * 2U);
     webrc::native::NativeAudioCoreTestAccess::recordLoop(core, 0U, std::vector<float>(2048U, 0.2f), 256U, output.data());
-    webrc::native::NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
+    webrc::native::NativeAudioCoreTestAccess::commandTrack(core, webrc::native::CommandType::Play, 0U);
     std::string error;
     const auto peak = [&]() {
         webrc::native::NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 256U);
@@ -2196,9 +2211,95 @@ void testMixerIndependentPcmGains() {
     for (float sample : output) assert(sample == 0.0f); // MASTER mutes the final sum.
 }
 
+void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    std::string error;
+    assert(core.setNativeCatalogSlot(NativeEffectSlot::A, "phaser", {}, false, error));
+    const auto* incumbent = NativeAudioCoreTestAccess::memoryProcessor(core, 1U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    const auto makeArchive = [] {
+        DecodedProjectArchive archive;
+        archive.version = 1U; archive.name = "Whole Memory"; archive.bpm = 120.0;
+        ProjectArchiveTrackData track;
+        track.sampleRate = 48000U; track.frameCount = 2U; track.channels = 2U;
+        track.pcm = {0.25f, -0.25f, 0.5f, -0.5f};
+        archive.payloadByteLength = track.pcm.size() * sizeof(float);
+        archive.tracks[0U] = std::move(track);
+        return archive;
+    };
+    const auto makeMemory = [] {
+        auto memory = std::make_unique<NativeMemorySettings>();
+        for (auto& bank : memory->banks) bank[0U].effectId = "fractional_delay";
+        memory->rhythm.volume = 37U;
+        memory->reverb.enabled = true;
+        memory->reverb.wetMix = 0.4f;
+        memory->pitch.enabled = true;
+        memory->pitch.semitones = 3.0f;
+        memory->trackFxApply = {{false, true, false, true, false}};
+        memory->mixerLevels = {{80U, 90U, 100U, 110U, 120U, 130U, 140U}};
+        return memory;
+    };
+    auto invalid = makeMemory(); invalid->banks[6U][3U].effectId = "missing";
+    std::uint64_t generation = 0U;
+    const auto baseline = core.getStatus().projectContentRevision;
+    assert(!core.beginProjectArchiveImport(makeArchive(), 256U, baseline, generation, error, std::move(invalid)));
+    assert(generation == 0U && NativeAudioCoreTestAccess::memoryProcessor(core, 1U) == incumbent);
+    const auto oldEstimate = NativeAudioCoreTestAccess::setMemoryBudgetEstimate(core, kNativeProjectImportPeakBudgetBytes);
+    assert(!core.beginProjectArchiveImport(makeArchive(), 256U, baseline, generation, error, makeMemory()));
+    assert(generation == 0U && error.find("peak estimate") != std::string::npos);
+    (void)NativeAudioCoreTestAccess::setMemoryBudgetEstimate(core, oldEstimate);
+    assert(core.beginProjectArchiveImport(makeArchive(), 256U, baseline, generation, error, makeMemory()));
+    assert(core.getProjectArchiveImportStatus(generation).state == NativeProjectImportState::Prepared);
+    std::array<float, 128U> output{};
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(NativeAudioCoreTestAccess::memoryProcessor(core, 1U) == incumbent);
+    assert(core.commitPreparedMemory(generation, error));
+    NativeAudioCoreTestAccess::reserveGraphReader(core, true);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(NativeAudioCoreTestAccess::memoryProcessor(core, 1U) == incumbent);
+    NativeAudioCoreTestAccess::reserveGraphReader(core, false);
+    const auto allocations = trackedAllocations;
+    const auto deallocations = trackedDeallocations;
+    trackAllocations = true;
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    trackAllocations = false;
+    assert(trackedAllocations == allocations && trackedDeallocations == deallocations);
+    assert(NativeAudioCoreTestAccess::retainsMemoryGraph(core));
+    for (std::size_t bank = 0U; bank < 7U; ++bank) {
+        assert(NativeAudioCoreTestAccess::memoryProcessor(core, bank) != nullptr);
+    }
+    const auto status = core.getStatus(); // ACK + control-only old graph reclamation.
+    assert(!NativeAudioCoreTestAccess::retainsMemoryGraph(core));
+    assert(core.getProjectArchiveImportStatus(generation).state == NativeProjectImportState::Committed);
+    assert(status.nativeCatalogSlots[0U].effectId == "fractional_delay" && status.nativeRhythmVolume == 37U);
+    assert(status.nativeTrackStates[0U] == LooperState::Stopped);
+    assert(status.nativeReverbEnabled && std::fabs(status.nativeReverbWetMix - 0.4f) < 1.0e-6f);
+    assert(status.nativePitchEnabled && status.nativePitchSemitones == 3.0f);
+    for (std::size_t track = 0U; track < 5U; ++track) {
+        assert(status.nativeTrackFxApply[track].requested == (track % 2U == 1U));
+        assert(status.nativeTrackFxApply[track].applied == status.nativeTrackFxApply[track].requested);
+        assert(status.nativeTrackFxApply[track].appliedRevision == status.nativeTrackFxApply[track].requestedRevision);
+    }
+    assert((status.mixerLevels == std::array<unsigned int, 7U>{{80U, 90U, 100U, 110U, 120U, 130U, 140U}}));
+    const auto beforeAba = status.projectContentRevision;
+    NativeRhythmConfig rhythm; rhythm.volume = 38U;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    rhythm.volume = 37U;
+    assert(core.setNativeRhythmConfig(rhythm, error));
+    assert(core.getStatus().projectContentRevision > beforeAba);
+    assert(!core.beginProjectArchiveImport(makeArchive(), 256U, beforeAba, generation, error, makeMemory()));
+    assert(generation == 0U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
 int main() {
     testMixerIndependentPcmGains();
-#if defined(NATIVE_TRACK_MARK_TESTS_ONLY)
+#if defined(NATIVE_MEMORY_TESTS_ONLY)
+    testNativeWholeMemoryPreparedBanksCommitAndControlAck();
+    testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread();
+    return 0;
+#elif defined(NATIVE_TRACK_MARK_TESTS_ONLY)
     testNativeIndependentMarkRequiresCallbackReleaseAckAndClearKeepsHistory();
     testNativeMarkStatusReportsBudgetFailureWithoutApplyingSnapshot();
     return 0;

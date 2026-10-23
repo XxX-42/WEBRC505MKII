@@ -55,7 +55,7 @@ export interface NativeTrackMarkStatus {
   appliedGeneration: number;
 }
 
-export type NativeProjectImportState = 'pending' | 'claimed' | 'committed' | 'cancelled';
+export type NativeProjectImportState = 'prepared' | 'pending' | 'claimed' | 'committed' | 'cancelled';
 
 export class NativeProjectImportOutcomeUnknownError extends Error {
   public constructor(cause: unknown) {
@@ -658,11 +658,18 @@ export class NativeBridgeClient {
     return payload.generation as number;
   }
 
+  public async commitPreparedMemory(generation: number): Promise<void> {
+    if (!Number.isSafeInteger(generation) || generation <= 0) throw new RangeError('Memory generation must be a positive safe integer.');
+    await this.request(`/v1/project/import/commit`, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: String(generation),
+    });
+  }
+
   public async getProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
     if (!Number.isSafeInteger(generation) || generation <= 0) throw new RangeError('Project import generation must be a positive safe integer.');
     const payload = await this.request<BridgeResponse>(`/v1/project/import/status?generation=${generation}`);
     if (!isObject(payload) || payload.ok !== true || payload.generation !== generation ||
-        !(['pending', 'claimed', 'committed', 'cancelled'] as const).includes(payload.state as NativeProjectImportState) ||
+        !(['prepared', 'pending', 'claimed', 'committed', 'cancelled'] as const).includes(payload.state as NativeProjectImportState) ||
         (payload.error !== undefined && typeof payload.error !== 'string')) {
       throw new Error('Native bridge returned an invalid project-import status.');
     }

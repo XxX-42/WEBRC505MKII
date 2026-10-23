@@ -1,4 +1,6 @@
 import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
+import { createNativeRc505MemoryRuntime } from './NativeRc505MemoryRuntime';
+import type { Rc505MemoryRuntime } from './Rc505Memory';
 import { isOfficialFxSlotAllowed } from './fx/official/parameters';
 import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOfficialEffect, officialParameterDomain, encodeOfficialValue } from './fx/official/parameters';
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
@@ -761,6 +763,28 @@ export class NativeAudioEngine {
    * revision is checked before, during, and after capture so five sequential
    * HTTP reads can never be persisted as a mixed-generation project.
    */
+  public createRc505MemoryRuntime(): Rc505MemoryRuntime {
+    return createNativeRc505MemoryRuntime({
+      bridge: this.bridge,
+      status: () => this.latestStatus,
+      editRevision: () => `${this.nativeFxSyncRevision}:${[...this.nativeCatalogSlotEditRevisions.values()].reduce((sum, value) => sum + value, 0)}`,
+      archive: () => this.exportProjectArchive(''),
+      publish: (status) => this.applyStatus(status),
+      pendingEdits: () => this.nativeFxSyncRunning || this.nativeFxSyncScheduled || this.nativeCatalogFxDirtySlots.size > 0,
+      install: (status) => {
+        this.nativeCatalogFxDirtySlots.clear();
+        this.nativeCatalogFxSubmittedEditRevisions.clear();
+        this.nativeCatalogFxHydratedSlots.clear();
+        this.nativeCatalogFxUnknownParameterSlots.clear();
+        this.nativeCatalogFxRuntime.clear();
+        this.nativePerTrackFxEdited.clear();
+        this.applyStatus(status);
+        this.hydrateNativeCatalogFromStatus(status);
+        this.emitAll();
+      },
+    });
+  }
+
   public async exportProjectArchive(name: string): Promise<Uint8Array> {
     const initial = await this.bridge.getStatus();
     if (!initial.engineRunning || initial.nativeLooperMultiTrackImplemented !== true ||

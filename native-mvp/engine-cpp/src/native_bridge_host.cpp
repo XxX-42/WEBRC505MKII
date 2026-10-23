@@ -31,6 +31,144 @@ using namespace webrc::native;
 
 namespace {
 
+// The semantic envelope contains the exact v1 archive as its final byte range.
+// Native settings are additive software metadata, never Roland binary data.
+bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
+                        std::unique_ptr<NativeMemorySettings>& memory, std::string& error) {
+    constexpr std::string_view magic = "RC505ME1";
+    if (bytes.size() < magic.size() || !std::equal(magic.begin(), magic.end(), bytes.begin())) return true;
+    try {
+        if (bytes.size() < 12U) throw std::runtime_error("Truncated Memory header.");
+        const auto length = static_cast<std::uint32_t>(bytes[8U]) |
+            (static_cast<std::uint32_t>(bytes[9U]) << 8U) |
+            (static_cast<std::uint32_t>(bytes[10U]) << 16U) |
+            (static_cast<std::uint32_t>(bytes[11U]) << 24U);
+        if (length == 0U || length > 256U * 1024U || 12U + length >= bytes.size()) throw std::runtime_error("Invalid Memory metadata length.");
+        const auto metadata = json::parse(bytes.begin() + 12U, bytes.begin() + 12U + length);
+        if (metadata.at("version") != 1U) throw std::runtime_error("Unsupported Memory version.");
+        const auto& settings = metadata.at("extensions").at("WEBRC").at("nativeMemory");
+        auto candidate = std::make_unique<NativeMemorySettings>();
+        const auto& banks = settings.at("banks");
+        if (!banks.is_array() || banks.size() != 7U) throw std::runtime_error("Memory requires seven FX banks.");
+        for (std::size_t bank = 0U; bank < 7U; ++bank) {
+            if (!banks[bank].is_array() || banks[bank].size() != 4U) throw std::runtime_error("Memory requires four slots per bank.");
+            for (std::size_t slot = 0U; slot < 4U; ++slot) {
+                const auto& saved = banks[bank][slot];
+                auto& target = candidate->banks[bank][slot];
+                target.effectId = saved.at("effectId").get<std::string>();
+                target.bypassed = saved.at("bypassed").get<bool>();
+                const auto& parameters = saved.at("parameters");
+                if (!parameters.is_object() || parameters.size() > 256U || target.effectId.size() > 128U) throw std::runtime_error("Invalid Memory FX parameter map.");
+                for (auto item = parameters.begin(); item != parameters.end(); ++item) {
+                    if (!item.value().is_number() || item.key().size() > 128U) throw std::runtime_error("Invalid Memory FX parameter.");
+                    const float value = item.value().get<float>();
+                    if (!std::isfinite(value)) throw std::runtime_error("Non-finite Memory FX parameter.");
+                    target.parameters.emplace(item.key(), value);
+                }
+            }
+        }
+        const auto boundedInteger = [](const json& value, int minimum, int maximum) {
+            if (!value.is_number_integer()) throw std::runtime_error("Memory setting must be an integer.");
+            const auto number = value.get<std::int64_t>();
+            if (number < minimum || number > maximum) throw std::runtime_error("Memory setting integer is out of range.");
+            return static_cast<unsigned int>(number);
+        };
+        const auto& levels = settings.at("mixerLevels");
+        if (!levels.is_array() || levels.size() != 7U) throw std::runtime_error("Memory requires seven mixer levels.");
+        for (std::size_t channel = 0U; channel < 7U; ++channel) candidate->mixerLevels[channel] = boundedInteger(levels[channel], 0, 200);
+        const auto& gates = settings.at("trackFxApply");
+        if (!gates.is_array() || gates.size() != 5U) throw std::runtime_error("Memory requires five FX gate values.");
+        for (std::size_t track = 0U; track < 5U; ++track) candidate->trackFxApply[track] = gates[track].get<bool>();
+        const auto& rhythm = settings.at("rhythm");
+        auto& targetRhythm = candidate->rhythm;
+        targetRhythm.enabled = rhythm.at("enabled").get<bool>();
+        targetRhythm.bpm = rhythm.at("bpm").get<double>();
+        if (metadata.at("semantics").at("tempo").get<double>() != targetRhythm.bpm) throw std::runtime_error("Memory tempo mismatch.");
+        targetRhythm.kitIndex = static_cast<std::uint8_t>(boundedInteger(rhythm.at("kitIndex"), 1, 16));
+        targetRhythm.patternIndex = static_cast<std::uint16_t>(boundedInteger(rhythm.at("patternIndex"), 1, 240));
+        targetRhythm.variation = static_cast<NativeRhythmVariation>(boundedInteger(rhythm.at("variation"), 0, 3));
+        targetRhythm.section = static_cast<NativeRhythmSection>(boundedInteger(rhythm.at("section"), 0, 3));
+        targetRhythm.quantizeGrid = static_cast<NativeRhythmQuantizeGrid>(boundedInteger(rhythm.at("quantizeGrid"), 0, 2));
+        targetRhythm.swingPercent = boundedInteger(rhythm.at("swingPercent"), 50, 75);
+        targetRhythm.volume = boundedInteger(rhythm.at("volume"), 0, 100);
+        const auto& transports = settings.at("loopTransports");
+        if (!transports.is_array() || transports.size() != 5U) throw std::runtime_error("Memory requires five source transports.");
+        for (std::size_t track = 0U; track < 5U; ++track) {
+            const auto& source = transports[track];
+            auto& target = candidate->loopTransports[track];
+            target.mode = static_cast<LoopTransportMode>(boundedInteger(source.at("mode"), 0, 2));
+            target.beatOffsetBeats = source.at("beatOffsetBeats").get<float>();
+            target.bpm = source.at("bpm").get<float>();
+            target.crossfadeMs = source.at("crossfadeMs").get<float>();
+            target.vinylSpeedPercent = source.at("vinylSpeedPercent").get<float>();
+            target.motorReturnSeconds = source.at("motorReturnSeconds").get<float>();
+            target.brakePercent = source.at("brakePercent").get<float>();
+            target.vinylMixPercent = source.at("vinylMixPercent").get<float>();
+        }
+        const auto& outputState = metadata.at("extensions").at("WEBRC").at("nativeOutputState");
+        const auto& fx = outputState.at("fx");
+        candidate->lowPass = fx.at("outputLowPassEnabled").get<bool>();
+        candidate->highPass = fx.at("outputHighPassEnabled").get<bool>();
+        candidate->reverb.enabled = fx.at("outputReverbEnabled").get<bool>();
+        candidate->reverb.wetMix = fx.at("outputReverbWetMix").get<float>();
+        candidate->reverb.rt60Seconds = fx.at("outputReverbRt60Seconds").get<float>();
+        candidate->reverb.dampingCutoffHz = fx.at("outputReverbDampingCutoffHz").get<float>();
+        const auto readOutput = [](const json& source) {
+            if (source.at("slot") != "A") throw std::runtime_error("Memory output DSP supports only slot A.");
+        };
+        const auto& delay = fx.at("fractionalDelay"); readOutput(delay);
+        candidate->delay.enabled = delay.at("enabled").get<bool>();
+        candidate->delay.delayMs = delay.at("delayMs").get<float>();
+        candidate->delay.wetMix = delay.at("wetMix").get<float>();
+        candidate->delay.feedback = delay.at("feedback").get<float>();
+        const auto& compressor = fx.at("compressor"); readOutput(compressor);
+        candidate->compressor.enabled = compressor.at("enabled").get<bool>();
+        candidate->compressor.thresholdDb = compressor.at("thresholdDb").get<float>();
+        candidate->compressor.ratio = compressor.at("ratio").get<float>();
+        candidate->compressor.attackMs = compressor.at("attackMs").get<float>();
+        candidate->compressor.releaseMs = compressor.at("releaseMs").get<float>();
+        candidate->compressor.wetMix = compressor.at("wetMix").get<float>();
+        candidate->compressor.makeupDb = compressor.at("makeupDb").get<float>();
+        const auto& chorus = fx.at("chorus"); readOutput(chorus);
+        candidate->chorus.enabled = chorus.at("enabled").get<bool>();
+        candidate->chorus.rateHz = chorus.at("rateHz").get<float>();
+        candidate->chorus.depthMs = chorus.at("depthMs").get<float>();
+        candidate->chorus.feedback = chorus.at("feedback").get<float>();
+        candidate->chorus.wetMix = chorus.at("wetMix").get<float>();
+        const auto& phaser = fx.at("phaser"); readOutput(phaser);
+        candidate->phaser.enabled = phaser.at("enabled").get<bool>();
+        candidate->phaser.stages = boundedInteger(phaser.at("stages"), 4, 12);
+        candidate->phaser.rateHz = phaser.at("rateHz").get<float>();
+        candidate->phaser.depth = phaser.at("depth").get<float>();
+        candidate->phaser.feedback = phaser.at("feedback").get<float>();
+        candidate->phaser.wetMix = phaser.at("wetMix").get<float>();
+        const auto& autoPan = fx.at("autoPan"); readOutput(autoPan);
+        candidate->autoPan.enabled = autoPan.at("enabled").get<bool>();
+        candidate->autoPan.rateHz = autoPan.at("rateHz").get<float>();
+        candidate->autoPan.depth = autoPan.at("depth").get<float>();
+        candidate->autoPan.wetMix = autoPan.at("wetMix").get<float>();
+        const auto waveform = autoPan.at("waveform").get<std::string>();
+        if (waveform == "sine") candidate->autoPan.waveform = NativeAutoPanWaveform::Sine;
+        else if (waveform == "triangle") candidate->autoPan.waveform = NativeAutoPanWaveform::Triangle;
+        else if (waveform == "square") candidate->autoPan.waveform = NativeAutoPanWaveform::Square;
+        else throw std::runtime_error("Invalid Memory AUTO PAN waveform.");
+        const auto& pitch = outputState.at("pitch");
+        candidate->pitch.enabled = pitch.at("enabled").get<bool>();
+        candidate->pitch.trackId = static_cast<std::uint8_t>(boundedInteger(pitch.at("trackId"), 0, 5));
+        candidate->pitch.semitones = pitch.at("semitones").get<float>();
+        candidate->pitch.reversePlayback = pitch.at("reversePlayback").get<bool>();
+        const auto pitchMode = pitch.at("mode").get<std::string>();
+        if (pitchMode == "liveMonoKeepPitch") candidate->pitch.mode = NativePitchMode::LiveMonoKeepPitch;
+        else if (pitchMode == "livePolyPhaseVocoder") candidate->pitch.mode = NativePitchMode::LivePolyPhaseVocoder;
+        else throw std::runtime_error("Invalid Memory pitch mode.");
+        bytes.erase(bytes.begin(), bytes.begin() + 12U + length);
+        memory = std::move(candidate);
+        return true;
+    } catch (const std::exception& exception) {
+        error = exception.what(); return false;
+    }
+}
+
 json deviceToJson(const DeviceDescriptor& device) {
     return json{
         {"id", device.id},
@@ -177,6 +315,13 @@ const char* nativeHistoryFailureToString(NativeHistoryFailure failure) {
 }
 
 json statusToJson(const EngineStatus& status) {
+    json memoryTransports = json::array();
+    for (const auto& config : status.nativeMemoryLoopTransports) {
+        memoryTransports.push_back({{"mode", static_cast<unsigned int>(config.mode)},
+            {"beatOffsetBeats", config.beatOffsetBeats}, {"bpm", config.bpm}, {"crossfadeMs", config.crossfadeMs},
+            {"vinylSpeedPercent", config.vinylSpeedPercent}, {"motorReturnSeconds", config.motorReturnSeconds},
+            {"brakePercent", config.brakePercent}, {"vinylMixPercent", config.vinylMixPercent}});
+    }
     json nativeTracks = json::array();
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         const auto& history = status.nativeTrackHistory[track];
@@ -577,6 +722,7 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
         {"nativeTracks", nativeTracks},
+        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}}},
         {"nativeHistory", {
             {"budgetBytes", status.nativeHistoryBudgetBytes},
             {"retainedBytes", status.nativeHistoryRetainedBytes},
@@ -619,6 +765,7 @@ void writeError(httplib::Response& response, const std::string& error) {
 const char* projectImportStateToString(NativeProjectImportState state) {
     switch (state) {
     case NativeProjectImportState::Idle: return "idle";
+    case NativeProjectImportState::Prepared: return "prepared";
     case NativeProjectImportState::Pending: return "pending";
     case NativeProjectImportState::Claimed: return "claimed";
     case NativeProjectImportState::Committed: return "committed";
@@ -1033,6 +1180,11 @@ int main() {
             return;
         }
 
+        std::unique_ptr<NativeMemorySettings> memory;
+        std::string memoryError;
+        if (!unwrapNativeMemory(archiveBytes, memory, memoryError)) {
+            response.status = 400; writeError(response, memoryError); return;
+        }
         auto decoded = decodeProjectArchive(archiveBytes);
         if (!decoded.project) {
             response.status = 400;
@@ -1043,12 +1195,24 @@ int main() {
         std::uint64_t generation = 0U;
         std::string error;
         if (!engine.beginProjectArchiveImport(
-                std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error)) {
+                std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error, std::move(memory))) {
             response.status = 409;
             writeError(response, error);
             return;
         }
         response.status = 202;
+        writeJson(response, json{{"ok", true}, {"generation", generation}});
+    });
+
+    server.Post("/v1/project/import/commit", [&engine](const httplib::Request& request, httplib::Response& response) {
+        std::uint64_t generation = 0U;
+        if (!parseProjectImportGeneration(request.body, generation)) {
+            response.status = 400; writeError(response, "Expected a prepared Memory generation."); return;
+        }
+        std::string error;
+        if (!engine.commitPreparedMemory(generation, error)) {
+            response.status = 409; writeError(response, error); return;
+        }
         writeJson(response, json{{"ok", true}, {"generation", generation}});
     });
 

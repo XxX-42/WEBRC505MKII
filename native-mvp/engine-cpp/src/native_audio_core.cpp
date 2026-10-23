@@ -110,8 +110,13 @@ std::optional<EngineConfig> NativeAudioCore::getCurrentConfig() const {
 }
 
 bool NativeAudioCore::setMixerLevel(unsigned int channel, unsigned int percent, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before mixer changes."; return false;
+    }
     if (channel >= mixerLevels_.size() || percent > 200U) { error = "Mixer channel must be 0..6 and level 0..200."; return false; }
     mixerLevels_[channel].store(percent, std::memory_order_release);
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
@@ -119,6 +124,20 @@ EngineStatus NativeAudioCore::getStatus() const {
     auto& mutableCore = const_cast<NativeAudioCore&>(*this);
     std::lock_guard<std::mutex> producerLock(mutableCore.commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
+    // Pair the graph reader reservation with the callback claim. A reader
+    // arriving after a claim waits on the control thread; the callback never
+    // waits, locks, or destroys anything for a status request.
+    for (;;) {
+        projectGraphReaders_.fetch_add(1U, std::memory_order_seq_cst);
+        if (projectImportState_.load(std::memory_order_seq_cst) != NativeProjectImportState::Claimed) break;
+        projectGraphReaders_.fetch_sub(1U, std::memory_order_seq_cst);
+        std::this_thread::yield();
+    }
+    struct GraphReadReservation {
+        std::atomic<unsigned int>& readers;
+        ~GraphReadReservation() { readers.fetch_sub(1U, std::memory_order_seq_cst); }
+    } graphReadReservation{projectGraphReaders_};
+    mutableCore.finalizeProjectImportLocked();
     // Callback publication of an inactive history record is the release
     // boundary. Reclaim its now-unreachable PCM here on the control thread so
     // retained-byte accounting recovers even if the user makes no later edit.
@@ -224,7 +243,7 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.nativeCatalogGraphAvailable = true;
     for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
         const auto nativeSlot = static_cast<NativeEffectSlot>(slot);
-        status.nativeCatalogSlotEffectIds[slot] = std::string(outputStage_.trackFxBank().effectId(nativeSlot));
+        status.nativeCatalogSlotEffectIds[slot] = std::string(outputStage_->trackFxBank().effectId(nativeSlot));
         status.nativeCatalogSlotBypassed[slot] = nativeCatalogSlotBypassed_[slot];
         status.nativeInputCatalogSlotEffectIds[slot] = std::string(nativeInputFxBank_.effectId(nativeSlot));
         status.nativeInputCatalogSlotBypassed[slot] = nativeInputCatalogSlotBypassed_[slot];
@@ -244,8 +263,8 @@ EngineStatus NativeAudioCore::getStatus() const {
     }
     status.nativeRhythmEventsCleanRoomProcedural = true;
     status.nativePitchCorrectionAvailable = nativePitchConfig_.mode == NativePitchMode::LivePolyPhaseVocoder
-        ? nativePolyPitchProcessor_.prepared()
-        : nativePitchProcessor_.prepared();
+        ? nativePolyPitchProcessor_->prepared()
+        : nativePitchProcessor_->prepared();
     status.nativePitchCorrectionImplemented = true;
     status.nativePitchEnabled = nativePitchConfig_.enabled;
     status.nativePitchTrackId = nativePitchConfig_.trackId;
@@ -257,8 +276,8 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.nativePitchFrequencyHz = nativePitchFrequencyHz_.load(std::memory_order_acquire);
     status.nativePitchConfidence = nativePitchConfidence_.load(std::memory_order_acquire);
     status.nativePitchLatencySamples = nativePitchConfig_.mode == NativePitchMode::LivePolyPhaseVocoder
-        ? nativePolyPitchProcessor_.latencySamples()
-        : nativePitchProcessor_.latencySamples();
+        ? nativePolyPitchProcessor_->latencySamples()
+        : nativePitchProcessor_->latencySamples();
     status.nativePitchFallbackReason = nativePitchFallbackReason_.load(std::memory_order_acquire);
     status.nativeRhythmBpm = nativeRhythmConfig_.bpm;
     status.nativeRhythmKitIndex = nativeRhythmConfig_.kitIndex;
@@ -326,7 +345,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         }
     };
     collectOscVocSlots(nativeInputFxBank_, status.nativeInputOscVocSlots);
-    collectOscVocSlots(outputStage_.trackFxBank(), status.nativeTrackOscVocSlots);
+    collectOscVocSlots(outputStage_->trackFxBank(), status.nativeTrackOscVocSlots);
     const auto collectCatalogMidiSlots = [](const NativeEffectBank& bank, auto& destination) {
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
             auto& item = destination[slot];
@@ -355,10 +374,10 @@ EngineStatus NativeAudioCore::getStatus() const {
         }
     };
     collectCatalogMidiSlots(nativeInputFxBank_, status.nativeInputCatalogMidiSlots);
-    collectCatalogMidiSlots(outputStage_.trackFxBank(), status.nativeTrackCatalogMidiSlots);
+    collectCatalogMidiSlots(outputStage_->trackFxBank(), status.nativeTrackCatalogMidiSlots);
     status.nativeCatalogControlFaultCount = nativeCatalogControlFaultCount_.load(std::memory_order_acquire);
     for (std::size_t bankIndex = 0U; bankIndex < 2U; ++bankIndex) {
-        const auto& bank = bankIndex == 0U ? nativeInputFxBank_ : outputStage_.trackFxBank();
+        const auto& bank = bankIndex == 0U ? nativeInputFxBank_ : outputStage_->trackFxBank();
         auto& slots = bankIndex == 0U ? status.nativeInputCatalogSlots : status.nativeCatalogSlots;
         for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
             auto& destination = slots[slot];
@@ -405,6 +424,7 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.outputLatencyMs = status.inputLatencyMs;
     status.roundTripEstimateMs = status.inputLatencyMs + status.outputLatencyMs;
     status.lastError = lastError_;
+    status.nativeMemoryLoopTransports = nativeMemoryLoopTransportSettings_;
     return status;
 }
 
@@ -582,13 +602,13 @@ bool NativeAudioCore::applyConfig(const EngineConfig& config, std::string& error
                     result += " Previous loop-storage format could not be restored: " + storageError;
                 }
             }
-            (void)nativePitchProcessor_.prepare(
+            (void)nativePitchProcessor_->prepare(
                 previousConfig->sampleRate,
                 70.0f,
                 1200.0f,
                 nativePitchConfig_.semitones
             );
-            (void)nativePolyPitchProcessor_.prepare(
+            (void)nativePolyPitchProcessor_->prepare(
                 previousConfig->sampleRate,
                 nativePitchConfig_.semitones
             );
@@ -622,13 +642,13 @@ bool NativeAudioCore::applyConfig(const EngineConfig& config, std::string& error
         return false;
     }
 
-    const bool pitchPrepared = nativePitchProcessor_.prepare(
+    const bool pitchPrepared = nativePitchProcessor_->prepare(
         validated.sampleRate,
         70.0f,
         1200.0f,
         nativePitchConfig_.semitones
     );
-    const bool polyPitchPrepared = nativePolyPitchProcessor_.prepare(
+    const bool polyPitchPrepared = nativePolyPitchProcessor_->prepare(
         validated.sampleRate,
         nativePitchConfig_.semitones
     );
@@ -1051,6 +1071,10 @@ bool NativeAudioCore::clear(std::string& error) {
 bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1058,12 +1082,14 @@ bool NativeAudioCore::setMonitoring(bool enabled, std::string& error) {
     currentConfig_->monitoringEnabled = enabled;
     if (!engineRunning_.load(std::memory_order_acquire)) {
         looper_.applyCommand({CommandType::SetMonitoring, enabled});
-        return true;
+        advanceProjectRevision(projectContentRevision_);
+    return true;
     }
     if (!commandQueue_.push({CommandType::SetMonitoring, enabled})) {
         error = "Command queue is full.";
         return false;
     }
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
@@ -1287,6 +1313,10 @@ bool NativeAudioCore::setOutputHighPassEnabled(bool enabled, std::string& error)
 
 bool NativeAudioCore::setNativeReverbConfig(const NativeReverbConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1305,16 +1335,21 @@ bool NativeAudioCore::setNativeReverbConfig(const NativeReverbConfig& config, st
             error = "Native reverb command queue is full.";
             return false;
         }
-    } else if (outputStage_.sampleRate() != 0U && !outputStage_.setReverbConfig(config, 0U)) {
+    } else if (outputStage_->sampleRate() != 0U && !outputStage_->setReverbConfig(config, 0U)) {
         error = "Unable to apply the native FDN16 reverb configuration.";
         return false;
     }
     nativeReverbConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
 bool NativeAudioCore::setNativeFractionalDelayConfig(const NativeFractionalDelayConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1337,16 +1372,21 @@ bool NativeAudioCore::setNativeFractionalDelayConfig(const NativeFractionalDelay
             error = "Native fractional-delay command queue is full.";
             return false;
         }
-    } else if (outputStage_.sampleRate() != 0U && !outputStage_.setFractionalDelayConfig(config, 0U)) {
+    } else if (outputStage_->sampleRate() != 0U && !outputStage_->setFractionalDelayConfig(config, 0U)) {
         error = "Unable to apply the Native fractional-delay configuration.";
         return false;
     }
     nativeFractionalDelayConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
 bool NativeAudioCore::setNativeCompressorConfig(const NativeCompressorConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1374,16 +1414,21 @@ bool NativeAudioCore::setNativeCompressorConfig(const NativeCompressorConfig& co
             error = "Native compressor command queue is full.";
             return false;
         }
-    } else if (outputStage_.sampleRate() != 0U && !outputStage_.setCompressorConfig(config, 0U)) {
+    } else if (outputStage_->sampleRate() != 0U && !outputStage_->setCompressorConfig(config, 0U)) {
         error = "Unable to apply the Native peak-compressor configuration.";
         return false;
     }
     nativeCompressorConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
 bool NativeAudioCore::setNativeChorusConfig(const NativeChorusConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1408,16 +1453,21 @@ bool NativeAudioCore::setNativeChorusConfig(const NativeChorusConfig& config, st
             error = "Native chorus command queue is full.";
             return false;
         }
-    } else if (outputStage_.sampleRate() != 0U && !outputStage_.setChorusConfig(config, 0U)) {
+    } else if (outputStage_->sampleRate() != 0U && !outputStage_->setChorusConfig(config, 0U)) {
         error = "Unable to apply the Native stereo-chorus configuration.";
         return false;
     }
     nativeChorusConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
 bool NativeAudioCore::setNativePhaserConfig(const NativePhaserConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1443,11 +1493,12 @@ bool NativeAudioCore::setNativePhaserConfig(const NativePhaserConfig& config, st
             error = "Native phaser command queue is full.";
             return false;
         }
-    } else if (outputStage_.sampleRate() != 0U && !outputStage_.setPhaserConfig(config, 0U)) {
+    } else if (outputStage_->sampleRate() != 0U && !outputStage_->setPhaserConfig(config, 0U)) {
         error = "Unable to apply the Native allpass-sweep phaser configuration.";
         return false;
     }
     nativePhaserConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
@@ -1462,7 +1513,12 @@ bool NativeAudioCore::setNativeCatalogSlot(
     bool replaceParameters
 ) {
     std::lock_guard<std::mutex> lock(controlMutex_);
-    return configureNativeCatalogSlotLocked(slot, effectId, parameters, bypassed, error, path, trackId, replaceParameters);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing FX."; return false;
+    }
+    const bool accepted = configureNativeCatalogSlotLocked(slot, effectId, parameters, bypassed, error, path, trackId, replaceParameters);
+    if (accepted) advanceProjectRevision(projectContentRevision_);
+    return accepted;
 }
 
 bool NativeAudioCore::setNativeTrackFxApply(
@@ -1472,6 +1528,9 @@ bool NativeAudioCore::setNativeTrackFxApply(
     std::string& error
 ) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing FX gates."; return false;
+    }
     if (trackId < 1U || trackId > kNativeTrackCount) {
         error = "Native Track FX apply requires a track ID between 1 and 5.";
         return false;
@@ -1493,6 +1552,7 @@ bool NativeAudioCore::setNativeTrackFxApply(
     nativeTrackFxApplyRequested_[index] = enabled;
     nativeTrackFxApplyRequestedRevision_[index] = nextRevision;
     requestedRevision = nextRevision;
+    advanceProjectRevision(projectContentRevision_);
     error.clear();
     return true;
 }
@@ -1525,6 +1585,10 @@ bool NativeAudioCore::queueNativeCatalogMidiEvent(
     std::uint8_t trackId
 ) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory transaction before MIDI events."; return false;
+    }
+
     if (effectId != "osc_voc_m" && effectId != "hrm_auto_m") {
         error = "Native catalog MIDI effect must be 'osc_voc_m' or 'hrm_auto_m'.";
         return false;
@@ -1546,7 +1610,7 @@ bool NativeAudioCore::queueNativeCatalogMidiEvent(
         return false;
     }
     auto& bank = path == NativeCatalogFxPath::Input ? nativeInputFxBank_
-        : trackId == 0U ? outputStage_.trackFxBank() : nativePerTrackFxBanks_[trackId - 1U];
+        : trackId == 0U ? outputStage_->trackFxBank() : nativePerTrackFxBanks_[trackId - 1U];
     auto* selectedProcessor = bank.processor(slot);
     if (selectedProcessor == nullptr || selectedProcessor->stableId() != effectId) {
         error = "The requested Native MIDI effect slot is not selected on that path.";
@@ -1659,7 +1723,7 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
         return false;
     }
     auto& bank = path == NativeCatalogFxPath::Input ? nativeInputFxBank_
-        : trackId == 0U ? outputStage_.trackFxBank() : nativePerTrackFxBanks_[trackId - 1U];
+        : trackId == 0U ? outputStage_->trackFxBank() : nativePerTrackFxBanks_[trackId - 1U];
     auto& bypassedSlots = path == NativeCatalogFxPath::Input
         ? nativeInputCatalogSlotBypassed_
         : trackId == 0U ? nativeCatalogSlotBypassed_ : nativePerTrackSlotBypassed_[trackId - 1U];
@@ -1928,6 +1992,10 @@ bool NativeAudioCore::configureNativeCatalogSlotLocked(
 
 bool NativeAudioCore::setNativeAutoPanConfig(const NativeAutoPanConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1963,11 +2031,16 @@ bool NativeAudioCore::setNativeAutoPanConfig(const NativeAutoPanConfig& config, 
         return false;
     }
     nativeAutoPanConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
 bool NativeAudioCore::setNativePitchConfig(const NativePitchConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -1988,12 +2061,12 @@ bool NativeAudioCore::setNativePitchConfig(const NativePitchConfig& config, std:
 
     if (!engineRunning_.load(std::memory_order_acquire)) {
         if (config.mode == NativePitchMode::LivePolyPhaseVocoder) {
-            if (!nativePolyPitchProcessor_.prepared() && !nativePolyPitchProcessor_.prepare(
+            if (!nativePolyPitchProcessor_->prepared() && !nativePolyPitchProcessor_->prepare(
                     currentConfig_->sampleRate, config.semitones)) {
                 error = "Unable to prepare the Native LIVE_POLY Signalsmith processor for this sample rate.";
                 return false;
             }
-        } else if (!nativePitchProcessor_.prepared() && !nativePitchProcessor_.prepare(
+        } else if (!nativePitchProcessor_->prepared() && !nativePitchProcessor_->prepare(
                 currentConfig_->sampleRate, 70.0f, 1200.0f, config.semitones)) {
             error = "Unable to prepare the Native LIVE_MONO pitch processor for this sample rate.";
             return false;
@@ -2003,19 +2076,19 @@ bool NativeAudioCore::setNativePitchConfig(const NativePitchConfig& config, std:
             config.reversePlayback != nativePitchConfig_.reversePlayback ||
             config.mode != nativePitchConfig_.mode;
         const bool selectedShiftUpdated = config.mode == NativePitchMode::LivePolyPhaseVocoder
-            ? nativePolyPitchProcessor_.setSemitones(config.semitones)
-            : nativePitchProcessor_.setSemitones(config.semitones);
+            ? nativePolyPitchProcessor_->setSemitones(config.semitones)
+            : nativePitchProcessor_->setSemitones(config.semitones);
         if (!selectedShiftUpdated) {
             error = config.mode == NativePitchMode::LivePolyPhaseVocoder
                 ? "Unable to set the Native LIVE_POLY pitch shift."
                 : "Unable to set the Native LIVE_MONO pitch shift.";
             return false;
         }
-        if (nativePitchProcessor_.prepared()) (void)nativePitchProcessor_.setSemitones(config.semitones);
-        if (nativePolyPitchProcessor_.prepared()) (void)nativePolyPitchProcessor_.setSemitones(config.semitones);
+        if (nativePitchProcessor_->prepared()) (void)nativePitchProcessor_->setSemitones(config.semitones);
+        if (nativePolyPitchProcessor_->prepared()) (void)nativePolyPitchProcessor_->setSemitones(config.semitones);
         if (resetProcessor) {
-            nativePitchProcessor_.reset();
-            nativePolyPitchProcessor_.reset();
+            nativePitchProcessor_->reset();
+            nativePolyPitchProcessor_->reset();
         }
         nativePitchRuntimeEnabled_ = config.enabled;
         nativePitchRuntimeTrackId_ = config.trackId;
@@ -2024,16 +2097,17 @@ bool NativeAudioCore::setNativePitchConfig(const NativePitchConfig& config, std:
         nativePitchConfig_ = config;
         applyOfficialSourceTransports();
         nativePitchActive_.store(false, std::memory_order_release);
-        nativePitchVoiced_.store(config.mode == NativePitchMode::LiveMonoKeepPitch && nativePitchProcessor_.voiced(), std::memory_order_release);
-        nativePitchFrequencyHz_.store(config.mode == NativePitchMode::LiveMonoKeepPitch ? nativePitchProcessor_.frequencyHz() : 0.0f, std::memory_order_release);
-        nativePitchConfidence_.store(config.mode == NativePitchMode::LiveMonoKeepPitch ? nativePitchProcessor_.confidence() : 0.0f, std::memory_order_release);
+        nativePitchVoiced_.store(config.mode == NativePitchMode::LiveMonoKeepPitch && nativePitchProcessor_->voiced(), std::memory_order_release);
+        nativePitchFrequencyHz_.store(config.mode == NativePitchMode::LiveMonoKeepPitch ? nativePitchProcessor_->frequencyHz() : 0.0f, std::memory_order_release);
+        nativePitchConfidence_.store(config.mode == NativePitchMode::LiveMonoKeepPitch ? nativePitchProcessor_->confidence() : 0.0f, std::memory_order_release);
         nativePitchFallbackReason_.store(NativePitchFallbackReason::NotRequested, std::memory_order_release);
-        return true;
+        advanceProjectRevision(projectContentRevision_);
+    return true;
     }
 
     const bool requestedModePrepared = config.mode == NativePitchMode::LivePolyPhaseVocoder
-        ? nativePolyPitchProcessor_.prepared()
-        : nativePitchProcessor_.prepared();
+        ? nativePolyPitchProcessor_->prepared()
+        : nativePitchProcessor_->prepared();
     if (!requestedModePrepared) {
         error = "The requested Native pitch mode was not prepared before the audio stream started.";
         return false;
@@ -2057,6 +2131,7 @@ bool NativeAudioCore::setNativePitchConfig(const NativePitchConfig& config, std:
         nativePitchFallbackReason_.store(NativePitchFallbackReason::NotRequested, std::memory_order_release);
     }
     nativePitchConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
@@ -2067,6 +2142,10 @@ bool NativeAudioCore::setNativeLoopTransport(
 ) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (trackIndex >= kNativeTrackCount) {
         error = "Native loop transport track index must be between 0 and 4.";
         return false;
@@ -2089,19 +2168,25 @@ bool NativeAudioCore::setNativeLoopTransport(
         nativeBaseLoopTransportConfigs_[trackIndex] = config;
         applyOfficialSourceTransports();
     }
+    nativeMemoryLoopTransportSettings_[trackIndex] = config;
     error.clear();
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
 bool NativeAudioCore::setOutputEffectEnabled(NativeOutputEffect effect, bool enabled, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
     }
 
     if (!engineRunning_.load(std::memory_order_acquire)) {
-        outputStage_.setEffectEnabled(effect, enabled, 0);
+        outputStage_->setEffectEnabled(effect, enabled, 0);
         switch (effect) {
         case NativeOutputEffect::LowPass:
             outputLowPassEnabled_.store(enabled, std::memory_order_release);
@@ -2110,7 +2195,8 @@ bool NativeAudioCore::setOutputEffectEnabled(NativeOutputEffect effect, bool ena
             outputHighPassEnabled_.store(enabled, std::memory_order_release);
             break;
         }
-        return true;
+        advanceProjectRevision(projectContentRevision_);
+    return true;
     }
 
     if (!outputStageCommandQueue_.push({effect, enabled})) {
@@ -2125,11 +2211,16 @@ bool NativeAudioCore::setOutputEffectEnabled(NativeOutputEffect effect, bool ena
         outputHighPassEnabled_.store(enabled, std::memory_order_release);
         break;
     }
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
 bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing settings."; return false;
+    }
+
     if (!currentConfig_) {
         error = "Engine has not been configured yet.";
         return false;
@@ -2179,7 +2270,7 @@ bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, st
         return true;
     };
     bool valid = collectTempoCommands(nativeInputFxBank_, NativeCatalogFxPath::Input, 0U) &&
-        collectTempoCommands(outputStage_.trackFxBank(), NativeCatalogFxPath::Track, 0U);
+        collectTempoCommands(outputStage_->trackFxBank(), NativeCatalogFxPath::Track, 0U);
     for (std::size_t track = 0U; track < kNativeTrackCount && valid; ++track) {
         valid = collectTempoCommands(nativePerTrackFxBanks_[track], NativeCatalogFxPath::Track,
             static_cast<std::uint8_t>(track + 1U));
@@ -2203,7 +2294,7 @@ bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, st
         for (std::size_t index = 0U; index < count; ++index) {
             const auto& command = tempoCommands[index];
             auto& bank = command.path == NativeCatalogFxPath::Input ? nativeInputFxBank_
-                : command.trackId == 0U ? outputStage_.trackFxBank() : nativePerTrackFxBanks_[command.trackId - 1U];
+                : command.trackId == 0U ? outputStage_->trackFxBank() : nativePerTrackFxBanks_[command.trackId - 1U];
             if (!bank.setParameter(command.slot,
                 command.parameterIndex == kOfficialTempoParameterIndex ? "official_bpm" :
                 command.parameterIndex == kOfficialMeterParameterIndex ? "official_quarter_notes_per_measure" : "bpm",
@@ -2214,6 +2305,7 @@ bool NativeAudioCore::setNativeRhythmConfig(const NativeRhythmConfig& config, st
         }
     }
     nativeRhythmConfig_ = config;
+    advanceProjectRevision(projectContentRevision_);
     return true;
 }
 
@@ -2522,7 +2614,8 @@ bool NativeAudioCore::beginProjectArchiveImport(
     std::uint64_t encodedBytes,
     std::uint64_t expectedProjectContentRevision,
     std::uint64_t& generation,
-    std::string& error
+    std::string& error,
+    std::unique_ptr<NativeMemorySettings> memory
 ) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> controlLock(controlMutex_);
@@ -2625,7 +2718,12 @@ bool NativeAudioCore::beginProjectArchiveImport(
     // full-capacity stores, the received archive body, decoder-owned PCM,
     // retained undo PCM, and a fixed process/allocator margin. It is an
     // admission estimate rather than an operating-system RSS hard limit.
-    std::uint64_t peakEstimate = 64ULL * 1024ULL * 1024ULL;
+    // Semantic Memory stages 28 complete processors, a full post-stage and
+    // both pitch paths. Reserve a conservative 1 GiB graph allowance in the
+    // admission estimate in addition to the existing PCM/archive accounting.
+    // All factories remain exception-safe if opaque allocator overhead exceeds
+    // this estimate; the incumbent is retained on every preparation failure.
+    std::uint64_t peakEstimate = (memory ? 1088ULL : 64ULL) * 1024ULL * 1024ULL;
     const std::array<std::uint64_t, 5U> peakParts{{
         nativeLooperPreallocatedBytes_, candidateStorageBytes, encodedBytes,
         decodedPcmBytes, historyRetainedBytes_.load(std::memory_order_acquire)
@@ -2648,6 +2746,117 @@ bool NativeAudioCore::beginProjectArchiveImport(
     } catch (const std::bad_alloc&) {
         error = "Native project import could not allocate its transaction record; the current project was not changed.";
         return false;
+    }
+    if (memory) {
+        if (nativeTrackFxApplyCommandQueue_.size() != 0U || nativeCatalogFxCommandQueue_.size() != 0U || nativeLoopTransportCommandQueue_.size() != 0U ||
+            nativeRhythmCommandQueue_.size() != 0U || outputStageCommandQueue_.size() != 0U ||
+            nativeReverbCommandQueue_.size() != 0U || nativeFractionalDelayCommandQueue_.size() != 0U ||
+            nativeCompressorCommandQueue_.size() != 0U || nativeChorusCommandQueue_.size() != 0U ||
+            nativePhaserCommandQueue_.size() != 0U || nativePitchCommandQueue_.size() != 0U) {
+            error = "Wait for queued FX/rhythm/source settings before preparing Memory."; return false;
+        }
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            const auto state = static_cast<LooperState>(trackStates_[track].load(std::memory_order_acquire));
+            if (state != LooperState::Stopped && state != LooperState::Empty) {
+                error = "Stop all five tracks before replacing Memory."; return false;
+            }
+        }
+        // Candidate preparation never touches an incumbent processor. The same
+        // objects retain the old graph after the callback swap, until its ACK.
+        try {
+            if (std::any_of(memory->mixerLevels.begin(), memory->mixerLevels.end(), [](unsigned int value) { return value > 200U; })) {
+                error = "Memory mixer levels must be 0..200."; return false;
+            }
+            NativeRhythmEngine rhythmValidator;
+            if (!rhythmValidator.prepare(sampleRate) || !rhythmValidator.setConfig(memory->rhythm, 0U) ||
+                memory->rhythm.bpm != archive.bpm) {
+                error = "Invalid Memory rhythm settings or mismatched tempo.";
+                return false;
+            }
+            for (const auto& config : memory->loopTransports) {
+                if (!LooperCore::validLoopTransportConfig(config)) {
+                    error = "Invalid Memory loop transport settings.";
+                    return false;
+                }
+            }
+            for (std::size_t bankIndex = 0U; bankIndex < memory->banks.size(); ++bankIndex) {
+                auto& candidate = transaction->candidateFxBanks[bankIndex];
+                if (!candidate.prepare(sampleRate)) { error = "Unable to prepare Memory FX bank."; return false; }
+                for (std::size_t slotIndex = 0U; slotIndex < NativeEffectBank::kSlotCount; ++slotIndex) {
+                    const auto& saved = memory->banks[bankIndex][slotIndex];
+                    const auto slot = static_cast<NativeEffectSlot>(slotIndex);
+                    if (saved.effectId.empty()) {
+                        if (!saved.parameters.empty()) { error = "Empty Memory FX slot has parameters."; return false; }
+                        continue;
+                    }
+                    const bool sourceEffect = saved.effectId == "beat_shift" || saved.effectId == "vinyl_flick";
+                    const bool trackOnly = sourceEffect || saved.effectId == "beat_repeat" || saved.effectId == "beat_scatter";
+                    const bool official = std::any_of(saved.parameters.begin(), saved.parameters.end(), [](const auto& entry) {
+                        return entry.first.compare(0U, 9U, "official_") == 0;
+                    });
+                    if ((sourceEffect && bankIndex >= 2U) || (trackOnly && official && (bankIndex == 0U || slotIndex != 0U))) {
+                        error = "Memory FX source-aware routing is unsupported."; return false;
+                    }
+                    if (!candidate.setEffect(slot, saved.effectId)) { error = "Unknown or unpreparable Memory FX type."; return false; }
+                    auto* processor = candidate.processor(slot);
+                    processor->attachVocoderCarriers();
+                    if (bankIndex == 1U && slotIndex == 0U) processor->attachSourceTransport();
+                    if (!processor->setTempoBpm(static_cast<float>(archive.bpm)) ||
+                        !processor->setQuarterNotesPerMeasure(static_cast<float>(archive.transport.timeSignatureNumerator) * 4.0f /
+                            static_cast<float>(archive.transport.timeSignatureDenominator))) {
+                        error = "Invalid Memory FX clock."; return false;
+                    }
+                    const auto variant = saved.parameters.find("official_variant");
+                    if (variant != saved.parameters.end() && !candidate.setParameter(slot, variant->first, variant->second, 0U)) {
+                        error = "Invalid Memory FX variant."; return false;
+                    }
+                    for (const auto& [key, value] : saved.parameters) {
+                        if (key == "official_variant") continue;
+                        if (!std::isfinite(value) || !candidate.setParameter(slot, key, value, 0U)) {
+                            error = "Invalid Memory FX parameter: " + key; return false;
+                        }
+                    }
+                    if (!candidate.setBypassed(slot, saved.bypassed, 0U)) { error = "Invalid Memory FX bypass."; return false; }
+                }
+            }
+        } catch (const std::exception&) {
+            error = "Unable to allocate complete Memory FX candidate; incumbent retained.";
+            return false;
+        }
+        try {
+            transaction->candidateOutputStage = std::make_unique<NativeOutputStage>();
+            auto& output = *transaction->candidateOutputStage;
+            if (!output.prepare(sampleRate) || !output.setReverbConfig(memory->reverb, 0U) ||
+                !output.setFractionalDelayConfig(memory->delay, 0U) || !output.setCompressorConfig(memory->compressor, 0U) ||
+                !output.setChorusConfig(memory->chorus, 0U) || !output.setPhaserConfig(memory->phaser, 0U)) {
+                error = "Invalid Memory output DSP settings."; return false;
+            }
+            output.setLowPassEnabled(memory->lowPass, 0U);
+            output.setHighPassEnabled(memory->highPass, 0U);
+            output.trackFxBank().swapPrepared(transaction->candidateFxBanks[1U]);
+            const auto& pitch = memory->pitch;
+            if (pitch.trackId > kNativeTrackCount || !std::isfinite(pitch.semitones) || pitch.semitones < -12.0f || pitch.semitones > 12.0f ||
+                (pitch.mode != NativePitchMode::LiveMonoKeepPitch && pitch.mode != NativePitchMode::LivePolyPhaseVocoder)) {
+                error = "Invalid Memory pitch configuration."; return false;
+            }
+            transaction->candidatePitch = std::make_unique<NativePitchProcessor>();
+            transaction->candidatePolyPitch = std::make_unique<NativePolyPitchProcessor>();
+            if (!transaction->candidatePitch->prepare(sampleRate, 70.0f, 1200.0f) ||
+                !transaction->candidatePolyPitch->prepare(sampleRate) ||
+                !transaction->candidatePitch->setSemitones(pitch.semitones) ||
+                !transaction->candidatePolyPitch->setSemitones(pitch.semitones)) {
+                error = "Unable to prepare complete Memory pitch graph."; return false;
+            }
+        } catch (const std::exception&) {
+            error = "Unable to allocate complete Memory output/pitch graph."; return false;
+        }
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            if (nativeTrackFxApplyRequestedRevision_[track] >= kMaximumSafeProjectContentRevision) {
+                error = "Memory FX gate revision is exhausted."; return false;
+            }
+            transaction->gateRevisions[track] = nativeTrackFxApplyRequestedRevision_[track] + 1U;
+        }
+        transaction->memory = std::move(memory);
     }
     const auto capacitySamples = capacityFrames * 2U;
     try {
@@ -2690,9 +2899,24 @@ bool NativeAudioCore::beginProjectArchiveImport(
     projectImportTransaction_ = std::move(transaction);
     projectImportActiveGeneration_.store(generation, std::memory_order_relaxed);
     projectImportTransactionPointer_.store(projectImportTransaction_.get(), std::memory_order_release);
-    projectImportState_.store(NativeProjectImportState::Pending, std::memory_order_release);
+    projectImportState_.store(projectImportTransaction_->memory ? NativeProjectImportState::Prepared : NativeProjectImportState::Pending, std::memory_order_release);
     error.clear();
     return true;
+}
+
+bool NativeAudioCore::commitPreparedMemory(std::uint64_t generation, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> controlLock(controlMutex_);
+    if (!projectImportTransaction_ || !projectImportTransaction_->memory ||
+        projectImportActiveGeneration_.load(std::memory_order_acquire) != generation ||
+        projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Prepared) {
+        error = "Prepared Memory generation was not found."; return false;
+    }
+    if (projectContentRevision_.load(std::memory_order_acquire) != projectImportTransaction_->expectedProjectContentRevision) {
+        error = "Memory changed before commit."; return false;
+    }
+    projectImportState_.store(NativeProjectImportState::Pending, std::memory_order_release);
+    error.clear(); return true;
 }
 
 void NativeAudioCore::finalizeProjectImportLocked() {
@@ -2705,6 +2929,30 @@ void NativeAudioCore::finalizeProjectImportLocked() {
         projectImportLastError_ = "Native project import was rejected at the callback boundary because loop PCM/history changed after load preparation, a track entered record/overdub, or a loop-store invariant changed; all five prior tracks were preserved.";
     }
     if (state == NativeProjectImportState::Committed) {
+        if (projectImportTransaction_->memory) {
+            auto& memory = *projectImportTransaction_->memory;
+            // The release ACK means the callback no longer reads incumbent
+            // processors. Publish control maps here; no map/string work in DSP.
+            for (std::size_t bank = 0U; bank < memory.banks.size(); ++bank) {
+                for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
+                    const auto variant = memory.banks[bank][slot].parameters.find("official_variant");
+                    auto& variants = bank == 0U ? nativeInputOfficialVariants_ : bank == 1U ? nativeTrackOfficialVariants_ : nativePerTrackOfficialVariants_[bank - 2U];
+                    variants[slot] = variant == memory.banks[bank][slot].parameters.end() ? 0U : static_cast<unsigned int>(variant->second);
+                    nativeCatalogAuthoredParameters_[bank][slot].swap(memory.banks[bank][slot].parameters);
+                }
+            }
+            nativeRhythmConfig_ = memory.rhythm;
+            nativeMemoryLoopTransportSettings_ = memory.loopTransports;
+            nativeReverbConfig_ = memory.reverb;
+            nativeFractionalDelayConfig_ = memory.delay;
+            nativeCompressorConfig_ = memory.compressor;
+            nativeChorusConfig_ = memory.chorus;
+            nativePhaserConfig_ = memory.phaser;
+            nativeAutoPanConfig_ = memory.autoPan;
+            nativePitchConfig_ = memory.pitch;
+            nativeTrackFxApplyRequested_ = memory.trackFxApply;
+            nativeTrackFxApplyRequestedRevision_ = projectImportTransaction_->gateRevisions;
+        }
         // History arrays stay allocated until the callback has acknowledged
         // its full-bank swap. Reclaim them now, on this control thread only.
         for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
@@ -2742,7 +2990,7 @@ NativeProjectImportStatus NativeAudioCore::getProjectArchiveImportStatus(std::ui
         return {true, generation, state, projectImportLastError_};
     }
     if (activeGeneration == generation &&
-        (state == NativeProjectImportState::Pending || state == NativeProjectImportState::Claimed)) {
+        (state == NativeProjectImportState::Prepared || state == NativeProjectImportState::Pending || state == NativeProjectImportState::Claimed)) {
         return {true, generation, state, {}};
     }
     if (projectImportLastGeneration_ == generation) {
@@ -2766,8 +3014,8 @@ bool NativeAudioCore::cancelProjectArchiveImport(
         error = status.found ? std::string{} : "Native project import generation was not found.";
         return status.found;
     }
-    auto expected = NativeProjectImportState::Pending;
-    if (projectImportState_.compare_exchange_strong(
+    auto expected = projectImportState_.load(std::memory_order_acquire);
+    if ((expected == NativeProjectImportState::Prepared || expected == NativeProjectImportState::Pending) && projectImportState_.compare_exchange_strong(
             expected, NativeProjectImportState::Cancelled, std::memory_order_acq_rel)) {
         error.clear();
         projectImportLastError_ = "Native project import was cancelled before the audio callback claimed it; existing project state was preserved.";
@@ -2951,7 +3199,7 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
 
     if (!prepareLoopStorageLocked(currentConfig_->sampleRate, currentConfig_->nativeLooperStorageBudgetBytes, error)) return false;
     looper_.applyCommand({CommandType::SetMonitoring, currentConfig_->monitoringEnabled});
-    if (!outputStage_.prepare(currentConfig_->sampleRate)) {
+    if (!outputStage_->prepare(currentConfig_->sampleRate)) {
         error = "Unable to prepare the native output DSP stage for the configured sample rate.";
         return false;
     }
@@ -2972,30 +3220,30 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
             }
         }
     }
-    outputStage_.setLowPassEnabled(outputLowPassEnabled_.load(std::memory_order_acquire));
-    outputStage_.setHighPassEnabled(outputHighPassEnabled_.load(std::memory_order_acquire));
+    outputStage_->setLowPassEnabled(outputLowPassEnabled_.load(std::memory_order_acquire));
+    outputStage_->setHighPassEnabled(outputHighPassEnabled_.load(std::memory_order_acquire));
     if (!nativeRhythmEngine_.prepare(currentConfig_->sampleRate) ||
         !nativeRhythmEngine_.setConfig(nativeRhythmConfig_, 0)) {
         error = "Unable to prepare the native clean-room rhythm stage for the configured sample rate.";
         return false;
     }
-    if (!outputStage_.setReverbConfig(nativeReverbConfig_)) {
+    if (!outputStage_->setReverbConfig(nativeReverbConfig_)) {
         error = "Unable to prepare the native FDN16 reverb configuration.";
         return false;
     }
-    if (!outputStage_.setFractionalDelayConfig(nativeFractionalDelayConfig_)) {
+    if (!outputStage_->setFractionalDelayConfig(nativeFractionalDelayConfig_)) {
         error = "Unable to prepare the Native fractional-delay configuration.";
         return false;
     }
-    if (!outputStage_.setCompressorConfig(nativeCompressorConfig_)) {
+    if (!outputStage_->setCompressorConfig(nativeCompressorConfig_)) {
         error = "Unable to prepare the Native peak-compressor configuration.";
         return false;
     }
-    if (!outputStage_.setChorusConfig(nativeChorusConfig_)) {
+    if (!outputStage_->setChorusConfig(nativeChorusConfig_)) {
         error = "Unable to prepare the Native stereo-chorus configuration.";
         return false;
     }
-    if (!outputStage_.setPhaserConfig(nativePhaserConfig_)) {
+    if (!outputStage_->setPhaserConfig(nativePhaserConfig_)) {
         error = "Unable to prepare the Native allpass-sweep phaser configuration.";
         return false;
     }
@@ -3197,10 +3445,10 @@ void NativeAudioCore::resetRuntimeStateLocked() noexcept {
     nativePitchCommandQueue_.clear();
     nativeRhythmCommandQueue_.clear();
     outputQueue_.clear();
-    nativePitchProcessor_.reset();
-    nativePolyPitchProcessor_.reset();
-    (void)nativePitchProcessor_.setSemitones(nativePitchConfig_.semitones);
-    (void)nativePolyPitchProcessor_.setSemitones(nativePitchConfig_.semitones);
+    nativePitchProcessor_->reset();
+    nativePolyPitchProcessor_->reset();
+    (void)nativePitchProcessor_->setSemitones(nativePitchConfig_.semitones);
+    (void)nativePolyPitchProcessor_->setSemitones(nativePitchConfig_.semitones);
     nativePitchRuntimeEnabled_ = nativePitchConfig_.enabled;
     nativePitchRuntimeTrackId_ = nativePitchConfig_.trackId;
     nativePitchRuntimeMode_ = nativePitchConfig_.mode;
@@ -3231,42 +3479,42 @@ void NativeAudioCore::resetRuntimeStateLocked() noexcept {
 void NativeAudioCore::applyOutputStageCommands() noexcept {
     NativeOutputEffectCommand command;
     while (outputStageCommandQueue_.pop(command)) {
-        outputStage_.setEffectEnabled(command.effect, command.enabled);
+        outputStage_->setEffectEnabled(command.effect, command.enabled);
     }
 }
 
 void NativeAudioCore::applyNativeReverbCommands() noexcept {
     NativeReverbCommand command;
     while (nativeReverbCommandQueue_.pop(command)) {
-        (void)outputStage_.setReverbConfig(command.config);
+        (void)outputStage_->setReverbConfig(command.config);
     }
 }
 
 void NativeAudioCore::applyNativeFractionalDelayCommands() noexcept {
     NativeFractionalDelayCommand command;
     while (nativeFractionalDelayCommandQueue_.pop(command)) {
-        (void)outputStage_.setFractionalDelayConfig(command.config);
+        (void)outputStage_->setFractionalDelayConfig(command.config);
     }
 }
 
 void NativeAudioCore::applyNativeCompressorCommands() noexcept {
     NativeCompressorCommand command;
     while (nativeCompressorCommandQueue_.pop(command)) {
-        (void)outputStage_.setCompressorConfig(command.config);
+        (void)outputStage_->setCompressorConfig(command.config);
     }
 }
 
 void NativeAudioCore::applyNativeChorusCommands() noexcept {
     NativeChorusCommand command;
     while (nativeChorusCommandQueue_.pop(command)) {
-        (void)outputStage_.setChorusConfig(command.config);
+        (void)outputStage_->setChorusConfig(command.config);
     }
 }
 
 void NativeAudioCore::applyNativePhaserCommands() noexcept {
     NativePhaserCommand command;
     while (nativePhaserCommandQueue_.pop(command)) {
-        (void)outputStage_.setPhaserConfig(command.config);
+        (void)outputStage_->setPhaserConfig(command.config);
     }
 }
 
@@ -3280,7 +3528,7 @@ void NativeAudioCore::applyNativeCatalogFxCommands() noexcept {
             continue;
         }
         auto& bank = command.path == NativeCatalogFxPath::Input ? nativeInputFxBank_
-            : command.trackId == 0U ? outputStage_.trackFxBank() : nativePerTrackFxBanks_[command.trackId - 1U];
+            : command.trackId == 0U ? outputStage_->trackFxBank() : nativePerTrackFxBanks_[command.trackId - 1U];
         if (static_cast<std::size_t>(command.slot) >= NativeEffectBank::kSlotCount) continue;
         auto& published = command.trackId != 0U
             ? nativePerTrackFxPublished_[command.trackId - 1U][static_cast<std::size_t>(command.slot)]
@@ -3364,7 +3612,7 @@ void synchronizeHrmAutoSlotClocks(NativeEffectBank& bank, std::uint64_t frame) n
 } // namespace
 
 void NativeAudioCore::publishSharedCatalogProcessingFaults(std::size_t bankIndex, bool bufferAvailable) noexcept {
-    const auto& bank = bankIndex == 0U ? nativeInputFxBank_ : outputStage_.trackFxBank();
+    const auto& bank = bankIndex == 0U ? nativeInputFxBank_ : outputStage_->trackFxBank();
     for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
         const auto* processor = bank.processor(static_cast<NativeEffectSlot>(slot));
         const bool faulted = processor != nullptr &&
@@ -3426,11 +3674,11 @@ void NativeAudioCore::applyNativePitchCommands() noexcept {
     NativePitchCommand command;
     while (nativePitchCommandQueue_.pop(command)) {
         if (command.resetProcessor) {
-            nativePitchProcessor_.reset();
-            nativePolyPitchProcessor_.reset();
+            nativePitchProcessor_->reset();
+            nativePolyPitchProcessor_->reset();
         }
-        (void)nativePitchProcessor_.setSemitones(command.config.semitones);
-        (void)nativePolyPitchProcessor_.setSemitones(command.config.semitones);
+        (void)nativePitchProcessor_->setSemitones(command.config.semitones);
+        (void)nativePolyPitchProcessor_->setSemitones(command.config.semitones);
         nativePitchRuntimeEnabled_ = command.config.enabled;
         nativePitchRuntimeTrackId_ = command.config.trackId;
         nativePitchRuntimeMode_ = command.config.mode;
@@ -3454,7 +3702,7 @@ void NativeAudioCore::prepareVocoderCarriers(unsigned int frames) noexcept {
                 if (auto* processor = bank.processor(static_cast<NativeEffectSlot>(slot))) visit(*processor);
             }
         };
-        visitBank(nativeInputFxBank_); visitBank(outputStage_.trackFxBank());
+        visitBank(nativeInputFxBank_); visitBank(outputStage_->trackFxBank());
         for (auto& bank : nativePerTrackFxBanks_) visitBank(bank);
     };
     visitProcessors([&](NativeEffectProcessor& processor) {
@@ -3491,7 +3739,7 @@ void NativeAudioCore::prepareVocoderCarriers(unsigned int frames) noexcept {
 
 void NativeAudioCore::applyOfficialSourceTransports() noexcept {
     LoopTransportConfig overlay;
-    const auto* source = outputStage_.trackFxBank().processor(NativeEffectSlot::A);
+    const auto* source = outputStage_->trackFxBank().processor(NativeEffectSlot::A);
     const bool requested = source != nullptr && source->officialSourceTransport(overlay);
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         const bool pitchTarget = (nativePitchRuntimeEnabled_ || nativePitchRuntimeReverse_) &&
@@ -3537,12 +3785,12 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         synchronizeOscVocSlotClocks(bank, callbackFrameCursor_);
         synchronizeHrmAutoSlotClocks(bank, callbackFrameCursor_);
     }
-    NativeEffectBank* const trackFx = &outputStage_.trackFxBank();
+    NativeEffectBank* const trackFx = &outputStage_->trackFxBank();
     const bool trackFxActive = trackFx->hasEffects();
     NativePitchProcessor* const monoProcessor = nativePitchRuntimeMode_ == NativePitchMode::LivePolyPhaseVocoder
-        ? nullptr : &nativePitchProcessor_;
+        ? nullptr : nativePitchProcessor_.get();
     NativePolyPitchProcessor* const polyProcessor = nativePitchRuntimeMode_ == NativePitchMode::LivePolyPhaseVocoder
-        ? &nativePolyPitchProcessor_ : nullptr;
+        ? nativePolyPitchProcessor_.get() : nullptr;
     const bool processorPrepared = monoProcessor != nullptr ? monoProcessor->prepared() : polyProcessor->prepared();
     const unsigned int pitchLatency = monoProcessor != nullptr ? monoProcessor->latencySamples() : polyProcessor->latencySamples();
     bool pitchPlaybackRequested = false;
@@ -3563,7 +3811,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         pitchPlaybackRequested, processorPrepared, nativePitchRuntimeReverse_, outputChannels_,
         shortestPlayingLoop, pitchLatency
     );
-    float* const playbackBus = outputStage_.playbackOnlyScratch();
+    float* const playbackBus = outputStage_->playbackOnlyScratch();
     const bool playbackBufferAvailable = playbackBus != nullptr && frames <= NativeOutputStage::kMaxProcessFrames;
     if (pitchRoute.useProcessor && !playbackBufferAvailable) {
         pitchRoute = {false, NativePitchFallbackReason::PlaybackBufferUnavailable};
@@ -3676,12 +3924,13 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
         outputInterleaved[sample] = std::max(-1.0f, std::min(1.0f, outputInterleaved[sample]));
     }
-    stats.outputPeak = outputStage_.processInPlace(outputInterleaved, frames, outputChannels_);
+    stats.outputPeak = outputStage_->processInPlace(outputInterleaved, frames, outputChannels_);
     stats.outputPeak = 0.0f;
     for (std::size_t sample = 0U; sample < sampleCount; ++sample) {
         outputInterleaved[sample] *= mixerGain[1U];
         stats.outputPeak = std::max(stats.outputPeak, std::fabs(outputInterleaved[sample]));
     }
+
     // Publish only after this block has rendered both record selection and
     // playback routing. Queue acceptance alone must never light a gate LED.
     if (playbackBufferAvailable && frames > 0U) {
@@ -3690,6 +3939,7 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
             nativeTrackFxApplyAppliedRevision_[track].store(nativeTrackFxApplyRuntimeRevision_[track], std::memory_order_release);
         }
     }
+
     return stats;
 }
 
@@ -3766,10 +4016,14 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
 
     auto expected = NativeProjectImportState::Pending;
     if (!projectImportState_.compare_exchange_strong(
-            expected, NativeProjectImportState::Claimed, std::memory_order_acq_rel)) {
+            expected, NativeProjectImportState::Claimed, std::memory_order_seq_cst)) {
         return false;
     }
 
+    if (projectGraphReaders_.load(std::memory_order_seq_cst) != 0U) {
+        projectImportState_.store(NativeProjectImportState::Pending, std::memory_order_seq_cst);
+        return false;
+    }
     auto* const transaction = projectImportTransactionPointer_.load(std::memory_order_acquire);
     if (transaction == nullptr) {
         projectImportCancelledByCallback_.store(true, std::memory_order_release);
@@ -3790,6 +4044,7 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
         const auto state = track.state();
         const auto expectedSamples = track.capacityFrames() * 2U;
         eligible = eligible && state != LooperState::Recording && state != LooperState::Overdubbing &&
+            (!transaction->memory || state == LooperState::Stopped || state == LooperState::Empty) &&
             transaction->frameCounts[index] <= track.capacityFrames() &&
             transaction->candidateStereoStorage[index].size() == expectedSamples &&
             track.channels() == 2U;
@@ -3822,6 +4077,51 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
         projectImportCancelledByCallback_.store(true, std::memory_order_release);
         projectImportState_.store(NativeProjectImportState::Cancelled, std::memory_order_release);
         return true;
+    }
+
+    if (transaction->memory) {
+        const auto& memory = *transaction->memory;
+        nativeInputFxBank_.swapPrepared(transaction->candidateFxBanks[0U]);
+        outputStage_.swap(transaction->candidateOutputStage);
+        nativePitchProcessor_.swap(transaction->candidatePitch);
+        nativePolyPitchProcessor_.swap(transaction->candidatePolyPitch);
+        nativePitchRuntimeEnabled_ = memory.pitch.enabled;
+        nativePitchRuntimeTrackId_ = memory.pitch.trackId;
+        nativePitchRuntimeMode_ = memory.pitch.mode;
+        nativePitchRuntimeReverse_ = memory.pitch.reversePlayback;
+        outputLowPassEnabled_.store(memory.lowPass, std::memory_order_release);
+        outputHighPassEnabled_.store(memory.highPass, std::memory_order_release);
+        for (std::size_t channel = 0U; channel < memory.mixerLevels.size(); ++channel) {
+            mixerLevels_[channel].store(memory.mixerLevels[channel], std::memory_order_release);
+        }
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            const bool changed = nativeTrackFxApplyRuntime_[track] != memory.trackFxApply[track];
+            nativeTrackFxApplyRuntime_[track] = memory.trackFxApply[track];
+            nativeTrackFxApplyRuntimeRevision_[track] = transaction->gateRevisions[track];
+            if (changed) nativeTrackFxApplySemanticRevision_[track].fetch_add(1U, std::memory_order_acq_rel);
+            nativeTrackFxApplyFaultRevision_[track].store(0U, std::memory_order_release);
+            // Applied revision is published only after this block renders.
+        }
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            nativePerTrackFxBanks_[track].swapPrepared(transaction->candidateFxBanks[track + 2U]);
+            nativeBaseLoopTransportConfigs_[track] = memory.loopTransports[track];
+        }
+        for (std::size_t bank = 0U; bank < memory.banks.size(); ++bank) {
+            for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
+                const bool bypassed = memory.banks[bank][slot].bypassed;
+                auto& flags = bank == 0U ? nativeInputCatalogSlotBypassed_ : bank == 1U ? nativeCatalogSlotBypassed_ : nativePerTrackSlotBypassed_[bank - 2U];
+                flags[slot] = bypassed;
+                auto& published = bank < 2U ? nativeSharedFxPublished_[bank][slot] : nativePerTrackFxPublished_[bank - 2U][slot];
+                auto& revision = bank < 2U ? nativeSharedSlotRevision_[bank][slot] : nativePerTrackSlotRevision_[bank - 2U][slot];
+                published.appliedBypassed.store(bypassed, std::memory_order_release);
+                published.processingFaulted.store(false, std::memory_order_release);
+                published.appliedRevision.store(++revision, std::memory_order_release);
+            }
+        }
+        // Fully validated before publication; these fixed-storage operations
+        // neither allocate nor destroy DSP objects at the callback boundary.
+        (void)nativeRhythmEngine_.setConfig(memory.rhythm, callbackFrameCursor_);
+        applyOfficialSourceTransports();
     }
 
     for (std::size_t index = 0U; index < kNativeTrackCount; ++index) {
@@ -3909,8 +4209,8 @@ int NativeAudioCore::handleAudioCallback(
         while (commandQueue_.pop(command)) {
             if (command.type == CommandType::Record || command.type == CommandType::StopRecordOrPlayback ||
                 command.type == CommandType::Play || command.type == CommandType::Clear) {
-                nativePitchProcessor_.reset();
-                nativePolyPitchProcessor_.reset();
+                nativePitchProcessor_->reset();
+                nativePolyPitchProcessor_->reset();
             }
             applyTrackCommandAtCallback(command);
         }
@@ -3933,9 +4233,9 @@ int NativeAudioCore::handleAudioCallback(
     if (historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeLoopTransportCommands();
     applyNativeRhythmCommands();
     synchronizeOscVocSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
-    synchronizeOscVocSlotClocks(outputStage_.trackFxBank(), callbackFrameCursor_);
+    synchronizeOscVocSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
     synchronizeHrmAutoSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
-    synchronizeHrmAutoSlotClocks(outputStage_.trackFxBank(), callbackFrameCursor_);
+    synchronizeHrmAutoSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
 
     NativePitchRouteDecision pitchRoute{};
     prepareVocoderCarriers(nBufferFrames);
@@ -3965,9 +4265,9 @@ int NativeAudioCore::handleAudioCallback(
     nativePitchActive_.store(pitchRoute.useProcessor, std::memory_order_release);
     nativePitchFallbackReason_.store(pitchRoute.fallbackReason, std::memory_order_release);
     const bool monoPitchMode = nativePitchRuntimeMode_ == NativePitchMode::LiveMonoKeepPitch;
-    nativePitchVoiced_.store(monoPitchMode && nativePitchProcessor_.voiced(), std::memory_order_release);
-    nativePitchFrequencyHz_.store(monoPitchMode ? nativePitchProcessor_.frequencyHz() : 0.0f, std::memory_order_release);
-    nativePitchConfidence_.store(monoPitchMode ? nativePitchProcessor_.confidence() : 0.0f, std::memory_order_release);
+    nativePitchVoiced_.store(monoPitchMode && nativePitchProcessor_->voiced(), std::memory_order_release);
+    nativePitchFrequencyHz_.store(monoPitchMode ? nativePitchProcessor_->frequencyHz() : 0.0f, std::memory_order_release);
+    nativePitchConfidence_.store(monoPitchMode ? nativePitchProcessor_->confidence() : 0.0f, std::memory_order_release);
     return 0;
 }
 
@@ -3989,8 +4289,8 @@ int NativeAudioCore::handleInputAudioCallback(
         while (commandQueue_.pop(command)) {
             if (command.type == CommandType::Record || command.type == CommandType::StopRecordOrPlayback ||
                 command.type == CommandType::Play || command.type == CommandType::Clear) {
-                nativePitchProcessor_.reset();
-                nativePolyPitchProcessor_.reset();
+                nativePitchProcessor_->reset();
+                nativePolyPitchProcessor_->reset();
             }
             applyTrackCommandAtCallback(command);
         }
@@ -4011,7 +4311,7 @@ int NativeAudioCore::handleInputAudioCallback(
     if (historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeLoopTransportCommands();
     applyNativeRhythmCommands();
     synchronizeOscVocSlotClocks(nativeInputFxBank_, callbackFrameCursor_);
-    synchronizeOscVocSlotClocks(outputStage_.trackFxBank(), callbackFrameCursor_);
+    synchronizeOscVocSlotClocks(outputStage_->trackFxBank(), callbackFrameCursor_);
 
     bool pitchPlaybackRequested = false;
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
@@ -4068,9 +4368,9 @@ int NativeAudioCore::handleInputAudioCallback(
     nativePitchActive_.store(pitchRoute.useProcessor, std::memory_order_release);
     nativePitchFallbackReason_.store(pitchRoute.fallbackReason, std::memory_order_release);
     const bool monoPitchMode = nativePitchRuntimeMode_ == NativePitchMode::LiveMonoKeepPitch;
-    nativePitchVoiced_.store(monoPitchMode && nativePitchProcessor_.voiced(), std::memory_order_release);
-    nativePitchFrequencyHz_.store(monoPitchMode ? nativePitchProcessor_.frequencyHz() : 0.0f, std::memory_order_release);
-    nativePitchConfidence_.store(monoPitchMode ? nativePitchProcessor_.confidence() : 0.0f, std::memory_order_release);
+    nativePitchVoiced_.store(monoPitchMode && nativePitchProcessor_->voiced(), std::memory_order_release);
+    nativePitchFrequencyHz_.store(monoPitchMode ? nativePitchProcessor_->frequencyHz() : 0.0f, std::memory_order_release);
+    nativePitchConfidence_.store(monoPitchMode ? nativePitchProcessor_->confidence() : 0.0f, std::memory_order_release);
     return 0;
 }
 

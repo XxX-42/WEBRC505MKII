@@ -857,6 +857,11 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
   add_executable(native_catalog_ack_tests tests/native_catalog_ack_tests.cpp)
   target_link_libraries(native_catalog_ack_tests PRIVATE native_audio_core_simulation)
   enable_strict_warnings(native_catalog_ack_tests)
+  add_executable(native_memory_tests tests/native_audio_callback_tests.cpp)
+  target_link_libraries(native_memory_tests PRIVATE native_audio_core_simulation)
+  target_compile_definitions(native_memory_tests PRIVATE NATIVE_MEMORY_TESTS_ONLY=1)
+  enable_strict_warnings(native_memory_tests)
+  add_test(NAME native_memory_tests COMMAND native_memory_tests)
   add_executable(native_track_mark_tests tests/native_audio_callback_tests.cpp)
   target_link_libraries(native_track_mark_tests PRIVATE native_audio_core_simulation)
   target_compile_definitions(native_track_mark_tests PRIVATE NATIVE_TRACK_MARK_TESTS_ONLY=1)
@@ -883,6 +888,10 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_bridge_http_simulation_test.py
       $<TARGET_FILE:native_bridge_host_simulation>
   )
+  add_test(NAME native_memory_http_simulation
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_memory_http_simulation_test.py
+      $<TARGET_FILE:native_bridge_host_simulation>)
+  set_tests_properties(native_memory_http_simulation PROPERTIES RUN_SERIAL TRUE)
   add_test(NAME native_official_fx_http_simulation
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_official_fx_http_simulation_test.py
       $<TARGET_FILE:native_bridge_host_simulation>)

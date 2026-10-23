@@ -47,9 +47,9 @@ struct NativeAudioCoreTestAccess {
         core.nativeLooperMaxRecordSeconds_ = kLoopCapacitySeconds;
         core.nativeLooperPreallocatedBytes_ = core.looper_.storageBytes();
         for (const auto& track : core.additionalLoopers_) core.nativeLooperPreallocatedBytes_ += track.storageBytes();
-        if (!core.outputStage_.prepare(config.sampleRate) || !core.nativeInputFxBank_.prepare(config.sampleRate) ||
-            !core.nativePitchProcessor_.prepare(config.sampleRate, 70.0f, 1200.0f) ||
-            !core.nativePolyPitchProcessor_.prepare(config.sampleRate) ||
+        if (!core.outputStage_->prepare(config.sampleRate) || !core.nativeInputFxBank_.prepare(config.sampleRate) ||
+            !core.nativePitchProcessor_->prepare(config.sampleRate, 70.0f, 1200.0f) ||
+            !core.nativePolyPitchProcessor_->prepare(config.sampleRate) ||
             !core.nativeRhythmEngine_.prepare(config.sampleRate) ||
             !core.nativeRhythmEngine_.setConfig(core.nativeRhythmConfig_, 0U)) return false;
         return true;
@@ -86,7 +86,7 @@ struct NativeAudioCoreTestAccess {
         if (path == NativeCatalogFxPath::Input) {
             bank = &core.nativeInputFxBank_;
         } else if (trackId == 0U) {
-            bank = &core.outputStage_.trackFxBank();
+            bank = &core.outputStage_->trackFxBank();
         } else if (trackId <= kNativeTrackCount) {
             bank = &core.nativePerTrackFxBanks_[trackId - 1U];
         }

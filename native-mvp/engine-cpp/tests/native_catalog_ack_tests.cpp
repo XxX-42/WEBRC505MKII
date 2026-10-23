@@ -7,7 +7,7 @@ namespace webrc::native {
 struct NativeAudioCoreTestAccess {
     static void prepare(NativeAudioCore& c) {
         EngineConfig config; config.sampleRate = 48000; c.currentConfig_ = config;
-        assert(c.nativeInputFxBank_.prepare(48000)); assert(c.outputStage_.prepare(48000));
+        assert(c.nativeInputFxBank_.prepare(48000)); assert(c.outputStage_->prepare(48000));
     }
     static void running(NativeAudioCore& c, bool v) { c.engineRunning_.store(v); }
     static void drain(NativeAudioCore& c) { c.applyNativeCatalogFxCommands(); }
@@ -15,7 +15,7 @@ struct NativeAudioCoreTestAccess {
         (void)c.processNativeTracksForCallback(nullptr, nullptr, 1U, 1U, nullptr);
     }
     static void processSharedFault(NativeAudioCore& c, bool input) {
-        auto& bank = input ? c.nativeInputFxBank_ : c.outputStage_.trackFxBank();
+        auto& bank = input ? c.nativeInputFxBank_ : c.outputStage_->trackFxBank();
         auto* processor = bank.processor(NativeEffectSlot::A);
         assert(processor != nullptr);
         std::array<float, 128> samples{};
