@@ -733,9 +733,11 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       const dubModes = ['OVERDUB', 'REPLACE1', 'REPLACE2'] as const;
       const nativeDubMode = engine.getMode() === 'native' ? engine.getNativeDubModeStatus(bounceTarget) : null;
       const nativeDubPending = !!nativeDubMode && nativeDubMode.requestedRevision !== nativeDubMode.appliedRevision;
+      const displayedDubMode = engine.getMode() === 'native' && nativeDubMode
+        ? nativeDubMode.applied : audioTrack.track.dubMode;
       const dubModeBusy = !!(audioTrack as { historyBusy?: boolean }).historyBusy
         || audioTrack.state === 'RECORDING' || audioTrack.state === 'OVERDUBBING';
-      fields.push(makeEnumField('track-dub-mode', 'DUB MODE', Math.max(0, dubModes.indexOf(audioTrack.track.dubMode)),
+      fields.push(makeEnumField('track-dub-mode', 'DUB MODE', Math.max(0, dubModes.indexOf(displayedDubMode)),
         fieldOptions(dubModes), (value) => {
           const mode = dubModes[value];
           const currentlyBusy = !!(audioTrack as { historyBusy?: boolean }).historyBusy

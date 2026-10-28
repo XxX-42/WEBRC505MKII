@@ -991,6 +991,11 @@ bool NativeAudioCore::toggleTrackOverdub(std::size_t trackIndex, std::string& er
     }
     reclaimInactiveHistoryPcmLocked();
     if (state == LooperState::Playing) {
+        if (nativeDubModeRequestedRevision_[trackIndex].load(std::memory_order_acquire) !=
+            nativeDubModeAppliedRevision_[trackIndex].load(std::memory_order_acquire)) {
+            error = "Wait for Native DUB MODE callback acknowledgement before starting an overdub.";
+            return false;
+        }
         if (commandQueue_.size() != 0U) {
             error = "Wait for queued Native track commands to finish before starting an overdub.";
             return false;
@@ -2533,6 +2538,10 @@ bool NativeAudioCore::setNativeDubMode(std::size_t trackIndex, NativeDubMode mod
     if (recordStartPending_[trackIndex].load(std::memory_order_acquire) || state == LooperState::Recording ||
         state == LooperState::Overdubbing) {
         error = "Finish recording or overdubbing before changing Native DUB MODE.";
+        return false;
+    }
+    if (commandQueue_.size() != 0U) {
+        error = "Wait for queued Native track commands before changing DUB MODE.";
         return false;
     }
     const auto previousRevision = nativeDubModeRequestedRevision_[trackIndex].load(std::memory_order_relaxed);

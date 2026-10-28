@@ -34,6 +34,7 @@ beforeEach(() => {
     getUiStatus: () => ({ ready: true }), onStatusChange: () => () => {},
     getTrackCapabilities: () => ({ supportsReverse: true }), getTrackFxApply: () => [],
     getNativeDubModeStatus: () => null,
+    setNativeDubMode: vi.fn(async () => undefined),
     getBrowserAutoRecSettings: () => null,
     getBrowserBounceSettings: () => null, getNativeBounceSettings: () => null,
     setMonitoring: vi.fn(async (enabled: boolean) => { fixture.engine.monitoringEnabled = enabled; }),
@@ -78,6 +79,16 @@ describe('Classic existing audio controls', () => {
     fixture.engine.tracks[0].historyBusy = true;
     await field.setValue!(0); await settle();
     expect(fixture.engine.tracks[0].track.dubMode).toBe('REPLACE2');
+  });
+  it('shows Native DUB MODE from applied host readback while a different request is pending', () => {
+    fixture.engine.getMode = () => 'native';
+    fixture.engine.getNativeDubModeStatus = () => ({ applied: 'REPLACE2', requested: 'REPLACE1', requestedRevision: 2, appliedRevision: 1 });
+    const { editor } = createEditor('track');
+    editor.stepPage(1);
+    const field = editor.fields.value.find(item => item.key === 'track-dub-mode')!;
+    expect(field.value).toBe(2); // Track proxy remains its OVERDUB display default.
+    expect(field.disabled).toBe(true);
+    expect(field.reason).toContain('callback acknowledgement');
   });
   it('leaves Native PAN explicitly disabled without changing its track', () => {
     fixture.engine.getMode = () => 'native';

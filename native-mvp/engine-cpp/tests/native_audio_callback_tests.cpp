@@ -2511,6 +2511,55 @@ void testNativeOneShotOverdubAdmissionIsSideEffectFree() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(recDubCore, false);
 }
 
+void testNativeDubModeCannotOvertakePendingTrackCommands() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::array<float, 128U> input{}, output{};
+    input.fill(0.2f);
+    std::string error;
+    assert(core.recordTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 64U) == 0);
+    assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.playTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+
+    // A queued overdub start owns the next callback boundary. A later DUB MODE
+    // request must not jump ahead of it through the separate control queue.
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::ToggleOverdub, 0U);
+    std::uint64_t requestedRevision = 0U;
+    assert(!core.setNativeDubMode(0U, NativeDubMode::Replace1, requestedRevision, error));
+    assert(error.find("queued Native track commands") != std::string::npos);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    auto status = core.getStatus();
+    assert(status.nativeTrackStates[0U] == LooperState::Overdubbing);
+    assert(status.nativeTrackDubModes[0U] == NativeDubMode::Overdub);
+    assert(status.nativeTrackRequestedDubModes[0U] == NativeDubMode::Overdub);
+    assert(status.nativeDubModeRequestedRevision[0U] == status.nativeDubModeAppliedRevision[0U]);
+
+    NativeAudioCore pending;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(pending);
+    NativeAudioCoreTestAccess::setInputChannels(pending, 2U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(pending, true);
+    assert(pending.recordTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(pending, input.data(), output.data(), 64U) == 0);
+    assert(pending.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(pending, nullptr, output.data(), 64U) == 0);
+    assert(pending.playTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(pending, nullptr, output.data(), 64U) == 0);
+    assert(pending.setNativeDubMode(0U, NativeDubMode::Replace2, requestedRevision, error));
+    assert(!pending.toggleTrackOverdub(0U, error));
+    assert(error.find("DUB MODE callback acknowledgement") != std::string::npos);
+    assert(NativeAudioCoreTestAccess::callback(pending, nullptr, output.data(), 64U) == 0);
+    status = pending.getStatus();
+    assert(status.nativeTrackDubModes[0U] == NativeDubMode::Replace2);
+    assert(status.nativeDubModeRequestedRevision[0U] == status.nativeDubModeAppliedRevision[0U]);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(pending, false);
+}
+
 void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks() {
     using namespace webrc::native;
     NativeAudioCore core;
@@ -2646,6 +2695,7 @@ int main() {
 #if defined(NATIVE_MEMORY_TESTS_ONLY)
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();
     testNativeDubModeCallbackAckPcmAndUndoCancellation();
+    testNativeDubModeCannotOvertakePendingTrackCommands();
     testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread();
     return 0;
 #elif defined(NATIVE_TRACK_MARK_TESTS_ONLY)
@@ -3132,6 +3182,7 @@ int main() {
     assert(!finalStatus.nativePhaserEnabled);
     testNativeCatalogSlotsRunInsidePlaybackCallback();
     testNativeDubModeCallbackAckPcmAndUndoCancellation();
+    testNativeDubModeCannotOvertakePendingTrackCommands();
     testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks();
     testNativeBounceUsesOverdubbingSourcePreviewWithoutOrderDependentAdvance();
     testNativeInputCatalogBankProcessesBeforeRecordAndMonitor();
