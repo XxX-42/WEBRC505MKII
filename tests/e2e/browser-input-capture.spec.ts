@@ -233,6 +233,60 @@ test('Browser engine records connected stereo input through its shared tap', asy
   expect(recorded.diagnostic).toBeNull();
 });
 
+test('Browser Auto Rec arms the shared worklet and records only after the input trigger', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const audio = AudioEngine.getInstance();
+    const browser = (audio as any).browser;
+    const context = browser.context as AudioContext;
+    const oscillator = new OscillatorNode(context, { frequency: 440 });
+    const gain = context.createGain();
+    gain.gain.value = 0;
+    const destination = context.createMediaStreamDestination();
+    oscillator.connect(gain).connect(destination);
+    oscillator.start();
+    await browser.replaceInputStream(destination.stream);
+    audio.setBrowserAutoRecSettings({ enabled: true, sensitivity: 1 });
+    const track = audio.tracks[0] as any;
+    await track.startRecording();
+    if (track.state !== 'REC_STANDBY' || !track.autoRecArmed) throw new Error('Auto Rec did not enter recording standby');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    gain.gain.setValueAtTime(0.6, context.currentTime);
+    const deadline = Date.now() + 4_000;
+    while (Date.now() < deadline && track.state !== 'RECORDING') await new Promise((resolve) => setTimeout(resolve, 10));
+    if (track.state !== 'RECORDING' || track.autoRecArmed) throw new Error('Input trigger did not acknowledge recording');
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await track.stopRecording();
+    oscillator.stop();
+  });
+
+  await page.waitForFunction(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    return !!track && !track.isFinalizingRecording && !!track.audioBuffer;
+  }, undefined, { timeout: 8_000 });
+  const result = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const engine = AudioEngine.getInstance();
+    const track = engine.tracks[0] as any;
+    return {
+      settings: engine.getBrowserAutoRecSettings(),
+      state: track.state,
+      armed: track.autoRecArmed,
+      frames: track.recordingFramesCaptured,
+      channels: track.audioBuffer?.numberOfChannels ?? 0,
+    };
+  });
+  expect(result.settings).toEqual({ enabled: true, sensitivity: 1 });
+  expect(result.state).toBe('PLAYING'); // Default REC ACTION is REC→PLAY.
+  expect(result.armed).toBe(false);
+  expect(result.frames).toBeGreaterThan(0);
+  expect(result.channels).toBe(2);
+});
+
 test('Browser UI blocks new recording and overdub while the shared tap rewarms', async ({ page }) => {
   for (const ui of ['classic', 'tech'] as const) {
     await page.goto(`/?audio=browser&ui=${ui}`);

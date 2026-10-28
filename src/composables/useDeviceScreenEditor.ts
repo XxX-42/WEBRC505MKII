@@ -1056,7 +1056,16 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         makeEnumField('record-quantize', 'QUANTIZE', settings?.quantize === 'OFF' ? 0 : 1,
           fieldOptions(['OFF', 'MEASURE']), value => engine.setRecordPlaySettings({ quantize: value === 0 ? 'OFF' : 'MEASURE' }),
           { disabled: !settings?.available, reason: settings?.reason || 'Recording quantization is unavailable.' }),
-        makeActionField('auto-rec', 'AUTO REC', () => {}, { disabled: true, reason: 'No automatic input-trigger recording provider is implemented.' }),
+        ...(engine.getBrowserAutoRecSettings() ? (() => {
+          const autoRec = engine.getBrowserAutoRecSettings()!;
+          const approximation = 'Browser software approximation: raw-input peak threshold starts recording; no added pre-roll. Roland’s exact detector behavior is unpublished.';
+          return [
+            makeBooleanField('auto-rec-sw', 'AUTO REC SW', autoRec.enabled, enabled => engine.setBrowserAutoRecSettings({ ...autoRec, enabled }),
+              { reason: approximation }),
+            makeNumberField('auto-rec-sens', 'SENS', autoRec.sensitivity, sensitivity => engine.setBrowserAutoRecSettings({ ...autoRec, sensitivity: Math.round(sensitivity) }),
+              { min: 1, max: 100, step: 1, disabled: !autoRec.enabled, reason: autoRec.enabled ? approximation : 'Turn AUTO REC SW ON to edit sensitivity.' }),
+          ];
+        })() : [makeActionField('auto-rec', 'AUTO REC', () => {}, { disabled: true, reason: 'Browser Auto Rec is available only in Browser audio mode.' })]),
         makeActionField('bounce', 'BOUNCE', () => {}, { disabled: true, reason: 'Hardware Bounce selection has no complete recording provider.' }),
       ]);
     }

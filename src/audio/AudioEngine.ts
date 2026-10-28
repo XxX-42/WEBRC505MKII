@@ -3,6 +3,7 @@ import type { Rc505MemoryRuntime } from './Rc505Memory';
 import { fenceRc505MemoryRuntime } from './Rc505MemoryRuntimeFence';
 import type { MixerChannel, MixerState } from './Mixer';
 import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
+import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserStepSlicerControl } from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus, type NativeCatalogFxSlotRuntime } from './NativeAudioEngine';
 import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus } from './NativeBridgeClient';
@@ -853,6 +854,14 @@ export class AudioEngine {
   }
   public getRecordPlaySettings(): RecordPlaySettings { return this.activeEngine.getRecordPlaySettings(); }
   public setRecordPlaySettings(settings: RecordPlaySettingsPatch): void { this.activeEngine.setRecordPlaySettings(settings); }
+  /** Browser Auto Rec is a software approximation; Native remains explicitly unavailable. */
+  public getBrowserAutoRecSettings(): Readonly<BrowserAutoRecSettings> | null {
+    return this.currentMode === 'browser' ? this.browser.getBrowserAutoRecSettings() : null;
+  }
+  public setBrowserAutoRecSettings(settings: BrowserAutoRecSettings): void {
+    if (this.currentMode !== 'browser') throw new Error('Auto Rec is available only in Browser audio mode.');
+    this.browser.setBrowserAutoRecSettings(settings);
+  }
   public setTrackFxApply(trackId: number, enabled: boolean): Promise<TrackFxApplyStatus> {
     return this.activeEngine.setTrackFxApply(trackId, enabled);
   }
