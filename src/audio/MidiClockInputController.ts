@@ -2,6 +2,7 @@
 
 import type { MidiAccessLike, MidiInputLike, MidiMessageEventLike, MidiInputState } from './MidiInputController';
 import { MidiClockEstimator } from './MidiClockEstimator';
+import { MidiAudioFrameMapper, type MidiAudioAnchor, type MidiAudioFrameMapResult } from './MidiAudioFrameMapper';
 
 export type MidiClockSignal = 'waiting' | 'observed' | 'stale' | 'ambiguous';
 export type MidiClockStability = 'insufficient-data' | 'stable' | 'unstable';
@@ -26,6 +27,7 @@ export interface MidiClockSnapshot {
   readonly phaseRequiredIntervals: number;
   readonly phaseInferredMissingTicks: number;
   readonly phaseRejectedIntervals: number;
+  readonly frameMapping: MidiAudioFrameMapResult;
 }
 
 /** Session-only key and display name. The Web MIDI port ID is never exposed or persisted. */
@@ -39,6 +41,8 @@ export interface MidiClockInputOptions {
   readonly requestPermissionStatus?: () => Promise<MidiPermissionStatusLike> | undefined;
   readonly onChange?: () => void;
   readonly now?: () => number;
+  /** Optional read-only running AudioContext clock sample; used for Tech diagnostics only. */
+  readonly getAudioAnchor?: () => MidiAudioAnchor | null;
 }
 
 export interface MidiPermissionStatusLike {
@@ -85,6 +89,8 @@ export class MidiClockInputController {
   private readonly requestPermissionStatus: () => Promise<MidiPermissionStatusLike> | undefined;
   private readonly onChange?: () => void;
   private readonly now: () => number;
+  private readonly getAudioAnchor?: () => MidiAudioAnchor | null;
+  private readonly frameMapper = new MidiAudioFrameMapper();
   private connection: MidiInputState = 'disconnected';
   private access?: MidiAccessLike;
   private permissionStatus?: MidiPermissionStatusLike;
@@ -119,6 +125,7 @@ export class MidiClockInputController {
     this.requestPermissionStatus = options.requestPermissionStatus ?? requestBrowserMidiPermissionStatus;
     this.onChange = options.onChange;
     this.now = options.now ?? (() => performance.now());
+    this.getAudioAnchor = options.getAudioAnchor;
   }
 
   connect(): Promise<MidiInputState> {
@@ -179,6 +186,7 @@ export class MidiClockInputController {
     this.portClocks.clear();
     this.selectedInputKey = null;
     this.phaseEstimator.reset();
+    this.frameMapper.reset();
     this.setConnection('disconnected');
     this.onChange?.();
   }
@@ -188,6 +196,7 @@ export class MidiClockInputController {
     if (key === null) {
       this.selectedInputKey = null;
       this.phaseEstimator.reset();
+      this.frameMapper.reset();
       this.onChange?.();
       return true;
     }
@@ -195,6 +204,7 @@ export class MidiClockInputController {
     if (!exists) return false;
     this.selectedInputKey = key;
     this.phaseEstimator.reset();
+    this.frameMapper.reset();
     const selected = [...this.portClocks.values()].find((clock) => clock.key === key);
     if (selected) {
       selected.intervals = [];
@@ -217,6 +227,12 @@ export class MidiClockInputController {
       : this.isStable(source.intervals) ? 'stable' : 'unstable';
     const medianInterval = source ? this.median(source.intervals) : 0;
     const phase = source ? this.phaseEstimator.getSnapshot(nowMs) : null;
+    const anchor = this.getAudioAnchor?.();
+    if (anchor) this.frameMapper.addAnchor(anchor);
+    else if (this.getAudioAnchor) this.frameMapper.reset();
+    const frameMapping = source?.lastTickAtMs !== null && source?.lastTickAtMs !== undefined
+      ? this.frameMapper.map(source.lastTickAtMs, nowMs)
+      : this.frameMapper.map(Number.NaN, nowMs);
     return Object.freeze({
       connection: this.connection,
       signal,
@@ -236,6 +252,7 @@ export class MidiClockInputController {
       phaseRequiredIntervals: phase?.requiredIntervals ?? 6,
       phaseInferredMissingTicks: phase?.inferredMissingTicks ?? 0,
       phaseRejectedIntervals: phase?.rejectedIntervals ?? 0,
+      frameMapping,
     });
   }
 

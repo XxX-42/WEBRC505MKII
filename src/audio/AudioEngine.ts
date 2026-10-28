@@ -224,6 +224,25 @@ export class AudioEngine {
     return this.currentMode;
   }
 
+  /** Read-only performance-time/audio-time pair for Tech MIDI diagnostics. */
+  public getMidiAudioClockAnchor(): {
+    readonly performanceTimeMs: number;
+    readonly audioTimeSeconds: number;
+    readonly sampleRate: number;
+    readonly contextKey: object;
+    readonly contextState: AudioContextState | 'interrupted';
+  } | null {
+    if (this.currentMode !== 'browser' || !this.browserEngine) return null;
+    const context = this.browserEngine.context;
+    return {
+      performanceTimeMs: performance.now(),
+      audioTimeSeconds: context.currentTime,
+      sampleRate: context.sampleRate,
+      contextKey: context,
+      contextState: context.state,
+    };
+  }
+
   public setMode(mode: AudioMode) {
     if (mode !== this.currentMode && this.memoryPreparations > 0) throw new Error('Finish the pending Memory transaction before changing audio backend.');
     if (mode !== this.currentMode) {

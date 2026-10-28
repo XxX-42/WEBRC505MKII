@@ -95,6 +95,13 @@
         {{ clockSnapshot.phaseInferredMissingTicks }} inferred missing ·
         {{ clockSnapshot.phaseRejectedIntervals }} rejected
       </div>
+      <div v-if="clockSnapshot.selectedInputKey" class="midi-clock-frame-map" data-testid="midi-clock-frame-map">
+        {{ midiFrameMappingStatus }}
+      </div>
+      <div v-if="clockSnapshot.selectedInputKey" class="midi-clock-phase-note">
+        Estimated from performance.now() and AudioContext.currentTime; currentTime may be quantized, so this is not sample-accurate.
+        Anchors use the 250 ms diagnostic refresh, so browser scheduling adds uncertainty. Suspend/resume invalidates the mapping until fresh anchors are collected.
+      </div>
       <div v-if="clockSnapshot.selectedInputName" class="midi-clock-selected" data-testid="midi-clock-selected">
         {{ clockSnapshot.selectedInputName }}
       </div>
@@ -162,7 +169,10 @@ const monitoringError = monitoring.error;
 const monitoringPending = monitoring.pending;
 const monitoringReady = monitoring.ready;
 const monitoringDisabled = computed(() => !monitoringReady.value || monitoringPending.value);
-const midiClock = new MidiClockInputController({ onChange: () => refreshMidiClock() });
+const midiClock = new MidiClockInputController({
+  onChange: () => refreshMidiClock(),
+  getAudioAnchor: () => engine.getMidiAudioClockAnchor(),
+});
 const clockSnapshot = ref<MidiClockSnapshot>(midiClock.getSnapshot());
 let clockRefreshTimer: number | null = null;
 const thruAriaLabel = computed(() => monitoringPending.value
@@ -207,6 +217,12 @@ const midiClockPhaseStatus = computed(() => {
     return `Relative pulse phase: acquiring · ${snapshot.phaseAcceptedIntervals}/${snapshot.phaseRequiredIntervals} intervals`;
   }
   return 'Relative pulse phase: waiting for F8 clock';
+});
+const midiFrameMappingStatus = computed(() => {
+  const mapping = clockSnapshot.value.frameMapping;
+  if (!mapping.ok || mapping.frame === null) return `Audio frame mapping unavailable · ${mapping.reason ?? 'unknown'}`;
+  const drift = mapping.driftPpm === null ? 'drift pending' : `${mapping.driftPpm.toFixed(0)} ppm drift`;
+  return `Read-only audio frame estimate · ${mapping.frame} · ${drift}`;
 });
 
 const refreshMidiClock = () => {

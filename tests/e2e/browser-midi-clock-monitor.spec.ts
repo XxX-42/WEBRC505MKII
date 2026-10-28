@@ -52,12 +52,15 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
   await page.getByRole('button', { name: 'Connect MIDI clock input' }).click();
   await expect(status).toHaveText('Select one input to monitor');
   const relativePhase = page.getByTestId('midi-clock-relative-phase');
+  const frameMapping = page.getByTestId('midi-clock-frame-map');
   await expect(relativePhase).toHaveText('Relative pulse phase: select one input');
   await expect(page.locator('.midi-clock-phase-note')).toContainText('no START/downbeat marker');
   const source = page.getByTestId('midi-clock-input-select');
   await expect(source.locator('option')).toHaveText(['Select MIDI input', 'Controller Alpha', 'Controller Beta']);
   await source.selectOption({ label: 'Controller Alpha' });
   await expect(status).toHaveText('Waiting for F8 clock');
+  await expect(frameMapping).toContainText(/Audio frame mapping unavailable|Read-only audio frame estimate/);
+  await expect(page.getByText('Estimated from performance.now()', { exact: false })).toContainText('not sample-accurate');
   const transportBefore = await page.evaluate(async () => {
     const { Transport } = await import('/src/core/Transport.ts');
     const transport = Transport.getInstance();
