@@ -5,7 +5,7 @@ import type { MixerChannel, MixerState } from './Mixer';
 import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
 import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { BrowserBounceSettings } from './BrowserBounceSettings';
-import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserStepSlicerControl } from './BrowserAudioEngine';
+import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserInputCaptureErrorDiagnostic, type BrowserStepSlicerControl } from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus, type NativeCatalogFxSlotRuntime } from './NativeAudioEngine';
 import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeDubMode, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus } from './NativeBridgeClient';
 import type { NativeTrackProxy } from './NativeTrackProxy';
@@ -75,6 +75,7 @@ export interface AudioUiStatus {
   inputCaptureUnavailableReason?: string;
   inputState?: 'not-requested' | 'requesting' | 'ready' | 'error';
   inputError?: string;
+  lastInputCaptureError?: BrowserInputCaptureErrorDiagnostic | null;
   recoveryAwaitingUserResume?: boolean;
 }
 

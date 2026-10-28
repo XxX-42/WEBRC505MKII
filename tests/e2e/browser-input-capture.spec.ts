@@ -446,3 +446,40 @@ test('Browser UI blocks new recording and overdub while the shared tap rewarms',
     await expect(recordButton).toBeEnabled();
   }
 });
+
+test('shared capture failure exposes diagnostics through the audio facade and keeps prior PCM', async ({ page }) => {
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+  const result = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const { TrackAudio } = await import('/src/audio/TrackAudio.ts');
+    const audio = AudioEngine.getInstance();
+    const browser = (audio as any).browser;
+    const context = browser.context as AudioContext;
+    const previous = context.createBuffer(2, 2048, context.sampleRate);
+    previous.getChannelData(0).fill(0.2);
+    previous.getChannelData(1).fill(-0.3);
+    const restored = TrackAudio.restoreProjectBuffersAtomically(browser.tracks, [previous, null, null, null, null]);
+    if (!restored.ok) throw new Error(restored.reason);
+    const track = browser.tracks[0];
+    await track.startRecording();
+    const record = browser.inputCaptureSessions.get(0);
+    if (!record) throw new Error('capture session was not reserved');
+    const session = record.session;
+    browser.handleInputCaptureMessage({
+      type: 'CAPTURE_ERROR', trackIndex: 0, sessionId: session.sessionId,
+      inputGeneration: session.inputGeneration, reason: 'input-frame-discontinuity',
+      callbackFrameStart: 20_128, callbackFrameCount: 128, previousCallbackEndFrame: 20_000,
+      requestedStartFrame: session.startFrame, sampleRate: context.sampleRate,
+    });
+    const diagnostic = audio.getUiStatus().lastInputCaptureError;
+    const pcm = track.getProjectPcmSnapshot();
+    return { diagnostic, left: pcm?.channelData[0]?.[0], right: pcm?.channelData[1]?.[0] };
+  });
+  expect(result.diagnostic?.reason).toBe('input-frame-discontinuity');
+  expect(result.diagnostic?.worklet.callbackGapFrames).toBe(128);
+  expect(result.diagnostic?.worklet.callbackFrameCount).toBe(128);
+  expect(result.diagnostic?.audioContext.state).toBe('running');
+  expect(result.left).toBeCloseTo(0.2);
+  expect(result.right).toBeCloseTo(-0.3);
+});
