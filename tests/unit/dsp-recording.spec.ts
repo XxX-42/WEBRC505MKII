@@ -184,6 +184,32 @@ describe('TrackAudio recording chunk assembly', () => {
     vi.unstubAllGlobals();
   });
 
+  it('keeps a reversed loop playing when REC/PLAY is pressed and permits overdub after returning forward', async () => {
+    const [{ TrackAudio }, { Track, TrackState }] = await Promise.all([
+      import('../../src/audio/TrackAudio'), import('../../src/core/types'),
+    ]);
+    const context = createMockAudioContext();
+    const engine = { context, trackMixNode: context.createGain(), tracks: [] as unknown[] };
+    const audio = new TrackAudio(engine as never, new Track(1), 0, null, null);
+    const buffer = context.createBuffer(2, 16, context.sampleRate);
+    buffer.getChannelData(0).set([0.25, -0.5]);
+    (audio as unknown as { audioBuffer: AudioBuffer }).audioBuffer = buffer;
+    audio.state = TrackState.PLAYING;
+    audio.isReverse = true;
+    const suspend = vi.spyOn(audio as any, 'suspendLoopTransportForOverdub').mockImplementation(() => {});
+    const overdub = vi.spyOn(audio as any, 'startOverdub').mockResolvedValue(undefined);
+    audio.triggerRecord();
+    expect(audio.state).toBe(TrackState.PLAYING);
+    expect(suspend).not.toHaveBeenCalled();
+    expect(overdub).not.toHaveBeenCalled();
+    expect(buffer.getChannelData(0)[0]).toBe(0.25);
+    expect(audio.overdubDiagnostic).toContain('REVERSE');
+    audio.isReverse = false;
+    audio.triggerRecord();
+    expect(audio.state).toBe(TrackState.OVERDUBBING);
+    expect(overdub).toHaveBeenCalledOnce();
+  });
+
   it('recycles transferable chunks and finalizes only the captured frame range with counters', async () => {
     vi.resetModules();
     const [{ TrackAudio }, { Track }] = await Promise.all([

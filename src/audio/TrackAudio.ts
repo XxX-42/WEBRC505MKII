@@ -1873,6 +1873,12 @@ export class TrackAudio {
         } else if (this.state === TrackState.RECORDING) {
             this.scheduleRecordingStop();
         } else if (this.state === TrackState.PLAYING) {
+            // The RC-505mkII does not enter overdub while REVERSE is on.
+            // Keep the existing loop playing and report why the press had no effect.
+            if (this.isReverse) {
+                this.overdubDiagnostic = 'Overdub is unavailable while REVERSE is on.';
+                return;
+            }
             this.suspendLoopTransportForOverdub();
             this.state = TrackState.OVERDUBBING;
             this.ensureTransportRunning();
