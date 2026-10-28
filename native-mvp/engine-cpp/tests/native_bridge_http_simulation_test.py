@@ -1215,8 +1215,13 @@ def main():
         time.sleep(0.01)
         status, playing = request(f"/v1/transport/play{selector}", "POST", {})
         require(status == 200, f"1SHOT Track 3 play was rejected: {playing}")
-        before_rejected_overdub = request("/v1/status")[1]
-        track_three_before = before_rejected_overdub["nativeTracks"][2]
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            before_rejected_overdub = request("/v1/status")[1]
+            track_three_before = before_rejected_overdub["nativeTracks"][2]
+            if track_three_before["state"] == "Playing":
+                break
+            time.sleep(0.005)
         require(track_three_before["state"] == "Playing" and
                 track_three_before["loopTransportAppliedOneShot"] is True,
                 f"Track 3 was not playing with callback-applied 1SHOT: {track_three_before}")
