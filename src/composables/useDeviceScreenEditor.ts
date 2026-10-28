@@ -750,7 +750,18 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       audioTrack.updateSettings();
     }, { disabled: engine.getMode() !== 'browser' || !audioTrack || loopSyncBusy,
       reason: engine.getMode() !== 'browser' ? 'Native loop sync has no provider.' : loopSyncBusy ? 'Finish recording or overdubbing before changing loop sync.' : '' }));
-    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-bounce-in', 'track-loop-sync'].includes(field.key)) : fields);
+    const oneShotBusy = loopSyncBusy || (audioTrack?.state !== undefined && audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED');
+    fields.push(makeBooleanField('track-one-shot', '1SHOT', audioTrack?.track.oneShot === 'ON', (enabled) => {
+      if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the track again.');
+      if (engine.getMode() !== 'browser' || !audioTrack) throw new Error('1SHOT is unavailable in this audio mode.');
+      if ((audioTrack as { historyBusy?: boolean }).historyBusy || (audioTrack.state !== 'EMPTY' && audioTrack.state !== 'STOPPED')) {
+        throw new Error('Stop the track before changing 1SHOT.');
+      }
+      audioTrack.track.oneShot = enabled ? 'ON' : 'OFF';
+      audioTrack.updateSettings();
+    }, { disabled: engine.getMode() !== 'browser' || !audioTrack || oneShotBusy,
+      reason: engine.getMode() !== 'browser' ? 'Native 1SHOT has no provider.' : oneShotBusy ? 'Stop the track before changing 1SHOT.' : '' }));
+    return chunks(classic ? fields.filter((field) => ['track-level', 'track-reverse', 'track-fx-apply', 'track-pan', 'track-bounce-in', 'track-loop-sync', 'track-one-shot'].includes(field.key)) : fields);
   }
 
   function deviceOptions(devices: readonly AudioDeviceInfo[]): DeviceScreenOption[] {

@@ -142,6 +142,19 @@ describe('Classic existing audio controls', () => {
     const native = createEditor('recording', 'memory').editor;
     expect(native.fields.value.find(field => field.key === 'bounce')?.disabled).toBe(true);
   });
+  it('exposes 1SHOT on the selected Browser track and blocks changes while playing', async () => {
+    fixture.engine.tracks[0].state = 'STOPPED';
+    const { editor } = createEditor('track');
+    editor.stepPage(1); await settle();
+    const oneShot = editor.fields.value.find(field => field.key === 'track-one-shot')!;
+    expect(oneShot.disabled).toBe(false);
+    oneShot.setValue!(100); await settle(); await settle();
+    expect(fixture.engine.tracks[0].track.oneShot).toBe('ON');
+    fixture.engine.tracks[0].state = 'PLAYING';
+    oneShot.setValue!(0); await settle(); await settle();
+    expect(fixture.engine.tracks[0].track.oneShot).toBe('ON');
+    expect(editor.status.value).toContain('Stop the track');
+  });
   it('edits LOOP SYNC for the selected Browser track and rejects edits during recording', async () => {
     const { editor } = createEditor('track');
     editor.stepPage(1); await settle();
