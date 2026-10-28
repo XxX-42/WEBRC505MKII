@@ -332,7 +332,7 @@ test('Classic LCD Bounce controls route another playing track into the destinati
   await page.waitForFunction(async () => {
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
     const target = AudioEngine.getInstance().tracks[0] as any;
-    return target.state === 'PLAYING' && !!target.audioBuffer;
+    return target.state === 'PLAYING' && !!target.audioBuffer && !target.historyBusy;
   });
   const result = await page.evaluate(async () => {
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
