@@ -1915,6 +1915,11 @@ export class TrackAudio {
     public triggerRecord() {
         if (this.disposed) return;
         if (this.pendingClear) return;
+        // A shared Bounce capture can still be draining its acknowledged stop
+        // while the public track state remains RECORDING. Treat REC as busy
+        // until PCM finalization has committed or discarded the take; issuing
+        // another stop can make the capture owner reject it and discard PCM.
+        if (this.isFinalizingRecording) return;
         if (this.autoRecArmed) { this.abortRecording(); this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY; this.syncTransportState(); return; }
         if (this.state === TrackState.EMPTY) {
             this.scheduleRecordingStart();

@@ -327,6 +327,69 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.state).toBe(TrackState.RECORDING);
   });
 
+  it('ignores REC while a stopped Bounce take is still awaiting capture finalization', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const previous = context.createBuffer(1, 256, context.sampleRate);
+    previous.getChannelData(0).fill(0.375);
+    (trackAudio as any).audioBuffer = previous;
+    const node = new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode;
+    const session = { node, trackIndex: 0, sessionId: 55, inputGeneration: 5, startFrame: 8_000 };
+    let stopRequests = 0;
+    engine.getInputCaptureRequestFrame = () => 8_128;
+    engine.stopInputCaptureSession = vi.fn(() => ++stopRequests === 1);
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = node;
+    (trackAudio as any).isRecording = true;
+    trackAudio.state = TrackState.RECORDING;
+
+    trackAudio.triggerRecord();
+    expect((trackAudio as any).isFinalizingRecording).toBe(true);
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledOnce();
+
+    // The second press arrives before RECORD_COMPLETE. It must not issue a
+    // second STOP_CAPTURE that can make the shared capture owner reject/discard.
+    trackAudio.triggerRecord();
+
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledOnce();
+    expect((trackAudio as any).recordingCaptureSession).toBe(session);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect([...previous.getChannelData(0).slice(0, 3)]).toEqual([0.375, 0.375, 0.375]);
+    expect(trackAudio.state).toBe(TrackState.RECORDING);
+  });
+
+  it('does not auto-restart a failed Bounce take; a later REC is an explicit retry', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const sessions: Array<{ session: any; listener: (message: unknown) => void }> = [];
+    engine.getBrowserBounceSourceMask = () => 2;
+    engine.getInputCaptureRequestFrame = () => 16_000 + sessions.length * 8_000;
+    engine.waitForInputCaptureReady = vi.fn(async () => undefined);
+    engine.beginInputCaptureSession = vi.fn((trackIndex: number, startFrame: number, listener: (message: unknown) => void) => {
+      const session = {
+        node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+        trackIndex, sessionId: 70 + sessions.length, inputGeneration: 5, startFrame,
+      };
+      sessions.push({ session, listener });
+      return session;
+    });
+
+    await trackAudio.startRecording();
+    (trackAudio as any).recordingCaptureStartAcknowledged = true;
+    sessions[0]!.listener({
+      type: 'CAPTURE_ERROR', sessionId: sessions[0]!.session.sessionId,
+      inputGeneration: sessions[0]!.session.inputGeneration, reason: 'input-frame-discontinuity',
+    });
+
+    expect(sessions).toHaveLength(1);
+    expect(trackAudio.state).toBe(TrackState.EMPTY);
+    expect(trackAudio.recordingDiagnostic).toContain('input-frame-discontinuity');
+
+    // The failed take does not restart by itself. A new capture is only
+    // reserved after the user's subsequent REC press.
+    trackAudio.triggerRecord();
+    await vi.waitFor(() => expect(sessions).toHaveLength(2));
+    expect(trackAudio.state).toBe(TrackState.RECORDING);
+  });
+
   it('retries an immediate shared capture at a fresh frame only when the old start never ACKed', async () => {
     const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
     const previous = createMockAudioContext().createBuffer(1, 256, 48_000);
