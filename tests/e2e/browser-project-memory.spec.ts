@@ -202,8 +202,13 @@ test('Browser project archives preserve stereo PCM and slot loads restore all fi
       // while the old IndexedDB metadata stored the trimmed name.
       const decodedSlotArchive = await archiveModule.decodeProjectArchive(await memory.exportFile('legacy-source'));
       const legacyArchive = await archiveModule.encodeProjectArchive({
-        ...decodedSlotArchive,
         name: '  legacy whitespace  ',
+        bpm: decodedSlotArchive.bpm,
+        transport: decodedSlotArchive.transport,
+        tracks: decodedSlotArchive.tracks.map((track: any) => track ? ({
+          sampleRate: track.sampleRate, frameCount: track.frameCount, channels: track.channels,
+          originalTempoBpm: null, pcm: track.pcm,
+        }) : null),
       });
       const legacyStored = await new memoryStoreModule.ProjectMemoryStore().save(
         legacySlot,
@@ -256,23 +261,23 @@ test('Browser project archives preserve stereo PCM and slot loads restore all fi
   expect(result.afterCorruptImport).toEqual(result.beforeCorruptImport);
   expect(result.allocationFailure).toContain('injected candidate-buffer');
   expect(result.afterFailedStage).toEqual(result.beforeFailedStage);
-  expect(result.imported).toEqual({ name: 'stereo-roundtrip', bpm: expect.any(Number), tracksWithAudio: 5 });
+  expect(result.imported).toEqual({ name: 'stereo-roundtrip', bpm: expect.any(Number), tracksWithAudio: 5, archiveVersion: 1 });
   expect(result.importedHashes).toEqual(result.exportedHashes);
   expect(result.saved).toMatchObject({ slot: 98, name: 'slot-roundtrip', bpm: expect.any(Number) });
   expect(result.listedSlot).toMatchObject({ slot: 98, name: 'slot-roundtrip' });
   expect(result.beforeSlotLoad).not.toEqual(result.slotHashes);
-  expect(result.loaded).toEqual({ name: 'slot-roundtrip', bpm: result.saved.bpm, tracksWithAudio: 5 });
+  expect(result.loaded).toEqual({ name: 'slot-roundtrip', bpm: result.saved.bpm, tracksWithAudio: 5, archiveVersion: 1 });
   expect(result.loadedHashes).toEqual(result.slotHashes);
   expect(result.emptyNameFailures).toHaveLength(2);
   expect(result.emptyNameFailures.every((failure: string) => failure !== 'accepted')).toBe(true);
   expect(result.afterInvalidNameSave).toEqual(result.loadedHashes);
   expect(result.afterInvalidNameSlotHashes).toEqual(result.slotHashes);
-  expect(result.afterInvalidNameLoad).toEqual({ name: 'slot-roundtrip', bpm: result.saved.bpm, tracksWithAudio: 5 });
+  expect(result.afterInvalidNameLoad).toEqual({ name: 'slot-roundtrip', bpm: result.saved.bpm, tracksWithAudio: 5, archiveVersion: 1 });
   expect(result.unicodeSaved).toMatchObject({ slot: 97, name: '音楽 loops 🎛️' });
-  expect(result.unicodeLoaded).toEqual({ name: '音楽 loops 🎛️', bpm: result.unicodeSaved.bpm, tracksWithAudio: 5 });
+  expect(result.unicodeLoaded).toEqual({ name: '音楽 loops 🎛️', bpm: result.unicodeSaved.bpm, tracksWithAudio: 5, archiveVersion: 1 });
   expect(result.unicodeLoadedHashes).toEqual(result.unicodeHashes);
   expect(result.legacyStored).toMatchObject({ slot: 99, name: 'legacy whitespace' });
-  expect(result.legacyLoaded).toEqual({ name: 'legacy whitespace', bpm: result.legacyStored.bpm, tracksWithAudio: 5 });
+  expect(result.legacyLoaded).toEqual({ name: 'legacy whitespace', bpm: result.legacyStored.bpm, tracksWithAudio: 5, archiveVersion: 1 });
   expect(result.legacyLoadedHashes).toEqual(result.unicodeLoadedHashes);
   expect(result.loadedHashes).toHaveLength(5);
   for (const track of result.loadedHashes) {
@@ -280,6 +285,114 @@ test('Browser project archives preserve stereo PCM and slot loads restore all fi
     expect(track.frameCount).toBeGreaterThan(2_000);
     expect(track.sha256).toMatch(/^[a-f0-9]{64}$/);
   }
+});
+
+test('Browser v2 archive round-trips verified track tempo while v1 imports stay unknown', async ({ page }) => {
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const context = new AudioContext();
+      const destination = context.createMediaStreamDestination();
+      const oscillator = context.createOscillator();
+      oscillator.connect(destination);
+      oscillator.start();
+      await context.resume();
+      return destination.stream;
+    };
+  });
+
+  await page.goto('/?audio=browser');
+  await startBrowserAudio(page);
+  const result = await page.evaluate(async () => {
+    const loadModule = (specifier: string) =>
+      (new Function('specifier', 'return import(specifier)') as (value: string) => Promise<any>)(specifier);
+    const [{ AudioEngine }, { TrackAudio }, { ProjectMemory }, { decodeProjectArchive, encodeProjectArchive }] = await Promise.all([
+      loadModule('/src/audio/AudioEngine.ts'),
+      loadModule('/src/audio/TrackAudio.ts'),
+      loadModule('/src/audio/projectMemory.ts'),
+      loadModule('/src/audio/projectArchive.ts'),
+    ]);
+    const engine = AudioEngine.getInstance();
+    const tracks = engine.tracks as any[];
+    if (engine.getMode() !== 'browser' || tracks.length !== 5) throw new Error('Expected five Browser tracks.');
+    const context = tracks[0].engine.context as AudioContext;
+    const memory = new ProjectMemory(engine);
+    const slot = 96;
+    const seed = (baseBpm: number): void => {
+      const replacements = tracks.map((_, index) => {
+        const buffer = context.createBuffer(1, 64 + index, context.sampleRate);
+        const channel = buffer.getChannelData(0);
+        for (let frame = 0; frame < channel.length; frame += 1) channel[frame] = Math.fround(Math.sin((frame + 1) * (index + 1) * 0.03));
+        return buffer;
+      });
+      const revisions = tracks.map((track) => track.projectRevision);
+      const bpm = tracks.map((_, index) => baseBpm + index);
+      const restored = TrackAudio.restoreProjectBuffersAtomically(tracks, replacements, revisions, 'retain-undo', bpm);
+      if (!restored.ok) throw new Error(restored.reason ?? 'Could not seed Browser provenance fixture.');
+    };
+    const file = (bytes: Uint8Array, name: string): File => {
+      const exact = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+      return new File([exact], name, { type: 'application/x-rc505-project' });
+    };
+    try {
+      await memory.delete(slot);
+      seed(110);
+      const exported = await engine.exportProjectArchive('verified-tempo-v2');
+      const decoded = await decodeProjectArchive(exported);
+      if (decoded.version !== 2 || decoded.tracks.some((track: any, index: number) => track?.originalTempoBpm !== 110 + index)) {
+        throw new Error('Browser export did not persist per-track provenance in archive v2.');
+      }
+
+      seed(120);
+      await memory.importFile(file(exported, 'verified-tempo-v2.rc505proj'));
+      const afterV2Import = tracks.map((track) => track.originalRecordingBpm);
+      for (const track of tracks) if (!track.undo()) throw new Error('v2 import did not retain the incumbent undo snapshot.');
+      const afterV2Undo = tracks.map((track) => track.originalRecordingBpm);
+      for (const track of tracks) if (!track.redo()) throw new Error('v2 import redo was unavailable.');
+      const afterV2Redo = tracks.map((track) => track.originalRecordingBpm);
+
+      const saved = await memory.save(slot, 'browser-v2-slot');
+      seed(130);
+      const loaded = await new ProjectMemory(engine).load(slot);
+      const afterSlotLoad = tracks.map((track) => track.originalRecordingBpm);
+
+      const v1Input = {
+        name: decoded.name,
+        bpm: decoded.bpm,
+        transport: decoded.transport,
+        tracks: decoded.tracks.map((track: any) => track ? ({
+          sampleRate: track.sampleRate, frameCount: track.frameCount, channels: track.channels,
+          originalTempoBpm: null, pcm: track.pcm,
+        }) : null),
+      };
+      const v1Bytes = await encodeProjectArchive(v1Input);
+      const decodedV1 = await decodeProjectArchive(v1Bytes);
+      if (decodedV1.version !== 1 || decodedV1.tracks.some((track: any) => track?.originalTempoBpm !== null)) {
+        throw new Error('Legacy v1 decode did not normalize the source tempo to unknown.');
+      }
+      await memory.importFile(file(v1Bytes, 'legacy-v1.rc505proj'));
+      const afterV1Import = tracks.map((track) => track.originalRecordingBpm);
+      for (const track of tracks) if (!track.undo()) throw new Error('v1 import did not retain the incumbent provenance snapshot.');
+      const afterV1Undo = tracks.map((track) => track.originalRecordingBpm);
+      for (const track of tracks) if (!track.redo()) throw new Error('v1 import redo was unavailable.');
+      const afterV1Redo = tracks.map((track) => track.originalRecordingBpm);
+
+      return { version: decoded.version, savedVersion: saved.archiveVersion, loadedVersion: loaded.archiveVersion,
+        afterV2Import, afterV2Undo, afterV2Redo, afterSlotLoad, afterV1Import, afterV1Undo, afterV1Redo };
+    } finally {
+      await memory.delete(slot);
+    }
+  });
+
+  expect(result.version).toBe(2);
+  expect(result.savedVersion).toBe(2);
+  expect(result.loadedVersion).toBe(2);
+  expect(result.afterV2Import).toEqual([110, 111, 112, 113, 114]);
+  expect(result.afterV2Undo).toEqual([120, 121, 122, 123, 124]);
+  expect(result.afterV2Redo).toEqual([110, 111, 112, 113, 114]);
+  expect(result.afterSlotLoad).toEqual([110, 111, 112, 113, 114]);
+  expect(result.afterV1Import).toEqual([null, null, null, null, null]);
+  expect(result.afterV1Undo).toEqual([110, 111, 112, 113, 114]);
+  expect(result.afterV1Redo).toEqual([null, null, null, null, null]);
 });
 
 test('Browser project loads reject PCM, history, or transport edits completed during asynchronous reads', async ({ page }) => {

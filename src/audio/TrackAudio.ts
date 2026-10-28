@@ -284,6 +284,8 @@ export interface ProjectTrackPcmSnapshot {
     readonly sampleRate: number;
     readonly frameCount: number;
     readonly channels: 1 | 2;
+    /** Original verified take tempo; null when the archive/import provenance is unknown. */
+    readonly originalRecordingBpm: number | null;
     /** Read-only views into the completed loop; the archive encoder consumes them synchronously. */
     readonly channelData: readonly Float32Array[];
 }
@@ -786,6 +788,7 @@ export class TrackAudio {
             sampleRate: buffer.sampleRate,
             frameCount: buffer.length,
             channels: buffer.numberOfChannels as 1 | 2,
+            originalRecordingBpm: this.originalRecordingBpmValue,
             channelData: Array.from({ length: buffer.numberOfChannels }, (_, channel) => buffer.getChannelData(channel)),
         };
     }
@@ -796,6 +799,7 @@ export class TrackAudio {
         replacements: readonly (AudioBuffer | null)[],
         expectedRevisions?: readonly number[],
         historyPolicy: 'retain-undo' | 'memory-boundary' = 'retain-undo',
+        replacementOriginalRecordingBpms?: readonly (number | null)[],
     ): ProjectBufferRestoreResult {
         if (tracks.length !== 5 || replacements.length !== 5) {
             return { ok: false, reason: 'Project memory restore requires exactly five prepared track buffers.' };
@@ -810,6 +814,11 @@ export class TrackAudio {
         if (expectedRevisions && (expectedRevisions.length !== 5
             || tracks.some((track, index) => track.projectPcmRevision !== expectedRevisions[index]))) {
             return { ok: false, reason: 'Project memory restore was canceled because a track changed during preparation.' };
+        }
+        if (replacementOriginalRecordingBpms && (replacementOriginalRecordingBpms.length !== 5
+            || replacementOriginalRecordingBpms.some((bpm, index) => !isValidRecordingBpm(bpm)
+                || (replacements[index] === null && bpm !== null)))) {
+            return { ok: false, reason: 'Project memory contains invalid per-track original tempo provenance.' };
         }
         for (const buffer of replacements) {
             if (buffer && (!Number.isSafeInteger(buffer.length) || buffer.length < 1
@@ -849,10 +858,10 @@ export class TrackAudio {
             track.hasCommittedOverdub = false;
             track.markFailureReason = null;
             track.audioBuffer = replacements[index]!;
-            // The current project archive does not carry per-track tempo provenance.
-            // Imported tracks therefore remain explicitly unknown; the incumbent
-            // PCM and its provenance travel together in the undo snapshot above.
-            track.originalRecordingBpmValue = null;
+            // V1 and legacy imports normalize provenance to null; v2 may provide
+            // verified per-track tempo. Incumbent PCM and tempo remain paired in
+            // the undo snapshot captured above.
+            track.originalRecordingBpmValue = replacementOriginalRecordingBpms?.[index] ?? null;
             track.recordingTempoCandidate = null;
             track.projectPcmRevision += 1;
             track.isReverse = false;

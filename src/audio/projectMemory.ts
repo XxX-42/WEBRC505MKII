@@ -1,6 +1,7 @@
 import { AudioEngine } from './AudioEngine';
 import {
   decodeProjectArchive,
+  readProjectArchiveVersion,
   PROJECT_ARCHIVE_LIMITS,
   type ProjectArchive,
 } from './projectArchive';
@@ -11,6 +12,11 @@ export interface ProjectMemoryLoadResult {
   readonly name: string;
   readonly bpm: number;
   readonly tracksWithAudio: number;
+  readonly archiveVersion: 1 | 2;
+}
+
+export interface ProjectMemorySaveResult extends ProjectMemoryMetadata {
+  readonly archiveVersion: 1 | 2;
 }
 
 export class ProjectMemory {
@@ -30,13 +36,15 @@ export class ProjectMemory {
     return this.store.getMetadata(slot);
   }
 
-  public async save(slot: number, name: string): Promise<ProjectMemoryMetadata> {
+  public async save(slot: number, name: string): Promise<ProjectMemorySaveResult> {
     // The name appears in both the archive manifest and the IndexedDB index.
     // Canonicalize it once before the asynchronous export so these records can
     // never disagree (and reject invalid names before doing expensive work).
     const canonicalName = canonicalProjectName(name);
     const archive = await this.engine.exportProjectArchive(canonicalName);
-    return this.store.save(slot, canonicalName, Transport.getInstance().bpm, archive);
+    const archiveVersion = readProjectArchiveVersion(archive);
+    const saved = await this.store.save(slot, canonicalName, Transport.getInstance().bpm, archive, archiveVersion);
+    return { ...saved, archiveVersion };
   }
 
   public async load(slot: number): Promise<ProjectMemoryLoadResult> {
@@ -48,7 +56,7 @@ export class ProjectMemory {
     const project = await decodeProjectArchive(archive);
     this.assertMetadataMatchesArchive(metadata, project);
     await this.engine.restoreProjectArchive(project, archive, operationToken);
-    return { name: metadata.name, bpm: project.bpm, tracksWithAudio: project.tracks.filter(Boolean).length };
+    return { name: metadata.name, bpm: project.bpm, tracksWithAudio: project.tracks.filter(Boolean).length, archiveVersion: project.version };
   }
 
   public async importFile(file: File): Promise<ProjectMemoryLoadResult> {
@@ -60,7 +68,7 @@ export class ProjectMemory {
     if (archive.byteLength !== file.size) throw new Error('Project file changed while it was being read');
     const project = await decodeProjectArchive(archive);
     await this.engine.restoreProjectArchive(project, archive, operationToken);
-    return { name: project.name, bpm: project.bpm, tracksWithAudio: project.tracks.filter(Boolean).length };
+    return { name: project.name, bpm: project.bpm, tracksWithAudio: project.tracks.filter(Boolean).length, archiveVersion: project.version };
   }
 
   public async exportFile(name: string): Promise<Uint8Array> {

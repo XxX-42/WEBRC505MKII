@@ -3028,8 +3028,10 @@ export class BrowserAudioEngine implements IAudioEngine {
             sampleRate: snapshot.sampleRate,
             frameCount: snapshot.frameCount,
             channels: snapshot.channels,
+            originalTempoBpm: snapshot.originalRecordingBpm,
             channelData: snapshot.channelData,
         } : null) as unknown as ProjectArchiveTrackList;
+        const archiveVersion = snapshots.some((snapshot) => snapshot?.originalRecordingBpm !== null && snapshot !== null) ? 2 : 1;
         const input: ProjectArchiveInput = {
             name,
             bpm: transportSnapshot.bpm,
@@ -3039,7 +3041,9 @@ export class BrowserAudioEngine implements IAudioEngine {
         // The codec writes PCM into its final archive before awaiting digest work.
         // Any edit during the async digest phase aborts the save rather than storing
         // a mixed-generation project.
-        const archive = await encodeProjectArchive(input);
+        // Preserve known source BPM in v2. When every track is unknown, keep
+        // emitting the v1-compatible archive so older Native hosts can import it.
+        const archive = await encodeProjectArchive(input, { version: archiveVersion });
         const currentTransport = Transport.getInstance();
         if (this.tracks.some((track, index) => track.projectRevision !== revisions[index] || track.historyBusy)
             || currentTransport.bpm !== transportSnapshot.bpm
@@ -3179,6 +3183,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
 
         const revisions = operationToken.tracks.map((track) => track.revision);
+        const importedOriginalRecordingBpms = project.tracks.map((track) => track?.originalTempoBpm ?? null);
         const replacements = project.tracks.map((track) => {
             if (!track) return null;
             const buffer = this.context.createBuffer(track.channels, track.frameCount, track.sampleRate);
@@ -3202,7 +3207,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         // Semantic Memory has no fallible transport callbacks after PCM publication.
         // Legacy ProjectMemory keeps its existing retain-undo ordering.
         const restoreBeforeTransport = historyPolicy === 'retain-undo'
-            ? TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions, historyPolicy) : null;
+            ? TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions, historyPolicy, importedOriginalRecordingBpms) : null;
         if (restoreBeforeTransport && !restoreBeforeTransport.ok) throw new Error(restoreBeforeTransport.reason ?? 'Project memory restore was rejected');
         transport.stop();
         transport.resetMasterTrack();
@@ -3212,7 +3217,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         transport.masterLoopLengthSamples = transportState.masterLoopLengthSamples;
         transport.setBpm(project.bpm);
         if (historyPolicy === 'memory-boundary') {
-            const restore = TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions, historyPolicy);
+            const restore = TrackAudio.restoreProjectBuffersAtomically(this.tracks, replacements, revisions, historyPolicy, importedOriginalRecordingBpms);
             if (!restore.ok) throw new Error(restore.reason ?? 'Memory PCM publication was rejected');
         }
                 state = 'committed';

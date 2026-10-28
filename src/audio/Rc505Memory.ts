@@ -18,7 +18,7 @@ export interface Rc505MemoryDocument {
   name: string;
   semantics: Rc505MemorySemantics;
   extensions: { WEBRC: Record<string, Rc505Json> };
-  /** Exact legacy ProjectArchive v1 bytes, not a new Roland binary format. */
+  /** Exact validated ProjectArchive v1/v2 bytes, not a new Roland binary format. */
   archive: Uint8Array;
 }
 const MAGIC = new TextEncoder().encode('RC505ME1');

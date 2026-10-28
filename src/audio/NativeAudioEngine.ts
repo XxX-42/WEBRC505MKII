@@ -882,6 +882,12 @@ export class NativeAudioEngine {
   private rc505MemoryRuntime: Rc505MemoryRuntime | null = null;
   private nativeMemoryReadbackGeneration: number | null = null;
 
+  /** Cached capability for UI availability; imports always verify a fresh host status. */
+  public supportsProjectArchiveVersion(version: 1 | 2): boolean {
+    if (version === 1) return true;
+    return this.latestStatus?.projectArchiveV2Supported === true;
+  }
+
   public async exportProjectArchive(name: string): Promise<Uint8Array> {
     const initial = await this.bridge.getStatus();
     if (!initial.engineRunning || initial.nativeLooperMultiTrackImplemented !== true ||
@@ -1034,8 +1040,12 @@ export class NativeAudioEngine {
     if (bytes.byteLength < 12 || bytes.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
       throw new Error('Project archive is empty or exceeds the supported Native import size');
     }
-    if (!this.latestStatus?.engineRunning) {
+    const currentHostStatus = await this.bridge.getStatus();
+    if (!currentHostStatus.engineRunning) {
       throw new Error('Start the Native audio engine before importing project memory');
+    }
+    if (project.version === 2 && currentHostStatus.projectArchiveV2Supported !== true) {
+      throw new Error('This Native host does not advertise ProjectArchive v2 support; the archive was not uploaded and current loops were left unchanged. Use Browser mode or a Native host with v2 support.');
     }
     if (!Number.isFinite(project.bpm) || project.bpm < 40 || project.bpm > 300) {
       throw new Error('Project BPM must be between 40 and 300');

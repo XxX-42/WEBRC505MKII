@@ -51,6 +51,38 @@ function nativeEngine(status: NativeStatus) {
 }
 
 describe('Native project-load operation-start snapshot', () => {
+  it('fails closed before host upload when v2 import capability is absent', async () => {
+    const beginProjectArchiveImport = vi.fn();
+    const { engine } = nativeEngine(readyStatus());
+    // A stale cached v2 claim must not override the fresh host response.
+    Object.assign(engine, {
+      latestStatus: readyStatus({ projectArchiveV2Supported: true }),
+      bridge: { getStatus: vi.fn(async () => readyStatus()), beginProjectArchiveImport },
+    });
+    await expect(engine.restoreProjectArchive(
+      { version: 2 } as any,
+      new Uint8Array(12),
+      { projectContentRevision: 42, sampleRate: 48_000,
+        transport: { bpm: 120, state: 'Stopped', masterTrackId: null, measureLengthSeconds: 0,
+          masterLoopLengthSamples: 0, timeSignatureNumerator: 4, timeSignatureDenominator: 4 },
+        projectTransportMutationRevision: 0 },
+      () => true,
+    )).rejects.toThrow(/does not advertise ProjectArchive v2 support/);
+    expect(beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
+
+  it('trusts only an explicit v2 host capability while preserving v1 support', () => {
+    const absent = nativeEngine(readyStatus()).engine;
+    expect(absent.supportsProjectArchiveVersion(1)).toBe(true);
+    expect(absent.supportsProjectArchiveVersion(2)).toBe(false);
+
+    const capable = nativeEngine(readyStatus({ projectArchiveV2Supported: true })).engine;
+    Object.assign(capable, { latestStatus: readyStatus({ projectArchiveV2Supported: true }) });
+    expect(capable.supportsProjectArchiveVersion(2)).toBe(true);
+    const explicitlyUnsupported = nativeEngine(readyStatus({ projectArchiveV2Supported: false })).engine;
+    expect(explicitlyUnsupported.supportsProjectArchiveVersion(2)).toBe(false);
+  });
+
   it('uses a fresh stable five-track host revision rather than the polling cache', async () => {
     const status = readyStatus({ projectContentRevision: 42 });
     const { engine, getStatus } = nativeEngine(status);

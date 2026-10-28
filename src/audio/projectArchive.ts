@@ -174,6 +174,34 @@ export interface ProjectArchiveEncodeOptions {
   version?: 1 | 2;
 }
 
+/**
+ * Read only the declared archive version for UI/slot labels. This is not an
+ * archive validator; callers must still use decodeProjectArchive before load.
+ */
+export function readProjectArchiveVersion(input: ArrayBuffer | ArrayBufferView): 1 | 2 {
+  const bytes = toBytes(input);
+  if (bytes.byteLength < HEADER_BYTES) throw new Error('Project archive is truncated before its header.');
+  for (let index = 0; index < MAGIC.byteLength; index += 1) {
+    if (bytes[index] !== MAGIC[index]) throw new Error('Project archive has invalid magic bytes.');
+  }
+  const manifestByteLength = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    .getUint32(MAGIC.byteLength, true);
+  const payloadStart = checkedAdd(HEADER_BYTES, manifestByteLength, 'manifest end');
+  if (manifestByteLength === 0 || manifestByteLength > MAX_MANIFEST_BYTES || payloadStart > bytes.byteLength) {
+    throw new Error('Project archive manifest length is invalid.');
+  }
+  let manifest: unknown;
+  try {
+    manifest = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(HEADER_BYTES, payloadStart))) as unknown;
+  } catch {
+    throw new Error('Project archive manifest is not valid UTF-8 JSON.');
+  }
+  if (!isRecord(manifest) || (manifest.version !== 1 && manifest.version !== 2)) {
+    throw new Error('Project archive version is unsupported.');
+  }
+  return manifest.version;
+}
+
 /** Encode a project as a bounded, versioned binary archive. */
 export async function encodeProjectArchive(project: ProjectArchiveInput, options: ProjectArchiveEncodeOptions = {}): Promise<Uint8Array> {
   const version = options.version ?? LEGACY_VERSION;

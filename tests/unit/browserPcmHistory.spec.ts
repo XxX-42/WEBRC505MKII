@@ -469,6 +469,30 @@ describe('Browser per-track one-step PCM history', () => {
         expect(tracks[2]!.originalRecordingBpm).toBe(117);
     });
 
+    it('installs v2 archive provenance with PCM and keeps both versions paired through undo/redo', () => {
+        const { context, tracks } = createHarness(undefined, 5);
+        for (let index = 0; index < tracks.length; index += 1) {
+            record(tracks[index]!, [[index + 0.25, index + 0.5]]);
+            (tracks[index] as any).originalRecordingBpmValue = 101 + index;
+        }
+        const revisions = tracks.map((track) => track.projectRevision);
+        const replacements = tracks.map(() => context.createBuffer(1, 3, context.sampleRate));
+        const importedBpm = [121, null, 123, null, 125];
+
+        expect(TrackAudio.restoreProjectBuffersAtomically(tracks, replacements, revisions, 'retain-undo', importedBpm)).toEqual({ ok: true });
+        expect(tracks.map((track) => track.originalRecordingBpm)).toEqual(importedBpm);
+        for (const track of tracks) expect(track.undo()).toBe(true);
+        expect(tracks.map((track) => track.originalRecordingBpm)).toEqual([101, 102, 103, 104, 105]);
+        for (const track of tracks) expect(track.redo()).toBe(true);
+        expect(tracks.map((track) => track.originalRecordingBpm)).toEqual(importedBpm);
+
+        const stableRevision = tracks.map((track) => track.projectRevision);
+        expect(TrackAudio.restoreProjectBuffersAtomically(
+            tracks, replacements, stableRevision, 'retain-undo', [120, 301, null, null, null],
+        )).toMatchObject({ ok: false });
+        expect(tracks.map((track) => track.originalRecordingBpm)).toEqual(importedBpm);
+    });
+
     it('restores current and undo provenance across Browser recovery snapshots without charging scalar metadata to PCM history', () => {
         const source = createHarness(undefined, 5);
         record(source.tracks[0]!, [[0.25, 0.5]]);

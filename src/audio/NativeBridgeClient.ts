@@ -225,6 +225,8 @@ export interface NativeStatus {
   nativeLooperMultiTrackImplemented?: boolean;
   nativeLooperTracksStereo?: boolean;
   nativeLooperMaxRecordSeconds?: number;
+  /** Explicit host codec/import capability; absent means v1 only. */
+  projectArchiveV2Supported?: boolean;
   nativeLooperPreallocatedBytes?: number;
   nativeLooperStorageBudgetBytes?: number;
   /** Host-wide epoch for loop PCM/history edits and track-state transitions a project load replaces. */

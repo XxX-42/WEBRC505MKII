@@ -234,7 +234,12 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           throw new Error(`Native Memory has an unsupported or inconsistent semantic field: ${address}`);
         }
       }
-      const savedTransport = (await decodeProjectArchive(document.archive)).transport;
+      const decodedArchive = await decodeProjectArchive(document.archive);
+      const importHostStatus = decodedArchive.version === 2 ? await port.bridge.getStatus() : null;
+      if (decodedArchive.version === 2 && importHostStatus?.projectArchiveV2Supported !== true) {
+        throw new Error('This Native host does not advertise ProjectArchive v2 support; the archive was not uploaded and current loops were left unchanged. Use Browser mode or a Native host with v2 support.');
+      }
+      const savedTransport = decodedArchive.transport;
       const bytes = await encodeRc505Memory(document);
       const targetExtensions = structuredClone(document.extensions.WEBRC);
       const targetFields = structuredClone(document.semantics.fields);

@@ -12,6 +12,8 @@ export interface ProjectMemoryMetadata {
   readonly bpm: number;
   readonly savedAt: number;
   readonly archiveBytes: number;
+  /** Absent only on legacy slot-index records created before archive-version labels. */
+  readonly archiveVersion?: 1 | 2;
 }
 
 interface StoredMetadata extends ProjectMemoryMetadata {}
@@ -25,7 +27,8 @@ function isValidMetadata(record: StoredMetadata | undefined, slot?: number): rec
     && Number.isFinite(record.bpm) && record.bpm >= 40 && record.bpm <= 300
     && Number.isFinite(record.savedAt) && record.savedAt > 0
     && Number.isSafeInteger(record.archiveBytes) && record.archiveBytes > 0
-    && record.archiveBytes <= PROJECT_ARCHIVE_LIMITS.maxArchiveBytes);
+    && record.archiveBytes <= PROJECT_ARCHIVE_LIMITS.maxArchiveBytes
+    && (record.archiveVersion === undefined || record.archiveVersion === 1 || record.archiveVersion === 2));
 }
 
 function assertSlot(slot: number): void {
@@ -114,13 +117,17 @@ export class ProjectMemoryStore {
   }
 
   /** Save metadata and the binary archive in one IndexedDB read/write transaction. */
-  public async save(slot: number, name: string, bpm: number, archive: ArrayBuffer | Uint8Array): Promise<ProjectMemoryMetadata> {
+  public async save(slot: number, name: string, bpm: number, archive: ArrayBuffer | Uint8Array,
+    archiveVersion?: 1 | 2): Promise<ProjectMemoryMetadata> {
     assertSlot(slot);
     if (typeof name !== 'string' || name.trim().length === 0
       || new TextEncoder().encode(name.trim()).byteLength > PROJECT_ARCHIVE_LIMITS.maxProjectNameUtf8Bytes) {
       throw new RangeError(`Project name must contain 1–${PROJECT_ARCHIVE_LIMITS.maxProjectNameUtf8Bytes} UTF-8 bytes`);
     }
     if (!Number.isFinite(bpm) || bpm < 40 || bpm > 300) throw new RangeError('Project BPM must be between 40 and 300');
+    if (archiveVersion !== undefined && archiveVersion !== 1 && archiveVersion !== 2) {
+      throw new RangeError('Project archive version must be 1 or 2');
+    }
     const view = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
     if (view.byteLength === 0 || !Number.isSafeInteger(view.byteLength) || view.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
       throw new RangeError('Project archive is empty or exceeds the supported archive-size limit');
@@ -134,6 +141,7 @@ export class ProjectMemoryStore {
       bpm,
       savedAt: Date.now(),
       archiveBytes: exactBuffer.byteLength,
+      ...(archiveVersion === undefined ? {} : { archiveVersion }),
     };
     const database = await this.openDatabase();
     const transaction = database.transaction([METADATA_STORE, PAYLOAD_STORE], 'readwrite');

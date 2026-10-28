@@ -3,7 +3,7 @@ import { computed, onScopeDispose, reactive, ref, watch } from 'vue';
 import { AudioEngine, type AudioDeviceInfo, type AudioDeviceSelection } from '../audio/AudioEngine';
 import { NativeProjectImportIndeterminateError, NativeProjectImportOutcomeUnknownError } from '../audio/NativeBridgeClient';
 import { ProjectMemory } from '../audio/projectMemory';
-import { PROJECT_ARCHIVE_LIMITS } from '../audio/projectArchive';
+import { PROJECT_ARCHIVE_LIMITS, readProjectArchiveVersion } from '../audio/projectArchive';
 import type { ProjectMemoryMetadata } from '../audio/projectMemoryStore';
 import { nativeCatalogMacroParameters } from '../audio/nativeFxCatalog';
 import { PREAMP_MODELS } from '../audio/preampParameters';
@@ -260,7 +260,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const editPending = ref(false);
   const memorySlot = ref(1);
   const memoryName = ref('MEMORY 01');
-  const memoryNotice = ref('V1 PCM + BPM + LOOP/SIGNATURE · FX/KIT/PATTERN SETTINGS NOT SAVED');
+  const memoryNotice = ref('PCM + BPM + LOOP/SIGNATURE · ARCHIVE VERSION SHOWN ON SAVE/EXPORT');
   const pendingNativeImportGeneration = ref<number | null>(null);
   const memorySlots = ref<readonly ProjectMemoryMetadata[]>([]);
   const memoryStorageReady = ref(typeof indexedDB !== 'undefined');
@@ -850,8 +850,8 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       const metadata = saved.find((entry) => entry.slot === slot) ?? null;
       memoryName.value = metadata?.name ?? `MEMORY ${String(slot).padStart(2, '0')}`;
       memoryNotice.value = metadata
-        ? `SAVED · ${metadata.name} · ${Math.round(metadata.archiveBytes / (1024 * 1024))} MIB · PCM/TEMPO`
-        : 'EMPTY SLOT · V1 PCM + BPM + LOOP/SIGNATURE · NO FX/KIT/PATTERN SETTINGS';
+        ? `SAVED V${metadata.archiveVersion ?? 1} · ${metadata.name} · ${Math.round(metadata.archiveBytes / (1024 * 1024))} MIB · ${metadata.archiveVersion === 2 ? 'OLDER NATIVE HOSTS REJECT V2' : 'V1 NATIVE-COMPATIBLE'}`
+        : 'EMPTY SLOT · PCM + BPM + LOOP/SIGNATURE · NO FX/KIT/PATTERN SETTINGS';
     } catch (error) {
       if (revision === memoryMetadataRevision) {
         memoryStorageReady.value = false;
@@ -888,19 +888,19 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       memoryMetadataRevision += 1;
       memorySlots.value = [...memorySlots.value.filter((entry) => entry.slot !== saved.slot), saved]
         .sort((left, right) => left.slot - right.slot);
-      memoryNotice.value = `SAVED SLOT ${String(saved.slot).padStart(2, '0')} · ${saved.name} · PCM/TEMPO`;
+      memoryNotice.value = `SAVED SLOT ${String(saved.slot).padStart(2, '0')} · V${saved.archiveVersion} · ${saved.name} · ${saved.archiveVersion === 2 ? 'OLDER NATIVE HOSTS REJECT V2' : 'V1 NATIVE-COMPATIBLE'}`;
     } catch (error) {
       memoryNotice.value = `SAVE FAILED · ${error instanceof Error ? error.message : String(error)}`;
     }
   }
 
   async function loadMemorySlot(): Promise<void> {
-    memoryNotice.value = `LOADING SLOT ${String(memorySlot.value).padStart(2, '0')} · WAITING FOR NATIVE AUDIO COMMIT`;
+    memoryNotice.value = `VALIDATING SLOT ${String(memorySlot.value).padStart(2, '0')} ARCHIVE`;
     try {
       const loaded = await projectMemory.load(memorySlot.value);
       pendingNativeImportGeneration.value = null;
       memoryName.value = loaded.name;
-      memoryNotice.value = `LOADED ${loaded.name} · ${loaded.tracksWithAudio}/5 LOOPS · FX/KIT/PATTERNS UNCHANGED`;
+      memoryNotice.value = `LOADED V${loaded.archiveVersion} ${loaded.name} · ${loaded.tracksWithAudio}/5 LOOPS · FX/KIT/PATTERNS UNCHANGED`;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const archiveCommitted = typeof error === 'object' && error !== null && 'archiveCommitted' in error && error.archiveCommitted === true;
@@ -946,6 +946,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const name = promptMemoryName();
     if (!name) return;
     const archive = await projectMemory.exportFile(name);
+    const archiveVersion = readProjectArchiveVersion(archive);
     const archiveBuffer = archive.buffer instanceof ArrayBuffer && archive.byteOffset === 0 && archive.byteLength === archive.buffer.byteLength
       ? archive.buffer
       : archive.slice().buffer as ArrayBuffer;
@@ -959,7 +960,9 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-    memoryNotice.value = `EXPORTED ${name} · PCM/TEMPO`;
+    memoryNotice.value = archiveVersion === 2
+      ? `EXPORTED V2 ${name} · ORIGINAL TEMPO PRESERVED · OLDER NATIVE HOSTS REJECT V2`
+      : `EXPORTED V1 ${name} · NATIVE-COMPATIBLE PCM/TEMPO`;
   }
 
   async function importMemoryFile(): Promise<void> {
@@ -1017,6 +1020,13 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const exportUnavailableReason = exportAllowed ? '' : engine.getMode() === 'browser'
       ? 'Audio is unavailable and no Browser loops are available to export.'
       : 'Audio engine is not running and ready.';
+    const browserArchiveHasKnownSourceTempo = engine.getMode() === 'browser'
+      && engine.tracks.some((track) => (track as { originalRecordingBpm?: number | null }).originalRecordingBpm != null);
+    const archiveCompatibilityReason = engine.getMode() !== 'browser'
+      ? 'Native export writes ProjectArchive v1, compatible with older Native hosts.'
+      : browserArchiveHasKnownSourceTempo
+        ? 'Exports ProjectArchive v2 to preserve verified original track BPM. Older Native hosts reject v2; load in Browser mode or a Native host that advertises v2 support.'
+        : 'Exports ProjectArchive v1 because every track source BPM is unknown; this remains compatible with older Native hosts.';
     return chunks([
       makeNumberField('memory-slot', 'MEMORY SLOT', memorySlot.value, (value) => {
         memorySlot.value = Math.max(1, Math.min(99, Math.round(value)));
@@ -1026,14 +1036,20 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         const name = promptMemoryName();
         if (name) memoryName.value = name;
       }, { disabled: !storageAvailable || disabled, reason: saved ? `Saved name: ${saved.name}` : reason, format: () => memoryName.value }),
-      makeActionField('memory-save-slot', 'SAVE TO SLOT', saveMemorySlot, { disabled: !storageAvailable || disabled, reason }),
+      makeActionField('memory-save-slot', 'SAVE TO SLOT', saveMemorySlot, {
+        disabled: !storageAvailable || disabled,
+        reason: !storageAvailable ? reason : archiveCompatibilityReason,
+      }),
       makeActionField('memory-check-import-status', 'CHECK IMPORT STATUS', checkNativeProjectImportStatus, {
         disabled: editPending.value || pendingNativeImportGeneration.value === null,
         reason: pendingNativeImportGeneration.value === null ? 'No acknowledged Native import generation is pending status recovery.' : 'Checks the accepted generation without uploading or changing PCM again.',
       }),
       makeActionField('memory-load-slot', 'LOAD SLOT', loadMemorySlot, { disabled: !storageAvailable || disabled || !saved || !audioReady, reason: !storageAvailable ? reason : !saved ? 'Selected memory slot is empty.' : !audioReady ? audioUnavailableReason : 'Loads PCM, BPM, master loop, and time signature; FX, kits, and patterns remain unchanged.' }),
       makeActionField('memory-import-file', 'IMPORT PROJECT FILE', importMemoryFile, { disabled: disabled || !audioReady, reason: !audioReady ? audioUnavailableReason : '' }),
-      makeActionField('memory-export-file', 'EXPORT PROJECT FILE', exportMemoryFile, { disabled: disabled || !exportAllowed, reason: exportUnavailableReason }),
+      makeActionField('memory-export-file', 'EXPORT PROJECT FILE', exportMemoryFile, {
+        disabled: disabled || !exportAllowed,
+        reason: exportUnavailableReason || archiveCompatibilityReason,
+      }),
       makeActionField('memory-delete-slot', 'ERASE SLOT', async () => {
         if (!(await confirmAction(`Erase saved project memory slot ${memorySlot.value}? This permanently removes its PCM archive from this browser.`))) return;
         await projectMemory.delete(memorySlot.value);
