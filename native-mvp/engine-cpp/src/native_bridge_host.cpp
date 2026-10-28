@@ -1278,15 +1278,32 @@ void enableLoopbackCors(httplib::Server& server) {
 
             const auto requestedHeaders = request.get_header_value("Access-Control-Request-Headers");
             if (!requestedHeaders.empty()) {
-                std::string normalizedHeaders = requestedHeaders;
-                std::transform(normalizedHeaders.begin(), normalizedHeaders.end(), normalizedHeaders.begin(), [](unsigned char value) {
-                    return static_cast<char>(std::tolower(value));
-                });
-                // Control JSON and raw archive uploads only need the Content-Type
-                // header. Reject unexpected headers instead of broadening the API.
-                if (normalizedHeaders != "content-type") {
+                bool sawContentType = false;
+                bool sawHostIncarnation = false;
+                std::istringstream headerStream(requestedHeaders);
+                std::string token;
+                bool validHeaders = true;
+                while (std::getline(headerStream, token, ',')) {
+                    const auto first = token.find_first_not_of(" \t");
+                    const auto last = token.find_last_not_of(" \t");
+                    if (first == std::string::npos) {
+                        validHeaders = false;
+                        break;
+                    }
+                    token = token.substr(first, last - first + 1U);
+                    std::transform(token.begin(), token.end(), token.begin(), [](unsigned char value) {
+                        return static_cast<char>(std::tolower(value));
+                    });
+                    if (token == "content-type" && !sawContentType) sawContentType = true;
+                    else if (token == "x-native-host-incarnation" && !sawHostIncarnation) sawHostIncarnation = true;
+                    else {
+                        validHeaders = false;
+                        break;
+                    }
+                }
+                if (!validHeaders) {
                     response.status = 400;
-                    writeError(response, "Native bridge CORS only allows the Content-Type request header.");
+                    writeError(response, "Native bridge CORS only allows Content-Type and X-Native-Host-Incarnation request headers.");
                     return httplib::Server::HandlerResponse::Handled;
                 }
             }

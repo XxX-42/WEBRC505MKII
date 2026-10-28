@@ -1670,6 +1670,25 @@ def main():
                 "content-type" in headers.get("Access-Control-Allow-Headers", "").lower(),
                 "raw archive POST did not receive the existing allowlisted loopback CORS policy")
 
+        # This is the exact browser preflight shape for Native archive upload:
+        # the custom incarnation header makes the cross-origin POST preflight.
+        browser_origin = "http://127.0.0.1:4173"
+        status, headers, _ = request_with_headers("/v1/project/import", "OPTIONS", {
+            "Origin": browser_origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-native-host-incarnation",
+        })
+        allowed_headers = headers.get("Access-Control-Allow-Headers", "").lower()
+        require(status == 204 and headers.get("Access-Control-Allow-Origin") == browser_origin and
+                "content-type" in allowed_headers and "x-native-host-incarnation" in allowed_headers,
+                f"browser Native import preflight was rejected: HTTP {status}, allow-headers={allowed_headers!r}")
+        status, _, _ = request_with_headers("/v1/project/import", "OPTIONS", {
+            "Origin": browser_origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-unapproved-header",
+        })
+        require(status == 400, "Native import preflight accepted a request header outside its strict allowlist")
+
         status, accepted = request_project_archive(
             project_import_path, "POST", valid_archive, "application/octet-stream")
         require(status == 202 and accepted.get("ok") is True and accepted.get("generation", 0) > 0,
