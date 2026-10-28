@@ -393,6 +393,10 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeLoopTransportAppliedRevision[track] = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportFaultRevision[track] = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportAppliedOneShot[track] = nativeLoopTransportAppliedOneShot_[track].load(std::memory_order_acquire);
+        status.nativeTrackDubModes[track] = nativeTrackDubModes_[track].load(std::memory_order_acquire);
+        status.nativeTrackRequestedDubModes[track] = nativeTrackRequestedDubModes_[track].load(std::memory_order_acquire);
+        status.nativeDubModeRequestedRevision[track] = nativeDubModeRequestedRevision_[track].load(std::memory_order_acquire);
+        status.nativeDubModeAppliedRevision[track] = nativeDubModeAppliedRevision_[track].load(std::memory_order_acquire);
         status.nativeVocoderCarrierStatuses[track] = engineRunning_.load(std::memory_order_acquire)
             ? nativeVocoderCarrierStatuses_[track].load(std::memory_order_acquire) : NativeVocoderCarrierStatus::NotRequested;
         status.nativeTrackHistory[track].canUndo = historyCanUndo_[track].load(std::memory_order_acquire);
@@ -570,6 +574,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeLoopTransportFaultRevision[track] = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportAppliedOneShot[track] = nativeLoopTransportAppliedOneShot_[track].load(std::memory_order_acquire);
     }
+    status.nativeMemoryDubModes = nativeMemoryDubModeSettings_;
     const auto requestedBounceSnapshot = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
     const auto appliedBounceSnapshot = nativeBounceAppliedSnapshot_.load(std::memory_order_acquire);
     status.nativeBounce = decodeNativeBounceSettings(appliedBounceSnapshot);
@@ -2499,6 +2504,88 @@ bool NativeAudioCore::setNativeLoopTransport(
     return true;
 }
 
+bool NativeAudioCore::setNativeDubMode(std::size_t trackIndex, NativeDubMode mode,
+    std::uint64_t& requestedRevision, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing DUB MODE.";
+        return false;
+    }
+    if (trackIndex >= kNativeTrackCount) {
+        error = "Native DUB MODE track index must be between 0 and 4.";
+        return false;
+    }
+    if (mode != NativeDubMode::Overdub && mode != NativeDubMode::Replace1 && mode != NativeDubMode::Replace2) {
+        error = "Native DUB MODE must be OVERDUB, REPLACE1, or REPLACE2.";
+        return false;
+    }
+    const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (recordStartPending_[trackIndex].load(std::memory_order_acquire) || state == LooperState::Recording ||
+        state == LooperState::Overdubbing) {
+        error = "Finish recording or overdubbing before changing Native DUB MODE.";
+        return false;
+    }
+    const auto previousRevision = nativeDubModeRequestedRevision_[trackIndex].load(std::memory_order_relaxed);
+    if (previousRevision >= kMaximumSafeProjectContentRevision) {
+        error = "Native DUB MODE revision exhausted.";
+        return false;
+    }
+    const auto revision = previousRevision + 1U;
+    if (engineRunning_.load(std::memory_order_acquire)) {
+        const auto previousMode = nativeTrackRequestedDubModes_[trackIndex].load(std::memory_order_relaxed);
+        nativeTrackRequestedDubModes_[trackIndex].store(mode, std::memory_order_release);
+        nativeDubModeRequestedRevision_[trackIndex].store(revision, std::memory_order_release);
+        if (!nativeDubModeCommandQueue_.push({trackIndex, mode, revision})) {
+            nativeTrackRequestedDubModes_[trackIndex].store(previousMode, std::memory_order_release);
+            nativeDubModeRequestedRevision_[trackIndex].store(previousRevision, std::memory_order_release);
+            telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed);
+            error = "Native DUB MODE command queue is full.";
+            return false;
+        }
+        nativeMemoryDubModeSettings_[trackIndex] = mode;
+    } else {
+        if (!looperForTrack(trackIndex).setDubMode(mode)) {
+            error = "Native DUB MODE was rejected by the track looper.";
+            return false;
+        }
+        nativeTrackDubModes_[trackIndex].store(mode, std::memory_order_release);
+        nativeTrackRequestedDubModes_[trackIndex].store(mode, std::memory_order_release);
+        nativeDubModeRequestedRevision_[trackIndex].store(revision, std::memory_order_release);
+        nativeDubModeAppliedRevision_[trackIndex].store(revision, std::memory_order_release);
+        nativeMemoryDubModeSettings_[trackIndex] = mode;
+    }
+    requestedRevision = revision;
+    error.clear();
+    advanceProjectRevision(projectContentRevision_);
+    return true;
+}
+
+void NativeAudioCore::applyNativeDubModeCommands() noexcept {
+    NativeDubModeCommand command{};
+    while (nativeDubModeCommandQueue_.pop(command)) {
+        if (command.trackIndex >= kNativeTrackCount) continue;
+        auto& pending = pendingNativeDubModeCommands_[command.trackIndex];
+        if (!pendingNativeDubModeCommandValid_[command.trackIndex] || command.revision >= pending.revision) {
+            pending = command;
+            pendingNativeDubModeCommandValid_[command.trackIndex] = true;
+        }
+    }
+
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        if (!pendingNativeDubModeCommandValid_[track]) continue;
+        const auto state = looperForTrack(track).state();
+        if (recordStartPending_[track].load(std::memory_order_acquire) ||
+            state == LooperState::Recording || state == LooperState::Overdubbing) continue;
+
+        const auto& pending = pendingNativeDubModeCommands_[track];
+        if (!looperForTrack(track).setDubMode(pending.mode)) continue;
+        nativeTrackDubModes_[track].store(pending.mode, std::memory_order_release);
+        nativeDubModeAppliedRevision_[track].store(pending.revision, std::memory_order_release);
+        pendingNativeDubModeCommandValid_[track] = false;
+    }
+}
+
 bool NativeAudioCore::setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error,
     std::uint64_t* acceptedRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
@@ -3001,7 +3088,14 @@ bool NativeAudioCore::beginProjectArchiveImport(
         error = "Native project import requires a running audio engine so the five-track commit can be acknowledged at a callback boundary.";
         return false;
     }
-    if (commandQueue_.size() != 0U || loopSnapshotRequested_.load(std::memory_order_acquire) ||
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        if (nativeDubModeRequestedRevision_[track].load(std::memory_order_acquire) !=
+            nativeDubModeAppliedRevision_[track].load(std::memory_order_acquire)) {
+            error = "Wait for pending Native DUB MODE callback acknowledgement before importing a project.";
+            return false;
+        }
+    }
+    if (commandQueue_.size() != 0U || nativeDubModeCommandQueue_.size() != 0U || loopSnapshotRequested_.load(std::memory_order_acquire) ||
         loopSnapshotReleaseRequested_.load(std::memory_order_acquire) ||
         historyPinRequestGeneration_.load(std::memory_order_acquire) != 0U ||
         historyPinReleaseGeneration_.load(std::memory_order_acquire) !=
@@ -3106,7 +3200,7 @@ bool NativeAudioCore::beginProjectArchiveImport(
         return false;
     }
     if (memory) {
-        if (nativeTrackFxApplyCommandQueue_.size() != 0U || nativeCatalogFxCommandQueue_.size() != 0U || nativeLoopTransportCommandQueue_.size() != 0U ||
+        if (nativeTrackFxApplyCommandQueue_.size() != 0U || nativeCatalogFxCommandQueue_.size() != 0U || nativeLoopTransportCommandQueue_.size() != 0U || nativeDubModeCommandQueue_.size() != 0U ||
             nativeRhythmCommandQueue_.size() != 0U || outputStageCommandQueue_.size() != 0U ||
             nativeReverbCommandQueue_.size() != 0U || nativeFractionalDelayCommandQueue_.size() != 0U ||
             nativeCompressorCommandQueue_.size() != 0U || nativeChorusCommandQueue_.size() != 0U ||
@@ -3137,6 +3231,17 @@ bool NativeAudioCore::beginProjectArchiveImport(
             for (const auto& config : memory->loopTransports) {
                 if (!LooperCore::validLoopTransportConfig(config)) {
                     error = "Invalid Memory loop transport settings.";
+                    return false;
+                }
+            }
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                const auto mode = memory->dubModes[track];
+                if (mode != NativeDubMode::Overdub && mode != NativeDubMode::Replace1 && mode != NativeDubMode::Replace2) {
+                    error = "Invalid Memory DUB MODE setting.";
+                    return false;
+                }
+                if (nativeDubModeRequestedRevision_[track].load(std::memory_order_acquire) >= kMaximumSafeProjectContentRevision) {
+                    error = "Native DUB MODE revision exhausted; Memory was not prepared.";
                     return false;
                 }
             }
@@ -3319,6 +3424,7 @@ void NativeAudioCore::finalizeProjectImportLocked() {
                 nativeLoopTransportAppliedRevision_[track].store(nativeLoopTransportRuntimeRevision_[track], std::memory_order_release);
                 nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_release);
             }
+            nativeMemoryDubModeSettings_ = memory.dubModes;
             const auto bounceRevision = nativeBounceSnapshotRevision(nativeBounceRequestedSnapshot_.load(std::memory_order_relaxed)) + 1U;
             nativeBounceRequestedSnapshot_.store(encodeNativeBounceSnapshot(memory.bounce, bounceRevision), std::memory_order_release);
             nativeReverbConfig_ = memory.reverb;
@@ -4577,6 +4683,12 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
             nativeLoopTransportRuntimeRevision_[track] = nativeLoopTransportRequestedRevision_[track];
             nativeLoopTransportAppliedRevision_[track].store(nativeLoopTransportRuntimeRevision_[track], std::memory_order_release);
             nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_release);
+            const auto dubRevision = nativeDubModeRequestedRevision_[track].load(std::memory_order_relaxed) + 1U;
+            (void)looperForTrack(track).setDubMode(memory.dubModes[track]);
+            nativeTrackDubModes_[track].store(memory.dubModes[track], std::memory_order_release);
+            nativeTrackRequestedDubModes_[track].store(memory.dubModes[track], std::memory_order_release);
+            nativeDubModeRequestedRevision_[track].store(dubRevision, std::memory_order_release);
+            nativeDubModeAppliedRevision_[track].store(dubRevision, std::memory_order_release);
         }
         for (std::size_t bank = 0U; bank < memory.banks.size(); ++bank) {
             for (std::size_t slot = 0U; slot < NativeEffectBank::kSlotCount; ++slot) {
@@ -4677,6 +4789,7 @@ int NativeAudioCore::handleAudioCallback(
 
     (void)processHistoryPinAtCallback();
     const bool loopSnapshotPinned = processLoopSnapshotRequestAtCallback();
+    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeDubModeCommands();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {
@@ -4758,6 +4871,7 @@ int NativeAudioCore::handleInputAudioCallback(
 
     (void)processHistoryPinAtCallback();
     const bool loopSnapshotPinned = processLoopSnapshotRequestAtCallback();
+    if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) applyNativeDubModeCommands();
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
         Command command{};
         while (commandQueue_.pop(command)) {

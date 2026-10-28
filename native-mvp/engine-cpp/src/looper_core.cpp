@@ -253,6 +253,13 @@ bool LooperCore::setLoopTransportConfig(const LoopTransportConfig& config) noexc
     return true;
 }
 
+bool LooperCore::setDubMode(NativeDubMode mode) noexcept {
+    if (mode != NativeDubMode::Overdub && mode != NativeDubMode::Replace1 &&
+        mode != NativeDubMode::Replace2) return false;
+    dubMode_ = mode;
+    return true;
+}
+
 LooperCore::PlaybackCursor LooperCore::playbackCursor() const noexcept {
     return {playhead_, transportFadeRemaining_, vinylReadPosition_, vinylSpeedRatio_, vinylAcceleration_};
 }
@@ -341,6 +348,7 @@ bool LooperCore::previewPlayback(float* destination, unsigned int frames,
         outputChannels == 0U || outputChannels > 2U) return false;
     std::fill_n(destination, static_cast<std::size_t>(frames) * outputChannels, 0.0f);
     if ((state_ != LooperState::Playing && state_ != LooperState::Overdubbing) || finalizedFrames_ == 0U) return false;
+    if (state_ == LooperState::Overdubbing && dubMode_ == NativeDubMode::Replace2) return false;
     if (state_ == LooperState::Playing) {
         auto cursor = playbackCursor();
         for (unsigned int frame = 0U; frame < frames; ++frame) {
@@ -413,6 +421,14 @@ ProcessStats LooperCore::process(
             playbackRight = channels_ == 2U ? loopBuffer_[loopOffset + 1U] : playbackLeft;
         }
 
+        // REPLACE2 records into the same bounded loop store, but suppresses
+        // only this track's pre-write playback source. The playback-only tap
+        // therefore stays silent for this track and cannot feed Bounce.
+        if (state_ == LooperState::Overdubbing && dubMode_ == NativeDubMode::Replace2) {
+            playbackLeft = 0.0f;
+            playbackRight = 0.0f;
+        }
+
         float outputLeft = 0.0f;
         float outputRight = 0.0f;
         if (state_ == LooperState::Recording) {
@@ -438,16 +454,19 @@ ProcessStats LooperCore::process(
                 cursor.playhead = 0U;
             }
         } else if (state_ == LooperState::Overdubbing) {
-            const float mixedLeft = clampSample(playbackLeft + inputLeft);
-            const float mixedRight = clampSample(playbackRight + inputRight);
+            const float storedLeft = dubMode_ == NativeDubMode::Overdub
+                ? clampSample(playbackLeft + inputLeft) : clampSample(inputLeft);
+            const float storedRight = dubMode_ == NativeDubMode::Overdub
+                ? clampSample(playbackRight + inputRight) : clampSample(inputRight);
             if (finalizedFrames_ > 0 && playhead_ < finalizedFrames_) {
                 const std::size_t loopOffset = playhead_ * channels_;
-                loopBuffer_[loopOffset] = mixedLeft;
-                if (channels_ == 2U) loopBuffer_[loopOffset + 1U] = mixedRight;
+                loopBuffer_[loopOffset] = storedLeft;
+                if (channels_ == 2U) loopBuffer_[loopOffset + 1U] = storedRight;
                 playhead_ = (playhead_ + 1) % finalizedFrames_;
             }
-            // Keep the established always-audible overdub monitor behavior,
-            // while the recorded contribution may now use a separate source.
+            // REPLACE1 retains the prerecorded track in the audible path while
+            // its PCM is being overwritten. REPLACE2 mutes that loop reader;
+            // both modes preserve the established live-monitor tap.
             outputLeft = clampSample(playbackLeft + monitorLeft);
             outputRight = clampSample(playbackRight + monitorRight);
         } else {

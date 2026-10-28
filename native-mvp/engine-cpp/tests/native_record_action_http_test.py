@@ -31,6 +31,12 @@ def main():
             'outputDeviceId': 'WASAPI:1', 'sampleRate': 48000, 'bufferFrames': 64, 'monitoringEnabled': False})
         require(code == 200, value)
         require(request('/v1/engine/start', 'POST', {})[0] == 200, 'start failed')
+        code, dub_request = request('/v1/native-dub-mode/config', 'POST', {'trackId': 1, 'mode': 'REPLACE1'})
+        require(code == 200, dub_request)
+        dub_revision = dub_request['nativeTracks'][0]['dubMode']['acceptedRevision']
+        require(dub_request['nativeTracks'][0]['dubMode']['requestedRevision'] == dub_revision, dub_request)
+        dub_applied = until(lambda status: status['nativeTracks'][0]['dubMode']['appliedRevision'] == dub_revision)
+        require(dub_applied['nativeTracks'][0]['dubMode']['applied'] == 'REPLACE1', dub_applied)
         for action, expected in [('REC->PLAY', 'Playing'), ('REC->DUB', 'Overdubbing')]:
             code, value = request('/v1/record/settings', 'POST', {'recAction': action})
             require(code == 200, value)
@@ -39,6 +45,8 @@ def main():
             require(ready['nativeRecordPlay']['quantizeAvailable'] is False, ready)
             require(request('/v1/transport/record', 'POST', {'trackId': 1})[0] == 200, 'record failed')
             until(lambda status: status['nativeTracks'][0]['state'] == 'Recording')
+            code, rejected_mode = request('/v1/native-dub-mode/config', 'POST', {'trackId': 1, 'mode': 'REPLACE2'})
+            require(code == 409, ('DUB MODE changed during recording', rejected_mode))
             code, rejected = request('/v1/record/settings', 'POST', {'recAction': 'REC->DUB' if action == 'REC->PLAY' else 'REC->PLAY'})
             require(code == 409, rejected)
             code, accepted = request('/v1/transport/finish-record', 'POST', {'trackId': 1})
@@ -57,6 +65,8 @@ def main():
             until(lambda status: status['nativeTracks'][0]['state'] == 'Empty')
         for body in [{'recAction': 'INVALID'}, {'quantize': 'OFF'}, {'recAction': 'REC->PLAY', 'quantize': 'MEASURE'}]:
             require(request('/v1/record/settings', 'POST', body)[0] == 400, ('invalid settings accepted', body))
+        for body in [{'trackId': 0, 'mode': 'OVERDUB'}, {'trackId': 1, 'mode': 'INVALID'}]:
+            require(request('/v1/native-dub-mode/config', 'POST', body)[0] == 400, ('invalid DUB MODE request accepted', body))
         print('Native REC ACTION: atomic REC->PLAY/REC->DUB, callback generations, shared-budget shadow and retained undo; quantize explicitly unavailable')
     finally:
         process.terminate()

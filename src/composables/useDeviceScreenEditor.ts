@@ -729,15 +729,26 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       format: (value) => value === 0 ? 'CENTER' : `${value < 0 ? 'L' : 'R'}${Math.abs(value)}`,
       disabled: engine.getMode() !== 'browser' || !audioTrack,
       reason: engine.getMode() !== 'browser' ? 'Native track pan has no audio provider.' : '' }));
-    if (classic && engine.getMode() === 'browser' && audioTrack) {
+    if (classic && audioTrack) {
       const dubModes = ['OVERDUB', 'REPLACE1', 'REPLACE2'] as const;
+      const nativeDubMode = engine.getMode() === 'native' ? engine.getNativeDubModeStatus(bounceTarget) : null;
+      const nativeDubPending = !!nativeDubMode && nativeDubMode.requestedRevision !== nativeDubMode.appliedRevision;
+      const dubModeBusy = !!(audioTrack as { historyBusy?: boolean }).historyBusy
+        || audioTrack.state === 'RECORDING' || audioTrack.state === 'OVERDUBBING';
       fields.push(makeEnumField('track-dub-mode', 'DUB MODE', Math.max(0, dubModes.indexOf(audioTrack.track.dubMode)),
         fieldOptions(dubModes), (value) => {
           const mode = dubModes[value];
-          if (!mode || currentTrackId.value !== bounceTarget || engine.getMode() !== 'browser' || (audioTrack as { historyBusy?: boolean }).historyBusy) throw new Error('Track changed or recording is active; select the track again.');
+          const currentlyBusy = !!(audioTrack as { historyBusy?: boolean }).historyBusy
+            || audioTrack.state === 'RECORDING' || audioTrack.state === 'OVERDUBBING';
+          if (!mode || currentTrackId.value !== bounceTarget || currentlyBusy) throw new Error('Track changed or recording is active; select the track again.');
+          if (engine.getMode() === 'native') return engine.setNativeDubMode(bounceTarget, mode);
           audioTrack.track.dubMode = mode;
-        }, { disabled: !!(audioTrack as { historyBusy?: boolean }).historyBusy,
-          reason: 'Roland Parameter Guide v1.3 p.2. Browser clean-room behavior; not compared with hardware.' }));
+        }, { disabled: dubModeBusy || (engine.getMode() === 'native' && (!nativeDubMode || nativeDubPending)),
+          reason: engine.getMode() === 'native'
+            ? !nativeDubMode ? 'Native host does not expose callback-acknowledged DUB MODE and Memory readback.'
+              : nativeDubPending ? 'Wait for Native DUB MODE callback acknowledgement.'
+                : 'Roland Parameter Guide v1.2 p.1. Saved in Native per-track Memory settings.'
+            : 'Roland Parameter Guide v1.2 p.1. Browser clean-room behavior; not compared with hardware.' }));
     }
     fields.push(makeBooleanField('track-bounce-in', 'BOUNCE IN', bounce?.bounceIn[bounceTarget - 1] === true, (enabled) => {
       if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the destination again.');

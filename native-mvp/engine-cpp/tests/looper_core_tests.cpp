@@ -10,6 +10,75 @@ using namespace webrc::native;
 
 namespace {
 
+void testNativeDubModesReplacePcmAndKeepPlaybackTapSemantics() {
+    const std::array<float, 4U> original{{0.1f, 0.2f, 0.3f, 0.4f}};
+    const std::array<float, 2U> live{{0.7f, 0.8f}};
+    for (const auto mode : {NativeDubMode::Overdub, NativeDubMode::Replace1, NativeDubMode::Replace2}) {
+        LooperCore core(8000U, 1U, 1U);
+        assert(core.setDubMode(mode));
+        assert(core.dubMode() == mode);
+        assert(!core.setDubMode(static_cast<NativeDubMode>(255U)));
+        core.applyCommand({CommandType::SetMonitoring, false});
+        core.applyCommand({CommandType::Record});
+        (void)core.process(original.data(), nullptr, 4U, 1U, 1U);
+        core.applyCommand({CommandType::StopRecordOrPlayback});
+        core.applyCommand({CommandType::Play});
+        std::array<float, 2U> output{};
+        std::array<float, 2U> playbackTap{};
+        (void)core.process(nullptr, output.data(), 2U, 0U, 1U, playbackTap.data());
+        assert((output == std::array<float, 2U>{{0.1f, 0.2f}}));
+
+        core.applyCommand({CommandType::ToggleOverdub});
+        std::array<float, 2U> bouncePreview{{9.0f, 9.0f}};
+        const bool previewAvailable = core.previewPlayback(bouncePreview.data(), 2U, 1U, 2U);
+        if (mode == NativeDubMode::Replace2) {
+            assert((!previewAvailable && bouncePreview == std::array<float, 2U>{{0.0f, 0.0f}}));
+        } else {
+            assert((previewAvailable && bouncePreview == std::array<float, 2U>{{0.3f, 0.4f}}));
+        }
+        output.fill(0.0f);
+        playbackTap.fill(-1.0f);
+        (void)core.process(live.data(), output.data(), 2U, 1U, 1U, playbackTap.data());
+        if (mode == NativeDubMode::Overdub) {
+            assert((output == std::array<float, 2U>{{1.0f, 1.0f}}));
+            assert((playbackTap == std::array<float, 2U>{{0.3f, 0.4f}}));
+        } else if (mode == NativeDubMode::Replace1) {
+            assert((output == std::array<float, 2U>{{1.0f, 1.0f}}));
+            assert((playbackTap == std::array<float, 2U>{{0.3f, 0.4f}}));
+        } else {
+            assert((output == live));
+            assert((playbackTap == std::array<float, 2U>{{0.0f, 0.0f}}));
+        }
+        core.applyCommand({CommandType::ToggleOverdub}); // cancel before any further PCM writes
+        assert(core.state() == LooperState::Playing);
+        core.applyCommand({CommandType::StopRecordOrPlayback});
+        std::array<float, 4U> pcm{};
+        std::size_t copied = 0U;
+        assert(core.copyFinalizedLoopSnapshot(pcm.data(), pcm.size(), copied));
+        assert(copied == 4U);
+        if (mode == NativeDubMode::Overdub) {
+            assert((pcm == std::array<float, 4U>{{0.1f, 0.2f, 1.0f, 1.0f}}));
+        } else {
+            assert((pcm == std::array<float, 4U>{{0.1f, 0.2f, 0.7f, 0.8f}}));
+        }
+    }
+
+    // A queued start/cancel pair that reaches the callback without processing
+    // any input does not edit or truncate the canonical phrase.
+    LooperCore cancelled(8000U, 1U, 1U);
+    cancelled.applyCommand({CommandType::Record});
+    (void)cancelled.process(original.data(), nullptr, 4U, 1U, 1U);
+    cancelled.applyCommand({CommandType::StopRecordOrPlayback});
+    cancelled.applyCommand({CommandType::Play});
+    cancelled.applyCommand({CommandType::ToggleOverdub});
+    cancelled.applyCommand({CommandType::ToggleOverdub});
+    cancelled.applyCommand({CommandType::StopRecordOrPlayback});
+    std::array<float, 4U> unchanged{};
+    std::size_t copied = 0U;
+    assert(cancelled.copyFinalizedLoopSnapshot(unchanged.data(), unchanged.size(), copied));
+    assert(copied == original.size() && unchanged == original);
+}
+
 void testOptionalOutputPeakKeepsLooperAudioAndState(unsigned int storedChannels) {
     constexpr unsigned int kSampleRate = 8000U;
     LooperCore metered(kSampleRate, 1U, storedChannels);
@@ -147,6 +216,7 @@ void testReadOnlyPlaybackPreview() {
 } // namespace
 
 int main() {
+    testNativeDubModesReplacePcmAndKeepPlaybackTapSemantics();
     testReadOnlyPlaybackPreview();
     testOptionalOutputPeakKeepsLooperAudioAndState(1U);
     testOptionalOutputPeakKeepsLooperAudioAndState(2U);

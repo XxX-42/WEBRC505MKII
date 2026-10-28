@@ -118,6 +118,10 @@ struct NativeAudioCoreTestAccess {
         assert(core.commandQueue_.push({type, value, static_cast<std::uint8_t>(trackIndex)}));
     }
 
+    static LoopMetadata trackMetadata(const NativeAudioCore& core, std::size_t trackIndex) {
+        return core.looperForTrack(trackIndex).metadata();
+    }
+
     static void changeProjectRevisionForTest(NativeAudioCore& core, std::size_t trackIndex) {
         assert(trackIndex < kNativeTrackCount);
         core.trackContentRevision_[trackIndex].fetch_add(1U, std::memory_order_release);
@@ -1555,10 +1559,10 @@ void testNativeTwentySlotChainsMatchIndependentOrderedReferencesAt64Frames() {
 
 class CallbackPump {
 public:
-    explicit CallbackPump(NativeAudioCore& core) : core_(core), worker_([this] {
+    explicit CallbackPump(NativeAudioCore& core, const float* input = nullptr) : core_(core), input_(input), worker_([this] {
         std::array<float, 128U> output{};
         while (running_.load(std::memory_order_acquire)) {
-            (void)NativeAudioCoreTestAccess::callback(core_, nullptr, output.data(), 64U);
+            (void)NativeAudioCoreTestAccess::callback(core_, input_, output.data(), 64U);
             std::this_thread::yield();
         }
     }) {}
@@ -1570,6 +1574,7 @@ public:
     CallbackPump& operator=(const CallbackPump&) = delete;
 private:
     NativeAudioCore& core_;
+    const float* input_ = nullptr;
     std::atomic<bool> running_{true};
     std::thread worker_;
 };
@@ -2239,6 +2244,9 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
         memory->pitch.semitones = 3.0f;
         memory->trackFxApply = {{false, true, false, true, false}};
         memory->mixerLevels = {{80U, 90U, 100U, 110U, 120U, 130U, 140U}};
+        memory->dubModes = {{NativeDubMode::Replace1, NativeDubMode::Overdub, NativeDubMode::Replace2,
+            NativeDubMode::Overdub, NativeDubMode::Replace1}};
+        memory->dubModesIncluded = true;
         return memory;
     };
     auto invalid = makeMemory(); invalid->banks[6U][3U].effectId = "missing";
@@ -2278,6 +2286,14 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     assert(status.nativeReverbEnabled && std::fabs(status.nativeReverbWetMix - 0.4f) < 1.0e-6f);
     assert(status.nativePitchEnabled && status.nativePitchSemitones == 3.0f);
     assert(status.nativeRecordActionDub && status.nativeRecordActionRequestedRevision == status.nativeRecordActionAppliedRevision);
+    assert((status.nativeMemoryDubModes == std::array<NativeDubMode, kNativeTrackCount>{{
+        NativeDubMode::Replace1, NativeDubMode::Overdub, NativeDubMode::Replace2,
+        NativeDubMode::Overdub, NativeDubMode::Replace1}}));
+    assert(status.nativeTrackDubModes == status.nativeMemoryDubModes);
+    assert(status.nativeTrackRequestedDubModes == status.nativeMemoryDubModes);
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        assert(status.nativeDubModeRequestedRevision[track] == status.nativeDubModeAppliedRevision[track]);
+    }
     for (std::size_t track = 0U; track < 5U; ++track) {
         assert(status.nativeTrackFxApply[track].requested == (track % 2U == 1U));
         assert(status.nativeTrackFxApply[track].applied == status.nativeTrackFxApply[track].requested);
@@ -2353,6 +2369,85 @@ void testNativeRecActionAtomicCompletionAndBudgetedShadow() {
     assert(NativeAudioCoreTestAccess::commandQueueSize(full) == 0U);
     NativeAudioCoreTestAccess::setHistoryRetainedBytesForBudgetTest(full, 0U);
     NativeAudioCoreTestAccess::setRunningForQueueTest(full, false);
+}
+
+void testNativeDubModeCallbackAckPcmAndUndoCancellation() {
+    for (const auto mode : {NativeDubMode::Replace1, NativeDubMode::Replace2}) {
+        NativeAudioCore core;
+        std::string error;
+        NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+        NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+        NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+        constexpr unsigned int frames = 64U;
+        std::vector<float> original(frames * 2U);
+        std::vector<float> replacement(frames * 2U, 0.25f);
+        for (std::size_t frame = 0U; frame < frames; ++frame) {
+            original[frame * 2U] = 0.1f + static_cast<float>(frame) * 0.001f;
+            original[frame * 2U + 1U] = -original[frame * 2U];
+        }
+        std::array<float, frames * 2U> output{};
+        assert(core.recordTrack(0U, error));
+        assert(NativeAudioCoreTestAccess::callback(core, original.data(), output.data(), frames) == 0);
+        assert(core.stopTrack(0U, error));
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+
+        std::uint64_t requestedRevision = 0U;
+        assert(core.setNativeDubMode(0U, mode, requestedRevision, error));
+        auto status = core.getStatus();
+        assert(status.nativeTrackRequestedDubModes[0U] == mode);
+        assert(status.nativeTrackDubModes[0U] == NativeDubMode::Overdub);
+        assert(status.nativeDubModeRequestedRevision[0U] == requestedRevision);
+        assert(status.nativeDubModeAppliedRevision[0U] < requestedRevision);
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        status = core.getStatus();
+        assert(status.nativeTrackDubModes[0U] == mode);
+        assert(status.nativeDubModeAppliedRevision[0U] == requestedRevision);
+
+        assert(core.playTrack(0U, error));
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        {
+            CallbackPump pump(core, replacement.data());
+            assert(core.toggleTrackOverdub(0U, error));
+            bool enteredOverdub = false;
+            for (unsigned int wait = 0U; wait < 1000U; ++wait) {
+                if (core.getStatus().nativeTrackStates[0U] == LooperState::Overdubbing) {
+                    enteredOverdub = true;
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            assert(enteredOverdub);
+        }
+        const auto allocations = trackedAllocations;
+        const auto deallocations = trackedDeallocations;
+        trackAllocations = true;
+        assert(NativeAudioCoreTestAccess::callback(core, replacement.data(), output.data(), frames) == 0);
+        trackAllocations = false;
+        assert(trackedAllocations == allocations && trackedDeallocations == deallocations);
+        assert(core.getStatus().nativeTrackStates[0U] == LooperState::Overdubbing);
+        assert(!core.setNativeDubMode(0U, NativeDubMode::Overdub, requestedRevision, error));
+
+        assert(core.toggleTrackOverdub(0U, error));
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        assert(core.stopTrack(0U, error));
+        assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), frames) == 0);
+        assert(core.getStatus().nativeTrackStates[0U] == LooperState::Stopped);
+        assert(NativeAudioCoreTestAccess::trackMetadata(core, 0U).finalizedFrames == frames);
+        std::vector<float> replaced(frames * 2U);
+        std::size_t copiedFrames = 0U;
+        assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, replaced.data(), frames, copiedFrames));
+        assert(copiedFrames == frames && replaced == replacement);
+
+        // Cancel the committed replacement using the same budgeted PCM history
+        // transaction as OVERDUB; the restored loop must be bit-exact.
+        { CallbackPump pump(core); assert(core.undoTrack(0U, error)); }
+        std::vector<float> restored(frames * 2U);
+        assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, restored.data(), frames, copiedFrames));
+        assert(copiedFrames == frames && restored == original);
+        status = core.getStatus();
+        assert(status.nativeTrackHistory[0U].canRedo);
+        NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+    }
 }
 
 void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks() {
@@ -2488,6 +2583,7 @@ int main() {
     testMixerIndependentPcmGains();
 #if defined(NATIVE_MEMORY_TESTS_ONLY)
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();
+    testNativeDubModeCallbackAckPcmAndUndoCancellation();
     testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread();
     return 0;
 #elif defined(NATIVE_TRACK_MARK_TESTS_ONLY)
@@ -2973,6 +3069,7 @@ int main() {
     assert(!finalStatus.nativeCompressorEnabled);
     assert(!finalStatus.nativePhaserEnabled);
     testNativeCatalogSlotsRunInsidePlaybackCallback();
+    testNativeDubModeCallbackAckPcmAndUndoCancellation();
     testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks();
     testNativeBounceUsesOverdubbingSourcePreviewWithoutOrderDependentAdvance();
     testNativeInputCatalogBankProcessesBeforeRecordAndMonitor();

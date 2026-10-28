@@ -6,6 +6,14 @@ export type NativeBackend = 'WASAPI' | 'ASIO';
 export type NativeLooperState = 'Empty' | 'Recording' | 'Stopped' | 'Playing' | 'Overdubbing';
 export type NativeHqEngine = 'R2' | 'R3';
 export type NativeLoopTransportMode = 'off' | 'beatShift' | 'vinylFlick';
+export type NativeDubMode = 'OVERDUB' | 'REPLACE1' | 'REPLACE2';
+export interface NativeDubModeStatus {
+  applied: NativeDubMode;
+  requested: NativeDubMode;
+  requestedRevision: number;
+  appliedRevision: number;
+  acceptedRevision?: number;
+}
 export type NativeLoopTransportStatus =
   | 'disabled'
   | 'waitingForLoop'
@@ -183,6 +191,8 @@ export interface NativeCallbackTelemetry {
 }
 
 export interface NativeStatus {
+  nativeMemory?: { version: 1; loopTransports: NativeLoopTransportConfig[]; dubModes?: NativeDubMode[];
+    bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } };
   nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; acceptedRevision?: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
   callbackTelemetry?: NativeCallbackTelemetry;
   mixerLevels?: number[];
@@ -233,6 +243,7 @@ export interface NativeStatus {
     loopTransportFaultRevision?: number;
     loopTransportAcceptedRevision?: number;
     loopTransportAppliedOneShot?: boolean;
+    dubMode?: NativeDubModeStatus;
     vocoderCarrierStatus?: NativeVocoderCarrierStatus;
     history?: NativeTrackHistoryStatus;
     mark?: NativeTrackMarkStatus;
@@ -1143,6 +1154,25 @@ export class NativeBridgeClient {
       await new Promise((resolve) => setTimeout(resolve, 10));
       status = await this.getStatus();
     }
+  }
+
+  public async setDubMode(trackId: number, mode: NativeDubMode): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    if (mode !== 'OVERDUB' && mode !== 'REPLACE1' && mode !== 'REPLACE2') {
+      throw new RangeError('Native DUB MODE must be OVERDUB, REPLACE1, or REPLACE2.');
+    }
+    const status = await this.request<NativeStatus>('/v1/native-dub-mode/config', {
+      method: 'POST', body: JSON.stringify({ trackId, mode }),
+    });
+    const readback = status.nativeTracks?.find((track) => track.trackId === trackId)?.dubMode;
+    if (!readback || readback.requested !== mode || typeof readback.acceptedRevision !== 'number' ||
+        typeof readback.requestedRevision !== 'number' || typeof readback.appliedRevision !== 'number' ||
+        !Number.isSafeInteger(readback.acceptedRevision) || !Number.isSafeInteger(readback.requestedRevision) ||
+        !Number.isSafeInteger(readback.appliedRevision) ||
+        readback.acceptedRevision !== readback.requestedRevision || readback.appliedRevision > readback.requestedRevision) {
+      throw new Error('Native bridge did not identify the accepted DUB MODE revision.');
+    }
+    return status;
   }
 
   public async setNativeBounceSettings(settings: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] }): Promise<NativeStatus> {

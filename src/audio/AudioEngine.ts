@@ -7,7 +7,7 @@ import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { BrowserBounceSettings } from './BrowserBounceSettings';
 import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserStepSlicerControl } from './BrowserAudioEngine';
 import { NativeAudioEngine, type LatencyInfo as NativeLatencyInfo, type NativeDeviceSelection, type NativeUiStatus as NativeEngineUiStatus, type NativeCatalogFxSlotRuntime } from './NativeAudioEngine';
-import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus } from './NativeBridgeClient';
+import type { NativeBackend, NativeCatalogMidiSlotStatus, NativeDeviceInfo, NativeDubMode, NativeFxParameterSchema, NativeFxSlot, NativeHqEngine, NativeLoopTransportConfig, NativeLoopTransportStatus, NativeProjectImportStatus, NativeStatus } from './NativeBridgeClient';
 import type { NativeTrackProxy } from './NativeTrackProxy';
 import type { BrowserFxAlgorithm, BrowserFxParameters } from './fx/dsp/BrowserFxDspCore';
 import type { NativeFxPath } from './nativeFxCatalog';
@@ -599,6 +599,18 @@ export class AudioEngine {
   public getNativeTrackState(trackId: number) {
     if (this.currentMode !== 'native') return null;
     return this.nativeEngine.nativeTrackState(trackId);
+  }
+
+  /** Set one Native track's DUB MODE and wait for its callback-applied revision. */
+  public async setNativeDubMode(trackId: number, mode: NativeDubMode): Promise<void> {
+    if (this.currentMode !== 'native') throw new Error('Native DUB MODE is only available in Native audio mode.');
+    await this.nativeEngine.setNativeDubMode(trackId, mode);
+  }
+
+  /** Returns Native DUB MODE only when the host advertises its readback contract. */
+  public getNativeDubModeStatus(trackId: number) {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.getNativeDubModeStatus(trackId);
   }
 
   /** Configure the Browser's separate per-loop source-readhead stage. */

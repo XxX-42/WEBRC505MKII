@@ -225,6 +225,14 @@ struct EngineStatus {
     NativeAutoPanWaveform nativeAutoPanWaveform = NativeAutoPanWaveform::Sine;
     float nativeAutoPanWetMix = 1.0f;
     std::array<LoopTransportConfig, kNativeTrackCount> nativeMemoryLoopTransports{};
+    std::array<NativeDubMode, kNativeTrackCount> nativeMemoryDubModes{{
+        NativeDubMode::Overdub, NativeDubMode::Overdub, NativeDubMode::Overdub,
+        NativeDubMode::Overdub, NativeDubMode::Overdub
+    }};
+    std::array<NativeDubMode, kNativeTrackCount> nativeTrackDubModes{};
+    std::array<NativeDubMode, kNativeTrackCount> nativeTrackRequestedDubModes{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeDubModeRequestedRevision{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeDubModeAppliedRevision{};
     std::array<std::string, NativeEffectBank::kSlotCount> nativeCatalogSlotEffectIds{};
     std::array<bool, NativeEffectBank::kSlotCount> nativeCatalogSlotBypassed{};
     std::array<std::string, NativeEffectBank::kSlotCount> nativeInputCatalogSlotEffectIds{};
@@ -423,6 +431,12 @@ struct NativeMemorySettings {
     std::array<unsigned int, 7U> mixerLevels{{100U, 100U, 100U, 100U, 100U, 100U, 100U}};
     std::array<bool, kNativeTrackCount> trackFxApply{{true, true, true, true, true}};
     std::array<LoopTransportConfig, kNativeTrackCount> loopTransports{};
+    // Optional in older Memory envelopes; absent fields default to OVERDUB.
+    std::array<NativeDubMode, kNativeTrackCount> dubModes{{
+        NativeDubMode::Overdub, NativeDubMode::Overdub, NativeDubMode::Overdub,
+        NativeDubMode::Overdub, NativeDubMode::Overdub
+    }};
+    bool dubModesIncluded = false;
     NativeBounceSettings bounce{};
 };
 
@@ -434,6 +448,12 @@ struct NativePitchCommand {
 struct NativeLoopTransportCommand {
     std::size_t trackIndex = 0U; // zero-based, matching recordTrack()/playTrack()
     LoopTransportConfig config{};
+    std::uint64_t revision = 0U;
+};
+
+struct NativeDubModeCommand {
+    std::size_t trackIndex = 0U;
+    NativeDubMode mode = NativeDubMode::Overdub;
     std::uint64_t revision = 0U;
 };
 
@@ -536,6 +556,12 @@ public:
         std::string& error,
         std::uint64_t* acceptedRevision = nullptr
     );
+    // Sets the per-track write policy for the next overdub. A running engine
+    // applies it at an audio callback boundary and reports the requested and
+    // applied revisions in EngineStatus. Mode edits are refused while the
+    // selected track is recording/overdubbing or a start is pending.
+    bool setNativeDubMode(std::size_t trackIndex, NativeDubMode mode,
+        std::uint64_t& requestedRevision, std::string& error);
     bool setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error,
         std::uint64_t* acceptedRevision = nullptr);
     // Track target 0 preserves the shared post-sum playback bank. Targets
@@ -698,6 +724,7 @@ private:
     ) noexcept;
     void applyNativePitchCommands() noexcept;
     void applyNativeLoopTransportCommands() noexcept;
+    void applyNativeDubModeCommands() noexcept;
     void applyOfficialSourceTransports() noexcept;
     void prepareVocoderCarriers(unsigned int frames) noexcept;
     [[nodiscard]] bool processLoopSnapshotRequestAtCallback() noexcept;
@@ -903,6 +930,19 @@ private:
     std::array<std::atomic<float>, kNativeTrackCount> nativeTrackFxApplyRms_{};
     SpscRingQueue<NativePitchCommand, 16> nativePitchCommandQueue_;
     SpscRingQueue<NativeLoopTransportCommand, 16> nativeLoopTransportCommandQueue_;
+    SpscRingQueue<NativeDubModeCommand, 16> nativeDubModeCommandQueue_;
+    std::array<NativeDubModeCommand, kNativeTrackCount> pendingNativeDubModeCommands_{};
+    std::array<bool, kNativeTrackCount> pendingNativeDubModeCommandValid_{};
+    std::array<std::atomic<NativeDubMode>, kNativeTrackCount> nativeTrackDubModes_{{
+        NativeDubMode::Overdub, NativeDubMode::Overdub, NativeDubMode::Overdub,
+        NativeDubMode::Overdub, NativeDubMode::Overdub
+    }};
+    std::array<std::atomic<NativeDubMode>, kNativeTrackCount> nativeTrackRequestedDubModes_{{
+        NativeDubMode::Overdub, NativeDubMode::Overdub, NativeDubMode::Overdub,
+        NativeDubMode::Overdub, NativeDubMode::Overdub
+    }};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeDubModeRequestedRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeDubModeAppliedRevision_{};
     // Callback-owned underlying routes. Official shared Track A is an overlay;
     // bypass/removal restores each independently authored route, not generic OFF.
     std::array<LoopTransportConfig, kNativeTrackCount> nativeBaseLoopTransportConfigs_{};
@@ -912,6 +952,10 @@ private:
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeLoopTransportAppliedRevision_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeLoopTransportFaultRevision_{};
     std::array<std::atomic<bool>, kNativeTrackCount> nativeLoopTransportAppliedOneShot_{};
+    std::array<NativeDubMode, kNativeTrackCount> nativeMemoryDubModeSettings_{{
+        NativeDubMode::Overdub, NativeDubMode::Overdub, NativeDubMode::Overdub,
+        NativeDubMode::Overdub, NativeDubMode::Overdub
+    }};
     std::array<bool, kNativeTrackCount> nativeOfficialSourcePitchConflict_{};
     SpscRingQueue<NativeRhythmConfig, 16> nativeRhythmCommandQueue_;
     SpscRingQueue<AudioBlock, 8> outputQueue_;

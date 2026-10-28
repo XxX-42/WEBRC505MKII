@@ -23,16 +23,18 @@ def envelope(status, invalid=False, mutate=None):
     bounce = {'bounceSw': True, 'bounceIn': [True, False, True, False, False],
         'bounceTrack': [False, True, True, False, True]}
     bounce_fields = {'record.bounceSw': {'availability': 'supported', 'value': True}}
+    dub_modes = ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1']
     for track in range(1, 6):
         bounce_fields[f'track.{track}.bounceIn'] = {'availability': 'supported', 'value': bounce['bounceIn'][track - 1]}
         bounce_fields[f'track.{track}.bounceTrack'] = {'availability': 'supported', 'value': bounce['bounceTrack'][track - 1]}
+        bounce_fields[f'track.{track}.dubMode'] = {'availability': 'supported', 'value': dub_modes[track - 1]}
     metadata = {'version': 1, 'memoryNumber': 1, 'name': 'Native test',
                 'semantics': {'tempo': 120, 'meter': [4, 4], 'fields': bounce_fields},
                 'extensions': {'WEBRC': {
                     'nativeMemory': {'banks': banks, 'mixerLevels': [80, 90, 100, 110, 120, 130, 140], 'trackFxApply': [False, True, False, True, False],
                         'rhythm': {'enabled': False, 'bpm': 120, 'kitIndex': 1, 'patternIndex': 1,
                             'variation': 0, 'section': 0, 'quantizeGrid': 0, 'swingPercent': 50, 'volume': 37},
-                        'loopTransports': status['nativeMemory']['loopTransports'], 'bounce': bounce},
+                        'loopTransports': status['nativeMemory']['loopTransports'], 'dubModes': dub_modes, 'bounce': bounce},
                     'nativeOutputState': {'fx': fx, 'pitch': pitch}}}}
     if mutate:
         mutate(metadata)
@@ -77,6 +79,23 @@ def main():
                 source_status['nativeMemory']['loopTransports'][1]['oneShot'] is True,
                 'Native 1SHOT did not round-trip through applied status before Memory export')
         baseline = source_status['projectContentRevision']
+        # Older Native Memory envelopes did not carry per-track DUB MODE.
+        # They remain valid and restore the documented legacy default.
+        def remove_dub_modes(meta):
+            native = meta['extensions']['WEBRC']['nativeMemory']
+            native.pop('dubModes', None)
+            for track in range(1, 6):
+                meta['semantics']['fields'].pop(f'track.{track}.dubMode', None)
+        legacy_body = envelope(source_status, mutate=remove_dub_modes)
+        code, legacy = request_project_archive(f'/v1/project/import?expectedContentRevision={baseline}', 'POST', legacy_body, 'application/octet-stream')
+        require(code == 202, ('legacy Memory without DUB MODE was rejected', legacy))
+        legacy_generation = legacy['generation']
+        code, legacy = request_project_archive('/v1/project/import/cancel', 'POST', json.dumps({'generation': legacy_generation}).encode(), 'text/plain')
+        require(code == 200 and legacy['state'] == 'cancelled', ('legacy candidate did not cancel cleanly', legacy))
+        legacy_after = request('/v1/status')[1]
+        require(legacy_after['projectContentRevision'] == baseline
+            and legacy_after['nativeMemory']['dubModes'] == ['OVERDUB'] * 5,
+            'legacy prepare/cancel changed incumbent DUB MODE settings')
         body = envelope(source_status)
         malformed = [
             lambda meta: meta['extensions']['WEBRC']['nativeMemory'].update(recAction='INVALID'),
@@ -94,6 +113,9 @@ def main():
             lambda meta: meta['semantics']['fields'].update({'track.1.pan': {'availability': 'unsupported', 'value': 0, 'reason': 'unsupported'}}),
             lambda meta: meta['semantics']['fields'].update({'track.1.pan': {'availability': 'unknown', 'value': None}}),
             lambda meta: meta['semantics']['fields'].update({'track.1.pan': {'availability': 'supported', 'value': 'CENTER', 'unexpected': True}}),
+            lambda meta: meta['extensions']['WEBRC']['nativeMemory'].update(dubModes=['OVERDUB']),
+            lambda meta: meta['extensions']['WEBRC']['nativeMemory'].update(dubModes=['OVERDUB'] * 4 + ['INVALID']),
+            lambda meta: meta['semantics']['fields']['track.3.dubMode'].update(value='OVERDUB'),
             lambda meta: meta['extensions']['WEBRC'].update({'opaque': {'prototype': 1}}),
             lambda meta: meta['extensions']['WEBRC'].update({'opaque': 'x' * 8193}),
         ]
@@ -136,6 +158,8 @@ def main():
             require(code == 200 and cancelled['state'] == 'cancelled',
                     f'cancel media type {content_type}: {code} {cancelled}')
         require(request('/v1/status')[1]['projectContentRevision'] == baseline, 'cancel mutated incumbent')
+        require(request('/v1/status')[1]['nativeMemory']['dubModes'] == ['OVERDUB'] * 5,
+            'cancelled non-default DUB MODE candidate mutated incumbent settings')
         mismatched_bounce = lambda meta: meta['semantics']['fields']['track.3.bounceIn'].update(value=False)
         code, rejected = request_project_archive(path, 'POST', envelope(source_status, mutate=mismatched_bounce), 'application/octet-stream')
         require(code == 400, ('inconsistent Bounce semantic field accepted', rejected))
@@ -164,6 +188,10 @@ def main():
         require(after['nativeMemory']['loopTransports'][1]['oneShot'] is True and
                 after['nativeTracks'][1]['loopTransportAppliedOneShot'] is True,
                 'Native Memory did not restore the requested 1SHOT mode to the callback-applied setting')
+        require(after['nativeMemory']['dubModes'] == ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'], after['nativeMemory'])
+        require([track['dubMode']['applied'] for track in after['nativeTracks']] == after['nativeMemory']['dubModes'], after['nativeTracks'])
+        require(all(track['dubMode']['requested'] == track['dubMode']['applied']
+            and track['dubMode']['requestedRevision'] == track['dubMode']['appliedRevision'] for track in after['nativeTracks']), after['nativeTracks'])
         require(after['nativeRecordPlay']['recAction'] == 'REC->DUB' and after['nativeRecordPlay']['requestedRevision'] == after['nativeRecordPlay']['appliedRevision'], after['nativeRecordPlay'])
         require(after['mixerLevels'] == [80, 90, 100, 110, 120, 130, 140], after['mixerLevels'])
         revision = after['projectContentRevision']
@@ -177,6 +205,26 @@ def main():
         code, rejected = request_project_archive(f'/v1/project/import?expectedContentRevision={revision}', 'POST',
             body, 'application/octet-stream')
         require(code == 409 and 'changed' in rejected.get('error', ''), rejected)
+        # Importing an old saved Memory after a non-default mode commit must
+        # restore the historical OVERDUB default on all five tracks.
+        current_revision = request('/v1/status')[1]['projectContentRevision']
+        old_body = envelope(after, mutate=remove_dub_modes)
+        code, old_candidate = request_project_archive(f'/v1/project/import?expectedContentRevision={current_revision}', 'POST',
+            old_body, 'application/octet-stream')
+        require(code == 202, ('legacy Memory restore was rejected', old_candidate))
+        code, old_commit = request_project_archive('/v1/project/import/commit', 'POST', str(old_candidate['generation']).encode(), 'text/plain')
+        require(code == 200, old_commit)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            _, restored = request('/v1/status')
+            if restored['projectContentRevision'] > current_revision and restored['nativeMemory']['dubModes'] == ['OVERDUB'] * 5 \
+                    and all(track['dubMode']['requestedRevision'] == track['dubMode']['appliedRevision'] for track in restored['nativeTracks']):
+                break
+            time.sleep(.005)
+        require(restored['nativeMemory']['dubModes'] == ['OVERDUB'] * 5
+            and all(track['dubMode']['applied'] == 'OVERDUB'
+                and track['dubMode']['requestedRevision'] == track['dubMode']['appliedRevision'] for track in restored['nativeTracks']),
+            ('legacy Memory did not restore DUB MODE defaults', restored['nativeTracks']))
         print('Native whole Memory HTTP: external schema/meter/fields/Unicode/opaque + prepare/cancel/atomic PCM+7FX+output+pitch+gates/ACK/invalid/ABA passed')
     finally:
         process.terminate()

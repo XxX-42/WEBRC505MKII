@@ -1,7 +1,7 @@
 import { Transport } from '../core/Transport';
 import { decodeProjectArchive } from './projectArchive';
 import { Rc505MemoryCommittedError, encodeRc505Memory, type Rc505Json, type Rc505MemoryDocument, type Rc505MemoryField, type Rc505MemoryRuntime } from './Rc505Memory';
-import type { NativeBridgeClient, NativeCatalogSlotStatus, NativeStatus } from './NativeBridgeClient';
+import type { NativeBridgeClient, NativeCatalogSlotStatus, NativeDubMode, NativeStatus } from './NativeBridgeClient';
 
 export interface NativeMemoryPort {
   bridge: NativeBridgeClient;
@@ -22,7 +22,7 @@ function stopped(status: NativeStatus | null): { allowed: boolean; reason: strin
   return { allowed, reason: allowed ? '' : 'Stop all five Native tracks before switching Memory.' };
 }
 function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
-  const native = (status as NativeStatus & { nativeMemory?: { version: number; loopTransports: Rc505Json[]; bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } } }).nativeMemory;
+  const native = status.nativeMemory;
   if (native?.version !== 1 || native.loopTransports.length !== 5 || !status.nativeRhythm) {
     throw new Error('Native host does not support atomic semantic Memory; update the host.');
   }
@@ -55,10 +55,25 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   if (record && (record.requestedRevision !== record.appliedRevision || !['REC->PLAY', 'REC->DUB'].includes(record.recAction))) {
     throw new Error('Wait for Native REC ACTION callback acknowledgement.');
   }
+  const dubModes: NativeDubMode[] | undefined = native.dubModes === undefined
+    ? undefined
+    : native.dubModes.length === 5 && native.dubModes.every((mode): mode is NativeDubMode =>
+      mode === 'OVERDUB' || mode === 'REPLACE1' || mode === 'REPLACE2')
+      ? [...native.dubModes]
+      : (() => { throw new Error('Native host returned invalid per-track DUB MODE Memory settings.'); })();
+  if (dubModes) {
+    for (let track = 1; track <= 5; track += 1) {
+      const readback = status.nativeTracks?.find((item) => item.trackId === track)?.dubMode;
+      if (!readback || readback.requested !== readback.applied || readback.requestedRevision !== readback.appliedRevision
+        || readback.applied !== dubModes[track - 1]) {
+        throw new Error(`Wait for Native Track ${track} DUB MODE callback acknowledgement before Memory capture.`);
+      }
+    }
+  }
   return {
     ...(record?.recActionAvailable ? { recAction: record.recAction } : {}),
     trackFxApply: gates.map((gate) => gate.applied), mixerLevels: [...status.mixerLevels],
-    banks, loopTransports: copyJson(native.loopTransports),
+    banks, loopTransports: copyJson(native.loopTransports), ...(dubModes ? { dubModes } : {}),
     bounce: native.bounce ? copyJson(native.bounce) : { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] },
     rhythm: { enabled: rhythm.enabled, bpm: rhythm.bpm, kitIndex: rhythm.kitIndex, patternIndex: rhythm.patternIndex,
       variation: ['A', 'B', 'C', 'D'].indexOf(rhythm.variation), section: ['main', 'intro', 'ending', 'fill'].indexOf(rhythm.section),
@@ -111,6 +126,9 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         for (const key of ['level', 'pan', 'reverse', 'oneShot', 'tempoSync', 'loopSync', 'measure', 'startMode', 'stopMode']) {
           fields[`track.${track}.${key}`] ??= { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
         }
+        fields[`track.${track}.dubMode`] = settings.dubModes
+          ? { value: (settings.dubModes as Rc505Json[])[track - 1]!, availability: 'supported' }
+          : { value: null, availability: 'unsupported', reason: 'Native host does not implement DUB MODE Memory.' };
       }
       for (const address of ['record.overdubMode', 'record.quantize', 'play.allStart', 'play.allStop', 'routing.output', 'assign.controls', 'mixer.level']) {
         fields[address] ??= { value: null, availability: 'unsupported', reason: 'Native host does not implement this hardware setting.' };
@@ -146,6 +164,15 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       }
       if (!document.extensions.WEBRC.nativeMemory) throw new Error('This Memory has no Native engine settings.');
       const settings = document.extensions.WEBRC.nativeMemory as Record<string, Rc505Json>;
+      const dubModes: NativeDubMode[] | undefined = settings.dubModes === undefined
+        ? undefined
+        : Array.isArray(settings.dubModes) && settings.dubModes.length === 5
+          && settings.dubModes.every((mode): mode is NativeDubMode => mode === 'OVERDUB' || mode === 'REPLACE1' || mode === 'REPLACE2')
+          ? [...settings.dubModes]
+          : (() => { throw new Error('Native Memory requires five valid per-track DUB MODE values.'); })();
+      if (dubModes && (!current.nativeMemory?.dubModes || current.nativeMemory.dubModes.length !== 5)) {
+        throw new Error('The connected Native host does not support DUB MODE Memory restore.');
+      }
       const expectedFields: Record<string, Rc505Json> = {
         'rhythm.settings': settings.rhythm!, 'inputFx.bank': (settings.banks as Rc505Json[])[0]!,
         'trackFx.banks': (settings.banks as Rc505Json[]).slice(1),
@@ -159,6 +186,15 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         expectedFields[`track.${track}.level`] = (settings.mixerLevels as Rc505Json[])[track + 1]!;
         expectedFields[`track.${track}.bounceIn`] = bounceSettings.bounceIn[track - 1]!;
         expectedFields[`track.${track}.bounceTrack`] = bounceSettings.bounceTrack[track - 1]!;
+        if (dubModes) expectedFields[`track.${track}.dubMode`] = dubModes[track - 1]!;
+      }
+      if (dubModes) {
+        for (let track = 1; track <= 5; track += 1) {
+          const field = document.semantics.fields[`track.${track}.dubMode`];
+          if (field?.availability !== 'supported' || field.value !== dubModes[track - 1]) {
+            throw new Error(`Native Memory DUB MODE semantic field for Track ${track} is missing or inconsistent.`);
+          }
+        }
       }
       for (const [address, field] of Object.entries(document.semantics.fields)) {
         if (field.availability === 'supported' && (!(address in expectedFields) || JSON.stringify(field.value) !== JSON.stringify(expectedFields[address]))) {
@@ -193,11 +229,21 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
             const gates = status.nativeFx?.trackFxApply;
             const bounce = status.nativeBounce;
             const bounceAcknowledged = bounce && bounce.requestedRevision === bounce.appliedRevision;
-            if (bounceAcknowledged && gates?.length === 5 && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)) {
+            const targetDubModes = (settings.dubModes as NativeDubMode[] | undefined)
+              ?? (status.nativeMemory?.dubModes ? Array.from({ length: 5 }, () => 'OVERDUB' as NativeDubMode) : undefined);
+            const dubModesAcknowledged = !targetDubModes || targetDubModes.length === 5
+              && status.nativeMemory?.dubModes?.length === 5
+              && targetDubModes.every((mode, index) => {
+                const readback = status.nativeTracks?.find((track) => track.trackId === index + 1)?.dubMode;
+                return status.nativeMemory!.dubModes![index] === mode && readback?.requested === mode && readback.applied === mode
+                  && readback.requestedRevision === readback.appliedRevision;
+              });
+            if (bounceAcknowledged && dubModesAcknowledged && gates?.length === 5
+              && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)) {
               port.install?.(status);
               break;
             }
-            if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but Bounce or FX gate render acknowledgements timed out.`);
+            if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but DUB MODE, Bounce, or FX gate render acknowledgements timed out.`);
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
           const transport = Transport.getInstance();

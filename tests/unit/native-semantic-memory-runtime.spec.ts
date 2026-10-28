@@ -13,8 +13,11 @@ function fixture() {
   let status = {
     mixerLevels: [80, 90, 100, 110, 120, 130, 140],
     engineRunning: true, projectContentRevision: 7, projectContentRevisionSnapshotStable: true,
-    nativeTracks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, state: 'Empty', contentRevision: 0 })),
-    nativeMemory: { version: 1, loopTransports: Array.from({ length: 5 }, () => ({ mode: 0, beatOffsetBeats: 0, bpm: 120,
+    nativeTracks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, state: 'Empty', contentRevision: 0,
+      dubMode: { requested: ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'][index],
+        applied: ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'][index], requestedRevision: 1, appliedRevision: 1 } })),
+    nativeMemory: { version: 1, dubModes: ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'],
+      loopTransports: Array.from({ length: 5 }, () => ({ mode: 0, beatOffsetBeats: 0, bpm: 120,
       crossfadeMs: 5, vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 })),
       bounce: { bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false] } },
     nativeBounce: { version: 1, bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false],
@@ -132,6 +135,30 @@ describe('Native semantic Memory runtime', () => {
       bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false] });
     expect(document.semantics.fields['record.bounceSw']).toEqual({ availability: 'supported', value: true });
     expect(document.semantics.fields['track.3.bounceTrack']).toEqual({ availability: 'supported', value: true });
+    expect((document.extensions.WEBRC.nativeMemory as any).dubModes).toEqual(['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1']);
+    expect(document.semantics.fields['track.3.dubMode']).toEqual({ availability: 'supported', value: 'REPLACE2' });
+  });
+  it('requires acknowledged per-track DUB MODE readback and matching semantics for Memory', async () => {
+    const h = fixture();
+    const document = await h.runtime.capture();
+    document.semantics.fields['track.3.dubMode']!.value = 'OVERDUB';
+    await expect(h.runtime.prepare(document, h.runtime.revision())).rejects.toThrow(/DUB MODE semantic field/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+    document.semantics.fields['track.3.dubMode']!.value = 'REPLACE2';
+    h.hostStatus().nativeTracks![2]!.dubMode!.appliedRevision = 0;
+    await expect(h.runtime.capture()).rejects.toThrow(/DUB MODE callback acknowledgement/);
+  });
+  it('keeps old Memory documents compatible by defaulting absent DUB MODE metadata', async () => {
+    const { runtime, bridge } = fixture();
+    const document = await runtime.capture();
+    const settings = document.extensions.WEBRC.nativeMemory as any;
+    delete settings.dubModes;
+    for (let track = 1; track <= 5; track += 1) delete document.semantics.fields[`track.${track}.dubMode`];
+    const prepared = await runtime.prepare(document, runtime.revision());
+    const bytes = bridge.beginProjectArchiveImport.mock.calls[0]![0] as Uint8Array;
+    expect((await decodeRc505Memory(bytes)).extensions.WEBRC.nativeMemory).not.toHaveProperty('dubModes');
+    await prepared.dispose();
+    expect(bridge.cancelProjectArchiveImport).toHaveBeenCalledExactlyOnceWith(19);
   });
   it('refuses Memory capture until the full Bounce request has been callback-applied', async () => {
     const h = fixture();

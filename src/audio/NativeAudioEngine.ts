@@ -6,7 +6,7 @@ import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOffic
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -448,6 +448,43 @@ export class NativeAudioEngine {
     }
   }
 
+  /** Requests a bounded Native DUB MODE change and returns requested/applied revision readback. */
+  public async setNativeDubMode(trackId: number, mode: NativeDubMode): Promise<NativeStatus> {
+    if (this.nativeMemoryReadbackGeneration !== null) {
+      throw new Error(`Wait for Native Memory generation ${this.nativeMemoryReadbackGeneration} DUB MODE readback.`);
+    }
+    try {
+      const status = await this.bridge.setDubMode(trackId, mode);
+      this.applyStatus(status);
+      const accepted = status.nativeTracks?.find((track) => track.trackId === trackId)?.dubMode;
+      const revision = accepted?.acceptedRevision;
+      if (!Number.isSafeInteger(revision) || accepted?.requested !== mode) {
+        throw new Error('Native DUB MODE request was superseded before acknowledgement.');
+      }
+      const deadline = Date.now() + 5_000;
+      let latest = status;
+      for (;;) {
+        const applied = latest.nativeTracks?.find((track) => track.trackId === trackId)?.dubMode;
+        if (!applied || applied.requestedRevision > revision! || applied.appliedRevision > revision!) {
+          throw new Error('Native DUB MODE request was superseded before callback acknowledgement.');
+        }
+        if (applied.appliedRevision === revision) {
+          if (applied.requestedRevision !== revision || applied.applied !== mode || applied.requested !== mode) {
+            throw new Error('Native DUB MODE callback acknowledgement did not match the request.');
+          }
+          return latest;
+        }
+        if (Date.now() >= deadline) throw new Error(`Native DUB MODE revision ${revision} was accepted but not callback-applied within 5000 ms.`);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        latest = await this.bridge.getStatus();
+        this.applyStatus(latest);
+      }
+    } catch (error) {
+      this.handleBridgeFailure(error, false);
+      throw error;
+    }
+  }
+
   public getOneShot(trackId: number): boolean | null {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
     const value = this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAppliedOneShot;
@@ -474,6 +511,16 @@ export class NativeAudioEngine {
   public getLoopTransportStatus(trackId: number): NativeLoopTransportStatus | null {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
     return this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportStatus ?? null;
+  }
+
+  public getNativeDubModeStatus(trackId: number): NativeDubModeStatus | null {
+    if (this.nativeMemoryReadbackGeneration !== null) return null;
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
+    const status = this.latestStatus;
+    const memoryModes = status?.nativeMemory?.dubModes;
+    const mode = status?.nativeTracks?.find((track) => track.trackId === trackId)?.dubMode;
+    if (!memoryModes || memoryModes.length !== 5 || !mode || memoryModes[trackId - 1] !== mode.requested) return null;
+    return mode;
   }
 
   /** Latest Native pitch route acknowledgement, including its selected track ID. */
@@ -2201,6 +2248,9 @@ export class NativeAudioEngine {
 
     for (const track of this.tracks) {
       const reported = status.nativeTracks?.find((entry) => entry.trackId === track.trackId);
+      const dubMode = reported?.dubMode;
+      if (dubMode && (dubMode.applied === 'OVERDUB' || dubMode.applied === 'REPLACE1' || dubMode.applied === 'REPLACE2')
+        && Number.isSafeInteger(dubMode.appliedRevision)) track.track.dubMode = dubMode.applied;
       const state = reported?.state ?? (track.trackId === 1 ? status.state : 'Empty');
       const progress = reported?.loopProgress ?? (track.trackId === 1 ? status.loopProgress : 0);
       track.syncNativeState(state, progress);

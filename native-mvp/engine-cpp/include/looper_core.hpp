@@ -34,6 +34,15 @@ enum class LoopTransportMode : std::uint8_t {
     VinylFlick,
 };
 
+// Native DUB MODE controls how live input mutates a finalized loop. It is a
+// separate setting from LoopTransportConfig because it changes the recording
+// write policy rather than the source playback cursor.
+enum class NativeDubMode : std::uint8_t {
+    Overdub = 0,
+    Replace1,
+    Replace2,
+};
+
 struct LoopTransportConfig {
     LoopTransportMode mode = LoopTransportMode::Off;
     // 1SHOT plays the finalized loop once. Playback is forward-only in Native.
@@ -123,6 +132,10 @@ public:
     [[nodiscard]] static bool validLoopTransportConfig(const LoopTransportConfig& config) noexcept;
     [[nodiscard]] const LoopTransportConfig& loopTransportConfig() const noexcept { return loopTransportConfig_; }
     [[nodiscard]] LoopTransportStatus loopTransportStatus() const noexcept { return transportStatusForState(); }
+    // Callback-owner only while the engine is running; otherwise control-thread
+    // only. Setting the mode never edits PCM and performs no allocation.
+    [[nodiscard]] bool setDubMode(NativeDubMode mode) noexcept;
+    [[nodiscard]] NativeDubMode dubMode() const noexcept { return dubMode_; }
     ProcessStats process(
         const float* inputInterleaved,
         float* outputInterleaved,
@@ -143,9 +156,11 @@ public:
     );
 
     // Caller must own audio/transport state; this is not a concurrent snapshot API.
-    // Same-block, read-only finalized playback tap for Playing or Overdubbing.
-    // No monitoring, recording writes, cursor advance or allocation. Invalid capacity/layout is rejected
-    // before writes; unavailable playback returns false with explicit silence.
+    // Same-block, read-only finalized playback tap for Playing or audible
+    // Overdubbing. REPLACE2 has no audible loop reader and returns false with
+    // silence. No monitoring, recording writes, cursor advance or allocation.
+    // Invalid capacity/layout is rejected before writes; unavailable playback
+    // returns false with explicit silence.
     [[nodiscard]] bool previewPlayback(float* destination, unsigned int frames,
         unsigned int outputChannels, unsigned int capacityFrames) const noexcept;
 
@@ -228,6 +243,7 @@ private:
     std::size_t playhead_;
     LoopTransportConfig loopTransportConfig_{};
     LoopTransportConfig previousLoopTransportConfig_{};
+    NativeDubMode dubMode_ = NativeDubMode::Overdub;
     std::size_t transportFadeFrames_ = 0U;
     std::size_t transportFadeRemaining_ = 0U;
     double fadeStartVinylPosition_ = 0.0;

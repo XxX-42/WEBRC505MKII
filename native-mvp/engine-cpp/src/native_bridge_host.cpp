@@ -205,6 +205,24 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             target.brakePercent = source.at("brakePercent").get<float>();
             target.vinylMixPercent = source.at("vinylMixPercent").get<float>();
         }
+        // Older Native Memory envelopes did not store DUB MODE; preserve their
+        // historical OVERDUB default. New envelopes store one validated value
+        // for each track inside the same atomic Memory transaction.
+        if (settings.contains("dubModes")) {
+            const auto& dubModes = settings.at("dubModes");
+            if (!dubModes.is_array() || dubModes.size() != kNativeTrackCount) {
+                throw std::runtime_error("Memory requires five DUB MODE values.");
+            }
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (!dubModes[track].is_string()) throw std::runtime_error("Memory DUB MODE values must be strings.");
+                const auto mode = dubModes[track].get<std::string>();
+                if (mode == "OVERDUB") candidate->dubModes[track] = NativeDubMode::Overdub;
+                else if (mode == "REPLACE1") candidate->dubModes[track] = NativeDubMode::Replace1;
+                else if (mode == "REPLACE2") candidate->dubModes[track] = NativeDubMode::Replace2;
+                else throw std::runtime_error("Invalid Memory DUB MODE value.");
+            }
+            candidate->dubModesIncluded = true;
+        }
         if (settings.contains("bounce")) {
             const auto& bounce = settings.at("bounce");
             if (!bounce.is_object() || !bounce.contains("bounceSw") || !bounce.at("bounceSw").is_boolean()
@@ -288,6 +306,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             expectedFields[root + ".level"] = levels[track + 2U];
             expectedFields[root + ".bounceIn"] = candidate->bounce.bounceIn[track];
             expectedFields[root + ".bounceTrack"] = candidate->bounce.bounceTrack[track];
+            if (candidate->dubModesIncluded) expectedFields[root + ".dubMode"] = settings.at("dubModes")[track];
         }
         for (auto field = metadata.at("semantics").at("fields").begin(); field != metadata.at("semantics").at("fields").end(); ++field) {
             if (field.value().at("availability") == "supported" &&
@@ -436,6 +455,15 @@ const char* loopTransportStatusToString(LoopTransportStatus status) {
     return "unknown";
 }
 
+const char* nativeDubModeToString(NativeDubMode mode) {
+    switch (mode) {
+    case NativeDubMode::Overdub: return "OVERDUB";
+    case NativeDubMode::Replace1: return "REPLACE1";
+    case NativeDubMode::Replace2: return "REPLACE2";
+    }
+    return "OVERDUB";
+}
+
 const char* nativeHistoryFailureToString(NativeHistoryFailure failure) {
     switch (failure) {
     case NativeHistoryFailure::None: return "none";
@@ -501,6 +529,7 @@ json callbackTelemetryToJson(const NativeCallbackTelemetryStatus& value) {
 
 json statusToJson(const EngineStatus& status) {
     json memoryTransports = json::array();
+    json memoryDubModes = json::array();
     for (std::size_t track = 0U; track < status.nativeMemoryLoopTransports.size(); ++track) {
         const auto& config = status.nativeMemoryLoopTransports[track];
         memoryTransports.push_back({{"mode", static_cast<unsigned int>(config.mode)},
@@ -509,6 +538,7 @@ json statusToJson(const EngineStatus& status) {
             {"vinylSpeedPercent", config.vinylSpeedPercent}, {"motorReturnSeconds", config.motorReturnSeconds},
             {"brakePercent", config.brakePercent}, {"vinylMixPercent", config.vinylMixPercent}});
     }
+    for (const auto mode : status.nativeMemoryDubModes) memoryDubModes.push_back(nativeDubModeToString(mode));
     json bounceIn = json::array();
     json bounceTrack = json::array();
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -529,6 +559,12 @@ json statusToJson(const EngineStatus& status) {
             {"loopTransportFaultRevision", status.nativeLoopTransportFaultRevision[track]},
             {"loopTransportAppliedOneShot", status.nativeLoopTransportAppliedOneShot[track]},
             {"loopTransportStatus", loopTransportStatusToString(status.nativeTrackLoopTransportStatus[track])},
+            {"dubMode", {
+                {"applied", nativeDubModeToString(status.nativeTrackDubModes[track])},
+                {"requested", nativeDubModeToString(status.nativeTrackRequestedDubModes[track])},
+                {"requestedRevision", status.nativeDubModeRequestedRevision[track]},
+                {"appliedRevision", status.nativeDubModeAppliedRevision[track]},
+            }},
             {"vocoderCarrierStatus", vocoderCarrierStatusToString(status.nativeVocoderCarrierStatuses[track])},
             {"history", {
                 {"canUndo", history.canUndo},
@@ -924,7 +960,7 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
         {"nativeTracks", nativeTracks},
-        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports},
+        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}, {"dubModes", memoryDubModes},
             {"bounce", {{"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack}}}}},
         {"nativeBounce", {{"version", 1U}, {"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack},
             {"requestedRevision", status.nativeBounceRequestedRevision}, {"appliedRevision", status.nativeBounceAppliedRevision},
@@ -2019,6 +2055,50 @@ int main() {
             }
             auto status = statusToJson(engine.getStatus());
             status["nativeTracks"][static_cast<std::size_t>(trackId - 1U)]["loopTransportAcceptedRevision"] = acceptedRevision;
+            writeJson(response, status);
+        } catch (const std::exception& error) {
+            response.status = 400;
+            writeError(response, error.what());
+        }
+    });
+
+    server.Post("/v1/native-dub-mode/config", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object()) {
+                response.status = 400;
+                writeError(response, "Body must be an object containing trackId and mode.");
+                return;
+            }
+            std::uint64_t trackId = 0U;
+            if (!body.contains("trackId") || !readUnsignedJsonInteger(body["trackId"], kNativeTrackCount, trackId) || trackId < 1U) {
+                response.status = 400;
+                writeError(response, "'trackId' must be an integer between 1 and 5.");
+                return;
+            }
+            if (!body.contains("mode") || !body["mode"].is_string()) {
+                response.status = 400;
+                writeError(response, "'mode' must be OVERDUB, REPLACE1, or REPLACE2.");
+                return;
+            }
+            const auto modeName = body["mode"].get<std::string>();
+            NativeDubMode mode = NativeDubMode::Overdub;
+            if (modeName == "REPLACE1") mode = NativeDubMode::Replace1;
+            else if (modeName == "REPLACE2") mode = NativeDubMode::Replace2;
+            else if (modeName != "OVERDUB") {
+                response.status = 400;
+                writeError(response, "'mode' must be OVERDUB, REPLACE1, or REPLACE2.");
+                return;
+            }
+            std::string error;
+            std::uint64_t acceptedRevision = 0U;
+            if (!engine.setNativeDubMode(static_cast<std::size_t>(trackId - 1U), mode, acceptedRevision, error)) {
+                response.status = 409;
+                writeError(response, error);
+                return;
+            }
+            auto status = statusToJson(engine.getStatus());
+            status["nativeTracks"][trackId - 1U]["dubMode"]["acceptedRevision"] = acceptedRevision;
             writeJson(response, status);
         } catch (const std::exception& error) {
             response.status = 400;

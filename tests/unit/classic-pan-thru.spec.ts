@@ -33,6 +33,7 @@ beforeEach(() => {
   fixture.engine = { tracks: [audio], monitoringEnabled: false, getMode: () => 'browser',
     getUiStatus: () => ({ ready: true }), onStatusChange: () => () => {},
     getTrackCapabilities: () => ({ supportsReverse: true }), getTrackFxApply: () => [],
+    getNativeDubModeStatus: () => null,
     getBrowserAutoRecSettings: () => null,
     getBrowserBounceSettings: () => null, getNativeBounceSettings: () => null,
     setMonitoring: vi.fn(async (enabled: boolean) => { fixture.engine.monitoringEnabled = enabled; }),
