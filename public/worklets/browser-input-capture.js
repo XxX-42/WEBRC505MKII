@@ -448,10 +448,10 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
         return;
       }
       if (!this.beginCapture(slot, this.preRollChannelCount)) return;
-      for (let frame = slot.requestedStartFrame; frame < stopFrame; frame += 1) {
+      for (let frame = slot.requestedStartFrame; frame < stopFrame && slot.state === 'recording'; frame += 1) {
         this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask), frame);
       }
-      this.completeCapture(slot, stopFrame - slot.requestedStartFrame);
+      if (slot.state === 'recording') this.completeCapture(slot, stopFrame - slot.requestedStartFrame);
       return;
     }
     if (slot.state === 'recording' && stopFrame <= this.preRollEndFrame) {
@@ -634,7 +634,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     const channelCount = this.preRollChannelCount || inputChannelCount;
     if (!channelCount || !this.beginCapture(slot, channelCount)) return;
     const backfillEnd = this.preRollEndFrame < frameStart ? this.preRollEndFrame : frameStart;
-    for (let frame = slot.requestedStartFrame; frame < backfillEnd; frame += 1) {
+    for (let frame = slot.requestedStartFrame; frame < backfillEnd && slot.state === 'recording'; frame += 1) {
       this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask), frame);
     }
   }
@@ -855,10 +855,10 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
             this.completeCapture(slot, 0);
           } else {
             this.beginCapture(slot, inputChannelCount);
-            for (let frame = slot.requestedStartFrame; frame < slot.stopFrame; frame += 1) {
+            for (let frame = slot.requestedStartFrame; frame < slot.stopFrame && slot.state === 'recording'; frame += 1) {
               this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask), frame);
             }
-            this.completeCapture(slot, slot.stopFrame - slot.requestedStartFrame);
+            if (slot.state === 'recording') this.completeCapture(slot, slot.stopFrame - slot.requestedStartFrame);
           }
         } else {
           this.completeCapture(slot, slot.stopFrame - slot.requestedStartFrame);

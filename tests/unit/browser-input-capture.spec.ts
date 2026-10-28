@@ -112,6 +112,25 @@ describe('Browser shared input capture worklet', () => {
     expect(capture.messages('RECORD_ABORTED')).toHaveLength(1);
   });
 
+  it('stops backfill after a frame continuity abort without repeated errors or completion', () => {
+    const capture = createCapture();
+    capture.process([0, 1, 2, 3], undefined, 0);
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 82, inputGeneration: 1,
+      startFrame: 0, maxRecordingBytes: 256,
+    });
+    const slot = capture.processor.slots[0];
+    // Simulate an internal cursor mismatch at the first backfilled frame.
+    slot.captureFramesProcessed = 1;
+
+    capture.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 82, stopFrame: 4 });
+
+    expect(capture.messages('CAPTURE_ERROR')).toHaveLength(1);
+    expect(capture.messages('CAPTURE_ERROR')[0]).toMatchObject({ reason: 'capture-frame-discontinuity' });
+    expect(capture.messages('RECORD_ABORTED')).toHaveLength(1);
+    expect(capture.messages('RECORD_COMPLETE')).toHaveLength(0);
+  });
+
   it('backfills the requested stereo start frame and reports an exclusive stop frame', () => {
     const capture = createCapture();
     capture.process([0, 1, 2, 3], [0, -1, -2, -3]);
