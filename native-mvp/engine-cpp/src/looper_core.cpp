@@ -322,12 +322,28 @@ bool LooperCore::previewPlayback(float* destination, unsigned int frames,
     if (destination == nullptr || frames > capacityFrames || frames > 4096U ||
         outputChannels == 0U || outputChannels > 2U) return false;
     std::fill_n(destination, static_cast<std::size_t>(frames) * outputChannels, 0.0f);
-    if (state_ != LooperState::Playing || finalizedFrames_ == 0U) return false;
-    auto cursor = playbackCursor();
-    for (unsigned int frame = 0U; frame < frames; ++frame) {
-        float left, right; readPlayingFrame(cursor, left, right);
-        destination[static_cast<std::size_t>(frame) * outputChannels] = left;
-        if (outputChannels == 2U) destination[static_cast<std::size_t>(frame) * 2U + 1U] = right;
+    if ((state_ != LooperState::Playing && state_ != LooperState::Overdubbing) || finalizedFrames_ == 0U) return false;
+    if (state_ == LooperState::Playing) {
+        auto cursor = playbackCursor();
+        for (unsigned int frame = 0U; frame < frames; ++frame) {
+            float left, right; readPlayingFrame(cursor, left, right);
+            destination[static_cast<std::size_t>(frame) * outputChannels] = left;
+            if (outputChannels == 2U) destination[static_cast<std::size_t>(frame) * 2U + 1U] = right;
+        }
+    } else {
+        // The overdub renderer reads its canonical playhead directly rather
+        // than through the Playing transport cursor. Mirror that read order
+        // into a local head so source preview and recording start at one block
+        // boundary without advancing the live transport a second time.
+        std::size_t previewHead = playhead_;
+        for (unsigned int frame = 0U; frame < frames; ++frame) {
+            const std::size_t offset = previewHead * channels_;
+            const float left = loopBuffer_[offset];
+            const float right = channels_ == 2U ? loopBuffer_[offset + 1U] : left;
+            destination[static_cast<std::size_t>(frame) * outputChannels] = left;
+            if (outputChannels == 2U) destination[static_cast<std::size_t>(frame) * 2U + 1U] = right;
+            if (++previewHead == finalizedFrames_) previewHead = 0U;
+        }
     }
     return true;
 }

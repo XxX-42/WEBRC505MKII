@@ -530,7 +530,8 @@ public:
         const LoopTransportConfig& config,
         std::string& error
     );
-    bool setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error);
+    bool setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error,
+        std::uint64_t* acceptedRevision = nullptr);
     // Track target 0 preserves the shared post-sum playback bank. Targets
     // 1..5 select independent A->D chains before summing; Input only allows 0.
     // Per-track chains affect playback (including overdub playback and tails),

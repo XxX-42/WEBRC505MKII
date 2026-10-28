@@ -33,6 +33,7 @@ def main():
             'bounceTrack': [False, True, True, False, True]}
         code, accepted = request('/v1/native-bounce/settings', 'POST', desired)
         require(code == 200, accepted)
+        require(accepted['nativeBounce']['acceptedRevision'] == accepted['nativeBounce']['requestedRevision'], accepted)
         ack = until(lambda value: value['nativeBounce']['requestedRevision'] == value['nativeBounce']['appliedRevision'])
         require(ack['nativeBounce']['bounceSw'] is True and ack['nativeBounce']['bounceIn'] == desired['bounceIn'], ack)
         require(ack['nativeMemory']['bounce']['bounceTrack'] == desired['bounceTrack'], ack['nativeMemory'])

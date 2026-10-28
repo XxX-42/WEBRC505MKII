@@ -130,3 +130,36 @@ describe('Native FX bridge client', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('Native Bounce bridge acknowledgements', () => {
+  const desired = { bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, false, true, false] };
+  const payload = (requestedRevision: number, appliedRevision: number, values: typeof desired, acceptedRevision?: number) => ({
+    ok: true,
+    nativeBounce: { version: 1, ...values, requestedRevision, appliedRevision,
+      ...(acceptedRevision !== undefined ? { acceptedRevision } : {}), sourceTap: 'pre-track-insert', hardwareFxPlacementVerified: false },
+  });
+  const response = (value: unknown) => ({ ok: true, json: async () => value }) as Response;
+
+  it('rejects an applied revision that differs from this request even when the ACK revision matches', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response(payload(5, 5,
+      { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] }, 5))));
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(client.setNativeBounceSettings(desired)).rejects.toThrow(/did not match the requested switches/);
+  });
+
+  it('rejects a request superseded before its callback acknowledgement', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => response(payload(6, 4,
+      { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] }, 5))));
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(client.setNativeBounceSettings(desired)).rejects.toThrow(/superseded/);
+  });
+
+  it('waits for and verifies the callback-applied switch set', async () => {
+    const values = [payload(5, 4,
+      { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] }, 5),
+    payload(5, 5, desired)];
+    vi.stubGlobal('fetch', vi.fn(async () => response(values.shift())));
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+    await expect(client.setNativeBounceSettings(desired)).resolves.toMatchObject({ nativeBounce: { ...desired, requestedRevision: 5, appliedRevision: 5 } });
+  });
+});

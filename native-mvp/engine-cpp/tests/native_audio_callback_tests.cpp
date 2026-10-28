@@ -2430,6 +2430,59 @@ void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks(
     NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
+void testNativeBounceUsesOverdubbingSourcePreviewWithoutOrderDependentAdvance() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    constexpr unsigned int frames = 64U;
+    constexpr std::size_t loopFrames = 128U;
+    std::array<float, frames * 2U> output{};
+    std::array<float, frames * 2U> silence{};
+    std::vector<float> source(loopFrames, 0.2f);
+    NativeAudioCoreTestAccess::recordLoop(core, 4U, source, frames, output.data());
+
+    NativeBounceSettings bounce;
+    bounce.bounceSw = true;
+    bounce.bounceIn[0U] = true;
+    bounce.bounceTrack[4U] = true; // Source is processed after destination track 1.
+    std::string error;
+    assert(core.setNativeBounceSettings(bounce, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    assert(core.playTrack(4U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+    assert(core.getStatus().nativeTrackStates[4U] == LooperState::Playing);
+    {
+        CallbackPump pump(core);
+        assert(core.toggleTrackOverdub(4U, error));
+        bool enteredOverdub = false;
+        for (unsigned int wait = 0U; wait < 1000U; ++wait) {
+            if (core.getStatus().nativeTrackStates[4U] == LooperState::Overdubbing) {
+                enteredOverdub = true;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        assert(enteredOverdub);
+    }
+
+    assert(core.recordTrack(0U, error));
+    for (unsigned int block = 0U; block < 2U; ++block) {
+        const auto allocationsBefore = trackedAllocations;
+        trackAllocations = true;
+        assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+        trackAllocations = false;
+        assert(trackedAllocations == allocationsBefore);
+    }
+    assert(core.finishRecordingTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+    std::array<float, loopFrames * 2U> captured{};
+    std::size_t copied = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 0U, captured.data(), loopFrames, copied));
+    assert(copied == loopFrames);
+    for (const auto sample : captured) assert(std::fabs(sample - 0.2f) < 1.0e-6f);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
 int main() {
     testNativeRecActionAtomicCompletionAndBudgetedShadow();
     testMixerIndependentPcmGains();
@@ -2921,6 +2974,7 @@ int main() {
     assert(!finalStatus.nativePhaserEnabled);
     testNativeCatalogSlotsRunInsidePlaybackCallback();
     testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks();
+    testNativeBounceUsesOverdubbingSourcePreviewWithoutOrderDependentAdvance();
     testNativeInputCatalogBankProcessesBeforeRecordAndMonitor();
     testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread();
     return 0;

@@ -2461,7 +2461,8 @@ bool NativeAudioCore::setNativeLoopTransport(
     return true;
 }
 
-bool NativeAudioCore::setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error) {
+bool NativeAudioCore::setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error,
+    std::uint64_t* acceptedRevision) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
@@ -2481,6 +2482,7 @@ bool NativeAudioCore::setNativeBounceSettings(const NativeBounceSettings& settin
     }
     const auto requestedSnapshot = encodeNativeBounceSnapshot(settings, revision + 1U);
     nativeBounceRequestedSnapshot_.store(requestedSnapshot, std::memory_order_release);
+    if (acceptedRevision != nullptr) *acceptedRevision = revision + 1U;
     if (!engineRunning_.load(std::memory_order_acquire)) {
         nativeBounceRuntime_ = settings;
         nativeBounceAppliedSnapshot_.store(requestedSnapshot, std::memory_order_release);

@@ -1790,8 +1790,11 @@ int main() {
                 settings.bounceTrack[track] = body.at("bounceTrack")[track].get<bool>();
             }
             std::string error;
-            if (!engine.setNativeBounceSettings(settings, error)) { response.status = 409; writeError(response, error); return; }
-            writeJson(response, statusToJson(engine.getStatus()));
+            std::uint64_t acceptedRevision = 0U;
+            if (!engine.setNativeBounceSettings(settings, error, &acceptedRevision)) { response.status = 409; writeError(response, error); return; }
+            auto status = statusToJson(engine.getStatus());
+            status["nativeBounce"]["acceptedRevision"] = acceptedRevision;
+            writeJson(response, status);
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });
     server.Post("/v1/transport/finish-record", [&engine](const httplib::Request& request, httplib::Response& response) {

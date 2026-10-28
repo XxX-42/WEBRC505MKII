@@ -169,7 +169,7 @@ export interface NativeCallbackTelemetry {
 }
 
 export interface NativeStatus {
-  nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
+  nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; acceptedRevision?: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
   callbackTelemetry?: NativeCallbackTelemetry;
   mixerLevels?: number[];
   nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: false;
@@ -1084,16 +1084,30 @@ export class NativeBridgeClient {
       throw new RangeError('Native Bounce requires BOUNCE SW and five BOUNCE IN / BOUNCE TRACK switches.');
     }
     const status = await this.request<NativeStatus>('/v1/native-bounce/settings', { method: 'POST', body: JSON.stringify(settings) });
-    const revision = status.nativeBounce?.requestedRevision;
-    if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || !status.nativeBounce) throw new Error('Native bridge did not acknowledge Bounce settings.');
-    if (status.nativeBounce.appliedRevision >= revision) return status;
+    const revision = status.nativeBounce?.acceptedRevision;
+    if (typeof revision !== 'number' || !Number.isSafeInteger(revision) || !status.nativeBounce) throw new Error('Native bridge did not identify the accepted Bounce revision.');
+    const acknowledged = (candidate: NativeStatus): boolean => {
+      const bounce = candidate.nativeBounce;
+      if (!bounce) throw new Error('Native bridge omitted Bounce readback.');
+      if (bounce.requestedRevision > revision || bounce.appliedRevision > revision) {
+        throw new Error('Native Bounce request was superseded before its callback acknowledgement.');
+      }
+      if (bounce.appliedRevision !== revision) return false;
+      if (bounce.requestedRevision !== revision || bounce.bounceSw !== settings.bounceSw
+        || bounce.bounceIn.length !== 5 || bounce.bounceTrack.length !== 5
+        || bounce.bounceIn.some((value, index) => value !== settings.bounceIn[index])
+        || bounce.bounceTrack.some((value, index) => value !== settings.bounceTrack[index])) {
+        throw new Error('Native Bounce applied revision did not match the requested switches.');
+      }
+      return true;
+    };
+    if (acknowledged(status)) return status;
     const deadline = Date.now() + 2500;
     let latest = status;
     while (Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 20));
       latest = await this.getStatus();
-      if (latest.nativeBounce?.appliedRevision === revision) return latest;
-      if ((latest.nativeBounce?.requestedRevision ?? 0) > revision) throw new Error('Native Bounce was superseded before callback acknowledgement.');
+      if (acknowledged(latest)) return latest;
     }
     throw new Error('Native Bounce callback acknowledgement timed out; read back the current switches before retrying.');
   }

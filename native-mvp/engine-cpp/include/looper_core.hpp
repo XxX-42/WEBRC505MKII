@@ -141,8 +141,8 @@ public:
     );
 
     // Caller must own audio/transport state; this is not a concurrent snapshot API.
-    // Same-block, read-only finalized Playing tap. No monitoring, recording,
-    // overdub, cursor advance or allocation. Invalid capacity/layout is rejected
+    // Same-block, read-only finalized playback tap for Playing or Overdubbing.
+    // No monitoring, recording writes, cursor advance or allocation. Invalid capacity/layout is rejected
     // before writes; unavailable playback returns false with explicit silence.
     [[nodiscard]] bool previewPlayback(float* destination, unsigned int frames,
         unsigned int outputChannels, unsigned int capacityFrames) const noexcept;
