@@ -89,6 +89,32 @@ describe('Browser audio startup deadlines', () => {
     expect(addModule).toHaveBeenCalledTimes(2);
   });
 
+  it('starts independent output worklet loads together during first initialization', async () => {
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+    const engine = new BrowserAudioEngine();
+    const addModule = vi.spyOn(engine.context.audioWorklet!, 'addModule');
+    const loadedUrls: string[] = [];
+    const completeLoads: Array<() => void> = [];
+    addModule.mockImplementation((url) => {
+      loadedUrls.push(url);
+      return new Promise<void>((resolve) => completeLoads.push(resolve));
+    });
+
+    const initialization = engine.init();
+    await vi.waitFor(() => expect(loadedUrls).toHaveLength(5));
+    expect(new Set(loadedUrls)).toEqual(new Set([
+      '/worklets/looper-processor.js',
+      '/worklets/browser-input-capture.js',
+      '/worklets/browser-track-io.js',
+      '/worklets/browser-block-meter.js',
+      '/worklets/browser-track-fx-router.js',
+    ]));
+
+    completeLoads.forEach((complete) => complete());
+    await expect(initialization).resolves.toBeUndefined();
+    expect(engine.getUiStatus()).toMatchObject({ ready: true, inputReady: false });
+  });
+
   it('keeps Browser output ready when microphone permission is denied', async () => {
     vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
     localStorage.setItem('audioInputDeviceId', '');

@@ -844,20 +844,34 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     private async initializeOutputRuntime(): Promise<void> {
-        await this.loadAudioWorkletModule('/worklets/looper-processor.js');
-        try {
-            await this.loadAudioWorkletModule('/worklets/browser-input-capture.js');
+        // These modules do not depend on one another. Loading them in series
+        // made first activation pay every fetch/compile delay in turn (and
+        // could spend up to 75s in their independent 15s deadlines). Start
+        // them together, while retaining the required/optional distinctions
+        // and the same fail-closed setup for the output path.
+        const [looper, inputCapture, trackIo, blockMeter, trackFxRouter] = await Promise.allSettled([
+            this.loadAudioWorkletModule('/worklets/looper-processor.js'),
+            this.loadAudioWorkletModule('/worklets/browser-input-capture.js'),
+            this.ensureTrackIoWorkletModule(),
+            this.loadAudioWorkletModule('/worklets/browser-block-meter.js'),
+            this.ensureTrackFxApplyRouter(),
+        ]);
+        if (looper.status === 'rejected') throw looper.reason;
+        if (inputCapture.status === 'fulfilled') {
             this.inputCaptureUnavailableReason = '';
-        } catch (error) {
+        } else {
             // Keep the established per-track recorder available if this
             // optional shared-tap worklet cannot load; TrackAudio reports
             // that it is using the higher-latency path.
-            this.inputCaptureUnavailableReason = error instanceof Error ? error.message : String(error);
+            this.inputCaptureUnavailableReason = inputCapture.reason instanceof Error
+                ? inputCapture.reason.message : String(inputCapture.reason);
         }
-        await this.ensureTrackIoWorkletModule();
-        await this.loadAudioWorkletModule('/worklets/browser-block-meter.js');
-        try { await this.ensureTrackFxApplyRouter(); }
-        catch (error) { this.trackFxRouterUnavailableReason = error instanceof Error ? error.message : String(error); }
+        if (trackIo.status === 'rejected') throw trackIo.reason;
+        if (blockMeter.status === 'rejected') throw blockMeter.reason;
+        if (trackFxRouter.status === 'rejected') {
+            this.trackFxRouterUnavailableReason = trackFxRouter.reason instanceof Error
+                ? trackFxRouter.reason.message : String(trackFxRouter.reason);
+        }
 
         if (this.workletNode) return;
         const meterNode = new AudioWorkletNode(this.context, 'rc505-browser-block-meter', {

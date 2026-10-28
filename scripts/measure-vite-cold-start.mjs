@@ -35,7 +35,7 @@ if (process.argv[2] === '--server') {
   const rounds = Number(option('--rounds', '3'));
   const mode = option('--audio', 'browser');
   if (!['browser', 'native'].includes(mode)) throw new Error('--audio must be browser or native');
-  const port = Number(option('--port', mode === 'native' ? '4174' : '5186'));
+  const port = Number(option('--port', mode === 'native' ? '4174' : '4186'));
   if (!Number.isInteger(rounds) || rounds < 1) throw new Error('--rounds must be a positive integer');
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('--port must be an integer from 1 to 65535');
   const output = path.resolve(option('--output', path.join(os.tmpdir(), 'rc505-vite-cold-start.json')));
@@ -79,8 +79,8 @@ if (process.argv[2] === '--server') {
       }
       const response = await fetch(`http://127.0.0.1:${port}/`);
       result.httpMs = elapsed(); result.coop = response.headers.get('cross-origin-opener-policy'); result.coep = response.headers.get('cross-origin-embedder-policy');
-      browser = await chromium.launch({ executablePath, headless: true });
-      const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+      browser = await chromium.launch({ executablePath, headless: true, args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
+      const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, permissions: ['microphone'] });
       const page = await context.newPage();
       const requestStart = new Map();
       result.responseErrors = [];
@@ -100,6 +100,12 @@ if (process.argv[2] === '--server') {
         await page.locator('[data-panel-control="page-next"]').click({ timeout: remaining() });
         await page.waitForFunction(() => document.querySelector('[data-testid="rc505-lcd-screen"]')?.getAttribute('data-classic-screen') === 'track-status', null, { timeout: remaining() });
         result.classicInteractiveMs = elapsed();
+        if (mode === 'browser') {
+          const startAudio = page.getByTestId('start-audio');
+          await startAudio.click({ timeout: remaining() });
+          await page.waitForFunction(() => document.querySelector('[data-testid="input-status"]')?.textContent?.replace(/\s+/g, ' ').trim() === 'INPUT READY · OUTPUT READY', null, { timeout: remaining() });
+          result.browserAudioReadyMs = elapsed();
+        }
         if (mode === 'native') { await page.locator('.status-pill').filter({ hasText: 'NATIVE AUDIO READY' }).waitFor({ timeout: remaining() }); result.nativeReadyMs = elapsed(); }
       } catch (error) { result.readinessError = error.message; }
       await goto;
@@ -117,12 +123,12 @@ if (process.argv[2] === '--server') {
         if (line.startsWith('COLD_WATCH_READY ')) result.watcherReady = JSON.parse(line.slice(17));
         if (line.startsWith('COLD_WATCH_COUNTS ')) result.watcherCounts = JSON.parse(line.slice(18));
       }
-      const stages = ['httpMs', 'loadMs', 'appRootMs', 'classicInteractiveMs', ...(mode === 'native' ? ['nativeReadyMs'] : [])];
+      const stages = ['httpMs', 'loadMs', 'appRootMs', 'classicInteractiveMs', ...(mode === 'browser' ? ['browserAudioReadyMs'] : []), ...(mode === 'native' ? ['nativeReadyMs'] : [])];
       result.passed = stages.every(key => Number.isFinite(result[key]) && result[key] <= 30000) && result.coop === 'same-origin' && result.coep === 'require-corp' && !result.error && !result.loadError && !result.readinessError;
       result.serverLog = log;
       runs.push(result);
       await writeFile(output, JSON.stringify({ scope: 'Fresh Vite process, unique cold optimizer cache, fresh browser process/context; existing runtime ports and caches untouched. Timing budget is 30 seconds from process spawn. Native mode starts the normal App initialization and connects to an existing host; that client initialization is not claimed to be read-only. The host implementation is unchanged.', runs }, null, 2));
-      console.log(JSON.stringify({ round: result.round, httpMs: result.httpMs, loadMs: result.loadMs, classicInteractiveMs: result.classicInteractiveMs, nativeReadyMs: result.nativeReadyMs, error: result.error || result.readinessError || result.loadError, slowest: result.requests.slice(0, 5).map(({url,durationMs}) => ({url,durationMs})), output }));
+      console.log(JSON.stringify({ round: result.round, httpMs: result.httpMs, loadMs: result.loadMs, classicInteractiveMs: result.classicInteractiveMs, browserAudioReadyMs: result.browserAudioReadyMs, nativeReadyMs: result.nativeReadyMs, error: result.error || result.readinessError || result.loadError, slowest: result.requests.slice(0, 5).map(({url,durationMs}) => ({url,durationMs})), output }));
     }
   }
   process.exitCode = runs.every(run => run.passed) ? 0 : 1;
