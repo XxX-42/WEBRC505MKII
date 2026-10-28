@@ -31,6 +31,8 @@ export interface IAudioEngine {
     getProcessedInputNode(): Promise<AudioNode>;
     /** Optional shared Browser input-capture path; Native keeps its own callback recorder. */
     getInputCaptureRequestFrame?(): number | null;
+    /** Wait for the shared Browser capture ring to finish warming after a timeline gap. */
+    waitForInputCaptureReady?(): Promise<void>;
     getBrowserAutoRecSettings?(): Readonly<BrowserAutoRecSettings>;
     getBrowserBounceSettings?(): Readonly<BrowserBounceSettings>;
     getBrowserBounceSourceMask?(destinationTrackIndex: number): number;

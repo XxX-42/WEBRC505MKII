@@ -68,15 +68,18 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     this.diagnosticPreRollEndFrame = 0;
     this.inputReady = false;
     this.inputGeneration = 0;
+    this.captureReadyEpoch = 0;
     this.sampleRate = this.positiveInteger(config.sampleRate, 0);
     this.readyMessage = {
       type: 'INPUT_CAPTURE_READY', inputGeneration: 0, sampleRate: this.sampleRate,
+      captureReadyEpoch: 0,
       firstFrame: 0, frameCount: 0, oldestAvailableFrame: 0, latestAvailableFrame: 0,
       preRollCapacityFrames: this.preRollFrames, preRollValidFrames: 0,
       requiredPreRollFrames: this.readyPreRollFrames,
     };
     this.notReadyMessage = {
       type: 'INPUT_CAPTURE_NOT_READY', inputGeneration: 0, sampleRate: this.sampleRate,
+      captureReadyEpoch: 0,
       reason: '', frameStart: 0, oldestAvailableFrame: 0, latestAvailableFrame: 0,
       preRollCapacityFrames: this.preRollFrames, preRollValidFrames: 0,
       requiredPreRollFrames: this.readyPreRollFrames,
@@ -178,6 +181,20 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
 
   handleMessage(message) {
     if (!message || typeof message !== 'object') return;
+    if (message.type === 'CHECK_CAPTURE_READINESS') {
+      this.port.postMessage({
+        type: 'CAPTURE_READINESS_STATE',
+        inputGeneration: this.inputGeneration,
+        captureReadyEpoch: this.captureReadyEpoch,
+        ready: this.inputReady && this.captureReadySent
+          && this.preRollValidFrames >= this.readyPreRollFrames,
+        oldestAvailableFrame: this.preRollEndFrame - this.preRollValidFrames,
+        latestAvailableFrame: this.preRollEndFrame,
+        preRollValidFrames: this.preRollValidFrames,
+        requiredPreRollFrames: this.readyPreRollFrames,
+      });
+      return;
+    }
     if (message.type === 'INPUT_READY') {
       this.setInputReady(message);
       return;
@@ -285,6 +302,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     }
     this.inputGeneration = message.generation;
     this.inputReady = message.ready === true && !sampleRateChanged;
+    this.captureReadyEpoch = 0;
     this.captureReadySent = false;
     this.resetPreRoll();
     if (sampleRateChanged) {
@@ -302,9 +320,17 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
   }
 
   invalidateCaptureReadiness(reason, frameStart = this.preRollEndFrame) {
+    if (this.captureReadyEpoch >= Number.MAX_SAFE_INTEGER) {
+      // Never wrap an epoch: a wrapped value could make a stale READY look current.
+      this.inputReady = false;
+      this.captureReadySent = false;
+      return;
+    }
+    this.captureReadyEpoch += 1;
     if (!this.captureReadySent) return;
     const message = this.notReadyMessage;
     message.inputGeneration = this.inputGeneration;
+    message.captureReadyEpoch = this.captureReadyEpoch;
     message.sampleRate = this.sampleRate || (typeof sampleRate === 'number' ? sampleRate : 0);
     message.reason = reason;
     message.frameStart = Number.isSafeInteger(frameStart) ? frameStart : 0;
@@ -319,6 +345,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     if (this.captureReadySent || this.preRollValidFrames < this.readyPreRollFrames) return;
     const message = this.readyMessage;
     message.inputGeneration = this.inputGeneration;
+    message.captureReadyEpoch = this.captureReadyEpoch;
     message.sampleRate = this.sampleRate || (typeof sampleRate === 'number' ? sampleRate : 0);
     message.firstFrame = frameStart;
     message.frameCount = frameCount;
@@ -347,14 +374,30 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       || (message.autoRecThreshold !== undefined && (!Number.isFinite(message.autoRecThreshold) || message.autoRecThreshold <= 0 || message.autoRecThreshold > 1))
       || !Number.isSafeInteger(bounceSourceMask) || bounceSourceMask < 0 || bounceSourceMask > 31
       || (bounceSourceMask & (1 << slot.trackIndex)) !== 0
-      || !Number.isSafeInteger(message.inputGeneration) || message.inputGeneration !== this.inputGeneration) {
+      || !Number.isSafeInteger(message.inputGeneration) || message.inputGeneration !== this.inputGeneration
+      || !Number.isSafeInteger(message.captureReadyEpoch)) {
       this.postError(slot, message.sessionId, 'invalid-capture-request', message.startFrame, 0, message.inputGeneration);
+      return;
+    }
+    if (message.captureReadyEpoch !== this.captureReadyEpoch) {
+      this.postError(slot, message.sessionId, 'capture-readiness-epoch-changed', message.startFrame, 0, message.inputGeneration);
+      return;
+    }
+    if (message.autoRecThreshold === undefined
+      && message.startFrame < this.preRollEndFrame
+      && (!this.captureReadySent || this.preRollValidFrames < this.readyPreRollFrames)) {
+      this.postError(slot, message.sessionId, 'capture-preroll-not-ready', message.startFrame, 0, message.inputGeneration);
       return;
     }
     if (!this.inputReady) {
       this.postError(slot, message.sessionId, 'input-not-ready', message.startFrame, 0, message.inputGeneration);
       return;
     }
+    // A media input can remain connected while the AudioWorklet timeline is
+    // warming again after a frame gap. Do not use the stale main-thread ready
+    // state to backfill from an invalidated pre-roll window. A start at or
+    // beyond the current callback boundary needs no pre-roll and can remain
+    // scheduled; any earlier start requires a fresh, fully warmed range.
     if (!this.poolAvailable(slot)) {
       this.postError(slot, message.sessionId, 'chunk-pool-not-reclaimed', message.startFrame, 0, message.inputGeneration);
       return;
@@ -416,6 +459,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     message.previousCallbackEndFrame = this.diagnosticPreviousFrameEnd;
     message.preRollEndAtCallbackStart = this.diagnosticPreRollEndFrame;
     message.inputReady = this.inputReady;
+    message.captureReadyEpoch = this.captureReadyEpoch;
     message.currentInputGeneration = this.inputGeneration;
     message.sampleRate = this.sampleRate;
     this.port.postMessage(message);
