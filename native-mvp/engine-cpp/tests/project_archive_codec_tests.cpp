@@ -138,13 +138,47 @@ void testV2EncodeDecodeRoundTrip() {
     source.tracks[1] = track;
     source.tracks[1]->originalTempoBpm.reset();
 
-    const auto encoded = webrc::native::encodeProjectArchive(source);
+    const auto encoded = webrc::native::encodeProjectArchive(source, {2U});
     const auto decoded = webrc::native::decodeProjectArchive(encoded);
     require(decoded.project.has_value(), "C++ v2 encoder output was rejected: " + decoded.error);
     require(decoded.project->version == 2U, "C++ encoder did not emit v2");
     require(decoded.project->tracks[0]->originalTempoBpm == 87.25, "C++ encoder lost known original tempo");
     require(!decoded.project->tracks[1]->originalTempoBpm.has_value(), "C++ encoder lost null original tempo");
     require(decoded.project->tracks[0]->pcm == track.pcm, "C++ encoder changed Float32 PCM");
+}
+
+void testDefaultV1ExportAndKnownTempoRejection() {
+    DecodedProjectArchive source;
+    require(source.version == 1U, "default project archive struct version changed from v1");
+    source.name = "Legacy default";
+    source.bpm = 120.0;
+    ProjectArchiveTrackData track;
+    track.sampleRate = 48000U;
+    track.frameCount = 2U;
+    track.channels = 1U;
+    track.pcm = {0.25F, -0.25F};
+    source.tracks[0] = track;
+
+    const auto encoded = webrc::native::encodeProjectArchive(source);
+    const auto manifestLength = static_cast<std::size_t>(encoded[8U])
+        | (static_cast<std::size_t>(encoded[9U]) << 8U)
+        | (static_cast<std::size_t>(encoded[10U]) << 16U)
+        | (static_cast<std::size_t>(encoded[11U]) << 24U);
+    const std::string manifest(encoded.begin() + 12, encoded.begin() + static_cast<std::ptrdiff_t>(12U + manifestLength));
+    require(manifest.find("\"version\":1") != std::string::npos, "default C++ exporter changed from v1");
+    require(manifest.find("originalTempoBpm") == std::string::npos, "default v1 export changed its exact track schema");
+    const auto decoded = webrc::native::decodeProjectArchive(encoded);
+    require(decoded.project.has_value() && decoded.project->version == 1U, "default v1 C++ archive did not round-trip");
+    require(!decoded.project->tracks[0]->originalTempoBpm, "default v1 export must represent source tempo as unknown");
+
+    source.tracks[0]->originalTempoBpm = 96.0;
+    bool rejected = false;
+    try {
+        (void)webrc::native::encodeProjectArchive(source);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    require(rejected, "known tempo must not be silently discarded by default v1 export");
 }
 
 void testOptionalTransportDefaultsAndBom() {
@@ -317,6 +351,7 @@ int main() {
         testDecodeMonoStereoAndTransport();
         testV2TempoMetadataAndStrictV1Schema();
         testV2EncodeDecodeRoundTrip();
+        testDefaultV1ExportAndKnownTempoRejection();
         testOptionalTransportDefaultsAndBom();
         testJsonDepthLimit();
         testHeaderManifestAndJsonRejections();

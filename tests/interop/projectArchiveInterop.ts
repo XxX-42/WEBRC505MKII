@@ -13,6 +13,13 @@ if (mode === 'write-ts-v2') {
       { pcm: new Float32Array([1, -1, 0.75, -0.75]), sampleRate: 48_000, frameCount: 2, channels: 2, originalTempoBpm: null },
       null, null, null,
     ],
+    transport: {
+      masterTrackId: 1,
+      measureLengthSeconds: 1.5,
+      masterLoopLengthSamples: 3,
+      timeSignatureNumerator: 6,
+      timeSignatureDenominator: 8,
+    },
   }, { version: 2 });
   await writeFile(path, archive);
 } else if (mode === 'read-cpp-v2') {
@@ -21,7 +28,12 @@ if (mode === 'write-ts-v2') {
     || project.tracks[0]?.originalTempoBpm !== 87.25
     || project.tracks[0]?.pcm.join(',') !== '0.5,-0.25,0.125'
     || project.tracks[1]?.originalTempoBpm !== null
-    || project.tracks[1]?.pcm.join(',') !== '1,-1,0.75,-0.75') {
+    || project.tracks[1]?.pcm.join(',') !== '1,-1,0.75,-0.75'
+    || project.transport.masterTrackId !== 1
+    || project.transport.measureLengthSeconds !== 1.5
+    || project.transport.masterLoopLengthSamples !== 3
+    || project.transport.timeSignatureNumerator !== 6
+    || project.transport.timeSignatureDenominator !== 8) {
     throw new Error('TypeScript did not preserve C++ v2 project fields and PCM.');
   }
 } else {

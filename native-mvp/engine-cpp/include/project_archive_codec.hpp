@@ -37,7 +37,8 @@ struct ProjectArchiveTrackData {
 };
 
 struct DecodedProjectArchive {
-    std::uint32_t version = 2U;
+    // Legacy callers and default exports remain v1 until the Native app path opts in.
+    std::uint32_t version = 1U;
     std::string name;
     double bpm = 120.0;
     ProjectArchiveTransportMetadata transport{};
@@ -45,8 +46,18 @@ struct DecodedProjectArchive {
     std::uint64_t payloadByteLength = 0U;
 };
 
-/** Encode a validated v2 archive. Throws std::invalid_argument on invalid data. */
-[[nodiscard]] std::vector<std::uint8_t> encodeProjectArchive(const DecodedProjectArchive& project);
+struct ProjectArchiveEncodeOptions {
+    std::uint32_t version = 1U;
+};
+
+/**
+ * Encode v1 by default to preserve existing Native callers. V2 is explicit.
+ * A known original tempo cannot be written to v1 and is rejected.
+ */
+[[nodiscard]] std::vector<std::uint8_t> encodeProjectArchive(
+    const DecodedProjectArchive& project,
+    ProjectArchiveEncodeOptions options = {}
+);
 
 struct ProjectArchiveDecodeResult {
     std::optional<DecodedProjectArchive> project;

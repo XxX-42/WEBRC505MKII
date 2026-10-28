@@ -603,7 +603,8 @@ ProjectArchiveDecodeResult decodeImpl(const std::uint8_t* bytes, std::size_t byt
     return {std::move(decoded), {}};
 }
 
-std::vector<std::uint8_t> encodeImpl(const DecodedProjectArchive& project) {
+std::vector<std::uint8_t> encodeImpl(const DecodedProjectArchive& project, std::uint32_t version) {
+    if (version != 1U && version != 2U) fail("Project archive version is unsupported.");
     if (!isStrictUtf8(reinterpret_cast<const std::uint8_t*>(project.name.data()), project.name.size()) || project.name.size() > 512U) {
         fail("Project name must be a string of at most 512 UTF-8 bytes.");
     }
@@ -628,6 +629,9 @@ std::vector<std::uint8_t> encodeImpl(const DecodedProjectArchive& project) {
         if (source->originalTempoBpm.has_value() && (!std::isfinite(*source->originalTempoBpm)
             || *source->originalTempoBpm < kMinBpm || *source->originalTempoBpm > kMaxBpm)) {
             fail("Track original tempo must be null or between 40 and 300 BPM.");
+        }
+        if (version == 1U && source->originalTempoBpm.has_value()) {
+            fail("A known track original tempo requires ProjectArchive v2; v1 export remains unchanged.");
         }
         for (float sample : source->pcm) {
             if (!std::isfinite(sample)) fail("Track contains a non-finite PCM sample.");
@@ -657,20 +661,23 @@ std::vector<std::uint8_t> encodeImpl(const DecodedProjectArchive& project) {
             trackManifest.push_back(nullptr);
             continue;
         }
-        trackManifest.push_back({
+        Json track = {
             {"sampleRate", descriptor->sampleRate},
             {"frameCount", descriptor->frameCount},
             {"channels", descriptor->channels},
-            {"originalTempoBpm", descriptor->originalTempoBpm ? Json(*descriptor->originalTempoBpm) : Json(nullptr)},
             {"payloadOffset", descriptor->payloadOffset},
             {"byteLength", descriptor->byteLength},
             {"sha256", ""},
-        });
+        };
+        if (version == 2U) {
+            track["originalTempoBpm"] = descriptor->originalTempoBpm ? Json(*descriptor->originalTempoBpm) : Json(nullptr);
+        }
+        trackManifest.push_back(std::move(track));
     }
 
     Json manifest = {
         {"format", "rc505-project-archive"},
-        {"version", 2},
+        {"version", version},
         {"project", {
             {"name", project.name},
             {"bpm", project.bpm},
@@ -720,9 +727,9 @@ std::vector<std::uint8_t> encodeImpl(const DecodedProjectArchive& project) {
 
 } // namespace
 
-std::vector<std::uint8_t> encodeProjectArchive(const DecodedProjectArchive& project) {
+std::vector<std::uint8_t> encodeProjectArchive(const DecodedProjectArchive& project, ProjectArchiveEncodeOptions options) {
     try {
-        return encodeImpl(project);
+        return encodeImpl(project, options.version);
     } catch (const std::exception& error) {
         throw std::invalid_argument(error.what());
     }

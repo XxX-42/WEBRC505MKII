@@ -41,12 +41,21 @@ void assertTypescriptFixture(const std::string& path) {
         "C++ did not preserve TypeScript Float32 PCM");
     require(project.tracks[1].has_value() && !project.tracks[1]->originalTempoBpm,
         "C++ did not preserve TypeScript null originalTempoBpm");
+    require(project.transport.masterTrackId == 1U && project.transport.measureLengthSeconds == 1.5
+        && project.transport.masterLoopLengthSamples == 3U
+        && project.transport.timeSignatureNumerator == 6U && project.transport.timeSignatureDenominator == 8U,
+        "C++ did not preserve TypeScript non-default transport");
 }
 
 void writeCppFixture(const std::string& path) {
     DecodedProjectArchive project;
     project.name = "C++ interop";
     project.bpm = 120.0;
+    project.transport.masterTrackId = std::uint8_t{1U};
+    project.transport.measureLengthSeconds = 1.5;
+    project.transport.masterLoopLengthSamples = 3U;
+    project.transport.timeSignatureNumerator = 6U;
+    project.transport.timeSignatureDenominator = 8U;
     ProjectArchiveTrackData track;
     track.sampleRate = 48000U;
     track.frameCount = 3U;
@@ -59,7 +68,7 @@ void writeCppFixture(const std::string& path) {
     track.originalTempoBpm.reset();
     track.pcm = {1.0F, -1.0F, 0.75F, -0.75F};
     project.tracks[1] = track;
-    writeFile(path, webrc::native::encodeProjectArchive(project));
+    writeFile(path, webrc::native::encodeProjectArchive(project, {2U}));
 }
 
 } // namespace

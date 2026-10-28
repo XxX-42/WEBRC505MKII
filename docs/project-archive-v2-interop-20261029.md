@@ -9,14 +9,14 @@ Scope: TypeScript and C++ ProjectArchive codecs only; no TrackAudio changes.
 - V2 adds a required `originalTempoBpm` key to every nonempty track manifest. Its value is a finite number from 40 through 300 BPM, or `null` when unknown.
 - V1 track manifests retain their exact old key set. Both decoders continue to read v1 and normalize its unrecorded tempo to null. They reject the v2 key in a v1 manifest, reject a missing key in v2, and reject out-of-range values.
 - TypeScript export remains v1 by default. V2 requires `encodeProjectArchive(project, { version: 2 })`; attempting to export a known non-null tempo as v1 fails instead of silently dropping it.
-- C++ `encodeProjectArchive` writes v2. C++ decoding supports strict v1 and v2 manifests. The shared field is archive metadata, not proof that Native captured or knows a track's original tempo.
+- C++ `encodeProjectArchive` writes v1 by default, preserving the previous `DecodedProjectArchive.version` default. V2 is opt-in through `ProjectArchiveEncodeOptions{2}`. A known non-null track tempo is rejected by a default/v1 write rather than dropped. C++ decoding supports strict v1 and v2 manifests. The shared field is archive metadata, not proof that Native captured or knows a track's original tempo.
 
 ## Implementation
 
 - TypeScript codec types, validation, v1/v2 decoder, default-v1 encoder, and explicit v2 encoder are in `src/audio/projectArchive.ts`.
 - Native C++ codec data model, strict versioned decoder, and v2 encoder are in `native-mvp/engine-cpp/include/project_archive_codec.hpp` and `native-mvp/engine-cpp/src/project_archive_codec.cpp`.
 - Unit fixtures cover v1 exact-schema export/read, v1 tempo normalization to null, v2 known and null tempo, malformed values, missing fields, and strict rejection of cross-version schema changes.
-- A file-based two-way interop harness checks TypeScript-produced v2 in C++ and C++-produced v2 in TypeScript: `scripts/test-project-archive-interop.mjs`, `tests/interop/projectArchiveInterop.ts`, and `native-mvp/engine-cpp/tests/project_archive_codec_interop.cpp`.
+- A file-based two-way interop harness checks TypeScript-produced v2 in C++ and C++-produced v2 in TypeScript, including a mastered 6/8 transport with 1.5-second measure length: `scripts/test-project-archive-interop.mjs`, `tests/interop/projectArchiveInterop.ts`, and `native-mvp/engine-cpp/tests/project_archive_codec_interop.cpp`.
 
 ## Verification
 
@@ -28,4 +28,4 @@ Scope: TypeScript and C++ ProjectArchive codecs only; no TrackAudio changes.
 
 ## Limits
 
-The codec-level interoperability is proven by the harness. The Native project-memory load/save and live recording paths have not been migrated to persist or populate `originalTempoBpm`; they must continue using the default v1 exporter until that app-level path is independently wired and verified. This work does not claim Native live metadata capture or end-to-end Native v2 completion.
+Codec-level interoperability is proven by the harness. The NativeAudioCore import path still rejects decoded archives whose version is not 1, and the Native project-memory load/save and live recording paths have not been migrated to persist or populate `originalTempoBpm`. Therefore the app must continue using the default v1 exporter; app-level Native v2 completion and live metadata capture remain blocked and are not claimed here.
