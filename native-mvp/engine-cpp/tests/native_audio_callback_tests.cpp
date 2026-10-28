@@ -2349,10 +2349,12 @@ void testNativeProjectArchiveTempoMetadataLifecycle() {
     assert(confirmationRevision > 0U);
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     assert(NativeAudioCoreTestAccess::originalTempo(core, 0U) == std::optional<double>{120.0});
-    assert(core.undoTrack(0U, error));
+    assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    { CallbackPump historyRestorePump(core); assert(core.undoTrack(0U, error)); }
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
-    assert(core.redoTrack(0U, error));
+    { CallbackPump historyRestorePump(core); assert(core.redoTrack(0U, error)); }
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     assert(NativeAudioCoreTestAccess::originalTempo(core, 0U) == std::optional<double>{120.0});
 

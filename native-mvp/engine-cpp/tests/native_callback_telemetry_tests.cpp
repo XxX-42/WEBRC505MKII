@@ -59,7 +59,14 @@ struct NativeAudioCoreTestAccess {
     static void clearAndPrime(NativeAudioCore& core) {core.outputQueue_.clear();core.renderPrimed_.store(true);}
     static void prime(NativeAudioCore& core) {core.renderPrimed_.store(true);}
     static void duration(NativeAudioCore& core,std::uint64_t ns) {core.recordCallbackDuration(0U,128U,48000U,ns);}
-    static void command(NativeAudioCore& core,CommandType type,std::uint8_t track=0U) {assert(core.commandQueue_.push({type,false,track}));}
+    static void command(NativeAudioCore& core,CommandType type,std::uint8_t track=0U) {
+        assert(track<kNativeTrackCount);
+        const bool tracksPendingState=type!=CommandType::SetRecordAction&&type!=CommandType::SetMonitoring;
+        if(tracksPendingState) core.pendingTrackStateCommands_[track].fetch_add(1U,std::memory_order_acq_rel);
+        const bool queued=core.commandQueue_.push({type,false,track});
+        if(!queued&&tracksPendingState) core.pendingTrackStateCommands_[track].fetch_sub(1U,std::memory_order_acq_rel);
+        assert(queued);
+    }
     static void hardwareOpenForProvenanceTest(NativeAudioCore& core) {core.markHardwareStreamOpened();}
     static void proveCoreLocksNotAcquired(NativeAudioCore& core,void* output,void* input) {
         std::atomic<bool> held{false},release{false};
