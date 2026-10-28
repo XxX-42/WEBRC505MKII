@@ -108,3 +108,34 @@ test('Browser one-shot renders one finite pass on five tracks with reverse, loop
   expect(result.sharedFxActive).toBe(true);
   expect(result.readerEnded).toEqual(Array(5).fill(true));
 });
+
+
+test('Classic LCD 1SHOT changes the selected track and preserves its audio while playing', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/?audio=browser&ui=classic');
+  await startBrowserAudio(page);
+  await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const { TrackAudio } = await import('/src/audio/TrackAudio.ts');
+    const engine = AudioEngine.getInstance();
+    const context = (engine as any).browser.context as AudioContext;
+    const buffer = context.createBuffer(2, context.sampleRate * 2, context.sampleRate);
+    buffer.getChannelData(0).fill(0.12); buffer.getChannelData(1).fill(-0.1);
+    const result = TrackAudio.restoreProjectBuffersAtomically(engine.tracks, [buffer, null, null, null, null]);
+    if (!result.ok) throw new Error(result.reason);
+  });
+  const control = (key: string) => page.locator(`[data-panel-control="${key}"]`);
+  await control('loop').click(); await control('screen-encoder-1').click(); await control('page-next').click();
+  const oneShot = page.getByTestId('lcd-field-track-one-shot');
+  await oneShot.click();
+  await expect(oneShot).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(async () => (await import('/src/audio/AudioEngine.ts')).AudioEngine.getInstance().tracks[0]!.track.oneShot)).toBe('ON');
+  await control('exit').click(); await control('exit').click();
+  const rec = page.locator('.track-strip[data-track-id="1"] [data-panel-control="record-play"]');
+  await rec.click();
+  await expect.poll(() => page.evaluate(async () => (await import('/src/audio/AudioEngine.ts')).AudioEngine.getInstance().tracks[0]!.state)).toBe('PLAYING');
+  await control('loop').click(); await control('screen-encoder-1').click(); await control('page-next').click();
+  await expect(page.getByTestId('lcd-field-track-one-shot')).toBeDisabled();
+  await expect.poll(() => page.evaluate(async () => (await import('/src/audio/AudioEngine.ts')).AudioEngine.getInstance().tracks[0]!.state), { timeout: 5_000 }).toBe('STOPPED');
+  await expect(page.getByTestId('lcd-field-track-one-shot')).toBeEnabled();
+});
