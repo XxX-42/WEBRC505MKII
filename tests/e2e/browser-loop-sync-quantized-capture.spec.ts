@@ -70,13 +70,24 @@ test('real Chromium quantized capture follows master frames exactly and cancella
       else originalPostMessage(message, transfer);
     };
 
-    const requestFrame = browser.getInputCaptureRequestFrame();
-    const expectedStartFrame = transport.getNextMeasureStartFrame(requestFrame);
-    // A request sampled exactly on the measure boundary may quantize to that
-    // same frame. The later session and worklet ACK assertions still require
-    // that exact grid frame; equality is a valid on-boundary start.
-    if (!Number.isSafeInteger(expectedStartFrame) || expectedStartFrame < requestFrame) throw new Error(`Invalid quantized start ${expectedStartFrame} from request ${requestFrame}`);
+    // Confirm the worklet's current readiness epoch immediately before the
+    // user action. A later epoch change is still reported as a real capture
+    // failure; the test never retries at a different frame.
+    await browser.waitForInputCaptureReady();
+    let triggerRequestFrame: number | null = null;
+    const getInputCaptureRequestFrame = browser.getInputCaptureRequestFrame.bind(browser);
+    browser.getInputCaptureRequestFrame = () => {
+      const frame = getInputCaptureRequestFrame();
+      if (triggerRequestFrame === null) triggerRequestFrame = frame;
+      return frame;
+    };
     slave.triggerRecord();
+    browser.getInputCaptureRequestFrame = getInputCaptureRequestFrame;
+    const requestFrame = triggerRequestFrame;
+    if (!Number.isSafeInteger(requestFrame)) throw new Error(`REC did not sample a valid shared-capture request frame: ${requestFrame}`);
+    const expectedStartFrame = transport.getNextMeasureStartFrame(requestFrame!);
+    // An action exactly on a measure boundary may validly use that frame.
+    if (!Number.isSafeInteger(expectedStartFrame) || expectedStartFrame! < requestFrame!) throw new Error(`Invalid quantized start ${expectedStartFrame} from request ${requestFrame}`);
     await waitFor(() => slave.state === 'RECORDING', 'quantized first-frame ACK');
     const firstSession = slave.recordingCaptureSession;
     if (!firstSession || firstSession.startFrame !== expectedStartFrame) {
@@ -137,7 +148,7 @@ test('real Chromium quantized capture follows master frames exactly and cancella
     };
   });
 
-  expect(result.startFrame).toBeGreaterThan(result.requestFrame);
+  expect(result.startFrame).toBeGreaterThanOrEqual(result.requestFrame);
   expect(result.stopFrame - result.startFrame).toBe(result.frames);
   expect(result.workletStartAck).toBe(result.startFrame);
   expect(result.maxPcmError).toBe(0);

@@ -458,6 +458,29 @@ describe('TrackAudio transport sync helpers', () => {
     Transport.stop();
   });
 
+  it('waits for stable shared readiness but cancels instead of moving a passed quantized frame', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    const incumbent = context.createBuffer(1, 256, context.sampleRate);
+    (trackAudio as any).audioBuffer = incumbent;
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    engine.isBrowserTrackLoopSyncEnabled = () => true;
+    engine.isBrowserRhythmRunning = () => false;
+    engine.getInputCaptureRequestFrame = () => 96_101;
+    engine.waitForInputCaptureReady = vi.fn(async () => undefined);
+    engine.beginInputCaptureSession = vi.fn(() => null);
+
+    await trackAudio.startRecording(96_100, Transport.masterPhaseRevision, 0);
+
+    expect(engine.waitForInputCaptureReady).toHaveBeenCalledOnce();
+    expect(engine.beginInputCaptureSession).not.toHaveBeenCalled();
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(trackAudio.recordingDiagnostic).toContain('master-grid frame had passed');
+    expect((trackAudio as any).audioBuffer).toBe(incumbent);
+    Transport.stop();
+  });
+
   it('schedules stop on the next measure frame and retains that target for delayed worklet delivery', async () => {
     const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
     trackAudio.track.loopSyncSw = 'ON';

@@ -2485,10 +2485,35 @@ export class TrackAudio {
             }
             const input = await this.engine.getProcessedInputNode();
             if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
-            if (quantizedStartFrame !== undefined
-                && !this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
-                this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed during capture setup. Existing loops are preserved.');
-                return;
+            if (quantizedStartFrame !== undefined) {
+                if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
+                    this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed during capture setup. Existing loops are preserved.');
+                    return;
+                }
+                // A shared tap can invalidate its pre-roll while the input
+                // monitor path is being prepared. Confirm readiness in the
+                // worklet's message order before reserving, then keep the
+                // already chosen master-grid frame only if it has not passed.
+                // Never move the target to a later measure to hide a gap.
+                if (this.engine.waitForInputCaptureReady) {
+                    try {
+                        await this.engine.waitForInputCaptureReady();
+                    } catch (error) {
+                        if (generation !== this.recordingStartGeneration) return;
+                        this.failQuantizedRecordingStart(`Shared input capture was not ready before the quantized frame could be reserved: ${error instanceof Error ? error.message : String(error)}. Existing loops are preserved.`);
+                        return;
+                    }
+                    if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
+                    const readyFrame = this.engine.getInputCaptureRequestFrame?.();
+                    if (!this.isQuantizedStartCurrent(quantizedPhaseRevision, quantizedTrackSyncRevision)) {
+                        this.failQuantizedRecordingStart('The audio-clock phase or LOOP SYNC setting changed while shared capture readiness was confirmed. Existing loops are preserved.');
+                        return;
+                    }
+                    if (readyFrame === null || readyFrame === undefined || readyFrame > quantizedStartFrame) {
+                        this.failQuantizedRecordingStart('Shared input capture became ready after the reserved master-grid frame had passed; the recording was cancelled without moving the start. Existing loops are preserved.');
+                        return;
+                    }
+                }
             }
             if (sharedCaptureRequired && quantizedStartFrame === undefined) {
                 try {
