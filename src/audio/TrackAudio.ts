@@ -381,14 +381,20 @@ export class TrackAudio {
     private quantizedRecordingTrackSyncRevision: number | null = null;
     private quantizedRecordingStopFrame: number | null = null;
     private quantizedRecordingStopPhaseRevision: number | null = null;
+    private quantizedRecordingStopTrackSyncRevision: number | null = null;
     private readonly masterPhaseChangeListener = () => {
+        this.invalidateQuantizedRecordingStopIfStale('The master phase changed before the quantized stop; recording stopped at the current audio frame.');
+    };
+    private invalidateQuantizedRecordingStopIfStale(message: string): void {
         if (this.quantizedRecordingStopFrame === null) return;
-        if (this.quantizedRecordingStopPhaseRevision === this.transport.masterPhaseRevision) return;
+        if (this.quantizedRecordingStopPhaseRevision === this.transport.masterPhaseRevision
+            && this.quantizedRecordingStopTrackSyncRevision === this.loopSyncSettingsRevision) return;
         this.quantizedRecordingStopFrame = null;
         this.quantizedRecordingStopPhaseRevision = null;
-        this.recordingDiagnostic = 'The master phase changed before the quantized stop; recording stopped at the current audio frame.';
+        this.quantizedRecordingStopTrackSyncRevision = null;
+        this.recordingDiagnostic = message;
         void this.stopRecording();
-    };
+    }
     private loopSyncSettingsRevision = 0;
     private lastLoopSyncSw: Track['loopSyncSw'];
     private recordingStartGeneration = 0;
@@ -1852,6 +1858,7 @@ export class TrackAudio {
             this.lastLoopSyncSw = this.track.loopSyncSw;
             if (this.loopSyncSettingsRevision < Number.MAX_SAFE_INTEGER) this.loopSyncSettingsRevision += 1;
             else this.loopSyncSettingsRevision = Number.MAX_SAFE_INTEGER;
+            this.invalidateQuantizedRecordingStopIfStale('The track LOOP SYNC setting changed before the quantized stop; recording stopped at the current audio frame.');
         }
         if (this.track.id === this.transport.masterTrackId && this.track.loopSyncSw !== 'ON') {
             this.transport.clearMasterPhaseOrigin();
@@ -2078,6 +2085,7 @@ export class TrackAudio {
         this.state = TrackState.REC_FINISHING;
         this.quantizedRecordingStopFrame = targetFrame;
         this.quantizedRecordingStopPhaseRevision = this.transport.masterPhaseRevision;
+        this.quantizedRecordingStopTrackSyncRevision = this.loopSyncSettingsRevision;
         void this.stopRecording(targetFrame);
     }
 
@@ -2607,6 +2615,7 @@ export class TrackAudio {
         if (quantizedStopFrame === undefined) {
             this.quantizedRecordingStopFrame = null;
             this.quantizedRecordingStopPhaseRevision = null;
+            this.quantizedRecordingStopTrackSyncRevision = null;
         }
         const captureSession = this.recordingCaptureSession;
         if (quantizedStopFrame !== undefined && !captureSession) {
@@ -2788,6 +2797,7 @@ export class TrackAudio {
             this.isFinalizingRecording = true;
             this.quantizedRecordingStopFrame = null;
             this.quantizedRecordingStopPhaseRevision = null;
+            this.quantizedRecordingStopTrackSyncRevision = null;
             this.pendingRecordingComplete = message;
             this.finishRecordingWhenReady(workletNode);
             return;
@@ -2936,6 +2946,7 @@ export class TrackAudio {
         this.quantizedRecordingTrackSyncRevision = null;
         this.quantizedRecordingStopFrame = null;
         this.quantizedRecordingStopPhaseRevision = null;
+        this.quantizedRecordingStopTrackSyncRevision = null;
         try { this.recordingInputNode?.disconnect(this.fxChain.input); } catch { /* already disconnected */ }
         this.recordingInputNode = null;
         if (this.workletNode === session.node) this.workletNode = null;

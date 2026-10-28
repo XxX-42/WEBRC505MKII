@@ -268,6 +268,33 @@ describe('TrackAudio transport sync helpers', () => {
     expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 150);
   });
 
+  it('cancels a finishing stop target when this slave track LOOP SYNC changes', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    Transport.stop();
+    Transport.setMasterTrack(2, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(2, 100, context.sampleRate * 2)).toBe(true);
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 13, inputGeneration: 4, startFrame: 100,
+    };
+    engine.getInputCaptureRequestFrame = () => 123;
+    engine.stopInputCaptureSession = vi.fn(() => true);
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).isRecording = false;
+    (trackAudio as any).isFinalizingRecording = true;
+    (trackAudio as any).quantizedRecordingStopFrame = 50_000;
+    (trackAudio as any).quantizedRecordingStopPhaseRevision = Transport.masterPhaseRevision;
+    (trackAudio as any).quantizedRecordingStopTrackSyncRevision = (trackAudio as any).loopSyncSettingsRevision;
+    trackAudio.state = TrackState.REC_FINISHING;
+    trackAudio.track.loopSyncSw = trackAudio.track.loopSyncSw === 'ON' ? 'OFF' : 'ON';
+
+    trackAudio.updateSettings();
+
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 123);
+    expect(trackAudio.recordingDiagnostic).toContain('track LOOP SYNC setting changed');
+  });
+
   it('restores the prior idle state when quantized capture setup cannot reserve shared input', async () => {
     const { engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
     trackAudio.track.loopSyncSw = 'ON';
