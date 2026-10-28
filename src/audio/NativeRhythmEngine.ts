@@ -9,7 +9,7 @@ interface NativeRhythmHost {
   bridge(): NativeBridgeClient;
   status(): NativeStatus | null;
   bridgeAvailable(): boolean;
-  applyStatus(status: NativeStatus): void;
+  applyStatus(status: NativeStatus, synchronizeRhythmBpm?: boolean): void;
   reportError(error: unknown): void;
   notify(): void;
 }
@@ -97,7 +97,7 @@ export class NativeRhythmEngine {
             (!isNativeHostIncarnationId(status.hostIncarnationId) || status.hostIncarnationId !== hostIncarnationId)) {
           throw new Error('Native host incarnation changed during rhythm BPM synchronization; stale status was not applied.');
         }
-        this.host.applyStatus(status);
+        this.host.applyStatus(status, hostIncarnationId === undefined);
         if (!this.available) return this.reject(this.unavailableReason);
         const acknowledged = this.settings;
         if (!acknowledged || (Object.keys(config) as Array<keyof NativeRhythmConfig>).some((key) => acknowledged[key] !== config[key])) {

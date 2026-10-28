@@ -8,8 +8,10 @@ export interface NativeMemoryPort {
   status(): NativeStatus | null;
   editRevision(): string;
   archive(): Promise<Uint8Array>;
-  publish(status: NativeStatus): void;
+  publish(status: NativeStatus, synchronizeRhythmBpm?: boolean): void;
   install?(status: NativeStatus): void;
+  syncRhythmBpm?(bpm: number, hostIncarnationId: string): Promise<boolean>;
+  suppressTransportSync?(): () => void;
   /** Host publication is confirmed; invalidate previous-generation UI ACKs before any readback. */
   committed?(generation: number): void;
   pendingEdits?(): boolean;
@@ -188,6 +190,8 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
     },
     prepare: async (document: Rc505MemoryDocument, expectedRevision: string) => {
       if (port.pendingEdits?.() || revision() !== expectedRevision) throw new Error('Native Memory changed before preparation.');
+      const transport = Transport.getInstance();
+      const operationStartTransportMutationRevision = transport.projectMutationRevision;
       const expectedHostRevision = port.status()?.projectContentRevision;
       const expectedHostIncarnationId = port.status()?.hostIncarnationId;
       const current = await port.bridge.getStatus();
@@ -251,13 +255,25 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const bytes = await encodeRc505Memory(document);
       const targetExtensions = structuredClone(document.extensions.WEBRC);
       const targetFields = structuredClone(document.semantics.fields);
-      if (revision() !== expectedRevision) throw new Error('Native Memory changed during preparation.');
+      if (revision() !== expectedRevision || transport.projectMutationRevision !== operationStartTransportMutationRevision) {
+        throw new Error('Native Memory or transport changed during preparation; no import was submitted.');
+      }
       const acceptance = await port.bridge.beginProjectArchiveImport(bytes, expectedHostRevision!, expectedHostIncarnationId);
       const { generation } = acceptance;
+      let releaseTransportSync = port.suppressTransportSync?.() ?? (() => undefined);
+      const releaseSuppression = (): void => {
+        releaseTransportSync();
+        releaseTransportSync = () => undefined;
+      };
       let state: 'prepared' | 'committed' | 'disposed' = 'prepared';
       return {
         commit: async () => {
-          if (state !== 'prepared' || revision() !== expectedRevision) throw new Error('Native Memory candidate is stale.');
+          if (state !== 'prepared' || revision() !== expectedRevision ||
+              transport.projectMutationRevision !== operationStartTransportMutationRevision) {
+            releaseSuppression();
+            throw new Error('Native Memory candidate is stale because project or transport changed before commit.');
+          }
+          try {
           await port.bridge.commitPreparedMemory(generation, acceptance.hostIncarnationId);
           const result = await port.bridge.waitForProjectArchiveImport(generation, acceptance.hostIncarnationId, 10_000);
           if (result.state === 'unavailable') throw new Error('Native host restarted during Memory commit; status is unverifiable and no follow-up sync was applied.');
@@ -287,20 +303,38 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
             if (!isNativeHostIncarnationId(status.hostIncarnationId) || status.hostIncarnationId !== acceptance.hostIncarnationId) {
               throw new Error('Native host restarted during Memory readback; generation status is unverifiable and no stale settings were installed.');
             }
-            port.publish(status);
+            port.publish(status, false);
             if (readbackAcknowledged(status)) {
+              if (transport.projectMutationRevision !== operationStartTransportMutationRevision) {
+                throw new Error('Native Memory committed, but transport changed during callback acknowledgement; imported transport was not applied and archive BPM was not synchronized to Native rhythm, preserving the user edit.');
+              }
+              if (!status.nativeRhythm?.available) {
+                throw new Error('Native Memory committed, but Native rhythm readback is unavailable; archive BPM was not synchronized and transport metadata was not applied.');
+              }
+              if (status.nativeRhythm.bpm !== document.semantics.tempo) {
+                if (!port.syncRhythmBpm || !await port.syncRhythmBpm(document.semantics.tempo, acceptance.hostIncarnationId)) {
+                  throw new Error('Native Memory committed, but archive BPM was not acknowledged by Native rhythm; transport metadata was not synchronized.');
+                }
+                if (transport.projectMutationRevision !== operationStartTransportMutationRevision) {
+                  throw new Error('Native rhythm acknowledged archive BPM while the user changed transport; the user transport was preserved, and rhythm may still be set to the imported archive BPM.');
+                }
+              }
               // Close the window between the ACK poll and semantic installation
               // with a second, final readback from the same host incarnation.
               const finalStatus = await port.bridge.getStatus();
               if (!isNativeHostIncarnationId(finalStatus.hostIncarnationId) || finalStatus.hostIncarnationId !== acceptance.hostIncarnationId) {
                 throw new Error('Native host restarted before Memory installation; generation status is unverifiable and no stale settings were installed.');
               }
-              if (readbackAcknowledged(finalStatus)) {
+              if (transport.projectMutationRevision !== operationStartTransportMutationRevision) {
+                throw new Error('Native Memory committed, but transport changed before final synchronization; imported transport was not applied and Native rhythm may remain at the imported archive BPM.');
+              }
+              if (readbackAcknowledged(finalStatus) &&
+                  finalStatus.nativeRhythm?.available === true && finalStatus.nativeRhythm.bpm === document.semantics.tempo) {
                 // Commit opaque target metadata only after all ACKs survive the
                 // final same-incarnation readback.
                 preservedExtensions = targetExtensions;
                 preservedFields = targetFields;
-                port.publish(finalStatus);
+                port.publish(finalStatus, false);
                 port.install?.(finalStatus);
                 break;
               }
@@ -308,7 +342,9 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
             if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but DUB MODE, Bounce, or FX gate render acknowledgements timed out.`);
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
-          const transport = Transport.getInstance();
+          if (transport.projectMutationRevision !== operationStartTransportMutationRevision) {
+            throw new Error('Native Memory committed, but transport changed before local transport update; user values were preserved.');
+          }
           transport.timeSignature = [...document.semantics.meter];
           transport.masterTrackId = savedTransport.masterTrackId;
           transport.measureLength = savedTransport.measureLengthSeconds;
@@ -318,10 +354,17 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
             const detail = error instanceof Error ? error.message : String(error);
             throw new Rc505MemoryCommittedError(`Native Memory generation ${generation} committed; application synchronization failed: ${detail}`, generation, { cause: error });
           }
+          } finally {
+            releaseSuppression();
+          }
         },
         dispose: async () => {
-          if (state === 'prepared') await port.bridge.cancelProjectArchiveImport(generation, acceptance.hostIncarnationId);
-          state = 'disposed';
+          try {
+            if (state === 'prepared') await port.bridge.cancelProjectArchiveImport(generation, acceptance.hostIncarnationId);
+          } finally {
+            releaseSuppression();
+            state = 'disposed';
+          }
         },
       };
     },

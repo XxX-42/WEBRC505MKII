@@ -5,9 +5,10 @@ import { resolveNativeFxReadback } from '../../src/ui/rc505/Rc505FxReadback';
 import { createNativeRc505MemoryRuntime } from '../../src/audio/NativeRc505MemoryRuntime';
 import { Rc505MemoryCommittedError, decodeRc505Memory } from '../../src/audio/Rc505Memory';
 import { encodeProjectArchive } from '../../src/audio/projectArchive';
+import { Transport } from '../../src/core/Transport';
 import type { NativeBridgeClient, NativeStatus } from '../../src/audio/NativeBridgeClient';
 
-function fixture() {
+function fixture(archiveBpm = 120) {
   const hostIncarnationId = 'a'.repeat(32);
   const slots = () => ['A', 'B', 'C', 'D'].map((slot) => ({ slot, effectId: '', parameters: {}, bypassed: false,
     appliedBypassed: false, requestedRevision: 0, appliedRevision: 0, controlFaulted: false, processingFaulted: false, prepared: false }));
@@ -26,7 +27,7 @@ function fixture() {
       bounce: { bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false] } },
     nativeBounce: { version: 1, bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false],
       requestedRevision: 3, appliedRevision: 3, sourceTap: 'pre-track-insert', hardwareFxPlacementVerified: false },
-    nativeRhythm: { enabled: false, bpm: 120, kitIndex: 1, patternIndex: 1, variation: 'A', section: 'main', quantizeGrid: '1/16', swingPercent: 50, volume: 50 },
+    nativeRhythm: { available: true, enabled: false, bpm: 120, kitIndex: 1, patternIndex: 1, variation: 'A', section: 'main', quantizeGrid: '1/16', swingPercent: 50, volume: 50 },
     nativePitch: { enabled: true, semitones: 3 },
     nativeFx: { inputCatalogSlots: slots(), catalogSlots: slots(), perTrackCatalogBanks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, slots: slots() })),
       outputReverbEnabled: true, outputReverbWetMix: .4,
@@ -44,14 +45,24 @@ function fixture() {
   };
   const install = vi.fn();
   const committed = vi.fn();
+  const publish = vi.fn((value: NativeStatus) => { cached = value; });
+  const syncRhythmBpm = vi.fn(async (bpm: number) => {
+    status = { ...status, nativeRhythm: { ...status.nativeRhythm!, bpm } };
+    return true;
+  });
   const runtime = createNativeRc505MemoryRuntime({ bridge: bridge as unknown as NativeBridgeClient,
-    status: () => cached, editRevision: () => String(edits), publish: (value) => { cached = value; }, install, committed,
-    archive: () => encodeProjectArchive({ name: '', bpm: 120, tracks: [null, null, null, null, null] }) });
-  return { runtime, bridge, install, committed, hostStatus: () => status, edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
+    status: () => cached, editRevision: () => String(edits), publish, install, committed, syncRhythmBpm,
+    archive: () => encodeProjectArchive({ name: '', bpm: archiveBpm, tracks: [null, null, null, null, null] }) });
+  return { runtime, bridge, install, committed, publish, syncRhythmBpm, hostStatus: () => status, edit: () => { edits += 1; }, hostEdit: () => { status = { ...status, projectContentRevision: 9 }; } };
 }
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  const transport = Transport.getInstance();
+  transport.stop(); transport.resetMasterTrack(); transport.timeSignature = [4, 4];
+  transport.measureLength = 0; transport.masterLoopLengthSamples = 0; transport.setBpm(120);
+});
 
 describe('Native semantic Memory runtime', () => {
   it.each([false, true])('invalidates every old engine bank/gate/Mark ACK at host commit (network failure: %s)', async (failReadback) => {
@@ -221,6 +232,39 @@ describe('Native semantic Memory runtime', () => {
     expect(bridge.commitPreparedMemory).toHaveBeenCalledExactlyOnceWith(19, 'a'.repeat(32));
     expect(bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
     await expect(prepared.commit()).rejects.toThrow(/stale/);
+  });
+  it('preserves a user transport mutation that arrives during Memory ACK polling', async () => {
+    const h = fixture();
+    const transport = Transport.getInstance();
+    transport.stop(); transport.resetMasterTrack(); transport.timeSignature = [4, 4];
+    transport.measureLength = 0; transport.masterLoopLengthSamples = 0; transport.setBpm(120);
+    const document = await h.runtime.capture();
+    const prepared = await h.runtime.prepare(document, h.runtime.revision());
+    h.bridge.getStatus.mockImplementationOnce(async () => {
+      transport.setBpm(133);
+      return h.hostStatus();
+    });
+    await expect(prepared.commit()).rejects.toThrow(/transport changed during callback acknowledgement.*archive BPM was not synchronized/i);
+    expect(transport.bpm).toBe(133);
+    expect(transport.timeSignature).toEqual([4, 4]);
+    expect(h.syncRhythmBpm).not.toHaveBeenCalled();
+    expect(h.install).not.toHaveBeenCalled();
+    await prepared.dispose();
+  });
+  it('synchronizes archive BPM to Native rhythm before applying archive transport', async () => {
+    const h = fixture(90);
+    h.hostStatus().nativeRhythm = { ...h.hostStatus().nativeRhythm!, available: true, bpm: 120 };
+    const transport = Transport.getInstance();
+    transport.stop(); transport.resetMasterTrack(); transport.timeSignature = [4, 4];
+    transport.measureLength = 0; transport.masterLoopLengthSamples = 0; transport.setBpm(90);
+    const document = await h.runtime.capture();
+    expect(document.semantics.tempo).toBe(90);
+    const prepared = await h.runtime.prepare(document, h.runtime.revision());
+    await prepared.commit();
+    expect(h.syncRhythmBpm).toHaveBeenCalledExactlyOnceWith(90, 'a'.repeat(32));
+    expect(h.hostStatus().nativeRhythm?.bpm).toBe(90);
+    expect(transport.bpm).toBe(90);
+    await prepared.dispose();
   });
   it('refuses to install Memory semantics when the host restarts after commit ACK', async () => {
     const h = fixture();

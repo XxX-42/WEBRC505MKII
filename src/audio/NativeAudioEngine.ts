@@ -231,6 +231,7 @@ export class NativeAudioEngine {
   private nativeFxSyncRunning = false;
   private nativeFxSyncScheduled = false;
   private syncingNativeRhythmBpm = false;
+  private nativeMemoryTransportSyncSuppressions = 0;
   private readonly pendingProjectImportSync = new Map<number, Pick<ProjectArchive, 'bpm' | 'transport'> & {
     hostIncarnationId: string;
     operationStartTransport: NativeProjectRestoreToken['transport'];
@@ -242,6 +243,7 @@ export class NativeAudioEngine {
   private readonly onTransportBpmChange = () => {
     this.scheduleNativeFxSync();
     const bpm = Transport.getInstance().bpm;
+    if (this.nativeMemoryTransportSyncSuppressions > 0) return;
     if (!this.syncingNativeRhythmBpm && this.rhythmEngine.available && this.rhythmEngine.settings?.bpm !== bpm) void this.rhythmEngine.setBpm(bpm);
   };
 
@@ -250,7 +252,7 @@ export class NativeAudioEngine {
       bridge: () => this.bridge,
       status: () => this.latestStatus,
       bridgeAvailable: () => this.bridgeAvailable,
-      applyStatus: (status) => this.applyStatus(status),
+      applyStatus: (status, synchronizeRhythmBpm = true) => this.applyStatus(status, synchronizeRhythmBpm),
       reportError: (error) => {
         if (error instanceof NativeBridgeRequestTimeoutError && error.reconciledStatus) this.handleBridgeFailure(error, false);
         else if (/Native bridge is unreachable/i.test(String(error))) this.handleBridgeFailure(error);
@@ -886,7 +888,17 @@ export class NativeAudioEngine {
       status: () => this.latestStatus,
       editRevision: () => `${this.nativeFxSyncRevision}:${[...this.nativeCatalogSlotEditRevisions.values()].reduce((sum, value) => sum + value, 0)}`,
       archive: () => this.exportProjectArchive(''),
-      publish: (status) => this.applyStatus(status),
+      publish: (status, synchronizeRhythmBpm = true) => this.applyStatus(status, synchronizeRhythmBpm),
+      syncRhythmBpm: (bpm, hostIncarnationId) => this.rhythmEngine.setBpm(bpm, hostIncarnationId),
+      suppressTransportSync: () => {
+        this.nativeMemoryTransportSyncSuppressions += 1;
+        let released = false;
+        return () => {
+          if (released) return;
+          released = true;
+          this.nativeMemoryTransportSyncSuppressions = Math.max(0, this.nativeMemoryTransportSyncSuppressions - 1);
+        };
+      },
       committed: (generation) => {
         this.nativeMemoryReadbackGeneration = generation;
         // A host ACK installs a new graph, so every previous status snapshot and
@@ -907,7 +919,7 @@ export class NativeAudioEngine {
         this.nativeCatalogFxUnknownParameterSlots.clear();
         this.nativeCatalogFxRuntime.clear();
         this.nativePerTrackFxEdited.clear();
-        this.applyStatus(status);
+        this.applyStatus(status, false);
         this.hydrateNativeCatalogFromStatus(status);
         this.nativeMemoryReadbackGeneration = null;
         this.emitAll();
@@ -2479,6 +2491,7 @@ export class NativeAudioEngine {
   }
 
   private syncNativeRhythmBpm() {
+    if (this.nativeMemoryTransportSyncSuppressions > 0) return;
     if (this.syncingNativeRhythmBpm) return;
     const rhythm = this.rhythmEngine.settings;
     if (!this.rhythmEngine.available || !rhythm || rhythm.bpm === Transport.getInstance().bpm) return;
