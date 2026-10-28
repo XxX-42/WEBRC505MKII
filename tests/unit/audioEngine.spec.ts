@@ -35,6 +35,14 @@ describe('AudioEngine capabilities', () => {
     expect(engine.getOutputLevel()).toBe(0);
   });
 
+  it('returns the Native REC ACTION promise so UI callers can handle provider failures', async () => {
+    const engine = await loadEngineForSearch('/?audio=native');
+    const native = (engine as any).nativeEngine;
+    native.setRecordPlaySettings = vi.fn(async () => { throw new Error('Native REC ACTION rejected'); });
+    await expect(engine.setRecordPlaySettings({ recAction: 'REC->DUB' })).rejects.toThrow('Native REC ACTION rejected');
+    expect(native.setRecordPlaySettings).toHaveBeenCalledWith({ recAction: 'REC->DUB' });
+  });
+
   it('publishes Native output levels only from confirmed mixer readback', async () => {
     const engine = await loadEngineForSearch('/?audio=native');
     const native = (engine as any).nativeEngine;

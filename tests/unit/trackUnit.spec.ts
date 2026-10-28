@@ -183,6 +183,50 @@ describe('TrackUnit', () => {
     wrapper.unmount();
   });
 
+  it('locks the Enhanced REC button until Native ACK and reports a rejected action', async () => {
+    const trackAudio = {
+      state: 'EMPTY',
+      track: { playLevel: 100, filterValue: 0.5, filterResonance: 1, filterEnabled: false },
+      isReverse: false,
+      isAvailable: true,
+      transportEnabled: true,
+      disabledReason: '',
+      updateSettings: vi.fn(),
+      toggleReverse: vi.fn(),
+      fxChain: { setFilterEnabled: vi.fn(), setFilterParam: vi.fn() },
+      triggerRecord: vi.fn(),
+      triggerStop: vi.fn(),
+      clear: vi.fn(),
+    };
+    let acknowledge!: () => void;
+    trackAudio.triggerRecord.mockImplementationOnce(() => new Promise<void>((resolve) => { acknowledge = resolve; }));
+    const { wrapper } = await mountTrackUnit({
+      trackAudio,
+      trackCapabilities: { supportsTrackLevel: true, levelReason: '', supportsTrackFx: true,
+        trackFxReason: '', supportsReverse: true, reverseReason: '' },
+    });
+    const recordButton = wrapper.findAllComponents(StubButton).find(button => button.props('label') === '')!;
+
+    await recordButton.trigger('click');
+    expect(trackAudio.triggerRecord).toHaveBeenCalledOnce();
+    expect(recordButton.props('disabled')).toBe(true);
+    expect(recordButton.props('disabledReason')).toContain('acknowledgement');
+    await recordButton.trigger('click');
+    expect(trackAudio.triggerRecord).toHaveBeenCalledOnce();
+
+    acknowledge();
+    await Promise.resolve(); await wrapper.vm.$nextTick();
+    expect(recordButton.props('disabled')).toBe(false);
+
+    trackAudio.triggerRecord.mockRejectedValueOnce(new Error('Enhanced Native REC rejected'));
+    await recordButton.trigger('click');
+    await Promise.resolve(); await wrapper.vm.$nextTick();
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    expect(useRc505Controls().state.errorDetail).toBe('Enhanced Native REC rejected');
+    expect(recordButton.props('disabled')).toBe(false);
+    wrapper.unmount();
+  });
+
   it('shows capability reasons and keeps upper deck inert when native limits apply', async () => {
     const trackAudio = {
       state: 'EMPTY',

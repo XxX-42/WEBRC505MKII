@@ -119,6 +119,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { AudioEngine } from '../audio/AudioEngine';
 import { TrackState } from '../core/types';
+import { useRc505Controls } from '../composables/useRc505Controls';
 import LoopHalo from './LoopHalo.vue';
 import HardwareButton from './ui/HardwareButton.vue';
 import HardwareFader from './ui/HardwareFader.vue';
@@ -129,6 +130,7 @@ const props = defineProps<{
 }>();
 
 const engine = AudioEngine.getInstance();
+const controls = useRc505Controls();
 const trackAudio = engine.tracks[props.trackId - 1]!;
 const trackCapabilities = ref(engine.getTrackCapabilities(props.trackId));
 
@@ -145,6 +147,7 @@ const fxState = ref({ filter: trackAudio.track.filterEnabled });
 const trackAvailable = ref(trackAudio.isAvailable);
 const trackTransportEnabled = ref(trackAudio.transportEnabled && isEngineReady());
 const inputCaptureWarming = ref(false);
+const recordActionPending = ref(false);
 const disabledReason = ref(trackAudio.disabledReason || (isEngineReady() ? '' : getEngineUiStatus()?.message || 'Audio engine is not ready'));
 const isFilterActive = computed(() => fxState.value.filter);
 const levelControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsTrackLevel);
@@ -155,10 +158,12 @@ const filterControlsEnabled = computed(() => trackTransportEnabled.value && trac
 const reverseControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsReverse);
 const captureWarmupBlocksAction = computed(() => getEngineUiStatus()?.mode === 'browser' && inputCaptureWarming.value
   && (trackState.value === TrackState.EMPTY || trackState.value === TrackState.PLAYING));
-const recordActionEnabled = computed(() => trackTransportEnabled.value && !captureWarmupBlocksAction.value);
-const recordActionDisabledReason = computed(() => captureWarmupBlocksAction.value
-  ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
-  : disabledReason.value);
+const recordActionEnabled = computed(() => trackTransportEnabled.value && !captureWarmupBlocksAction.value && !recordActionPending.value);
+const recordActionDisabledReason = computed(() => recordActionPending.value
+  ? 'Waiting for the Native REC acknowledgement.'
+  : captureWarmupBlocksAction.value
+    ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
+    : disabledReason.value);
 const filterButtonAriaLabel = computed(() => filterControlsEnabled.value ? 'Toggle track filter' : trackCapabilities.value.trackFxReason);
 const reverseButtonAriaLabel = computed(() => reverseControlEnabled.value ? 'Toggle reverse playback' : trackCapabilities.value.reverseReason);
 const stopButtonAriaLabel = computed(() => trackTransportEnabled.value
@@ -246,9 +251,16 @@ const isRecordingOrPlaying = computed(() => {
          trackState.value === TrackState.OVERDUBBING;
 });
 
-const handleRecPlay = () => {
+const handleRecPlay = async () => {
   if (!recordActionEnabled.value) return;
-  trackAudio.triggerRecord();
+  recordActionPending.value = true;
+  try {
+    await trackAudio.triggerRecord();
+  } catch (error) {
+    controls.reportError('REC ACTION FAILED', error instanceof Error ? error.message : String(error));
+  } finally {
+    recordActionPending.value = false;
+  }
 };
 
 const handleLevelChange = (value: number) => {

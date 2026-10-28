@@ -853,7 +853,9 @@ export class AudioEngine {
     return Promise.resolve(this.activeEngine.setMixerLevel(channel, percent));
   }
   public getRecordPlaySettings(): RecordPlaySettings { return this.activeEngine.getRecordPlaySettings(); }
-  public setRecordPlaySettings(settings: RecordPlaySettingsPatch): void { this.activeEngine.setRecordPlaySettings(settings); }
+  public setRecordPlaySettings(settings: RecordPlaySettingsPatch): Promise<void> {
+    return Promise.resolve(this.activeEngine.setRecordPlaySettings(settings));
+  }
   /** Browser Auto Rec is a software approximation; Native remains explicitly unavailable. */
   public getBrowserAutoRecSettings(): Readonly<BrowserAutoRecSettings> | null {
     return this.currentMode === 'browser' ? this.browser.getBrowserAutoRecSettings() : null;

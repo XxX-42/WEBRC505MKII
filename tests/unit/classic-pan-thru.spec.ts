@@ -17,7 +17,7 @@ vi.mock('../../src/composables/deviceTrackControllers', () => ({ getDeviceTrackC
 
 const scopes: ReturnType<typeof effectScope>[] = [];
 const panel = useDevicePanel();
-function createEditor(category: string, target: 'track' | 'menu' = 'track', confirm = vi.fn(async () => true)) {
+function createEditor(category: string, target: 'track' | 'menu' | 'memory' = 'track', confirm = vi.fn(async () => true)) {
   panel.openPage(target);
   panel.classicDispatch({ type: 'OPEN_EDITOR', target, category });
   const scope = effectScope(); scopes.push(scope);
@@ -90,5 +90,29 @@ describe('Classic existing audio controls', () => {
     editor.fields.value[0]!.setValue!(0); await settle(); await settle();
     expect(editor.status.value).toBe('monitor rejected');
     expect(editor.fields.value[0]!.value).toBe(0);
+  });
+  it('disables unsupported Native QUANTIZE and surfaces rejected REC ACTION writes', async () => {
+    fixture.engine.getMode = () => 'native';
+    fixture.engine.getRecordPlaySettings = vi.fn(() => ({ available: true, recActionAvailable: true,
+      quantizeAvailable: false, reason: 'Native recording quantization is unavailable.',
+      recAction: 'REC->PLAY', quantize: null, autoRecAvailable: false, bounceAvailable: false }));
+    fixture.engine.setRecordPlaySettings = vi.fn(async () => { throw new Error('REC ACTION write rejected'); });
+    const { editor } = createEditor('recording', 'memory');
+    const recAction = editor.fields.value.find(field => field.key === 'rec-action')!;
+    const quantize = editor.fields.value.find(field => field.key === 'record-quantize')!;
+    expect(recAction.disabled).toBe(false);
+    expect(quantize.disabled).toBe(true);
+    expect(quantize.reason).toContain('quantization is unavailable');
+
+    await recAction.setValue!(0);
+    await settle(); await settle();
+    expect(fixture.engine.setRecordPlaySettings).toHaveBeenCalledWith({ recAction: 'REC->DUB' });
+    expect(editor.status.value).toBe('REC ACTION write rejected');
+  });
+  it('keeps Browser QUANTIZE available when the Browser provider reports availability only', () => {
+    fixture.engine.getRecordPlaySettings = vi.fn(() => ({ available: true, reason: '', recAction: 'REC->PLAY',
+      quantize: 'MEASURE', autoRecAvailable: false, bounceAvailable: false }));
+    const { editor } = createEditor('recording', 'memory');
+    expect(editor.fields.value.find(field => field.key === 'record-quantize')?.disabled).toBe(false);
   });
 });

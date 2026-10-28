@@ -82,6 +82,30 @@ describe('useTrackStripState STOP interactions', () => {
     wrapper.unmount();
   });
 
+  it('surfaces a rejected asynchronous REC completion through the control error state', async () => {
+    const { wrapper, state, trackAudio } = await mountStripState(true, true);
+    trackAudio.triggerRecord.mockRejectedValueOnce(new Error('Native REC completion was rejected'));
+    await state.handleRecPlay();
+    expect(trackAudio.triggerRecord).toHaveBeenCalledOnce();
+    const { useRc505Controls } = await import('../../src/composables/useRc505Controls');
+    expect(JSON.stringify(useRc505Controls().state)).toContain('Native REC completion was rejected');
+    wrapper.unmount();
+  });
+
+  it('prevents a second track-strip REC command while the first Native ACK is pending', async () => {
+    const { wrapper, state, trackAudio } = await mountStripState(true, true);
+    let acknowledge!: () => void;
+    trackAudio.triggerRecord.mockImplementationOnce(() => new Promise<void>(resolve => { acknowledge = resolve; }));
+    const first = state.handleRecPlay();
+    expect(state.recordActionPending.value).toBe(true);
+    await state.handleRecPlay();
+    expect(trackAudio.triggerRecord).toHaveBeenCalledOnce();
+    acknowledge();
+    await first;
+    expect(state.recordActionPending.value).toBe(false);
+    wrapper.unmount();
+  });
+
   it('stops on a short keyboard release, clears after the long hold, and cancels interrupted pointer holds', async () => {
     const { wrapper, state, trackAudio } = await mountStripState();
     const down = new KeyboardEvent('keydown', { key: ' ', cancelable: true });

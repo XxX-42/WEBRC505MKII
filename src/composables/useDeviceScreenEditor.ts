@@ -1049,13 +1049,14 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
           })));
       }
       const settings = engine.getRecordPlaySettings?.();
+      const quantizeAvailable = settings?.quantizeAvailable ?? (engine.getMode?.() === 'browser' && settings?.available === true);
       return chunks([
         makeEnumField('rec-action', 'REC ACTION', settings?.recAction === 'REC->DUB' ? 0 : 1,
           fieldOptions(['REC→DUB', 'REC→PLAY']), value => engine.setRecordPlaySettings({ recAction: value === 0 ? 'REC->DUB' : 'REC->PLAY' }),
           { disabled: !settings?.available, reason: settings?.reason || 'Record behavior is unavailable.' }),
         makeEnumField('record-quantize', 'QUANTIZE', settings?.quantize === 'OFF' ? 0 : 1,
           fieldOptions(['OFF', 'MEASURE']), value => engine.setRecordPlaySettings({ quantize: value === 0 ? 'OFF' : 'MEASURE' }),
-          { disabled: !settings?.available, reason: settings?.reason || 'Recording quantization is unavailable.' }),
+          { disabled: !quantizeAvailable, reason: quantizeAvailable ? '' : settings?.reason || 'Recording quantization is unavailable.' }),
         ...(engine.getBrowserAutoRecSettings() ? (() => {
           const autoRec = engine.getBrowserAutoRecSettings()!;
           const approximation = 'Browser software approximation: raw-input peak threshold starts recording; no added pre-roll. Roland’s exact detector behavior is unpublished.';

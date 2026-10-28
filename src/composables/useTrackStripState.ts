@@ -83,6 +83,7 @@ export function useTrackStripState(trackId: number) {
   const levelWritePending = ref(false);
   const trackAvailable = ref(trackAudio.isAvailable);
   const trackTransportEnabled = ref(trackAudio.transportEnabled);
+  const recordActionPending = ref(false);
   const disabledReason = ref(trackCapabilities.value.availabilityReason || trackAudio.disabledReason);
   const getOverdubDiagnostic = () => 'overdubDiagnostic' in trackAudio ? trackAudio.overdubDiagnostic : null;
   const overdubDiagnostic = ref(getOverdubDiagnostic());
@@ -446,9 +447,16 @@ export function useTrackStripState(trackId: number) {
 
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-  const handleRecPlay = () => {
-    if (!trackTransportEnabled.value) return;
-    trackAudio.triggerRecord();
+  const handleRecPlay = async () => {
+    if (!trackTransportEnabled.value || recordActionPending.value) return;
+    recordActionPending.value = true;
+    try {
+      await trackAudio.triggerRecord();
+    } catch (error) {
+      classicControls.reportError('REC ACTION FAILED', error instanceof Error ? error.message : String(error));
+    } finally {
+      recordActionPending.value = false;
+    }
   };
 
   const handleLevelChange = async (value: number) => {
@@ -635,6 +643,7 @@ export function useTrackStripState(trackId: number) {
     playLevel,
     trackAvailable,
     trackTransportEnabled,
+    recordActionPending,
     disabledReason,
     overdubDiagnostic,
     recordingDiagnostic,

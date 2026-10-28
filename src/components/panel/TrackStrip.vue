@@ -167,6 +167,7 @@ const {
   runtimeRevision,
   playLevel,
   trackTransportEnabled,
+  recordActionPending,
   trackAvailable,
   disabledReason,
   overdubDiagnostic,
@@ -201,13 +202,15 @@ const captureWarmupBlocksAction = computed(() => {
   return audioEngine.getMode() === 'browser' && status.inputCaptureWarming === true
     && (trackState.value === TrackState.EMPTY || trackState.value === TrackState.PLAYING);
 });
-const recordActionReady = computed(() => trackTransportReady.value && !captureWarmupBlocksAction.value);
+const recordActionReady = computed(() => trackTransportReady.value && !captureWarmupBlocksAction.value && !recordActionPending.value);
 const trackInteractionDisabledReason = computed(() => audioReady.value
   ? disabledReason.value
   : audioEngine.getUiStatus().message || 'Start audio before using track transport.');
-const recordActionDisabledReason = computed(() => captureWarmupBlocksAction.value
-  ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
-  : trackInteractionDisabledReason.value);
+const recordActionDisabledReason = computed(() => recordActionPending.value
+  ? 'Waiting for the Native REC acknowledgement.'
+  : captureWarmupBlocksAction.value
+    ? 'Shared input capture pre-roll is warming. Recording and overdubbing are disabled until the input timeline is ready.'
+    : trackInteractionDisabledReason.value);
 
 const resolvedControls = computed(() => {
   audioStatusRevision.value;
