@@ -108,8 +108,8 @@ export class MidiClockEstimator {
 
     const delta = timestampMs - this.lastPulseAtMs;
     if (!(delta > 0)) {
+      this.clearEvidence(sourceKey, true);
       this.rejectedIntervals += 1;
-      this.clearEvidence(sourceKey);
       this.startAt(timestampMs);
       return this.getSnapshot(timestampMs);
     }
@@ -118,7 +118,7 @@ export class MidiClockEstimator {
     const staleAfterMs = Math.max(MIN_STALE_MS, period > 0 ? period * STALE_TICK_MULTIPLIER : MIN_STALE_MS);
     if (delta > staleAfterMs) {
       // A long silence invalidates phase. Use this pulse only as a fresh anchor.
-      this.clearEvidence(sourceKey);
+      this.clearEvidence(sourceKey, true);
       this.startAt(timestampMs);
       return this.getSnapshot(timestampMs);
     }
@@ -128,7 +128,7 @@ export class MidiClockEstimator {
     if (period > 0) {
       tickAdvance = Math.max(1, Math.round(delta / period));
       if (tickAdvance > this.maxGapTicks) {
-        this.clearEvidence(sourceKey);
+        this.clearEvidence(sourceKey, true);
         this.startAt(timestampMs);
         return this.getSnapshot(timestampMs);
       }
@@ -136,9 +136,17 @@ export class MidiClockEstimator {
       const relativeError = Math.abs(normalizedInterval - period) / period;
       if (relativeError > this.maxIntervalDeviation) {
         this.rejectedIntervals += 1;
+        if (!this.isLocked()) {
+          // During acquisition, an inconsistent interval makes the old anchor
+          // ambiguous. Drop that phase evidence instead of carrying a guessed
+          // fractional tick into a later lock.
+          this.clearEvidence(sourceKey, true);
+          this.startAt(timestampMs);
+          return this.getSnapshot(timestampMs);
+        }
         this.consecutiveRejects += 1;
         if (this.consecutiveRejects >= this.rejectedIntervalsBeforeReset) {
-          this.clearEvidence(sourceKey);
+          this.clearEvidence(sourceKey, true);
           this.startAt(timestampMs);
           return this.getSnapshot(timestampMs);
         }
@@ -153,9 +161,14 @@ export class MidiClockEstimator {
 
     if (normalizedInterval < this.minPeriodMs || normalizedInterval > this.maxPeriodMs) {
       this.rejectedIntervals += 1;
+      if (!this.isLocked()) {
+        this.clearEvidence(sourceKey, true);
+        this.startAt(timestampMs);
+        return this.getSnapshot(timestampMs);
+      }
       this.consecutiveRejects += 1;
       if (this.consecutiveRejects >= this.rejectedIntervalsBeforeReset) {
-        this.clearEvidence(sourceKey);
+        this.clearEvidence(sourceKey, true);
         this.startAt(timestampMs);
         return this.getSnapshot(timestampMs);
       }
@@ -223,20 +236,25 @@ export class MidiClockEstimator {
       && this.intervals.every((interval) => Math.abs(interval - median) / median <= this.maxIntervalDeviation);
   }
 
+  private isLocked(): boolean {
+    return this.intervals.length >= this.lockAfterIntervals && this.isStable();
+  }
+
   private startAt(timestampMs: number): void {
     this.firstPulseAtMs = timestampMs;
     this.lastPulseAtMs = timestampMs;
     this.pulsePosition = 0;
   }
 
-  private clearEvidence(sourceKey = this.sourceKey ?? undefined): void {
+  private clearEvidence(sourceKey = this.sourceKey ?? undefined, preserveRejectedIntervals = false): void {
+    const rejectedIntervals = preserveRejectedIntervals ? this.rejectedIntervals : 0;
     this.sourceKey = sourceKey ?? null;
     this.firstPulseAtMs = null;
     this.lastPulseAtMs = null;
     this.intervals = [];
     this.pulsePosition = 0;
     this.inferredMissingTicks = 0;
-    this.rejectedIntervals = 0;
+    this.rejectedIntervals = rejectedIntervals;
     this.consecutiveRejects = 0;
   }
 

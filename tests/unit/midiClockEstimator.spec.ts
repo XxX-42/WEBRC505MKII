@@ -51,6 +51,30 @@ describe('MidiClockEstimator', () => {
     expect(snapshot.phaseTicks).toBeCloseTo(10, 1);
   });
 
+  it('re-anchors after an inconsistent interval during acquisition instead of carrying guessed phase', () => {
+    const estimator = new MidiClockEstimator();
+    estimator.push(0, 'clock');
+    estimator.push(2 * TICK_MS, 'clock');
+
+    const inconsistent = estimator.push(3 * TICK_MS, 'clock');
+    expect(inconsistent).toMatchObject({
+      state: 'acquiring',
+      acceptedIntervals: 0,
+      rejectedIntervals: 1,
+      phaseLocked: false,
+      phaseTicks: null,
+      lastPulseAtMs: 3 * TICK_MS,
+    });
+
+    let snapshot = inconsistent;
+    for (let tick = 4; tick <= 9; tick += 1) {
+      snapshot = estimator.push(tick * TICK_MS, 'clock');
+    }
+    expect(snapshot).toMatchObject({ state: 'locked', phaseLocked: true, rejectedIntervals: 1 });
+    expect(snapshot.bpm).toBeCloseTo(120, 1);
+    expect(snapshot.phaseTicks).toBeCloseTo(6, 5);
+  });
+
   it('rejects isolated timing outliers without poisoning its period, then reports stale phase after dropout', () => {
     const estimator = new MidiClockEstimator();
     const last = feed(estimator, 9);
@@ -89,6 +113,30 @@ describe('MidiClockEstimator', () => {
 
     const backwards = estimator.push(last - 1, 'a');
     expect(backwards).toMatchObject({ state: 'acquiring', acceptedIntervals: 0, bpm: null, phaseLocked: false, phaseTicks: null });
+  });
+
+  it('counts duplicate and backwards timestamps even when each one forces a fresh anchor', () => {
+    const estimator = new MidiClockEstimator();
+    const last = feed(estimator, 9);
+    expect(estimator.getSnapshot(last).phaseLocked).toBe(true);
+
+    const duplicate = estimator.push(last, 'a');
+    expect(duplicate).toMatchObject({
+      state: 'acquiring',
+      acceptedIntervals: 0,
+      rejectedIntervals: 1,
+      lastPulseAtMs: last,
+      phaseLocked: false,
+    });
+
+    const backwards = estimator.push(last - 1, 'a');
+    expect(backwards).toMatchObject({
+      state: 'acquiring',
+      acceptedIntervals: 0,
+      rejectedIntervals: 2,
+      lastPulseAtMs: last - 1,
+      phaseLocked: false,
+    });
   });
 
   it('rejects invalid BPM-range options and leaves an empty estimator waiting', () => {
