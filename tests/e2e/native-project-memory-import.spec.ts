@@ -146,7 +146,7 @@ test('Native ProjectMemory import resolves after host commit and leaves imported
       };
     });
 
-    expect(result.imported).toEqual({ name: 'Native Import E2E', bpm: 113, tracksWithAudio: 1 });
+    expect(result.imported).toEqual({ name: 'Native Import E2E', bpm: 113, tracksWithAudio: 1, archiveVersion: 1 });
     expect(result.transitions.length).toBeGreaterThan(0);
     expect(result.transitions.at(-1)?.state).toBe('committed');
     expect(result.committedBeforeImportResolved).toBe(true);

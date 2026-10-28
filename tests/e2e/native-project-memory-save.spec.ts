@@ -73,7 +73,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
       throw error;
     }
     expect(hostExit, 'Native host exited while the LCD was saving project memory').toBeUndefined();
-    await expect(status).toContainText('SAVED SLOT 01 · Native Snapshot');
+    await expect(status).toContainText('SAVED SLOT 01 · V2 · Native Snapshot');
     await expect(await findEnhancedControl(page, 'memory-load-slot')).toBeEnabled();
 
     const saved = await page.evaluate(async () => {
@@ -103,8 +103,8 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
         firstTrackFrames: manifest.tracks[0]?.frameCount,
       };
     });
-    expect(saved.metadata).toMatchObject({ slot: 1, name: 'Native Snapshot', bpm: 120, archiveBytes: saved.byteLength });
-    expect(saved.manifest).toMatchObject({ format: 'rc505-project-archive', version: 1, project: { name: 'Native Snapshot', bpm: 120 } });
+    expect(saved.metadata).toMatchObject({ slot: 1, name: 'Native Snapshot', bpm: 120, archiveVersion: 2, archiveBytes: saved.byteLength });
+    expect(saved.manifest).toMatchObject({ format: 'rc505-project-archive', version: 2, project: { name: 'Native Snapshot', bpm: 120 } });
     expect(saved.manifest.tracks).toHaveLength(5);
     expect(saved.manifest.tracks[0]).toMatchObject({ channels: 2 });
     expect(saved.manifest.tracks[0]?.frameCount).toBeGreaterThan(0);
@@ -131,7 +131,7 @@ test('Native runtime saves a revision-consistent PCM project to a browser-local 
     expect(cleared[0]?.contentRevision).toBeGreaterThan(after[0]?.contentRevision ?? -1);
 
     await activateEnhancedAction(page, 'memory-load-slot');
-    await expect(status).toContainText('LOADED Native Snapshot · 1/5 LOOPS', { timeout: 20_000 });
+    await expect(status).toContainText('LOADED V2 Native Snapshot · 1/5 LOOPS', { timeout: 20_000 });
     const restored = await page.evaluate(async () => {
       const response = await fetch('http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=1');
       if (!response.ok) throw new Error(`Restored Native snapshot returned HTTP ${response.status}`);
