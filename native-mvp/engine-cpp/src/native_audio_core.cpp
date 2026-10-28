@@ -948,6 +948,9 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
         static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire)) != LooperState::Recording) {
         error = "REC completion requires a recording track and no pending track/Memory command."; return false;
     }
+    if (nativeLoopTransportPendingCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
+        error = "Wait for Native loop transport callback acknowledgement before completing REC."; return false;
+    }
     if (recordFinishRequested_[trackIndex] != recordFinishApplied_[trackIndex].load(std::memory_order_acquire) &&
         recordFinishCancelled_[trackIndex] != recordFinishRequested_[trackIndex]) {
         error = "REC completion is already pending; do not resend."; return false;
@@ -961,7 +964,9 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
     }
     if (recordFinishRequested_[trackIndex] >= kMaximumSafeProjectContentRevision) { error = "REC completion revision exhausted."; return false; }
     const auto revision = recordFinishRequested_[trackIndex] + 1U;
+    pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
     if (!commandQueue_.push({CommandType::FinishRecording, finishAsDub, static_cast<std::uint8_t>(trackIndex), revision})) {
+        pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         telemetryControlQueueReject_.fetch_add(1U, std::memory_order_relaxed); error = "Command queue is full."; return false;
     }
     recordFinishRequested_[trackIndex] = revision;
@@ -985,6 +990,14 @@ bool NativeAudioCore::toggleTrackOverdub(std::size_t trackIndex, std::string& er
     if (trackIndex >= kNativeTrackCount) { error = "Native track index must be between 0 and 4."; return false; }
     if (!engineRunning_.load(std::memory_order_acquire)) { error = "Engine is not running."; return false; }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (nativeLoopTransportPendingCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
+        error = "Wait for Native loop transport callback acknowledgement before changing overdub state.";
+        return false;
+    }
+    if (pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
+        error = "Wait for queued Native track state transition before changing overdub state.";
+        return false;
+    }
     if (state == LooperState::Playing && nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire)) {
         error = "Native 1SHOT playback cannot be overdubbed.";
         return false;
@@ -1043,7 +1056,9 @@ bool NativeAudioCore::toggleTrackOverdub(std::size_t trackIndex, std::string& er
         error = "Overdub requires a playing loop and a prepared, budgeted pre-overdub snapshot.";
         return false;
     }
+    pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
     if (!commandQueue_.push({CommandType::ToggleOverdub, false, static_cast<std::uint8_t>(trackIndex)})) {
+        pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         if (state == LooperState::Playing && overdubSnapshotReady_[trackIndex].load(std::memory_order_acquire)) {
             const auto bytes = historyPcmBytes_[trackIndex].exchange(0U, std::memory_order_acq_rel);
             historyRetainedBytes_.fetch_sub(bytes, std::memory_order_acq_rel);
@@ -1289,6 +1304,11 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     const auto state = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
+    if (type != CommandType::StopRecordOrPlayback && type != CommandType::Clear &&
+        nativeLoopTransportPendingCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
+        error = "Wait for Native loop transport callback acknowledgement before changing track state.";
+        return false;
+    }
     const bool starting = type == CommandType::Record && state == LooperState::Empty;
     if (starting && recordStartPending_[trackIndex].load(std::memory_order_acquire)) { error = "Record start is already pending."; return false; }
     bool reserved = false;
@@ -1310,7 +1330,9 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         recordingMirrorReserved_[trackIndex].store(true, std::memory_order_release); reserved = true;
     }
     if (starting) recordStartPending_[trackIndex].store(true, std::memory_order_release);
+    pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
     if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex)})) {
+        pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         if (starting) recordStartPending_[trackIndex].store(false, std::memory_order_release);
         telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
         if (reserved) {
@@ -2473,6 +2495,16 @@ bool NativeAudioCore::setNativeLoopTransport(
         error = "Native loop transport configuration is outside the supported Beat Shift/Vinyl Flick ranges.";
         return false;
     }
+    // The callback consumes track commands before loop-transport updates.
+    // Do not accept a later route request behind a queued state transition.
+    bool pendingTrackState = false;
+    for (const auto& pending : pendingTrackStateCommands_) {
+        pendingTrackState = pendingTrackState || pending.load(std::memory_order_acquire) != 0U;
+    }
+    if (commandQueue_.size() != 0U || pendingTrackState) {
+        error = "Wait for queued Native track commands before changing loop transport.";
+        return false;
+    }
     if (config.mode == LoopTransportMode::VinylFlick &&
         looperForTrack(trackIndex).sampleRate() < 8000U) {
         error = "Native Vinyl Flick requires a loop sample rate of at least 8000 Hz.";
@@ -2492,7 +2524,9 @@ bool NativeAudioCore::setNativeLoopTransport(
     }
     const auto revision = nativeLoopTransportRequestedRevision_[trackIndex] + 1U;
     if (engineRunning_.load(std::memory_order_acquire)) {
+        nativeLoopTransportPendingCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
         if (!nativeLoopTransportCommandQueue_.push({trackIndex, config, revision})) {
+            nativeLoopTransportPendingCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
             telemetryControlQueueReject_.fetch_add(1U,std::memory_order_relaxed);
             error = "Native loop transport command queue is full.";
             return false;
@@ -2540,8 +2574,12 @@ bool NativeAudioCore::setNativeDubMode(std::size_t trackIndex, NativeDubMode mod
         error = "Finish recording or overdubbing before changing Native DUB MODE.";
         return false;
     }
-    if (commandQueue_.size() != 0U) {
+    if (commandQueue_.size() != 0U || pendingTrackStateCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
         error = "Wait for queued Native track commands before changing DUB MODE.";
+        return false;
+    }
+    if (nativeLoopTransportPendingCommands_[trackIndex].load(std::memory_order_acquire) != 0U) {
+        error = "Wait for Native loop transport callback acknowledgement before changing DUB MODE.";
         return false;
     }
     const auto previousRevision = nativeDubModeRequestedRevision_[trackIndex].load(std::memory_order_relaxed);
@@ -3898,6 +3936,7 @@ bool NativeAudioCore::openStreamLocked(std::string& error) {
 void NativeAudioCore::closeStreamLocked() noexcept {
     outputQueue_.clear();
     commandQueue_.clear();
+    for (auto& pending : pendingTrackStateCommands_) pending.store(0U, std::memory_order_release);
     if (captureAudio_) {
         if (captureAudio_->isStreamRunning()) {
             captureAudio_->stopStream();
@@ -3942,6 +3981,7 @@ void NativeAudioCore::resetRuntimeStateLocked() noexcept {
     telemetryRuntimeResetCount_.fetch_add(1U,std::memory_order_relaxed);
     for (auto& status : nativeVocoderCarrierStatuses_) status.store(NativeVocoderCarrierStatus::NotRequested, std::memory_order_release);
     commandQueue_.clear();
+    for (auto& pending : pendingTrackStateCommands_) pending.store(0U, std::memory_order_release);
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
         recordStartPending_[track].store(false, std::memory_order_release);
         if (recordFinishApplied_[track].load(std::memory_order_acquire) != recordFinishRequested_[track]) recordFinishCancelled_[track] = recordFinishRequested_[track];
@@ -4216,8 +4256,10 @@ void NativeAudioCore::applyNativePitchCommands() noexcept {
 
 void NativeAudioCore::applyNativeLoopTransportCommands() noexcept {
     NativeLoopTransportCommand command;
+    std::array<std::uint32_t, kNativeTrackCount> appliedCommands{};
     while (nativeLoopTransportCommandQueue_.pop(command)) {
         if (command.trackIndex >= kNativeTrackCount) continue;
+        ++appliedCommands[command.trackIndex];
         auto& looper = looperForTrack(command.trackIndex);
         if (!looper.setLoopTransportConfig(command.config)) {
             nativeLoopTransportFaultRevision_[command.trackIndex].store(command.revision, std::memory_order_release);
@@ -4230,6 +4272,11 @@ void NativeAudioCore::applyNativeLoopTransportCommands() noexcept {
         nativeLoopTransportFaultRevision_[command.trackIndex].store(0U, std::memory_order_release);
     }
     applyOfficialSourceTransports();
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        if (appliedCommands[track] != 0U) {
+            nativeLoopTransportPendingCommands_[track].fetch_sub(appliedCommands[track], std::memory_order_acq_rel);
+        }
+    }
 }
 
 void NativeAudioCore::prepareVocoderCarriers(unsigned int frames) noexcept {
@@ -4826,6 +4873,10 @@ int NativeAudioCore::handleAudioCallback(
                 nativePolyPitchProcessor_->reset();
             }
             applyTrackCommandAtCallback(command);
+            if (command.type != CommandType::SetRecordAction && command.type != CommandType::SetMonitoring &&
+                command.trackIndex < kNativeTrackCount) {
+                pendingTrackStateCommands_[command.trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
+            }
         }
     }
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {
@@ -4908,6 +4959,10 @@ int NativeAudioCore::handleInputAudioCallback(
                 nativePolyPitchProcessor_->reset();
             }
             applyTrackCommandAtCallback(command);
+            if (command.type != CommandType::SetRecordAction && command.type != CommandType::SetMonitoring &&
+                command.trackIndex < kNativeTrackCount) {
+                pendingTrackStateCommands_[command.trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
+            }
         }
     }
     if (!loopSnapshotPinned && historyPinnedTrackIndex_ == kNativeTrackCount) {

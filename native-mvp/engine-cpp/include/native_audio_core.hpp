@@ -930,6 +930,10 @@ private:
     std::array<std::atomic<float>, kNativeTrackCount> nativeTrackFxApplyRms_{};
     SpscRingQueue<NativePitchCommand, 16> nativePitchCommandQueue_;
     SpscRingQueue<NativeLoopTransportCommand, 16> nativeLoopTransportCommandQueue_;
+    // Includes commands popped by the audio callback until their route update
+    // has been applied, so control producers cannot race the queue head.
+    std::array<std::atomic<std::uint32_t>, kNativeTrackCount> nativeLoopTransportPendingCommands_{};
+    std::array<std::atomic<std::uint32_t>, kNativeTrackCount> pendingTrackStateCommands_{};
     SpscRingQueue<NativeDubModeCommand, 16> nativeDubModeCommandQueue_;
     std::array<NativeDubModeCommand, kNativeTrackCount> pendingNativeDubModeCommands_{};
     std::array<bool, kNativeTrackCount> pendingNativeDubModeCommandValid_{};

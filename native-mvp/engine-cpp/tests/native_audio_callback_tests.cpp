@@ -115,6 +115,8 @@ struct NativeAudioCoreTestAccess {
 
     static void commandTrack(NativeAudioCore& core, CommandType type, std::size_t trackIndex, bool value = false) {
         assert(trackIndex < kNativeTrackCount);
+        if (type != CommandType::SetRecordAction && type != CommandType::SetMonitoring)
+            core.pendingTrackStateCommands_[trackIndex].fetch_add(1U, std::memory_order_acq_rel);
         assert(core.commandQueue_.push({type, value, static_cast<std::uint8_t>(trackIndex)}));
     }
 
@@ -2580,6 +2582,59 @@ void testNativeDubModeCannotOvertakePendingTrackCommands() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(pending, false);
 }
 
+void testNativeLoopTransportAndTrackCommandsShareAdmissionOrder() {
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    NativeAudioCoreTestAccess::setInputChannels(core, 2U);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
+    std::array<float, 128U> input{}, output{};
+    input.fill(0.2f);
+    std::string error;
+    LoopTransportConfig config;
+    config.mode = LoopTransportMode::BeatShift;
+    config.beatOffsetBeats = 0.25f;
+    config.bpm = 120.0f;
+    config.crossfadeMs = 1.0f;
+
+    // A queued transport setting must be applied before a new track command
+    // can enter the callback's earlier-consumed track queue.
+    assert(core.setNativeLoopTransport(0U, config, error));
+    assert(!core.recordTrack(0U, error));
+    assert(error.find("loop transport callback acknowledgement") != std::string::npos);
+    assert(core.stopTrack(0U, error)); // Safety actions remain admissible during a transport update.
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.recordTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, input.data(), output.data(), 64U) == 0);
+
+    // Conversely, a track transition already queued owns the next callback
+    // boundary; later transport configuration cannot overtake it.
+    assert(core.stopTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.playTrack(0U, error));
+    assert(!core.setNativeLoopTransport(0U, config, error));
+    assert(error.find("queued Native track commands") != std::string::npos);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    assert(core.setNativeLoopTransport(0U, config, error));
+    assert(!core.toggleTrackOverdub(0U, error));
+    assert(error.find("loop transport callback acknowledgement") != std::string::npos);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    {
+        CallbackPump pump(core, input.data());
+        assert(core.toggleTrackOverdub(0U, error));
+        bool enteredOverdub = false;
+        for (unsigned int wait = 0U; wait < 1000U; ++wait) {
+            if (core.getStatus().nativeTrackStates[0U] == LooperState::Overdubbing) {
+                enteredOverdub = true;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        assert(enteredOverdub);
+    }
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
+}
+
 void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks() {
     using namespace webrc::native;
     NativeAudioCore core;
@@ -2716,6 +2771,7 @@ int main() {
     testNativeWholeMemoryPreparedBanksCommitAndControlAck();
     testNativeDubModeCallbackAckPcmAndUndoCancellation();
     testNativeDubModeCannotOvertakePendingTrackCommands();
+    testNativeLoopTransportAndTrackCommandsShareAdmissionOrder();
     testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread();
     return 0;
 #elif defined(NATIVE_TRACK_MARK_TESTS_ONLY)
@@ -3203,6 +3259,7 @@ int main() {
     testNativeCatalogSlotsRunInsidePlaybackCallback();
     testNativeDubModeCallbackAckPcmAndUndoCancellation();
     testNativeDubModeCannotOvertakePendingTrackCommands();
+    testNativeLoopTransportAndTrackCommandsShareAdmissionOrder();
     testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks();
     testNativeBounceUsesOverdubbingSourcePreviewWithoutOrderDependentAdvance();
     testNativeInputCatalogBankProcessesBeforeRecordAndMonitor();
