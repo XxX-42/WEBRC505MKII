@@ -153,6 +153,18 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.state).toBe(TrackState.STOPPED);
   });
 
+  it('enters overdub from ordinary playback with REC ACTION set to REC->PLAY', async () => {
+    const { engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    engine.getRecordPlaySettings = () => ({ recAction: 'REC->PLAY' });
+    trackAudio.state = TrackState.PLAYING;
+    const overdub = vi.spyOn(trackAudio as any, 'startOverdub').mockImplementation(() => {});
+    const play = vi.spyOn(trackAudio, 'play');
+    trackAudio.triggerRecord();
+    expect(trackAudio.state).toBe(TrackState.OVERDUBBING);
+    expect(overdub).toHaveBeenCalledOnce();
+    expect(play).not.toHaveBeenCalled();
+  });
+
   it('plays one-shot PCM from the reverse head and still finishes without looping', async () => {
     const { context, TrackState, trackAudio } = await createTrackAudioHarness();
     const nodes = installPlaybackNodeSpies(context);
@@ -167,21 +179,6 @@ describe('TrackAudio transport sync helpers', () => {
     expect(nodes.sources[0]?.starts[0]?.offset).toBeCloseTo(1 - 1 / context.sampleRate);
     nodes.sources[0]?.onended?.();
     expect(trackAudio.state).toBe(TrackState.STOPPED);
-  });
-
-  it('uses REC->PLAY to retrigger an ordinary Browser loop from its head', async () => {
-    const { context, engine, trackAudio } = await createTrackAudioHarness();
-    const nodes = installPlaybackNodeSpies(context);
-    (trackAudio as any).audioBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
-    await trackAudio.play();
-    engine.getRecordPlaySettings = () => ({ recAction: 'REC->PLAY' });
-
-    trackAudio.triggerRecord();
-    await Promise.resolve();
-
-    expect(nodes.sources).toHaveLength(2);
-    expect(nodes.sources[0]!.stopTimes).toHaveLength(1);
-    expect(nodes.sources[1]).toMatchObject({ loop: true, starts: [{ when: 0, offset: 0 }] });
   });
 
   it('stops transport when all tracks are stopped or empty', async () => {

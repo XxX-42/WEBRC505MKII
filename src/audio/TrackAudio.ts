@@ -1878,7 +1878,7 @@ export class TrackAudio {
         } else if (this.state === TrackState.PLAYING) {
             // A one-shot track is an audition/retrigger target. It never enters
             // overdub, including when the global record action is REC->DUB.
-            if (this.track.oneShot === 'ON' || this.engine.getRecordPlaySettings?.().recAction === 'REC->PLAY') {
+            if (this.track.oneShot === 'ON') {
                 this.startOffset = this.isReverse && this.audioBuffer
                     ? Math.max(0, this.audioBuffer.duration - 1 / this.audioBuffer.sampleRate)
                     : 0;
