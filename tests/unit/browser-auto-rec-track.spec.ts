@@ -68,6 +68,7 @@ describe('Browser AutoRec fail-closed boundaries', () => {
     const h = harness(); const transport = Transport.getInstance();
     h.track.track.loopSyncSw = 'ON';
     transport.masterTrackId = 2; transport.masterLoopLengthSamples = 176400;
+    h.engine.tracks[1]!.track.loopSyncSw = 'ON';
     h.track.triggerRecord(); await Promise.resolve();
     expect(h.engine.beginInputCaptureSession).not.toHaveBeenCalled();
     expect(h.track.state).toBe(TrackState.EMPTY); expect(h.track.recordingDiagnostic).toMatch(/QUANTIZE OFF/);

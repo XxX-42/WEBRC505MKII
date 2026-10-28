@@ -1176,8 +1176,8 @@ describe('record/play runtime settings', () => {
     it('OFF and MEASURE both align completed slave PCM to the established measure', () => {
         const harness = createHarness();
         const [master, slave] = harness.tracks;
-        master!.track.loopSyncSw = 'ON';
-        slave!.track.loopSyncSw = 'ON';
+        master!.track.loopSyncSw = 'ON'; master!.updateSettings();
+        slave!.track.loopSyncSw = 'ON'; slave!.updateSettings();
         record(master!, [[0.1, 0.2, 0.3, 0.4]]);
         (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->PLAY'});
         record(slave!, [[0.5, 0.6, 0.7]]);
@@ -1191,9 +1191,12 @@ describe('record/play runtime settings', () => {
     it('OFF starts immediately while MEASURE waits for the established grid', () => {
         const harness = createHarness();
         const [master, slave] = harness.tracks;
-        master!.track.loopSyncSw = 'ON';
-        slave!.track.loopSyncSw = 'ON';
+        master!.track.loopSyncSw = 'ON'; master!.updateSettings();
+        slave!.track.loopSyncSw = 'ON'; slave!.updateSettings();
         record(master!, [[0.1, 0.2, 0.3, 0.4]]);
+        (harness.engine as any).getInputCaptureRequestFrame = () => 1;
+        (harness.engine as any).isBrowserTrackLoopSyncEnabled = (trackId: number) => trackId === master!.track.id;
+        expect(harness.transport.establishMasterPhaseOrigin(master!.track.id, 0, 4)).toBe(true);
         const startRecording = vi.spyOn(slave!, 'startRecording').mockResolvedValue(undefined);
         (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->PLAY'});
         (slave as any).scheduleRecordingStart();
@@ -1201,7 +1204,7 @@ describe('record/play runtime settings', () => {
         startRecording.mockClear();
         (harness.engine as any).getRecordPlaySettings = () => ({quantize:'MEASURE', recAction:'REC->PLAY'});
         (slave as any).scheduleRecordingStart();
-        expect(startRecording).not.toHaveBeenCalled();
+        expect(startRecording).toHaveBeenCalledWith(4, harness.transport.masterPhaseRevision, (slave as any).loopSyncSettingsRevision);
         expect(slave!.state).toBe(TrackState.REC_STANDBY);
         slave!.triggerStop();
         Object.defineProperty(harness.context, 'state', {value:'closed'});
