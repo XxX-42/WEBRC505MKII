@@ -1278,6 +1278,7 @@ export class TrackAudio {
         if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) return false;
         const normalizedType = type === null ? null : type.trim().toUpperCase();
         if (normalizedType !== null && normalizedType !== 'BEAT SHIFT' && normalizedType !== 'VINYL FLICK') return false;
+        if (this.track.id === this.transport.masterTrackId) this.transport.clearMasterPhaseOrigin();
         // The Browser overdub writer patches canonical loop-frame indices. Do
         // not let a live source-readhead change the heard position underneath
         // that writer; its saved configuration is restored after final ACK.
@@ -1968,8 +1969,15 @@ export class TrackAudio {
         }
         if (this.engine.getBrowserAutoRecSettings?.().enabled) {
             if (this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
-                this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
-                return;
+                const masterTrackId = this.transport.masterTrackId;
+                const masterLoopSync = masterTrackId === null
+                    ? null : this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) ?? null;
+                if (masterLoopSync !== false) {
+                    this.recordingDiagnostic = masterLoopSync === true
+                        ? 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.'
+                        : 'AutoRec cannot verify the master LOOP SYNC state for quantized recording. Existing loops are preserved.';
+                    return;
+                }
             }
             void this.startRecording();
             return;
@@ -1983,8 +1991,19 @@ export class TrackAudio {
         // has established its start on the AudioContext frame clock.
         if (this.track.loopSyncSw === 'ON' && measureQuantize && this.transport.hasMasterTrack()) {
             const masterTrackId = this.transport.masterTrackId;
-            if (masterTrackId === null || this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) !== true) {
-                this.recordingDiagnostic = 'Measure quantization is unavailable because the master track does not have LOOP SYNC SW enabled. Existing loops are preserved.';
+            const masterLoopSync = masterTrackId === null
+                ? null : this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) ?? null;
+            if (masterLoopSync === false) {
+                // Roland applies REC QUANTIZE only when Rhythm, another synced
+                // track, or MIDI clock supplies a grid. Browser MIDI clock is
+                // unsupported and Rhythm was ruled out above, so this is an
+                // ordinary unquantized start rather than a false failure.
+                this.startRecording();
+                if (this.transport.state !== TransportState.PLAYING) this.transport.start();
+                return;
+            }
+            if (masterLoopSync !== true) {
+                this.recordingDiagnostic = 'Measure quantization is unavailable because the master LOOP SYNC state cannot be verified. Existing loops are preserved.';
                 return;
             }
             const requestFrame = this.engine.getInputCaptureRequestFrame?.();
@@ -2406,8 +2425,15 @@ export class TrackAudio {
                 }
             }
             if (autoRecEnabled && this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF' && this.transport.hasMasterTrack()) {
-                this.recordingDiagnostic = 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.';
-                return;
+                const masterTrackId = this.transport.masterTrackId;
+                const masterLoopSync = masterTrackId === null
+                    ? null : this.engine.isBrowserTrackLoopSyncEnabled?.(masterTrackId) ?? null;
+                if (masterLoopSync !== false) {
+                    this.recordingDiagnostic = masterLoopSync === true
+                        ? 'AutoRec with measure-quantized start is unavailable; set QUANTIZE OFF. Existing loops are preserved.'
+                        : 'AutoRec cannot verify the master LOOP SYNC state for quantized recording. Existing loops are preserved.';
+                    return;
+                }
             }
             const requestedCaptureFrame = quantizedStartFrame ?? this.engine.getInputCaptureRequestFrame?.() ?? null;
             if ((autoRecEnabled || bounceEnabled) && (requestedCaptureFrame === null || !this.engine.beginInputCaptureSession)) {
@@ -3554,6 +3580,7 @@ export class TrackAudio {
 
     public stop() {
         if (this.disposed) return;
+        if (this.track.id === this.transport.masterTrackId) this.transport.clearMasterPhaseOrigin();
         if (this.autoRecArmed) this.abortRecording();
         if (this.loopTransportPlaybackInitialized && this.sourceNode && this.audioBuffer
             && (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING)) {

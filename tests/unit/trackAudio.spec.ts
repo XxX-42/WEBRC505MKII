@@ -295,20 +295,49 @@ describe('TrackAudio transport sync helpers', () => {
     Transport.stop();
   });
 
-  it('refuses a phase-backed quantized start when the master LOOP SYNC switch is off', async () => {
-    const { context, engine, Transport, trackAudio } = await createTrackAudioHarness();
+  it('starts immediately when the only master track has LOOP SYNC off and no other sync source is active', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.id = 2;
     trackAudio.track.loopSyncSw = 'ON';
     Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
     expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
     engine.isBrowserTrackLoopSyncEnabled = () => false;
+    engine.isBrowserRhythmRunning = () => false;
     engine.getRecordPlaySettings = () => ({ quantize: 'MEASURE' } as any);
     const start = vi.spyOn(trackAudio, 'startRecording');
 
     (trackAudio as any).scheduleRecordingStart();
 
-    expect(start).not.toHaveBeenCalled();
-    expect(trackAudio.recordingDiagnostic).toContain('master track does not have LOOP SYNC SW enabled');
+    expect(start).toHaveBeenCalledOnce();
+    expect(start).toHaveBeenCalledWith();
+    expect(trackAudio.state).not.toBe(TrackState.REC_STANDBY);
     Transport.stop();
+  });
+
+  it('clears master phase when the master stops even while another track keeps Transport running', async () => {
+    const { context, engine, TrackState, TransportState, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    Transport.start();
+    engine.tracks.push({ state: TrackState.PLAYING });
+    trackAudio.state = TrackState.PLAYING;
+
+    trackAudio.stop();
+
+    expect(Transport.state).toBe(TransportState.PLAYING);
+    expect(Transport.getNextMeasureStartFrame(200)).toBeNull();
+    Transport.stop();
+  });
+
+  it('clears master phase when a source reader effect is configured during playback', async () => {
+    const { context, Transport, trackAudio } = await createTrackAudioHarness();
+    trackAudio.track.loopSyncSw = 'ON';
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+
+    expect(trackAudio.configureLoopTransportFx(0, 'BEAT SHIFT')).toBe(true);
+    expect(Transport.getNextMeasureStartFrame(200)).toBeNull();
   });
 
   it('plays one-shot PCM once, stops at source completion and retriggers from the directional head', async () => {

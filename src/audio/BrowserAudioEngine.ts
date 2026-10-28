@@ -238,8 +238,9 @@ export class BrowserAudioEngine implements IAudioEngine {
         return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: true, bounceAvailable: true });
     }
     public isBrowserRhythmRunning(): boolean { return this.rhythmEngine.isRunning; }
-    public isBrowserTrackLoopSyncEnabled(trackId: number): boolean {
-        return this.tracks.find((track) => track.track.id === trackId)?.track.loopSyncSw === 'ON';
+    public isBrowserTrackLoopSyncEnabled(trackId: number): boolean | null {
+        const track = this.tracks.find((candidate) => candidate.track.id === trackId);
+        return track ? track.track.loopSyncSw === 'ON' : null;
     }
     public setRecordPlaySettings(patch: RecordPlaySettingsPatch): void {
         assertRecordPlaySettings(patch);

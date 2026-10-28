@@ -20,7 +20,7 @@ export interface IAudioEngine {
     /** True only when the Browser's internal rhythm source is currently running. */
     isBrowserRhythmRunning?(): boolean;
     /** True only when the requested Browser track exists and LOOP SYNC SW is ON. */
-    isBrowserTrackLoopSyncEnabled?(trackId: number): boolean;
+    isBrowserTrackLoopSyncEnabled?(trackId: number): boolean | null;
     context: AudioContext;
     trackMixNode: GainNode;
     roundTripLatency: number;
