@@ -261,11 +261,71 @@ describe('TrackAudio transport sync helpers', () => {
     (trackAudio as any).workletNode = session.node;
     (trackAudio as any).isRecording = false;
     (trackAudio as any).isFinalizingRecording = true;
+    (trackAudio as any).quantizedRecordingStopFrame = 50_000;
     trackAudio.state = TrackState.REC_FINISHING;
 
     trackAudio.triggerStop();
+    trackAudio.triggerStop();
 
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledOnce();
     expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 150);
+  });
+
+  it('keeps an immediate shared-capture Stop idempotent across Stop and ALL STOP until PCM completion', async () => {
+    const { context, engine, TrackState, TransportState, Transport, trackAudio } = await createTrackAudioHarness();
+    const { BrowserAudioEngine } = await import('../../src/audio/BrowserAudioEngine');
+    Transport.stop();
+    Transport.start();
+
+    const previous = context.createBuffer(1, 8, context.sampleRate);
+    previous.getChannelData(0).fill(-0.25);
+    (trackAudio as any).audioBuffer = previous;
+    const node = new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode;
+    const session = { node, trackIndex: 0, sessionId: 91, inputGeneration: 7, startFrame: 100 };
+    let stopCalls = 0;
+    engine.getInputCaptureRequestFrame = () => 150;
+    engine.stopInputCaptureSession = vi.fn(() => ++stopCalls === 1);
+    engine.abortInputCaptureSession = vi.fn();
+    engine.releaseInputCaptureSession = vi.fn();
+    engine.recycleInputCaptureChunk = vi.fn(() => true);
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).recordingCaptureStartAcknowledged = true;
+    (trackAudio as any).workletNode = node;
+    (trackAudio as any).isRecording = true;
+    trackAudio.state = TrackState.RECORDING;
+
+    trackAudio.triggerStop();
+    trackAudio.triggerStop();
+    BrowserAudioEngine.prototype.stopAllTracks.call({ tracks: [trackAudio] } as never);
+
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledOnce();
+    expect(engine.abortInputCaptureSession).not.toHaveBeenCalled();
+    expect((trackAudio as any).recordingCaptureSession).toBe(session);
+    expect((trackAudio as any).audioBuffer).toBe(previous);
+    expect(Array.from(previous.getChannelData(0))).toEqual(Array(8).fill(-0.25));
+    expect(trackAudio.state).toBe(TrackState.RECORDING);
+    expect(Transport.state).toBe(TransportState.PLAYING);
+
+    const captured = new Float32Array(16_384);
+    captured.fill(0.75);
+    (trackAudio as any).handleRecordingMessage(node, {
+      type: 'RECORD_CHUNK', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      chunkIndex: 0, sequence: 0, validFrames: 4, channelCount: 1,
+      startFrame: session.startFrame, channels: [captured],
+    });
+    (trackAudio as any).handleRecordingMessage(node, {
+      type: 'RECORD_COMPLETE', sessionId: session.sessionId, inputGeneration: session.inputGeneration,
+      requestedStartFrame: session.startFrame, stopFrame: 150,
+      framesCaptured: 4, droppedFrames: 0, overflowEvents: 0, chunksSent: 1,
+      channelCount: 1, maxRecordingFrames: 16_384, limitReached: false,
+    });
+
+    expect(engine.abortInputCaptureSession).not.toHaveBeenCalled();
+    expect(engine.releaseInputCaptureSession).toHaveBeenCalledWith(session);
+    expect((trackAudio as any).recordingCaptureSession).toBeNull();
+    expect(trackAudio.state).toBe(TrackState.STOPPED);
+    expect(Array.from((trackAudio as any).audioBuffer.getChannelData(0))).toEqual([0.75, 0.75, 0.75, 0.75]);
+    expect(Transport.state).toBe(TransportState.STOPPED);
   });
 
   it('cancels a finishing stop target when this slave track LOOP SYNC changes', async () => {

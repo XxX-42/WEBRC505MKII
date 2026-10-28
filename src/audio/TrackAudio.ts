@@ -380,6 +380,7 @@ export class TrackAudio {
     // Recording state
     private isRecording: boolean = false;
     private isFinalizingRecording = false;
+    private recordingStopRequestSent = false;
     private recordingStarting = false;
     private quantizedRecordingStartFrame: number | null = null;
     private quantizedRecordingPhaseRevision: number | null = null;
@@ -1979,6 +1980,15 @@ export class TrackAudio {
             return;
         }
 
+        // A Stop may replace a future quantized boundary once, moving it to
+        // the current input frame. Once an immediate boundary has been sent,
+        // repeated Stop/ALL STOP events must not issue another capture stop.
+        if (this.isFinalizingRecording && this.recordingStopRequestSent
+            && !(this.state === TrackState.REC_FINISHING && this.quantizedRecordingStopFrame !== null)) {
+            this.resumeAfterRecording = false;
+            return;
+        }
+
         if (this.state === TrackState.RECORDING || this.state === TrackState.REC_FINISHING) {
             this.resumeAfterRecording = false;
             this.stopRecording();
@@ -2442,6 +2452,8 @@ export class TrackAudio {
             return;
         }
 
+        this.recordingStopRequestSent = false;
+
         if (this.state === TrackState.EMPTY) {
             this.clearMarkInternal();
             this.hasCommittedOverdub = false;
@@ -2708,11 +2720,13 @@ export class TrackAudio {
                 this.recordingDiagnostic = 'The shared input capture could not acknowledge the requested stop frame; the take was discarded.';
                 this.abortSharedRecording(captureSession, true);
             } else {
+                this.recordingStopRequestSent = true;
                 this.armRecordingCaptureStopAckTimeout(captureSession);
             }
             return;
         }
         this.workletNode.port.postMessage({ type: 'STOP_RECORD' });
+        this.recordingStopRequestSent = true;
     }
 
     /** Stop a capture whose live input has ended without committing silent PCM. */
@@ -3056,6 +3070,7 @@ export class TrackAudio {
         this.autoRecArmed = false;
         this.isRecording = false;
         this.isFinalizingRecording = false;
+        this.recordingStopRequestSent = false;
         this.resumeAfterRecording = true;
         this.clearRecordingChunkStorage();
         this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY;
@@ -3203,6 +3218,7 @@ export class TrackAudio {
         if (this.workletNode === workletNode) this.workletNode = null;
         this.clearRecordingChunkStorage();
         this.isFinalizingRecording = false;
+        this.recordingStopRequestSent = false;
     }
 
     private clearRecordingChunkStorage() {
@@ -4855,6 +4871,7 @@ export class TrackAudio {
         this.autoRecArmed = false;
         this.isRecording = false;
         this.isFinalizingRecording = false;
+        this.recordingStopRequestSent = false;
         this.resumeAfterRecording = false;
         this.recordingFramesCaptured = 0;
         this.recordingDroppedFrames = 0;
