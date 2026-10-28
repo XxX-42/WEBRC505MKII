@@ -77,6 +77,24 @@
       <div class="midi-clock-status" role="status" aria-live="polite" data-testid="midi-clock-status">
         {{ midiClockStatus }}
       </div>
+      <div class="midi-clock-phase" data-testid="midi-clock-relative-phase">
+        {{ midiClockPhaseStatus }}
+      </div>
+      <div class="midi-clock-phase-note">
+        Relative to first F8 pulse only; MIDI Clock has no START/downbeat marker and does not sync Transport.
+      </div>
+      <div
+        v-if="clockSnapshot.selectedInputKey"
+        class="midi-clock-phase-stats"
+        data-testid="midi-clock-phase-stats"
+        :data-locked="clockSnapshot.phaseLocked"
+        :data-inferred-missing="clockSnapshot.phaseInferredMissingTicks"
+        :data-rejected="clockSnapshot.phaseRejectedIntervals"
+      >
+        {{ clockSnapshot.phaseAcceptedIntervals }}/{{ clockSnapshot.phaseRequiredIntervals }} intervals ·
+        {{ clockSnapshot.phaseInferredMissingTicks }} inferred missing ·
+        {{ clockSnapshot.phaseRejectedIntervals }} rejected
+      </div>
       <div v-if="clockSnapshot.selectedInputName" class="midi-clock-selected" data-testid="midi-clock-selected">
         {{ clockSnapshot.selectedInputName }}
       </div>
@@ -176,6 +194,19 @@ const midiClockStatus = computed(() => {
   if (snapshot.stability === 'stable') return 'Timing steady · monitor only';
   if (snapshot.stability === 'unstable') return 'Timing varies · monitor only';
   return 'F8 observed · checking timing';
+});
+const midiClockPhaseStatus = computed(() => {
+  const snapshot = clockSnapshot.value;
+  if (snapshot.connection !== 'connected') return 'Relative pulse phase: monitor off';
+  if (!snapshot.selectedInputKey) return 'Relative pulse phase: select one input';
+  if (snapshot.phaseState === 'stale') return 'Relative pulse phase: stale · unlocked';
+  if (snapshot.phaseLocked && snapshot.phaseRelativeTicks !== null) {
+    return `Relative pulse phase: locked · ${snapshot.phaseRelativeTicks.toFixed(2)} ticks from first pulse`;
+  }
+  if (snapshot.phaseState === 'acquiring') {
+    return `Relative pulse phase: acquiring · ${snapshot.phaseAcceptedIntervals}/${snapshot.phaseRequiredIntervals} intervals`;
+  }
+  return 'Relative pulse phase: waiting for F8 clock';
 });
 
 const refreshMidiClock = () => {
@@ -430,6 +461,21 @@ onUnmounted(() => {
   font: 8px var(--font-mono);
   line-height: 1.25;
   text-align: center;
+}
+
+.midi-clock-phase,
+.midi-clock-phase-stats,
+.midi-clock-phase-note {
+  color: var(--rc-muted, #a6a6a6);
+  font-size: 10px;
+  line-height: 1.4;
+  margin-top: 3px;
+  max-width: 220px;
+}
+
+.midi-clock-phase {
+  color: var(--rc-text, #e6e6e6);
+  font-variant-numeric: tabular-nums;
 }
 
 .midi-clock-input-select {

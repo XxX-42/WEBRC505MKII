@@ -36,6 +36,7 @@ export interface MidiClockEstimateSnapshot {
   readonly beatPhase: number | null;
   readonly lastPulseAtMs: number | null;
   readonly acceptedIntervals: number;
+  readonly requiredIntervals: number;
   readonly inferredMissingTicks: number;
   readonly rejectedIntervals: number;
   readonly sourceKey: string | null;
@@ -199,6 +200,7 @@ export class MidiClockEstimator {
       beatPhase,
       lastPulseAtMs: this.lastPulseAtMs,
       acceptedIntervals: this.intervals.length,
+      requiredIntervals: this.lockAfterIntervals,
       inferredMissingTicks: this.inferredMissingTicks,
       rejectedIntervals: this.rejectedIntervals,
       sourceKey: this.sourceKey,

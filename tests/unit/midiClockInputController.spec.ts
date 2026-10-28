@@ -117,6 +117,52 @@ describe('MidiClockInputController', () => {
     expect(controller.getSnapshot(now + 1)).toMatchObject({ signal: 'waiting', stability: 'insufficient-data', inputCount: 1, selectedInputKey: null });
   });
 
+  it('locks relative phase only for the selected source and resets it on source changes', async () => {
+    const first = new FakeInput('First');
+    const second = new FakeInput('Second');
+    const controller = new MidiClockInputController({ requestMIDIAccess: async () => new FakeAccess([first, second]), now: () => 0 });
+    await controller.connect();
+    const [firstPort, secondPort] = controller.getSnapshot(0).inputs;
+    expect(firstPort).toBeDefined();
+    expect(secondPort).toBeDefined();
+    controller.selectInput(firstPort!.key);
+
+    for (let tick = 0; tick < 9; tick += 1) first.send([0xf8], 100 + tick * (60_000 / 120 / 24));
+    const locked = controller.getSnapshot(100 + 8 * (60_000 / 120 / 24));
+    expect(locked).toMatchObject({ phaseState: 'locked', phaseLocked: true, phaseAcceptedIntervals: 8, phaseInferredMissingTicks: 0 });
+    expect(locked.phaseRelativeTicks).toBeCloseTo(8, 5);
+
+    for (let tick = 0; tick < 9; tick += 1) second.send([0xf8], 1000 + tick * (60_000 / 120 / 24));
+    const firstStillSelected = controller.getSnapshot(100 + 8 * (60_000 / 120 / 24));
+    expect(firstStillSelected.phaseRelativeTicks).toBeCloseTo(8, 5);
+    expect(firstStillSelected.selectedInputName).toBe('First');
+
+    controller.selectInput(secondPort!.key);
+    expect(controller.getSnapshot(1200)).toMatchObject({ phaseState: 'waiting', phaseLocked: false, phaseAcceptedIntervals: 0, phaseRelativeTicks: null });
+    second.send([0xf8], 2000);
+    expect(controller.getSnapshot(2000)).toMatchObject({ phaseState: 'acquiring', phaseLocked: false, phaseAcceptedIntervals: 0, phaseRelativeTicks: null });
+    for (let tick = 1; tick < 9; tick += 1) second.send([0xf8], 2000 + tick * (60_000 / 120 / 24));
+    expect(controller.getSnapshot(2000 + 8 * (60_000 / 120 / 24))).toMatchObject({ phaseState: 'locked', phaseLocked: true, selectedInputName: 'Second' });
+  });
+
+  it('expires relative phase before the monitor signal goes stale and clears it when the selected source disconnects', async () => {
+    const first = new FakeInput('First');
+    const second = new FakeInput('Second');
+    const access = new FakeAccess([first, second]);
+    const controller = new MidiClockInputController({ requestMIDIAccess: async () => access, now: () => 0 });
+    await controller.connect();
+    controller.selectInput(controller.getSnapshot(0).inputs[0]!.key);
+    const last = 100 + 8 * (60_000 / 120 / 24);
+    for (let tick = 0; tick < 9; tick += 1) first.send([0xf8], 100 + tick * (60_000 / 120 / 24));
+    expect(controller.getSnapshot(last).phaseLocked).toBe(true);
+    expect(controller.getSnapshot(last + 501)).toMatchObject({ signal: 'observed', phaseState: 'stale', phaseLocked: false, phaseRelativeTicks: null });
+
+    first.state = 'disconnected';
+    access.setPorts([second]);
+    access.changeState();
+    expect(controller.getSnapshot(last + 502)).toMatchObject({ selectedInputKey: null, phaseState: 'waiting', phaseAcceptedIntervals: 0, phaseRelativeTicks: null });
+  });
+
   it('clears a disconnected port and its clock evidence on statechange', async () => {
     const input = new FakeInput('Clock');
     const access = new FakeAccess([input]);

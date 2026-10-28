@@ -51,6 +51,9 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
   await expect(status).toHaveText('Clock monitor off');
   await page.getByRole('button', { name: 'Connect MIDI clock input' }).click();
   await expect(status).toHaveText('Select one input to monitor');
+  const relativePhase = page.getByTestId('midi-clock-relative-phase');
+  await expect(relativePhase).toHaveText('Relative pulse phase: select one input');
+  await expect(page.locator('.midi-clock-phase-note')).toContainText('no START/downbeat marker');
   const source = page.getByTestId('midi-clock-input-select');
   await expect(source.locator('option')).toHaveText(['Select MIDI input', 'Controller Alpha', 'Controller Beta']);
   await source.selectOption({ label: 'Controller Alpha' });
@@ -58,6 +61,7 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
   const transportBefore = await page.evaluate(async () => {
     const { Transport } = await import('/src/core/Transport.ts');
     const transport = Transport.getInstance();
+    transport.setBpm(137);
     return { bpm: transport.bpm, state: transport.state, phaseRevision: transport.masterPhaseRevision };
   });
 
@@ -67,6 +71,9 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     for (let tick = 0; tick <= 24; tick += 1) fake.send([0xf8], start + tick * (60_000 / 120 / 24));
   });
   await expect(status).toHaveText('Timing steady · monitor only');
+  await expect(relativePhase).toContainText('Relative pulse phase: locked');
+  await expect(relativePhase).toContainText('ticks from first pulse');
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-locked', 'true');
   const transportAfter = await page.evaluate(async () => {
     const { Transport } = await import('/src/core/Transport.ts');
     const transport = Transport.getInstance();
@@ -78,6 +85,30 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     fake.send([0xf8], performance.now(), 1);
   });
   await expect(status).toHaveText('Timing steady · monitor only');
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-locked', 'true');
+
+  await source.selectOption({ label: 'Controller Beta' });
+  await expect(relativePhase).toHaveText('Relative pulse phase: waiting for F8 clock');
+  await expect(status).toHaveText('Waiting for F8 clock');
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
+    const start = performance.now();
+    fake.send([0xf8], start, 1);
+    for (let tick = 1; tick <= 24; tick += 1) fake.send([0xf8], start + tick * (60_000 / 120 / 24), 1);
+  });
+  await expect(relativePhase).toContainText('Relative pulse phase: locked');
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-locked', 'true');
+  await expect(page.getByTestId('midi-clock-selected')).toHaveText('Controller Beta');
+  const transportAfterSourceSwitch = await page.evaluate(async () => {
+    const { Transport } = await import('/src/core/Transport.ts');
+    const transport = Transport.getInstance();
+    return { bpm: transport.bpm, state: transport.state, phaseRevision: transport.masterPhaseRevision };
+  });
+  expect(transportAfterSourceSwitch).toEqual(transportBefore);
+
+  await expect(relativePhase).toHaveText('Relative pulse phase: stale · unlocked', { timeout: 1800 });
+  await source.selectOption({ label: 'Controller Alpha' });
+  await expect(relativePhase).toHaveText('Relative pulse phase: waiting for F8 clock');
   const fake = page.evaluate(() => {
     (window as unknown as { __fakeMidiClock: { remove(sourceIndex: number): void } }).__fakeMidiClock.remove(0);
   });

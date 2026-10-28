@@ -1,6 +1,7 @@
 /** Explicitly opt-in, read-only Web MIDI Timing Clock monitor. */
 
 import type { MidiAccessLike, MidiInputLike, MidiMessageEventLike, MidiInputState } from './MidiInputController';
+import { MidiClockEstimator } from './MidiClockEstimator';
 
 export type MidiClockSignal = 'waiting' | 'observed' | 'stale' | 'ambiguous';
 export type MidiClockStability = 'insufficient-data' | 'stable' | 'unstable';
@@ -16,6 +17,15 @@ export interface MidiClockSnapshot {
   readonly inputs: readonly MidiClockInputPort[];
   readonly selectedInputKey: string | null;
   readonly selectedInputName: string | null;
+  /** Relative to the first F8 pulse observed from the selected source; not a downbeat. */
+  readonly phaseRelativeTicks: number | null;
+  readonly phaseRelativeQuarter: number | null;
+  readonly phaseLocked: boolean;
+  readonly phaseState: 'waiting' | 'acquiring' | 'locked' | 'stale';
+  readonly phaseAcceptedIntervals: number;
+  readonly phaseRequiredIntervals: number;
+  readonly phaseInferredMissingTicks: number;
+  readonly phaseRejectedIntervals: number;
 }
 
 /** Session-only key and display name. The Web MIDI port ID is never exposed or persisted. */
@@ -83,6 +93,7 @@ export class MidiClockInputController {
   private readonly portKeys = new WeakMap<MidiInputLike, string>();
   private nextPortKey = 1;
   private selectedInputKey: string | null = null;
+  private readonly phaseEstimator = new MidiClockEstimator();
   private generation = 0;
   private pending?: Promise<MidiInputState>;
 
@@ -167,6 +178,7 @@ export class MidiClockInputController {
     this.access = undefined;
     this.portClocks.clear();
     this.selectedInputKey = null;
+    this.phaseEstimator.reset();
     this.setConnection('disconnected');
     this.onChange?.();
   }
@@ -175,12 +187,14 @@ export class MidiClockInputController {
   selectInput(key: string | null): boolean {
     if (key === null) {
       this.selectedInputKey = null;
+      this.phaseEstimator.reset();
       this.onChange?.();
       return true;
     }
     const exists = [...this.portClocks.values()].some((clock) => clock.key === key);
     if (!exists) return false;
     this.selectedInputKey = key;
+    this.phaseEstimator.reset();
     const selected = [...this.portClocks.values()].find((clock) => clock.key === key);
     if (selected) {
       selected.intervals = [];
@@ -202,6 +216,7 @@ export class MidiClockInputController {
       ? 'insufficient-data'
       : this.isStable(source.intervals) ? 'stable' : 'unstable';
     const medianInterval = source ? this.median(source.intervals) : 0;
+    const phase = source ? this.phaseEstimator.getSnapshot(nowMs) : null;
     return Object.freeze({
       connection: this.connection,
       signal,
@@ -213,6 +228,14 @@ export class MidiClockInputController {
       inputs: Object.freeze([...this.portClocks.values()].map((clock) => Object.freeze({ key: clock.key, name: clock.name }))),
       selectedInputKey: this.selectedInputKey,
       selectedInputName: source?.name ?? null,
+      phaseRelativeTicks: phase?.phaseTicks ?? null,
+      phaseRelativeQuarter: phase?.beatPhase ?? null,
+      phaseLocked: phase?.phaseLocked ?? false,
+      phaseState: phase?.state ?? 'waiting',
+      phaseAcceptedIntervals: phase?.acceptedIntervals ?? 0,
+      phaseRequiredIntervals: phase?.requiredIntervals ?? 6,
+      phaseInferredMissingTicks: phase?.inferredMissingTicks ?? 0,
+      phaseRejectedIntervals: phase?.rejectedIntervals ?? 0,
     });
   }
 
@@ -238,7 +261,10 @@ export class MidiClockInputController {
         input.removeEventListener('midimessage', listener);
         this.inputs.delete(input);
         this.portClocks.delete(input);
-        if (removedKey && this.selectedInputKey === removedKey) this.selectedInputKey = null;
+        if (removedKey && this.selectedInputKey === removedKey) {
+          this.selectedInputKey = null;
+          this.phaseEstimator.reset();
+        }
       }
     }
     for (const input of current) {
@@ -279,6 +305,7 @@ export class MidiClockInputController {
     }
     clock.lastTickAtMs = time;
     clock.tickCount += 1;
+    if (clock.key === this.selectedInputKey) this.phaseEstimator.push(time, clock.key);
   }
 
   private isStable(intervals: readonly number[]): boolean {
