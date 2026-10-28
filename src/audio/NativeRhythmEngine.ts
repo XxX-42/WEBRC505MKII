@@ -76,10 +76,10 @@ export class NativeRhythmEngine {
   setSwingPercent(swingPercent: number): Promise<boolean> { return this.configure({ swingPercent }); }
   setQuantizeGrid(quantizeGrid: RhythmQuantizeGrid): Promise<boolean> { return this.configure({ quantizeGrid }); }
   setVolume(volume: number): Promise<boolean> { return this.configure({ volume }); }
-  setBpm(bpm: number): Promise<boolean> { return this.configure({ bpm }); }
+  setBpm(bpm: number, hostIncarnationId?: string): Promise<boolean> { return this.configure({ bpm }, hostIncarnationId); }
   setSettings(settings: RhythmPlaybackSettings): Promise<boolean> { return this.configure(settings); }
 
-  private configure(patch: Partial<NativeRhythmConfig>): Promise<boolean> {
+  private configure(patch: Partial<NativeRhythmConfig>, hostIncarnationId?: string): Promise<boolean> {
     // Serialize partial edits against the last ACK. Rapid volume/pattern/start/stop
     // changes cannot race and overwrite a newer selection with an older response.
     const command = this.commandTail.then(async (): Promise<boolean> => {
@@ -90,7 +90,7 @@ export class NativeRhythmEngine {
       if (!isNativeRhythmConfig(config)) return this.reject('Unsupported Native rhythm settings. Check BPM, pattern, kit, variation, section, swing, quantize, and volume.');
       this.lastError = '';
       try {
-        const status = await this.host.bridge().setRhythm(config);
+        const status = await this.host.bridge().setRhythm(config, hostIncarnationId);
         this.host.applyStatus(status);
         if (!this.available) return this.reject(this.unavailableReason);
         const acknowledged = this.settings;

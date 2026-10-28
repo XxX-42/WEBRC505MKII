@@ -26,6 +26,7 @@ function readyStatus(overrides: Partial<NativeStatus> = {}): NativeStatus {
     loopProgress: 0,
     nativeLooperTrackCount: 5,
     nativeLooperMultiTrackImplemented: true,
+    hostIncarnationId: 'a'.repeat(32),
     projectContentRevision: 42,
     projectContentRevisionSnapshotStable: true,
     nativeTracks: Array.from({ length: 5 }, (_, index) => ({
@@ -62,7 +63,7 @@ describe('Native project-load operation-start snapshot', () => {
     await expect(engine.restoreProjectArchive(
       { version: 2 } as any,
       new Uint8Array(12),
-      { projectContentRevision: 42, sampleRate: 48_000,
+      { hostIncarnationId: 'a'.repeat(32), projectContentRevision: 42, sampleRate: 48_000,
         transport: { bpm: 120, state: 'Stopped', masterTrackId: null, measureLengthSeconds: 0,
           masterLoopLengthSamples: 0, timeSignatureNumerator: 4, timeSignatureDenominator: 4 },
         projectTransportMutationRevision: 0 },
@@ -88,6 +89,7 @@ describe('Native project-load operation-start snapshot', () => {
     const { engine, getStatus } = nativeEngine(status);
 
     await expect(engine.captureProjectRestoreBaseline()).resolves.toEqual({
+      hostIncarnationId: 'a'.repeat(32),
       projectContentRevision: 42,
       sampleRate: 48_000,
     });

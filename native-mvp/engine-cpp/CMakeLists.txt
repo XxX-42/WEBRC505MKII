@@ -893,6 +893,9 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     nlohmann_json::nlohmann_json
   )
   target_compile_definitions(native_bridge_host_simulation PRIVATE NATIVE_BRIDGE_SIMULATION_ONLY=1)
+  if(WIN32)
+    target_link_libraries(native_bridge_host_simulation PRIVATE bcrypt)
+  endif()
   copy_native_notices_next_to(native_bridge_host_simulation)
 
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -905,6 +908,10 @@ if(NATIVE_BRIDGE_SIMULATION_ONLY)
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_bridge_http_simulation_test.py
       $<TARGET_FILE:native_bridge_host_simulation>
   )
+  add_test(NAME native_host_incarnation_restart
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_host_incarnation_restart_test.py
+      $<TARGET_FILE:native_bridge_host_simulation>)
+  set_tests_properties(native_host_incarnation_restart PROPERTIES RUN_SERIAL TRUE TIMEOUT 30)
   add_test(NAME native_memory_http_simulation
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/native_memory_http_simulation_test.py
       $<TARGET_FILE:native_bridge_host_simulation>)
@@ -1019,7 +1026,7 @@ add_executable(native_bridge_host src/native_bridge_host.cpp)
 target_link_libraries(native_bridge_host PRIVATE native_audio_core httplib::httplib nlohmann_json::nlohmann_json)
 copy_native_notices_next_to(native_bridge_host)
 if(WIN32)
-  target_link_libraries(native_bridge_host PRIVATE ws2_32)
+  target_link_libraries(native_bridge_host PRIVATE ws2_32 bcrypt)
 endif()
 
 add_executable(looper_core_tests

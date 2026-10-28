@@ -31,11 +31,14 @@ export interface ProjectRecoveryMetadata {
   readonly sourceProjectTransportMutationRevision: number;
   readonly sourceModeGeneration: number;
   readonly ownerSessionId: string;
+  /** Missing only on pre-incarnation records; such candidates cannot be reconciled safely. */
+  readonly sourceHostIncarnationId?: string;
   readonly generation?: number;
   readonly availableAtProjectContentRevision?: number;
   readonly committedProjectContentRevision?: number;
   readonly availableAtProjectTransportMutationRevision?: number;
   readonly availableAtModeGeneration?: number;
+  readonly availableAtHostIncarnationId?: string;
 }
 
 interface StoredMetadata extends ProjectMemoryMetadata {}
@@ -188,7 +191,7 @@ export class ProjectMemoryStore {
   /** Persist a full but invisible candidate until the host confirms the import commit. */
   public async stageNativeImportRecovery(input: Omit<ProjectRecoveryMetadata,
     'archiveBytes' | 'savedAt' | 'state' | 'availableAtProjectContentRevision' |
-    'availableAtProjectTransportMutationRevision' | 'availableAtModeGeneration'>,
+    'availableAtProjectTransportMutationRevision' | 'availableAtModeGeneration' | 'availableAtHostIncarnationId'>,
     archive: ArrayBuffer | Uint8Array): Promise<ProjectRecoveryMetadata> {
     const { operationId, name, bpm, archiveVersion, sourceProjectContentRevision,
       sourceProjectTransportMutationRevision, sourceModeGeneration, ownerSessionId, generation } = input;
@@ -198,6 +201,7 @@ export class ProjectMemoryStore {
         (archiveVersion !== 1 && archiveVersion !== 2) || !Number.isSafeInteger(sourceProjectContentRevision) || sourceProjectContentRevision < 0 ||
         !Number.isSafeInteger(sourceProjectTransportMutationRevision) || sourceProjectTransportMutationRevision < 0 ||
         !Number.isSafeInteger(sourceModeGeneration) || sourceModeGeneration < 0 ||
+        !isHostIncarnationId(input.sourceHostIncarnationId) ||
         (generation !== undefined && (!Number.isSafeInteger(generation) || generation <= 0)) || view.byteLength === 0 ||
         !Number.isSafeInteger(view.byteLength) || view.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
       throw new RangeError('Native import recovery archive metadata or size is invalid.');
@@ -208,6 +212,7 @@ export class ProjectMemoryStore {
     const metadata: ProjectRecoveryMetadata = {
       operationId, name: name.trim(), bpm, savedAt: Date.now(), archiveBytes: exactBuffer.byteLength, archiveVersion,
       state: 'staged', sourceProjectContentRevision, sourceProjectTransportMutationRevision, ownerSessionId,
+      sourceHostIncarnationId: input.sourceHostIncarnationId,
       sourceModeGeneration,
       ...(generation === undefined ? {} : { generation }),
     };
@@ -247,13 +252,15 @@ export class ProjectMemoryStore {
     committedProjectContentRevision: number;
     projectTransportMutationRevision: number;
     modeGeneration: number;
+    hostIncarnationId: string;
   }): Promise<ProjectRecoveryMetadata> {
     if (!Number.isSafeInteger(guard.generation) || guard.generation <= 0 ||
         !Number.isSafeInteger(guard.projectContentRevision) || guard.projectContentRevision < 0 ||
         !Number.isSafeInteger(guard.committedProjectContentRevision) || guard.committedProjectContentRevision < 0 ||
         guard.committedProjectContentRevision > guard.projectContentRevision ||
         !Number.isSafeInteger(guard.projectTransportMutationRevision) || guard.projectTransportMutationRevision < 0 ||
-        !Number.isSafeInteger(guard.modeGeneration) || guard.modeGeneration < 0) {
+        !Number.isSafeInteger(guard.modeGeneration) || guard.modeGeneration < 0 ||
+        !isHostIncarnationId(guard.hostIncarnationId)) {
       throw new RangeError('Native recovery commit guard is invalid.');
     }
     const database = await this.openDatabase();
@@ -264,7 +271,8 @@ export class ProjectMemoryStore {
     candidateRequest.onsuccess = () => {
       const candidate = candidateRequest.result;
       if (!candidate || (candidate.state !== 'staged' && candidate.state !== 'pending') ||
-          (candidate.generation !== undefined && candidate.generation !== guard.generation)) { transaction.abort(); return; }
+          (candidate.generation !== undefined && candidate.generation !== guard.generation) ||
+          !isHostIncarnationId(candidate.sourceHostIncarnationId) || candidate.sourceHostIncarnationId !== guard.hostIncarnationId) { transaction.abort(); return; }
       published = {
         ...candidate,
         state: 'active',
@@ -273,6 +281,7 @@ export class ProjectMemoryStore {
         committedProjectContentRevision: guard.committedProjectContentRevision,
         availableAtProjectTransportMutationRevision: guard.projectTransportMutationRevision,
         availableAtModeGeneration: guard.modeGeneration,
+        availableAtHostIncarnationId: guard.hostIncarnationId,
       };
       const activeRequest = store.get(RECOVERY_ACTIVE_KEY) as IDBRequest<string | undefined>;
       activeRequest.onsuccess = () => {
@@ -380,4 +389,8 @@ export class ProjectMemoryStore {
     transaction.objectStore(PAYLOAD_STORE).delete(slot);
     await transactionCompletion(transaction);
   }
+}
+
+function isHostIncarnationId(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{32}$/i.test(value);
 }

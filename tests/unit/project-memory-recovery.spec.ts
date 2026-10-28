@@ -35,6 +35,7 @@ function installWebLock(): void {
 }
 
 function makeEngine(initial: Uint8Array) {
+  const hostIncarnationId = 'b'.repeat(32);
   let bytes = arrayBuffer(initial);
   let contentRevision = 10;
   let transportRevision = 4;
@@ -43,6 +44,7 @@ function makeEngine(initial: Uint8Array) {
   const captureProjectRestoreOperationToken = vi.fn(async () => ({
     mode: 'native' as const, modeGeneration,
     native: {
+      hostIncarnationId,
       projectContentRevision: contentRevision,
       projectTransportMutationRevision: transportRevision,
       sampleRate: 48_000,
@@ -54,7 +56,7 @@ function makeEngine(initial: Uint8Array) {
   }));
   const engine = {
     getMode: () => 'native',
-    getNativeProjectArchiveImportStatus: vi.fn(async (value: number) => ({ state: 'pending' as const, generation: value })),
+    getNativeProjectArchiveImportStatus: vi.fn(async (value: number) => ({ state: 'pending' as const, generation: value, hostIncarnationId })),
     captureProjectRestoreOperationToken,
     exportProjectArchive: vi.fn(async () => new Uint8Array(bytes.slice(0))),
     restoreProjectArchive: vi.fn(async (_project: unknown, incoming: ArrayBuffer | Uint8Array) => {
@@ -62,7 +64,7 @@ function makeEngine(initial: Uint8Array) {
       contentRevision += 1;
       transportRevision += 1;
       generation += 1;
-      return { generation, projectContentRevision: contentRevision, committedProjectContentRevision: contentRevision,
+      return { generation, hostIncarnationId, projectContentRevision: contentRevision, committedProjectContentRevision: contentRevision,
         projectTransportMutationRevision: transportRevision };
     }),
   };
@@ -90,7 +92,8 @@ function makeStore() {
       entry.metadata = { ...entry.metadata, state: 'active',
         availableAtProjectContentRevision: guard.projectContentRevision,
         availableAtProjectTransportMutationRevision: guard.projectTransportMutationRevision,
-        availableAtModeGeneration: guard.modeGeneration };
+        availableAtModeGeneration: guard.modeGeneration,
+        availableAtHostIncarnationId: guard.hostIncarnationId };
       activeId = operationId;
       return entry.metadata;
     }),
@@ -193,7 +196,7 @@ describe('Native project import recovery', () => {
     setRevisions(11, 5);
     engine.restoreProjectArchive.mockImplementation(async () => ({ generation: 77, projectContentRevision: 11, projectTransportMutationRevision: 5 }));
     engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 77,
-      projectContentRevision: 11, committedProjectContentRevision: 11, projectTransportMutationRevision: 5 } as any);
+      hostIncarnationId: 'b'.repeat(32), projectContentRevision: 11, committedProjectContentRevision: 11, projectTransportMutationRevision: 5 } as any);
     await expect(memory.reconcileNativeImportRecovery(77)).resolves.toMatchObject({ state: 'committed', recoveryAvailable: true });
     expect(api.publishNativeImportRecovery).toHaveBeenCalledTimes(1);
   });
@@ -218,13 +221,13 @@ describe('Native project import recovery', () => {
     engine.restoreProjectArchive.mockImplementation(async (_project: unknown, bytes: ArrayBuffer | Uint8Array) => {
       calls += 1;
       if (calls === 1) { entered(); await firstCommit; }
-      return { generation: calls, projectContentRevision: 11 + calls, projectTransportMutationRevision: 5 + calls };
+      return { generation: calls, hostIncarnationId: 'b'.repeat(32), projectContentRevision: 11 + calls, projectTransportMutationRevision: 5 + calls };
     });
     // Make the mock engine reflect each committed receipt for the caller's post-commit check.
     let rev = 10;
     engine.captureProjectRestoreOperationToken.mockImplementation(async () => ({
       mode: 'native', modeGeneration: 2,
-      native: { projectContentRevision: rev, projectTransportMutationRevision: rev - 6, sampleRate: 48_000,
+      native: { hostIncarnationId: 'b'.repeat(32), projectContentRevision: rev, projectTransportMutationRevision: rev - 6, sampleRate: 48_000,
         transport: { bpm: 120, state: 'STOPPED', masterTrackId: null, measureLengthSeconds: 0,
           masterLoopLengthSamples: 0, timeSignatureNumerator: 4, timeSignatureDenominator: 4 } },
     }));
@@ -232,7 +235,7 @@ describe('Native project import recovery', () => {
       calls += 1;
       if (calls === 1) { entered(); await firstCommit; }
       rev += 1;
-      return { generation: calls, projectContentRevision: rev, committedProjectContentRevision: rev,
+      return { generation: calls, hostIncarnationId: 'b'.repeat(32), projectContentRevision: rev, committedProjectContentRevision: rev,
         projectTransportMutationRevision: rev - 6 };
     });
     const first = new ProjectMemory(engine as any, store);
@@ -260,7 +263,7 @@ describe('Native project import recovery', () => {
     const memory = new ProjectMemory(engine as any, store);
     await memory.load(1);
     captureProjectRestoreOperationToken.mockImplementation(async () => ({ mode: 'native', modeGeneration: 2,
-      native: { projectContentRevision: 99, projectTransportMutationRevision: 93, sampleRate: 48_000,
+      native: { hostIncarnationId: 'b'.repeat(32), projectContentRevision: 99, projectTransportMutationRevision: 93, sampleRate: 48_000,
         transport: { bpm: 120, state: 'STOPPED', masterTrackId: null, measureLengthSeconds: 0,
           masterLoopLengthSamples: 0, timeSignatureNumerator: 4, timeSignatureDenominator: 4 } } }));
     await expect(memory.restoreNativeImportRecovery()).rejects.toThrow('stale or belongs to another engine session');
@@ -276,7 +279,7 @@ describe('Native project import recovery', () => {
     const { store, api } = makeStore();
     await api.stageNativeImportRecovery({ operationId: 'crashed-stage-0123456789', ownerSessionId: 'dead-session-01234567890',
       name: 'Incumbent', bpm: 120, archiveVersion: 1, sourceProjectContentRevision: 10,
-      sourceProjectTransportMutationRevision: 4, sourceModeGeneration: 2 }, arrayBuffer(incumbent));
+      sourceProjectTransportMutationRevision: 4, sourceHostIncarnationId: 'b'.repeat(32), sourceModeGeneration: 2 }, arrayBuffer(incumbent));
     const memory = new ProjectMemory(engine as any, store);
     const bytes = arrayBuffer(incoming);
     await expect(memory.importFile({ size: bytes.byteLength, arrayBuffer: async () => bytes } as File))
@@ -314,7 +317,7 @@ describe('Native project import recovery', () => {
     api.readSlot.mockResolvedValue({ metadata: { slot: 1, name: 'Incoming', bpm: 120, savedAt: 1,
       archiveBytes: incoming.byteLength, archiveVersion: 1 }, archive: arrayBuffer(incoming) });
     engine.restoreProjectArchive.mockRejectedValue(new NativeProjectImportIndeterminateError(78));
-    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 78,
+    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 78, hostIncarnationId: 'b'.repeat(32),
       projectContentRevision: 11, recoveryUnavailable: true } as any);
     const memory = new ProjectMemory(engine as any, store);
 
@@ -336,7 +339,7 @@ describe('Native project import recovery', () => {
     api.readSlot.mockResolvedValue({ metadata: { slot: 1, name: 'Incoming', bpm: 120, savedAt: 1,
       archiveBytes: incoming.byteLength, archiveVersion: 1 }, archive: arrayBuffer(incoming) });
     engine.restoreProjectArchive.mockRejectedValue(new NativeProjectImportIndeterminateError(79));
-    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 79,
+    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 79, hostIncarnationId: 'b'.repeat(32),
       projectContentRevision: 11, recoveryUnavailable: true } as any);
     const firstPage = new ProjectMemory(engine as any, store);
     await expect(firstPage.load(1)).rejects.toMatchObject({ generation: 79 });
@@ -347,8 +350,37 @@ describe('Native project import recovery', () => {
     await expect(reloadedPage.reconcileNativeImportRecovery(79)).resolves.toMatchObject({
       state: 'committed', recoveryAvailable: false,
     });
-    expect(engine.getNativeProjectArchiveImportStatus).toHaveBeenCalledExactlyOnceWith(79);
+    expect(engine.getNativeProjectArchiveImportStatus).toHaveBeenCalledExactlyOnceWith(79, 'b'.repeat(32));
     expect(await api.getUnresolvedNativeImportRecovery()).toBeNull();
     expect(api.publishNativeImportRecovery).not.toHaveBeenCalled();
+  });
+
+  it('keeps a durable candidate unresolved when a restarted host reuses its generation and revisions', async () => {
+    installWebLock();
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('c3759dbd-bf3d-46eb-aea9-8a37c3d64e68');
+    const incumbent = await archive('Incumbent', 0.25);
+    const incoming = await archive('Incoming', 0.5);
+    const { engine } = makeEngine(incumbent);
+    const { store, api } = makeStore();
+    api.readSlot.mockResolvedValue({ metadata: { slot: 1, name: 'Incoming', bpm: 120, savedAt: 1,
+      archiveBytes: incoming.byteLength, archiveVersion: 1 }, archive: arrayBuffer(incoming) });
+    engine.restoreProjectArchive.mockRejectedValue(new NativeProjectImportIndeterminateError(80));
+    const memory = new ProjectMemory(engine as any, store);
+    await expect(memory.load(1)).rejects.toMatchObject({ generation: 80 });
+    const pending = await api.getPendingNativeImportRecovery();
+    expect(pending).toMatchObject({ state: 'pending', generation: 80, sourceHostIncarnationId: 'b'.repeat(32) });
+
+    // The restarted host reuses generation 80 and the same content/transport
+    // revisions, but its cryptographic incarnation differs.
+    engine.getNativeProjectArchiveImportStatus.mockResolvedValue({ state: 'committed', generation: 80,
+      hostIncarnationId: 'c'.repeat(32), projectContentRevision: 11,
+      committedProjectContentRevision: 11, projectTransportMutationRevision: 5 } as any);
+    await expect(memory.reconcileNativeImportRecovery(80)).resolves.toMatchObject({ state: 'unavailable', recoveryAvailable: false });
+    expect(engine.getNativeProjectArchiveImportStatus).toHaveBeenCalledWith(80, 'b'.repeat(32));
+    expect(api.getPendingNativeImportRecovery).toHaveReturnedTimes(2);
+    expect(api.publishNativeImportRecovery).not.toHaveBeenCalled();
+    expect(api.discardNativeImportRecoveryStage).not.toHaveBeenCalled();
+    expect(await api.getUnresolvedNativeImportRecovery()).toMatchObject({ state: 'pending', generation: 80,
+      sourceHostIncarnationId: 'b'.repeat(32) });
   });
 });

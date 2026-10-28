@@ -77,7 +77,16 @@ export interface NativeTrackMarkStatus {
   appliedGeneration: number;
 }
 
-export type NativeProjectImportState = 'prepared' | 'pending' | 'claimed' | 'committed' | 'cancelled';
+export type NativeProjectImportState = 'prepared' | 'pending' | 'claimed' | 'committed' | 'cancelled' | 'unavailable';
+
+export function isNativeHostIncarnationId(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{32}$/i.test(value);
+}
+
+export interface NativeProjectImportAcceptance {
+  readonly generation: number;
+  readonly hostIncarnationId: string;
+}
 
 export class NativeProjectImportOutcomeUnknownError extends Error {
   public constructor(cause: unknown) {
@@ -97,6 +106,8 @@ export interface NativeProjectImportStatus {
   projectTransportMutationRevision?: number;
   /** The host confirmed commit, but this client no longer has enough operation state to publish undo recovery safely. */
   recoveryUnavailable?: boolean;
+  hostIncarnationId?: string;
+  hostIncarnationMismatch?: boolean;
 }
 
 export class NativeProjectImportIndeterminateError extends Error {
@@ -196,6 +207,8 @@ export interface NativeCallbackTelemetry {
 }
 
 export interface NativeStatus {
+  /** Cryptographically random process incarnation; missing means the host cannot be safely correlated across restarts. */
+  hostIncarnationId?: string;
   nativeStopTrackAcknowledgement?: { trackId: number; requestedRevision: number; appliedRevision: number; committedRevision: number };
   /** Host callback support for per-take BPM provenance tokens. */
   nativeTempoRecordProvenanceVersion?: number;
@@ -716,7 +729,8 @@ export class NativeBridgeClient {
   }
 
   /** Upload a validated v1 archive with its operation-start host revision. */
-  public async beginProjectArchiveImport(archive: ArrayBuffer | Uint8Array, expectedProjectContentRevision: number): Promise<number> {
+  public async beginProjectArchiveImport(archive: ArrayBuffer | Uint8Array, expectedProjectContentRevision: number,
+      expectedHostIncarnationId: string): Promise<NativeProjectImportAcceptance> {
     const bytes = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
     if (bytes.byteLength < 12 || bytes.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
       throw new RangeError('Native project archive is empty or exceeds the supported archive-size limit.');
@@ -727,11 +741,14 @@ export class NativeBridgeClient {
     if (!Number.isSafeInteger(expectedProjectContentRevision) || expectedProjectContentRevision < 0) {
       throw new RangeError('Native project import requires a valid operation-start content revision.');
     }
+    if (!isNativeHostIncarnationId(expectedHostIncarnationId)) {
+      throw new RangeError('Native project import requires a valid operation-start host incarnation ID.');
+    }
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}/v1/project/import?expectedContentRevision=${expectedProjectContentRevision}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
+        headers: { 'Content-Type': 'application/octet-stream', 'X-Native-Host-Incarnation': expectedHostIncarnationId },
         // Fetch supports ArrayBufferView request bodies. TS 5.9's DOM type is
         // narrower for Uint8Array<ArrayBufferLike>; validated project inputs
         // are ordinary ArrayBuffers, so preserve the view without another
@@ -751,21 +768,28 @@ export class NativeBridgeClient {
         (payload.generation as number) <= 0) {
       throw new NativeProjectImportOutcomeUnknownError('Native bridge returned an invalid project-import generation.');
     }
-    return payload.generation as number;
+    if (!isNativeHostIncarnationId(payload.hostIncarnationId)) {
+      throw new NativeProjectImportIndeterminateError(payload.generation as number,
+        'The import was accepted by a host that did not identify its incarnation; keep the recovery snapshot and do not retry.');
+    }
+    return { generation: payload.generation as number, hostIncarnationId: payload.hostIncarnationId };
   }
 
-  public async commitPreparedMemory(generation: number): Promise<void> {
+  public async commitPreparedMemory(generation: number, hostIncarnationId: string): Promise<void> {
     if (!Number.isSafeInteger(generation) || generation <= 0) throw new RangeError('Memory generation must be a positive safe integer.');
+    if (!isNativeHostIncarnationId(hostIncarnationId)) throw new RangeError('Memory commit requires a valid host incarnation ID.');
     await this.request(`/v1/project/import/commit`, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: String(generation),
+      method: 'POST', headers: { 'Content-Type': 'text/plain', 'X-Native-Host-Incarnation': hostIncarnationId }, body: String(generation),
     });
   }
 
   public async getProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
     if (!Number.isSafeInteger(generation) || generation <= 0) throw new RangeError('Project import generation must be a positive safe integer.');
     const payload = await this.request<BridgeResponse>(`/v1/project/import/status?generation=${generation}`);
+    const hostImportStates = ['prepared', 'pending', 'claimed', 'committed', 'cancelled'] as const;
     if (!isObject(payload) || payload.ok !== true || payload.generation !== generation ||
-        !(['prepared', 'pending', 'claimed', 'committed', 'cancelled'] as const).includes(payload.state as NativeProjectImportState) ||
+        !hostImportStates.includes(payload.state as typeof hostImportStates[number]) ||
+        (payload.hostIncarnationId !== undefined && !isNativeHostIncarnationId(payload.hostIncarnationId)) ||
         (payload.error !== undefined && typeof payload.error !== 'string') ||
         (payload.projectContentRevision !== undefined && (!Number.isSafeInteger(payload.projectContentRevision) ||
           (payload.projectContentRevision as number) < 0)) ||
@@ -776,19 +800,21 @@ export class NativeBridgeClient {
       ok: true,
       generation,
       state: payload.state as NativeProjectImportState,
+      ...(isNativeHostIncarnationId(payload.hostIncarnationId) ? { hostIncarnationId: payload.hostIncarnationId } : {}),
       ...(typeof payload.error === 'string' && payload.error.length > 0 ? { error: payload.error } : {}),
       ...(Number.isSafeInteger(payload.projectContentRevision)
         ? { projectContentRevision: payload.projectContentRevision as number } : {}),
     };
   }
 
-  public async cancelProjectArchiveImport(generation: number): Promise<void> {
+  public async cancelProjectArchiveImport(generation: number, hostIncarnationId: string): Promise<void> {
     if (!Number.isSafeInteger(generation) || generation <= 0) throw new RangeError('Project import generation must be a positive safe integer.');
+    if (!isNativeHostIncarnationId(hostIncarnationId)) throw new RangeError('Project import cancellation requires a valid host incarnation ID.');
     let response: Response;
     try {
       response = await fetch(`${this.baseUrl}/v1/project/import/cancel`, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8', 'X-Native-Host-Incarnation': hostIncarnationId },
         body: JSON.stringify({ generation }),
       });
     } catch (error) {
@@ -802,12 +828,20 @@ export class NativeBridgeClient {
   /** Wait for callback commit; cancellation only succeeds while the generation is pending. */
   public async waitForProjectArchiveImport(
     generation: number,
+    expectedHostIncarnationId: string,
     timeoutMs = 10_000,
     operationStillCurrent: () => boolean = () => true,
   ): Promise<NativeProjectImportStatus> {
+    if (!isNativeHostIncarnationId(expectedHostIncarnationId)) {
+      throw new RangeError('Project import polling requires its accepted host incarnation ID.');
+    }
     const readStatus = async (): Promise<NativeProjectImportStatus> => {
       try {
-        return await this.getProjectArchiveImportStatus(generation);
+        const status = await this.getProjectArchiveImportStatus(generation);
+        if (!isNativeHostIncarnationId(status.hostIncarnationId) || status.hostIncarnationId !== expectedHostIncarnationId) {
+          return { ...status, state: 'unavailable', hostIncarnationMismatch: true };
+        }
+        return status;
       } catch (error) {
         // Once the upload has returned a generation, a lost bridge response
         // cannot prove rollback: the audio callback may still commit it.
@@ -817,14 +851,14 @@ export class NativeBridgeClient {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       const status = await readStatus();
-      if (status.state === 'committed' || status.state === 'cancelled') return status;
+      if (status.state === 'committed' || status.state === 'cancelled' || status.state === 'unavailable') return status;
       // A project operation can become stale after the archive has been
       // accepted but before the audio callback claims it. Cancel only while
       // the host still reports Pending; a claimed generation is never treated
       // as cancelled or rolled back by the client.
       if (status.state === 'pending' && !operationStillCurrent()) {
         try {
-          await this.cancelProjectArchiveImport(generation);
+          await this.cancelProjectArchiveImport(generation, expectedHostIncarnationId);
         } catch (error) {
           throw new NativeProjectImportIndeterminateError(generation, error);
         }
@@ -834,10 +868,10 @@ export class NativeBridgeClient {
       await new Promise<void>((resolve) => setTimeout(resolve, 20));
     }
     const latest = await readStatus();
-    if (latest.state === 'committed' || latest.state === 'cancelled') return latest;
+    if (latest.state === 'committed' || latest.state === 'cancelled' || latest.state === 'unavailable') return latest;
     if (latest.state === 'pending') {
       try {
-        await this.cancelProjectArchiveImport(generation);
+        await this.cancelProjectArchiveImport(generation, expectedHostIncarnationId);
       } catch (error) {
         throw new NativeProjectImportIndeterminateError(generation, error);
       }
@@ -1363,12 +1397,16 @@ export class NativeBridgeClient {
     });
   }
 
-  public async setRhythm(config: NativeRhythmConfig): Promise<NativeStatus> {
+  public async setRhythm(config: NativeRhythmConfig, expectedHostIncarnationId?: string): Promise<NativeStatus> {
     if (!isNativeRhythmConfig(config)) {
       throw new RangeError('Native rhythm settings require BPM 40–300, pattern 1–240, kit 1–16, variation A–D, a supported section, swing 50–75, quantize 1/16|1/8|1/4, and volume 0–100.');
     }
+    if (expectedHostIncarnationId !== undefined && !isNativeHostIncarnationId(expectedHostIncarnationId)) {
+      throw new RangeError('Native rhythm synchronization requires a valid host incarnation ID.');
+    }
     return this.request<NativeStatus>('/v1/native-rhythm/config', {
       method: 'POST',
+      ...(expectedHostIncarnationId ? { headers: { 'X-Native-Host-Incarnation': expectedHostIncarnationId } } : {}),
       body: JSON.stringify(config),
     });
   }

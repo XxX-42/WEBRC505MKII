@@ -3,6 +3,7 @@
 #define NOMINMAX
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <bcrypt.h>
 #endif
 
 #include "native_audio_core.hpp"
@@ -14,12 +15,17 @@
 
 #include <cmath>
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <charconv>
 #include <chrono>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <limits>
+#include <random>
+#include <sstream>
+#include <stdexcept>
 #include <string_view>
 #include <thread>
 
@@ -32,6 +38,35 @@ using namespace webrc::native;
 namespace {
 
 constexpr std::uint64_t kMaximumSafeTempoRevision = 9007199254740991ULL;
+
+std::string createHostIncarnationId() {
+    std::array<unsigned char, 16U> bytes{};
+#if defined(_WIN32)
+    if (BCryptGenRandom(nullptr, bytes.data(), static_cast<ULONG>(bytes.size()), BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0) {
+        throw std::runtime_error("System cryptographic RNG failed to create Native host incarnation ID.");
+    }
+#else
+    std::random_device random;
+    if (random.entropy() <= 0.0) {
+        throw std::runtime_error("System random source has no advertised entropy for Native host incarnation ID.");
+    }
+    for (auto& byte : bytes) byte = static_cast<unsigned char>(random() & 0xffU);
+#endif
+    std::ostringstream result;
+    result << std::hex << std::setfill('0');
+    for (const auto byte : bytes) result << std::setw(2) << static_cast<unsigned int>(byte);
+    return result.str();
+}
+
+const std::string& hostIncarnationId() {
+    static const std::string id = createHostIncarnationId();
+    return id;
+}
+
+bool requestMatchesHostIncarnation(const httplib::Request& request) {
+    return request.get_header_value_count("X-Native-Host-Incarnation") == 1U &&
+        request.get_header_value("X-Native-Host-Incarnation") == hostIncarnationId();
+}
 
 bool exactMemoryKeys(const json& value, std::initializer_list<const char*> keys) {
     return value.is_object() && value.size() == keys.size() && std::all_of(keys.begin(), keys.end(),
@@ -797,6 +832,7 @@ json statusToJson(const EngineStatus& status) {
         {"outputDeviceName", status.outputDeviceName},
         {"sampleRate", status.sampleRate},
         {"bufferFrames", status.bufferFrames},
+        {"hostIncarnationId", hostIncarnationId()},
         {"projectContentRevision", status.projectContentRevision},
         {"projectContentRevisionSnapshotStable", status.projectContentRevisionSnapshotStable},
         {"monitoringEnabled", status.monitoringEnabled},
@@ -1032,6 +1068,7 @@ const char* projectImportStateToString(NativeProjectImportState state) {
 json projectImportStatusToJson(const NativeProjectImportStatus& status) {
     json result{
         {"ok", true},
+        {"hostIncarnationId", hostIncarnationId()},
         {"generation", status.generation},
         {"state", projectImportStateToString(status.state)},
     };
@@ -1256,7 +1293,7 @@ void enableLoopbackCors(httplib::Server& server) {
 
             response.status = 204;
             response.set_header("Access-Control-Allow-Methods", "GET, POST");
-            response.set_header("Access-Control-Allow-Headers", "Content-Type");
+            response.set_header("Access-Control-Allow-Headers", "Content-Type, X-Native-Host-Incarnation");
             response.set_header("Access-Control-Max-Age", "600");
             return httplib::Server::HandlerResponse::Handled;
         }
@@ -1388,6 +1425,11 @@ int main() {
 
     server.Post("/v1/project/import", [&engine](const httplib::Request& request, httplib::Response& response,
                                                 const httplib::ContentReader& contentReader) {
+        if (!requestMatchesHostIncarnation(request)) {
+            response.status = 409;
+            writeError(response, "Native host incarnation changed or is unsupported; project import was not accepted.");
+            return;
+        }
         if (normalizedHeaderValue(request.get_header_value("Content-Type")) != "application/octet-stream") {
             response.status = 415;
             writeError(response, "Native project import requires an application/octet-stream archive body.");
@@ -1498,10 +1540,15 @@ int main() {
             return;
         }
         response.status = 202;
-        writeJson(response, json{{"ok", true}, {"generation", generation}});
+        writeJson(response, json{{"ok", true}, {"generation", generation}, {"hostIncarnationId", hostIncarnationId()}});
     });
 
     server.Post("/v1/project/import/commit", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!requestMatchesHostIncarnation(request)) {
+            response.status = 409;
+            writeError(response, "Native host incarnation changed or is unsupported; prepared generation was not committed.");
+            return;
+        }
         std::uint64_t generation = 0U;
         if (!parseProjectImportGeneration(request.body, generation)) {
             response.status = 400; writeError(response, "Expected a prepared Memory generation."); return;
@@ -1510,7 +1557,7 @@ int main() {
         if (!engine.commitPreparedMemory(generation, error)) {
             response.status = 409; writeError(response, error); return;
         }
-        writeJson(response, json{{"ok", true}, {"generation", generation}});
+        writeJson(response, json{{"ok", true}, {"generation", generation}, {"hostIncarnationId", hostIncarnationId()}});
     });
 
     server.Get("/v1/project/import/status", [&engine](const httplib::Request& request, httplib::Response& response) {
@@ -1531,6 +1578,11 @@ int main() {
     });
 
     server.Post("/v1/project/import/cancel", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (!requestMatchesHostIncarnation(request)) {
+            response.status = 409;
+            writeError(response, "Native host incarnation changed or is unsupported; generation cancellation was not attempted.");
+            return;
+        }
         // Fetch supplies a charset parameter for string bodies. Compare only the
         // media type token here; other routes retain their existing header rules.
         const auto contentType = request.get_header_value("Content-Type");
@@ -3326,6 +3378,11 @@ int main() {
     });
 
     server.Post("/v1/native-rhythm/config", [&engine](const httplib::Request& request, httplib::Response& response) {
+        if (request.has_header("X-Native-Host-Incarnation") && !requestMatchesHostIncarnation(request)) {
+            response.status = 409;
+            writeError(response, "Native host incarnation changed; project-import rhythm synchronization was not applied.");
+            return;
+        }
         try {
             const auto body = json::parse(request.body);
             if (!body.is_object()) {

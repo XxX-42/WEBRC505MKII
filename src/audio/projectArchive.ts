@@ -67,6 +67,7 @@ export interface BrowserProjectRestoreToken {
 
 /** Fresh Native host revision plus the app-owned project transport state at load start. */
 export interface NativeProjectRestoreToken {
+  readonly hostIncarnationId: string;
   readonly projectContentRevision: number;
   /** App-owned project transport mutation epoch; unlike values alone it detects an edit-and-revert race. */
   readonly projectTransportMutationRevision: number;
@@ -85,6 +86,7 @@ export interface NativeProjectRestoreToken {
 /** Host and app epochs observed after a successful Native archive commit. */
 export interface NativeProjectImportCommitReceipt {
   readonly generation: number;
+  readonly hostIncarnationId: string;
   /** Current stable revision after the app has synchronized imported transport/BPM. */
   readonly projectContentRevision: number;
   /** Exact Native callback-boundary revision that committed the archive PCM. */

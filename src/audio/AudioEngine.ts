@@ -1096,9 +1096,9 @@ export class AudioEngine {
   }
 
   /** Check a Native import generation without uploading or changing the PCM bank again. */
-  public async getNativeProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
+  public async getNativeProjectArchiveImportStatus(generation: number, expectedHostIncarnationId?: string): Promise<NativeProjectImportStatus> {
     if (this.currentMode !== 'native') throw new Error('Native project-import status is only available in Native audio mode.');
-    return this.nativeEngine.getProjectArchiveImportStatus(generation);
+    return this.nativeEngine.getProjectArchiveImportStatus(generation, expectedHostIncarnationId);
   }
 
   public async recordTrack() {

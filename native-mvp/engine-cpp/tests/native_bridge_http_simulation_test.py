@@ -21,6 +21,8 @@ HOST_URL = f"http://127.0.0.1:{os.environ.get('WEBRC_NATIVE_BRIDGE_PORT', '17755
 def request(path, method="GET", body=None, headers=None):
     data = None if body is None else json.dumps(body).encode("utf-8")
     request_headers = dict(headers or {})
+    if path.startswith("/v1/project/import/commit") or path.startswith("/v1/project/import/cancel"):
+        request_headers.setdefault("X-Native-Host-Incarnation", request("/v1/status")[1]["hostIncarnationId"])
     if method == "POST":
         request_headers.setdefault("Origin", "http://localhost:5173")
     if data is not None:
@@ -70,8 +72,10 @@ def request_binary(path, method, body):
         return error.code, error.headers, error.read()
 
 
-def request_project_archive(path, method="POST", body=None, content_type=None):
+def request_project_archive(path, method="POST", body=None, content_type=None, host_incarnation_id=None):
     headers = {"Origin": "http://localhost:5173"}
+    if path.startswith("/v1/project/import"):
+        headers["X-Native-Host-Incarnation"] = host_incarnation_id or request("/v1/status")[1]["hostIncarnationId"]
     if content_type is not None:
         headers["Content-Type"] = content_type
     # Header validation may reject an invalid import before consuming its large
@@ -1601,6 +1605,10 @@ def main():
                 "project-import route test requires the simulated engine to be running")
         require(project_before.get("projectArchiveV2Supported") is True,
                 "Native host did not advertise ProjectArchive v2 capability")
+        host_incarnation = project_before.get("hostIncarnationId")
+        require(isinstance(host_incarnation, str) and len(host_incarnation) == 32 and
+                all(character in "0123456789abcdef" for character in host_incarnation.lower()),
+                f"Native host did not publish a 128-bit incarnation ID: {host_incarnation!r}")
         project_revision = project_before.get("projectContentRevision")
         require(isinstance(project_revision, int) and project_revision >= 0 and
                 project_before.get("projectContentRevisionSnapshotStable") is True,
@@ -1620,6 +1628,12 @@ def main():
         require(len(valid_archive) > 1024 * 1024,
                 "valid project-import fixture must exceed the small control-body cap")
         invalid_archive = valid_archive[:-1] + bytes([valid_archive[-1] ^ 1])
+        status, stale_host = request_project_archive(
+            project_import_path, "POST", valid_archive, "application/octet-stream", "0" * 32)
+        require(status == 409 and "incarnation" in stale_host.get("error", "").lower(),
+                f"Native project import accepted a stale host incarnation: {stale_host}")
+        require(request("/v1/status")[1]["projectContentRevision"] == project_revision,
+                "stale host incarnation changed the project revision")
         status, missing_revision = request_project_archive(
             "/v1/project/import", "POST", invalid_archive, "application/octet-stream")
         require(status == 400 and "expectedContentRevision" in missing_revision.get("error", ""),

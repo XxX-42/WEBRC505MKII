@@ -6,7 +6,7 @@ import { findOfficialRuntimeParameter, isOfficialRuntimeValueValid, resolveOffic
 import { mixerState, mixerChannelIndex, assertMixerLevel, type MixerChannel, type MixerState } from './Mixer';
 import { TrackState } from '../core/types';
 import { Transport } from '../core/Transport';
-import { assertNativeFxTarget, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
+import { assertNativeFxTarget, isNativeHostIncarnationId, nativeRecordTempoToken, nativeRecordTempoTokenMatches, NativeBridgeClient, NativeBridgeRequestTimeoutError, NativeTrackFxApplyAcknowledgementError, NativeProjectImportIndeterminateError, type NativeCatalogSlotStatus, type NativeCatalogMidiSlotStatus, type NativeBackend, type NativeCatalogMidiEvent, type NativeCatalogSlotConfig, type NativeConfig, type NativeDeviceCatalog, type NativeDeviceInfo, type NativeFxParameterDescriptor, type NativeFxParameterSchema, type NativeFxSlot, type NativeHqEngine, type NativeDubMode, type NativeDubModeStatus, type NativeLoopTransportConfig, type NativeLoopTransportStatus, type NativeOscVocMidiEvent, type NativePitchConfig, type NativePitchStatus, type NativeProjectImportStatus, type NativeRecordTempoToken, type NativeStatus, type NativeTrackHistoryStatus, type NativeTrackMarkStatus } from './NativeBridgeClient';
 import {
   assertHqWavExportMemoryBudget,
   type HqWavExportOptions,
@@ -104,6 +104,7 @@ export class NativeProjectArchiveCommittedError extends Error {
 }
 
 class CommittedImportRecoveryUnavailableError extends Error {}
+class NativeProjectHostIncarnationMismatchError extends Error {}
 
 export interface NativeCatalogFxSlotRuntime {
   path: NativeFxPath;
@@ -231,6 +232,7 @@ export class NativeAudioEngine {
   private nativeFxSyncScheduled = false;
   private syncingNativeRhythmBpm = false;
   private readonly pendingProjectImportSync = new Map<number, Pick<ProjectArchive, 'bpm' | 'transport'> & {
+    hostIncarnationId: string;
     operationStartTransport: NativeProjectRestoreToken['transport'];
     operationStartTransportRevision: number;
     synchronizationStarted: boolean;
@@ -1040,10 +1042,13 @@ export class NativeAudioEngine {
    * The decoded archive bytes are sent intact so the host independently checks
    * the manifest, hashes, sample values, rate, and all-track capacity.
    */
-  public async captureProjectRestoreBaseline(): Promise<{ projectContentRevision: number; sampleRate: number }> {
+  public async captureProjectRestoreBaseline(): Promise<{ hostIncarnationId: string; projectContentRevision: number; sampleRate: number }> {
     // Read directly from the host, never from latestStatus: the latter is
     // polled asynchronously and may predate edits made just before load.
     const status = await this.bridge.getStatus();
+    if (!isNativeHostIncarnationId(status.hostIncarnationId)) {
+      throw new Error('Native host does not report a restart-safe incarnation ID; project import was not started. Update the Native host and retry.');
+    }
     if (!status.engineRunning || status.nativeLooperMultiTrackImplemented !== true ||
         status.nativeLooperTrackCount !== 5 || !Array.isArray(status.nativeTracks) || status.nativeTracks.length !== 5) {
       throw new Error('Native project load requires a running five-track host with operation-start revision support.');
@@ -1062,7 +1067,7 @@ export class NativeAudioEngine {
     }
     const busy = status.nativeTracks.find((track) => track.state === 'Recording' || track.state === 'Overdubbing');
     if (busy) throw new Error(`Stop Native Track ${busy.trackId} recording or overdubbing before loading project memory.`);
-    return { projectContentRevision: status.projectContentRevision!, sampleRate: status.sampleRate };
+    return { hostIncarnationId: status.hostIncarnationId, projectContentRevision: status.projectContentRevision!, sampleRate: status.sampleRate };
   }
 
   public captureProjectTransportMutationRevision(): number {
@@ -1084,6 +1089,11 @@ export class NativeAudioEngine {
       throw new Error('Project archive is empty or exceeds the supported Native import size');
     }
     const currentHostStatus = await this.bridge.getStatus();
+    if (!isNativeHostIncarnationId(operationStart.hostIncarnationId) ||
+        !isNativeHostIncarnationId(currentHostStatus.hostIncarnationId) ||
+        currentHostStatus.hostIncarnationId !== operationStart.hostIncarnationId) {
+      throw new Error('Native host incarnation changed or is unsupported before import submission; current PCM and transport were left unchanged.');
+    }
     if (!currentHostStatus.engineRunning) {
       throw new Error('Start the Native audio engine before importing project memory');
     }
@@ -1115,15 +1125,39 @@ export class NativeAudioEngine {
     if (!operationStillCurrent()) {
       throw new Error('Native project load was canceled because the user changed transport before the host import was submitted; the existing project remains loaded. Retry the load.');
     }
-    const generation = await this.bridge.beginProjectArchiveImport(bytes, operationStart.projectContentRevision);
+    let acceptance: { generation: number; hostIncarnationId: string };
+    try {
+      acceptance = await this.bridge.beginProjectArchiveImport(bytes, operationStart.projectContentRevision, operationStart.hostIncarnationId);
+    } catch (error) {
+      if (error instanceof NativeProjectImportIndeterminateError) {
+        this.pendingProjectImportSync.set(error.generation, {
+          hostIncarnationId: operationStart.hostIncarnationId,
+          bpm: project.bpm, transport: saved,
+          operationStartTransport: operationStart.transport,
+          operationStartTransportRevision: operationStart.projectTransportMutationRevision,
+          synchronizationStarted: false,
+        });
+      }
+      throw error;
+    }
+    const { generation } = acceptance;
     this.pendingProjectImportSync.set(generation, {
+      hostIncarnationId: operationStart.hostIncarnationId,
       bpm: project.bpm,
       transport: saved,
       operationStartTransport: operationStart.transport,
       operationStartTransportRevision: operationStart.projectTransportMutationRevision,
       synchronizationStarted: false,
     });
-    const status = await this.bridge.waitForProjectArchiveImport(generation, 10_000, operationStillCurrent);
+    if (acceptance.hostIncarnationId !== operationStart.hostIncarnationId) {
+      throw new NativeProjectImportIndeterminateError(generation,
+        'The host incarnation changed while the import was accepted; the recovery candidate remains pending and transport was not synchronized.');
+    }
+    const status = await this.bridge.waitForProjectArchiveImport(generation, operationStart.hostIncarnationId, 10_000, operationStillCurrent);
+    if (status.state === 'unavailable') {
+      throw new NativeProjectImportIndeterminateError(generation,
+        'Native host incarnation changed or its identity is missing; the saved recovery candidate was retained and no transport was synchronized.');
+    }
     if (status.state !== 'committed') {
       this.pendingProjectImportSync.delete(generation);
       throw new Error(status.error || `Native project import generation ${generation} was cancelled; the previous project remains loaded`);
@@ -1133,10 +1167,16 @@ export class NativeAudioEngine {
   }
 
   /** Reconcile a previously accepted generation without uploading/mutating again. */
-  public async getProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
+  public async getProjectArchiveImportStatus(generation: number, expectedHostIncarnationId?: string): Promise<NativeProjectImportStatus> {
     const status = await this.bridge.getProjectArchiveImportStatus(generation);
+    const local = this.pendingProjectImportSync.get(generation);
+    const expectedHost = expectedHostIncarnationId ?? local?.hostIncarnationId;
+    if (!isNativeHostIncarnationId(expectedHost) || !isNativeHostIncarnationId(status.hostIncarnationId) ||
+        status.hostIncarnationId !== expectedHost) {
+      return { ...status, state: 'unavailable', hostIncarnationMismatch: true };
+    }
     if (status.state === 'committed') {
-      if (!this.pendingProjectImportSync.has(generation)) {
+      if (!local) {
         // The host's exact generation status is authoritative, but a restarted
         // page has lost the operation-start transport and sync receipt. Never
         // reconstruct that state from the current project; resolve the commit
@@ -1163,6 +1203,9 @@ export class NativeAudioEngine {
       // synchronization, which can advance the broader host revision. On a
       // later retry, bind to the original per-loop revisions instead.
       const callbackCommitStatus = await this.bridge.getStatus();
+      if (callbackCommitStatus.hostIncarnationId !== savedProject.hostIncarnationId) {
+        throw new NativeProjectHostIncarnationMismatchError('Native host incarnation changed before committed import reconciliation.');
+      }
       const callbackTrackSnapshot = nativeProjectTrackSnapshot(callbackCommitStatus.nativeTracks);
       const transport = Transport.getInstance();
       if (callbackCommitStatus.projectContentRevisionSnapshotStable !== true) {
@@ -1220,7 +1263,7 @@ export class NativeAudioEngine {
       const synchronizedTransportRevision = savedProject.synchronizedTransportRevision;
 
       if (this.rhythmEngine.available && this.rhythmEngine.settings?.bpm !== bpm) {
-        if (!await this.rhythmEngine.setBpm(bpm)) {
+        if (!await this.rhythmEngine.setBpm(bpm, savedProject.hostIncarnationId)) {
           syncFailures.push(this.rhythmEngine.error || 'Native rhythm did not acknowledge the imported project BPM');
         }
       }
@@ -1228,6 +1271,9 @@ export class NativeAudioEngine {
       let recoveryInvalidation: string | null = null;
       try {
         synchronizedStatus = await this.bridge.getStatus();
+        if (synchronizedStatus.hostIncarnationId !== savedProject.hostIncarnationId) {
+          throw new NativeProjectHostIncarnationMismatchError('Native host incarnation changed while import transport was being reconciled.');
+        }
         const synchronizedTrackSnapshot = nativeProjectTrackSnapshot(synchronizedStatus.nativeTracks);
         if (synchronizedStatus.projectContentRevisionSnapshotStable === true && synchronizedTrackSnapshot &&
             !sameNativeProjectTrackSnapshot(callbackTrackSnapshot, synchronizedTrackSnapshot)) {
@@ -1276,11 +1322,14 @@ export class NativeAudioEngine {
       }
       if (syncFailures.length > 0) throw new Error(syncFailures.join('; '));
       this.pendingProjectImportSync.delete(generation);
-      return { generation, projectContentRevision: synchronizedStatus!.projectContentRevision!,
+      return { generation, hostIncarnationId: savedProject.hostIncarnationId, projectContentRevision: synchronizedStatus!.projectContentRevision!,
         committedProjectContentRevision: committedContentRevision,
         projectTransportMutationRevision: synchronizedTransportRevision };
     } catch (error) {
       this.syncingNativeRhythmBpm = false;
+      if (error instanceof NativeProjectHostIncarnationMismatchError) {
+        throw new NativeProjectImportIndeterminateError(generation, error);
+      }
       const recoveryUnavailable = error instanceof CommittedImportRecoveryUnavailableError;
       if (recoveryUnavailable) this.pendingProjectImportSync.delete(generation);
       const preserveUserTransport = !this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision);

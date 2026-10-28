@@ -10,7 +10,7 @@ import { Transport } from '../core/Transport';
 import { withProjectArchiveMutationLock } from './projectArchiveMutationLock';
 import type { ProjectRestoreOperationToken, NativeProjectRestoreToken, NativeProjectImportCommitReceipt } from './projectArchive';
 import { NativeProjectImportIndeterminateError, NativeProjectImportOutcomeUnknownError,
-  type NativeProjectImportState } from './NativeBridgeClient';
+  isNativeHostIncarnationId, type NativeProjectImportState } from './NativeBridgeClient';
 
 export interface ProjectMemoryLoadResult {
   readonly name: string;
@@ -70,7 +70,14 @@ export class ProjectMemory {
       if (!pending || pending.generation !== generation) {
         throw new Error('No matching Native recovery candidate is pending for this generation.');
       }
-      const status = await this.engine.getNativeProjectArchiveImportStatus(generation);
+      if (!isNativeHostIncarnationId(pending.sourceHostIncarnationId)) {
+        return { state: 'unavailable', recoveryAvailable: false };
+      }
+      const status = await this.engine.getNativeProjectArchiveImportStatus(generation, pending.sourceHostIncarnationId);
+      if (status.state === 'unavailable' || !isNativeHostIncarnationId(status.hostIncarnationId) ||
+          status.hostIncarnationId !== pending.sourceHostIncarnationId) {
+        return { state: 'unavailable', recoveryAvailable: false };
+      }
       if (status.state === 'cancelled') {
         await this.store.discardNativeImportRecoveryStage(pending.operationId);
         return { state: status.state, recoveryAvailable: false };
@@ -85,6 +92,7 @@ export class ProjectMemory {
       }
       await this.publishCommittedCandidate(pending, {
         generation,
+        hostIncarnationId: status.hostIncarnationId!,
         projectContentRevision: status.projectContentRevision,
         committedProjectContentRevision: status.committedProjectContentRevision ?? status.projectContentRevision,
         projectTransportMutationRevision: status.projectTransportMutationRevision,
@@ -223,6 +231,7 @@ export class ProjectMemory {
       operationId, name: project.name, bpm: project.bpm, archiveVersion: version,
       sourceProjectContentRevision: initial.projectContentRevision,
       sourceProjectTransportMutationRevision: initial.projectTransportMutationRevision,
+      sourceHostIncarnationId: initial.hostIncarnationId,
       sourceModeGeneration: operationToken.modeGeneration,
       ownerSessionId: this.sessionId,
     }, archive);
@@ -240,6 +249,10 @@ export class ProjectMemory {
     if (staged.generation !== undefined && staged.generation !== receipt.generation) {
       throw new Error('Native recovery candidate generation does not match the committed host receipt.');
     }
+    if (!isNativeHostIncarnationId(staged.sourceHostIncarnationId) ||
+        staged.sourceHostIncarnationId !== receipt.hostIncarnationId) {
+      throw new Error('Native host incarnation does not match the persisted recovery candidate; recovery was not published.');
+    }
     if (!Number.isSafeInteger(receipt.committedProjectContentRevision) || receipt.committedProjectContentRevision < 0 ||
         receipt.committedProjectContentRevision > receipt.projectContentRevision) {
       throw new Error('Native commit receipt does not contain a valid callback and post-sync revision pair.');
@@ -247,7 +260,8 @@ export class ProjectMemory {
     const current = await this.engine.captureProjectRestoreOperationToken();
     if (current.mode !== 'native' || current.modeGeneration !== staged.sourceModeGeneration ||
         !current.native || current.native.projectContentRevision !== receipt.projectContentRevision ||
-        current.native.projectTransportMutationRevision !== receipt.projectTransportMutationRevision) {
+        current.native.projectTransportMutationRevision !== receipt.projectTransportMutationRevision ||
+        current.native.hostIncarnationId !== receipt.hostIncarnationId) {
       throw new Error('Native commit receipt no longer matches the current project revision; recovery was not published.');
     }
     await this.store.publishNativeImportRecovery(staged.operationId, {
@@ -256,6 +270,7 @@ export class ProjectMemory {
       committedProjectContentRevision: receipt.committedProjectContentRevision,
       projectTransportMutationRevision: receipt.projectTransportMutationRevision,
       modeGeneration: current.modeGeneration,
+      hostIncarnationId: receipt.hostIncarnationId,
     });
   }
 
@@ -291,6 +306,9 @@ export class ProjectMemory {
 
   private assertRecoveryGuard(metadata: ProjectRecoveryMetadata, token: ProjectRestoreOperationToken): void {
     if (metadata.ownerSessionId !== this.sessionId || token.mode !== 'native' || !token.native ||
+        !isNativeHostIncarnationId(metadata.availableAtHostIncarnationId) ||
+        metadata.availableAtHostIncarnationId !== token.native.hostIncarnationId ||
+        metadata.sourceHostIncarnationId !== token.native.hostIncarnationId ||
         token.modeGeneration !== metadata.availableAtModeGeneration ||
         token.native.projectContentRevision !== metadata.availableAtProjectContentRevision ||
         token.native.projectTransportMutationRevision !== metadata.availableAtProjectTransportMutationRevision) {
@@ -330,7 +348,8 @@ function assertSameNativeOperationToken(expected: ProjectRestoreOperationToken, 
 }
 
 function sameNativeToken(left: NativeProjectRestoreToken, right: NativeProjectRestoreToken): boolean {
-  return left.projectContentRevision === right.projectContentRevision &&
+  return left.hostIncarnationId === right.hostIncarnationId &&
+    left.projectContentRevision === right.projectContentRevision &&
     left.projectTransportMutationRevision === right.projectTransportMutationRevision &&
     left.sampleRate === right.sampleRate &&
     left.transport.bpm === right.transport.bpm && left.transport.state === right.transport.state &&

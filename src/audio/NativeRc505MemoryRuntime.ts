@@ -1,7 +1,7 @@
 import { Transport } from '../core/Transport';
 import { decodeProjectArchive } from './projectArchive';
 import { Rc505MemoryCommittedError, encodeRc505Memory, type Rc505Json, type Rc505MemoryDocument, type Rc505MemoryField, type Rc505MemoryRuntime } from './Rc505Memory';
-import type { NativeBridgeClient, NativeCatalogSlotStatus, NativeDubMode, NativeStatus } from './NativeBridgeClient';
+import { isNativeHostIncarnationId, type NativeBridgeClient, type NativeCatalogSlotStatus, type NativeDubMode, type NativeStatus } from './NativeBridgeClient';
 
 export interface NativeMemoryPort {
   bridge: NativeBridgeClient;
@@ -189,10 +189,13 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
     prepare: async (document: Rc505MemoryDocument, expectedRevision: string) => {
       if (port.pendingEdits?.() || revision() !== expectedRevision) throw new Error('Native Memory changed before preparation.');
       const expectedHostRevision = port.status()?.projectContentRevision;
+      const expectedHostIncarnationId = port.status()?.hostIncarnationId;
       const current = await port.bridge.getStatus();
       assertStopped(current);
       assertLoopTransportReadback(current);
-      if (current.projectContentRevision !== expectedHostRevision || current.projectContentRevisionSnapshotStable !== true) {
+      if (!isNativeHostIncarnationId(expectedHostIncarnationId) || !isNativeHostIncarnationId(current.hostIncarnationId) ||
+          current.hostIncarnationId !== expectedHostIncarnationId ||
+          current.projectContentRevision !== expectedHostRevision || current.projectContentRevisionSnapshotStable !== true) {
         throw new Error('Native Memory changed on the host before preparation.');
       }
       if (!document.extensions.WEBRC.nativeMemory) throw new Error('This Memory has no Native engine settings.');
@@ -235,8 +238,13 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         }
       }
       const decodedArchive = await decodeProjectArchive(document.archive);
-      const importHostStatus = decodedArchive.version === 2 ? await port.bridge.getStatus() : null;
-      if (decodedArchive.version === 2 && importHostStatus?.projectArchiveV2Supported !== true) {
+      const importHostStatus = await port.bridge.getStatus();
+      if (!isNativeHostIncarnationId(importHostStatus.hostIncarnationId) ||
+          importHostStatus.hostIncarnationId !== expectedHostIncarnationId ||
+          importHostStatus.projectContentRevision !== expectedHostRevision) {
+        throw new Error('Native host changed during Memory preparation; the prior Memory snapshot is preserved.');
+      }
+      if (decodedArchive.version === 2 && importHostStatus.projectArchiveV2Supported !== true) {
         throw new Error('This Native host does not advertise ProjectArchive v2 support; the archive was not uploaded and current loops were left unchanged. Use Browser mode or a Native host with v2 support.');
       }
       const savedTransport = decodedArchive.transport;
@@ -244,13 +252,15 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const targetExtensions = structuredClone(document.extensions.WEBRC);
       const targetFields = structuredClone(document.semantics.fields);
       if (revision() !== expectedRevision) throw new Error('Native Memory changed during preparation.');
-      const generation = await port.bridge.beginProjectArchiveImport(bytes, expectedHostRevision!);
+      const acceptance = await port.bridge.beginProjectArchiveImport(bytes, expectedHostRevision!, expectedHostIncarnationId);
+      const { generation } = acceptance;
       let state: 'prepared' | 'committed' | 'disposed' = 'prepared';
       return {
         commit: async () => {
           if (state !== 'prepared' || revision() !== expectedRevision) throw new Error('Native Memory candidate is stale.');
-          await port.bridge.commitPreparedMemory(generation);
-          const result = await port.bridge.waitForProjectArchiveImport(generation, 10_000);
+          await port.bridge.commitPreparedMemory(generation, acceptance.hostIncarnationId);
+          const result = await port.bridge.waitForProjectArchiveImport(generation, acceptance.hostIncarnationId, 10_000);
+          if (result.state === 'unavailable') throw new Error('Native host restarted during Memory commit; status is unverifiable and no follow-up sync was applied.');
           if (result.state !== 'committed') throw new Error(result.error || 'Native Memory generation was not committed.');
           state = 'committed';
           try {
@@ -296,7 +306,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           }
         },
         dispose: async () => {
-          if (state === 'prepared') await port.bridge.cancelProjectArchiveImport(generation);
+          if (state === 'prepared') await port.bridge.cancelProjectArchiveImport(generation, acceptance.hostIncarnationId);
           state = 'disposed';
         },
       };

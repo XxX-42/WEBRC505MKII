@@ -8,9 +8,11 @@ import { encodeProjectArchive } from '../../src/audio/projectArchive';
 import type { NativeBridgeClient, NativeStatus } from '../../src/audio/NativeBridgeClient';
 
 function fixture() {
+  const hostIncarnationId = 'a'.repeat(32);
   const slots = () => ['A', 'B', 'C', 'D'].map((slot) => ({ slot, effectId: '', parameters: {}, bypassed: false,
     appliedBypassed: false, requestedRevision: 0, appliedRevision: 0, controlFaulted: false, processingFaulted: false, prepared: false }));
   let status = {
+    hostIncarnationId,
     mixerLevels: [80, 90, 100, 110, 120, 130, 140],
     engineRunning: true, projectContentRevision: 7, projectContentRevisionSnapshotStable: true,
     nativeTracks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, state: 'Empty', contentRevision: 0,
@@ -35,9 +37,9 @@ function fixture() {
   let edits = 0;
   const bridge = {
     getStatus: vi.fn(async () => status),
-    beginProjectArchiveImport: vi.fn(async () => 19),
+    beginProjectArchiveImport: vi.fn(async () => ({ generation: 19, hostIncarnationId })),
     commitPreparedMemory: vi.fn(async () => { status = { ...status, projectContentRevision: 8 }; }),
-    waitForProjectArchiveImport: vi.fn(async () => ({ state: 'committed' })),
+    waitForProjectArchiveImport: vi.fn(async () => ({ state: 'committed', hostIncarnationId })),
     cancelProjectArchiveImport: vi.fn(async () => undefined),
   };
   const install = vi.fn();
@@ -160,7 +162,7 @@ describe('Native semantic Memory runtime', () => {
     const bytes = bridge.beginProjectArchiveImport.mock.calls[0]![0] as Uint8Array;
     expect((await decodeRc505Memory(bytes)).extensions.WEBRC.nativeMemory).not.toHaveProperty('dubModes');
     await prepared.dispose();
-    expect(bridge.cancelProjectArchiveImport).toHaveBeenCalledExactlyOnceWith(19);
+    expect(bridge.cancelProjectArchiveImport).toHaveBeenCalledExactlyOnceWith(19, 'a'.repeat(32));
   });
   it('refuses Memory capture until the full Bounce request has been callback-applied', async () => {
     const h = fixture();
@@ -216,7 +218,7 @@ describe('Native semantic Memory runtime', () => {
     expect((await decodeRc505Memory(bytes)).archive).toEqual(document.archive);
     await prepared.commit();
     await prepared.dispose();
-    expect(bridge.commitPreparedMemory).toHaveBeenCalledExactlyOnceWith(19);
+    expect(bridge.commitPreparedMemory).toHaveBeenCalledExactlyOnceWith(19, 'a'.repeat(32));
     expect(bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
     await expect(prepared.commit()).rejects.toThrow(/stale/);
   });
@@ -225,7 +227,7 @@ describe('Native semantic Memory runtime', () => {
     const document = await runtime.capture();
     const prepared = await runtime.prepare(document, runtime.revision());
     await prepared.dispose();
-    expect(bridge.cancelProjectArchiveImport).toHaveBeenCalledExactlyOnceWith(19);
+    expect(bridge.cancelProjectArchiveImport).toHaveBeenCalledExactlyOnceWith(19, 'a'.repeat(32));
     expect(bridge.commitPreparedMemory).not.toHaveBeenCalled();
   });
   it('detects local edit-and-revert and fresh host edits against a stale cached baseline', async () => {
