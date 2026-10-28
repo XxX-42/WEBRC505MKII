@@ -260,6 +260,13 @@ std::uint32_t readU32Le(const std::uint8_t* bytes) noexcept {
         (static_cast<std::uint32_t>(bytes[3]) << 24U);
 }
 
+void writeU32Le(std::uint8_t* bytes, std::uint32_t value) noexcept {
+    bytes[0] = static_cast<std::uint8_t>(value);
+    bytes[1] = static_cast<std::uint8_t>(value >> 8U);
+    bytes[2] = static_cast<std::uint8_t>(value >> 16U);
+    bytes[3] = static_cast<std::uint8_t>(value >> 24U);
+}
+
 std::uint32_t rotateRight(std::uint32_t value, unsigned int amount) noexcept {
     return (value >> amount) | (value << (32U - amount));
 }
@@ -370,6 +377,7 @@ struct TrackDescriptor {
     std::uint32_t sampleRate = 0U;
     std::uint64_t frameCount = 0U;
     std::uint8_t channels = 0U;
+    std::optional<double> originalTempoBpm;
     std::uint64_t payloadOffset = 0U;
     std::uint64_t byteLength = 0U;
     std::string sha256;
@@ -453,8 +461,10 @@ DecodedProjectArchive validateManifest(const Json& root, const std::uint8_t* pay
     if (!format.is_string() || format.get_ref<const std::string&>() != "rc505-project-archive") {
         fail("Project archive manifest format is unsupported.");
     }
-    const auto version = requiredNumber(requiredField(root, "version"), "Project archive version is unsupported.");
-    if (version != 1.0) fail("Project archive version is unsupported.");
+    const auto versionNumber = safeInteger(requiredField(root, "version"), 1U, 2U,
+        "Project archive version is unsupported.");
+    if (versionNumber != 1U && versionNumber != 2U) fail("Project archive version is unsupported.");
+    const auto version = static_cast<std::uint32_t>(versionNumber);
 
     const auto& project = requiredField(root, "project");
     if (!objectHasOnlyKeys(project, {"name", "bpm", "transport"}) ||
@@ -477,16 +487,30 @@ DecodedProjectArchive validateManifest(const Json& root, const std::uint8_t* pay
     for (std::size_t index = 0U; index < kProjectArchiveTrackCount; ++index) {
         const auto& trackValue = trackValues[index];
         if (trackValue.is_null()) continue;
-        if (!objectHasExactKeys(trackValue, {"sampleRate", "frameCount", "channels", "payloadOffset", "byteLength", "sha256"})) {
+        const bool correctTrackSchema = version == 1U
+            ? objectHasExactKeys(trackValue, {"sampleRate", "frameCount", "channels", "payloadOffset", "byteLength", "sha256"})
+            : objectHasExactKeys(trackValue, {"sampleRate", "frameCount", "channels", "originalTempoBpm", "payloadOffset", "byteLength", "sha256"});
+        if (!correctTrackSchema) {
             fail("Track metadata has an unsupported schema.");
         }
         TrackDescriptor descriptor;
         descriptor.sampleRate = static_cast<std::uint32_t>(safeInteger(requiredField(trackValue, "sampleRate"),
             kMinSampleRate, kMaxSampleRate, "Track sample rate is outside the supported range."));
-        descriptor.frameCount = safeInteger(requiredField(trackValue, "frameCount"), 0U,
-            kMaxSafeInteger, "Track frame count must be a non-negative safe integer.");
+        descriptor.frameCount = safeInteger(requiredField(trackValue, "frameCount"), 1U,
+            kMaxSafeInteger, "Track frame count must be a positive safe integer; use null for an empty track.");
         const auto channels = safeInteger(requiredField(trackValue, "channels"), 1U, 2U, "Track must be mono or stereo.");
         descriptor.channels = static_cast<std::uint8_t>(channels);
+        if (version == 2U) {
+            const auto& originalTempoValue = requiredField(trackValue, "originalTempoBpm");
+            if (!originalTempoValue.is_null()) {
+                const double originalTempo = requiredNumber(originalTempoValue,
+                    "Track original tempo must be null or between 40 and 300 BPM.");
+                if (originalTempo < kMinBpm || originalTempo > kMaxBpm) {
+                    fail("Track original tempo must be null or between 40 and 300 BPM.");
+                }
+                descriptor.originalTempoBpm = originalTempo;
+            }
+        }
         descriptor.payloadOffset = safeInteger(requiredField(trackValue, "payloadOffset"), 0U,
             kMaxSafeInteger, "Track payload offsets must be non-negative safe integers.");
         descriptor.byteLength = safeInteger(requiredField(trackValue, "byteLength"), 0U,
@@ -503,7 +527,7 @@ DecodedProjectArchive validateManifest(const Json& root, const std::uint8_t* pay
     if (transportValue != project.end()) transport = parseTransport(*transportValue, descriptors, bpm);
 
     DecodedProjectArchive decoded;
-    decoded.version = 1U;
+    decoded.version = version;
     decoded.name = name;
     decoded.bpm = bpm;
     decoded.transport = transport;
@@ -530,6 +554,7 @@ DecodedProjectArchive validateManifest(const Json& root, const std::uint8_t* pay
         track.sampleRate = descriptor->sampleRate;
         track.frameCount = descriptor->frameCount;
         track.channels = descriptor->channels;
+        track.originalTempoBpm = descriptor->originalTempoBpm;
         track.pcm.resize(static_cast<std::size_t>(sampleCount64));
         for (std::size_t sample = 0U; sample < track.pcm.size(); ++sample) {
             const std::uint32_t bits = readU32Le(trackPayload + sample * sizeof(float));
@@ -578,7 +603,130 @@ ProjectArchiveDecodeResult decodeImpl(const std::uint8_t* bytes, std::size_t byt
     return {std::move(decoded), {}};
 }
 
+std::vector<std::uint8_t> encodeImpl(const DecodedProjectArchive& project) {
+    if (!isStrictUtf8(reinterpret_cast<const std::uint8_t*>(project.name.data()), project.name.size()) || project.name.size() > 512U) {
+        fail("Project name must be a string of at most 512 UTF-8 bytes.");
+    }
+    if (!std::isfinite(project.bpm) || project.bpm < kMinBpm || project.bpm > kMaxBpm) {
+        fail("Project BPM must be between 40 and 300.");
+    }
+
+    std::array<std::optional<TrackDescriptor>, kProjectArchiveTrackCount> descriptors{};
+    std::uint64_t payloadByteLength = 0U;
+    for (std::size_t index = 0U; index < kProjectArchiveTrackCount; ++index) {
+        const auto& source = project.tracks[index];
+        if (!source.has_value()) continue;
+        if (source->sampleRate < kMinSampleRate || source->sampleRate > kMaxSampleRate) {
+            fail("Track sample rate is outside the supported range.");
+        }
+        if (source->frameCount == 0U || source->frameCount > kMaxSafeInteger) {
+            fail("Track frame count must be a positive safe integer; use null for an empty track.");
+        }
+        if (source->channels != 1U && source->channels != 2U) fail("Track must be mono or stereo.");
+        const auto sampleCount = checkedMultiply(source->frameCount, source->channels, "Track PCM sample count overflows.");
+        if (sampleCount != source->pcm.size()) fail("Track PCM length does not match its frame and channel metadata.");
+        if (source->originalTempoBpm.has_value() && (!std::isfinite(*source->originalTempoBpm)
+            || *source->originalTempoBpm < kMinBpm || *source->originalTempoBpm > kMaxBpm)) {
+            fail("Track original tempo must be null or between 40 and 300 BPM.");
+        }
+        for (float sample : source->pcm) {
+            if (!std::isfinite(sample)) fail("Track contains a non-finite PCM sample.");
+        }
+        TrackDescriptor descriptor;
+        descriptor.sampleRate = source->sampleRate;
+        descriptor.frameCount = source->frameCount;
+        descriptor.channels = source->channels;
+        descriptor.originalTempoBpm = source->originalTempoBpm;
+        descriptor.payloadOffset = payloadByteLength;
+        descriptor.byteLength = pcmByteLength(descriptor);
+        payloadByteLength = checkedAdd(payloadByteLength, descriptor.byteLength, "Project PCM payload size overflows.");
+        if (payloadByteLength > kProjectArchiveMaxPayloadBytes) fail("Project PCM payload exceeds the archive payload limit.");
+        descriptors[index] = std::move(descriptor);
+    }
+
+    const auto transport = parseTransport(Json{
+        {"masterTrackId", project.transport.masterTrackId ? Json(*project.transport.masterTrackId) : Json(nullptr)},
+        {"measureLengthSeconds", project.transport.measureLengthSeconds},
+        {"masterLoopLengthSamples", project.transport.masterLoopLengthSamples},
+        {"timeSignatureNumerator", project.transport.timeSignatureNumerator},
+        {"timeSignatureDenominator", project.transport.timeSignatureDenominator},
+    }, descriptors, project.bpm);
+    Json trackManifest = Json::array();
+    for (const auto& descriptor : descriptors) {
+        if (!descriptor.has_value()) {
+            trackManifest.push_back(nullptr);
+            continue;
+        }
+        trackManifest.push_back({
+            {"sampleRate", descriptor->sampleRate},
+            {"frameCount", descriptor->frameCount},
+            {"channels", descriptor->channels},
+            {"originalTempoBpm", descriptor->originalTempoBpm ? Json(*descriptor->originalTempoBpm) : Json(nullptr)},
+            {"payloadOffset", descriptor->payloadOffset},
+            {"byteLength", descriptor->byteLength},
+            {"sha256", ""},
+        });
+    }
+
+    Json manifest = {
+        {"format", "rc505-project-archive"},
+        {"version", 2},
+        {"project", {
+            {"name", project.name},
+            {"bpm", project.bpm},
+            {"transport", {
+                {"masterTrackId", transport.masterTrackId ? Json(*transport.masterTrackId) : Json(nullptr)},
+                {"measureLengthSeconds", transport.measureLengthSeconds},
+                {"masterLoopLengthSamples", transport.masterLoopLengthSamples},
+                {"timeSignatureNumerator", transport.timeSignatureNumerator},
+                {"timeSignatureDenominator", transport.timeSignatureDenominator},
+            }},
+        }},
+        {"tracks", std::move(trackManifest)},
+    };
+
+    const auto payloadLength = static_cast<std::size_t>(payloadByteLength);
+    std::vector<std::uint8_t> payload(payloadLength);
+    for (std::size_t index = 0U; index < kProjectArchiveTrackCount; ++index) {
+        const auto& source = project.tracks[index];
+        auto& descriptor = descriptors[index];
+        if (!source.has_value() || !descriptor.has_value()) continue;
+        const auto offset = static_cast<std::size_t>(descriptor->payloadOffset);
+        for (std::size_t sampleIndex = 0U; sampleIndex < source->pcm.size(); ++sampleIndex) {
+            std::uint32_t bits = 0U;
+            std::memcpy(&bits, &source->pcm[sampleIndex], sizeof(bits));
+            writeU32Le(payload.data() + offset + sampleIndex * sizeof(float), bits);
+        }
+        descriptor->sha256 = sha256Hex(payload.data() + offset, static_cast<std::size_t>(descriptor->byteLength));
+        manifest["tracks"][index]["sha256"] = descriptor->sha256;
+    }
+
+    const std::string manifestBytes = manifest.dump(-1, ' ', false, Json::error_handler_t::strict);
+    if (manifestBytes.empty() || manifestBytes.size() > kProjectArchiveMaxManifestBytes) {
+        fail("Project archive manifest exceeds the 65536-byte limit.");
+    }
+    const auto archiveLength = checkedAdd(kProjectArchiveHeaderBytes + manifestBytes.size(), payloadByteLength,
+        "Project archive size overflows.");
+    if (archiveLength > kProjectArchiveMaxBytes || manifestBytes.size() > std::numeric_limits<std::uint32_t>::max()) {
+        fail("Project archive exceeds the 805371916-byte limit.");
+    }
+    std::vector<std::uint8_t> archive(static_cast<std::size_t>(archiveLength));
+    std::copy(kMagic.begin(), kMagic.end(), archive.begin());
+    writeU32Le(archive.data() + kMagic.size(), static_cast<std::uint32_t>(manifestBytes.size()));
+    std::copy(manifestBytes.begin(), manifestBytes.end(), archive.begin() + static_cast<std::ptrdiff_t>(kProjectArchiveHeaderBytes));
+    std::copy(payload.begin(), payload.end(), archive.begin() + static_cast<std::ptrdiff_t>(kProjectArchiveHeaderBytes + manifestBytes.size()));
+    return archive;
+}
+
 } // namespace
+
+std::vector<std::uint8_t> encodeProjectArchive(const DecodedProjectArchive& project) {
+    try {
+        return encodeImpl(project);
+    } catch (const std::exception& error) {
+        throw std::invalid_argument(error.what());
+    }
+}
 
 ProjectArchiveDecodeResult decodeProjectArchive(const std::uint8_t* bytes, std::size_t byteLength) noexcept {
     try {

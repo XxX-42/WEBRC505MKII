@@ -11,6 +11,7 @@ namespace {
 
 using webrc::native::DecodedProjectArchive;
 using webrc::native::ProjectArchiveDecodeResult;
+using webrc::native::ProjectArchiveTrackData;
 
 constexpr char kTrackOneSha[] = "dee9bee38d8ce139ee23552fc0ca83067114ae903518d7711ba7937b72c0d697";
 constexpr char kTrackTwoSha[] = "05f4c29cfe26cefe4c9fb380b148349ac8dc2d66d808a6d32aef642fe63dfcca";
@@ -95,11 +96,55 @@ void testDecodeMonoStereoAndTransport() {
     require(!project.tracks[2] && !project.tracks[3] && !project.tracks[4], "null tracks were not preserved");
     const auto& mono = *project.tracks[0];
     require(mono.sampleRate == 48000U && mono.frameCount == 2U && mono.channels == 1U, "mono metadata mismatch");
+    require(!mono.originalTempoBpm.has_value(), "v1 track tempo must decode as unknown");
     require(mono.pcm.size() == 2U && mono.pcm[0] == 1.0F && mono.pcm[1] == -1.0F, "mono PCM mismatch");
     const auto& stereo = *project.tracks[1];
     require(stereo.sampleRate == 44100U && stereo.frameCount == 2U && stereo.channels == 2U, "stereo metadata mismatch");
     require(stereo.pcm.size() == 4U && stereo.pcm[0] == 0.5F && stereo.pcm[1] == -0.5F &&
         stereo.pcm[2] == 0.0F && stereo.pcm[3] == 1.0F, "interleaved stereo PCM mismatch");
+}
+
+void testV2TempoMetadataAndStrictV1Schema() {
+    std::string v2 = replaceOnce(validManifest(), "\"version\":1", "\"version\":2");
+    v2 = replaceOnce(v2, "\"channels\":1,", "\"channels\":1,\"originalTempoBpm\":96.5,");
+    v2 = replaceOnce(v2, "\"channels\":2,", "\"channels\":2,\"originalTempoBpm\":null,");
+    const auto decoded = webrc::native::decodeProjectArchive(buildArchive(v2, samplePayload()));
+    require(decoded.project.has_value(), "valid v2 archive rejected: " + decoded.error);
+    require(decoded.project->version == 2U, "v2 archive version mismatch");
+    require(decoded.project->tracks[0]->originalTempoBpm == 96.5, "v2 original tempo mismatch");
+    require(!decoded.project->tracks[1]->originalTempoBpm.has_value(), "v2 null tempo was not preserved as unknown");
+
+    const std::string v1WithNewField = replaceOnce(validManifest(), "\"channels\":1,", "\"channels\":1,\"originalTempoBpm\":null,");
+    requireRejected(buildArchive(v1WithNewField, samplePayload()), "v1 track with v2 metadata field");
+
+    const std::string missingV2Field = replaceOnce(v2, "\"originalTempoBpm\":96.5,", "");
+    requireRejected(buildArchive(missingV2Field, samplePayload()), "v2 track missing nullable tempo field");
+
+    const std::string badV2Tempo = replaceOnce(v2, "\"originalTempoBpm\":96.5", "\"originalTempoBpm\":301");
+    requireRejected(buildArchive(badV2Tempo, samplePayload()), "v2 original tempo out of range");
+}
+
+void testV2EncodeDecodeRoundTrip() {
+    DecodedProjectArchive source;
+    source.name = "Native codec v2";
+    source.bpm = 120.0;
+    ProjectArchiveTrackData track;
+    track.sampleRate = 48000U;
+    track.frameCount = 3U;
+    track.channels = 2U;
+    track.originalTempoBpm = 87.25;
+    track.pcm = {1.0F, -1.0F, 0.5F, -0.5F, 0.0F, 0.25F};
+    source.tracks[0] = track;
+    source.tracks[1] = track;
+    source.tracks[1]->originalTempoBpm.reset();
+
+    const auto encoded = webrc::native::encodeProjectArchive(source);
+    const auto decoded = webrc::native::decodeProjectArchive(encoded);
+    require(decoded.project.has_value(), "C++ v2 encoder output was rejected: " + decoded.error);
+    require(decoded.project->version == 2U, "C++ encoder did not emit v2");
+    require(decoded.project->tracks[0]->originalTempoBpm == 87.25, "C++ encoder lost known original tempo");
+    require(!decoded.project->tracks[1]->originalTempoBpm.has_value(), "C++ encoder lost null original tempo");
+    require(decoded.project->tracks[0]->pcm == track.pcm, "C++ encoder changed Float32 PCM");
 }
 
 void testOptionalTransportDefaultsAndBom() {
@@ -148,7 +193,7 @@ void testHeaderManifestAndJsonRejections() {
     badMagic[0] ^= 0xFFU;
     requireRejected(badMagic, "bad magic");
 
-    auto unsupportedVersion = buildArchive(replaceOnce(validManifest(), "\"version\":1", "\"version\":2"), samplePayload());
+    auto unsupportedVersion = buildArchive(replaceOnce(validManifest(), "\"version\":1", "\"version\":3"), samplePayload());
     requireRejected(unsupportedVersion, "unsupported version");
 
     auto unknownRoot = buildArchive(replaceOnce(validManifest(), "\"tracks\":[", "\"other\":true,\"tracks\":["), samplePayload());
@@ -270,6 +315,8 @@ void testFuzzStyleInputsDoNotEscapeDecoder() {
 int main() {
     try {
         testDecodeMonoStereoAndTransport();
+        testV2TempoMetadataAndStrictV1Schema();
+        testV2EncodeDecodeRoundTrip();
         testOptionalTransportDefaultsAndBom();
         testJsonDepthLimit();
         testHeaderManifestAndJsonRejections();

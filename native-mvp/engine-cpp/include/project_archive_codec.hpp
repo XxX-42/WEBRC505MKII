@@ -28,19 +28,25 @@ struct ProjectArchiveTrackData {
     std::uint32_t sampleRate = 0U;
     std::uint64_t frameCount = 0U;
     std::uint8_t channels = 0U;
+    // Immutable original take tempo when known; nullopt means unknown. This is
+    // archive metadata only and does not claim that Native captured it live.
+    std::optional<double> originalTempoBpm;
     // Interleaved Float32 PCM in frame-major order. Mono tracks have one value
     // per frame; stereo tracks have left then right for each frame.
     std::vector<float> pcm;
 };
 
 struct DecodedProjectArchive {
-    std::uint32_t version = 1U;
+    std::uint32_t version = 2U;
     std::string name;
     double bpm = 120.0;
     ProjectArchiveTransportMetadata transport{};
     std::array<std::optional<ProjectArchiveTrackData>, kProjectArchiveTrackCount> tracks{};
     std::uint64_t payloadByteLength = 0U;
 };
+
+/** Encode a validated v2 archive. Throws std::invalid_argument on invalid data. */
+[[nodiscard]] std::vector<std::uint8_t> encodeProjectArchive(const DecodedProjectArchive& project);
 
 struct ProjectArchiveDecodeResult {
     std::optional<DecodedProjectArchive> project;
@@ -50,9 +56,10 @@ struct ProjectArchiveDecodeResult {
 };
 
 /**
- * Decode and validate the exact v1 binary format written by src/audio/projectArchive.ts.
+ * Decode and validate exact v1/v2 binary formats written by src/audio/projectArchive.ts.
  * Returned PCM is owned by the result. This codec does not resample or apply
- * Native engine-rate/duration admission policy.
+ * Native engine-rate/duration admission policy. V1 track tempo is unknown;
+ * v2 carries nullable archive metadata but does not prove Native capture provenance.
  */
 [[nodiscard]] ProjectArchiveDecodeResult decodeProjectArchive(
     const std::uint8_t* bytes,

@@ -11,6 +11,7 @@
     "build": "vue-tsc -b && npm run build:worklet && vite build && node scripts/verify-third-party-notices.mjs --built",
     "test": "npm run test:unit",
     "test:unit": "vitest run",
+    "test:archive:interop": "node scripts/test-project-archive-interop.mjs",
     "test:rhythm:parity": "vite-node --script bench/compare_rhythm_event_runtime.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

@@ -11,7 +11,8 @@
 const MAGIC = new Uint8Array([0x52, 0x43, 0x35, 0x30, 0x35, 0x50, 0x41, 0x00]); // "RC505PA\0"
 const HEADER_BYTES = MAGIC.byteLength + 4;
 const FORMAT = 'rc505-project-archive';
-const VERSION = 1;
+const LEGACY_VERSION = 1;
+const VERSION = 2;
 const TRACK_COUNT = 5;
 const MAX_PAYLOAD_BYTES = 768 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 64 * 1024;
@@ -101,6 +102,8 @@ export interface ProjectArchiveTrackMetadata {
   sampleRate: number;
   frameCount: number;
   channels: 1 | 2;
+  /** Original take tempo when verified at capture/import time; null means unknown. */
+  originalTempoBpm?: number | null;
 }
 
 export type ProjectArchiveTrack = ProjectArchiveTrackMetadata & (
@@ -119,6 +122,7 @@ export type ProjectArchiveTrackList = readonly [
 ];
 
 export interface DecodedProjectArchiveTrack extends ProjectArchiveTrackMetadata {
+  originalTempoBpm: number | null;
   pcm: Float32Array;
 }
 
@@ -139,6 +143,7 @@ export interface ProjectArchiveInput {
 }
 
 export interface ProjectArchive extends Omit<ProjectArchiveInput, 'transport' | 'tracks'> {
+  version: 1 | 2;
   tracks: DecodedProjectArchiveTrackList;
   transport: ProjectArchiveTransport;
 }
@@ -147,6 +152,7 @@ interface TrackManifest {
   sampleRate: number;
   frameCount: number;
   channels: 1 | 2;
+  originalTempoBpm?: number | null;
   payloadOffset: number;
   byteLength: number;
   sha256: string;
@@ -154,7 +160,7 @@ interface TrackManifest {
 
 interface ArchiveManifest {
   format: typeof FORMAT;
-  version: typeof VERSION;
+  version: 1 | typeof VERSION;
   project: {
     name: string;
     bpm: number;
@@ -163,9 +169,16 @@ interface ArchiveManifest {
   tracks: Array<TrackManifest | null>;
 }
 
+export interface ProjectArchiveEncodeOptions {
+  /** Defaults to v1 until the Native project load/save path is proven v2-compatible. */
+  version?: 1 | 2;
+}
+
 /** Encode a project as a bounded, versioned binary archive. */
-export async function encodeProjectArchive(project: ProjectArchiveInput): Promise<Uint8Array> {
-  validateProject(project);
+export async function encodeProjectArchive(project: ProjectArchiveInput, options: ProjectArchiveEncodeOptions = {}): Promise<Uint8Array> {
+  const version = options.version ?? LEGACY_VERSION;
+  if (version !== LEGACY_VERSION && version !== VERSION) throw new Error('Project archive version is unsupported.');
+  validateProject(project, version);
 
   const payloadByteLength = project.tracks.reduce((total, track) => {
     if (track === null) return total;
@@ -194,6 +207,7 @@ export async function encodeProjectArchive(project: ProjectArchiveInput): Promis
       sampleRate: track.sampleRate,
       frameCount: track.frameCount,
       channels: track.channels,
+      ...(version === VERSION ? { originalTempoBpm: track.originalTempoBpm ?? null } : {}),
       payloadOffset,
       byteLength,
       // SHA-256 has a fixed-width hex encoding, so this placeholder can be
@@ -205,7 +219,7 @@ export async function encodeProjectArchive(project: ProjectArchiveInput): Promis
 
   const manifest: ArchiveManifest = {
     format: FORMAT,
-    version: VERSION,
+    version,
     project: { name: project.name, bpm: project.bpm, transport: normalizeTransport(project.transport) },
     tracks: trackManifests,
   };
@@ -322,6 +336,7 @@ export async function decodeProjectArchive(input: ArrayBuffer | ArrayBufferView)
       sampleRate: descriptor.sampleRate,
       frameCount: descriptor.frameCount,
       channels: descriptor.channels,
+      originalTempoBpm: descriptor.originalTempoBpm,
       pcm,
     });
     expectedOffset = endOffset;
@@ -332,6 +347,7 @@ export async function decodeProjectArchive(input: ArrayBuffer | ArrayBufferView)
   }
 
   return {
+    version: parsedManifest.version,
     name: parsedManifest.project.name,
     bpm: parsedManifest.project.bpm,
     tracks: decodedTracks as unknown as DecodedProjectArchiveTrackList,
@@ -339,7 +355,7 @@ export async function decodeProjectArchive(input: ArrayBuffer | ArrayBufferView)
   };
 }
 
-function validateProject(project: ProjectArchiveInput): void {
+function validateProject(project: ProjectArchiveInput, version: 1 | 2): void {
   if (!isRecord(project) || !hasAllowedKeys(project, ['name', 'bpm', 'tracks', 'transport'], ['name', 'bpm', 'tracks'])) {
     throw new Error('Project must contain name, bpm, tracks, and optional transport metadata only.');
   }
@@ -357,10 +373,17 @@ function validateProject(project: ProjectArchiveInput): void {
     const hasInterleavedPcm = Object.prototype.hasOwnProperty.call(track, 'pcm');
     const hasChannelData = Object.prototype.hasOwnProperty.call(track, 'channelData');
     const expectedKeys = hasInterleavedPcm
+      ? ['sampleRate', 'frameCount', 'channels', 'originalTempoBpm', 'pcm']
+      : ['sampleRate', 'frameCount', 'channels', 'originalTempoBpm', 'channelData'];
+    const legacyKeys = hasInterleavedPcm
       ? ['sampleRate', 'frameCount', 'channels', 'pcm']
       : ['sampleRate', 'frameCount', 'channels', 'channelData'];
-    if (hasInterleavedPcm === hasChannelData || !hasExactKeys(track, expectedKeys)) {
+    if (hasInterleavedPcm === hasChannelData || !(hasExactKeys(track, expectedKeys) || hasExactKeys(track, legacyKeys))) {
       throw new Error(`Track ${index + 1} must contain one PCM representation and its audio metadata only.`);
+    }
+    validateOriginalTempoBpm(candidate.originalTempoBpm, index + 1);
+    if (version === LEGACY_VERSION && candidate.originalTempoBpm !== undefined && candidate.originalTempoBpm !== null) {
+      throw new Error(`Track ${index + 1} original tempo requires ProjectArchive v2; v1 export remains unchanged.`);
     }
     if (!Number.isSafeInteger(candidate.sampleRate) || candidate.sampleRate < MIN_SAMPLE_RATE || candidate.sampleRate > MAX_SAMPLE_RATE) {
       throw new Error(`Track ${index + 1} sample rate is outside the supported range.`);
@@ -393,7 +416,8 @@ function validateManifest(value: unknown): ArchiveManifest {
     throw new Error('Project archive manifest has an unsupported schema.');
   }
   if (value.format !== FORMAT) throw new Error('Project archive manifest format is unsupported.');
-  if (value.version !== VERSION) throw new Error(`Project archive version ${String(value.version)} is unsupported.`);
+  if (value.version !== 1 && value.version !== VERSION) throw new Error(`Project archive version ${String(value.version)} is unsupported.`);
+  const version = value.version;
   if (!isRecord(value.project) || !hasAllowedKeys(value.project, ['name', 'bpm', 'transport'], ['name', 'bpm'])) {
     throw new Error('Project archive project metadata has an unsupported schema.');
   }
@@ -409,12 +433,18 @@ function validateManifest(value: unknown): ArchiveManifest {
       tracks.push(null);
       continue;
     }
-    if (!isRecord(track) || !hasExactKeys(track, ['sampleRate', 'frameCount', 'channels', 'payloadOffset', 'byteLength', 'sha256'])) {
+    const v1TrackKeys = ['sampleRate', 'frameCount', 'channels', 'payloadOffset', 'byteLength', 'sha256'];
+    const v2TrackKeys = [...v1TrackKeys, 'originalTempoBpm'];
+    if (!isRecord(track) || !(version === 1
+      ? hasExactKeys(track, v1TrackKeys)
+      : hasExactKeys(track, v2TrackKeys))) {
       throw new Error(`Track ${index + 1} metadata has an unsupported schema.`);
     }
     const sampleRate = track.sampleRate;
     const frameCount = track.frameCount;
     const channels = track.channels;
+    const originalTempoBpm = version === 1 ? null : track.originalTempoBpm;
+    validateOriginalTempoBpm(originalTempoBpm, index + 1);
     const payloadOffset = track.payloadOffset;
     const byteLength = track.byteLength;
     const sha256 = track.sha256;
@@ -439,6 +469,7 @@ function validateManifest(value: unknown): ArchiveManifest {
       sampleRate,
       frameCount,
       channels,
+      originalTempoBpm: originalTempoBpm as number | null,
       payloadOffset,
       byteLength,
       sha256,
@@ -452,7 +483,7 @@ function validateManifest(value: unknown): ArchiveManifest {
 
   return {
     format: FORMAT,
-    version: VERSION,
+    version,
     project: {
       name: value.project.name as string,
       bpm: value.project.bpm as number,
@@ -460,6 +491,13 @@ function validateManifest(value: unknown): ArchiveManifest {
     },
     tracks,
   };
+}
+
+function validateOriginalTempoBpm(value: unknown, trackNumber: number): void {
+  if (value !== undefined && value !== null
+    && (typeof value !== 'number' || !Number.isFinite(value) || value < MIN_BPM || value > MAX_BPM)) {
+    throw new Error(`Track ${trackNumber} original tempo must be null or between ${MIN_BPM} and ${MAX_BPM} BPM.`);
+  }
 }
 
 function validateProjectMetadata(name: unknown, bpm: unknown): void {

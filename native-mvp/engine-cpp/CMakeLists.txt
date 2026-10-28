@@ -186,6 +186,11 @@ target_include_directories(native_project_archive_codec PUBLIC include)
 target_link_libraries(native_project_archive_codec PUBLIC nlohmann_json::nlohmann_json)
 enable_strict_warnings(native_project_archive_codec)
 
+# File-based harness used by the independent TypeScript <-> C++ v2 codec test.
+add_executable(project_archive_codec_interop tests/project_archive_codec_interop.cpp)
+target_link_libraries(project_archive_codec_interop PRIVATE native_project_archive_codec)
+enable_strict_warnings(project_archive_codec_interop)
+
 if(NATIVE_PORTABLE_TESTS_ONLY)
 
   add_library(native_dsp_portable STATIC

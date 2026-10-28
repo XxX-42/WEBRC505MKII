@@ -21,7 +21,7 @@ afterAll(() => {
   vi.unstubAllGlobals();
 });
 
-function makeProject(): ProjectArchiveInput {
+function makeProject(includeTrackTempo = false): ProjectArchiveInput {
   return {
     name: 'Archive test',
     bpm: 120,
@@ -32,6 +32,7 @@ function makeProject(): ProjectArchiveInput {
         sampleRate: 44_100,
         frameCount: 3,
         channels: 2,
+        ...(includeTrackTempo ? { originalTempoBpm: 96 } : {}),
       },
       { pcm: new Float32Array([0]), sampleRate: 48_000, frameCount: 1, channels: 1 },
       null,
@@ -107,9 +108,9 @@ async function withNonFiniteFirstSample(archive: Uint8Array, value: number): Pro
 
 describe('project PCM archive codec', () => {
   it('round-trips mono/stereo PCM, null tracks, and transport metadata deterministically', async () => {
-    const project = makeProject();
-    const archive = await encodeProjectArchive(project);
-    const repeated = await encodeProjectArchive(project);
+    const project = makeProject(true);
+    const archive = await encodeProjectArchive(project, { version: 2 });
+    const repeated = await encodeProjectArchive(project, { version: 2 });
     expect(Array.from(archive)).toEqual(Array.from(repeated));
 
     const decoded = await decodeProjectArchive(archive);
@@ -118,8 +119,11 @@ describe('project PCM archive codec', () => {
     expect(decoded.bpm).toBe(project.bpm);
     expect(decoded.transport).toEqual(project.transport);
     expect(decoded.tracks[0]).toMatchObject({ sampleRate: 48_000, frameCount: 48_000, channels: 1 });
+    expect(decoded.version).toBe(2);
+    expect(decoded.tracks[0]?.originalTempoBpm).toBeNull();
     expect(decoded.tracks[0]?.pcm).toEqual(new Float32Array(48_000));
     expect(decoded.tracks[1]).toMatchObject({ sampleRate: 44_100, frameCount: 3, channels: 2 });
+    expect(decoded.tracks[1]?.originalTempoBpm).toBe(96);
     expect(decoded.tracks[1]?.pcm).toEqual(new Float32Array([1, -1, 2, -2, 3, -3]));
     expect(decoded.tracks[2]).toMatchObject({ sampleRate: 48_000, frameCount: 1, channels: 1 });
     expect(decoded.tracks[2]?.pcm).toEqual(new Float32Array([0]));
@@ -127,9 +131,53 @@ describe('project PCM archive codec', () => {
     expect(decoded.tracks[4]).toBeNull();
 
     const manifest = readManifest(archive);
+    expect(manifest.version).toBe(2);
+    expect(manifest.tracks[0].originalTempoBpm).toBeNull();
+    expect(manifest.tracks[1].originalTempoBpm).toBe(96);
     expect(Object.keys(manifest.project).sort()).toEqual(['bpm', 'name', 'transport']);
     expect(manifest).not.toHaveProperty('fx');
     expect(manifest).not.toHaveProperty('rhythm');
+  });
+
+  it('reads strict v1 manifests as unknown original tempo and requires the v2 nullable field', async () => {
+    const v2 = await encodeProjectArchive(makeProject(true), { version: 2 });
+    const legacyV1 = replaceManifest(v2, (manifest) => {
+      manifest.version = 1;
+      for (const track of manifest.tracks) if (track) delete track.originalTempoBpm;
+    });
+    const decodedV1 = await decodeProjectArchive(legacyV1);
+    expect(decodedV1.version).toBe(1);
+    expect(decodedV1.tracks[0]?.originalTempoBpm).toBeNull();
+    expect(decodedV1.tracks[1]?.originalTempoBpm).toBeNull();
+
+    const v1WithNewField = replaceManifest(legacyV1, (manifest) => {
+      manifest.tracks[0].originalTempoBpm = null;
+    });
+    await expect(decodeProjectArchive(v1WithNewField)).rejects.toThrow(/schema/i);
+
+    const v2MissingField = replaceManifest(v2, (manifest) => {
+      delete manifest.tracks[0].originalTempoBpm;
+    });
+    await expect(decodeProjectArchive(v2MissingField)).rejects.toThrow(/schema/i);
+
+    for (const invalid of [0, 39.9, 300.1, '120']) {
+      const badTempo = replaceManifest(v2, (manifest) => {
+        manifest.tracks[0].originalTempoBpm = invalid;
+      });
+      await expect(decodeProjectArchive(badTempo)).rejects.toThrow(/original tempo/i);
+    }
+  });
+
+  it('keeps the default exporter on the exact v1 track schema', async () => {
+    const archive = await encodeProjectArchive(makeProject());
+    const manifest = readManifest(archive);
+    expect(manifest.version).toBe(1);
+    expect(Object.keys(manifest.tracks[0]).sort()).toEqual(['byteLength', 'channels', 'frameCount', 'payloadOffset', 'sampleRate', 'sha256']);
+    const decoded = await decodeProjectArchive(archive);
+    expect(decoded.version).toBe(1);
+    expect(decoded.tracks[0]?.originalTempoBpm).toBeNull();
+
+    await expect(encodeProjectArchive(makeProject(true))).rejects.toThrow(/requires ProjectArchive v2/i);
   });
 
   it.each([
@@ -180,7 +228,7 @@ describe('project PCM archive codec', () => {
     badMagic[0] ^= 0xff;
     await expect(decodeProjectArchive(badMagic)).rejects.toThrow(/magic/i);
 
-    const badVersion = replaceManifest(archive, (manifest) => { manifest.version = 2; });
+    const badVersion = replaceManifest(archive, (manifest) => { manifest.version = 3; });
     await expect(decodeProjectArchive(badVersion)).rejects.toThrow(/unsupported/i);
 
     const badSchema = replaceManifest(archive, (manifest) => { manifest.project.fx = { reverb: true }; });
