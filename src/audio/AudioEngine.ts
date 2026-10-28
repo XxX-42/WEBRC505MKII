@@ -3,6 +3,7 @@ import type { Rc505MemoryRuntime } from './Rc505Memory';
 import { fenceRc505MemoryRuntime } from './Rc505MemoryRuntimeFence';
 import type { MixerChannel, MixerState } from './Mixer';
 import type { RecordPlaySettings, RecordPlaySettingsPatch } from './RecordPlaySettings';
+import type { BrowserMidiSyncMode } from './AudioEngineInterface';
 import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { BrowserBounceSettings } from './BrowserBounceSettings';
 import { BrowserAudioEngine, type BrowserAudioLatencyInfo, type BrowserAudioUiStatus, type BrowserInputCaptureErrorDiagnostic, type BrowserStepSlicerControl } from './BrowserAudioEngine';
@@ -246,6 +247,7 @@ export class AudioEngine {
   public setMode(mode: AudioMode) {
     if (mode !== this.currentMode && this.memoryPreparations > 0) throw new Error('Finish the pending Memory transaction before changing audio backend.');
     if (mode !== this.currentMode) {
+      if (this.currentMode === 'browser' && mode !== 'browser') this.browser.setMidiClockSyncMode('off');
       this.disconnectMidiInput();
       this.modeGeneration += 1;
     }
@@ -904,6 +906,10 @@ export class AudioEngine {
   public getRecordPlaySettings(): RecordPlaySettings { return this.activeEngine.getRecordPlaySettings(); }
   public setRecordPlaySettings(settings: RecordPlaySettingsPatch): Promise<void> {
     return Promise.resolve(this.activeEngine.setRecordPlaySettings(settings));
+  }
+  public getMidiClockSyncMode(): BrowserMidiSyncMode { return this.currentMode === 'browser' ? this.browser.getMidiClockSyncMode() : 'off'; }
+  public setMidiClockSyncMode(mode: BrowserMidiSyncMode): void {
+    if (this.currentMode === 'browser') this.browser.setMidiClockSyncMode(mode);
   }
   /** Browser Auto Rec is a software approximation; Native remains explicitly unavailable. */
   public getBrowserAutoRecSettings(): Readonly<BrowserAutoRecSettings> | null {

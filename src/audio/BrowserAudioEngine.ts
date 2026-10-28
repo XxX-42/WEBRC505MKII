@@ -47,7 +47,7 @@ import {
 } from './projectArchive';
 
 import { RhythmEngine } from './RhythmEngine';
-import type { IAudioEngine, InputCaptureSession } from './AudioEngineInterface';
+import type { BrowserMidiSyncMode, IAudioEngine, InputCaptureSession } from './AudioEngineInterface';
 import {
     addAudioWorkletModuleWithTimeout,
     getUserMediaWithTimeout,
@@ -295,6 +295,9 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.browserBounceSettings = normalizeBrowserBounceSettings(settings);
     }
     private recordPlaySettings = { recAction: 'REC->PLAY' as const as 'REC->PLAY' | 'REC->DUB', quantize: 'MEASURE' as const as 'MEASURE' | 'OFF' };
+    private midiClockSyncMode: BrowserMidiSyncMode = 'off';
+    public getMidiClockSyncMode(): BrowserMidiSyncMode { return this.midiClockSyncMode; }
+    public setMidiClockSyncMode(mode: BrowserMidiSyncMode): void { this.midiClockSyncMode = mode; }
     public getRecordPlaySettings(): RecordPlaySettings {
         return Object.freeze({ available: true, reason: '', ...this.recordPlaySettings, autoRecAvailable: true, bounceAvailable: true });
     }

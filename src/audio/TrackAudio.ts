@@ -2013,6 +2013,12 @@ export class TrackAudio {
 
     private scheduleRecordingStart() {
         if (this.disposed) return;
+        if ((this.engine.getMidiClockSyncMode?.() ?? 'off') !== 'off'
+            && this.track.loopSyncSw === 'ON'
+            && this.engine.getRecordPlaySettings?.().quantize !== 'OFF') {
+            this.recordingDiagnostic = 'MIDI-clock quantized recording is unavailable because external clock pulses are not mapped to audio sample frames. Set QUANTIZE OFF or disable MIDI sync; the existing loop was preserved.';
+            return;
+        }
         if (this.track.loopSyncSw === 'ON' && this.engine.getRecordPlaySettings?.().quantize !== 'OFF'
             && this.engine.isBrowserRhythmRunning?.()) {
             this.recordingDiagnostic = 'Measure quantization with the internal Rhythm is unavailable because its phrase phase is not exposed to the Browser capture clock. Existing loops are preserved.';
@@ -2087,6 +2093,14 @@ export class TrackAudio {
 
     private scheduleRecordingStop() {
         if (this.disposed) return;
+        if ((this.engine.getMidiClockSyncMode?.() ?? 'off') !== 'off'
+            && this.track.loopSyncSw === 'ON'
+            && this.engine.getRecordPlaySettings?.().quantize !== 'OFF'
+            && this.transport.hasMasterTrack()) {
+            this.recordingDiagnostic = 'MIDI-clock quantized stop is unavailable because external clock pulses are not mapped to audio sample frames. This take stopped at the current audio frame without quantization.';
+            this.stopRecording();
+            return;
+        }
         // ========================================
         // QUANTIZED RECORDING STOP LOGIC
         // ========================================

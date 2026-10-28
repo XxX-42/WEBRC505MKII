@@ -1,7 +1,7 @@
-/** Explicitly opt-in, read-only Web MIDI Timing Clock monitor. */
+/** Explicitly connected Web MIDI Timing Clock observer with an optional selected-source realtime event callback. */
 
 import type { MidiAccessLike, MidiInputLike, MidiMessageEventLike, MidiInputState } from './MidiInputController';
-import { MidiClockEstimator } from './MidiClockEstimator';
+import { MidiClockEstimator, type MidiClockEstimateSnapshot } from './MidiClockEstimator';
 import { MidiAudioFrameMapper, type MidiAudioAnchor, type MidiAudioFrameMapResult } from './MidiAudioFrameMapper';
 
 export type MidiClockSignal = 'waiting' | 'observed' | 'stale' | 'ambiguous';
@@ -47,6 +47,15 @@ export interface MidiClockInputOptions {
   readonly now?: () => number;
   /** Optional read-only running AudioContext clock sample; used for Tech diagnostics only. */
   readonly getAudioAnchor?: () => MidiAudioAnchor | null;
+  /** Selected-source realtime events, with the clock evidence available at receipt. */
+  readonly onSelectedRealtimeMessage?: (event: MidiClockRealtimeEvent) => void;
+}
+
+export interface MidiClockRealtimeEvent {
+  readonly status: 'clock' | 'start' | 'stop';
+  readonly timestampMs: number;
+  readonly sourceKey: string;
+  readonly clock: MidiClockEstimateSnapshot;
 }
 
 export interface MidiPermissionStatusLike {
@@ -85,8 +94,9 @@ function requestBrowserMidiPermissionStatus(): Promise<MidiPermissionStatusLike>
 }
 
 /**
- * Observes one-byte F8 messages only. It never forwards messages to the note
- * engine or changes Transport tempo, phase, or playback state.
+ * Observes one-byte MIDI realtime messages from a single selected port. With
+ * no callback configured it is read-only; the optional callback is responsible
+ * for explicit application-level control policy.
  */
 export class MidiClockInputController {
   private readonly requestAccess: () => Promise<MidiAccessLike> | undefined;
@@ -94,6 +104,7 @@ export class MidiClockInputController {
   private readonly onChange?: () => void;
   private readonly now: () => number;
   private readonly getAudioAnchor?: () => MidiAudioAnchor | null;
+  private readonly onSelectedRealtimeMessage?: (event: MidiClockRealtimeEvent) => void;
   private readonly frameMapper = new MidiAudioFrameMapper();
   private observedAudioContext: object | null = null;
   private audioContextStateListener: (() => void) | null = null;
@@ -146,6 +157,7 @@ export class MidiClockInputController {
     this.onChange = options.onChange;
     this.now = options.now ?? (() => performance.now());
     this.getAudioAnchor = options.getAudioAnchor;
+    this.onSelectedRealtimeMessage = options.onSelectedRealtimeMessage;
   }
 
   connect(): Promise<MidiInputState> {
@@ -376,8 +388,9 @@ export class MidiClockInputController {
     const clock = this.portClocks.get(input);
     if (!clock) return;
     const time = event.timeStamp;
+    if (clock.key !== this.selectedInputKey) return;
     if (data[0] === 0xfa) {
-      if (clock.key !== this.selectedInputKey) return;
+      this.notifySelectedRealtimeMessage('start', time, clock.key);
       this.phaseEstimator.reset();
       this.lastStartAtMs = time;
       const anchor = this.getAudioAnchor?.() ?? null;
@@ -392,6 +405,10 @@ export class MidiClockInputController {
       this.onChange?.();
       return;
     }
+    if (data[0] === 0xfc) {
+      this.notifySelectedRealtimeMessage('stop', time, clock.key);
+      return;
+    }
     if (data[0] !== CLOCK_STATUS) return;
     if (clock.lastTickAtMs !== null) {
       const interval = time - clock.lastTickAtMs;
@@ -402,7 +419,22 @@ export class MidiClockInputController {
     }
     clock.lastTickAtMs = time;
     clock.tickCount += 1;
-    if (clock.key === this.selectedInputKey) this.phaseEstimator.push(time, clock.key);
+    const estimate = this.phaseEstimator.push(time, clock.key);
+    this.notifySelectedRealtimeMessage('clock', time, clock.key, estimate);
+    this.onChange?.();
+  }
+
+  private notifySelectedRealtimeMessage(
+    status: MidiClockRealtimeEvent['status'],
+    timestampMs: number,
+    sourceKey: string,
+    estimate = this.phaseEstimator.getSnapshot(timestampMs),
+  ): void {
+    try {
+      this.onSelectedRealtimeMessage?.({ status, timestampMs, sourceKey, clock: estimate });
+    } catch (error) {
+      console.error('Selected MIDI clock event handler failed', error);
+    }
   }
 
   private unmappedFrame(reason: MidiAudioFrameMapResult['reason'] = 'unanchored'): MidiAudioFrameMapResult {

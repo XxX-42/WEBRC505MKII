@@ -74,6 +74,25 @@
         <option value="">Select MIDI input</option>
         <option v-for="input in clockSnapshot.inputs" :key="input.key" :value="input.key">{{ input.name }}</option>
       </select>
+      <label class="midi-clock-sync-control">
+        MIDI sync
+        <select
+          data-testid="midi-clock-sync-mode"
+          :value="midiSyncMode"
+          :disabled="audioMode !== 'browser'"
+          @change="selectMidiSyncMode"
+        >
+          <option value="off">OFF</option>
+          <option value="all" :disabled="hasCommittedBrowserLoops">ALL (tracks + rhythm)</option>
+          <option value="rhythm" :disabled="hasCommittedBrowserLoops">RHYTHM</option>
+        </select>
+      </label>
+      <div v-if="midiControlNotice" class="midi-clock-control-status" role="status" data-testid="midi-clock-control-notice">
+        {{ midiControlNotice }}
+      </div>
+      <div v-if="midiSyncMode !== 'off' || hasCommittedBrowserLoops" class="midi-clock-control-status" role="status" data-testid="midi-clock-control-status">
+        {{ midiControlStatus }}
+      </div>
       <div class="midi-clock-status" role="status" aria-live="polite" data-testid="midi-clock-status">
         {{ midiClockStatus }}
       </div>
@@ -81,7 +100,7 @@
         {{ midiClockPhaseStatus }}
       </div>
       <div class="midi-clock-phase-note">
-        F8 reports tempo clock at 24 pulses per quarter note; FA Start is projected for diagnostics only. Neither drives Transport or recording.
+        F8 reports tempo clock at 24 pulses per quarter note. Control is opt-in and follows only the selected input; FA/FC actions happen on event arrival, while the FA frame projection remains diagnostic only. Starts are not sample-aligned or quantized.
       </div>
       <div
         v-if="clockSnapshot.selectedInputKey"
@@ -149,7 +168,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Transport } from '../core/Transport';
 import { TrackState, TransportState } from '../core/types';
 import { AudioEngine } from '../audio/AudioEngine';
-import { MidiClockInputController, type MidiClockSnapshot } from '../audio/MidiClockInputController';
+import { dispatchBrowserMidiTransportControl } from '../audio/BrowserMidiSyncControl';
+import { MidiClockInputController, type MidiClockRealtimeEvent, type MidiClockSnapshot } from '../audio/MidiClockInputController';
 import HardwareButton from './ui/HardwareButton.vue';
 import AudioSettings from './AudioSettings.vue';
 import BrowserAudioSettings from './BrowserAudioSettings.vue';
@@ -172,9 +192,18 @@ const monitoringError = monitoring.error;
 const monitoringPending = monitoring.pending;
 const monitoringReady = monitoring.ready;
 const monitoringDisabled = computed(() => !monitoringReady.value || monitoringPending.value);
+type MidiSyncMode = 'off' | 'all' | 'rhythm';
+const midiSyncMode = ref<MidiSyncMode>('off');
+const midiControlNotice = ref('');
+let lastMidiAppliedBpm: number | null = null;
+let midiControlEvidence: { sourceKey: string; timestampMs: number; tickPeriodMs: number } | null = null;
+const hasBrowserCommittedPhrase = (track: (typeof engine.tracks)[number]): boolean =>
+  'hasCommittedPhrase' in track && track.hasCommittedPhrase;
+const hasCommittedBrowserLoops = ref(engine.tracks.some(hasBrowserCommittedPhrase));
 const midiClock = new MidiClockInputController({
   onChange: () => refreshMidiClock(),
   getAudioAnchor: () => engine.getMidiAudioClockAnchor(),
+  onSelectedRealtimeMessage: (event) => handleMidiRealtimeMessage(event),
 });
 const clockSnapshot = ref<MidiClockSnapshot>(midiClock.getSnapshot());
 let clockRefreshTimer: number | null = null;
@@ -221,6 +250,17 @@ const midiClockPhaseStatus = computed(() => {
   }
   return 'Relative pulse phase: waiting for F8 clock';
 });
+const midiControlStatus = computed(() => {
+  const snapshot = clockSnapshot.value;
+  if (audioMode.value !== 'browser') return 'Browser audio backend required';
+  if (hasCommittedBrowserLoops.value) {
+    return 'Browser loops keep their recorded tempo; MIDI clock sync is unavailable while loops exist.';
+  }
+  if (snapshot.connection !== 'connected') return 'Connect MIDI clock input to enable control';
+  if (!snapshot.selectedInputKey) return 'Select one input to enable control';
+  if (!hasStableMidiClock(snapshot)) return 'Waiting for stable single-source F8 clock';
+  return 'Stable F8 tempo follow active with empty tracks · MIDI Start/Stop is immediate, without sample phase alignment';
+});
 const midiFrameMappingStatus = computed(() => {
   const mapping = clockSnapshot.value.frameMapping;
   if (!mapping.ok || mapping.frame === null) return `Audio frame mapping unavailable · ${mapping.reason ?? 'unknown'}`;
@@ -237,6 +277,18 @@ const midiStartFrameMappingStatus = computed(() => {
 
 const refreshMidiClock = () => {
   clockSnapshot.value = midiClock.getSnapshot();
+  hasCommittedBrowserLoops.value = engine.tracks.some(hasBrowserCommittedPhrase);
+  if (midiSyncMode.value !== 'off'
+    && (clockSnapshot.value.connection !== 'connected'
+      || !clockSnapshot.value.selectedInputKey
+      || clockSnapshot.value.signal === 'stale'
+      || hasCommittedBrowserLoops.value)) {
+    if (hasCommittedBrowserLoops.value) {
+      midiControlNotice.value = 'MIDI sync disabled because a Browser loop was recorded. Existing playback continues at its recorded tempo.';
+    }
+    midiControlEvidence = null;
+    disableMidiSync();
+  }
 };
 
 const toggleMidiClock = async () => {
@@ -248,9 +300,97 @@ const toggleMidiClock = async () => {
 const selectMidiClockInput = (event: Event) => {
   const target = event.target;
   if (!(target instanceof HTMLSelectElement)) return;
+  midiControlEvidence = null;
   midiClock.selectInput(target.value || null);
   refreshMidiClock();
 };
+
+const hasStableMidiClock = (snapshot: MidiClockSnapshot): boolean =>
+  snapshot.signal === 'observed' && snapshot.phaseLocked && snapshot.phaseInferredMissingTicks === 0
+  && snapshot.phaseRejectedIntervals === 0 && snapshot.measuredBpm !== null;
+
+const selectMidiSyncMode = (event: Event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) return;
+  const next = target.value;
+  if (next !== 'off' && next !== 'all' && next !== 'rhythm') return;
+  if (next !== 'off' && audioMode.value !== 'browser') return;
+  if (next !== 'off' && hasCommittedBrowserLoops.value) {
+    midiControlNotice.value = 'MIDI sync is unavailable while Browser loops exist because they do not follow external BPM. Existing loops are unchanged.';
+    target.value = 'off';
+    return;
+  }
+  midiControlNotice.value = '';
+  if (next === 'off' && midiSyncMode.value !== 'off') {
+    disableMidiSync();
+    return;
+  }
+  midiSyncMode.value = next;
+  engine.setMidiClockSyncMode(next);
+};
+
+const disableMidiSync = () => {
+  lastMidiAppliedBpm = null;
+  midiControlEvidence = null;
+  midiSyncMode.value = 'off';
+  engine.setMidiClockSyncMode('off');
+};
+
+function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
+  if (midiSyncMode.value === 'off' || audioMode.value !== 'browser') return;
+  if (event.sourceKey !== clockSnapshot.value.selectedInputKey) return;
+  const eventHasStableEvidence = event.clock.phaseLocked && event.clock.inferredMissingTicks === 0
+    && event.clock.rejectedIntervals === 0 && event.clock.tickPeriodMs !== null;
+  if (eventHasStableEvidence) {
+    midiControlEvidence = {
+      sourceKey: event.sourceKey,
+      timestampMs: event.timestampMs,
+      tickPeriodMs: event.clock.tickPeriodMs!,
+    };
+  }
+  const recentEvidence = midiControlEvidence?.sourceKey === event.sourceKey
+    && event.timestampMs >= midiControlEvidence.timestampMs
+    && event.timestampMs - midiControlEvidence.timestampMs <= Math.max(500, midiControlEvidence.tickPeriodMs * 4);
+  const dispatch = dispatchBrowserMidiTransportControl(
+    midiSyncMode.value,
+    event.status,
+    engine.tracks.some(hasBrowserCommittedPhrase),
+    eventHasStableEvidence || recentEvidence,
+    {
+      disableSync: () => {
+        hasCommittedBrowserLoops.value = true;
+        midiControlNotice.value = 'MIDI sync disabled because a Browser loop exists. Existing playback continues at its recorded tempo.';
+        disableMidiSync();
+      },
+      startAll: () => engine.playAllTracks(),
+      stopAll: () => engine.stopAllTracks(),
+      startRhythm: () => engine.rhythmEngine.start(),
+      stopRhythm: () => engine.rhythmEngine.stop(),
+      canStopAll: () => !engine.tracks.some((track) => track.state === TrackState.RECORDING
+        || track.state === TrackState.OVERDUBBING || track.state === TrackState.REC_STANDBY
+        || track.state === TrackState.REC_FINISHING),
+    },
+  );
+  if (dispatch === 'disabled') return;
+  if (event.status !== 'clock' && dispatch !== 'dispatched') return;
+  if (!eventHasStableEvidence && !recentEvidence) return;
+
+  if (event.status === 'clock') {
+    const bpmValue = event.clock.bpm;
+    if (bpmValue === null || bpmValue < 40 || bpmValue > 300) return;
+    const bpm = Math.round(bpmValue * 100) / 100;
+    const recording = engine.tracks.some((track) => track.state === TrackState.RECORDING
+      || track.state === TrackState.OVERDUBBING || track.state === TrackState.REC_STANDBY
+      || track.state === TrackState.REC_FINISHING);
+    if (!recording && !hasCommittedBrowserLoops.value
+      && (lastMidiAppliedBpm === null || Math.abs(lastMidiAppliedBpm - bpm) >= 0.05)) {
+      transport.setBpm(bpm);
+      lastMidiAppliedBpm = bpm;
+    }
+    return;
+  }
+
+}
 
 const updateState = () => {
   bpm.value = transport.bpm;
@@ -396,6 +536,10 @@ onMounted(() => {
   transport.on('stop', handleTransportStop);
   syncPlaybackState();
   unsubscribeStatus = engine.onStatusChange((status) => {
+    const previousMode = audioMode.value;
+    if (previousMode === 'browser' && status.mode !== 'browser' && midiSyncMode.value !== 'off') {
+      disableMidiSync();
+    }
     audioMode.value = status.mode;
     nativeReady.value = status.ready;
     syncPlaybackState();
@@ -407,6 +551,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   midiClock.disconnect();
+  if (midiSyncMode.value !== 'off') {
+    disableMidiSync();
+  }
   transport.off('bpm-change', updateState);
   transport.off('beat', handleBeat);
   transport.off('start', handleTransportStart);

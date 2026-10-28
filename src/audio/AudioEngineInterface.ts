@@ -1,6 +1,7 @@
 import type { BrowserAutoRecSettings } from './BrowserAutoRecSettings';
 import type { BrowserBounceSettings } from './BrowserBounceSettings';
 import type { RecordPlaySettings } from './RecordPlaySettings';
+export type BrowserMidiSyncMode = 'off' | 'all' | 'rhythm';
 export interface InputCaptureSession {
     readonly node: AudioWorkletNode;
     readonly trackIndex: number;
@@ -55,4 +56,6 @@ export interface IAudioEngine {
     recycleInputCaptureChunk?(session: InputCaptureSession, chunkIndex: number, channels: Float32Array[]): boolean;
     releaseInputCaptureSession?(session: InputCaptureSession): void;
     checkAndResetMaster(clearedTrackId: number): void;
+    getMidiClockSyncMode?(): BrowserMidiSyncMode;
+    setMidiClockSyncMode?(mode: BrowserMidiSyncMode): void;
 }

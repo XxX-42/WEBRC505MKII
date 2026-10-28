@@ -235,6 +235,29 @@ describe('TrackAudio recording chunk assembly', () => {
     }
   });
 
+  it('refuses MIDI-clock quantized record start with a master instead of using the old master grid', async () => {
+    const [{ TrackAudio }, { Track, TrackState }, { Transport }] = await Promise.all([
+      import('../../src/audio/TrackAudio'), import('../../src/core/types'), import('../../src/core/Transport'),
+    ]);
+    const context = createMockAudioContext();
+    const engine = { context, trackMixNode: context.createGain(), tracks: [] as unknown[],
+      getRecordPlaySettings: () => ({ quantize: 'MEASURE' }), getMidiClockSyncMode: () => 'all' };
+    const transport = Transport.getInstance();
+    transport.stop(); transport.masterTrackId = 1; transport.masterLoopLengthSamples = 2048;
+    try {
+      const audio = new TrackAudio(engine as never, new Track(2), 1, null, null);
+      audio.track.loopSyncSw = 'ON';
+      const start = vi.spyOn(audio, 'startRecording').mockResolvedValue(undefined);
+      audio.triggerRecord();
+      expect(start).not.toHaveBeenCalled();
+      expect(audio.state).toBe(TrackState.EMPTY);
+      expect(audio.recordingDiagnostic).toContain('external clock pulses are not mapped to audio sample frames');
+      expect(engine.getRecordPlaySettings().quantize).toBe('MEASURE');
+    } finally {
+      transport.stop(); transport.masterTrackId = null; transport.masterLoopLengthSamples = 0;
+    }
+  });
+
   it('does not retrigger or overdub 1SHOT after recording with REC->DUB', async () => {
     const [{ TrackAudio }, { Track }, { Transport }] = await Promise.all([
       import('../../src/audio/TrackAudio'), import('../../src/core/types'), import('../../src/core/Transport'),
