@@ -220,6 +220,9 @@
       this.processorOptions = options.processorOptions || {};
       const mockNode = this;
       let onmessage = null;
+      let inputGeneration = 0;
+      let captureReadyEpoch = 0;
+      let inputCaptureReady = false;
       let monoSemitones = Number.isFinite(this.processorOptions.semitones)
         ? this.processorOptions.semitones
         : 0;
@@ -276,6 +279,12 @@
               } });
             });
           }
+          if (processorName === 'rc505-input-capture' && message?.type === 'INPUT_READY'
+            && Number.isSafeInteger(message.generation) && message.generation > inputGeneration) {
+            inputGeneration = message.generation;
+            captureReadyEpoch = 0;
+            inputCaptureReady = message.ready === true;
+          }
           if (processorName === 'rc505-input-capture' && message?.type === 'INPUT_READY' && message.ready === true) {
             // The application E2E suites intentionally replace AudioContext
             // and AudioWorkletNode. Give that mocked input-capture node a
@@ -288,12 +297,34 @@
             queueMicrotask(() => {
               if (onmessage) onmessage({ data: {
                 type: 'INPUT_CAPTURE_READY',
-                inputGeneration: message.generation,
+                inputGeneration,
                 sampleRate: mockNode.context.sampleRate,
+                captureReadyEpoch,
                 oldestAvailableFrame: 0,
                 latestAvailableFrame: requiredPreRollFrames,
                 preRollValidFrames: requiredPreRollFrames,
                 preRollCapacityFrames: requiredPreRollFrames,
+                requiredPreRollFrames,
+              } });
+            });
+          }
+          if (processorName === 'rc505-input-capture' && message?.type === 'CHECK_CAPTURE_READINESS') {
+            // Match the real worklet's message-ordered readiness query. A
+            // synthetic READY above represents a fully warmed pre-roll ring.
+            const preRollCapacityFrames = mockNode.processorOptions.preRollFrames;
+            const requiredPreRollFrames = Number.isSafeInteger(preRollCapacityFrames)
+              ? preRollCapacityFrames
+              : 8_192;
+            queueMicrotask(() => {
+              if (onmessage) onmessage({ data: {
+                type: 'CAPTURE_READINESS_STATE',
+                inputGeneration,
+                captureReadyEpoch,
+                sampleRate: mockNode.context.sampleRate,
+                ready: inputCaptureReady,
+                oldestAvailableFrame: 0,
+                latestAvailableFrame: inputCaptureReady ? requiredPreRollFrames : 0,
+                preRollValidFrames: inputCaptureReady ? requiredPreRollFrames : 0,
                 requiredPreRollFrames,
               } });
             });
