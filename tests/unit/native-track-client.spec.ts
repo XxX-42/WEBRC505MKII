@@ -94,12 +94,57 @@ describe('Native multi-track bridge client', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it('applies editor source FX parameters with CAS while preserving host REVERSE and 1SHOT', async () => {
+    const current = { mode: 0, oneShot: true, reverse: true, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const applied = { ...current, mode: 2, vinylSpeedPercent: 25, motorReturnSeconds: 2 };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [current] },
+        nativeTracks: [{ trackId: 1, loopTransportRequestedRevision: 5, loopTransportAppliedRevision: 5 }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [applied] },
+        nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 6, loopTransportRequestedRevision: 6,
+          loopTransportAppliedRevision: 6, loopTransportFaultRevision: 0 }] }) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+    const editorConfig: NativeLoopTransportConfig = { mode: 'vinylFlick', oneShot: false, reverse: false,
+      beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5, vinylSpeedPercent: 25, motorReturnSeconds: 2,
+      brakePercent: 0, vinylMixPercent: 100 };
+
+    const status = await client.setLoopTransportFx(1, editorConfig);
+
+    expect(status.nativeMemory?.loopTransports[0]?.oneShot).toBe(true);
+    expect(status.nativeMemory?.loopTransports[0]?.reverse).toBe(true);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      trackId: 1, mode: 'vinylFlick', oneShot: true, reverse: true, vinylSpeedPercent: 25, expectedRevision: 5,
+    });
+  });
+
+  it('refuses a stale full-editor update instead of overwriting a newer transport or its flags', async () => {
+    const current = { mode: 0, oneShot: true, reverse: true, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [current] },
+        nativeTracks: [{ trackId: 1, loopTransportRequestedRevision: 8, loopTransportAppliedRevision: 8 }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: false, error: 'Native loop transport settings changed concurrently.' }) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+    const editorConfig: NativeLoopTransportConfig = { mode: 'off', oneShot: false, reverse: false,
+      beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5, vinylSpeedPercent: 0, motorReturnSeconds: 1,
+      brakePercent: 0, vinylMixPercent: 100 };
+
+    await expect(client.setLoopTransportFx(1, editorConfig)).rejects.toThrow(/changed concurrently/);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      trackId: 1, mode: 'off', oneShot: true, reverse: true, expectedRevision: 8,
+    });
+  });
+
   it('enables Native 1SHOT only after the applied revision and setting read back', async () => {
-    const config = { mode: 0, oneShot: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+    const config = { mode: 0, oneShot: false, reverse: true, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
       vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
     const returned = { ...config, oneShot: true };
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] } }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
+        nativeTracks: [{ trackId: 1, loopTransportRequestedRevision: 3, loopTransportAppliedRevision: 3 }] }) } as Response)
       .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [returned] },
         nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 4, loopTransportRequestedRevision: 4,
           loopTransportAppliedRevision: 4, loopTransportFaultRevision: 0, loopTransportAppliedOneShot: true }] }) } as Response);
@@ -109,8 +154,75 @@ describe('Native multi-track bridge client', () => {
     const status = await client.setOneShot(1, true);
 
     expect(status.nativeMemory?.loopTransports[0]?.oneShot).toBe(true);
+    expect(status.nativeMemory?.loopTransports[0]?.reverse).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({ trackId: 1, oneShot: true });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      trackId: 1, oneShot: true, reverse: true, expectedRevision: 3,
+    });
+  });
+
+  it('uses stale-revision CAS for 1SHOT without clearing REVERSE', async () => {
+    const config = { mode: 0, oneShot: false, reverse: true, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
+        nativeTracks: [{ trackId: 1, loopTransportRequestedRevision: 3, loopTransportAppliedRevision: 3 }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: false, error: 'Native loop transport settings changed concurrently.' }) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    await expect(client.setOneShot(1, true)).rejects.toThrow(/changed concurrently/);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      trackId: 1, oneShot: true, reverse: true, expectedRevision: 3,
+    });
+  });
+
+  it('applies Native REVERSE with a revision compare-and-set', async () => {
+    const config = { mode: 0, oneShot: true, reverse: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const returned = { ...config, reverse: true };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
+        nativeTracks: [{ trackId: 1, loopTransportRequestedRevision: 12, loopTransportAppliedRevision: 12 }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [returned] },
+        nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 13, loopTransportRequestedRevision: 13,
+          loopTransportAppliedRevision: 13, loopTransportFaultRevision: 0, loopTransportAppliedReverse: true }] }) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    const status = await client.setReverse(1, true);
+
+    expect(status.nativeMemory?.loopTransports[0]?.reverse).toBe(true);
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      trackId: 1, oneShot: true, reverse: true, expectedRevision: 12,
+    });
+  });
+
+  it('does not retry a stale Native REVERSE config after concurrent transport changes', async () => {
+    const config = { mode: 0, oneShot: false, reverse: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
+        nativeTracks: [{ trackId: 1, loopTransportRequestedRevision: 12, loopTransportAppliedRevision: 12 }] }) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({ ok: false, error: 'Native loop transport settings changed concurrently.' }) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    await expect(client.setReverse(1, true)).rejects.toThrow(/changed concurrently/);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not derive REVERSE from a transport snapshot that is still being applied', async () => {
+    const config = { mode: 0, oneShot: false, reverse: false, beatOffsetBeats: 0, bpm: 120, crossfadeMs: 5,
+      vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 };
+    const fetchMock = vi.fn(async () => ({ json: async () => ({ ok: true,
+      nativeMemory: { version: 1, loopTransports: [config] },
+      nativeTracks: [{ trackId: 1, loopTransportRequestedRevision: 13, loopTransportAppliedRevision: 12 }] }) } as Response));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient();
+
+    await expect(client.setReverse(1, true)).rejects.toThrow(/settled loop-transport readback/);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it('does not treat a callback-rejected requested 1SHOT value as applied', async () => {
@@ -119,7 +231,7 @@ describe('Native multi-track bridge client', () => {
     const requested = { ...config, oneShot: true };
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
-        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false }] }) } as Response)
+        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false, loopTransportRequestedRevision: 7, loopTransportAppliedRevision: 7 }] }) } as Response)
       .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [requested] },
         nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 8, loopTransportRequestedRevision: 8,
           loopTransportAppliedRevision: 7, loopTransportFaultRevision: 8, loopTransportAppliedOneShot: false }] }) } as Response));
@@ -135,7 +247,7 @@ describe('Native multi-track bridge client', () => {
     const requested = { ...config, oneShot: true };
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
-        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false }] }) } as Response)
+        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false, loopTransportRequestedRevision: 7, loopTransportAppliedRevision: 7 }] }) } as Response)
       .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [requested] },
         nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 8, loopTransportRequestedRevision: 9,
           loopTransportAppliedRevision: 9, loopTransportFaultRevision: 0, loopTransportAppliedOneShot: false }] }) } as Response));
@@ -151,7 +263,7 @@ describe('Native multi-track bridge client', () => {
     const requested = { ...config, oneShot: true };
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [config] },
-        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false }] }) } as Response)
+        nativeTracks: [{ trackId: 1, loopTransportAppliedOneShot: false, loopTransportRequestedRevision: 7, loopTransportAppliedRevision: 7 }] }) } as Response)
       .mockResolvedValueOnce({ json: async () => ({ ok: true, nativeMemory: { version: 1, loopTransports: [requested] },
         nativeTracks: [{ trackId: 1, loopTransportAcceptedRevision: 8, loopTransportRequestedRevision: 8,
           loopTransportAppliedRevision: 7, loopTransportFaultRevision: 0, loopTransportAppliedOneShot: false }] }) } as Response));

@@ -16,7 +16,9 @@ export class NativeTrackProxy {
   public readonly trackId: number;
   public readonly track: Track;
   public state: TrackState = TrackState.EMPTY;
-  public isReverse = false;
+  public get isReverse(): boolean {
+    return this.engine.getReverse(this.trackId) === true;
+  }
   public readonly fxChain = {
     setFilterEnabled: (_enabled: boolean) => { return; },
     setFilterParam: (_paramName: string, _value: number) => { return; },
@@ -166,6 +168,9 @@ export class NativeTrackProxy {
       if (this.state === TrackState.PLAYING && this.engine.getOneShot(this.trackId) === true) {
         return this.engine.playTrack(this.trackId);
       }
+      // REVERSE forbids switching to overdub. Unlike the explicitly retriggerable
+      // 1SHOT mode, a reverse-only REC/PLAY press has no defined retrigger action.
+      if (this.state === TrackState.PLAYING && this.isReverse) return;
       return this.engine.toggleOverdub(this.trackId);
     }
   }
@@ -186,7 +191,8 @@ export class NativeTrackProxy {
   }
 
   public toggleReverse() {
-    return;
+    if (!this.transportEnabled || (this.state !== TrackState.EMPTY && this.state !== TrackState.STOPPED)) return;
+    return this.engine.setReverse(this.trackId, !this.isReverse);
   }
 
   public updateSettings() {

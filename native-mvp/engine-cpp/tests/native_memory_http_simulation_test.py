@@ -64,7 +64,7 @@ def main():
         source_transport = dict(saved_transport)
         source_transport['mode'] = transport_modes[saved_transport['mode']]
         code, requested_transport = request('/v1/native-loop-transport/config', 'POST',
-            {'trackId': 2, **source_transport, 'oneShot': True})
+            {'trackId': 2, **source_transport, 'oneShot': True, 'reverse': True})
         require(code == 200, requested_transport)
         accepted_transport_revision = requested_transport['nativeTracks'][1]['loopTransportAcceptedRevision']
         deadline = time.monotonic() + 5
@@ -76,8 +76,10 @@ def main():
             time.sleep(.005)
         require(track_transport['loopTransportAppliedRevision'] == accepted_transport_revision and
                 track_transport['loopTransportAppliedOneShot'] is True and
-                source_status['nativeMemory']['loopTransports'][1]['oneShot'] is True,
-                'Native 1SHOT did not round-trip through applied status before Memory export')
+                track_transport['loopTransportAppliedReverse'] is True and
+                source_status['nativeMemory']['loopTransports'][1]['oneShot'] is True and
+                source_status['nativeMemory']['loopTransports'][1]['reverse'] is True,
+                'Native REVERSE/1SHOT did not round-trip through applied status before Memory export')
         baseline = source_status['projectContentRevision']
         # Older Native Memory envelopes did not carry per-track DUB MODE.
         # They remain valid and restore the documented legacy default.

@@ -46,8 +46,10 @@ enum class NativeDubMode : std::uint8_t {
 
 struct LoopTransportConfig {
     LoopTransportMode mode = LoopTransportMode::Off;
-    // 1SHOT plays the finalized loop once. Playback is forward-only in Native.
+    // 1SHOT plays the finalized loop once. REVERSE reads the same finalized
+    // PCM from its last frame toward its first; both settings prohibit overdub.
     bool oneShot = false;
+    bool reverse = false;
     // BEAT SHIFT: signed beat offset, tempo in beats per minute and a
     // click-free parameter-transition crossfade. Offsets may be fractional.
     float beatOffsetBeats = 0.0f;
@@ -218,6 +220,7 @@ private:
     static float clampSample(float value) noexcept;
     [[nodiscard]] double wrappedLoopPosition(double position) const noexcept;
     void readLoopAt(double position, bool useLagrange4, float& left, float& right) const noexcept;
+    void readCanonicalLoopAt(double position, bool useLagrange4, bool reverse, float& left, float& right) const noexcept;
     [[nodiscard]] double beatShiftPosition(double canonicalPosition, double normalizedOffset) const noexcept;
     struct PlaybackCursor {
         std::size_t playhead;

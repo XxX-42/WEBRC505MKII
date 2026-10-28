@@ -474,9 +474,31 @@ export class NativeAudioEngine {
     }
   }
 
+  public async setLoopTransportFx(trackId: number, config: NativeLoopTransportConfig): Promise<NativeStatus> {
+    try {
+      const status = await this.bridge.setLoopTransportFx(trackId, config);
+      this.applyStatus(status);
+      return status;
+    } catch (error) {
+      this.handleBridgeFailure(error, false);
+      throw error;
+    }
+  }
+
   public async setOneShot(trackId: number, enabled: boolean): Promise<NativeStatus> {
     try {
       const status = await this.bridge.setOneShot(trackId, enabled);
+      this.applyStatus(status);
+      return status;
+    } catch (error) {
+      this.handleBridgeFailure(error, false);
+      throw error;
+    }
+  }
+
+  public async setReverse(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    try {
+      const status = await this.bridge.setReverse(trackId, enabled);
       this.applyStatus(status);
       return status;
     } catch (error) {
@@ -525,6 +547,12 @@ export class NativeAudioEngine {
   public getOneShot(trackId: number): boolean | null {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
     const value = this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAppliedOneShot;
+    return typeof value === 'boolean' ? value : null;
+  }
+
+  public getReverse(trackId: number): boolean | null {
+    if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
+    const value = this.latestStatus?.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAppliedReverse;
     return typeof value === 'boolean' ? value : null;
   }
 
@@ -656,7 +684,8 @@ export class NativeAudioEngine {
   }
 
   public supportsReverse() {
-    return false;
+    return this.latestStatus?.nativeTracks?.length === 5 &&
+      this.latestStatus.nativeTracks.every((track) => typeof track.loopTransportAppliedReverse === 'boolean');
   }
 
   public isTrackAvailable(trackId: number) {

@@ -696,9 +696,23 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const bounceBusy = bounceSettingsBusy();
     const fields: DeviceScreenField[] = [
       makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 200, step: 1, disabled: !controller.levelControlEnabled.value || controller.levelWritePending.value, reason: controller.levelWritePending.value ? 'Waiting for Native level readback.' : controller.trackLevelUnavailableReason.value }),
-      makeBooleanField('track-reverse', 'REVERSE', audioTrack?.isReverse === true, (enabled) => {
-        if (audioTrack && audioTrack.isReverse !== enabled) engine.toggleReverse(currentTrackId.value - 1);
-      }, { disabled: !trackCapabilities.supportsReverse, reason: trackCapabilities.supportsReverse ? '' : trackCapabilities.reverseReason || 'Reverse playback is unavailable on this runtime.' }),
+      makeBooleanField('track-reverse', 'REVERSE', engine.getMode() === 'native'
+        ? engine.getNativeReverse?.(currentTrackId.value) === true : audioTrack?.isReverse === true, async (enabled) => {
+        if (!audioTrack || currentTrackId.value !== bounceTarget) throw new Error('Track changed; select it again.');
+        if (engine.getMode() === 'native') {
+          if (typeof engine.setNativeReverse !== 'function') throw new Error('This Native bridge does not provide callback-acknowledged REVERSE.');
+          const acknowledged = await engine.setNativeReverse(bounceTarget, enabled);
+          const applied = acknowledged.nativeTracks?.find((track) => track.trackId === bounceTarget)?.loopTransportAppliedReverse;
+          if (acknowledged.nativeMemory?.loopTransports[bounceTarget - 1]?.reverse !== enabled || applied !== enabled) {
+            throw new Error('Native REVERSE callback and setting readback did not match the requested value.');
+          }
+          return;
+        }
+        if (audioTrack.isReverse !== enabled) engine.toggleReverse(currentTrackId.value - 1);
+      }, { disabled: !trackCapabilities.supportsReverse || (engine.getMode() === 'native' &&
+        audioTrack?.state !== 'EMPTY' && audioTrack?.state !== 'STOPPED'), reason: !trackCapabilities.supportsReverse
+        ? trackCapabilities.reverseReason || 'Reverse playback is unavailable on this runtime.'
+        : engine.getMode() === 'native' ? 'Stop the track before changing Native REVERSE.' : '' }),
       makeBooleanField('track-fx-apply', 'FX', fxRoute?.applied === true, async (enabled) => {
         const target = currentTrackId.value;
         assertTrackFxApplyConfirmed(await engine.setTrackFxApply(target, enabled), enabled);

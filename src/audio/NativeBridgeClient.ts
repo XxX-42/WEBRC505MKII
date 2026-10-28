@@ -26,6 +26,7 @@ export type NativeLoopTransportStatus =
 export interface NativeMemoryLoopTransport {
   mode: number;
   oneShot?: boolean;
+  reverse?: boolean;
   beatOffsetBeats: number;
   bpm: number;
   crossfadeMs: number;
@@ -43,8 +44,10 @@ export type NativeVocoderCarrierStatus =
 
 export interface NativeLoopTransportConfig {
   mode: NativeLoopTransportMode;
-  /** Native forward-only finite playback. Missing on older callers means OFF. */
+  /** Native finite playback. Missing on older callers means OFF. */
   oneShot?: boolean;
+  /** Reverse the read cursor without rewriting finalized PCM. */
+  reverse?: boolean;
   beatOffsetBeats: number;
   bpm: number;
   crossfadeMs: number;
@@ -270,6 +273,7 @@ export interface NativeStatus {
     loopTransportFaultRevision?: number;
     loopTransportAcceptedRevision?: number;
     loopTransportAppliedOneShot?: boolean;
+    loopTransportAppliedReverse?: boolean;
     dubMode?: NativeDubModeStatus;
     vocoderCarrierStatus?: NativeVocoderCarrierStatus;
     history?: NativeTrackHistoryStatus;
@@ -1234,26 +1238,86 @@ export class NativeBridgeClient {
     return this.requestTrackMark('/v1/transport/mark-clear', trackId, generation);
   }
 
-  public async setLoopTransport(trackId: number, config: NativeLoopTransportConfig): Promise<NativeStatus> {
+  public async setLoopTransport(trackId: number, config: NativeLoopTransportConfig, expectedRevision?: number): Promise<NativeStatus> {
     assertNativeTrackId(trackId);
+    if (expectedRevision !== undefined && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)) {
+      throw new RangeError('Native loop transport expectedRevision must be a non-negative safe integer.');
+    }
     if (!isNativeLoopTransportConfig(config)) {
       throw new RangeError('Native loop transport settings are outside the supported mode, Beat Shift, or Vinyl Flick ranges.');
     }
     return this.request<NativeStatus>('/v1/native-loop-transport/config', {
       method: 'POST',
-      body: JSON.stringify({ trackId, ...config }),
+      body: JSON.stringify({ trackId, ...config, ...(expectedRevision === undefined ? {} : { expectedRevision }) }),
     });
+  }
+
+  /** Applies editor-owned transport FX fields while preserving REVERSE/1SHOT and CASing the host revision. */
+  public async setLoopTransportFx(trackId: number, config: NativeLoopTransportConfig): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    const before = await this.getStatus();
+    const current = before.nativeMemory?.loopTransports[trackId - 1];
+    const beforeTrack = before.nativeTracks?.find((track) => track.trackId === trackId);
+    const expectedRevision = beforeTrack?.loopTransportRequestedRevision;
+    if (!current || !Number.isInteger(current.mode) || typeof expectedRevision !== 'number' ||
+        !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
+        beforeTrack?.loopTransportAppliedRevision !== expectedRevision) {
+      throw new Error('Native source FX update requires a settled loop-transport config and revision.');
+    }
+    const mode = current.mode === 0 ? 'off' : current.mode === 1 ? 'beatShift' : current.mode === 2 ? 'vinylFlick' : null;
+    if (!mode) throw new Error('Native loop transport readback contains an unsupported mode.');
+    const expectedMode = config.mode === 'off' ? 0 : config.mode === 'beatShift' ? 1 : 2;
+    const merged: NativeLoopTransportConfig = { ...config, mode: config.mode };
+    if (typeof current.oneShot === 'boolean') merged.oneShot = current.oneShot;
+    else delete merged.oneShot;
+    if (typeof current.reverse === 'boolean') merged.reverse = current.reverse;
+    else delete merged.reverse;
+
+    let status = await this.setLoopTransport(trackId, merged, expectedRevision);
+    const accepted = status.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAcceptedRevision;
+    if (typeof accepted !== 'number' || !Number.isSafeInteger(accepted) || accepted <= expectedRevision) {
+      throw new Error('Native bridge did not identify an accepted source FX revision.');
+    }
+    const deadline = Date.now() + 2000;
+    for (;;) {
+      const track = status.nativeTracks?.find((item) => item.trackId === trackId);
+      const requested = track?.loopTransportRequestedRevision;
+      const applied = track?.loopTransportAppliedRevision;
+      const faulted = track?.loopTransportFaultRevision;
+      const readback = status.nativeMemory?.loopTransports[trackId - 1];
+      if (typeof requested !== 'number' || typeof applied !== 'number' || typeof faulted !== 'number' || !readback) {
+        throw new Error('Native bridge omitted source FX callback readback.');
+      }
+      if (faulted === accepted) throw new Error('Native callback rejected the source FX update; the prior settings remain active.');
+      if (requested > accepted || applied > accepted) throw new Error('Native source FX update was superseded before callback acknowledgement.');
+      const preservedOneShot = current.oneShot === undefined || readback.oneShot === current.oneShot;
+      const preservedReverse = current.reverse === undefined || readback.reverse === current.reverse;
+      if (requested === accepted && applied === accepted && readback.mode === expectedMode && preservedOneShot && preservedReverse) {
+        this.latestStatus = status;
+        return status;
+      }
+      if (Date.now() >= deadline) throw new Error('Native source FX callback acknowledgement timed out; check the track setting before retrying.');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      status = await this.getStatus();
+    }
   }
 
   /** Changes Native 1SHOT only after the callback confirms the requested revision and readback. */
   public async setOneShot(trackId: number, enabled: boolean): Promise<NativeStatus> {
     assertNativeTrackId(trackId);
     if (typeof enabled !== 'boolean') throw new TypeError('Native 1SHOT must be a boolean.');
-    const current = (await this.getStatus()).nativeMemory?.loopTransports[trackId - 1];
+    const currentStatus = await this.getStatus();
+    const current = currentStatus.nativeMemory?.loopTransports[trackId - 1];
     if (!current || !Number.isInteger(current.mode)) throw new Error('This Native bridge does not advertise 1SHOT settings.');
+    const currentTrack = currentStatus.nativeTracks?.find((track) => track.trackId === trackId);
+    const expectedRevision = currentTrack?.loopTransportRequestedRevision;
+    if (typeof expectedRevision !== 'number' || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
+        currentTrack?.loopTransportAppliedRevision !== expectedRevision) {
+      throw new Error('Native 1SHOT requires a settled loop-transport readback; the setting was not changed.');
+    }
     const mode = current.mode === 0 ? 'off' : current.mode === 1 ? 'beatShift' : current.mode === 2 ? 'vinylFlick' : null;
     if (!mode) throw new Error('Native loop transport readback contains an unsupported mode.');
-    let status = await this.setLoopTransport(trackId, { ...current, mode, oneShot: enabled });
+    let status = await this.setLoopTransport(trackId, { ...current, mode, oneShot: enabled }, expectedRevision);
     const accepted = status.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAcceptedRevision;
     if (typeof accepted !== 'number' || !Number.isSafeInteger(accepted) || accepted <= 0) {
       throw new Error('Native bridge did not identify the accepted 1SHOT revision.');
@@ -1277,6 +1341,50 @@ export class NativeBridgeClient {
         return status;
       }
       if (Date.now() >= deadline) throw new Error('Native 1SHOT callback acknowledgement timed out; check the track setting before retrying.');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      status = await this.getStatus();
+    }
+  }
+
+  /** Changes Native REVERSE only after the callback confirms its revision and readback. */
+  public async setReverse(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    assertNativeTrackId(trackId);
+    if (typeof enabled !== 'boolean') throw new TypeError('Native REVERSE must be a boolean.');
+    const currentStatus = await this.getStatus();
+    const current = currentStatus.nativeMemory?.loopTransports[trackId - 1];
+    if (!current || !Number.isInteger(current.mode)) throw new Error('This Native bridge does not advertise REVERSE settings.');
+    const currentTrack = currentStatus.nativeTracks?.find((track) => track.trackId === trackId);
+    const expectedRevision = currentTrack?.loopTransportRequestedRevision;
+    if (typeof expectedRevision !== 'number' || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
+        currentTrack?.loopTransportAppliedRevision !== expectedRevision) {
+      throw new Error('Native REVERSE requires a settled loop-transport readback; the setting was not changed.');
+    }
+    const mode = current.mode === 0 ? 'off' : current.mode === 1 ? 'beatShift' : current.mode === 2 ? 'vinylFlick' : null;
+    if (!mode) throw new Error('Native loop transport readback contains an unsupported mode.');
+    let status = await this.setLoopTransport(trackId, { ...current, mode, reverse: enabled }, expectedRevision);
+    const accepted = status.nativeTracks?.find((track) => track.trackId === trackId)?.loopTransportAcceptedRevision;
+    if (typeof accepted !== 'number' || !Number.isSafeInteger(accepted) || accepted <= 0) {
+      throw new Error('Native bridge did not identify the accepted REVERSE revision.');
+    }
+    const deadline = Date.now() + 2000;
+    for (;;) {
+      const track = status.nativeTracks?.find((item) => item.trackId === trackId);
+      const requested = track?.loopTransportRequestedRevision;
+      const applied = track?.loopTransportAppliedRevision;
+      const faulted = track?.loopTransportFaultRevision;
+      const appliedReverse = track?.loopTransportAppliedReverse;
+      const requestedReverse = status.nativeMemory?.loopTransports[trackId - 1]?.reverse;
+      if (typeof requested !== 'number' || typeof applied !== 'number' || typeof faulted !== 'number' ||
+          typeof appliedReverse !== 'boolean' || typeof requestedReverse !== 'boolean') {
+        throw new Error('Native bridge omitted REVERSE revision or setting readback.');
+      }
+      if (faulted === accepted) throw new Error('Native callback rejected REVERSE; the prior setting remains active.');
+      if (requested > accepted || applied > accepted) throw new Error('Native REVERSE request was superseded before callback acknowledgement.');
+      if (requested === accepted && applied === accepted && requestedReverse === enabled && appliedReverse === enabled) {
+        this.latestStatus = status;
+        return status;
+      }
+      if (Date.now() >= deadline) throw new Error('Native REVERSE callback acknowledgement timed out; check the track setting before retrying.');
       await new Promise((resolve) => setTimeout(resolve, 10));
       status = await this.getStatus();
     }
@@ -1567,6 +1675,7 @@ function assertNativeTrackId(trackId: number): void {
 export function isNativeLoopTransportConfig(config: NativeLoopTransportConfig): boolean {
   return (config.mode === 'off' || config.mode === 'beatShift' || config.mode === 'vinylFlick')
     && (config.oneShot === undefined || typeof config.oneShot === 'boolean')
+    && (config.reverse === undefined || typeof config.reverse === 'boolean')
     && Number.isFinite(config.beatOffsetBeats) && config.beatOffsetBeats >= -4 && config.beatOffsetBeats <= 4
     && Number.isFinite(config.bpm) && config.bpm >= 20 && config.bpm <= 300
     && Number.isFinite(config.crossfadeMs) && config.crossfadeMs >= 1 && config.crossfadeMs <= 10

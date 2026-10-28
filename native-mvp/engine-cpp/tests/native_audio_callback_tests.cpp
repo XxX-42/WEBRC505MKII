@@ -2752,6 +2752,27 @@ void testNativeOneShotOverdubAdmissionIsSideEffectFree() {
     assert(recDubCore.stopTrack(0U, error));
     assert(NativeAudioCoreTestAccess::callback(recDubCore, nullptr, output.data(), 4U) == 0);
     NativeAudioCoreTestAccess::setRunningForQueueTest(recDubCore, false);
+
+    NativeAudioCore reverseCore;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(reverseCore);
+    LoopTransportConfig reverse;
+    reverse.reverse = true;
+    assert(reverseCore.setNativeLoopTransport(0U, reverse, error));
+    NativeAudioCoreTestAccess::setRunningForQueueTest(reverseCore, true);
+    NativeAudioCoreTestAccess::recordLoop(reverseCore, 0U,
+        std::vector<float>(input.begin(), input.end()), 4U, output.data());
+    assert(reverseCore.playTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(reverseCore, nullptr, output.data(), 1U) == 0);
+    before = reverseCore.getStatus();
+    assert(before.nativeTrackStates[0U] == LooperState::Playing && before.nativeLoopTransportAppliedReverse[0U]);
+    const auto reverseQueueBefore = NativeAudioCoreTestAccess::commandQueueSize(reverseCore);
+    assert(!reverseCore.toggleTrackOverdub(0U, error));
+    assert(error.find("REVERSE") != std::string::npos);
+    const auto reverseAfter = reverseCore.getStatus();
+    assert(reverseAfter.nativeTrackStates[0U] == before.nativeTrackStates[0U]);
+    assert(reverseAfter.nativeHistoryRetainedBytes == before.nativeHistoryRetainedBytes);
+    assert(NativeAudioCoreTestAccess::commandQueueSize(reverseCore) == reverseQueueBefore);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(reverseCore, false);
 }
 
 void testNativeDubModeCannotOvertakePendingTrackCommands() {

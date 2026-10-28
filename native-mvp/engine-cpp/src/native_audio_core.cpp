@@ -145,6 +145,7 @@ NativeAudioCore::NativeAudioCore()
         nativeLoopTransportAppliedRevision_[track].store(0U, std::memory_order_relaxed);
         nativeLoopTransportFaultRevision_[track].store(0U, std::memory_order_relaxed);
         nativeLoopTransportAppliedOneShot_[track].store(false, std::memory_order_relaxed);
+        nativeLoopTransportAppliedReverse_[track].store(false, std::memory_order_relaxed);
     }
 }
 
@@ -422,6 +423,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeLoopTransportAppliedRevision[track] = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportFaultRevision[track] = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportAppliedOneShot[track] = nativeLoopTransportAppliedOneShot_[track].load(std::memory_order_acquire);
+        status.nativeLoopTransportAppliedReverse[track] = nativeLoopTransportAppliedReverse_[track].load(std::memory_order_acquire);
         status.nativeTrackDubModes[track] = nativeTrackDubModes_[track].load(std::memory_order_acquire);
         status.nativeTrackRequestedDubModes[track] = nativeTrackRequestedDubModes_[track].load(std::memory_order_acquire);
         status.nativeDubModeRequestedRevision[track] = nativeDubModeRequestedRevision_[track].load(std::memory_order_acquire);
@@ -602,6 +604,7 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeLoopTransportAppliedRevision[track] = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportFaultRevision[track] = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
         status.nativeLoopTransportAppliedOneShot[track] = nativeLoopTransportAppliedOneShot_[track].load(std::memory_order_acquire);
+        status.nativeLoopTransportAppliedReverse[track] = nativeLoopTransportAppliedReverse_[track].load(std::memory_order_acquire);
     }
     status.nativeMemoryDubModes = nativeMemoryDubModeSettings_;
     const auto requestedBounceSnapshot = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
@@ -989,7 +992,8 @@ bool NativeAudioCore::finishRecordingTrack(std::size_t trackIndex, std::string& 
     const bool oneShotApplied = nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire);
     // REC ACTION is global while 1SHOT is per-track. Engineering policy: keep
     // the completed take and enter PLAY when this track cannot legally enter DUB.
-    const bool finishAsDub = recordActionDubRequested_ && !oneShotApplied;
+    const bool reverseApplied = nativeLoopTransportAppliedReverse_[trackIndex].load(std::memory_order_acquire);
+    const bool finishAsDub = recordActionDubRequested_ && !oneShotApplied && !reverseApplied;
     if (finishAsDub && !recordingMirrorReserved_[trackIndex].load(std::memory_order_acquire)) {
         error = "REC->DUB has no reserved snapshot; recording unchanged."; return false;
     }
@@ -1074,8 +1078,9 @@ bool NativeAudioCore::toggleTrackOverdub(std::size_t trackIndex, std::string& er
         error = "Wait for queued Native track state transition before changing overdub state.";
         return false;
     }
-    if (state == LooperState::Playing && nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire)) {
-        error = "Native 1SHOT playback cannot be overdubbed.";
+    if (state == LooperState::Playing && (nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire) ||
+        nativeLoopTransportAppliedReverse_[trackIndex].load(std::memory_order_acquire))) {
+        error = "Native 1SHOT or REVERSE playback cannot be overdubbed.";
         return false;
     }
     reclaimInactiveHistoryPcmLocked();
@@ -1396,7 +1401,8 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     if (starting && recordStartPending_[trackIndex].load(std::memory_order_acquire)) { error = "Record start is already pending."; return false; }
     bool reserved = false;
     const bool oneShotApplied = nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire);
-    if (type == CommandType::Record && state == LooperState::Empty && recordActionDubRequested_ && !oneShotApplied) {
+    const bool reverseApplied = nativeLoopTransportAppliedReverse_[trackIndex].load(std::memory_order_acquire);
+    if (type == CommandType::Record && state == LooperState::Empty && recordActionDubRequested_ && !oneShotApplied && !reverseApplied) {
         if (commandQueue_.size() != 0U || recordingMirrorReserved_[trackIndex].load(std::memory_order_acquire)) {
             error = "Wait for pending recording commands."; return false;
         }
@@ -2647,7 +2653,8 @@ bool NativeAudioCore::setNativeLoopTransport(
     std::size_t trackIndex,
     const LoopTransportConfig& config,
     std::string& error,
-    std::uint64_t* acceptedRevision
+    std::uint64_t* acceptedRevision,
+    std::optional<std::uint64_t> expectedRevision
 ) {
     std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
     std::lock_guard<std::mutex> lock(controlMutex_);
@@ -2657,6 +2664,10 @@ bool NativeAudioCore::setNativeLoopTransport(
 
     if (trackIndex >= kNativeTrackCount) {
         error = "Native loop transport track index must be between 0 and 4.";
+        return false;
+    }
+    if (expectedRevision && nativeLoopTransportRequestedRevision_[trackIndex] != *expectedRevision) {
+        error = "Native loop transport settings changed concurrently; refresh before applying REVERSE.";
         return false;
     }
     if (!LooperCore::validLoopTransportConfig(config)) {
@@ -2679,11 +2690,12 @@ bool NativeAudioCore::setNativeLoopTransport(
         return false;
     }
     const auto currentState = static_cast<LooperState>(trackStates_[trackIndex].load(std::memory_order_acquire));
-    if (config.oneShot != nativeMemoryLoopTransportSettings_[trackIndex].oneShot &&
+    if ((config.oneShot != nativeMemoryLoopTransportSettings_[trackIndex].oneShot ||
+         config.reverse != nativeMemoryLoopTransportSettings_[trackIndex].reverse) &&
         (recordStartPending_[trackIndex].load(std::memory_order_acquire) ||
          currentState == LooperState::Recording || currentState == LooperState::Playing ||
          currentState == LooperState::Overdubbing)) {
-        error = "Stop the track before changing Native 1SHOT.";
+        error = "Stop the track before changing Native 1SHOT or REVERSE.";
         return false;
     }
     if (nativeLoopTransportRequestedRevision_[trackIndex] >= kMaximumSafeProjectContentRevision) {
@@ -2708,6 +2720,7 @@ bool NativeAudioCore::setNativeLoopTransport(
         nativeLoopTransportRuntimeRevision_[trackIndex] = revision;
         nativeLoopTransportAppliedRevision_[trackIndex].store(revision, std::memory_order_release);
         nativeLoopTransportAppliedOneShot_[trackIndex].store(config.oneShot, std::memory_order_release);
+        nativeLoopTransportAppliedReverse_[trackIndex].store(config.reverse, std::memory_order_release);
         nativeLoopTransportFaultRevision_[trackIndex].store(0U, std::memory_order_release);
         applyOfficialSourceTransports();
     }
@@ -4475,6 +4488,7 @@ void NativeAudioCore::applyNativeLoopTransportCommands() noexcept {
         nativeLoopTransportRuntimeRevision_[command.trackIndex] = command.revision;
         nativeLoopTransportAppliedRevision_[command.trackIndex].store(command.revision, std::memory_order_release);
         nativeLoopTransportAppliedOneShot_[command.trackIndex].store(command.config.oneShot, std::memory_order_release);
+        nativeLoopTransportAppliedReverse_[command.trackIndex].store(command.config.reverse, std::memory_order_release);
         nativeLoopTransportFaultRevision_[command.trackIndex].store(0U, std::memory_order_release);
     }
     applyOfficialSourceTransports();
@@ -4537,9 +4551,13 @@ void NativeAudioCore::applyOfficialSourceTransports() noexcept {
             (nativePitchRuntimeTrackId_ == 0U || nativePitchRuntimeTrackId_ == track + 1U);
         nativeOfficialSourcePitchConflict_[track] = requested && pitchTarget;
         auto config = requested && !pitchTarget ? overlay : nativeBaseLoopTransportConfigs_[track];
-        if (requested && !pitchTarget) config.oneShot = nativeBaseLoopTransportConfigs_[track].oneShot;
+        if (requested && !pitchTarget) {
+            config.oneShot = nativeBaseLoopTransportConfigs_[track].oneShot;
+            config.reverse = nativeBaseLoopTransportConfigs_[track].reverse;
+        }
         if (looperForTrack(track).setLoopTransportConfig(config)) {
             nativeLoopTransportAppliedOneShot_[track].store(config.oneShot, std::memory_order_release);
+            nativeLoopTransportAppliedReverse_[track].store(config.reverse, std::memory_order_release);
         }
         trackLoopTransportStatus_[track].store(nativeOfficialSourcePitchConflict_[track]
             ? LoopTransportStatus::UnsupportedPitchProcessing : looperForTrack(track).loopTransportStatus(), std::memory_order_release);

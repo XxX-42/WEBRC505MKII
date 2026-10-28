@@ -234,6 +234,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             auto& target = candidate->loopTransports[track];
             target.mode = static_cast<LoopTransportMode>(boundedInteger(source.at("mode"), 0, 2));
             target.oneShot = source.value("oneShot", false);
+            target.reverse = source.value("reverse", false);
             target.beatOffsetBeats = source.at("beatOffsetBeats").get<float>();
             target.bpm = source.at("bpm").get<float>();
             target.crossfadeMs = source.at("crossfadeMs").get<float>();
@@ -571,6 +572,7 @@ json statusToJson(const EngineStatus& status) {
         const auto& config = status.nativeMemoryLoopTransports[track];
         memoryTransports.push_back({{"mode", static_cast<unsigned int>(config.mode)},
             {"oneShot", status.nativeLoopTransportAppliedOneShot[track]},
+            {"reverse", status.nativeLoopTransportAppliedReverse[track]},
             {"beatOffsetBeats", config.beatOffsetBeats}, {"bpm", config.bpm}, {"crossfadeMs", config.crossfadeMs},
             {"vinylSpeedPercent", config.vinylSpeedPercent}, {"motorReturnSeconds", config.motorReturnSeconds},
             {"brakePercent", config.brakePercent}, {"vinylMixPercent", config.vinylMixPercent}});
@@ -595,6 +597,7 @@ json statusToJson(const EngineStatus& status) {
             {"loopTransportAppliedRevision", status.nativeLoopTransportAppliedRevision[track]},
             {"loopTransportFaultRevision", status.nativeLoopTransportFaultRevision[track]},
             {"loopTransportAppliedOneShot", status.nativeLoopTransportAppliedOneShot[track]},
+            {"loopTransportAppliedReverse", status.nativeLoopTransportAppliedReverse[track]},
             {"loopTransportStatus", loopTransportStatusToString(status.nativeTrackLoopTransportStatus[track])},
             {"dubMode", {
                 {"applied", nativeDubModeToString(status.nativeTrackDubModes[track])},
@@ -2184,6 +2187,24 @@ int main() {
                 }
                 config.oneShot = body["oneShot"].get<bool>();
             }
+            if (body.contains("reverse")) {
+                if (!body["reverse"].is_boolean()) {
+                    response.status = 400;
+                    writeError(response, "'reverse' must be a boolean.");
+                    return;
+                }
+                config.reverse = body["reverse"].get<bool>();
+            }
+            std::optional<std::uint64_t> expectedRevision;
+            if (body.contains("expectedRevision")) {
+                std::uint64_t parsedExpectedRevision = 0U;
+                if (!readUnsignedJsonInteger(body["expectedRevision"], kMaximumSafeTempoRevision, parsedExpectedRevision)) {
+                    response.status = 400;
+                    writeError(response, "'expectedRevision' must be a non-negative safe integer.");
+                    return;
+                }
+                expectedRevision = parsedExpectedRevision;
+            }
 
             const auto readBoundedFloat = [&body, &response](const char* name, double minimum, double maximum, float& target) {
                 if (!body.contains(name) || !body[name].is_number()) {
@@ -2213,7 +2234,8 @@ int main() {
 
             std::string error;
             std::uint64_t acceptedRevision = 0U;
-            if (!engine.setNativeLoopTransport(static_cast<std::size_t>(trackId - 1U), config, error, &acceptedRevision)) {
+            if (!engine.setNativeLoopTransport(static_cast<std::size_t>(trackId - 1U), config, error,
+                &acceptedRevision, expectedRevision)) {
                 response.status = 409;
                 writeError(response, error);
                 return;

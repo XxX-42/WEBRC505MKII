@@ -36,6 +36,8 @@ function assertLoopTransportReadback(status: NativeStatus): void {
     const fault = track?.loopTransportFaultRevision;
     const appliedOneShot = track?.loopTransportAppliedOneShot;
     const savedOneShot = transports[index]?.oneShot;
+    const appliedReverse = track?.loopTransportAppliedReverse;
+    const savedReverse = transports[index]?.reverse;
     if (typeof requested !== 'number' || typeof applied !== 'number' || typeof fault !== 'number'
       || !Number.isSafeInteger(requested) || !Number.isSafeInteger(applied) || !Number.isSafeInteger(fault)
       || (appliedOneShot !== undefined && typeof appliedOneShot !== 'boolean')
@@ -51,6 +53,14 @@ function assertLoopTransportReadback(status: NativeStatus): void {
     // revision pair is still required to prove the remaining transport config.
     if (appliedOneShot !== undefined && appliedOneShot !== savedOneShot) {
       throw new Error(`Track ${index + 1} Native loop transport readback is inconsistent; Memory operation was refused.`);
+    }
+    if ((appliedReverse !== undefined && typeof appliedReverse !== 'boolean')
+      || (savedReverse !== undefined && typeof savedReverse !== 'boolean')
+      || ((appliedReverse === undefined) !== (savedReverse === undefined))) {
+      throw new Error('Native host lacks complete REVERSE readback capability; Memory operation was refused.');
+    }
+    if (appliedReverse !== undefined && appliedReverse !== savedReverse) {
+      throw new Error(`Track ${index + 1} Native REVERSE readback is inconsistent; Memory operation was refused.`);
     }
   }
 }

@@ -331,6 +331,7 @@ struct EngineStatus {
     std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportAppliedRevision{};
     std::array<std::uint64_t, kNativeTrackCount> nativeLoopTransportFaultRevision{};
     std::array<bool, kNativeTrackCount> nativeLoopTransportAppliedOneShot{};
+    std::array<bool, kNativeTrackCount> nativeLoopTransportAppliedReverse{};
     std::array<NativeTrackHistoryStatus, kNativeTrackCount> nativeTrackHistory{};
     bool nativeTrackFxApplyAvailable = true;
     std::array<NativeTrackFxApplyStatus, kNativeTrackCount> nativeTrackFxApply{};
@@ -580,7 +581,8 @@ public:
         std::size_t trackIndex,
         const LoopTransportConfig& config,
         std::string& error,
-        std::uint64_t* acceptedRevision = nullptr
+        std::uint64_t* acceptedRevision = nullptr,
+        std::optional<std::uint64_t> expectedRevision = std::nullopt
     );
     // Sets the per-track write policy for the next overdub. A running engine
     // applies it at an audio callback boundary and reports the requested and
@@ -1000,6 +1002,7 @@ private:
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeLoopTransportAppliedRevision_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> nativeLoopTransportFaultRevision_{};
     std::array<std::atomic<bool>, kNativeTrackCount> nativeLoopTransportAppliedOneShot_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeLoopTransportAppliedReverse_{};
     std::array<NativeDubMode, kNativeTrackCount> nativeMemoryDubModeSettings_{{
         NativeDubMode::Overdub, NativeDubMode::Overdub, NativeDubMode::Overdub,
         NativeDubMode::Overdub, NativeDubMode::Overdub

@@ -4,11 +4,12 @@ import { NativeBridgeClient } from '../../src/audio/NativeBridgeClient';
 import { NativeTrackProxy } from '../../src/audio/NativeTrackProxy';
 import type { NativeAudioEngine } from '../../src/audio/NativeAudioEngine';
 
-function createProxy(appliedOneShot: boolean | null, playTrack: (trackId: number) => Promise<unknown>, toggleOverdub: (trackId: number) => Promise<unknown>) {
+function createProxy(appliedOneShot: boolean | null, playTrack: (trackId: number) => Promise<unknown>, toggleOverdub: (trackId: number) => Promise<unknown>, appliedReverse = false) {
   const engine = {
     isNativeTrackAvailable: () => true,
     isNativeReady: () => true,
     getOneShot: () => appliedOneShot,
+    getReverse: () => appliedReverse,
     playTrack,
     toggleOverdub,
   } as unknown as NativeAudioEngine;
@@ -45,5 +46,27 @@ describe('Native 1SHOT panel retrigger', () => {
 
     expect(toggleOverdub).toHaveBeenCalledWith(3);
     expect(playTrack).not.toHaveBeenCalled();
+  });
+
+  it('makes a reverse-only REC/PLAY press a no-op instead of requesting overdub', async () => {
+    const playTrack = vi.fn(async () => ({ ok: true }));
+    const toggleOverdub = vi.fn(async () => ({ ok: true }));
+    const proxy = createProxy(false, playTrack, toggleOverdub, true);
+
+    await proxy.triggerRecord();
+
+    expect(playTrack).not.toHaveBeenCalled();
+    expect(toggleOverdub).not.toHaveBeenCalled();
+  });
+
+  it('keeps explicit 1SHOT retrigger behavior when REVERSE is also enabled', async () => {
+    const playTrack = vi.fn(async () => ({ ok: true }));
+    const toggleOverdub = vi.fn(async () => ({ ok: true }));
+    const proxy = createProxy(true, playTrack, toggleOverdub, true);
+
+    await proxy.triggerRecord();
+
+    expect(playTrack).toHaveBeenCalledWith(3);
+    expect(toggleOverdub).not.toHaveBeenCalled();
   });
 });

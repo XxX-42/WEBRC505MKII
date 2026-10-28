@@ -155,7 +155,8 @@ const levelControlAriaLabel = computed(() => !levelControlEnabled.value
   ? `Track ${props.trackId} level unavailable: ${trackCapabilities.value.levelReason || 'Track level is unavailable'}`
   : `Track ${props.trackId} level`);
 const filterControlsEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsTrackFx);
-const reverseControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsReverse);
+const reverseControlEnabled = computed(() => trackTransportEnabled.value && trackCapabilities.value.supportsReverse &&
+  (getEngineUiStatus()?.mode !== 'native' || trackState.value === TrackState.EMPTY || trackState.value === TrackState.STOPPED));
 const captureWarmupBlocksAction = computed(() => getEngineUiStatus()?.mode === 'browser' && inputCaptureWarming.value
   && (trackState.value === TrackState.EMPTY || trackState.value === TrackState.PLAYING));
 const recordActionEnabled = computed(() => trackTransportEnabled.value && !captureWarmupBlocksAction.value && !recordActionPending.value);
@@ -301,11 +302,14 @@ const handleFilterResChange = (value: number) => {
   trackAudio.fxChain.setFilterParam('resonance', normalized);
 };
 
-const handleReverseToggle = () => {
+const handleReverseToggle = async () => {
   if (!reverseControlEnabled.value) return;
-
-  trackAudio.toggleReverse();
-  isReverse.value = trackAudio.isReverse;
+  try {
+    await trackAudio.toggleReverse();
+    isReverse.value = trackAudio.isReverse;
+  } catch (error) {
+    controls.reportError('REVERSE SETTING FAILED', error instanceof Error ? error.message : String(error));
+  }
 };
 
 let stopPressTimer: number | null = null;

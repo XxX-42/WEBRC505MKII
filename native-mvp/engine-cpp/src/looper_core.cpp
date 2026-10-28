@@ -150,7 +150,7 @@ void LooperCore::applyCommand(const Command& command) {
                 // normal source-transport start preparation without publishing
                 // an intermediate Stopped state or accepting another command.
                 applyCommand({CommandType::Play});
-                if (command.boolValue && !loopTransportConfig_.oneShot) state_ = LooperState::Overdubbing;
+                if (command.boolValue && !loopTransportConfig_.oneShot && !loopTransportConfig_.reverse) state_ = LooperState::Overdubbing;
             }
             recordingMirror_ = nullptr; recordingMirrorFrames_ = 0U;
         }
@@ -192,7 +192,7 @@ void LooperCore::applyCommand(const Command& command) {
         }
         break;
     case CommandType::ToggleOverdub:
-        if (loopTransportConfig_.oneShot) break;
+        if (loopTransportConfig_.oneShot || loopTransportConfig_.reverse) break;
         if (state_ == LooperState::Playing) {
             state_ = LooperState::Overdubbing;
         } else if (state_ == LooperState::Overdubbing) {
@@ -222,10 +222,11 @@ bool LooperCore::validLoopTransportConfig(const LoopTransportConfig& config) noe
 
 bool LooperCore::setLoopTransportConfig(const LoopTransportConfig& config) noexcept {
     if (!validLoopTransportConfig(config)) return false;
-    if (loopTransportConfig_.oneShot != config.oneShot &&
+    if ((loopTransportConfig_.oneShot != config.oneShot || loopTransportConfig_.reverse != config.reverse) &&
         (state_ == LooperState::Recording || state_ == LooperState::Playing || state_ == LooperState::Overdubbing)) return false;
     if (config.mode == LoopTransportMode::VinylFlick && sampleRate_ < 8000U) return false;
     if (loopTransportConfig_.mode == config.mode && loopTransportConfig_.oneShot == config.oneShot &&
+        loopTransportConfig_.reverse == config.reverse &&
         loopTransportConfig_.beatOffsetBeats == config.beatOffsetBeats &&
         loopTransportConfig_.bpm == config.bpm &&
         loopTransportConfig_.crossfadeMs == config.crossfadeMs &&
@@ -275,11 +276,17 @@ void LooperCore::commitPlaybackCursor(const PlaybackCursor& cursor) noexcept {
 void LooperCore::readPlayingFrame(PlaybackCursor& cursor, float& left, float& right) const noexcept {
     left = right = 0.0f;
     if (finalizedFrames_ == 0U || cursor.playhead >= finalizedFrames_) return;
-    const auto offset = cursor.playhead * channels_;
-    left = loopBuffer_[offset]; right = channels_ == 2U ? loopBuffer_[offset + 1U] : left;
-    if (loopTransportConfig_.mode == LoopTransportMode::BeatShift ||
-         loopTransportConfig_.mode == LoopTransportMode::VinylFlick ||
-         (cursor.fadeRemaining > 0U && previousLoopTransportConfig_.mode != LoopTransportMode::Off)) {
+    const bool transported = loopTransportConfig_.mode == LoopTransportMode::BeatShift ||
+        loopTransportConfig_.mode == LoopTransportMode::VinylFlick ||
+        (cursor.fadeRemaining > 0U && previousLoopTransportConfig_.mode != LoopTransportMode::Off);
+    if (!transported) {
+        const auto sourceFrame = loopTransportConfig_.reverse
+            ? finalizedFrames_ - 1U - cursor.playhead : cursor.playhead;
+        const auto offset = sourceFrame * channels_;
+        left = loopBuffer_[offset];
+        right = channels_ == 2U ? loopBuffer_[offset + 1U] : left;
+    } else {
+        readLoopAt(static_cast<double>(cursor.playhead), false, left, right);
         const double canonicalPosition = static_cast<double>(cursor.playhead);
         double transportedPosition = canonicalPosition;
         bool transportedLagrange = false;
@@ -526,10 +533,15 @@ double LooperCore::wrappedLoopPosition(double position) const noexcept {
 }
 
 void LooperCore::readLoopAt(double position, bool useLagrange4, float& left, float& right) const noexcept {
+    readCanonicalLoopAt(position, useLagrange4, loopTransportConfig_.reverse, left, right);
+}
+
+void LooperCore::readCanonicalLoopAt(double position, bool useLagrange4, bool reverse, float& left, float& right) const noexcept {
     left = 0.0f;
     right = 0.0f;
     if (finalizedFrames_ == 0U) return;
     position = wrappedLoopPosition(position);
+    if (reverse) position = wrappedLoopPosition(static_cast<double>(finalizedFrames_ - 1U) - position);
     const auto frameAt = [this](std::int64_t frame) noexcept -> std::size_t {
         const auto length = static_cast<std::int64_t>(finalizedFrames_);
         frame %= length;

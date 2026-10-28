@@ -604,7 +604,7 @@ export class AudioEngine {
     if (this.currentMode !== 'native') {
       throw new Error('Native per-track loop transport is only available in Native audio mode.');
     }
-    return this.nativeEngine.setLoopTransport(trackId, config);
+    return this.nativeEngine.setLoopTransportFx(trackId, config);
   }
 
   /** Native 1SHOT is exposed only when the bridge returns callback-acknowledged readback. */
@@ -616,6 +616,16 @@ export class AudioEngine {
   public getNativeOneShot(trackId: number): boolean | null {
     if (this.currentMode !== 'native') return null;
     return this.nativeEngine.getOneShot(trackId);
+  }
+
+  public async setNativeReverse(trackId: number, enabled: boolean): Promise<NativeStatus> {
+    if (this.currentMode !== 'native') throw new Error('Native REVERSE is only available in Native audio mode.');
+    return this.nativeEngine.setReverse(trackId, enabled);
+  }
+
+  public getNativeReverse(trackId: number): boolean | null {
+    if (this.currentMode !== 'native') return null;
+    return this.nativeEngine.getReverse(trackId);
   }
 
   public getNativeTrackState(trackId: number) {
@@ -802,11 +812,13 @@ export class AudioEngine {
       supportedTrackCount,
       supportsInputFx,
       supportsTrackFx,
-      supportsReverse: false,
+      supportsReverse: this.nativeEngine.supportsReverse(),
       supportsRhythm: this.nativeEngine.supportsRhythm(),
       supportsBeatFeedback: false,
       fxReason,
-      reverseReason: 'NO REVERSE IN NATIVE V1',
+      reverseReason: this.nativeEngine.supportsReverse()
+        ? 'Native REVERSE reads existing PCM backward; stop the track before changing it.'
+        : 'The Native host does not expose callback-acknowledged REVERSE.',
       rhythmReason: this.nativeEngine.rhythmEngine.unavailableReason,
       beatReason: 'NO BEAT IN NATIVE V1',
       trackLevelReason: 'TRACK MIX IN BROWSER ONLY',
@@ -1395,7 +1407,7 @@ export class AudioEngine {
 
   public toggleReverse(trackIndex: number) {
     if ('toggleReverse' in this.activeEngine && typeof this.activeEngine.toggleReverse === 'function') {
-      this.activeEngine.toggleReverse(trackIndex);
+      return this.activeEngine.toggleReverse(trackIndex);
     }
   }
 

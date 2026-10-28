@@ -352,17 +352,36 @@ def main():
 
         oneshot_config = dict(loop_transport_config)
         oneshot_config["oneShot"] = True
+        oneshot_config["reverse"] = True
         status, oneshot_ack = request(loop_transport_path, "POST", oneshot_config)
         oneshot_track = oneshot_ack.get("nativeTracks", [])[2]
         oneshot_memory = oneshot_ack.get("nativeMemory", {}).get("loopTransports", [])[2]
         require(status == 200 and oneshot_track.get("loopTransportAcceptedRevision") == oneshot_track.get("loopTransportAppliedRevision")
                 and oneshot_track.get("loopTransportAppliedOneShot") is True
-                and oneshot_memory.get("oneShot") is True,
-                "Native 1SHOT did not return an applied callback revision and matching Memory readback")
+                and oneshot_track.get("loopTransportAppliedReverse") is True
+                and oneshot_memory.get("oneShot") is True and oneshot_memory.get("reverse") is True,
+                "Native REVERSE/1SHOT did not return an applied callback revision and matching Memory readback")
+        stale_revision = oneshot_track["loopTransportRequestedRevision"]
+        concurrent_transport = dict(oneshot_config)
+        concurrent_transport.update(mode="vinylFlick", vinylSpeedPercent=10.0)
+        status, concurrent_ack = request(loop_transport_path, "POST", concurrent_transport)
+        require(status == 200, ("concurrent transport setup failed", concurrent_ack))
+        stale_reverse = dict(oneshot_config)
+        stale_reverse.update(reverse=False, expectedRevision=stale_revision)
+        status, stale_result = request(loop_transport_path, "POST", stale_reverse)
+        status_after_stale = request("/v1/status")[1]
+        retained_transport = status_after_stale["nativeMemory"]["loopTransports"][2]
+        require(status == 409 and retained_transport["mode"] == 2 and retained_transport["vinylSpeedPercent"] == 10.0
+                and retained_transport["reverse"] is True,
+                ("stale REVERSE update overwrote newer transport fields", stale_result, retained_transport))
         invalid_oneshot_config = dict(oneshot_config)
         invalid_oneshot_config["oneShot"] = "true"
         status, _ = request(loop_transport_path, "POST", invalid_oneshot_config)
         require(status == 400, "Native loop transport accepted a non-boolean 1SHOT setting")
+        invalid_reverse_config = dict(oneshot_config)
+        invalid_reverse_config["reverse"] = "true"
+        status, _ = request(loop_transport_path, "POST", invalid_reverse_config)
+        require(status == 400, "Native loop transport accepted a non-boolean REVERSE setting")
 
         status, devices = request("/v1/devices")
         require(status == 200, "device catalog endpoint failed")

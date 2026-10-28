@@ -10,6 +10,49 @@ using namespace webrc::native;
 
 namespace {
 
+void testReversePlaybackUsesCanonicalPcmAndForbidsOverdub() {
+    LooperCore core(8000U, 1U, 2U);
+    const std::array<float, 8U> phrase{{0.1f, -0.1f, 0.2f, -0.2f, 0.3f, -0.3f, 0.4f, -0.4f}};
+    std::array<float, 8U> scratch{};
+    core.applyCommand({CommandType::Record});
+    (void)core.process(phrase.data(), scratch.data(), 4U, 2U, 2U);
+    core.applyCommand({CommandType::StopRecordOrPlayback});
+    LoopTransportConfig reverse;
+    reverse.reverse = true;
+    reverse.oneShot = true;
+    assert(core.setLoopTransportConfig(reverse));
+    core.applyCommand({CommandType::Play});
+    assert(!core.setLoopTransportConfig(LoopTransportConfig{})); // immutable while playing
+    core.applyCommand({CommandType::ToggleOverdub});
+    assert(core.state() == LooperState::Playing);
+    std::array<float, 10U> output{};
+    std::array<float, 10U> tap{};
+    const auto stats = core.process(nullptr, output.data(), 5U, 0U, 2U, tap.data());
+    assert(stats.state == LooperState::Stopped);
+    const std::array<float, 8U> expected{{0.4f, -0.4f, 0.3f, -0.3f, 0.2f, -0.2f, 0.1f, -0.1f}};
+    for (std::size_t sample = 0U; sample < expected.size(); ++sample) {
+        assert(output[sample] == expected[sample]);
+        assert(tap[sample] == expected[sample]);
+    }
+    assert(output[8] == 0.0f && output[9] == 0.0f);
+    assert(tap[8] == 0.0f && tap[9] == 0.0f);
+    std::array<float, 8U> persisted{};
+    std::size_t copied = 0U;
+    assert(core.copyFinalizedStereoLoopSnapshot(persisted.data(), 4U, copied));
+    assert(copied == 4U && persisted == phrase); // REVERSE never edits stored PCM
+
+    reverse.oneShot = false;
+    assert(core.setLoopTransportConfig(reverse));
+    core.applyCommand({CommandType::Play});
+    std::array<float, 12U> repeating{};
+    (void)core.process(nullptr, repeating.data(), 6U, 0U, 2U);
+    const std::array<float, 12U> expectedRepeating{{
+        0.4f, -0.4f, 0.3f, -0.3f, 0.2f, -0.2f, 0.1f, -0.1f, 0.4f, -0.4f, 0.3f, -0.3f}};
+    assert(repeating == expectedRepeating); // reverse loop wraps without direction drift
+    core.applyCommand({CommandType::ToggleOverdub});
+    assert(core.state() == LooperState::Playing); // REVERSE alone also blocks overdub
+}
+
 void testNativeDubModesReplacePcmAndKeepPlaybackTapSemantics() {
     const std::array<float, 4U> original{{0.1f, 0.2f, 0.3f, 0.4f}};
     const std::array<float, 2U> live{{0.7f, 0.8f}};
@@ -216,6 +259,7 @@ void testReadOnlyPlaybackPreview() {
 } // namespace
 
 int main() {
+    testReversePlaybackUsesCanonicalPcmAndForbidsOverdub();
     testNativeDubModesReplacePcmAndKeepPlaybackTapSemantics();
     testReadOnlyPlaybackPreview();
     testOptionalOutputPeakKeepsLooperAudioAndState(1U);
