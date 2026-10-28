@@ -257,7 +257,7 @@ describe('TrackAudio carrier bus is strictly playback-only and before all insert
     await (track as unknown as { startOverdub(): Promise<void> }).startOverdub();
     const overdub = Worklet.instances.find(node => node.name === 'rc505-overdub-processor')!;
     expect(overdub).toBeDefined();
-    expect(processed.connect).toHaveBeenCalledWith(overdub, 0, 0);
+    expect(processed.connect).toHaveBeenCalledWith(overdub);
     expect(pathExists(processed, track.playbackSourceOutput as unknown as Node)).toBe(false);
     expect(pathExists(sources[0]!, track.playbackSourceOutput as unknown as Node)).toBe(true);
     expect(pathExists(sources[0]!, (track as any).loopReaderGateGain as Node)).toBe(true);
@@ -281,7 +281,7 @@ describe('TrackAudio carrier bus is strictly playback-only and before all insert
     expect(track.playbackSourceOutput.gain.value).toBe(1);
     expect(pathExists(sources[0]!, gate)).toBe(true);
     expect(pathExists(gate, track.playbackSourceOutput as unknown as Node)).toBe(true);
-    expect(processed.connect).toHaveBeenCalledWith(overdub, 0, 0);
+    expect(processed.connect).toHaveBeenCalledWith(overdub);
     expect(pathExists(processed, gate)).toBe(false);
     expect(overdub.edges[0]!.target.gain.value).toBe(0);
 
