@@ -66,9 +66,14 @@ any live track is changed.
   unresolved, write actions remain blocked, and the UI still offers current-project and
   pre-import snapshot export. A pre-import snapshot can be restored only after exact committed
   status is verified, and it remains stored until that restore transaction commits.
-- Host status history is bounded to 256 accepted import operations per process incarnation.
-  When the bound is reached, new imports fail closed until the host restarts. A restart changes
-  incarnation, so old operation IDs cannot be mistaken for generations in the new process.
+- The Native operation ledger retains up to 256 accepted import operations per process incarnation.
+  It does not discard terminal entries automatically: a client may still need an operation's
+  receipt to resolve its durable recovery candidate, and reusing a forgotten ID could start a
+  second import. At capacity, new IDs fail closed with a structured, user-visible error that
+  reports the used/maximum count and explains the recovery boundary. Restarting changes host
+  incarnation and permits new imports, but does not recover old operation status, resolve old
+  recovery candidates, or prove which PCM is current; restarted-host PCM is never an old import
+  receipt. Preserve unresolved candidates across that restart.
 - Browser import currently uses a 4 GiB estimate for resident PCM, history, archive,
   decoded samples, and candidate AudioBuffers. This estimates those known PCM
   allocations; it is not a hard bound on browser/AudioContext heap overhead.

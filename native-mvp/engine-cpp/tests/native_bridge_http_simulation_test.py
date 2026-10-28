@@ -73,14 +73,17 @@ def request_binary(path, method, body):
         return error.code, error.headers, error.read()
 
 
-def request_project_archive(path, method="POST", body=None, content_type=None, host_incarnation_id=None, include_operation_id=True):
+def request_project_archive(path, method="POST", body=None, content_type=None, host_incarnation_id=None,
+                            include_operation_id=True, operation_id=None):
     global _operation_sequence
     headers = {"Origin": "http://localhost:5173"}
     if path.startswith("/v1/project/import"):
         headers["X-Native-Host-Incarnation"] = host_incarnation_id or request("/v1/status")[1]["hostIncarnationId"]
     if urllib.parse.urlsplit(path).path == "/v1/project/import" and method == "POST" and include_operation_id:
-        _operation_sequence += 1
-        headers["X-Native-Operation-Id"] = f"{_operation_sequence:032x}"
+        if operation_id is None:
+            _operation_sequence += 1
+            operation_id = f"{_operation_sequence:032x}"
+        headers["X-Native-Operation-Id"] = operation_id
     if content_type is not None:
         headers["Content-Type"] = content_type
     # Header validation may reject an invalid import before consuming its large
@@ -252,6 +255,7 @@ def main():
     os.environ["WEBRC_NATIVE_TEST_THROW_BEFORE_IMPORT_BEGIN_OPERATION_ID"] = "d" * 32
     os.environ["WEBRC_NATIVE_TEST_THROW_DURING_IMPORT_BEGIN_OPERATION_ID"] = "b" * 32
     os.environ["WEBRC_NATIVE_TEST_THROW_AFTER_IMPORT_BEGIN_OPERATION_ID"] = "c" * 32
+    os.environ["WEBRC_NATIVE_TEST_IMPORT_OPERATION_LIMIT"] = "12"
     host_environment = os.environ.copy()
     host_environment["WEBRC_NATIVE_BRIDGE_PORT"] = bridge_port
     process = subprocess.Popen(
@@ -2097,6 +2101,47 @@ def main():
         })
         require(status == 409 and "not selected" in error.get("error", ""),
                 f"HRM AUTO MIDI was not restricted to its exact selected slot: {error}")
+
+        # Fill the deliberately small simulation ledger. The production cap
+        # remains 256; this override keeps the capacity boundary practical to
+        # exercise while still running the same admission path.
+        capacity_archive = build_project_archive([
+            {"channels": 2, "samples": [0.05, -0.05]}, None, None, None, None,
+        ], name="Ledger capacity test")
+        accepted_for_capacity = []
+        while True:
+            current = request("/v1/status")[1]
+            import_path = f"/v1/project/import?expectedContentRevision={current['projectContentRevision']}"
+            status, capacity_result = request_project_archive(
+                import_path, "POST", capacity_archive, "application/octet-stream")
+            if status == 503:
+                break
+            require(status == 202, f"capacity-fill Native import was rejected before ledger exhaustion: {capacity_result}")
+            accepted_for_capacity.append((capacity_result["operationId"], import_path))
+            generation = capacity_result["generation"]
+            deadline = time.monotonic() + 5.0
+            terminal = None
+            while time.monotonic() < deadline:
+                time.sleep(0.005)
+                status, terminal = request_project_archive(
+                    f"/v1/project/import/status?generation={generation}", "GET")
+                if status == 200 and terminal.get("state") in ("committed", "cancelled"):
+                    break
+            require(status == 200 and terminal.get("state") in ("committed", "cancelled"),
+                    f"capacity-fill import did not reach a terminal callback state: {terminal}")
+        require(capacity_result.get("code") == "native_import_operation_ledger_full" and
+                capacity_result.get("ledgerUsed") == capacity_result.get("ledgerLimit") == 12 and
+                capacity_result.get("restartChangesHostIncarnation") is True and
+                capacity_result.get("restartResolvesPriorOperations") is False and
+                "do not treat restarted-host PCM as an old import receipt" in capacity_result.get("error", ""),
+                f"ledger exhaustion did not explain capacity and restart recovery limits: {capacity_result}")
+        require(accepted_for_capacity, "capacity test did not accept an operation before reaching the limit")
+        first_capacity_id, first_capacity_path = accepted_for_capacity[0]
+        status, duplicate_at_capacity = request_project_archive(
+            first_capacity_path, "POST", capacity_archive, "application/octet-stream", operation_id=first_capacity_id)
+        require(status == 202 and duplicate_at_capacity.get("duplicate") is True and
+                duplicate_at_capacity.get("operationId") == first_capacity_id,
+                f"matching old operation ID was not idempotent at ledger capacity: {duplicate_at_capacity}")
 
         print("Native bridge HTTP simulation passed, including five-track status, selector validation, per-track recording, stereo snapshots, callback-acknowledged project archive import/cancel/status routes, OSC VOC absolute-frame MIDI routing/status, and HRM AUTO exact-slot MIDI route/status. The fake RtAudio callback source is synthetic and is not device, timing, XRUN, or audio-quality evidence.")
     finally:

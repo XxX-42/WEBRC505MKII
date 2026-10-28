@@ -83,6 +83,20 @@ struct NativeImportOperationRecord {
 };
 constexpr std::size_t kNativeImportOperationLimit = 256U;
 
+std::size_t nativeImportOperationLimit() noexcept {
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+    const char* configured = std::getenv("WEBRC_NATIVE_TEST_IMPORT_OPERATION_LIMIT");
+    if (configured != nullptr) {
+        std::size_t limit = 0U;
+        const auto length = std::char_traits<char>::length(configured);
+        const auto parsed = std::from_chars(configured, configured + length, limit);
+        if (parsed.ec == std::errc{} && parsed.ptr == configured + length && limit > 0U &&
+            limit <= kNativeImportOperationLimit) return limit;
+    }
+#endif
+    return kNativeImportOperationLimit;
+}
+
 #if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
 bool consumeImportLedgerReservationFailure(const std::string& operationId) {
     static bool consumed = false;
@@ -1683,9 +1697,22 @@ int main() {
                     {"hostIncarnationId", hostIncarnationId()}, {"operationId", operationId}, {"duplicate", true}});
                 return;
             }
-            if (nativeImportOperations().size() >= kNativeImportOperationLimit) {
+            const auto operationLimit = nativeImportOperationLimit();
+            if (nativeImportOperations().size() >= operationLimit) {
                 response.status = 503;
-                writeError(response, "Native import operation status capacity is exhausted; restart the host before submitting another import.");
+                writeJson(response, json{
+                    {"ok", false},
+                    {"code", "native_import_operation_ledger_full"},
+                    {"error", "Native import operation ledger is full (" + std::to_string(nativeImportOperations().size()) +
+                        "/" + std::to_string(operationLimit) + "). Every accepted operation ID and status is retained because "
+                        "a client may still need its receipt; discarding one could lose recovery status or allow that ID to be accepted again. "
+                        "Restart the Native host to accept new operation IDs. A restart changes host incarnation and does not recover old operation status "
+                        "or prove which PCM is current; preserve unresolved recovery candidates and do not treat restarted-host PCM as an old import receipt."},
+                    {"ledgerUsed", nativeImportOperations().size()},
+                    {"ledgerLimit", operationLimit},
+                    {"restartChangesHostIncarnation", true},
+                    {"restartResolvesPriorOperations", false}
+                });
                 return;
             }
             auto& operations = nativeImportOperations();
