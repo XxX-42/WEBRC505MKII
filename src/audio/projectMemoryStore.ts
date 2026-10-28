@@ -387,12 +387,19 @@ export class ProjectMemoryStore {
   }
 
   public async getPendingNativeImportRecovery(): Promise<ProjectRecoveryMetadata | null> {
+    const candidates = await this.listUnresolvedNativeImportRecoveryCandidates();
+    return candidates.find((entry) => entry.state === 'pending') ?? candidates[0] ?? null;
+  }
+
+  /** Every unresolved operation remains addressable, including an older pending
+   * upload while a newer staged recovery transaction is being prepared. */
+  public async listUnresolvedNativeImportRecoveryCandidates(): Promise<readonly ProjectRecoveryMetadata[]> {
     const database = await this.openDatabase();
     const transaction = database.transaction(RECOVERY_METADATA_STORE, 'readonly');
     const request = transaction.objectStore(RECOVERY_METADATA_STORE).getAll() as IDBRequest<ProjectRecoveryMetadata[]>;
     const [records] = await Promise.all([requestResult(request), transactionCompletion(transaction)]);
     return records.filter((entry) => entry.state === 'pending' || entry.state === 'staged')
-      .sort((left, right) => right.savedAt - left.savedAt)[0] ?? null;
+      .sort((left, right) => Number(right.state === 'pending') - Number(left.state === 'pending') || right.savedAt - left.savedAt);
   }
 
   public async readNativeImportRecoveryCandidate(operationId: string): Promise<{ metadata: ProjectRecoveryMetadata; archive: ArrayBuffer } | null> {
@@ -409,11 +416,7 @@ export class ProjectMemoryStore {
 
   /** Any leftover staged candidate may represent a crash after upload began; never overwrite it blindly. */
   public async getUnresolvedNativeImportRecovery(): Promise<ProjectRecoveryMetadata | null> {
-    const database = await this.openDatabase();
-    const transaction = database.transaction(RECOVERY_METADATA_STORE, 'readonly');
-    const request = transaction.objectStore(RECOVERY_METADATA_STORE).getAll() as IDBRequest<ProjectRecoveryMetadata[]>;
-    const [records] = await Promise.all([requestResult(request), transactionCompletion(transaction)]);
-    return records.find((entry) => entry.state === 'pending' || entry.state === 'staged') ?? null;
+    return (await this.listUnresolvedNativeImportRecoveryCandidates())[0] ?? null;
   }
 
   /** Read the active recovery archive and its guard from one IndexedDB snapshot. */

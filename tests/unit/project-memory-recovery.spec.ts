@@ -79,7 +79,15 @@ function makeStore() {
   let activeId: string | null = null;
   const store = {
     readSlot: vi.fn(async () => null),
-    getPendingNativeImportRecovery: vi.fn(async () => [...stages.values()].find((entry) => entry.metadata.state === 'pending')?.metadata ?? null),
+    listUnresolvedNativeImportRecoveryCandidates: vi.fn(async () => [...stages.values()]
+      .map((entry) => entry.metadata).filter((entry) => entry.state === 'pending' || entry.state === 'staged')
+      .sort((left, right) => Number(right.state === 'pending') - Number(left.state === 'pending') || right.savedAt - left.savedAt)),
+    getPendingNativeImportRecovery: vi.fn(async () => {
+      const candidates = [...stages.values()].map((entry) => entry.metadata)
+        .filter((entry) => entry.state === 'pending' || entry.state === 'staged')
+        .sort((left, right) => Number(right.state === 'pending') - Number(left.state === 'pending') || right.savedAt - left.savedAt);
+      return candidates.find((entry) => entry.state === 'pending') ?? candidates[0] ?? null;
+    }),
     getUnresolvedNativeImportRecovery: vi.fn(async () => [...stages.values()].find((entry) => entry.metadata.state === 'pending' || entry.metadata.state === 'staged')?.metadata ?? null),
     stageNativeImportRecovery: vi.fn(async (input: any, archiveBytes: ArrayBuffer | Uint8Array) => {
       const buffer = arrayBuffer(archiveBytes instanceof Uint8Array ? archiveBytes : new Uint8Array(archiveBytes));
@@ -298,6 +306,45 @@ describe('Native project import recovery', () => {
     await expect(memory.importFile({ size: bytes.byteLength, arrayBuffer: async () => bytes } as File))
       .rejects.toThrow('previous Native import outcome is unresolved');
     expect(engine.exportProjectArchive).not.toHaveBeenCalled();
+    expect(engine.restoreProjectArchive).not.toHaveBeenCalled();
+  });
+
+  it('keeps older pending recovery visible and addressable when a newer restore stage exists', async () => {
+    installWebLock();
+    const incumbent = await archive('Incumbent', 0.25);
+    const latest = await archive('Latest candidate', 0.75);
+    const { engine } = makeEngine(incumbent);
+    const { store, api } = makeStore();
+    const pendingId = 'pending-operation-012345678901';
+    const stagedId = 'restore-stage-012345678901234';
+    await api.stageNativeImportRecovery({ operationId: pendingId, ownerSessionId: 'session-pending-01234567890',
+      name: 'Incumbent', bpm: 120, archiveVersion: 1, sourceProjectContentRevision: 10,
+      sourceProjectTransportMutationRevision: 4, sourceHostIncarnationId: 'b'.repeat(32), sourceModeGeneration: 2 }, arrayBuffer(incumbent));
+    await api.markNativeImportRecoveryPending(pendingId, 77);
+    await api.stageNativeImportRecovery({ operationId: stagedId, ownerSessionId: 'session-stage-01234567890',
+      name: 'Latest candidate', bpm: 120, archiveVersion: 1, sourceProjectContentRevision: 11,
+      sourceProjectTransportMutationRevision: 5, sourceHostIncarnationId: 'b'.repeat(32), sourceModeGeneration: 2,
+      supersedesOperationId: pendingId }, arrayBuffer(latest));
+    const fingerprint = 'a'.repeat(64);
+    await api.bindNativeImportRequest(pendingId, 10, fingerprint);
+    engine.getNativeProjectArchiveImportStatusByOperationId.mockResolvedValue({ state: 'pending', generation: 77,
+      hostIncarnationId: 'b'.repeat(32), operationId: pendingId, expectedProjectContentRevision: 10,
+      archiveSha256: fingerprint } as any);
+
+    const memory = new ProjectMemory(engine as any, store);
+    expect(await memory.getPendingNativeImportRecovery()).toMatchObject({ operationId: pendingId, state: 'pending' });
+    expect(await memory.listUnresolvedNativeImportRecoveries()).toMatchObject([
+      { operationId: pendingId, state: 'pending' }, { operationId: stagedId, state: 'staged' },
+    ]);
+    const oldRecovery = await memory.exportPendingNativeImportRecovery(pendingId);
+    expect(oldRecovery.metadata.operationId).toBe(pendingId);
+    expect(new Uint8Array(oldRecovery.archive)).toEqual(new Uint8Array(incumbent));
+    const stagedRecovery = await memory.exportPendingNativeImportRecovery(stagedId);
+    expect(stagedRecovery.metadata.operationId).toBe(stagedId);
+    expect(new Uint8Array(stagedRecovery.archive)).toEqual(new Uint8Array(latest));
+    await expect(memory.reconcileNativeImportRecovery(pendingId)).resolves.toMatchObject({ state: 'pending', recoveryAvailable: false });
+    expect(engine.getNativeProjectArchiveImportStatusByOperationId).toHaveBeenCalledExactlyOnceWith(pendingId, 'b'.repeat(32));
+    await expect(memory.restoreNativeImportRecovery(stagedId)).rejects.toThrow('not proven committed');
     expect(engine.restoreProjectArchive).not.toHaveBeenCalled();
   });
 

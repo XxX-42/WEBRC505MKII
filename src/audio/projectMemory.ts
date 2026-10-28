@@ -57,6 +57,10 @@ export class ProjectMemory {
     return this.store.getPendingNativeImportRecovery();
   }
 
+  public listUnresolvedNativeImportRecoveries(): Promise<readonly ProjectRecoveryMetadata[]> {
+    return this.store.listUnresolvedNativeImportRecoveryCandidates();
+  }
+
   public async getPendingNativeImportOperation(): Promise<NativeProjectImportOperationIdentity | null> {
     const recovery = await this.store.getPendingNativeImportRecovery();
     if (recovery && isNativeHostIncarnationId(recovery.sourceHostIncarnationId)) {
@@ -81,8 +85,11 @@ export class ProjectMemory {
     }
   }
 
-  public async exportPendingNativeImportRecovery(): Promise<{ metadata: ProjectRecoveryMetadata; archive: ArrayBuffer }> {
-    const pending = await this.store.getPendingNativeImportRecovery();
+  public async exportPendingNativeImportRecovery(operationId?: string): Promise<{ metadata: ProjectRecoveryMetadata; archive: ArrayBuffer }> {
+    const candidates = await this.store.listUnresolvedNativeImportRecoveryCandidates();
+    const pending = operationId === undefined
+      ? candidates.find((entry) => entry.state === 'pending') ?? candidates[0]
+      : candidates.find((entry) => entry.operationId === operationId);
     if (!pending) throw new Error('No unresolved pre-import snapshot is available to export.');
     const candidate = await this.store.readNativeImportRecoveryCandidate(pending.operationId);
     if (!candidate) throw new Error('The unresolved pre-import snapshot is incomplete and cannot be exported.');
@@ -92,8 +99,9 @@ export class ProjectMemory {
   /** Resolve a staged recovery only from the host's authoritative generation status. */
   public async reconcileNativeImportRecovery(operationId: string): Promise<NativeProjectImportReconciliationResult> {
     return withProjectArchiveMutationLock(async () => {
-      const pending = await this.store.getPendingNativeImportRecovery();
-      if (!pending || pending.operationId !== operationId) {
+      const candidates = await this.store.listUnresolvedNativeImportRecoveryCandidates();
+      const pending = candidates.find((entry) => entry.operationId === operationId);
+      if (!pending) {
         const intent = await this.store.readNativeImportOperationIntent(operationId);
         if (!intent) throw new Error('No matching Native import operation is pending for this operation ID.');
         const status = await this.engine.getNativeProjectArchiveImportStatusByOperationId(operationId, intent.hostIncarnationId);
@@ -205,13 +213,16 @@ export class ProjectMemory {
 
   /** Restore the durable pre-import Native project snapshot. This runs as an ordinary
    * project transaction; it does not claim to be Native real-time track undo. */
-  public async restoreNativeImportRecovery(): Promise<ProjectMemoryLoadResult> {
-    return withProjectArchiveMutationLock(() => this.restoreNativeImportRecoveryLocked());
+  public async restoreNativeImportRecovery(operationId?: string): Promise<ProjectMemoryLoadResult> {
+    return withProjectArchiveMutationLock(() => this.restoreNativeImportRecoveryLocked(operationId));
   }
 
-  private async restoreNativeImportRecoveryLocked(): Promise<ProjectMemoryLoadResult> {
+  private async restoreNativeImportRecoveryLocked(operationId?: string): Promise<ProjectMemoryLoadResult> {
     if (this.engine.getMode() !== 'native') throw new Error('Native import recovery is available only in Native mode.');
-    const unresolved = await this.store.getPendingNativeImportRecovery();
+    const candidates = await this.store.listUnresolvedNativeImportRecoveryCandidates();
+    const unresolved = operationId === undefined
+      ? candidates.find((entry) => entry.state === 'pending') ?? candidates[0] ?? null
+      : candidates.find((entry) => entry.operationId === operationId) ?? null;
     if (unresolved) return this.restorePendingNativeImportRecoveryLocked(unresolved);
     const operationToken = await this.engine.captureProjectRestoreOperationToken();
     await this.assertNoUnresolvedImport();

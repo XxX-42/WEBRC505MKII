@@ -243,6 +243,9 @@ def test_per_track_catalog_contract():
 def main():
     if len(sys.argv) != 2:
         raise SystemExit("usage: native_bridge_http_simulation_test.py <native_bridge_host_simulation>")
+    # Simulation-only fault injection exercises failure before the host claims
+    # a generation. Production builds do not read this variable.
+    os.environ["WEBRC_NATIVE_TEST_FAIL_IMPORT_LEDGER_OPERATION_ID"] = "e" * 32
     process = subprocess.Popen(
         [sys.argv[1]],
         stdout=subprocess.DEVNULL,
@@ -1687,6 +1690,53 @@ def main():
         }
         require(status == 200 and revisions_after_reject == revisions_before,
                 "invalid archive changed Native track revisions")
+
+        reservation_failure_id = "e" * 32
+        reservation_failure_headers = {
+            "Origin": "http://localhost:5173", "Content-Type": "application/octet-stream",
+            "X-Native-Host-Incarnation": host_incarnation, "X-Native-Operation-Id": reservation_failure_id,
+        }
+        reservation_failure_request = urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+            method="POST", headers=reservation_failure_headers)
+        try:
+            urllib.request.urlopen(reservation_failure_request, timeout=15)
+            raise AssertionError("injected operation-ledger reservation failure was accepted")
+        except urllib.error.HTTPError as error:
+            reservation_failure_status = error.code
+            reservation_failure = json.loads(error.read().decode("utf-8"))
+        require(reservation_failure_status == 503 and "no import was started" in reservation_failure.get("error", ""),
+                f"ledger reservation failure did not fail before import begin: {reservation_failure}")
+        status, absent_reservation = request_project_archive(
+            f"/v1/project/import/status-by-operation?operationId={reservation_failure_id}", "GET",
+            host_incarnation_id=host_incarnation)
+        require(status == 404 and "absence does not prove" in absent_reservation.get("error", ""),
+                f"failed ledger reservation left an operation record: {absent_reservation}")
+        require(request("/v1/status")[1]["projectContentRevision"] == project_revision,
+                "failed ledger reservation started a project import")
+
+        # Retry the same client ID after the one-shot allocation failure. A
+        # missing pre-begin ledger reservation could otherwise permit a
+        # duplicate callback transaction or leave a phantom generation.
+        retry_request = urllib.request.Request(HOST_URL + project_import_path, data=valid_archive,
+            method="POST", headers=reservation_failure_headers)
+        with urllib.request.urlopen(retry_request, timeout=15) as retry_response:
+            retry_status, retry_result = retry_response.status, json.loads(retry_response.read().decode("utf-8"))
+        require(retry_status == 202 and retry_result.get("duplicate") is False and retry_result.get("generation", 0) > 0,
+                f"same-ID retry after pre-begin ledger failure did not start one transaction: {retry_result}")
+        retry_generation = retry_result["generation"]
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            status, retry_terminal = request_project_archive(f"/v1/project/import/status?generation={retry_generation}", "GET")
+            if status == 200 and retry_terminal.get("state") in ("committed", "cancelled"):
+                break
+            time.sleep(0.005)
+        require(status == 200 and retry_terminal.get("state") == "committed",
+                f"retry after pre-begin reservation failure did not commit exactly once: {retry_terminal}")
+        status, project_before = request("/v1/status")
+        require(status == 200, "could not refresh project revision after ledger reservation retry")
+        project_revision = project_before["projectContentRevision"]
+        project_import_path = f"/v1/project/import?expectedContentRevision={project_revision}"
+        revisions_before = {track["trackId"]: track["contentRevision"] for track in project_before.get("nativeTracks", [])}
 
         status, headers, _ = request_with_headers("/v1/project/import", "OPTIONS", {
             "Origin": "http://localhost:5173",

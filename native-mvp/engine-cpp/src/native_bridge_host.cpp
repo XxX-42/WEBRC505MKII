@@ -83,6 +83,18 @@ struct NativeImportOperationRecord {
 };
 constexpr std::size_t kNativeImportOperationLimit = 256U;
 
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+bool consumeImportLedgerReservationFailure(const std::string& operationId) {
+    static bool consumed = false;
+    const char* configuredId = std::getenv("WEBRC_NATIVE_TEST_FAIL_IMPORT_LEDGER_OPERATION_ID");
+    if (!consumed && configuredId != nullptr && operationId == configuredId) {
+        consumed = true;
+        return true;
+    }
+    return false;
+}
+#endif
+
 std::mutex& nativeImportOperationsMutex() { static std::mutex value; return value; }
 std::unordered_map<std::string, NativeImportOperationRecord>& nativeImportOperations() {
     static std::unordered_map<std::string, NativeImportOperationRecord> value;
@@ -1620,13 +1632,37 @@ int main() {
                 writeError(response, "Native import operation status capacity is exhausted; restart the host before submitting another import.");
                 return;
             }
+            auto& operations = nativeImportOperations();
+            auto reserved = operations.end();
+            try {
+#if defined(NATIVE_BRIDGE_SIMULATION_ONLY)
+                if (consumeImportLedgerReservationFailure(operationId)) throw std::bad_alloc();
+#endif
+                auto insertion = operations.try_emplace(operationId,
+                    NativeImportOperationRecord{archiveSha256, expectedProjectContentRevision, 0U});
+                reserved = insertion.first;
+                if (!insertion.second) {
+                    response.status = 409;
+                    writeError(response, "Native project import operation ID was claimed concurrently; query its status before retrying.");
+                    return;
+                }
+            } catch (const std::bad_alloc&) {
+                response.status = 503;
+                writeError(response, "Native project import could not reserve its durable in-process operation status; no import was started.");
+                return;
+            } catch (const std::length_error&) {
+                response.status = 503;
+                writeError(response, "Native project import operation status reservation exceeded process limits; no import was started.");
+                return;
+            }
             if (!engine.beginProjectArchiveImport(
                     std::move(*decoded.project), encodedBytes, expectedProjectContentRevision, generation, error, std::move(memory))) {
+                operations.erase(reserved);
                 response.status = 409;
                 writeError(response, error);
                 return;
             }
-            nativeImportOperations().emplace(operationId, NativeImportOperationRecord{archiveSha256, expectedProjectContentRevision, generation});
+            reserved->second.generation = generation;
         }
         response.status = 202;
         writeJson(response, json{{"ok", true}, {"generation", generation}, {"hostIncarnationId", hostIncarnationId()},
