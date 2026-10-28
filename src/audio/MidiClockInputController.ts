@@ -237,11 +237,12 @@ export class MidiClockInputController {
       : this.isStable(source.intervals) ? 'stable' : 'unstable';
     const medianInterval = source ? this.median(source.intervals) : 0;
     const phase = source ? this.phaseEstimator.getSnapshot(nowMs) : null;
-    const anchor = this.getAudioAnchor?.();
+    const shouldSampleAudioClock = this.connection === 'connected' && source !== undefined && this.getAudioAnchor !== undefined;
+    const anchor = shouldSampleAudioClock ? this.getAudioAnchor?.() : null;
     if (anchor) {
       this.watchAudioContext(anchor.contextKey);
       this.frameMapper.addAnchor(anchor);
-    } else if (this.getAudioAnchor) {
+    } else {
       this.frameMapper.reset();
       this.watchAudioContext(null);
     }

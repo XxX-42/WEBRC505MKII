@@ -48,6 +48,7 @@ class FakeAudioContextClock {
   performanceTimeMs = 1_000;
   audioTimeSeconds = 10;
   private listeners = new Set<() => void>();
+  get listenerCount(): number { return this.listeners.size; }
   addEventListener(_type: 'statechange', listener: () => void): void { this.listeners.add(listener); }
   removeEventListener(_type: 'statechange', listener: () => void): void { this.listeners.delete(listener); }
   changeState(state: 'running' | 'suspended'): void {
@@ -57,6 +58,34 @@ class FakeAudioContextClock {
 }
 
 describe('MidiClockInputController', () => {
+  it('does not resubscribe to AudioContext statechange during disconnect refresh', async () => {
+    const input = new FakeInput('Clock');
+    const context = new FakeAudioContextClock();
+    let controller!: MidiClockInputController;
+    controller = new MidiClockInputController({
+      requestMIDIAccess: async () => new FakeAccess([input]),
+      now: () => context.performanceTimeMs,
+      getAudioAnchor: () => ({
+        performanceTimeMs: context.performanceTimeMs,
+        audioTimeSeconds: context.audioTimeSeconds,
+        sampleRate: 48_000,
+        contextKey: context,
+        contextState: context.state,
+      }),
+      // Mirrors a UI refresh callback that reads a snapshot during disconnect().
+      onChange: () => { controller.getSnapshot(); },
+    });
+    await controller.connect();
+    const inputKey = controller.getSnapshot().inputs[0]!.key;
+    controller.selectInput(inputKey);
+    expect(context.listenerCount).toBe(1);
+
+    controller.disconnect();
+    expect(context.listenerCount).toBe(0);
+    controller.getSnapshot();
+    expect(context.listenerCount).toBe(0);
+  });
+
   it('invalidates old frame anchors for suspend and resume between polling snapshots', async () => {
     const input = new FakeInput('Clock');
     const context = new FakeAudioContextClock();
