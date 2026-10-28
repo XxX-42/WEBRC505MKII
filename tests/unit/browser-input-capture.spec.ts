@@ -11,13 +11,7 @@ class WorkletPort {
   }
 
   receive(message: unknown) {
-    const data = message && typeof message === 'object' && (message as any).type === 'START_CAPTURE'
-      && !Number.isSafeInteger((message as any).captureReadyEpoch)
-      ? { ...(message as any), captureReadyEpoch: this.messages
-        .filter(({ message: sent }) => sent.type === 'INPUT_CAPTURE_READY')
-        .at(-1)?.message.captureReadyEpoch ?? 0 }
-      : message;
-    this.onmessage?.({ data });
+    this.onmessage?.({ data: message });
   }
 }
 
@@ -119,7 +113,7 @@ describe('Browser shared input capture worklet', () => {
   });
 
   it('stops backfill after a frame continuity abort without repeated errors or completion', () => {
-    const capture = createCapture({ readyPreRollFrames: 4 });
+    const capture = createCapture();
     capture.process([0, 1, 2, 3], undefined, 0);
     capture.processor.port.receive({
       type: 'START_CAPTURE', trackIndex: 0, sessionId: 82, inputGeneration: 1,
@@ -180,7 +174,7 @@ describe('Browser shared input capture worklet', () => {
   });
 
   it('mixes only the snapshotted Bounce source mask into stereo input and pre-roll', () => {
-    const capture = createCapture({ trackCount: 5, chunkSize: 16, preRollFrames: 8, readyPreRollFrames: 4 });
+    const capture = createCapture({ trackCount: 5, chunkSize: 16, preRollFrames: 8 });
     const sources = (left: number, right: number): Array<[number[], number[]]> => [
       [[100, 100, 100, 100], [100, 100, 100, 100]],
       [[left, left, left, left], [right, right, right, right]],
@@ -202,7 +196,7 @@ describe('Browser shared input capture worklet', () => {
   });
 
   it('switches one recording from processed to raw exactly at the acknowledged frame', () => {
-    const capture = createCapture({ chunkSize: 16, preRollFrames: 16, readyPreRollFrames: 4 });
+    const capture = createCapture({ chunkSize: 16, preRollFrames: 16 });
     capture.process([10, 11, 12, 13], [20, 21, 22, 23], 100,
       [1, 2, 3, 4], [-1, -2, -3, -4]);
     capture.processor.port.receive({
@@ -245,18 +239,13 @@ describe('Browser shared input capture worklet', () => {
       oldestAvailableFrame: 100, latestAvailableFrame: 108,
       preRollValidFrames: 8,
     });
-    capture.processor.port.receive({ type: 'CHECK_CAPTURE_READINESS', inputGeneration: 1 });
-    expect(capture.messages('CAPTURE_READINESS_STATE').at(-1)).toMatchObject({
-      inputGeneration: 1, captureReadyEpoch: 1, ready: false,
-      preRollValidFrames: 4, requiredPreRollFrames: 8,
-    });
     expect(capture.messages('INPUT_CAPTURE_READY')).toHaveLength(1);
     capture.processor.port.receive({
       type: 'START_CAPTURE', trackIndex: 0, sessionId: 82, inputGeneration: 1,
       startFrame: 108, maxRecordingBytes: 256,
     });
     expect(capture.messages('CAPTURE_ERROR').at(-1)).toMatchObject({
-      sessionId: 82, reason: 'capture-readiness-epoch-changed',
+      sessionId: 82, reason: 'request-frame-outside-preroll',
       requestedStartFrame: 108, oldestAvailableFrame: 112,
     });
 
@@ -265,25 +254,6 @@ describe('Browser shared input capture worklet', () => {
     expect(capture.messages('INPUT_CAPTURE_READY').at(-1)).toMatchObject({
       oldestAvailableFrame: 112, latestAvailableFrame: 120,
       preRollValidFrames: 8, requiredPreRollFrames: 8,
-    });
-    capture.processor.port.receive({ type: 'CHECK_CAPTURE_READINESS', inputGeneration: 1 });
-    expect(capture.messages('CAPTURE_READINESS_STATE').at(-1)).toMatchObject({
-      inputGeneration: 1, captureReadyEpoch: 1, ready: true,
-      oldestAvailableFrame: 112, latestAvailableFrame: 120,
-    });
-
-    // Once the tap has acknowledged a fresh contiguous pre-roll, retrying at
-    // a frame inside that range succeeds without shifting the requested frame.
-    capture.processor.port.receive({
-      type: 'START_CAPTURE', trackIndex: 0, sessionId: 84, inputGeneration: 1,
-      startFrame: 116, maxRecordingBytes: 256,
-    });
-    capture.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 84, stopFrame: 120 });
-    expect(capture.messages('RECORD_CONFIGURED').at(-1)).toMatchObject({
-      sessionId: 84, requestedStartFrame: 116, captureStartFrame: 116,
-    });
-    expect(capture.messages('RECORD_COMPLETE').at(-1)).toMatchObject({
-      sessionId: 84, requestedStartFrame: 116, stopFrame: 120, framesCaptured: 4,
     });
   });
 
@@ -336,7 +306,7 @@ describe('Browser shared input capture worklet', () => {
   });
 
   it('deduplicates rewound and partially overlapping callback ranges without losing the take', () => {
-    const capture = createCapture({ chunkSize: 16, preRollFrames: 16, readyPreRollFrames: 4 });
+    const capture = createCapture({ chunkSize: 16, preRollFrames: 16 });
     capture.process([0, 1, 2, 3], [10, 11, 12, 13], 100);
     capture.processor.port.receive({
       type: 'START_CAPTURE', trackIndex: 0, sessionId: 50, inputGeneration: 1,
@@ -365,7 +335,7 @@ describe('Browser shared input capture worklet', () => {
   });
 
   it('still aborts an active take when callback frames skip forward', () => {
-    const capture = createCapture({ readyPreRollFrames: 4 });
+    const capture = createCapture();
     capture.process([1, 2, 3, 4], undefined, 0);
     capture.processor.port.receive({
       type: 'START_CAPTURE', trackIndex: 0, sessionId: 51, inputGeneration: 1,

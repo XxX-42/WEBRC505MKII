@@ -164,7 +164,6 @@ export class BrowserAudioEngine implements IAudioEngine {
     private nextInputCaptureSessionId = 1;
     private inputCaptureReady = false;
     private inputCaptureReadyGeneration = 0;
-    private inputCaptureReadyEpoch: number | null = null;
     private inputCaptureWarmupReason = '';
     private inputCaptureUnavailableReason = '';
     private closedAudioContextHandled = false;
@@ -173,7 +172,6 @@ export class BrowserAudioEngine implements IAudioEngine {
         readonly listener: (message: unknown) => void;
     }>();
     private readonly inputCaptureReadyWaiters = new Map<number, { resolve: () => void; reject: (error: Error) => void }>();
-    private readonly inputCaptureRewarmWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
     private readonly trackFxApplyWaiters = new Map<string, {
         resolve: () => void; reject: (error: Error) => void; timeout: ReturnType<typeof setTimeout>;
         readonly enabled: boolean; readonly applyFrame: number; inputAck: boolean; trackAck: boolean;
@@ -3675,11 +3673,9 @@ export class BrowserAudioEngine implements IAudioEngine {
             node.onprocessorerror = () => {
                 this.inputCaptureReady = false;
                 this.inputCaptureReadyGeneration = 0;
-                this.inputCaptureReadyEpoch = null;
                 this.inputCaptureWarmupReason = '';
                 this.inputCaptureUnavailableReason = 'The shared input capture AudioWorklet stopped unexpectedly.';
                 this.rejectInputCaptureReadyWaiters(new Error(this.inputCaptureUnavailableReason));
-                this.rejectInputCaptureRewarmWaiters(new Error(this.inputCaptureUnavailableReason));
                 for (const [trackIndex, record] of this.inputCaptureSessions) {
                     record.listener({
                         type: 'CAPTURE_ERROR', trackIndex, sessionId: record.session.sessionId,
@@ -3729,17 +3725,14 @@ export class BrowserAudioEngine implements IAudioEngine {
         const node = this.inputCaptureNode;
         if (!node) {
             this.inputCaptureReady = false;
-            this.inputCaptureReadyEpoch = null;
             return null;
         }
         const generation = ++this.inputCaptureGeneration;
         this.inputCaptureReady = false;
         this.inputCaptureReadyGeneration = 0;
-        this.inputCaptureReadyEpoch = null;
         this.inputCaptureWarmupReason = ready ? 'Warming the shared capture pre-roll before recording is enabled.' : '';
         if (ready) this.inputCaptureUnavailableReason = '';
         this.rejectInputCaptureReadyWaiters(new Error('Input capture generation changed.'));
-        this.rejectInputCaptureRewarmWaiters(new Error('Input capture generation changed.'));
         let readyPromise: Promise<void> | null = null;
         if (ready) {
             readyPromise = new Promise<void>((resolve, reject) => {
@@ -3766,39 +3759,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         }
     }
 
-    private rejectInputCaptureRewarmWaiters(error: Error): void {
-        for (const waiter of this.inputCaptureRewarmWaiters) waiter.reject(error);
-        this.inputCaptureRewarmWaiters.clear();
-    }
-
     private handleInputCaptureMessage(message: any): void {
         if (!message || typeof message !== 'object') return;
-        if (message.type === 'CAPTURE_READINESS_STATE') {
-            if (message.inputGeneration !== this.inputCaptureGeneration
-                || !Number.isSafeInteger(message.captureReadyEpoch)
-                || message.captureReadyEpoch < (this.inputCaptureReadyEpoch ?? -1)) return;
-            this.inputCaptureReadyEpoch = message.captureReadyEpoch;
-            const ready = message.ready === true
-                && Number.isSafeInteger(message.preRollValidFrames)
-                && Number.isSafeInteger(message.requiredPreRollFrames)
-                && message.preRollValidFrames >= message.requiredPreRollFrames
-                && message.preRollValidFrames >= MINIMUM_EXACT_CAPTURE_PREROLL_FRAMES
-                && Number.isSafeInteger(message.oldestAvailableFrame)
-                && Number.isSafeInteger(message.latestAvailableFrame)
-                && message.latestAvailableFrame - message.oldestAvailableFrame === message.preRollValidFrames;
-            this.inputCaptureReady = ready;
-            this.inputCaptureReadyGeneration = ready ? message.inputGeneration : 0;
-            if (ready) {
-                this.inputCaptureWarmupReason = '';
-                this.inputCaptureUnavailableReason = '';
-                for (const waiter of this.inputCaptureRewarmWaiters) waiter.resolve();
-                this.inputCaptureRewarmWaiters.clear();
-            } else {
-                this.inputCaptureWarmupReason = 'Shared capture is warming a fresh pre-roll range.';
-            }
-            this.emitStatus();
-            return;
-        }
         if (message.type === 'TRACK_FX_APPLY_ACK') {
             this.handleTrackFxApplyAcknowledgement(message);
             return;
@@ -3806,11 +3768,8 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (message.type === 'INPUT_CAPTURE_NOT_READY') {
             if (message.inputGeneration !== this.inputCaptureGeneration
                 || message.sampleRate !== this.context.sampleRate) return;
-            if (!Number.isSafeInteger(message.captureReadyEpoch)
-                || message.captureReadyEpoch < (this.inputCaptureReadyEpoch ?? -1)) return;
             this.inputCaptureReady = false;
             this.inputCaptureReadyGeneration = 0;
-            this.inputCaptureReadyEpoch = message.captureReadyEpoch;
             this.inputCaptureWarmupReason = typeof message.reason === 'string'
                 ? `Shared capture is rewarming after ${message.reason}.`
                 : 'Shared capture is rewarming after an input timeline reset.';
@@ -3820,8 +3779,6 @@ export class BrowserAudioEngine implements IAudioEngine {
         if (message.type === 'INPUT_CAPTURE_READY') {
             if (message.inputGeneration !== this.inputCaptureGeneration
                 || message.sampleRate !== this.context.sampleRate) return;
-            if (!Number.isSafeInteger(message.captureReadyEpoch)
-                || message.captureReadyEpoch < (this.inputCaptureReadyEpoch ?? -1)) return;
             const validRange = Number.isSafeInteger(message.oldestAvailableFrame)
                 && message.oldestAvailableFrame >= 0
                 && Number.isSafeInteger(message.latestAvailableFrame)
@@ -3839,13 +3796,11 @@ export class BrowserAudioEngine implements IAudioEngine {
                 this.inputCaptureReady = false;
                 this.inputCaptureReadyGeneration = 0;
                 this.rejectInputCaptureReadyWaiters(new Error(this.inputCaptureUnavailableReason));
-                this.rejectInputCaptureRewarmWaiters(new Error(this.inputCaptureUnavailableReason));
                 this.emitStatus();
                 return;
             }
             this.inputCaptureReady = true;
             this.inputCaptureReadyGeneration = message.inputGeneration;
-            this.inputCaptureReadyEpoch = message.captureReadyEpoch;
             this.inputCaptureWarmupReason = '';
             this.inputCaptureUnavailableReason = '';
             const waiter = this.inputCaptureReadyWaiters.get(message.inputGeneration);
@@ -3853,8 +3808,6 @@ export class BrowserAudioEngine implements IAudioEngine {
                 this.inputCaptureReadyWaiters.delete(message.inputGeneration);
                 waiter.resolve();
             }
-            for (const rewarmWaiter of this.inputCaptureRewarmWaiters) rewarmWaiter.resolve();
-            this.inputCaptureRewarmWaiters.clear();
             this.emitStatus();
             return;
         }
@@ -4102,36 +4055,8 @@ export class BrowserAudioEngine implements IAudioEngine {
     }
 
     public getInputCaptureRequestFrame(): number | null {
-        if (!this.inputCaptureReady || this.inputCaptureReadyEpoch === null
-            || !this.hasLiveInputStream()) return null;
+        if (!this.inputCaptureReady || !this.hasLiveInputStream()) return null;
         return Math.ceil(this.context.currentTime * this.context.sampleRate);
-    }
-
-    /** Wait for the worklet to rebuild a contiguous pre-roll range after a timeline reset. */
-    public async waitForInputCaptureReady(): Promise<void> {
-        if (!this.inputCaptureNode || !this.hasLiveInputStream()) {
-            throw new Error('Shared input capture is unavailable while the input stream is reconnecting.');
-        }
-        let waiter: { resolve: () => void; reject: (error: Error) => void } | null = null;
-        const ready = new Promise<void>((resolve, reject) => {
-            waiter = { resolve, reject };
-            this.inputCaptureRewarmWaiters.add(waiter);
-        });
-        try {
-            // Confirm state in the worklet's message order. A READY event can
-            // resolve an older promise immediately before a queued timeline
-            // invalidation reaches the main thread.
-            this.inputCaptureNode.port.postMessage({
-                type: 'CHECK_CAPTURE_READINESS', inputGeneration: this.inputCaptureGeneration,
-            });
-            await withBrowserAudioTimeout(() => ready, 'Browser shared input capture rewarm', 3_000);
-            if (!this.inputCaptureReady || this.inputCaptureReadyEpoch === null
-                || this.inputCaptureReadyGeneration !== this.inputCaptureGeneration || !this.hasLiveInputStream()) {
-                throw new Error('Shared input capture readiness changed before recording could start.');
-            }
-        } finally {
-            if (waiter) this.inputCaptureRewarmWaiters.delete(waiter);
-        }
     }
 
     private connectBouncePlaybackSources(node: AudioWorkletNode): Array<GainNode | null> {
@@ -4191,7 +4116,6 @@ export class BrowserAudioEngine implements IAudioEngine {
     ): InputCaptureSession | null {
         const node = this.inputCaptureNode;
         if (!node || !this.inputCaptureReady || this.inputCaptureReadyGeneration !== this.inputCaptureGeneration
-            || this.inputCaptureReadyEpoch === null
             || !this.hasLiveInputStream() || !Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex >= 5
             || !Number.isSafeInteger(startFrame) || startFrame < 0 || this.inputCaptureSessions.has(trackIndex)
             || (maxRecordingFrames !== undefined && (!Number.isSafeInteger(maxRecordingFrames)
@@ -4218,7 +4142,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 type: 'START_CAPTURE', trackIndex, sessionId: session.sessionId,
                 ...(autoRecThreshold !== undefined ? { autoRecThreshold } : {}),
                 ...(bounceSourceMask !== undefined ? { bounceSourceMask } : {}),
-                inputGeneration: session.inputGeneration, captureReadyEpoch: this.inputCaptureReadyEpoch, startFrame,
+                inputGeneration: session.inputGeneration, startFrame,
                 ...(maxRecordingFrames !== undefined ? { maxRecordingFrames } : {}),
                 maxRecordingBytes: 384 * 1024 * 1024,
             });
@@ -4270,9 +4194,7 @@ export class BrowserAudioEngine implements IAudioEngine {
         this.rejectAllTrackFxApplyWaiters(new Error(reason));
         this.inputCaptureReady = false;
         this.inputCaptureReadyGeneration = 0;
-        this.inputCaptureReadyEpoch = null;
         this.inputCaptureWarmupReason = '';
-        this.rejectInputCaptureRewarmWaiters(new Error(reason));
         for (const [trackIndex, record] of this.inputCaptureSessions) {
             record.listener({
                 type: 'CAPTURE_ERROR', trackIndex, sessionId: record.session.sessionId,

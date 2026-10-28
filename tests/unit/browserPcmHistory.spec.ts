@@ -57,8 +57,7 @@ function installSharedCapture(engine: any, startFrame = 100) {
     let listener: ((message: unknown) => void) | null = null;
     engine.getInputCaptureRequestFrame = vi.fn(() => startFrame);
     engine.beginInputCaptureSession = vi.fn((trackIndex: number, frame: number, onMessage: (message: unknown) => void, maxRecordingFrames?: number) => {
-        if (trackIndex !== 0 || frame !== startFrame
-            || (maxRecordingFrames !== undefined && maxRecordingFrames !== 8_192)) return null;
+        if (trackIndex !== 0 || frame !== startFrame || maxRecordingFrames !== 8_192) return null;
         listener = onMessage;
         return session;
     });
@@ -131,33 +130,6 @@ afterEach(() => {
 });
 
 describe('Browser shared PCM history admission', () => {
-    it('keeps the committed loop and history when a stale capture start fails after a frame gap', async () => {
-        const { tracks: [track], engine } = createHarness();
-        record(track, [[0.125, -0, 0.75], [-0.5, 0.25, 0.375]]);
-        const incumbent = pcmBits(track);
-        const historyBefore = { undo: track.canUndo, redo: track.canRedo, bytes: track.historyTotalRetainedBytes };
-        const capture = installSharedCapture(engine as any, 108);
-
-        await track.startRecording();
-        expect(track.recordingCaptureSession).toBe(capture.session);
-        capture.send({
-            type: 'CAPTURE_ERROR', trackIndex: 0, sessionId: capture.session.sessionId,
-            inputGeneration: capture.session.inputGeneration, reason: 'capture-preroll-not-ready',
-            requestedStartFrame: 108, stopFrame: 0, startReceivedFrame: 169_856,
-            oldestAvailableFrame: 169_472, latestAvailableFrame: 169_856,
-            preRollCapacityFrames: 8_192, preRollValidFrames: 384,
-            inputReady: true, currentInputGeneration: capture.session.inputGeneration, sampleRate: 44_100,
-        });
-
-        expect(track.recordingCaptureSession).toBeNull();
-        expect(track.historyBusy).toBe(false);
-        expect(track.state).toBe(TrackState.STOPPED);
-        expect(track.recordingDiagnostic).toContain('capture-preroll-not-ready');
-        expect(track.recordingDiagnostic).toContain('previous track audio was kept');
-        expect(pcmBits(track)).toEqual(incumbent);
-        expect({ undo: track.canUndo, redo: track.canRedo, bytes: track.historyTotalRetainedBytes }).toEqual(historyBefore);
-    });
-
     it('keeps an empty track recordable after stop-before-first-frame and preserves an incumbent loop', async () => {
         const { tracks: [track] } = createHarness();
         const completeEmptyTake = async () => {

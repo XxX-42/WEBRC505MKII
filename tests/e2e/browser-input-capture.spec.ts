@@ -122,7 +122,7 @@ test('real Chromium AudioWorklet captures the requested stereo PCM frame range',
     const stopFrame = startFrame + 512;
     node.port.postMessage({
       type: 'START_CAPTURE', trackIndex: 0, sessionId: 1, inputGeneration: 1,
-      captureReadyEpoch: 0, startFrame, maxRecordingBytes: 1024 * 1024,
+      startFrame, maxRecordingBytes: 1024 * 1024,
     });
     node.port.postMessage({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 1, stopFrame });
     const completed = await Promise.race([
