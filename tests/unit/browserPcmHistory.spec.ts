@@ -1176,6 +1176,8 @@ describe('record/play runtime settings', () => {
     it('OFF and MEASURE both align completed slave PCM to the established measure', () => {
         const harness = createHarness();
         const [master, slave] = harness.tracks;
+        master!.track.loopSyncSw = 'ON';
+        slave!.track.loopSyncSw = 'ON';
         record(master!, [[0.1, 0.2, 0.3, 0.4]]);
         (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->PLAY'});
         record(slave!, [[0.5, 0.6, 0.7]]);
@@ -1189,6 +1191,8 @@ describe('record/play runtime settings', () => {
     it('OFF starts immediately while MEASURE waits for the established grid', () => {
         const harness = createHarness();
         const [master, slave] = harness.tracks;
+        master!.track.loopSyncSw = 'ON';
+        slave!.track.loopSyncSw = 'ON';
         record(master!, [[0.1, 0.2, 0.3, 0.4]]);
         const startRecording = vi.spyOn(slave!, 'startRecording').mockResolvedValue(undefined);
         (harness.engine as any).getRecordPlaySettings = () => ({quantize:'OFF', recAction:'REC->PLAY'});
