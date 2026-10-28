@@ -178,6 +178,35 @@ describe('Browser shared input capture worklet', () => {
     });
   });
 
+  it('keeps a future scheduled capture across a gap that ends before its requested frame', () => {
+    const capture = createCapture({ chunkSize: 4, preRollFrames: 8 });
+    capture.process([0, 1, 2, 3], undefined, 100);
+    capture.process([4, 5, 6, 7], undefined, 104);
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 83, inputGeneration: 1,
+      startFrame: 112, maxRecordingBytes: 256,
+    });
+
+    // The missing [108,112) frames precede the scheduled start. Readiness is
+    // withdrawn and pre-roll is rebuilt, while the future capture remains
+    // pending so no samples at or after its requested boundary are lost.
+    capture.process([12, 13, 14, 15], undefined, 112);
+    expect(capture.messages('CAPTURE_ERROR')).toHaveLength(0);
+    expect(capture.messages('INPUT_CAPTURE_NOT_READY').at(-1)).toMatchObject({
+      reason: 'input-frame-discontinuity', frameStart: 112,
+    });
+    capture.process([16, 17, 18, 19], undefined, 116);
+    capture.processor.port.receive({ type: 'STOP_CAPTURE', trackIndex: 0, sessionId: 83, stopFrame: 120 });
+    capture.process([20, 21, 22, 23], undefined, 120);
+
+    expect(capture.messages('RECORD_COMPLETE').at(-1)).toMatchObject({
+      sessionId: 83, requestedStartFrame: 112, stopFrame: 120, framesCaptured: 8, droppedFrames: 0,
+    });
+    const chunks = capture.messages('RECORD_CHUNK').filter((message: any) => message.sessionId === 83);
+    expect(chunks.flatMap((message: any) => Array.from(message.channels[0].subarray(0, message.validFrames))))
+      .toEqual([12, 13, 14, 15, 16, 17, 18, 19]);
+  });
+
   it('does not count duplicate or overlapping AudioWorklet frames toward the warm-up threshold', () => {
     const capture = createCapture({ preRollFrames: 12 });
     capture.process([0, 1, 2, 3], undefined, 100);

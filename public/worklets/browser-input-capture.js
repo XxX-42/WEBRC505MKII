@@ -735,8 +735,16 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       if (firstNewOffset >= frames) return true;
     } else if (this.lastFrameEnd !== null && frameStart > this.lastFrameEnd) {
       // A forward gap means samples were genuinely unavailable, so keep the
-      // conservative failure behavior and require a fresh request.
-      this.failActiveSessions('input-frame-discontinuity');
+      // conservative failure behavior for captures whose requested interval
+      // intersects the gap. A future pending capture has not started yet and
+      // can remain scheduled; its requested samples are still available.
+      for (let slotIndex = 0; slotIndex < this.slots.length; slotIndex += 1) {
+        const slot = this.slots[slotIndex];
+        if (slot.state !== 'pending' && slot.state !== 'recording') continue;
+        if (slot.state === 'pending' && slot.requestedStartFrame >= frameStart) continue;
+        this.postError(slot, slot.sessionId, 'input-frame-discontinuity', slot.requestedStartFrame, slot.stopFrame);
+        this.abortCapture(slot, 'input-frame-discontinuity', false);
+      }
       this.invalidateCaptureReadiness('input-frame-discontinuity', frameStart);
       this.preRollValidFrames = 0;
       this.preRollEndFrame = frameStart;

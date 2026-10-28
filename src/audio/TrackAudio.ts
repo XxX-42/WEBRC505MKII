@@ -17,6 +17,10 @@ const RECORDING_CHUNK_POOL_SIZE = 3;
 // cannot leave the track permanently busy; timeout discards the incomplete
 // take and preserves incumbent PCM/history.
 const RECORDING_CAPTURE_STOP_ACK_TIMEOUT_MS = 5_000;
+// Schedule a shared capture 256 sample frames ahead of the control-thread
+// clock read. The port message then has short bounded headroom to reach the
+// tap before the requested sample frame; the exact boundary remains explicit.
+const SHARED_CAPTURE_START_LEAD_FRAMES = 256;
 const OVERDUB_TRANSFER_BUFFER_FRAMES = 16_384;
 const OVERDUB_TRANSFER_BUFFER_POOL_SIZE = 3;
 // Reduce MessagePort traffic without allowing the live AudioBuffer update to
@@ -2348,7 +2352,9 @@ export class TrackAudio {
             // awaited setup. If input is not already authorized and warm, use
             // the legacy path rather than pretending a later frame was the
             // user's requested start boundary.
-            const requestedCaptureFrame = this.engine.getInputCaptureRequestFrame?.() ?? null;
+            const inputClockFrame = this.engine.getInputCaptureRequestFrame?.() ?? null;
+            const requestedCaptureFrame = inputClockFrame === null
+                ? null : inputClockFrame + SHARED_CAPTURE_START_LEAD_FRAMES;
             const input = await this.engine.getProcessedInputNode();
             if (generation !== this.recordingStartGeneration || this.isRecording || this.isFinalizingRecording) return;
             this.resumeAfterRecording = true;
@@ -2440,7 +2446,9 @@ export class TrackAudio {
         this.isFinalizingRecording = true;
         const captureSession = this.recordingCaptureSession;
         if (captureSession) {
-            const stopFrame = this.engine.getInputCaptureRequestFrame?.();
+            const requestedStopFrame = this.engine.getInputCaptureRequestFrame?.();
+            const stopFrame = requestedStopFrame === null || requestedStopFrame === undefined
+                ? null : Math.max(requestedStopFrame, captureSession.startFrame);
             if (stopFrame === null || stopFrame === undefined
                 || !this.engine.stopInputCaptureSession?.(captureSession, stopFrame)) {
                 this.recordingDiagnostic = 'The shared input capture could not acknowledge the requested stop frame; the take was discarded.';
@@ -3439,6 +3447,7 @@ export class TrackAudio {
                 && typeof this.engine.beginInputCaptureSession === 'function';
             if (hasSharedCapture) {
                 requestFrame = this.engine.getInputCaptureRequestFrame!();
+                if (requestFrame !== null) requestFrame += SHARED_CAPTURE_START_LEAD_FRAMES;
                 if (requestFrame === null) throw new Error('The shared input capture was not ready at the overdub request frame');
                 captureSession = this.beginOverdubCaptureSession(requestFrame, generation);
                 if (!captureSession) throw new Error('The shared input capture session could not be reserved at the overdub request frame');
