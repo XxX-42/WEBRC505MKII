@@ -4,6 +4,7 @@ import { Transport } from '../../src/core/Transport';
 
 function hostStatus(projectContentRevision: number, rhythmBpm: number) {
   return {
+    hostIncarnationId: 'a'.repeat(32),
     engineRunning: true,
     projectContentRevision,
     projectContentRevisionSnapshotStable: true,
@@ -15,6 +16,77 @@ function hostStatus(projectContentRevision: number, rhythmBpm: number) {
 }
 
 describe('Native project import reconciliation after transport sync failure', () => {
+  it('does not apply imported transport when BPM ACK races a Native host restart', async () => {
+    const transport = Transport.getInstance();
+    transport.stop();
+    transport.resetMasterTrack();
+    transport.timeSignature = [4, 4];
+    transport.measureLength = 0;
+    transport.masterLoopLengthSamples = 0;
+    transport.setBpm(120);
+    const before = { bpm: transport.bpm, revision: transport.projectMutationRevision,
+      masterTrackId: transport.masterTrackId, measureLength: transport.measureLength };
+    let reads = 0;
+    const newHost = { ...hostStatus(2, 120), hostIncarnationId: 'c'.repeat(32) };
+    const instance = Object.create(NativeAudioEngine.prototype) as any;
+    instance.bridge = { getStatus: vi.fn(async () => ++reads === 1 ? hostStatus(2, 120) : newHost) };
+    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm: vi.fn(async () => true) };
+    instance.syncingNativeRhythmBpm = false;
+    instance.pendingProjectImportSync = new Map([[58, {
+      hostIncarnationId: 'a'.repeat(32),
+      bpm: 110,
+      transport: { masterTrackId: 2, measureLengthSeconds: 8, masterLoopLengthSamples: 384_000,
+        timeSignatureNumerator: 4, timeSignatureDenominator: 4 },
+      operationStartTransport: {
+        bpm: before.bpm, state: transport.state, masterTrackId: before.masterTrackId,
+        measureLengthSeconds: before.measureLength, masterLoopLengthSamples: transport.masterLoopLengthSamples,
+        timeSignatureNumerator: transport.timeSignature[0], timeSignatureDenominator: transport.timeSignature[1],
+      },
+      operationStartTransportRevision: before.revision,
+      synchronizationStarted: false,
+    }]]);
+    instance.applyStatus = vi.fn();
+
+    await expect(instance.synchronizeCommittedProjectArchive(58, 2)).rejects.toMatchObject({
+      generation: 58, name: 'NativeProjectImportIndeterminateError',
+    });
+    expect(transport).toMatchObject({ bpm: 120, projectMutationRevision: before.revision, masterTrackId: null, measureLength: 0 });
+    expect(instance.pendingProjectImportSync.has(58)).toBe(true);
+  });
+
+  it('preserves a user transport edit made while the imported BPM request is awaiting ACK', async () => {
+    const transport = Transport.getInstance();
+    transport.stop(); transport.resetMasterTrack(); transport.timeSignature = [4, 4];
+    transport.measureLength = 0; transport.masterLoopLengthSamples = 0; transport.setBpm(120);
+    const operationStartTransport = {
+      bpm: transport.bpm, state: transport.state, masterTrackId: transport.masterTrackId,
+      measureLengthSeconds: transport.measureLength, masterLoopLengthSamples: transport.masterLoopLengthSamples,
+      timeSignatureNumerator: transport.timeSignature[0], timeSignatureDenominator: transport.timeSignature[1],
+    };
+    const operationStartTransportRevision = transport.projectMutationRevision;
+    const instance = Object.create(NativeAudioEngine.prototype) as any;
+    instance.bridge = { getStatus: vi.fn(async () => hostStatus(2, 120)) };
+    instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm: vi.fn(async () => {
+      transport.setBpm(133);
+      return true;
+    }) };
+    instance.syncingNativeRhythmBpm = false;
+    instance.pendingProjectImportSync = new Map([[59, {
+      hostIncarnationId: 'a'.repeat(32), bpm: 110,
+      transport: { masterTrackId: 2, measureLengthSeconds: 8, masterLoopLengthSamples: 384_000,
+        timeSignatureNumerator: 7, timeSignatureDenominator: 8 },
+      operationStartTransport, operationStartTransportRevision, synchronizationStarted: false,
+    }]]);
+    instance.applyStatus = vi.fn();
+
+    await expect(instance.synchronizeCommittedProjectArchive(59, 2)).rejects.toMatchObject({
+      archiveCommitted: true, generation: 59, recoveryUnavailable: true,
+    });
+    expect(transport.bpm).toBe(133);
+    expect(transport.timeSignature).toEqual([4, 4]);
+    expect(transport.masterTrackId).toBeNull();
+  });
+
   it('resolves an exact committed generation without applying stale metadata when transport changed during import', async () => {
     const transport = Transport.getInstance();
     transport.stop();
@@ -35,12 +107,13 @@ describe('Native project import reconciliation after transport sync failure', ()
     instance.bridge = {
       getStatus: vi.fn(async () => hostStatus(2, 120)),
       getProjectArchiveImportStatus: vi.fn(async (generation: number) => ({
-        ok: true, generation, state: 'committed', projectContentRevision: 2,
+        ok: true, generation, state: 'committed', hostIncarnationId: 'a'.repeat(32), projectContentRevision: 2,
       })),
     };
     instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm: vi.fn(async () => true) };
     instance.syncingNativeRhythmBpm = false;
     instance.pendingProjectImportSync = new Map([[56, {
+      hostIncarnationId: 'a'.repeat(32),
       bpm: 110,
       transport: { masterTrackId: null, measureLengthSeconds: 0, masterLoopLengthSamples: 0,
         timeSignatureNumerator: 4, timeSignatureDenominator: 4 },
@@ -59,7 +132,7 @@ describe('Native project import reconciliation after transport sync failure', ()
     expect(applyStatus).toHaveBeenCalledWith(expect.anything(), false);
 
     const status = await instance.getProjectArchiveImportStatus(56);
-    expect(status).toMatchObject({ state: 'committed', generation: 56, projectContentRevision: 2, recoveryUnavailable: true });
+    expect(status).toMatchObject({ state: 'unavailable', generation: 56, projectContentRevision: 2, hostIncarnationMismatch: true });
   });
 
   it.each(['track', 'transport'] as const)('marks a post-sync %s change as recovery unavailable', async (changed) => {
@@ -79,12 +152,13 @@ describe('Native project import reconciliation after transport sync failure', ()
     instance.bridge = {
       getStatus: vi.fn(async () => currentHostStatus),
       getProjectArchiveImportStatus: vi.fn(async (generation: number) => ({
-        ok: true, generation, state: 'committed', projectContentRevision: 2,
+        ok: true, generation, state: 'committed', hostIncarnationId: 'a'.repeat(32), projectContentRevision: 2,
       })),
     };
     instance.rhythmEngine = { available: false, settings: null, setBpm: vi.fn(async () => true) };
     instance.syncingNativeRhythmBpm = false;
     instance.pendingProjectImportSync = new Map([[57, {
+      hostIncarnationId: 'a'.repeat(32),
       bpm: 120,
       transport: { masterTrackId: null, measureLengthSeconds: 0, masterLoopLengthSamples: 0,
         timeSignatureNumerator: 4, timeSignatureDenominator: 4 },
@@ -137,12 +211,13 @@ describe('Native project import reconciliation after transport sync failure', ()
         return hostStatus(3, readbackBpm);
       }),
       getProjectArchiveImportStatus: vi.fn(async (generation: number) => ({
-        ok: true, generation, state: 'committed', projectContentRevision: 2,
+        ok: true, generation, state: 'committed', hostIncarnationId: 'a'.repeat(32), projectContentRevision: 2,
       })),
     };
     instance.rhythmEngine = { available: true, settings: { bpm: 120 }, setBpm };
     instance.syncingNativeRhythmBpm = false;
     instance.pendingProjectImportSync = new Map([[55, {
+      hostIncarnationId: 'a'.repeat(32),
       bpm: 110,
       transport: { masterTrackId: null, measureLengthSeconds: 0, masterLoopLengthSamples: 0,
         timeSignatureNumerator: 4, timeSignatureDenominator: 4 },

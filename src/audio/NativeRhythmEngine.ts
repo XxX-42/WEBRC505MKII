@@ -1,5 +1,5 @@
 import { Transport } from '../core/Transport';
-import { isNativeRhythmConfig, type NativeBridgeClient, type NativeRhythmConfig, type NativeStatus } from './NativeBridgeClient';
+import { isNativeHostIncarnationId, isNativeRhythmConfig, type NativeBridgeClient, type NativeRhythmConfig, type NativeStatus } from './NativeBridgeClient';
 import type { RhythmPattern, RhythmPlaybackSettings } from './RhythmEngine';
 import { getDrumKitByIndex, getDrumKitByName, getRhythmPatternByIndex, type RhythmQuantizeGrid, type RhythmSection, type RhythmVariation } from './rhythm';
 
@@ -90,7 +90,13 @@ export class NativeRhythmEngine {
       if (!isNativeRhythmConfig(config)) return this.reject('Unsupported Native rhythm settings. Check BPM, pattern, kit, variation, section, swing, quantize, and volume.');
       this.lastError = '';
       try {
-        const status = await this.host.bridge().setRhythm(config, hostIncarnationId);
+        const status = hostIncarnationId === undefined
+          ? await this.host.bridge().setRhythm(config)
+          : await this.host.bridge().setRhythm(config, hostIncarnationId);
+        if (hostIncarnationId !== undefined &&
+            (!isNativeHostIncarnationId(status.hostIncarnationId) || status.hostIncarnationId !== hostIncarnationId)) {
+          throw new Error('Native host incarnation changed during rhythm BPM synchronization; stale status was not applied.');
+        }
         this.host.applyStatus(status);
         if (!this.available) return this.reject(this.unavailableReason);
         const acknowledged = this.settings;

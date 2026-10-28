@@ -1248,7 +1248,31 @@ export class NativeAudioEngine {
       this.pendingProjectImportSync.set(generation, savedProject);
       const syncFailures: string[] = [];
       this.syncingNativeRhythmBpm = true;
+      if (this.rhythmEngine.available && this.rhythmEngine.settings?.bpm !== bpm) {
+        if (!await this.rhythmEngine.setBpm(bpm, savedProject.hostIncarnationId)) {
+          syncFailures.push(this.rhythmEngine.error || 'Native rhythm did not acknowledge the imported project BPM');
+        }
+      }
+      // The remote BPM request is asynchronous and may cross a host restart.
+      // Revalidate incarnation before changing any app-owned transport values.
+      let synchronizedStatus: NativeStatus | null = null;
+      let recoveryInvalidation: string | null = null;
+      try {
+        synchronizedStatus = await this.bridge.getStatus();
+        if (!isNativeHostIncarnationId(synchronizedStatus.hostIncarnationId) ||
+            synchronizedStatus.hostIncarnationId !== savedProject.hostIncarnationId) {
+          throw new NativeProjectHostIncarnationMismatchError('Native host incarnation changed while import BPM was being reconciled.');
+        }
+      } catch (error) {
+        if (error instanceof NativeProjectHostIncarnationMismatchError) throw error;
+        throw error;
+      }
+      if (!synchronizedStatus) throw new Error('Native status readback is unavailable after BPM synchronization.');
       if (savedProject.synchronizedTransportRevision === undefined) {
+        if (!this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision)) {
+          this.pendingProjectImportSync.delete(generation);
+          throw new CommittedImportRecoveryUnavailableError('Transport changed while Native BPM was being acknowledged. The PCM is committed; newer user transport values were preserved and imported transport metadata was not applied.');
+        }
         try { transport.stop(); } catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
         transport.resetMasterTrack();
         transport.timeSignature = [saved.timeSignatureNumerator, saved.timeSignatureDenominator];
@@ -1261,19 +1285,7 @@ export class NativeAudioEngine {
         this.pendingProjectImportSync.set(generation, savedProject);
       }
       const synchronizedTransportRevision = savedProject.synchronizedTransportRevision;
-
-      if (this.rhythmEngine.available && this.rhythmEngine.settings?.bpm !== bpm) {
-        if (!await this.rhythmEngine.setBpm(bpm, savedProject.hostIncarnationId)) {
-          syncFailures.push(this.rhythmEngine.error || 'Native rhythm did not acknowledge the imported project BPM');
-        }
-      }
-      let synchronizedStatus: NativeStatus | null = null;
-      let recoveryInvalidation: string | null = null;
       try {
-        synchronizedStatus = await this.bridge.getStatus();
-        if (synchronizedStatus.hostIncarnationId !== savedProject.hostIncarnationId) {
-          throw new NativeProjectHostIncarnationMismatchError('Native host incarnation changed while import transport was being reconciled.');
-        }
         const synchronizedTrackSnapshot = nativeProjectTrackSnapshot(synchronizedStatus.nativeTracks);
         if (synchronizedStatus.projectContentRevisionSnapshotStable === true && synchronizedTrackSnapshot &&
             !sameNativeProjectTrackSnapshot(callbackTrackSnapshot, synchronizedTrackSnapshot)) {

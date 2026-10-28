@@ -1072,6 +1072,7 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       : 'Audio engine is not running and ready.';
     const browserArchiveHasKnownSourceTempo = engine.getMode() === 'browser'
       && engine.tracks.some((track) => (track as { originalRecordingBpm?: number | null }).originalRecordingBpm != null);
+    const unresolvedImportNeedsPreservation = pendingNativeImportGeneration.value !== null;
     const archiveCompatibilityReason = engine.getMode() !== 'browser'
       ? 'Native export writes ProjectArchive v1, compatible with older Native hosts.'
       : browserArchiveHasKnownSourceTempo
@@ -1103,8 +1104,10 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       makeActionField('memory-load-slot', 'LOAD SLOT', loadMemorySlot, { disabled: !storageAvailable || disabled || !saved || !audioReady, reason: !storageAvailable ? reason : !saved ? 'Selected memory slot is empty.' : !audioReady ? audioUnavailableReason : 'Loads PCM, BPM, master loop, and time signature; FX, kits, and patterns remain unchanged.' }),
       makeActionField('memory-import-file', 'IMPORT PROJECT FILE', importMemoryFile, { disabled: disabled || !audioReady, reason: !audioReady ? audioUnavailableReason : '' }),
       makeActionField('memory-export-file', 'EXPORT PROJECT FILE', exportMemoryFile, {
-        disabled: disabled || !exportAllowed,
-        reason: exportUnavailableReason || archiveCompatibilityReason,
+        disabled: editPending.value || !exportAllowed,
+        reason: !exportAllowed ? exportUnavailableReason : unresolvedImportNeedsPreservation
+          ? 'Exports the current Native project as-is for safekeeping; an unresolved import must be checked and must not be uploaded again.'
+          : archiveCompatibilityReason,
       }),
       makeActionField('memory-delete-slot', 'ERASE SLOT', async () => {
         if (!(await confirmAction(`Erase saved project memory slot ${memorySlot.value}? This permanently removes its PCM archive from this browser.`))) return;

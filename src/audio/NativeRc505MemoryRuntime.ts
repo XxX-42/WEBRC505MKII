@@ -264,16 +264,9 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
           if (result.state !== 'committed') throw new Error(result.error || 'Native Memory generation was not committed.');
           state = 'committed';
           try {
-          // The host ACK owns the target metadata even if later UI/readback
-          // synchronization fails. A future capture combines this opaque data
-          // with fresh authoritative Native settings and exact archive bytes.
-          preservedExtensions = targetExtensions;
-          preservedFields = targetFields;
           port.committed?.(generation);
           const deadline = Date.now() + 10_000;
-          for (;;) {
-            const status = await port.bridge.getStatus();
-            port.publish(status);
+          const readbackAcknowledged = (status: NativeStatus): boolean => {
             const gates = status.nativeFx?.trackFxApply;
             const bounce = status.nativeBounce;
             const bounceAcknowledged = bounce && bounce.requestedRevision === bounce.appliedRevision;
@@ -286,10 +279,31 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
                 return status.nativeMemory!.dubModes![index] === mode && readback?.requested === mode && readback.applied === mode
                   && readback.requestedRevision === readback.appliedRevision;
               });
-            if (bounceAcknowledged && dubModesAcknowledged && gates?.length === 5
-              && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)) {
-              port.install?.(status);
-              break;
+            return Boolean(bounceAcknowledged && dubModesAcknowledged && gates?.length === 5
+              && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted));
+          };
+          for (;;) {
+            const status = await port.bridge.getStatus();
+            if (!isNativeHostIncarnationId(status.hostIncarnationId) || status.hostIncarnationId !== acceptance.hostIncarnationId) {
+              throw new Error('Native host restarted during Memory readback; generation status is unverifiable and no stale settings were installed.');
+            }
+            port.publish(status);
+            if (readbackAcknowledged(status)) {
+              // Close the window between the ACK poll and semantic installation
+              // with a second, final readback from the same host incarnation.
+              const finalStatus = await port.bridge.getStatus();
+              if (!isNativeHostIncarnationId(finalStatus.hostIncarnationId) || finalStatus.hostIncarnationId !== acceptance.hostIncarnationId) {
+                throw new Error('Native host restarted before Memory installation; generation status is unverifiable and no stale settings were installed.');
+              }
+              if (readbackAcknowledged(finalStatus)) {
+                // Commit opaque target metadata only after all ACKs survive the
+                // final same-incarnation readback.
+                preservedExtensions = targetExtensions;
+                preservedFields = targetFields;
+                port.publish(finalStatus);
+                port.install?.(finalStatus);
+                break;
+              }
             }
             if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but DUB MODE, Bounce, or FX gate render acknowledgements timed out.`);
             await new Promise((resolve) => setTimeout(resolve, 10));

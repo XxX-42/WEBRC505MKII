@@ -222,6 +222,33 @@ describe('Native semantic Memory runtime', () => {
     expect(bridge.cancelProjectArchiveImport).not.toHaveBeenCalled();
     await expect(prepared.commit()).rejects.toThrow(/stale/);
   });
+  it('refuses to install Memory semantics when the host restarts after commit ACK', async () => {
+    const h = fixture();
+    const document = await h.runtime.capture();
+    const prepared = await h.runtime.prepare(document, h.runtime.revision());
+    h.bridge.commitPreparedMemory.mockImplementationOnce(async () => {
+      h.hostStatus().hostIncarnationId = 'c'.repeat(32);
+    });
+    await expect(prepared.commit()).rejects.toThrow(/host restarted during Memory readback/i);
+    expect(h.install).not.toHaveBeenCalled();
+    await prepared.dispose();
+  });
+  it('does not preserve opaque Memory semantics if the host restarts between ACK poll and final readback', async () => {
+    const h = fixture();
+    const { runtime, bridge, install } = h;
+    const document = await runtime.capture();
+    document.extensions.WEBRC.vendorOpaque = { stale: true };
+    const prepared = await runtime.prepare(document, runtime.revision());
+    let readsAfterPrepare = 0;
+    bridge.getStatus.mockImplementation(async () => {
+      readsAfterPrepare += 1;
+      return { ...h.hostStatus(), hostIncarnationId: readsAfterPrepare >= 2 ? 'c'.repeat(32) : 'a'.repeat(32) } as NativeStatus;
+    });
+    await expect(prepared.commit()).rejects.toThrow(/restarted before Memory installation/i);
+    expect(install).not.toHaveBeenCalled();
+    await prepared.dispose();
+    expect((await runtime.capture()).extensions.WEBRC.vendorOpaque).toBeUndefined();
+  });
   it('disposes an uncommitted candidate through cancellation without activating it', async () => {
     const { runtime, bridge } = fixture();
     const document = await runtime.capture();

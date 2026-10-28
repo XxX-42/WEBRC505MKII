@@ -10,17 +10,29 @@ function createRuntime(initial = nativeRhythmStatus()) {
   let status: NativeStatus | null = initial;
   let connected = true;
   const setRhythm = vi.fn(async (config: NativeRhythmConfig) => ({ ...status!, nativeRhythm: { ...status!.nativeRhythm!, ...config } }));
+  const applyStatus = vi.fn((next: NativeStatus) => { status = next; });
   const reportError = vi.fn();
   const notify = vi.fn();
   const rhythm = new NativeRhythmEngine({
     bridge: () => ({ setRhythm }) as unknown as NativeBridgeClient,
     status: () => status, bridgeAvailable: () => connected,
-    applyStatus: (next) => { status = next; }, reportError, notify,
+    applyStatus, reportError, notify,
   });
-  return { rhythm, setRhythm, reportError, notify, setStatus: (next: NativeStatus | null) => { status = next; }, disconnect: () => { connected = false; } };
+  return { rhythm, setRhythm, reportError, notify, applyStatus, setStatus: (next: NativeStatus | null) => { status = next; }, disconnect: () => { connected = false; } };
 }
 
 describe('Native rhythm runtime adapter', () => {
+  it('does not apply a stale BPM response from a host that restarted during the request', async () => {
+    const runtime = createRuntime(nativeRhythmStatus());
+    runtime.setStatus({ ...nativeRhythmStatus(), hostIncarnationId: 'a'.repeat(32) } as NativeStatus);
+    runtime.setRhythm.mockImplementationOnce(async (config) => ({
+      ...nativeRhythmStatus(), hostIncarnationId: 'c'.repeat(32),
+      nativeRhythm: { ...nativeRhythmStatus().nativeRhythm!, ...config },
+    } as NativeStatus));
+    await expect(runtime.rhythm.setBpm(110, 'a'.repeat(32))).resolves.toBe(false);
+    expect(runtime.applyStatus).not.toHaveBeenCalled();
+  });
+
   it('routes all Browser-compatible selections and preserves legacy pattern indices', async () => {
     const { rhythm, setRhythm } = createRuntime();
     for (const [legacy, patternIndex] of [['ROCK', 106], ['TECHNO', 198], ['METRONOME', 210]] as const) {
