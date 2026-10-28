@@ -90,6 +90,20 @@ export interface LivePolyPitchLoopOptions {
   readonly tonalityLimitHz?: number;
 }
 
+export interface LivePolyPitchRateRampOptions {
+  /** Seconds spent smoothly retuning the source/output time ratio. */
+  readonly durationSeconds?: number;
+  /** Lets the owning track cancel future ramp points after a route/state change. */
+  readonly isCurrent?: () => boolean;
+}
+
+export interface LivePolyPitchRateRampResult {
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly fromRate: number;
+  readonly toRate: number;
+}
+
 export interface LivePolyPitchSegmentOptions {
   /** Input position and exclusive end of this finite pass, in seconds. */
   readonly inputOffsetSeconds: number;
@@ -116,6 +130,8 @@ export interface LivePolyPitchNode extends AudioWorkletNode {
   /** Schedules one finite read without loop bounds. */
   scheduleSegment(options: LivePolyPitchSegmentOptions): Promise<unknown>;
   setPitch(semitones: number, outputTime?: number, playbackRate?: number): Promise<unknown>;
+  /** Smoothly retunes an active internal-buffer loop without replacing its PCM. */
+  setPlaybackRate(playbackRate: number, options?: LivePolyPitchRateRampOptions): Promise<LivePolyPitchRateRampResult>;
   startProcessing(outputTime?: number): Promise<unknown>;
   stopProcessing(outputTime?: number): Promise<unknown>;
 }
@@ -437,9 +453,11 @@ export async function createLivePolyPitchNode(
   let activeLoop: {
     readonly loopStartSeconds: number;
     readonly loopEndSeconds: number;
-    readonly playbackRate: number;
+    playbackRate: number;
+    semitones: number;
     readonly tonalityLimitHz: number;
   } | null = null;
+  let activeRateRamp: { readonly startTime: number; readonly endTime: number; readonly from: number; readonly to: number } | null = null;
 
   const liveNode = node as unknown as LivePolyPitchNode;
   Object.defineProperties(liveNode, {
@@ -492,8 +510,10 @@ export async function createLivePolyPitchNode(
           loopStartSeconds,
           loopEndSeconds,
           playbackRate: rate,
+          semitones,
           tonalityLimitHz: currentTonalityLimitHz,
         };
+        activeRateRamp = null;
         return node.schedule({
           active: true,
           input: inputOffsetSeconds,
@@ -524,6 +544,7 @@ export async function createLivePolyPitchNode(
           throw new RangeError('Finite pitch segment must describe a non-empty input range');
         }
         activeLoop = null;
+        activeRateRamp = null;
         const outputTime = segment.outputTime ?? context.currentTime + latencySeconds;
         return node.schedule({
           active: true,
@@ -546,6 +567,7 @@ export async function createLivePolyPitchNode(
         const loopBounds = activeLoop
           ? { loopStart: activeLoop.loopStartSeconds, loopEnd: activeLoop.loopEndSeconds }
           : {};
+        if (activeLoop) activeLoop.semitones = nextSemitones;
         return node.schedule({
           active: true,
           outputTime,
@@ -555,6 +577,65 @@ export async function createLivePolyPitchNode(
           tonalityHz: activeLoop?.tonalityLimitHz ?? tonalityLimitHz,
           ...loopBounds,
         });
+      },
+    },
+    setPlaybackRate: {
+      value: async (nextRate: number, ramp: LivePolyPitchRateRampOptions = {}) => {
+        validateRate(nextRate);
+        if (!activeLoop) throw new Error('Signalsmith playback-rate follow requires an active LIVE_POLY loop.');
+        const loop = activeLoop;
+        const durationSeconds = ramp.durationSeconds ?? 0.4;
+        if (!Number.isFinite(durationSeconds) || durationSeconds < 0.1 || durationSeconds > 2) {
+          throw new RangeError('LIVE_POLY playback-rate ramp duration must be between 0.1 and 2 seconds.');
+        }
+
+        const startTime = context.currentTime + latencySeconds;
+        const currentRate = activeRateRamp && startTime < activeRateRamp.endTime
+          ? activeRateRamp.from + (activeRateRamp.to - activeRateRamp.from)
+            * Math.max(0, Math.min(1, (startTime - activeRateRamp.startTime) / (activeRateRamp.endTime - activeRateRamp.startTime)))
+          : loop.playbackRate;
+        const steps = Math.max(4, Math.ceil(durationSeconds / 0.05));
+        const endTime = startTime + durationSeconds;
+        const scheduledRates: number[] = [];
+        try {
+          // A short series of contiguous source-time-map points gives a gentle
+          // rate ramp while preserving the reader cursor. No AudioBuffer is
+          // rewritten or reloaded, and pitch remains an independent parameter.
+          for (let step = 0; step <= steps; step += 1) {
+            if (ramp.isCurrent && !ramp.isCurrent()) {
+              throw new Error('LIVE_POLY playback-rate ramp was cancelled after the track route changed.');
+            }
+            const fraction = step / steps;
+            const rate = currentRate + (nextRate - currentRate) * fraction;
+            const outputTime = startTime + durationSeconds * fraction;
+            await node.schedule({
+              active: true,
+              output: outputTime,
+              outputTime,
+              rate,
+              semitones: loop.semitones,
+              tonalityHz: loop.tonalityLimitHz,
+              loopStart: loop.loopStartSeconds,
+              loopEnd: loop.loopEndSeconds,
+            });
+            scheduledRates.push(rate);
+          }
+        } catch (error) {
+          const lastScheduled = scheduledRates[scheduledRates.length - 1];
+          if (lastScheduled !== undefined) {
+            loop.playbackRate = lastScheduled;
+            activeRateRamp = {
+              startTime,
+              endTime: startTime + durationSeconds * (scheduledRates.length - 1) / steps,
+              from: currentRate,
+              to: lastScheduled,
+            };
+          }
+          throw error;
+        }
+        loop.playbackRate = nextRate;
+        activeRateRamp = { startTime, endTime, from: currentRate, to: nextRate };
+        return Object.freeze({ startTime, endTime, fromRate: currentRate, toRate: nextRate });
       },
     },
     startProcessing: {

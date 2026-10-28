@@ -14,6 +14,8 @@ import type { TrackMarkActionResult, TrackMarkState } from './TrackMark';
 
 const RECORDING_CHUNK_SIZE = 16_384;
 const RECORDING_CHUNK_POOL_SIZE = 3;
+const MIN_TRACK_TEMPO_BPM = 40;
+const MAX_TRACK_TEMPO_BPM = 300;
 // Bound shared-capture stop finalization so a suspended or failed context
 // cannot leave the track permanently busy; timeout discards the incomplete
 // take and preserves incumbent PCM/history.
@@ -285,6 +287,15 @@ export interface ProjectBufferRestoreResult {
     readonly reason?: string;
 }
 
+/** Runtime-only tempo retarget evidence; it makes no claim about external clock phase. */
+export interface LivePolyTempoFollowSnapshot {
+    readonly sourceRecordingBpm: number;
+    readonly targetBpm: number;
+    readonly rateRatio: number;
+    readonly pcmRevision: number;
+    readonly phaseAligned: false;
+}
+
 export class TrackAudio {
     /** Read-only committed phrase existence; first recording is not a phrase yet. */
     public get hasCommittedPhrase(): boolean { return this.audioBuffer !== null; }
@@ -352,6 +363,15 @@ export class TrackAudio {
     private livePolyPitchTonalityLimitHz = 8000;
     private livePolyPitchLatencySamplesValue: number | null = null;
     private livePolyPitchFallbackReasonValue: string | null = null;
+    private livePolyTempoFollowValue: {
+        readonly sourceRecordingBpm: number;
+        readonly targetBpm: number;
+        readonly rateRatio: number;
+        readonly pcmRevision: number;
+        readonly sourceBuffer: AudioBuffer;
+    } | null = null;
+    private livePolyPlaybackBaseRate = 1;
+    private livePolyPlaybackRateSegments: Array<{ startTime: number; endTime: number; fromRate: number; toRate: number }> = [];
     private liveMonoPitchNode: LiveMonoPitchNode | null = null;
     private liveMonoPitchNodePromise: Promise<LiveMonoPitchNode> | null = null;
     private liveMonoPitchGeneration = 0;
@@ -1516,6 +1536,138 @@ export class TrackAudio {
         return this.livePolyPitchFallbackReasonValue;
     }
 
+    /** Current rate-follow request, valid only for the unchanged source PCM. */
+    public get livePolyTempoFollow(): LivePolyTempoFollowSnapshot | null {
+        const follow = this.livePolyTempoFollowValue;
+        if (!follow || follow.sourceBuffer !== this.audioBuffer || follow.pcmRevision !== this.projectPcmRevision) return null;
+        return Object.freeze({
+            sourceRecordingBpm: follow.sourceRecordingBpm,
+            targetBpm: follow.targetBpm,
+            rateRatio: follow.rateRatio,
+            pcmRevision: follow.pcmRevision,
+            phaseAligned: false,
+        });
+    }
+
+    /**
+     * Retargets one already-playing LIVE_POLY loop while preserving its source PCM.
+     * The caller must provide the tempo at which this source loop was recorded;
+     * this API does not read or apply MIDI clock and does not establish sample phase.
+     */
+    public async followLivePolyTempo(sourceRecordingBpm: number, targetBpm: number): Promise<LivePolyTempoFollowSnapshot> {
+        const validBpm = (value: number): boolean => Number.isFinite(value)
+            && value >= MIN_TRACK_TEMPO_BPM && value <= MAX_TRACK_TEMPO_BPM;
+        if (!validBpm(sourceRecordingBpm)) {
+            throw new RangeError(`Source recording BPM must be between ${MIN_TRACK_TEMPO_BPM} and ${MAX_TRACK_TEMPO_BPM}.`);
+        }
+        if (!validBpm(targetBpm)) {
+            throw new RangeError(`Target BPM must be between ${MIN_TRACK_TEMPO_BPM} and ${MAX_TRACK_TEMPO_BPM}.`);
+        }
+        const rateRatio = targetBpm / sourceRecordingBpm;
+        if (!Number.isFinite(rateRatio) || rateRatio < 0.5 || rateRatio > 2) {
+            throw new RangeError('LIVE_POLY tempo ratio must be between 0.5× and 2×; the loop remains unchanged.');
+        }
+        const buffer = this.audioBuffer;
+        const currentFollow = this.livePolyTempoFollow;
+        const invalidReason = this.disposed ? 'Track is disposed.'
+            : !buffer ? 'Track has no committed loop PCM.'
+                : this.state !== TrackState.PLAYING ? 'Tempo follow can change only while this track is playing.'
+                    : this.historyBusy ? 'Tempo follow is unavailable during recording, overdub, or PCM history work.'
+                        : this.track.oneShot === 'ON' ? 'Tempo follow requires a repeating loop, not a one-shot track.'
+                            : this.isReverse ? 'Tempo follow is unavailable while reverse playback is active.'
+                                : buffer.numberOfChannels > 2 ? 'LIVE_POLY tempo follow supports one or two channels.'
+                                    : this.engine.context.state !== 'running' ? 'Tempo follow requires a running Browser AudioContext.'
+                                        : !this.livePolyPitchEnabledInternal || !this.livePolyPitchActiveInternal || !this.livePolyPitchNode
+                                            ? 'Enable LIVE_POLY and start the loop before requesting tempo follow.'
+                                            : this.hasConfiguredLoopTransportFx() ? 'Tempo follow is unavailable with a source-aware loop transport effect.'
+                                                : currentFollow && currentFollow.sourceRecordingBpm !== sourceRecordingBpm
+                                                    ? 'The source recording BPM cannot change during a follow session.'
+                                                    : null;
+        if (invalidReason) throw new Error(invalidReason);
+
+        const sourceBuffer = buffer!;
+        const sourceRevision = this.projectPcmRevision;
+        const playbackRevision = this.playbackRevision;
+        const node = this.livePolyPitchNode!;
+        const isCurrent = (): boolean => !this.disposed && this.audioBuffer === sourceBuffer
+            && this.projectPcmRevision === sourceRevision && this.playbackRevision === playbackRevision
+            && this.state === TrackState.PLAYING && this.livePolyPitchEnabledInternal
+            && this.livePolyPitchActiveInternal && this.livePolyPitchNode === node
+            && this.engine.context.state === 'running';
+        if (!isCurrent()) throw new Error('Track playback changed before tempo follow could be scheduled.');
+
+        try {
+            const ramp = await node.setPlaybackRate(rateRatio, { durationSeconds: 0.4, isCurrent });
+            this.commitLivePolyPlaybackRateRamp(ramp);
+        } catch (error) {
+            this.livePolyPitchFallbackReasonValue = error instanceof Error ? error.message : 'LIVE_POLY tempo retarget failed.';
+            throw error;
+        }
+        if (!isCurrent()) throw new Error('Track playback changed during tempo retarget; no tempo-follow state was committed.');
+        this.livePolyPitchPlaybackRate = rateRatio;
+        this.livePolyTempoFollowValue = Object.freeze({
+            sourceRecordingBpm,
+            targetBpm,
+            rateRatio,
+            pcmRevision: sourceRevision,
+            sourceBuffer,
+        });
+        return this.livePolyTempoFollow!;
+    }
+
+    /** Returns the loop to its recorded playback rate before recording or changing modes. */
+    public async clearLivePolyTempoFollow(): Promise<void> {
+        if (!this.livePolyTempoFollow) {
+            if (this.livePolyTempoFollowValue) this.resetLivePolyTempoFollowForModeChange();
+            this.livePolyTempoFollowValue = null;
+            return;
+        }
+        if (this.historyBusy) throw new Error('Tempo follow cannot be changed during recording, overdub, or PCM history work.');
+        if (this.livePolyPitchActiveInternal && this.livePolyPitchNode && this.state === TrackState.PLAYING) {
+            if (this.engine.context.state !== 'running') throw new Error('Cannot clear tempo follow while the Browser AudioContext is not running.');
+            const node = this.livePolyPitchNode;
+            const revision = this.playbackRevision;
+            const buffer = this.audioBuffer;
+            const isCurrent = (): boolean => !this.disposed && this.state === TrackState.PLAYING
+                && this.playbackRevision === revision && this.audioBuffer === buffer
+                && this.livePolyPitchNode === node && this.livePolyPitchActiveInternal
+                && this.engine.context.state === 'running';
+            const ramp = await node.setPlaybackRate(1, { durationSeconds: 0.4, isCurrent });
+            if (!isCurrent()) throw new Error('Track playback changed during tempo-follow reset.');
+            this.commitLivePolyPlaybackRateRamp(ramp);
+        }
+        this.livePolyTempoFollowValue = null;
+        this.livePolyPitchPlaybackRate = 1;
+    }
+
+    private resetLivePolyTempoFollowForModeChange(): void {
+        if (!this.livePolyTempoFollowValue) return;
+        this.livePolyTempoFollowValue = null;
+        this.livePolyPitchPlaybackRate = 1;
+    }
+
+    private commitLivePolyPlaybackRateRamp(ramp: { startTime: number; endTime: number; fromRate: number; toRate: number }): void {
+        const retained: typeof this.livePolyPlaybackRateSegments = [];
+        for (const segment of this.livePolyPlaybackRateSegments) {
+            if (segment.endTime <= ramp.startTime) {
+                retained.push(segment);
+                continue;
+            }
+            if (segment.startTime < ramp.startTime && segment.endTime > segment.startTime) {
+                const fraction = (ramp.startTime - segment.startTime) / (segment.endTime - segment.startTime);
+                retained.push({
+                    startTime: segment.startTime,
+                    endTime: ramp.startTime,
+                    fromRate: segment.fromRate,
+                    toRate: segment.fromRate + (segment.toRate - segment.fromRate) * fraction,
+                });
+            }
+            break;
+        }
+        retained.push(ramp);
+        this.livePolyPlaybackRateSegments = retained;
+    }
+
     /** Per-track opt-in to the dedicated monophonic YIN/PSOLA playback route. */
     public get liveMonoPitchEnabled(): boolean {
         return this.liveMonoPitchEnabledInternal;
@@ -1594,6 +1746,7 @@ export class TrackAudio {
         if (options.tonalityLimitHz !== undefined && (!Number.isFinite(options.tonalityLimitHz) || options.tonalityLimitHz <= 0)) {
             throw new RangeError('tonalityLimitHz must be positive and finite');
         }
+        this.resetLivePolyTempoFollowForModeChange();
 
         const wasPlaying = this.state === TrackState.PLAYING;
         if (wasPlaying) {
@@ -1647,6 +1800,7 @@ export class TrackAudio {
         if (options.semitones !== undefined && (!Number.isFinite(options.semitones) || options.semitones < -12 || options.semitones > 12)) {
             throw new RangeError('LIVE_MONO semitones must be between -12 and +12');
         }
+        this.resetLivePolyTempoFollowForModeChange();
         const wasPlaying = this.state === TrackState.PLAYING;
         if (wasPlaying) {
             this.startOffset = this.getCurrentPlaybackPosition();
@@ -1922,6 +2076,10 @@ export class TrackAudio {
         // until PCM finalization has committed or discarded the take; issuing
         // another stop can make the capture owner reject it and discard PCM.
         if (this.isFinalizingRecording) return;
+        if (this.livePolyTempoFollow) {
+            this.recordingDiagnostic = 'Stop LIVE_POLY tempo follow before recording or overdubbing this track; the source loop and recording phase were left unchanged.';
+            return;
+        }
         if (this.autoRecArmed) { this.abortRecording(); this.state = this.audioBuffer ? TrackState.STOPPED : TrackState.EMPTY; this.syncTransportState(); return; }
         if (this.state === TrackState.EMPTY) {
             this.scheduleRecordingStart();
@@ -2461,6 +2619,11 @@ export class TrackAudio {
 
     public async startRecording(quantizedStartFrame?: number, quantizedPhaseRevision?: number, quantizedTrackSyncRevision?: number, sharedCaptureRetryCount = 0) {
         if (this.disposed) return;
+        if (this.livePolyTempoFollow) {
+            this.recordingDiagnostic = 'Stop LIVE_POLY tempo follow before recording this track; the source loop and recording phase were left unchanged.';
+            if (quantizedStartFrame !== undefined) this.failQuantizedRecordingStart(this.recordingDiagnostic);
+            return;
+        }
         if (this.autoRecArmed || this.recordingStarting || this.isRecording || this.isFinalizingRecording
             || this.overdubStarting || this.overdubProcessor || this.pendingClear) {
             if (quantizedStartFrame !== undefined) this.failQuantizedRecordingStart('The track became busy before the quantized start could be reserved. Existing loops are preserved.');
@@ -3581,6 +3744,8 @@ export class TrackAudio {
         this.livePolyPitchActiveInternal = true;
         this.livePolyPitchFallbackReasonValue = null;
         this.startTime = this.engine.context.currentTime;
+        this.livePolyPlaybackBaseRate = this.livePolyPitchPlaybackRate;
+        this.livePolyPlaybackRateSegments = [];
         this.state = TrackState.PLAYING;
         if (this.track.oneShot === 'ON') {
             const completionSource = this.engine.context.createBufferSource();
@@ -3640,12 +3805,51 @@ export class TrackAudio {
         if (this.loopTransportPlaybackInitialized && !this.isReverse) {
             return this.getLoopTransportOutputPosition();
         }
-        const elapsed = Math.max(0, this.engine.context.currentTime - this.startTime);
-        const rate = this.livePolyPitchActiveInternal ? this.livePolyPitchPlaybackRate : 1;
+        const now = this.engine.context.currentTime;
+        const elapsed = Math.max(0, now - this.startTime);
+        const sourceAdvance = this.livePolyPitchActiveInternal
+            ? this.getLivePolyIntegratedSourceSeconds(this.startTime, now)
+            : elapsed;
         const raw = this.isReverse
             ? this.startOffset - elapsed
-            : this.startOffset + elapsed * rate;
+            : this.startOffset + sourceAdvance;
         return ((raw % duration) + duration) % duration;
+    }
+
+    private getLivePolyIntegratedSourceSeconds(fromTime: number, toTime: number): number {
+        if (toTime <= fromTime) return 0;
+        let cursor = fromTime;
+        let rate = this.livePolyPlaybackBaseRate;
+        let integrated = 0;
+        for (const segment of this.livePolyPlaybackRateSegments) {
+            if (segment.endTime <= cursor) {
+                rate = segment.toRate;
+                continue;
+            }
+            if (segment.startTime >= toTime) break;
+            if (segment.startTime > cursor) {
+                const constantEnd = Math.min(segment.startTime, toTime);
+                integrated += (constantEnd - cursor) * rate;
+                cursor = constantEnd;
+            }
+            if (cursor >= toTime) break;
+            const rampStart = Math.max(cursor, segment.startTime);
+            const rampEnd = Math.min(toTime, segment.endTime);
+            if (rampEnd > rampStart) {
+                const rampDuration = segment.endTime - segment.startTime;
+                if (rampDuration > 0) {
+                    const rateAtStart = segment.fromRate + (segment.toRate - segment.fromRate)
+                        * ((rampStart - segment.startTime) / rampDuration);
+                    const rateAtEnd = segment.fromRate + (segment.toRate - segment.fromRate)
+                        * ((rampEnd - segment.startTime) / rampDuration);
+                    integrated += (rampEnd - rampStart) * (rateAtStart + rateAtEnd) / 2;
+                }
+                cursor = rampEnd;
+                rate = segment.toRate;
+            }
+        }
+        if (cursor < toTime) integrated += (toTime - cursor) * rate;
+        return integrated;
     }
 
     /** Position still rendered by the active read-head, even after a mode flag is changed before teardown. */
@@ -3713,6 +3917,11 @@ export class TrackAudio {
     public async play() {
         if (this.disposed || !this.audioBuffer || this.pendingClear) return;
 
+        const tempoFollow = this.livePolyTempoFollowValue;
+        if (tempoFollow && (tempoFollow.sourceBuffer !== this.audioBuffer || tempoFollow.pcmRevision !== this.projectPcmRevision)) {
+            this.resetLivePolyTempoFollowForModeChange();
+        }
+
         this.stop();
 
         // stop() snapshots a source-aware reader's current phase. For an
@@ -3764,6 +3973,10 @@ export class TrackAudio {
         if (this.disposed) return;
         if (this.track.id === this.transport.masterTrackId) this.transport.clearMasterPhaseOrigin();
         if (this.autoRecArmed) this.abortRecording();
+        if (this.livePolyPitchActiveInternal && this.audioBuffer && !this.isReverse
+            && (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING)) {
+            this.startOffset = this.getCurrentPlaybackPosition();
+        }
         if (this.loopTransportPlaybackInitialized && this.sourceNode && this.audioBuffer
             && (this.state === TrackState.PLAYING || this.state === TrackState.OVERDUBBING)) {
             this.startOffset = this.getLoopTransportOutputPosition();
@@ -3814,6 +4027,8 @@ export class TrackAudio {
         this.stop();
         this.livePolyPitchEnabledInternal = false;
         this.liveMonoPitchEnabledInternal = false;
+        this.livePolyTempoFollowValue = null;
+        this.livePolyPitchPlaybackRate = 1;
         this.livePolyPitchFallbackReasonValue = null;
         this.liveMonoPitchFallbackReasonValue = null;
         void this.disposeLivePolyPitchNode();
@@ -3849,6 +4064,7 @@ export class TrackAudio {
 
     public toggleReverse() {
         if (this.disposed) return;
+        this.resetLivePolyTempoFollowForModeChange();
         const wasPlaying = this.state === TrackState.PLAYING && !!this.audioBuffer;
         if (wasPlaying) {
             this.startOffset = this.getCurrentPlaybackPosition();
