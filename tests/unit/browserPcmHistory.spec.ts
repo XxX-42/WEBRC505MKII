@@ -500,13 +500,14 @@ describe('Browser per-track one-step PCM history', () => {
             indices: new Uint32Array([1]), oldValues: new Float32Array([99]), values: new Float32Array([10]),
         });
         expect(pcmBits(track)).toEqual(before);
-        expect(track.state).toBe(TrackState.PLAYING);
+        expect(track.state).toBe(TrackState.OVERDUBBING);
         expect(track.overdubDiagnostic).toContain('the entire edit was rolled back');
         expect(node.port.posted.at(-1)).toMatchObject({ type: 'OVERDUB_STOP' });
 
         node.port.receive({ type: 'OVERDUB_STOPPED', patchesSent: 2, overflowFrames: 0, overflowEvents: 0,
             requestedStopFrame: 0, appliedExclusiveEnd: 0, processorStopFrame: 0 });
         expect(node.disconnected).toBe(true);
+        expect(track.state).toBe(TrackState.PLAYING);
         expect(pcmBits(track)).toEqual(before);
         expect({ undo: track.canUndo, redo: track.canRedo, bytes: track.historyTotalRetainedBytes }).toEqual(historyBefore);
     });
