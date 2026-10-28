@@ -379,6 +379,16 @@ export class TrackAudio {
     private quantizedRecordingStartFrame: number | null = null;
     private quantizedRecordingPhaseRevision: number | null = null;
     private quantizedRecordingTrackSyncRevision: number | null = null;
+    private quantizedRecordingStopFrame: number | null = null;
+    private quantizedRecordingStopPhaseRevision: number | null = null;
+    private readonly masterPhaseChangeListener = () => {
+        if (this.quantizedRecordingStopFrame === null) return;
+        if (this.quantizedRecordingStopPhaseRevision === this.transport.masterPhaseRevision) return;
+        this.quantizedRecordingStopFrame = null;
+        this.quantizedRecordingStopPhaseRevision = null;
+        this.recordingDiagnostic = 'The master phase changed before the quantized stop; recording stopped at the current audio frame.';
+        void this.stopRecording();
+    };
     private loopSyncSettingsRevision = 0;
     private lastLoopSyncSw: Track['loopSyncSw'];
     private recordingStartGeneration = 0;
@@ -473,6 +483,7 @@ export class TrackAudio {
         this.engine = engine;
         this.pcmHistoryBudget = historyBudget;
         this.transport = Transport.getInstance();
+        this.transport.on('master-phase-change', this.masterPhaseChangeListener);
         const ctx = this.engine.context;
 
         this.gainNode = ctx.createGain();
@@ -1728,6 +1739,7 @@ export class TrackAudio {
 
         const frame = this.positionUpdaterFrame;
         this.positionUpdaterFrame = null;
+        this.transport.off('master-phase-change', this.masterPhaseChangeListener);
         if (frame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
 
         this.clearRecordingCaptureStopAckTimeout();
@@ -2064,6 +2076,8 @@ export class TrackAudio {
             return;
         }
         this.state = TrackState.REC_FINISHING;
+        this.quantizedRecordingStopFrame = targetFrame;
+        this.quantizedRecordingStopPhaseRevision = this.transport.masterPhaseRevision;
         void this.stopRecording(targetFrame);
     }
 
@@ -2586,10 +2600,14 @@ export class TrackAudio {
     public async stopRecording(quantizedStopFrame?: number) {
         if (this.disposed) return;
         if (this.autoRecArmed) { this.triggerStop(); return; }
-        if (!this.isRecording || !this.workletNode) return;
+        if ((!this.isRecording && !this.isFinalizingRecording) || !this.workletNode) return;
 
         this.isRecording = false;
         this.isFinalizingRecording = true;
+        if (quantizedStopFrame === undefined) {
+            this.quantizedRecordingStopFrame = null;
+            this.quantizedRecordingStopPhaseRevision = null;
+        }
         const captureSession = this.recordingCaptureSession;
         if (quantizedStopFrame !== undefined && !captureSession) {
             this.recordingDiagnostic = 'The shared capture path is unavailable; the take stopped at the current audio frame without claiming quantization.';
@@ -2768,6 +2786,8 @@ export class TrackAudio {
             // without a preceding control-thread stopRecording() call.
             this.isRecording = false;
             this.isFinalizingRecording = true;
+            this.quantizedRecordingStopFrame = null;
+            this.quantizedRecordingStopPhaseRevision = null;
             this.pendingRecordingComplete = message;
             this.finishRecordingWhenReady(workletNode);
             return;
@@ -2914,6 +2934,8 @@ export class TrackAudio {
         this.quantizedRecordingStartFrame = null;
         this.quantizedRecordingPhaseRevision = null;
         this.quantizedRecordingTrackSyncRevision = null;
+        this.quantizedRecordingStopFrame = null;
+        this.quantizedRecordingStopPhaseRevision = null;
         try { this.recordingInputNode?.disconnect(this.fxChain.input); } catch { /* already disconnected */ }
         this.recordingInputNode = null;
         if (this.workletNode === session.node) this.workletNode = null;

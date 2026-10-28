@@ -96,6 +96,22 @@ describe('Browser shared input capture worklet', () => {
     expect(capture.messages('RECORD_CHUNK')[0]).toMatchObject({ startFrame: 4, validFrames: 4 });
   });
 
+  it('fails closed when a callback jump skips the requested first frame', () => {
+    const capture = createCapture();
+    capture.process([0, 1, 2, 3], undefined, 0);
+    capture.processor.port.receive({
+      type: 'START_CAPTURE', trackIndex: 0, sessionId: 81, inputGeneration: 1,
+      startFrame: 4, maxRecordingBytes: 256,
+    });
+
+    // The target was frame 4, but the next callback begins at frame 8.
+    capture.process([8, 9, 10, 11], undefined, 8);
+
+    expect(capture.messages('RECORD_CONFIGURED')).toHaveLength(0);
+    expect(capture.messages('CAPTURE_ERROR')[0]).toMatchObject({ reason: 'input-frame-discontinuity' });
+    expect(capture.messages('RECORD_ABORTED')).toHaveLength(1);
+  });
+
   it('backfills the requested stereo start frame and reports an exclusive stop frame', () => {
     const capture = createCapture();
     capture.process([0, 1, 2, 3], [0, -1, -2, -3]);

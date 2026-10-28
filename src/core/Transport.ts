@@ -102,7 +102,7 @@ export class Transport {
             || !Number.isSafeInteger(measureFrames) || measureFrames <= 0 || this.masterLoopLengthSamples <= 0) return false;
         this.masterPhaseOriginFrameValue = frame;
         this.masterMeasureFramesValue = measureFrames;
-        if (this.advanceMasterPhaseRevision()) return true;
+        if (this.advanceMasterPhaseRevision()) { this.emit('master-phase-change'); return true; }
         return false;
     }
 
@@ -110,6 +110,7 @@ export class Transport {
         this.masterPhaseOriginFrameValue = null;
         this.masterMeasureFramesValue = null;
         if (this.masterPhaseRevisionValue < Number.MAX_SAFE_INTEGER) this.masterPhaseRevisionValue += 1;
+        this.emit('master-phase-change');
     }
 
     /** Return the next measure boundary on the established audio-frame timeline. */

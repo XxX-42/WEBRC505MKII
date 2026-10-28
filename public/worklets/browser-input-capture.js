@@ -115,6 +115,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       bounceSourceMask: 0,
       requestedStartFrame: 0,
       startReceivedFrame: 0,
+      startAckSent: false,
       requestedMaxRecordingFrames: null,
       stopRequested: false,
       stopFrame: 0,
@@ -122,6 +123,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       maxFrames: 0,
       maxRecordingBytes: this.maxRecordingBytes,
       framesCaptured: 0,
+      captureFramesProcessed: 0,
       droppedFrames: 0,
       timelineOverlapEvents: 0,
       timelineOverlapFrames: 0,
@@ -378,11 +380,13 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.requestedMaxRecordingFrames = Number.isSafeInteger(message.maxRecordingFrames)
       ? message.maxRecordingFrames : null;
     slot.stopRequested = false;
+    slot.startAckSent = false;
     slot.stopFrame = 0;
     slot.channelCount = 0;
     slot.maxFrames = 0;
     slot.maxRecordingBytes = requestedBytes;
     slot.framesCaptured = 0;
+    slot.captureFramesProcessed = 0;
     slot.droppedFrames = 0;
     slot.timelineOverlapEvents = 0;
     slot.timelineOverlapFrames = 0;
@@ -445,7 +449,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
       }
       if (!this.beginCapture(slot, this.preRollChannelCount)) return;
       for (let frame = slot.requestedStartFrame; frame < stopFrame; frame += 1) {
-        this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask));
+        this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask), frame);
       }
       this.completeCapture(slot, stopFrame - slot.requestedStartFrame);
       return;
@@ -464,19 +468,6 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.maxFrames = slot.requestedMaxRecordingFrames === null
       ? byteFrameLimit : Math.min(byteFrameLimit, slot.requestedMaxRecordingFrames);
     slot.state = 'recording';
-    const message = slot.configMessage;
-    message.sessionId = slot.sessionId;
-    message.inputGeneration = slot.inputGeneration;
-    message.channelCount = slot.channelCount;
-    message.requestedStartFrame = slot.requestedStartFrame;
-    message.captureStartFrame = slot.requestedStartFrame;
-    message.maxRecordingFrames = slot.maxFrames;
-    message.maxRecordingBytes = slot.maxRecordingBytes;
-    message.startReceivedFrame = slot.startReceivedFrame;
-    message.requestAgeAtStartFrames = slot.startReceivedFrame - slot.requestedStartFrame;
-    message.preRollCapacityFrames = this.preRollFrames;
-    message.preRollValidFrames = this.preRollValidFrames;
-    this.port.postMessage(message);
     return true;
   }
 
@@ -488,7 +479,13 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     }
   }
 
-  recordFrame(slot, left, right) {
+  recordFrame(slot, left, right, frame) {
+    if (!Number.isSafeInteger(frame) || frame !== slot.requestedStartFrame + slot.captureFramesProcessed) {
+      this.postError(slot, slot.sessionId, 'capture-frame-discontinuity', slot.requestedStartFrame, slot.stopFrame);
+      this.abortCapture(slot, 'capture-frame-discontinuity', false);
+      return;
+    }
+    slot.captureFramesProcessed += 1;
     if (slot.stoppedForOverflow) {
       this.noteDroppedFrame(slot);
       return;
@@ -529,6 +526,22 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     slot.activeChunkOffset += 1;
     slot.framesCaptured += 1;
     slot.overflowActive = false;
+    if (!slot.startAckSent) {
+      const message = slot.configMessage;
+      message.sessionId = slot.sessionId;
+      message.inputGeneration = slot.inputGeneration;
+      message.channelCount = slot.channelCount;
+      message.requestedStartFrame = slot.requestedStartFrame;
+      message.captureStartFrame = frame;
+      message.maxRecordingFrames = slot.maxFrames;
+      message.maxRecordingBytes = slot.maxRecordingBytes;
+      message.startReceivedFrame = slot.startReceivedFrame;
+      message.requestAgeAtStartFrames = slot.startReceivedFrame - slot.requestedStartFrame;
+      message.preRollCapacityFrames = this.preRollFrames;
+      message.preRollValidFrames = this.preRollValidFrames;
+      this.port.postMessage(message);
+      slot.startAckSent = true;
+    }
     if (slot.activeChunkOffset === this.chunkSize) this.sendChunk(slot, this.chunkSize);
   }
 
@@ -622,7 +635,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
     if (!channelCount || !this.beginCapture(slot, channelCount)) return;
     const backfillEnd = this.preRollEndFrame < frameStart ? this.preRollEndFrame : frameStart;
     for (let frame = slot.requestedStartFrame; frame < backfillEnd; frame += 1) {
-      this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask));
+      this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask), frame);
     }
   }
 
@@ -818,7 +831,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
             inputLeft += sourceLeft && offset < sourceLeft.length ? sourceLeft[offset] : 0;
             inputRight += sourceRight && offset < sourceRight.length ? sourceRight[offset] : 0;
           }
-          this.recordFrame(slot, inputLeft, inputRight);
+          this.recordFrame(slot, inputLeft, inputRight, absoluteFrame);
         }
       }
       this.storePreRoll(absoluteFrame, rawSampleLeft, rawSampleRight, processedSampleLeft, processedSampleRight, inputs, offset);
@@ -843,7 +856,7 @@ class BrowserInputCaptureProcessor extends AudioWorkletProcessor {
           } else {
             this.beginCapture(slot, inputChannelCount);
             for (let frame = slot.requestedStartFrame; frame < slot.stopFrame; frame += 1) {
-              this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask));
+              this.recordFrame(slot, this.readPreRoll(frame, 0, slot.trackIndex, slot.bounceSourceMask), this.readPreRoll(frame, 1, slot.trackIndex, slot.bounceSourceMask), frame);
             }
             this.completeCapture(slot, slot.stopFrame - slot.requestedStartFrame);
           }

@@ -224,6 +224,50 @@ describe('TrackAudio transport sync helpers', () => {
     expect(trackAudio.recordingDiagnostic).toContain('phase or LOOP SYNC setting changed');
   });
 
+  it('stops a quantized finishing take immediately when its master phase changes', async () => {
+    const { context, engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
+    Transport.stop();
+    Transport.setMasterTrack(1, 2, context.sampleRate, context.sampleRate * 2);
+    expect(Transport.establishMasterPhaseOrigin(1, 100, context.sampleRate * 2)).toBe(true);
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 11, inputGeneration: 4, startFrame: 100,
+    };
+    engine.getInputCaptureRequestFrame = () => 123;
+    engine.stopInputCaptureSession = vi.fn(() => true);
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).isRecording = false;
+    (trackAudio as any).isFinalizingRecording = true;
+    (trackAudio as any).quantizedRecordingStopFrame = 50_000;
+    (trackAudio as any).quantizedRecordingStopPhaseRevision = Transport.masterPhaseRevision;
+    trackAudio.state = TrackState.REC_FINISHING;
+
+    Transport.setBpm(121);
+
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 123);
+    expect(trackAudio.recordingDiagnostic).toContain('phase changed before the quantized stop');
+  });
+
+  it('allows Stop to replace an already scheduled stop while REC_FINISHING', async () => {
+    const { context, engine, TrackState, trackAudio } = await createTrackAudioHarness();
+    const session = {
+      node: new FakeAudioWorkletNode(context, 'rc505-input-capture') as unknown as AudioWorkletNode,
+      trackIndex: 0, sessionId: 12, inputGeneration: 4, startFrame: 100,
+    };
+    engine.getInputCaptureRequestFrame = () => 150;
+    engine.stopInputCaptureSession = vi.fn(() => true);
+    (trackAudio as any).recordingCaptureSession = session;
+    (trackAudio as any).workletNode = session.node;
+    (trackAudio as any).isRecording = false;
+    (trackAudio as any).isFinalizingRecording = true;
+    trackAudio.state = TrackState.REC_FINISHING;
+
+    trackAudio.triggerStop();
+
+    expect(engine.stopInputCaptureSession).toHaveBeenCalledWith(session, 150);
+  });
+
   it('restores the prior idle state when quantized capture setup cannot reserve shared input', async () => {
     const { engine, TrackState, Transport, trackAudio } = await createTrackAudioHarness();
     trackAudio.track.loopSyncSw = 'ON';
