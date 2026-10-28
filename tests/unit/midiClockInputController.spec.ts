@@ -293,7 +293,7 @@ describe('MidiClockInputController', () => {
 
     for (let tick = 0; tick < 9; tick += 1) first.send([0xf8], 100 + tick * (60_000 / 120 / 24));
     const locked = controller.getSnapshot(100 + 8 * (60_000 / 120 / 24));
-    expect(locked).toMatchObject({ phaseState: 'locked', phaseLocked: true, phaseAcceptedIntervals: 8, phaseInferredMissingTicks: 0 });
+    expect(locked).toMatchObject({ phaseState: 'locked', phaseLocked: true, phaseControlReady: true, phaseConsecutiveTrustedIntervals: 8, phaseAcceptedIntervals: 8, phaseInferredMissingTicks: 0 });
     expect(locked.phaseRelativeTicks).toBeCloseTo(8, 5);
 
     for (let tick = 0; tick < 9; tick += 1) second.send([0xf8], 1000 + tick * (60_000 / 120 / 24));
@@ -302,7 +302,7 @@ describe('MidiClockInputController', () => {
     expect(firstStillSelected.selectedInputName).toBe('First');
 
     controller.selectInput(secondPort!.key);
-    expect(controller.getSnapshot(1200)).toMatchObject({ phaseState: 'waiting', phaseLocked: false, phaseAcceptedIntervals: 0, phaseRelativeTicks: null });
+    expect(controller.getSnapshot(1200)).toMatchObject({ phaseState: 'waiting', phaseLocked: false, phaseControlReady: false, phaseConsecutiveTrustedIntervals: 0, phaseAcceptedIntervals: 0, phaseRelativeTicks: null });
     second.send([0xf8], 2000);
     expect(controller.getSnapshot(2000)).toMatchObject({ phaseState: 'acquiring', phaseLocked: false, phaseAcceptedIntervals: 0, phaseRelativeTicks: null });
     for (let tick = 1; tick < 9; tick += 1) second.send([0xf8], 2000 + tick * (60_000 / 120 / 24));
@@ -319,7 +319,7 @@ describe('MidiClockInputController', () => {
     const last = 100 + 8 * (60_000 / 120 / 24);
     for (let tick = 0; tick < 9; tick += 1) first.send([0xf8], 100 + tick * (60_000 / 120 / 24));
     expect(controller.getSnapshot(last).phaseLocked).toBe(true);
-    expect(controller.getSnapshot(last + 501)).toMatchObject({ signal: 'observed', phaseState: 'stale', phaseLocked: false, phaseRelativeTicks: null });
+    expect(controller.getSnapshot(last + 501)).toMatchObject({ signal: 'observed', phaseState: 'stale', phaseLocked: false, phaseControlReady: false, phaseConsecutiveTrustedIntervals: 0, phaseRelativeTicks: null });
 
     first.state = 'disconnected';
     access.setPorts([second]);

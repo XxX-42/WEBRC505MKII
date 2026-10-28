@@ -30,6 +30,9 @@ export interface MidiClockEstimateSnapshot {
   readonly bpm: number | null;
   readonly tickPeriodMs: number | null;
   readonly phaseLocked: boolean;
+  /** Fresh transport-control evidence from consecutive accepted single-tick intervals. */
+  readonly controlReady: boolean;
+  readonly consecutiveTrustedIntervals: number;
   /** Position in ticks relative to the first accepted pulse; null unless locked and live. */
   readonly phaseTicks: number | null;
   /** Relative phase within one quarter note, in [0, 1); not a downbeat marker. */
@@ -74,6 +77,7 @@ export class MidiClockEstimator {
   private inferredMissingTicks = 0;
   private rejectedIntervals = 0;
   private consecutiveRejects = 0;
+  private consecutiveTrustedIntervals = 0;
 
   constructor(options: MidiClockEstimatorOptions = {}) {
     const minBpm = options.minBpm ?? DEFAULT_MIN_BPM;
@@ -136,6 +140,7 @@ export class MidiClockEstimator {
       const relativeError = Math.abs(normalizedInterval - period) / period;
       if (relativeError > this.maxIntervalDeviation) {
         this.rejectedIntervals += 1;
+        this.consecutiveTrustedIntervals = 0;
         if (!this.isLocked()) {
           // During acquisition, an inconsistent interval makes the old anchor
           // ambiguous. Drop that phase evidence instead of carrying a guessed
@@ -157,10 +162,12 @@ export class MidiClockEstimator {
         return this.getSnapshot(timestampMs);
       }
       this.inferredMissingTicks += tickAdvance - 1;
+      if (tickAdvance > 1) this.consecutiveTrustedIntervals = 0;
     }
 
     if (normalizedInterval < this.minPeriodMs || normalizedInterval > this.maxPeriodMs) {
       this.rejectedIntervals += 1;
+      this.consecutiveTrustedIntervals = 0;
       if (!this.isLocked()) {
         this.clearEvidence(sourceKey, true);
         this.startAt(timestampMs);
@@ -182,6 +189,8 @@ export class MidiClockEstimator {
     if (this.intervals.length > this.historySize) this.intervals.shift();
     this.pulsePosition += tickAdvance;
     this.lastPulseAtMs = timestampMs;
+    if (tickAdvance === 1) this.consecutiveTrustedIntervals += 1;
+    else this.consecutiveTrustedIntervals = 0;
     return this.getSnapshot(timestampMs);
   }
 
@@ -196,6 +205,8 @@ export class MidiClockEstimator {
     const state = this.getState(nowMs, period);
     const stable = this.isStable();
     const locked = state === 'locked' && stable;
+    const consecutiveTrustedIntervals = state === 'stale' ? 0 : this.consecutiveTrustedIntervals;
+    const controlReady = locked && consecutiveTrustedIntervals >= this.lockAfterIntervals;
     let phaseTicks: number | null = null;
     if (locked && period > 0 && this.firstPulseAtMs !== null && this.lastPulseAtMs !== null) {
       const elapsedTicks = Math.max(0, (nowMs - this.lastPulseAtMs) / period);
@@ -209,6 +220,8 @@ export class MidiClockEstimator {
       bpm: period > 0 ? 60_000 / (period * PPQN) : null,
       tickPeriodMs: period > 0 ? period : null,
       phaseLocked: locked,
+      controlReady,
+      consecutiveTrustedIntervals,
       phaseTicks,
       beatPhase,
       lastPulseAtMs: this.lastPulseAtMs,
@@ -244,6 +257,7 @@ export class MidiClockEstimator {
     this.firstPulseAtMs = timestampMs;
     this.lastPulseAtMs = timestampMs;
     this.pulsePosition = 0;
+    this.consecutiveTrustedIntervals = 0;
   }
 
   private clearEvidence(sourceKey = this.sourceKey ?? undefined, preserveRejectedIntervals = false): void {
@@ -256,6 +270,7 @@ export class MidiClockEstimator {
     this.inferredMissingTicks = 0;
     this.rejectedIntervals = rejectedIntervals;
     this.consecutiveRejects = 0;
+    this.consecutiveTrustedIntervals = 0;
   }
 
   private median(values: readonly number[]): number {

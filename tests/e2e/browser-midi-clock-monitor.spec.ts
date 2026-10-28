@@ -16,7 +16,7 @@ test('queues an early MIDI Start until stable selected-source clock evidence arr
     };
     const permissionStatus = { state: 'granted', addEventListener: () => undefined, removeEventListener: () => undefined };
     Object.defineProperty(window, '__earlyMidiStart', { configurable: true, value: {
-      send: (data: number[]) => listeners.forEach((listener) => listener({ data, timeStamp: performance.now() })),
+      send: (data: number[], timeStamp = performance.now()) => listeners.forEach((listener) => listener({ data, timeStamp })),
     } });
     Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => access });
     Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => permissionStatus } });
@@ -33,30 +33,60 @@ test('queues an early MIDI Start until stable selected-source clock evidence arr
     return AudioEngine.getInstance().rhythmEngine.isRunning;
   });
   const send = (status: number) => page.evaluate((value) => {
-    const fake = (window as unknown as { __earlyMidiStart: { send(data: number[]): void } }).__earlyMidiStart;
+    const fake = (window as unknown as { __earlyMidiStart: { send(data: number[], timeStamp?: number): void } }).__earlyMidiStart;
     fake.send([value]);
   }, status);
 
   await send(0xfa);
   await expect.poll(rhythmRunning).toBe(false);
-  await expect(page.getByTestId('midi-clock-control-notice')).toContainText('pending stable F8 clock');
+  await expect(page.getByTestId('midi-clock-control-notice')).toContainText('pending six consecutive trusted F8 intervals');
   await send(0xfc);
   await expect.poll(rhythmRunning).toBe(false);
   await expect(page.getByTestId('midi-clock-control-notice')).toHaveText('Pending MIDI Start canceled by MIDI Stop.');
   await send(0xfa);
-  await expect(page.getByTestId('midi-clock-control-notice')).toContainText('pending stable F8 clock');
-  await page.evaluate(async () => {
-    const fake = (window as unknown as { __earlyMidiStart: { send(data: number[]): void } }).__earlyMidiStart;
+  await expect(page.getByTestId('midi-clock-control-notice')).toContainText('pending six consecutive trusted F8 intervals');
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __earlyMidiStart: { send(data: number[], timeStamp?: number): void } }).__earlyMidiStart;
+    const windowState = window as unknown as { __earlyClock?: { timer: number; nextTimestamp: number; period: number } };
     const period = 60_000 / 100 / 24;
-    for (let tick = 0; tick < 16; tick += 1) {
-      await new Promise((resolve) => window.setTimeout(resolve, period));
-      fake.send([0xf8]);
-    }
+    const base = performance.now() - 7 * period;
+    for (let tick = 0; tick < 8; tick += 1) fake.send([0xf8], base + tick * period);
+    const clock = { timer: 0, nextTimestamp: base + 8 * period, period };
+    clock.timer = window.setInterval(() => {
+      fake.send([0xf8], clock.nextTimestamp);
+      clock.nextTimestamp += clock.period;
+    }, period);
+    windowState.__earlyClock = clock;
   });
   await expect.poll(rhythmRunning).toBe(true);
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'true');
   await expect(page.getByTestId('midi-clock-control-notice')).toContainText('without sample-frame alignment');
+  await page.evaluate(() => {
+    const state = window as unknown as { __earlyClock: { timer: number; nextTimestamp: number; period: number } };
+    window.clearInterval(state.__earlyClock.timer);
+  });
+  await page.waitForTimeout(2 * (60_000 / 100 / 24));
+  await page.evaluate(() => {
+    const fake = (window as unknown as { __earlyMidiStart: { send(data: number[], timeStamp?: number): void } }).__earlyMidiStart;
+    const windowState = window as unknown as { __earlyClock: { timer: number; nextTimestamp: number; period: number } };
+    const timestamp = performance.now();
+    fake.send([0xf8], timestamp);
+    const clock = windowState.__earlyClock;
+    clock.nextTimestamp = timestamp + clock.period;
+    clock.timer = window.setInterval(() => {
+      fake.send([0xf8], clock.nextTimestamp);
+      clock.nextTimestamp += clock.period;
+    }, clock.period);
+  });
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'false');
+  await expect(page.getByTestId('midi-clock-phase-stats')).not.toHaveAttribute('data-inferred-missing', '0');
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'true');
   await send(0xfc);
   await expect.poll(rhythmRunning).toBe(false);
+  await page.evaluate(() => {
+    const state = window as unknown as { __earlyClock?: { timer: number } };
+    if (state.__earlyClock) window.clearInterval(state.__earlyClock.timer);
+  });
 });
 
 test('explicit MIDI sync follows stable clock and starts/stops the Browser rhythm only when enabled', async ({ page }) => {
@@ -86,15 +116,23 @@ test('explicit MIDI sync follows stable clock and starts/stops the Browser rhyth
   await page.getByTestId('midi-clock-input-select').selectOption({ label: 'Clock Master' });
 
   const sendStableClock = async (bpm: number) => {
-    await page.evaluate(async (selectedBpm) => {
+    await page.evaluate((selectedBpm) => {
       const fake = (window as unknown as { __midiSyncInput: { send(data: number[], timeStamp: number): void } }).__midiSyncInput;
       const period = 60_000 / selectedBpm / 24;
-      for (let tick = 0; tick < 16; tick += 1) {
-        await new Promise((resolve) => window.setTimeout(resolve, period));
-        fake.send([0xf8], performance.now());
-      }
+      const windowState = window as unknown as { __midiSyncClock?: { timer: number; bpm: number; nextTimestamp: number } };
+      if (windowState.__midiSyncClock?.bpm === selectedBpm) return;
+      if (windowState.__midiSyncClock) window.clearInterval(windowState.__midiSyncClock.timer);
+      const base = performance.now() - 7 * period;
+      for (let tick = 0; tick < 8; tick += 1) fake.send([0xf8], base + tick * period);
+      const clock = { timer: 0, bpm: selectedBpm, nextTimestamp: base + 8 * period };
+      clock.timer = window.setInterval(() => {
+        fake.send([0xf8], clock.nextTimestamp);
+        clock.nextTimestamp += period;
+      }, period);
+      windowState.__midiSyncClock = clock;
     }, bpm);
-    await expect(page.getByTestId('midi-clock-relative-phase')).toContainText('locked');
+    await expect(page.getByTestId('midi-clock-relative-phase')).toHaveText(/^Relative pulse phase: locked ·/);
+    await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'true');
   };
 
   const rhythmRunning = () => page.evaluate(async () => {
@@ -263,9 +301,10 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     for (let tick = 0; tick <= 24; tick += 1) fake.send([0xf8], start + tick * (60_000 / 120 / 24));
   });
   await expect(status).toHaveText('Timing steady · monitor only');
-  await expect(relativePhase).toContainText('Relative pulse phase: locked');
+  await expect(relativePhase).toHaveText(/^Relative pulse phase: locked ·/);
   await expect(relativePhase).toContainText('ticks from first pulse');
   await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-locked', 'true');
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'true');
   await expect(startFrameMapping).toContainText('MIDI Start (FA):');
   await expect(startFrameMapping).toContainText(/read-only frame estimate|frame estimate unavailable/);
   const transportAfter = await page.evaluate(async () => {
@@ -290,8 +329,9 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
     fake.send([0xf8], start, 1);
     for (let tick = 1; tick <= 24; tick += 1) fake.send([0xf8], start + tick * (60_000 / 120 / 24), 1);
   });
-  await expect(relativePhase).toContainText('Relative pulse phase: locked');
+  await expect(relativePhase).toHaveText(/^Relative pulse phase: locked ·/);
   await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-locked', 'true');
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'true');
   await expect(page.getByTestId('midi-clock-selected')).toHaveText('Controller Beta');
   const transportAfterSourceSwitch = await page.evaluate(async () => {
     const { Transport } = await import('/src/core/Transport.ts');

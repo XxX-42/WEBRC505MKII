@@ -34,6 +34,8 @@ describe('MidiClockEstimator', () => {
     expect(snapshot.stability).toBe('stable');
     expect(Math.abs(snapshot.bpm! - 120)).toBeLessThan(1);
     expect(snapshot.phaseLocked).toBe(true);
+    expect(snapshot.controlReady).toBe(true);
+    expect(snapshot.consecutiveTrustedIntervals).toBe(7);
     expect(snapshot.phaseTicks).toBeCloseTo(8, 0);
     expect(snapshot.beatPhase).toBeGreaterThanOrEqual(0);
     expect(snapshot.beatPhase).toBeLessThan(1);
@@ -47,8 +49,13 @@ describe('MidiClockEstimator', () => {
     const snapshot = estimator.push(afterGap, 'a');
     expect(snapshot.state).toBe('locked');
     expect(snapshot.inferredMissingTicks).toBe(1);
+    expect(snapshot.controlReady).toBe(false);
+    expect(snapshot.consecutiveTrustedIntervals).toBe(0);
     expect(Math.abs(snapshot.bpm! - 120)).toBeLessThan(1);
     expect(snapshot.phaseTicks).toBeCloseTo(10, 1);
+    let reacquired = snapshot;
+    for (let i = 1; i <= 6; i += 1) reacquired = estimator.push(afterGap + i * TICK_MS, 'a');
+    expect(reacquired).toMatchObject({ controlReady: true, consecutiveTrustedIntervals: 6, inferredMissingTicks: 1 });
   });
 
   it('re-anchors after an inconsistent interval during acquisition instead of carrying guessed phase', () => {
@@ -70,7 +77,7 @@ describe('MidiClockEstimator', () => {
     for (let tick = 4; tick <= 9; tick += 1) {
       snapshot = estimator.push(tick * TICK_MS, 'clock');
     }
-    expect(snapshot).toMatchObject({ state: 'locked', phaseLocked: true, rejectedIntervals: 1 });
+    expect(snapshot).toMatchObject({ state: 'locked', phaseLocked: true, rejectedIntervals: 1, controlReady: true, consecutiveTrustedIntervals: 6 });
     expect(snapshot.bpm).toBeCloseTo(120, 1);
     expect(snapshot.phaseTicks).toBeCloseTo(6, 5);
   });
@@ -83,15 +90,23 @@ describe('MidiClockEstimator', () => {
     expect(outlier.bpm).toBeCloseTo(120, 1);
     expect(outlier.rejectedIntervals).toBe(1);
     expect(outlier.phaseLocked).toBe(true);
+    expect(outlier.controlReady).toBe(false);
+    expect(outlier.consecutiveTrustedIntervals).toBe(0);
     expect(outlier.phaseTicks).toBeCloseTo(9.5, 1);
 
-    const stale = estimator.getSnapshot(last + 600);
+    let reacquired = outlier;
+    for (let i = 1; i <= 6; i += 1) reacquired = estimator.push(outlier.lastPulseAtMs! + i * TICK_MS, 'a');
+    expect(reacquired).toMatchObject({ controlReady: true, consecutiveTrustedIntervals: 6, rejectedIntervals: 1 });
+
+    const stale = estimator.getSnapshot(reacquired.lastPulseAtMs! + 600);
     expect(stale.state).toBe('stale');
     expect(stale.phaseLocked).toBe(false);
+    expect(stale.controlReady).toBe(false);
+    expect(stale.consecutiveTrustedIntervals).toBe(0);
     expect(stale.phaseTicks).toBeNull();
     expect(stale.beatPhase).toBeNull();
 
-    const restarted = estimator.push(last + 700, 'a');
+    const restarted = estimator.push(reacquired.lastPulseAtMs! + 700, 'a');
     expect(restarted).toMatchObject({ state: 'acquiring', acceptedIntervals: 0, bpm: null, phaseLocked: false });
   });
 
@@ -100,7 +115,7 @@ describe('MidiClockEstimator', () => {
     const last = feed(estimator, 9, 100, 'first');
     expect(estimator.getSnapshot(last).state).toBe('locked');
     const switched = estimator.push(last + TICK_MS, 'second');
-    expect(switched).toMatchObject({ state: 'acquiring', acceptedIntervals: 0, bpm: null, sourceKey: 'second', phaseLocked: false });
+    expect(switched).toMatchObject({ state: 'acquiring', acceptedIntervals: 0, bpm: null, sourceKey: 'second', phaseLocked: false, controlReady: false, consecutiveTrustedIntervals: 0 });
     const oneMore = estimator.push(last + TICK_MS * 2, 'second');
     expect(oneMore).toMatchObject({ acceptedIntervals: 1, inferredMissingTicks: 0, phaseTicks: null });
   });

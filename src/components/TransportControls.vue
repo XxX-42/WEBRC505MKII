@@ -113,17 +113,20 @@
         {{ midiClockPhaseStatus }}
       </div>
       <div class="midi-clock-phase-note">
-        F8 reports tempo clock at 24 pulses per quarter note. Control is opt-in and follows only the selected input; an early FA waits up to 1 second for stable F8 evidence, then starts on pulse arrival. This delay is not sample-frame alignment; the FA frame projection remains diagnostic only. LIVE_POLY follow changes rate without aligning sample phase; if a retarget is interrupted, resume may be up to 400 ms behind the interrupted ramp.
+        F8 reports tempo clock at 24 pulses per quarter note. Control is opt-in and follows only the selected input; an early FA waits up to 1 second for six consecutive trusted F8 intervals, then starts on pulse arrival. This delay is not sample-frame alignment; the FA frame projection remains diagnostic only. Lifetime rejected and inferred counts are diagnostics; control reacquires after six clean intervals. LIVE_POLY follow changes rate without aligning sample phase; if a retarget is interrupted, resume may be up to 400 ms behind the interrupted ramp.
       </div>
       <div
         v-if="clockSnapshot.selectedInputKey"
         class="midi-clock-phase-stats"
         data-testid="midi-clock-phase-stats"
         :data-locked="clockSnapshot.phaseLocked"
+        :data-control-ready="clockSnapshot.phaseControlReady"
+        :data-control-consecutive="clockSnapshot.phaseConsecutiveTrustedIntervals"
         :data-inferred-missing="clockSnapshot.phaseInferredMissingTicks"
         :data-rejected="clockSnapshot.phaseRejectedIntervals"
       >
         {{ clockSnapshot.phaseAcceptedIntervals }}/{{ clockSnapshot.phaseRequiredIntervals }} intervals ·
+        control {{ clockSnapshot.phaseConsecutiveTrustedIntervals }}/{{ clockSnapshot.phaseRequiredIntervals }} consecutive ·
         {{ clockSnapshot.phaseInferredMissingTicks }} inferred missing ·
         {{ clockSnapshot.phaseRejectedIntervals }} rejected
       </div>
@@ -283,8 +286,14 @@ const midiTempoFollowStatus = computed(() => {
     ?? 'Ready when a stable MIDI clock is selected.';
   if (!midiTempoFollowCandidate.value) return `Stopped: ${midiTempoFollowEligibility.value.reason ?? 'loop is no longer eligible.'}`;
   if (clockSnapshot.value.connection !== 'connected' || !clockSnapshot.value.selectedInputKey
-    || clockSnapshot.value.signal !== 'observed' || !hasStableMidiClock(clockSnapshot.value)) {
+    || clockSnapshot.value.signal !== 'observed') {
     return 'Stopped: selected MIDI clock is unavailable or stale.';
+  }
+  if (clockSnapshot.value.signal !== 'observed') {
+    return 'Waiting for the selected F8 clock to resume; current LIVE_POLY rate is held without phase alignment.';
+  }
+  if (!hasStableMidiClock(clockSnapshot.value)) {
+    return 'Waiting for six consecutive trusted F8 intervals; current LIVE_POLY rate is held without phase alignment.';
   }
   return 'LIVE_POLY rate follows stable F8 tempo; sample phase is not aligned.';
 });
@@ -328,7 +337,8 @@ const midiClockPhaseStatus = computed(() => {
   if (!snapshot.selectedInputKey) return 'Relative pulse phase: select one input';
   if (snapshot.phaseState === 'stale') return 'Relative pulse phase: stale · unlocked';
   if (snapshot.phaseLocked && snapshot.phaseRelativeTicks !== null) {
-    return `Relative pulse phase: locked · ${snapshot.phaseRelativeTicks.toFixed(2)} ticks from first pulse`;
+    const controlState = snapshot.phaseControlReady ? 'ready' : 'reacquiring';
+    return `Relative pulse phase: locked · ${snapshot.phaseRelativeTicks.toFixed(2)} ticks from first pulse · control ${controlState} ${snapshot.phaseConsecutiveTrustedIntervals}/${snapshot.phaseRequiredIntervals}`;
   }
   if (snapshot.phaseState === 'acquiring') {
     return `Relative pulse phase: acquiring · ${snapshot.phaseAcceptedIntervals}/${snapshot.phaseRequiredIntervals} intervals`;
@@ -343,7 +353,7 @@ const midiControlStatus = computed(() => {
   }
   if (snapshot.connection !== 'connected') return 'Connect MIDI clock input to enable control';
   if (!snapshot.selectedInputKey) return 'Select one input to enable control';
-  if (!hasStableMidiClock(snapshot)) return 'Waiting for stable single-source F8 clock';
+  if (!hasStableMidiClock(snapshot)) return `Waiting for six consecutive trusted F8 intervals (${snapshot.phaseConsecutiveTrustedIntervals}/6)`;
   return 'Stable F8 tempo follow active with empty tracks · MIDI Start waits up to 1 second for stable clock, then starts on pulse arrival without sample alignment';
 });
 const midiFrameMappingStatus = computed(() => {
@@ -368,7 +378,7 @@ const refreshMidiClock = () => {
     const selected = clockSnapshot.value.selectedInputKey;
     const sameSource = !!selected && selected === midiTempoFollowSourceKey;
     if (!sameSource || clockSnapshot.value.connection !== 'connected'
-      || clockSnapshot.value.signal !== 'observed' || !hasStableMidiClock(clockSnapshot.value)
+      || clockSnapshot.value.signal !== 'observed'
       || !isCurrentMidiTempoFollowSession(midiTempoFollowCandidate.value)) {
       void stopMidiTempoFollow(midiTempoFollowEligibility.value.reason
         ?? 'Tempo follow stopped because the selected MIDI clock became unavailable, stale, or changed.');
@@ -487,8 +497,7 @@ const stopMidiTempoFollow = async (notice: string) => {
 };
 
 const hasStableMidiClock = (snapshot: MidiClockSnapshot): boolean =>
-  snapshot.signal === 'observed' && snapshot.phaseLocked && snapshot.phaseInferredMissingTicks === 0
-  && snapshot.phaseRejectedIntervals === 0 && snapshot.measuredBpm !== null;
+  snapshot.signal === 'observed' && snapshot.phaseControlReady && snapshot.measuredBpm !== null;
 
 const selectMidiSyncMode = (event: Event) => {
   const target = event.target;
@@ -538,7 +547,7 @@ const settlePendingMidiStart = (result: ReturnType<typeof updateBrowserMidiPendi
     return;
   }
   const notices = {
-    expired: 'MIDI Start canceled because stable F8 clock did not arrive within 1 second.',
+    expired: 'MIDI Start canceled because six consecutive trusted F8 intervals did not arrive within 1 second.',
     stop: 'Pending MIDI Start canceled by MIDI Stop.',
     'source-changed': 'Pending MIDI Start canceled because the selected input changed.',
     disabled: 'Pending MIDI Start canceled because MIDI sync was disabled.',
@@ -561,8 +570,7 @@ function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
       hasRecordingTrack: engine.tracks.some(isMidiSyncRecordingTrack),
       hasCommittedLoops: engine.tracks.some(hasBrowserCommittedPhrase),
       hasStableClockEvidence: event.status === 'clock'
-        && event.clock.phaseLocked && event.clock.inferredMissingTicks === 0
-        && event.clock.rejectedIntervals === 0 && event.clock.tickPeriodMs !== null,
+        && event.clock.controlReady && event.clock.tickPeriodMs !== null,
     });
     settlePendingMidiStart(pendingResult);
   }
@@ -574,9 +582,12 @@ function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
     } else if (event.status === 'clock') {
       const candidate = midiTempoFollowCandidate.value;
       const targetBpm = event.clock.bpm;
-      if (!isCurrentMidiTempoFollowSession(candidate) || !event.clock.phaseLocked
-        || event.clock.inferredMissingTicks !== 0 || event.clock.rejectedIntervals !== 0
-        || targetBpm === null || targetBpm < 40 || targetBpm > 300
+      if (!isCurrentMidiTempoFollowSession(candidate)) {
+        void stopMidiTempoFollow(midiTempoFollowEligibility.value.reason
+          ?? 'Tempo follow stopped because the loop became unavailable.');
+      } else if (!event.clock.controlReady) {
+        // Keep the session armed but hold its last rate while clean F8 evidence reacquires.
+      } else if (targetBpm === null || targetBpm < 40 || targetBpm > 300
         || targetBpm / (candidate?.sourceBpm ?? 1) < 0.5 || targetBpm / (candidate?.sourceBpm ?? 1) > 2) {
         void stopMidiTempoFollow(midiTempoFollowEligibility.value.reason
           ?? 'Tempo follow stopped because clock evidence or the loop tempo became invalid.');
@@ -591,8 +602,7 @@ function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
   }
   if (midiSyncMode.value === 'off' || audioMode.value !== 'browser') return;
   if (event.sourceKey !== clockSnapshot.value.selectedInputKey) return;
-  const eventHasStableEvidence = event.clock.phaseLocked && event.clock.inferredMissingTicks === 0
-    && event.clock.rejectedIntervals === 0 && event.clock.tickPeriodMs !== null;
+  const eventHasStableEvidence = event.clock.controlReady && event.clock.tickPeriodMs !== null;
   if (eventHasStableEvidence) {
     midiControlEvidence = {
       sourceKey: event.sourceKey,
@@ -608,9 +618,9 @@ function handleMidiRealtimeMessage(event: MidiClockRealtimeEvent): void {
     pendingMidiStart = armBrowserMidiPendingStart(event.sourceKey, event.timestampMs);
     if (pendingMidiStartTimer !== null) window.clearTimeout(pendingMidiStartTimer);
     pendingMidiStartTimer = window.setTimeout(() => {
-      cancelPendingMidiStart('MIDI Start canceled because stable F8 clock did not arrive within 1 second.');
+      cancelPendingMidiStart('MIDI Start canceled because six consecutive trusted F8 intervals did not arrive within 1 second.');
     }, BROWSER_MIDI_PENDING_START_TIMEOUT_MS);
-    midiControlNotice.value = 'MIDI Start is pending stable F8 clock for up to 1 second; playback will begin on arrival without sample-frame alignment.';
+    midiControlNotice.value = 'MIDI Start is pending six consecutive trusted F8 intervals for up to 1 second; playback will begin on arrival without sample-frame alignment.';
     return;
   }
   const dispatch = dispatchBrowserMidiTransportControl(

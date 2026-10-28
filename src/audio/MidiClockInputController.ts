@@ -26,6 +26,9 @@ export interface MidiClockSnapshot {
   readonly phaseRelativeTicks: number | null;
   readonly phaseRelativeQuarter: number | null;
   readonly phaseLocked: boolean;
+  /** Recent, consecutive clean F8 evidence for transport control; not sample phase alignment. */
+  readonly phaseControlReady: boolean;
+  readonly phaseConsecutiveTrustedIntervals: number;
   readonly phaseState: 'waiting' | 'acquiring' | 'locked' | 'stale';
   readonly phaseAcceptedIntervals: number;
   readonly phaseRequiredIntervals: number;
@@ -300,6 +303,8 @@ export class MidiClockInputController {
       phaseRelativeTicks: phase?.phaseTicks ?? null,
       phaseRelativeQuarter: phase?.beatPhase ?? null,
       phaseLocked: phase?.phaseLocked ?? false,
+      phaseControlReady: phase?.controlReady ?? false,
+      phaseConsecutiveTrustedIntervals: phase?.consecutiveTrustedIntervals ?? 0,
       phaseState: phase?.state ?? 'waiting',
       phaseAcceptedIntervals: phase?.acceptedIntervals ?? 0,
       phaseRequiredIntervals: phase?.requiredIntervals ?? 6,

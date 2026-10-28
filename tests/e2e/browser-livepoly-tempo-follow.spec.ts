@@ -393,7 +393,8 @@ test('opt-in follows one known-BPM LIVE_POLY loop and resets safely when F8 beco
     const fake = window as unknown as { __fakeTempoFollowMidi: { setBpm(nextBpm: number): void } };
     fake.__fakeTempoFollowMidi.setBpm(120);
   });
-  await expect(page.getByTestId('midi-clock-relative-phase')).toContainText('locked', { timeout: 5_000 });
+  await expect(page.getByTestId('midi-clock-relative-phase')).toHaveText(/^Relative pulse phase: locked ·/, { timeout: 5_000 });
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'true');
   await expect(followToggle).toBeEnabled();
   await followToggle.check();
   await expect.poll(() => page.evaluate(async () => {
@@ -409,7 +410,8 @@ test('opt-in follows one known-BPM LIVE_POLY loop and resets safely when F8 beco
     const track = AudioEngine.getInstance().tracks[0] as any;
     return { follow: track.livePolyTempoFollow, rate: track.livePolyPitchPlaybackRate, state: track.state };
   }), { timeout: 3_000 }).toMatchObject({ follow: null, rate: 1, state: 'PLAYING' });
-  await expect(page.getByTestId('midi-clock-relative-phase')).toContainText('locked', { timeout: 3_000 });
+  await expect(page.getByTestId('midi-clock-relative-phase')).toHaveText(/^Relative pulse phase: locked ·/, { timeout: 3_000 });
+  await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-control-ready', 'true');
   await expect(followToggle).toBeEnabled();
   await followToggle.check();
   await expect.poll(() => page.evaluate(async () => {
