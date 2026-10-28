@@ -3623,6 +3623,7 @@ bool NativeAudioCore::beginProjectArchiveImport(
     projectImportCancelledByCallback_.store(false, std::memory_order_release);
     projectImportTransaction_ = std::move(transaction);
     projectImportActiveGeneration_.store(generation, std::memory_order_relaxed);
+    projectImportCommittedContentRevision_.store(0U, std::memory_order_relaxed);
     projectImportTransactionPointer_.store(projectImportTransaction_.get(), std::memory_order_release);
     projectImportState_.store(projectImportTransaction_->memory ? NativeProjectImportState::Prepared : NativeProjectImportState::Pending, std::memory_order_release);
     error.clear();
@@ -3652,6 +3653,8 @@ void NativeAudioCore::finalizeProjectImportLocked() {
     if (state != NativeProjectImportState::Committed && state != NativeProjectImportState::Cancelled) return;
     projectImportLastGeneration_ = projectImportActiveGeneration_.load(std::memory_order_acquire);
     projectImportLastState_ = state;
+    projectImportLastContentRevision_ = state == NativeProjectImportState::Committed
+        ? projectImportCommittedContentRevision_.load(std::memory_order_acquire) : 0U;
     if (state == NativeProjectImportState::Cancelled &&
         projectImportCancelledByCallback_.load(std::memory_order_acquire)) {
         projectImportLastError_ = "Native project import was rejected at the callback boundary because loop PCM/history changed after load preparation, a track entered record/overdub, or a loop-store invariant changed; all five prior tracks were preserved.";
@@ -3732,14 +3735,14 @@ NativeProjectImportStatus NativeAudioCore::getProjectArchiveImportStatus(std::ui
         (state == NativeProjectImportState::Committed || state == NativeProjectImportState::Cancelled)) {
         finalizeProjectImportLocked();
         state = projectImportLastState_;
-        return {true, generation, state, projectImportLastError_};
+        return {true, generation, state, projectImportLastError_, projectImportLastContentRevision_};
     }
     if (activeGeneration == generation &&
         (state == NativeProjectImportState::Prepared || state == NativeProjectImportState::Pending || state == NativeProjectImportState::Claimed)) {
         return {true, generation, state, {}};
     }
     if (projectImportLastGeneration_ == generation) {
-        return {true, generation, projectImportLastState_, projectImportLastError_};
+        return {true, generation, projectImportLastState_, projectImportLastError_, projectImportLastContentRevision_};
     }
     return {};
 }
@@ -5019,6 +5022,7 @@ bool NativeAudioCore::applyProjectImportAtCallback() noexcept {
         historyFailure_[index].store(NativeHistoryFailure::None, std::memory_order_release);
     }
     advanceProjectRevision(projectContentRevision_);
+    projectImportCommittedContentRevision_.store(projectContentRevision_.load(std::memory_order_acquire), std::memory_order_release);
     projectImportCancelledByCallback_.store(false, std::memory_order_release);
     projectImportState_.store(NativeProjectImportState::Committed, std::memory_order_release);
     return true;

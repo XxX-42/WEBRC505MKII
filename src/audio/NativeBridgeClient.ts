@@ -92,6 +92,11 @@ export interface NativeProjectImportStatus {
   generation: number;
   state: NativeProjectImportState;
   error?: string;
+  projectContentRevision?: number;
+  committedProjectContentRevision?: number;
+  projectTransportMutationRevision?: number;
+  /** The host confirmed commit, but this client no longer has enough operation state to publish undo recovery safely. */
+  recoveryUnavailable?: boolean;
 }
 
 export class NativeProjectImportIndeterminateError extends Error {
@@ -761,7 +766,10 @@ export class NativeBridgeClient {
     const payload = await this.request<BridgeResponse>(`/v1/project/import/status?generation=${generation}`);
     if (!isObject(payload) || payload.ok !== true || payload.generation !== generation ||
         !(['prepared', 'pending', 'claimed', 'committed', 'cancelled'] as const).includes(payload.state as NativeProjectImportState) ||
-        (payload.error !== undefined && typeof payload.error !== 'string')) {
+        (payload.error !== undefined && typeof payload.error !== 'string') ||
+        (payload.projectContentRevision !== undefined && (!Number.isSafeInteger(payload.projectContentRevision) ||
+          (payload.projectContentRevision as number) < 0)) ||
+        (payload.state === 'committed' && !Number.isSafeInteger(payload.projectContentRevision))) {
       throw new Error('Native bridge returned an invalid project-import status.');
     }
     return {
@@ -769,6 +777,8 @@ export class NativeBridgeClient {
       generation,
       state: payload.state as NativeProjectImportState,
       ...(typeof payload.error === 'string' && payload.error.length > 0 ? { error: payload.error } : {}),
+      ...(Number.isSafeInteger(payload.projectContentRevision)
+        ? { projectContentRevision: payload.projectContentRevision as number } : {}),
     };
   }
 

@@ -1036,6 +1036,9 @@ json projectImportStatusToJson(const NativeProjectImportStatus& status) {
         {"state", projectImportStateToString(status.state)},
     };
     if (!status.error.empty()) result["error"] = status.error;
+    if (status.state == NativeProjectImportState::Committed && status.projectContentRevision > 0U) {
+        result["projectContentRevision"] = status.projectContentRevision;
+    }
     return result;
 }
 

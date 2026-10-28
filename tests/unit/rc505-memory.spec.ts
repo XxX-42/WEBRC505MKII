@@ -3,7 +3,10 @@ import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import { encodeProjectArchive, decodeProjectArchive, PROJECT_ARCHIVE_DEFAULT_TRANSPORT } from '../../src/audio/projectArchive';
 import { Rc505Memory, Rc505MemoryCommittedError, encodeRc505Memory, decodeRc505Memory, type Rc505MemoryDocument, type Rc505MemoryRuntime, type Rc505MemoryPersistence } from '../../src/audio/Rc505Memory';
 
-beforeAll(() => vi.stubGlobal('crypto', webcrypto));
+beforeAll(() => {
+  vi.stubGlobal('crypto', webcrypto);
+  Object.defineProperty(navigator, 'locks', { configurable: true, value: { request: async (_name: string, _options: unknown, operation: () => Promise<unknown>) => operation() } });
+});
 afterAll(() => vi.unstubAllGlobals());
 async function document(number: number | null = null): Promise<Rc505MemoryDocument> {
   return { version: 1, memoryNumber: number, name: 'TEST',

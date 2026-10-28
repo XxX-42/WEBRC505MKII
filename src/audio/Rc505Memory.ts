@@ -1,4 +1,5 @@
 import { decodeProjectArchive, PROJECT_ARCHIVE_LIMITS } from './projectArchive';
+import { withProjectArchiveMutationLock } from './projectArchiveMutationLock';
 
 export type Rc505Json = null | boolean | number | string | Rc505Json[] | { [key: string]: Rc505Json };
 export interface Rc505MemoryField {
@@ -163,7 +164,7 @@ export class Rc505Memory {
     });
   }
   public load(slot: number): Promise<void> {
-    return this.operation(async () => {
+    return withProjectArchiveMutationLock(() => this.operation(async () => {
       this.assertSlot(slot);
       this.assertStopped();
       const revision = this.runtime.revision();
@@ -203,7 +204,7 @@ export class Rc505Memory {
       if (failed) throw failure;
       try { this.savedRevision = this.runtime.revision(); }
       catch (error) { throw new Rc505MemoryCommittedError('Memory installed; its revision could not be confirmed.', null, { cause: error }); }
-    });
+    }));
   }
   public clear(slot: number): Promise<void> { return this.operation(async () => {
     this.assertSlot(slot); this.assertStopped(); await this.store.clear(slot);

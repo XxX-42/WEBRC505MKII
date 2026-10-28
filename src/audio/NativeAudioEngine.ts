@@ -18,7 +18,7 @@ import { NativeTrackProxy } from './NativeTrackProxy';
 import type { TrackFxApplyStatus } from './TrackFxApplyStatus';
 import { NativeRhythmEngine } from './NativeRhythmEngine';
 import { unsupportedTrackMarkState, type TrackMarkActionResult, type TrackMarkState } from './TrackMark';
-import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectRestoreToken, type ProjectArchive, type ProjectArchiveTrackList } from './projectArchive';
+import { encodeProjectArchive, PROJECT_ARCHIVE_LIMITS, type NativeProjectImportCommitReceipt, type NativeProjectRestoreToken, type ProjectArchive, type ProjectArchiveTrackList } from './projectArchive';
 import { sanitizeNativeStepSlicerParameters, type NativeStepSlicerParameters } from './nativeStepSlicerParameters';
 import {
   NATIVE_CATALOG_EMPTY_LABEL,
@@ -39,6 +39,30 @@ export interface NativeDeviceSelection {
   outputs: NativeDeviceInfo[];
   sampleRates: number[];
   bufferOptions: number[];
+}
+
+type NativeProjectTrackRevisionSnapshot = ReadonlyArray<{
+  readonly trackId: number;
+  readonly state: string;
+  readonly contentRevision: number;
+}>;
+
+function nativeProjectTrackSnapshot(tracks: NativeStatus['nativeTracks']): NativeProjectTrackRevisionSnapshot | null {
+  if (!Array.isArray(tracks) || tracks.length !== 5) return null;
+  const snapshot = tracks.map((track) => {
+    if (!Number.isInteger(track.trackId) || track.trackId < 1 || track.trackId > 5 ||
+        typeof track.state !== 'string' || !Number.isSafeInteger(track.contentRevision) || track.contentRevision! < 0) return null;
+    return { trackId: track.trackId, state: track.state, contentRevision: track.contentRevision! };
+  });
+  if (snapshot.some((track) => track === null) || new Set(snapshot.map((track) => track!.trackId)).size !== 5) return null;
+  return snapshot.map((track) => track!).sort((left, right) => left.trackId - right.trackId);
+}
+
+function sameNativeProjectTrackSnapshot(left: NativeProjectTrackRevisionSnapshot, right: NativeProjectTrackRevisionSnapshot): boolean {
+  return left.length === right.length && left.every((track, index) => {
+    const other = right[index];
+    return !!other && track.trackId === other.trackId && track.contentRevision === other.contentRevision && track.state === other.state;
+  });
 }
 
 export interface LatencyInfo {
@@ -66,14 +90,20 @@ export interface NativeUiStatus {
 export class NativeProjectArchiveCommittedError extends Error {
   public readonly generation: number;
   public readonly archiveCommitted = true;
+  public readonly projectContentRevision: number;
+  public readonly recoveryUnavailable: boolean;
 
-  public constructor(generation: number, cause: unknown) {
+  public constructor(generation: number, projectContentRevision: number, cause: unknown, recoveryUnavailable = false) {
     const detail = cause instanceof Error ? cause.message : String(cause);
-    super(`Project audio was imported successfully (generation ${generation}), but the user-interface transport state could not be synchronized: ${detail}`);
+    super(`Project audio was imported successfully (generation ${generation}), but Native project reconciliation did not complete: ${detail}`);
     this.name = 'NativeProjectArchiveCommittedError';
     this.generation = generation;
+    this.projectContentRevision = projectContentRevision;
+    this.recoveryUnavailable = recoveryUnavailable;
   }
 }
+
+class CommittedImportRecoveryUnavailableError extends Error {}
 
 export interface NativeCatalogFxSlotRuntime {
   path: NativeFxPath;
@@ -203,6 +233,9 @@ export class NativeAudioEngine {
   private readonly pendingProjectImportSync = new Map<number, Pick<ProjectArchive, 'bpm' | 'transport'> & {
     operationStartTransport: NativeProjectRestoreToken['transport'];
     operationStartTransportRevision: number;
+    synchronizationStarted: boolean;
+    callbackTrackSnapshot?: NativeProjectTrackRevisionSnapshot;
+    synchronizedTransportRevision?: number;
   }>();
   private readonly onTransportBpmChange = () => {
     this.scheduleNativeFxSync();
@@ -1045,7 +1078,7 @@ export class NativeAudioEngine {
     archive: ArrayBuffer | Uint8Array,
     operationStart: NativeProjectRestoreToken,
     operationStillCurrent: () => boolean,
-  ): Promise<void> {
+  ): Promise<NativeProjectImportCommitReceipt> {
     const bytes = archive instanceof Uint8Array ? archive : new Uint8Array(archive);
     if (bytes.byteLength < 12 || bytes.byteLength > PROJECT_ARCHIVE_LIMITS.maxArchiveBytes) {
       throw new Error('Project archive is empty or exceeds the supported Native import size');
@@ -1088,6 +1121,7 @@ export class NativeAudioEngine {
       transport: saved,
       operationStartTransport: operationStart.transport,
       operationStartTransportRevision: operationStart.projectTransportMutationRevision,
+      synchronizationStarted: false,
     });
     const status = await this.bridge.waitForProjectArchiveImport(generation, 10_000, operationStillCurrent);
     if (status.state !== 'committed') {
@@ -1095,57 +1129,163 @@ export class NativeAudioEngine {
       throw new Error(status.error || `Native project import generation ${generation} was cancelled; the previous project remains loaded`);
     }
 
-    await this.synchronizeCommittedProjectArchive(generation);
+    return this.synchronizeCommittedProjectArchive(generation, status.projectContentRevision!);
   }
 
   /** Reconcile a previously accepted generation without uploading/mutating again. */
   public async getProjectArchiveImportStatus(generation: number): Promise<NativeProjectImportStatus> {
     const status = await this.bridge.getProjectArchiveImportStatus(generation);
-    if (status.state === 'committed') await this.synchronizeCommittedProjectArchive(generation);
+    if (status.state === 'committed') {
+      if (!this.pendingProjectImportSync.has(generation)) {
+        // The host's exact generation status is authoritative, but a restarted
+        // page has lost the operation-start transport and sync receipt. Never
+        // reconstruct that state from the current project; resolve the commit
+        // without publishing an undo candidate.
+        return { ...status, recoveryUnavailable: true };
+      }
+      const receipt = await this.synchronizeCommittedProjectArchive(generation, status.projectContentRevision!);
+      return { ...status, committedProjectContentRevision: status.projectContentRevision,
+        projectContentRevision: receipt.projectContentRevision,
+        projectTransportMutationRevision: receipt.projectTransportMutationRevision };
+    }
     else if (status.state === 'cancelled') this.pendingProjectImportSync.delete(generation);
     return status;
   }
 
-  private async synchronizeCommittedProjectArchive(generation: number): Promise<void> {
+  private async synchronizeCommittedProjectArchive(generation: number, committedContentRevision: number): Promise<NativeProjectImportCommitReceipt> {
     const savedProject = this.pendingProjectImportSync.get(generation);
-    if (!savedProject) return;
+    if (!savedProject) throw new Error('Native project import commit receipt is unavailable for this generation.');
     const { bpm, transport: saved, operationStartTransport, operationStartTransportRevision } = savedProject;
     // The five PCM banks are already atomically committed at this point.
     // Keep that fact explicit if a UI listener or transport sync rejects.
     try {
+      // Confirm the exact callback commit before the app-owned rhythm BPM
+      // synchronization, which can advance the broader host revision. On a
+      // later retry, bind to the original per-loop revisions instead.
+      const callbackCommitStatus = await this.bridge.getStatus();
+      const callbackTrackSnapshot = nativeProjectTrackSnapshot(callbackCommitStatus.nativeTracks);
       const transport = Transport.getInstance();
-      if (!this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision)) {
-        // PCM has crossed the host callback commit point. Do not roll back or
-        // overwrite user transport edits made while the generation was
-        // pending; keep the generation's committed status explicit instead.
-        this.pendingProjectImportSync.delete(generation);
-        throw new Error('Transport changed while the Native import was pending. The new PCM is committed, and the user\'s newer transport values were preserved; the imported BPM and loop metadata were not applied.');
+      if (callbackCommitStatus.projectContentRevisionSnapshotStable !== true) {
+        throw new Error('Native host did not provide a stable project snapshot while reconciling the committed generation.');
       }
+      if (!callbackTrackSnapshot) throw new Error('Native host did not provide five revisioned loop snapshots after archive commit.');
+      if (!savedProject.synchronizationStarted) {
+        if (!Number.isSafeInteger(callbackCommitStatus.projectContentRevision)) {
+          throw new Error('Native host did not provide an authoritative project revision while reconciling the committed generation.');
+        }
+        if (callbackCommitStatus.projectContentRevision !== committedContentRevision) {
+          this.pendingProjectImportSync.delete(generation);
+          throw new CommittedImportRecoveryUnavailableError(`Native project content changed after generation ${generation} committed ` +
+            `(committed=${committedContentRevision}, current=${String(callbackCommitStatus.projectContentRevision)}); recovery was not published.`);
+        }
+        if (!this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision)) {
+          this.pendingProjectImportSync.delete(generation);
+          throw new CommittedImportRecoveryUnavailableError('Transport changed while the Native import was pending. The new PCM is committed, and the user\'s newer transport values were preserved; the imported BPM and loop metadata were not applied.');
+        }
+        savedProject.synchronizationStarted = true;
+        savedProject.callbackTrackSnapshot = callbackTrackSnapshot;
+      } else {
+        if (savedProject.callbackTrackSnapshot &&
+            !sameNativeProjectTrackSnapshot(savedProject.callbackTrackSnapshot, callbackTrackSnapshot)) {
+          this.pendingProjectImportSync.delete(generation);
+          throw new CommittedImportRecoveryUnavailableError('Native loop state or per-track content revisions changed after the first BPM synchronization attempt; recovery was not published.');
+        }
+        if (savedProject.synchronizedTransportRevision !== undefined &&
+            transport.projectMutationRevision !== savedProject.synchronizedTransportRevision) {
+          this.pendingProjectImportSync.delete(generation);
+          throw new CommittedImportRecoveryUnavailableError('Transport changed after the first BPM synchronization attempt; the newer values were preserved and recovery was not published.');
+        }
+        if (!savedProject.callbackTrackSnapshot) {
+          throw new Error('Native loop revision receipt is unavailable while reconciling the committed generation.');
+        }
+        if (!this.matchesImportedProjectTransportValues(transport, savedProject, bpm)) {
+          throw new Error('Transport values do not match the last synchronization receipt, but its revision is unchanged; recovery remains pending until the state can be verified.');
+        }
+      }
+      this.pendingProjectImportSync.set(generation, savedProject);
       const syncFailures: string[] = [];
-      try { transport.stop(); } catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
-      transport.resetMasterTrack();
-      transport.timeSignature = [saved.timeSignatureNumerator, saved.timeSignatureDenominator];
-      transport.masterTrackId = saved.masterTrackId;
-      transport.measureLength = saved.measureLengthSeconds;
-      transport.masterLoopLengthSamples = saved.masterLoopLengthSamples;
       this.syncingNativeRhythmBpm = true;
-      try { transport.setBpm(bpm); }
-      catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
-      finally { this.syncingNativeRhythmBpm = false; }
+      if (savedProject.synchronizedTransportRevision === undefined) {
+        try { transport.stop(); } catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
+        transport.resetMasterTrack();
+        transport.timeSignature = [saved.timeSignatureNumerator, saved.timeSignatureDenominator];
+        transport.masterTrackId = saved.masterTrackId;
+        transport.measureLength = saved.measureLengthSeconds;
+        transport.masterLoopLengthSamples = saved.masterLoopLengthSamples;
+        try { transport.setBpm(bpm); }
+        catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
+        savedProject.synchronizedTransportRevision = transport.projectMutationRevision;
+        this.pendingProjectImportSync.set(generation, savedProject);
+      }
+      const synchronizedTransportRevision = savedProject.synchronizedTransportRevision;
 
       if (this.rhythmEngine.available && this.rhythmEngine.settings?.bpm !== bpm) {
         if (!await this.rhythmEngine.setBpm(bpm)) {
           syncFailures.push(this.rhythmEngine.error || 'Native rhythm did not acknowledge the imported project BPM');
         }
       }
-      try { this.applyStatus(await this.bridge.getStatus()); }
+      let synchronizedStatus: NativeStatus | null = null;
+      let recoveryInvalidation: string | null = null;
+      try {
+        synchronizedStatus = await this.bridge.getStatus();
+        const synchronizedTrackSnapshot = nativeProjectTrackSnapshot(synchronizedStatus.nativeTracks);
+        if (synchronizedStatus.projectContentRevisionSnapshotStable === true && synchronizedTrackSnapshot &&
+            !sameNativeProjectTrackSnapshot(callbackTrackSnapshot, synchronizedTrackSnapshot)) {
+          recoveryInvalidation = 'Native loop state or per-track content revisions changed during BPM synchronization; recovery was not published.';
+        } else if (synchronizedStatus.projectContentRevisionSnapshotStable !== true ||
+            !Number.isSafeInteger(synchronizedStatus.projectContentRevision) || !synchronizedTrackSnapshot) {
+          syncFailures.push('Native loop state or per-track content revisions changed during BPM synchronization; recovery was not published.');
+        }
+        if (synchronizedStatus.nativeRhythm?.available && synchronizedStatus.nativeRhythm.bpm !== bpm) {
+          syncFailures.push('Native rhythm BPM did not remain at the imported project tempo; recovery was not published.');
+        }
+        if (synchronizedStatus.nativeRhythm?.available && synchronizedStatus.nativeRhythm.tempoAppliedValid === false) {
+          syncFailures.push('Native rhythm BPM is not callback-acknowledged; recovery was not published.');
+        }
+        if (synchronizedStatus.nativeRhythm?.available &&
+            Number.isSafeInteger(synchronizedStatus.nativeRhythm.tempoRequestedRevision) &&
+            Number.isSafeInteger(synchronizedStatus.nativeRhythm.tempoAppliedRevision) &&
+            synchronizedStatus.nativeRhythm.tempoRequestedRevision !== synchronizedStatus.nativeRhythm.tempoAppliedRevision) {
+          syncFailures.push('Native rhythm BPM request and callback revisions do not match; recovery was not published.');
+        }
+      }
       catch (error) { syncFailures.push(error instanceof Error ? error.message : String(error)); }
+      if (transport.projectMutationRevision !== synchronizedTransportRevision) {
+        recoveryInvalidation = 'Transport changed after archive commit; the newer values were preserved and recovery was not published.';
+      }
+      if (transport.projectMutationRevision !== synchronizedTransportRevision || transport.bpm !== bpm ||
+          transport.state !== 'STOPPED' || transport.masterTrackId !== saved.masterTrackId ||
+          transport.measureLength !== saved.measureLengthSeconds || transport.masterLoopLengthSamples !== saved.masterLoopLengthSamples ||
+          transport.timeSignature[0] !== saved.timeSignatureNumerator || transport.timeSignature[1] !== saved.timeSignatureDenominator) {
+        syncFailures.push('Transport changed after archive commit; recovery was not published.');
+      }
+      if (synchronizedStatus) this.applyStatus(synchronizedStatus);
+      this.syncingNativeRhythmBpm = false;
+      if (transport.projectMutationRevision !== synchronizedTransportRevision) {
+        recoveryInvalidation = 'Transport changed after archive commit; the newer values were preserved and recovery was not published.';
+      }
+      if (transport.projectMutationRevision !== synchronizedTransportRevision || transport.bpm !== bpm ||
+          transport.state !== 'STOPPED' || transport.masterTrackId !== saved.masterTrackId ||
+          transport.measureLength !== saved.measureLengthSeconds || transport.masterLoopLengthSamples !== saved.masterLoopLengthSamples ||
+          transport.timeSignature[0] !== saved.timeSignatureNumerator || transport.timeSignature[1] !== saved.timeSignatureDenominator) {
+        syncFailures.push('Transport changed after archive commit; recovery was not published.');
+      }
+      if (recoveryInvalidation) {
+        this.pendingProjectImportSync.delete(generation);
+        throw new CommittedImportRecoveryUnavailableError(recoveryInvalidation);
+      }
       if (syncFailures.length > 0) throw new Error(syncFailures.join('; '));
       this.pendingProjectImportSync.delete(generation);
+      return { generation, projectContentRevision: synchronizedStatus!.projectContentRevision!,
+        committedProjectContentRevision: committedContentRevision,
+        projectTransportMutationRevision: synchronizedTransportRevision };
     } catch (error) {
+      this.syncingNativeRhythmBpm = false;
+      const recoveryUnavailable = error instanceof CommittedImportRecoveryUnavailableError;
+      if (recoveryUnavailable) this.pendingProjectImportSync.delete(generation);
       const preserveUserTransport = !this.matchesProjectRestoreTransport(operationStartTransport, operationStartTransportRevision);
       try { this.applyStatus(await this.bridge.getStatus(), !preserveUserTransport); } catch { /* The committed-generation error remains primary. */ }
-      throw new NativeProjectArchiveCommittedError(generation, error);
+      throw new NativeProjectArchiveCommittedError(generation, committedContentRevision, error, recoveryUnavailable);
     }
   }
 
@@ -1162,6 +1302,16 @@ export class NativeAudioEngine {
       && current.masterLoopLengthSamples === expected.masterLoopLengthSamples
       && current.timeSignature[0] === expected.timeSignatureNumerator
       && current.timeSignature[1] === expected.timeSignatureDenominator;
+  }
+
+  private matchesImportedProjectTransportValues(current: Transport,
+    saved: Pick<ProjectArchive, 'bpm' | 'transport'> & { synchronizedTransportRevision?: number }, bpm: number): boolean {
+    const expected = saved.transport;
+    return saved.synchronizedTransportRevision !== undefined &&
+      current.bpm === bpm &&
+      current.state === 'STOPPED' && current.masterTrackId === expected.masterTrackId &&
+      current.measureLength === expected.measureLengthSeconds && current.masterLoopLengthSamples === expected.masterLoopLengthSamples &&
+      current.timeSignature[0] === expected.timeSignatureNumerator && current.timeSignature[1] === expected.timeSignatureDenominator;
   }
 
   public getRecordPlaySettings(): RecordPlaySettings {
@@ -2268,6 +2418,7 @@ export class NativeAudioEngine {
   }
 
   private syncNativeRhythmBpm() {
+    if (this.syncingNativeRhythmBpm) return;
     const rhythm = this.rhythmEngine.settings;
     if (!this.rhythmEngine.available || !rhythm || rhythm.bpm === Transport.getInstance().bpm) return;
     this.syncingNativeRhythmBpm = true;

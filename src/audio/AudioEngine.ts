@@ -19,7 +19,7 @@ import { toBrowserPreampParameters, toNativePreampParameters, type PreampParamet
 import { MidiInputController, type MidiInputState, type MidiNoteEvent } from './MidiInputController';
 import type { NativeCatalogMidiEvent } from './NativeBridgeClient';
 import { mapMidiNoteToNativeCatalogEvent, type OscVocMidiTarget } from './nativeOscVocMidi';
-import type { ProjectArchive, ProjectRestoreOperationToken } from './projectArchive';
+import type { NativeProjectImportCommitReceipt, ProjectArchive, ProjectRestoreOperationToken } from './projectArchive';
 import { Transport } from '../core/Transport';
 import { unsupportedTrackMarkState, type TrackMarkState, type TrackMarkActionResult } from './TrackMark';
 import type { TrackFxApplyStatus } from './TrackFxApplyStatus';
@@ -1042,7 +1042,7 @@ export class AudioEngine {
     project: ProjectArchive,
     archive: ArrayBuffer | Uint8Array,
     operationToken: ProjectRestoreOperationToken,
-  ): Promise<void> {
+  ): Promise<NativeProjectImportCommitReceipt | null> {
     if (operationToken.mode !== this.currentMode || operationToken.modeGeneration !== this.modeGeneration) {
       throw new Error('Project load canceled because the audio mode changed while the archive was being read; retry in the selected audio mode');
     }
@@ -1052,7 +1052,7 @@ export class AudioEngine {
       if (!this.matchesProjectRestoreTransport(native.transport)) {
         throw new Error('Native project load canceled because transport changed while the archive was being read; current PCM and transport were left unchanged. Retry the load');
       }
-      await this.nativeEngine.restoreProjectArchive(project, archive, native, () => {
+      return await this.nativeEngine.restoreProjectArchive(project, archive, native, () => {
         try {
           return this.currentMode === 'native'
             && this.modeGeneration === operationToken.modeGeneration
@@ -1065,10 +1065,10 @@ export class AudioEngine {
           return false;
         }
       });
-      return;
     }
     if (!operationToken.browser) throw new Error('Browser project load is missing its operation-start revision guard');
     this.browser.restoreProjectArchive(project, archive.byteLength, operationToken.browser);
+    return null;
   }
 
   private captureProjectRestoreTransport(): NonNullable<ProjectRestoreOperationToken['native']>['transport'] {

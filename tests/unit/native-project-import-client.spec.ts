@@ -50,13 +50,16 @@ describe('Native project import bridge client', () => {
     const states = ['pending', 'claimed', 'committed'];
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes('/status?')) return jsonResponse({ ok: true, generation: 8, state: states.shift() });
+      if (url.includes('/status?')) {
+        const state = states.shift();
+        return jsonResponse({ ok: true, generation: 8, state, ...(state === 'committed' ? { projectContentRevision: 3 } : {}) });
+      }
       throw new Error(`Unexpected route ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await new NativeBridgeClient().waitForProjectArchiveImport(8, 1_000);
-    expect(result).toEqual({ ok: true, generation: 8, state: 'committed' });
+    expect(result).toEqual({ ok: true, generation: 8, state: 'committed', projectContentRevision: 3 });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
@@ -101,7 +104,10 @@ describe('Native project import bridge client', () => {
     const states = ['pending', 'claimed', 'committed'];
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes('/status?')) return jsonResponse({ ok: true, generation: 19, state: states.shift() });
+      if (url.includes('/status?')) {
+        const state = states.shift();
+        return jsonResponse({ ok: true, generation: 19, state, ...(state === 'committed' ? { projectContentRevision: 5 } : {}) });
+      }
       if (url.endsWith('/cancel')) return jsonResponse({ ok: true, generation: 19, state: 'claimed' }, 409);
       throw new Error(`Unexpected route ${url}`);
     });

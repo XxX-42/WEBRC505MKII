@@ -5,7 +5,7 @@ const simulationHost = process.env.NATIVE_BRIDGE_SIMULATION_EXECUTABLE;
 
 test.skip(!simulationHost, 'Set NATIVE_BRIDGE_SIMULATION_EXECUTABLE to the explicit no-hardware bridge simulation target.');
 
-test('Native ProjectMemory import resolves after host commit and leaves imported PCM stopped', async ({ page }) => {
+test('Native ProjectMemory import persists and restores the incumbent project archive', async ({ page }) => {
   if (!simulationHost) return;
 
   let host: ChildProcess | undefined;
@@ -75,6 +75,25 @@ test('Native ProjectMemory import resolves after host commit and leaves imported
         throw new Error('Native simulation host did not report a running five-track engine');
       }
 
+      const baselineFrameCount = 2_053;
+      const baselineLeft = new Float32Array(baselineFrameCount);
+      const baselineRight = new Float32Array(baselineFrameCount);
+      const baselineInterleaved = new Float32Array(baselineFrameCount * 2);
+      for (let frame = 0; frame < baselineFrameCount; frame += 1) {
+        baselineLeft[frame] = Math.fround(Math.sin((frame + 1) * 0.0117) * 0.23);
+        baselineRight[frame] = Math.fround(Math.cos((frame + 1) * 0.0191) * 0.19);
+        baselineInterleaved[frame * 2] = baselineLeft[frame]!;
+        baselineInterleaved[frame * 2 + 1] = baselineRight[frame]!;
+      }
+      const baselineArchive = await encodeProjectArchive({
+        name: 'Incumbent Before Import', bpm: 109,
+        transport: { masterTrackId: null, measureLengthSeconds: 0, masterLoopLengthSamples: 0,
+          timeSignatureNumerator: 4, timeSignatureDenominator: 4 },
+        tracks: [
+          { sampleRate: initial.sampleRate, frameCount: baselineFrameCount, channels: 2, channelData: [baselineLeft, baselineRight] },
+          null, null, null, null,
+        ],
+      });
       const frameCount = 4_117;
       const left = new Float32Array(frameCount);
       const right = new Float32Array(frameCount);
@@ -103,57 +122,87 @@ test('Native ProjectMemory import resolves after host commit and leaves imported
           null,
         ],
       });
+      const projectMemory = new ProjectMemory(engine);
+      const baselineBuffer = baselineArchive.buffer.slice(baselineArchive.byteOffset, baselineArchive.byteOffset + baselineArchive.byteLength) as ArrayBuffer;
+      await projectMemory.importFile(new File([baselineBuffer], 'incumbent.rc505proj', { type: 'application/x-rc505-project' }));
       const exactArchive = archive.buffer.slice(archive.byteOffset, archive.byteOffset + archive.byteLength) as ArrayBuffer;
       const file = new File([exactArchive], 'native-import.rc505proj', { type: 'application/x-rc505-project' });
       const expectedDigest = await crypto.subtle.digest('SHA-256', new Uint8Array(interleaved.buffer));
       const expectedHash = Array.from(new Uint8Array(expectedDigest), (value) => value.toString(16).padStart(2, '0')).join('');
+      const baselineDigest = await crypto.subtle.digest('SHA-256', new Uint8Array(baselineInterleaved.buffer));
+      const baselineHash = Array.from(new Uint8Array(baselineDigest), (value) => value.toString(16).padStart(2, '0')).join('');
 
       timeline.push('import-started');
-      const imported = await new ProjectMemory(engine).importFile(file);
+      const imported = await projectMemory.importFile(file);
       timeline.push('import-resolved');
+
+      const targetGeneration = importTransitions.at(-1)?.generation;
+      const targetStatusResponse = await originalFetch('http://127.0.0.1:18755/v1/status');
+      const targetStatus = await targetStatusResponse.json() as { nativeTracks: Array<{ trackId: number; state: string; contentRevision: number }> };
+      const targetSnapshotResponse = await originalFetch('http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=1');
+      if (!targetSnapshotResponse.ok) throw new Error(`Imported Native snapshot failed with HTTP ${targetSnapshotResponse.status}`);
+      const targetFrameCount = Number(targetSnapshotResponse.headers.get('X-Native-Loop-Frame-Count'));
+      const targetDigest = await crypto.subtle.digest('SHA-256', new Uint8Array(await targetSnapshotResponse.arrayBuffer()));
+      const targetHash = Array.from(new Uint8Array(targetDigest), (value) => value.toString(16).padStart(2, '0')).join('');
+      const recoveryMetadata = await projectMemory.getNativeImportRecoveryMetadata();
+      const restored = await projectMemory.restoreNativeImportRecovery();
 
       const statusResponse = await originalFetch('http://127.0.0.1:18755/v1/status');
       const status = await statusResponse.json() as {
         nativeTracks: Array<{ trackId: number; state: string; contentRevision: number }>;
       };
       const snapshotResponse = await originalFetch('http://127.0.0.1:18755/v1/export/loop-snapshot?trackId=1');
-      if (!snapshotResponse.ok) throw new Error(`Imported Native snapshot failed with HTTP ${snapshotResponse.status}`);
+      if (!snapshotResponse.ok) throw new Error(`Recovered Native snapshot failed with HTTP ${snapshotResponse.status}`);
       const actualFrameCount = Number(snapshotResponse.headers.get('X-Native-Loop-Frame-Count'));
       const actualChannels = Number(snapshotResponse.headers.get('X-Native-Loop-Channels'));
       const actualDigest = await crypto.subtle.digest('SHA-256', new Uint8Array(await snapshotResponse.arrayBuffer()));
       const actualHash = Array.from(new Uint8Array(actualDigest), (value) => value.toString(16).padStart(2, '0')).join('');
       timeline.push('snapshot-verified');
 
-      const latest = importTransitions.at(-1);
-      const committedIndex = timeline.findIndex((entry) => entry === `host-committed:${latest?.generation}`);
+      const committedIndex = timeline.findIndex((entry) => entry === `host-committed:${targetGeneration}`);
       const resolvedIndex = timeline.indexOf('import-resolved');
       const beforeRevision = initial.nativeTracks.find((track) => track.trackId === 1)?.contentRevision;
       const afterTrack = status.nativeTracks.find((track) => track.trackId === 1);
       return {
         imported,
+        restored,
+        recoveryMetadata,
         expectedHash,
+        targetHash,
+        baselineHash,
         actualHash,
         expectedFrameCount: frameCount,
+        targetFrameCount,
+        baselineFrameCount,
         actualFrameCount,
         actualChannels,
         transitions: importTransitions,
         timeline,
         committedBeforeImportResolved: committedIndex >= 0 && resolvedIndex > committedIndex,
+        targetGeneration,
+        targetCommitted: importTransitions.some((entry) => entry.generation === targetGeneration && entry.state === 'committed'),
         beforeRevision,
-        afterTrack,
+        afterTrack: targetStatus.nativeTracks.find((track) => track.trackId === 1),
         otherTrackStates: status.nativeTracks.filter((track) => track.trackId !== 1).map((track) => track.state),
         states: status.nativeTracks.map((track) => track.state),
       };
     });
 
     expect(result.imported).toEqual({ name: 'Native Import E2E', bpm: 113, tracksWithAudio: 1, archiveVersion: 1 });
+    expect(result.restored).toEqual({ name: 'Before Native import', bpm: 109, tracksWithAudio: 1,
+      archiveVersion: result.recoveryMetadata?.archiveVersion });
+    expect([1, 2]).toContain(result.recoveryMetadata?.archiveVersion);
+    expect(result.recoveryMetadata?.archiveBytes).toBeGreaterThan(0);
+    expect(result.targetCommitted).toBe(true);
     expect(result.transitions.length).toBeGreaterThan(0);
     expect(result.transitions.at(-1)?.state).toBe('committed');
     expect(result.committedBeforeImportResolved).toBe(true);
     expect(result.afterTrack?.contentRevision).toBeGreaterThan(result.beforeRevision ?? -1);
-    expect(result.actualFrameCount).toBe(result.expectedFrameCount);
+    expect(result.targetFrameCount).toBe(result.expectedFrameCount);
+    expect(result.targetHash).toBe(result.expectedHash);
+    expect(result.actualFrameCount).toBe(result.baselineFrameCount);
+    expect(result.actualHash).toBe(result.baselineHash);
     expect(result.actualChannels).toBe(2);
-    expect(result.actualHash).toBe(result.expectedHash);
     expect(result.afterTrack?.state).toBe('Stopped');
     expect(result.otherTrackStates).toEqual(['Empty', 'Empty', 'Empty', 'Empty']);
     expect(result.states.some((state) => ['Playing', 'Recording', 'Overdubbing'].includes(state))).toBe(false);

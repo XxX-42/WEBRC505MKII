@@ -77,6 +77,9 @@ struct NativeProjectImportStatus {
     std::uint64_t generation = 0U;
     NativeProjectImportState state = NativeProjectImportState::Idle;
     std::string error;
+  // Immutable host content epoch captured at the callback commit boundary.
+  // Zero for transactions that did not commit.
+  std::uint64_t projectContentRevision = 0U;
 };
 
 enum class NativeHistoryFailure : std::uint8_t { None = 0U, BudgetExceeded, SnapshotUnavailable, NoUndo, NoRedo, TrackMustBeStopped };
@@ -866,6 +869,8 @@ private:
     std::uint64_t projectImportLastGeneration_ = 0U;
     NativeProjectImportState projectImportLastState_ = NativeProjectImportState::Idle;
     std::string projectImportLastError_;
+    std::atomic<std::uint64_t> projectImportCommittedContentRevision_{0U};
+    std::uint64_t projectImportLastContentRevision_ = 0U;
     std::atomic<bool> projectImportCancelledByCallback_{false};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackMixScratch_{};
     std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeBounceSourceScratch_{};

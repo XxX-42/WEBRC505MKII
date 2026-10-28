@@ -82,6 +82,16 @@ export interface NativeProjectRestoreToken {
   };
 }
 
+/** Host and app epochs observed after a successful Native archive commit. */
+export interface NativeProjectImportCommitReceipt {
+  readonly generation: number;
+  /** Current stable revision after the app has synchronized imported transport/BPM. */
+  readonly projectContentRevision: number;
+  /** Exact Native callback-boundary revision that committed the archive PCM. */
+  readonly committedProjectContentRevision: number;
+  readonly projectTransportMutationRevision: number;
+}
+
 /** Operation-start guard shared by every ProjectMemory import entry point. */
 export interface ProjectRestoreOperationToken {
   readonly mode: 'browser' | 'native';
