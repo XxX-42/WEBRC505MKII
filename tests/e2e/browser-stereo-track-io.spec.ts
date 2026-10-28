@@ -64,7 +64,8 @@ test('records, plays and overdubs distinct stereo through all five Browser track
     if (engine.getMode() !== 'browser' || tracks.length !== 5) {
       throw new Error(`Expected five Browser TrackAudio instances; got mode=${engine.getMode()} tracks=${tracks.length}`);
     }
-    const context = tracks[0].engine.context as AudioContext;
+    const browser = tracks[0].engine;
+    const context = browser.context as AudioContext;
     const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
     const synthetic = (window as any).__stereoTestInput;
     if (!synthetic) throw new Error('Synthetic stereo MediaStream was not installed before Browser audio startup');
