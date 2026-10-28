@@ -31,6 +31,11 @@ inline constexpr std::uint64_t kNativeProjectImportPeakBudgetBytes = 3ULL * 1024
 
 inline constexpr std::size_t kNativeCallbackDurationBins = 512U;
 inline constexpr std::uint64_t kNativeCallbackDurationBinWidthNs = 50000U;
+struct NativeBounceSettings {
+    bool bounceSw = false;
+    std::array<bool, kNativeTrackCount> bounceIn{};
+    std::array<bool, kNativeTrackCount> bounceTrack{};
+};
 struct NativeCallbackTelemetryStatus {
     bool observed = false;
     std::uint64_t callbackCount = 0U;
@@ -140,6 +145,9 @@ struct EngineConfig {
 };
 
 struct EngineStatus {
+    NativeBounceSettings nativeBounce{};
+    std::uint64_t nativeBounceRequestedRevision = 0U;
+    std::uint64_t nativeBounceAppliedRevision = 0U;
     bool nativeRecordActionDub = false;
     std::uint64_t nativeRecordActionRequestedRevision = 0U;
     std::uint64_t nativeRecordActionAppliedRevision = 0U;
@@ -411,6 +419,7 @@ struct NativeMemorySettings {
     std::array<unsigned int, 7U> mixerLevels{{100U, 100U, 100U, 100U, 100U, 100U, 100U}};
     std::array<bool, kNativeTrackCount> trackFxApply{{true, true, true, true, true}};
     std::array<LoopTransportConfig, kNativeTrackCount> loopTransports{};
+    NativeBounceSettings bounce{};
 };
 
 struct NativePitchCommand {
@@ -521,6 +530,7 @@ public:
         const LoopTransportConfig& config,
         std::string& error
     );
+    bool setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error);
     // Track target 0 preserves the shared post-sum playback bank. Targets
     // 1..5 select independent A->D chains before summing; Input only allows 0.
     // Per-track chains affect playback (including overdub playback and tails),
@@ -795,12 +805,20 @@ private:
     std::string projectImportLastError_;
     std::atomic<bool> projectImportCancelledByCallback_{false};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackMixScratch_{};
+    std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeBounceSourceScratch_{};
+    std::array<float, kMaxCallbackFrames * 2U> nativeBounceRecordScratch_{};
     std::array<std::array<float, kMaxCallbackFrames * 2U>, kNativeTrackCount> nativeVocoderCarrierScratch_{};
     std::array<std::atomic<NativeVocoderCarrierStatus>, kNativeTrackCount> nativeVocoderCarrierStatuses_{};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackPlaybackScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativeTrackDryPlaybackScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetDryScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetProcessedScratch_{};
+    NativeBounceSettings nativeBounceRuntime_{};
+    std::atomic<bool> nativeBounceSwitchRequested_{false};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeBounceInRequested_{};
+    std::array<std::atomic<bool>, kNativeTrackCount> nativeBounceTrackRequested_{};
+    std::atomic<std::uint64_t> nativeBounceRequestedRevision_{0U};
+    std::atomic<std::uint64_t> nativeBounceAppliedRevision_{0U};
     unsigned int inputChannels_ = 1;
     unsigned int outputChannels_ = 2;
 

@@ -279,10 +279,9 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
   const currentTrackFx = computed(() => trackFx.activeFx.value);
   const currentTrackId = computed(() => focus.state.currentTrackId);
   const currentTrackController = computed(() => getDeviceTrackController(currentTrackId.value));
-  const browserBounceBusy = () => {
-    if (engine.getMode() !== 'browser') return false;
+  const bounceSettingsBusy = () => {
     // Track controllers poll render state; reading their revisions keeps the
-    // LCD disabled state current even when a different track starts recording.
+    // LCD disabled state current when a different track starts recording.
     for (let id = 1; id <= 5; id += 1) getDeviceTrackController(id)?.runtimeRevision.value;
     return engine.tracks.some((track) => (track as { historyBusy?: boolean }).historyBusy
       || track.state === 'RECORDING' || track.state === 'OVERDUBBING');
@@ -689,9 +688,9 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
     const rendererIndex = rendererOptions.findIndex((option) => option.label === controller.hqNativeEngine.value);
     const pan = audioTrack?.track.pan ?? 'CENTER';
     const panValue = pan === 'CENTER' ? 0 : (pan.startsWith('L') ? -1 : 1) * Number(pan.slice(1));
-    const bounce = engine.getBrowserBounceSettings();
+    const bounce = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();
     const bounceTarget = currentTrackId.value;
-    const bounceBusy = browserBounceBusy();
+    const bounceBusy = bounceSettingsBusy();
     const fields: DeviceScreenField[] = [
       makeNumberField('track-level', 'TRACK LEVEL', controller.playLevel.value, (value) => controller.handleLevelChange(value), { min: 0, max: 200, step: 1, disabled: !controller.levelControlEnabled.value || controller.levelWritePending.value, reason: controller.levelWritePending.value ? 'Waiting for Native level readback.' : controller.trackLevelUnavailableReason.value }),
       makeBooleanField('track-reverse', 'REVERSE', audioTrack?.isReverse === true, (enabled) => {
@@ -732,12 +731,13 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       reason: engine.getMode() !== 'browser' ? 'Native track pan has no audio provider.' : '' }));
     fields.push(makeBooleanField('track-bounce-in', 'BOUNCE IN', bounce?.bounceIn[bounceTarget - 1] === true, (enabled) => {
       if (currentTrackId.value !== bounceTarget) throw new Error('Track selection changed; select the destination again.');
-      const current = engine.getBrowserBounceSettings();
+      const current = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();
       if (!current) throw new Error('Bounce is unavailable in this audio mode.');
       const bounceIn = [...current.bounceIn]; bounceIn[bounceTarget - 1] = enabled;
-      engine.setBrowserBounceSettings({ ...current, bounceIn });
+      if (engine.getMode() === 'browser') engine.setBrowserBounceSettings({ ...current, bounceIn });
+      else return engine.setNativeBounceSettings({ ...current, bounceIn }).then(() => undefined);
     }, { disabled: !bounce || bounceBusy,
-      reason: !bounce ? 'Bounce is unavailable in this audio mode.' : bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : 'Browser source audio is taken before Track FX.' }));
+      reason: !bounce ? 'Bounce is unavailable in this audio mode.' : bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : engine.getMode() === 'native' ? 'Native Bounce reads the pre-insert track playback tap; hardware FX placement is unverified.' : 'Browser source audio is taken before Track FX.' }));
     const loopSyncBusy = !!(audioTrack as { historyBusy?: boolean } | undefined)?.historyBusy
       || audioTrack?.state === 'RECORDING' || audioTrack?.state === 'OVERDUBBING';
     fields.push(makeBooleanField('track-loop-sync', 'LOOP SYNC SW', audioTrack?.track.loopSyncSw === 'ON', (enabled) => {
@@ -1081,8 +1081,8 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
       }
       const settings = engine.getRecordPlaySettings?.();
       const quantizeAvailable = settings?.quantizeAvailable ?? (engine.getMode?.() === 'browser' && settings?.available === true);
-      const bounce = engine.getBrowserBounceSettings();
-      const bounceBusy = browserBounceBusy();
+      const bounce = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();
+      const bounceBusy = bounceSettingsBusy();
       return chunks([
         makeEnumField('rec-action', 'REC ACTION', settings?.recAction === 'REC->DUB' ? 0 : 1,
           fieldOptions(['REC→DUB', 'REC→PLAY']), value => engine.setRecordPlaySettings({ recAction: value === 0 ? 'REC->DUB' : 'REC->PLAY' }),
@@ -1102,16 +1102,18 @@ export function useDeviceScreenEditor(options: DeviceScreenEditorOptions = {}) {
         })() : [makeActionField('auto-rec', 'AUTO REC', () => {}, { disabled: true, reason: 'Browser Auto Rec is available only in Browser audio mode.' })]),
         ...(bounce ? [
           makeBooleanField('bounce-sw', 'BOUNCE SW', bounce.bounceSw, (enabled) => {
-            const current = engine.getBrowserBounceSettings();
+            const current = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();
             if (!current) throw new Error('Bounce is unavailable in this audio mode.');
-            engine.setBrowserBounceSettings({ ...current, bounceSw: enabled });
-          }, { disabled: bounceBusy, reason: bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : 'Browser source audio is taken before Track FX.' }),
+            if (engine.getMode() === 'browser') engine.setBrowserBounceSettings({ ...current, bounceSw: enabled });
+            else return engine.setNativeBounceSettings({ ...current, bounceSw: enabled }).then(() => undefined);
+          }, { disabled: bounceBusy, reason: bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : engine.getMode() === 'native' ? 'Native Bounce reads the pre-insert track playback tap; hardware FX placement is unverified.' : 'Browser source audio is taken before Track FX.' }),
           ...bounce.bounceTrack.map((enabled, index) => makeBooleanField(`bounce-track-${index + 1}`, `BOUNCE TRACK ${index + 1}`, enabled, (next) => {
-            const current = engine.getBrowserBounceSettings();
+            const current = engine.getBrowserBounceSettings() ?? engine.getNativeBounceSettings();
             if (!current) throw new Error('Bounce is unavailable in this audio mode.');
             const bounceTrack = [...current.bounceTrack]; bounceTrack[index] = next;
-            engine.setBrowserBounceSettings({ ...current, bounceTrack });
-          }, { disabled: bounceBusy, reason: bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : 'A destination track cannot record itself.' })),
+            if (engine.getMode() === 'browser') engine.setBrowserBounceSettings({ ...current, bounceTrack });
+            else return engine.setNativeBounceSettings({ ...current, bounceTrack }).then(() => undefined);
+          }, { disabled: bounceBusy, reason: bounceBusy ? 'Finish recording or overdubbing before changing Bounce.' : engine.getMode() === 'native' ? 'A destination track cannot record itself. Hardware FX placement is unverified.' : 'A destination track cannot record itself.' })),
         ] : [makeActionField('bounce', 'BOUNCE', () => {}, { disabled: true, reason: 'Bounce is unavailable in this audio mode.' })]),
       ]);
     }

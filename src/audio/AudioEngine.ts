@@ -872,6 +872,13 @@ export class AudioEngine {
     if (this.currentMode !== 'browser') throw new Error('Bounce is available only in Browser audio mode.');
     this.browser.setBrowserBounceSettings(settings);
   }
+  public getNativeBounceSettings(): Readonly<BrowserBounceSettings> | null {
+    return this.currentMode === 'native' ? this.nativeEngine.getNativeBounceSettings() : null;
+  }
+  public setNativeBounceSettings(settings: BrowserBounceSettings): Promise<void> {
+    if (this.currentMode !== 'native') throw new Error('Native Bounce is available only in Native audio mode.');
+    return this.nativeEngine.setNativeBounceSettings(settings).then(() => undefined);
+  }
   public setTrackFxApply(trackId: number, enabled: boolean): Promise<TrackFxApplyStatus> {
     return this.activeEngine.setTrackFxApply(trackId, enabled);
   }

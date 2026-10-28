@@ -2355,6 +2355,72 @@ void testNativeRecActionAtomicCompletionAndBudgetedShadow() {
     NativeAudioCoreTestAccess::setRunningForQueueTest(full, false);
 }
 
+void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks() {
+    using namespace webrc::native;
+    NativeAudioCore core;
+    NativeAudioCoreTestAccess::prepareWithoutDevice(core);
+    constexpr unsigned int frames = 64U;
+    constexpr std::size_t loopFrames = 128U;
+    std::array<float, frames * 2U> output{};
+    std::vector<float> first(loopFrames, 0.2f), second(loopFrames, 0.3f);
+    NativeAudioCoreTestAccess::recordLoop(core, 0U, first, frames, output.data());
+    NativeAudioCoreTestAccess::recordLoop(core, 1U, second, frames, output.data());
+
+    NativeBounceSettings bounce;
+    bounce.bounceSw = true;
+    bounce.bounceIn[2U] = true;
+    bounce.bounceTrack[0U] = true;
+    bounce.bounceTrack[1U] = true;
+    bounce.bounceTrack[2U] = true; // Destination self-route must be excluded.
+    bounce.bounceTrack[3U] = true; // Empty/inactive source contributes silence.
+    std::string error;
+    assert(core.setNativeBounceSettings(bounce, error));
+    auto status = core.getStatus();
+    assert(status.nativeBounceRequestedRevision == status.nativeBounceAppliedRevision);
+    assert(status.nativeBounce.bounceSw && status.nativeBounce.bounceIn[2U]);
+
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 1U);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Record, 2U);
+    std::array<float, frames * 2U> silence{};
+    for (unsigned int block = 0U; block < 2U; ++block) {
+        assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+        for (const auto sample : output) assert(std::fabs(sample - 0.5f) < 1.0e-6f);
+    }
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, 2U);
+    assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+    std::array<float, loopFrames * 2U> captured{};
+    std::size_t copied = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 2U, captured.data(), loopFrames, copied));
+    assert(copied == loopFrames);
+    for (const auto sample : captured) assert(std::fabs(sample - 0.5f) < 1.0e-6f);
+
+    bounce.bounceIn[2U] = false;
+    bounce.bounceIn[4U] = true;
+    assert(core.setNativeBounceSettings(bounce, error));
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Record, 4U);
+    for (unsigned int block = 0U; block < 2U; ++block) assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, 4U);
+    assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+    captured.fill(-1.0f); copied = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 4U, captured.data(), loopFrames, copied));
+    assert(copied == loopFrames);
+    for (const auto sample : captured) assert(std::fabs(sample - 0.5f) < 1.0e-6f);
+
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 4U);
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::ToggleOverdub, 4U);
+    for (unsigned int block = 0U; block < 2U; ++block) {
+        assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+        assert(core.getStatus().nativeTrackStates[4U] == LooperState::Overdubbing);
+    }
+    NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, 4U);
+    assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+    captured.fill(-1.0f); copied = 0U;
+    assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 4U, captured.data(), loopFrames, copied));
+    assert(copied == loopFrames);
+    for (const auto sample : captured) assert(std::fabs(sample - 1.0f) < 1.0e-6f);
+}
+
 int main() {
     testNativeRecActionAtomicCompletionAndBudgetedShadow();
     testMixerIndependentPcmGains();
@@ -2845,6 +2911,7 @@ int main() {
     assert(!finalStatus.nativeCompressorEnabled);
     assert(!finalStatus.nativePhaserEnabled);
     testNativeCatalogSlotsRunInsidePlaybackCallback();
+    testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks();
     testNativeInputCatalogBankProcessesBeforeRecordAndMonitor();
     testNativeProjectArchiveImportIsAtomicAndReclaimsOnControlThread();
     return 0;

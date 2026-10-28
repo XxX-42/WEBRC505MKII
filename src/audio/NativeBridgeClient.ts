@@ -169,6 +169,7 @@ export interface NativeCallbackTelemetry {
 }
 
 export interface NativeStatus {
+  nativeBounce?: { version: 1; bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[]; requestedRevision: number; appliedRevision: number; sourceTap: 'pre-track-insert'; hardwareFxPlacementVerified: false };
   callbackTelemetry?: NativeCallbackTelemetry;
   mixerLevels?: number[];
   nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: false;
@@ -1075,6 +1076,26 @@ export class NativeBridgeClient {
       method: 'POST',
       body: JSON.stringify({ trackId, ...config }),
     });
+  }
+
+  public async setNativeBounceSettings(settings: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] }): Promise<NativeStatus> {
+    if (typeof settings.bounceSw !== 'boolean' || settings.bounceIn.length !== 5 || settings.bounceTrack.length !== 5
+      || settings.bounceIn.some((value) => typeof value !== 'boolean') || settings.bounceTrack.some((value) => typeof value !== 'boolean')) {
+      throw new RangeError('Native Bounce requires BOUNCE SW and five BOUNCE IN / BOUNCE TRACK switches.');
+    }
+    const status = await this.request<NativeStatus>('/v1/native-bounce/settings', { method: 'POST', body: JSON.stringify(settings) });
+    const revision = status.nativeBounce?.requestedRevision;
+    if (!Number.isSafeInteger(revision) || !status.nativeBounce) throw new Error('Native bridge did not acknowledge Bounce settings.');
+    if (status.nativeBounce.appliedRevision >= revision) return status;
+    const deadline = Date.now() + 2500;
+    let latest = status;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      latest = await this.getStatus();
+      if (latest.nativeBounce?.appliedRevision === revision) return latest;
+      if ((latest.nativeBounce?.requestedRevision ?? 0) > revision) throw new Error('Native Bounce was superseded before callback acknowledgement.');
+    }
+    throw new Error('Native Bounce callback acknowledgement timed out; read back the current switches before retrying.');
   }
 
   private async requestTrackTransport(path: string, trackId: number): Promise<NativeStatus> {

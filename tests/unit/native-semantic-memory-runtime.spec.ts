@@ -15,7 +15,10 @@ function fixture() {
     engineRunning: true, projectContentRevision: 7, projectContentRevisionSnapshotStable: true,
     nativeTracks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, state: 'Empty', contentRevision: 0 })),
     nativeMemory: { version: 1, loopTransports: Array.from({ length: 5 }, () => ({ mode: 0, beatOffsetBeats: 0, bpm: 120,
-      crossfadeMs: 5, vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 })) },
+      crossfadeMs: 5, vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 })),
+      bounce: { bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false] } },
+    nativeBounce: { version: 1, bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false],
+      requestedRevision: 3, appliedRevision: 3, sourceTap: 'pre-track-insert', hardwareFxPlacementVerified: false },
     nativeRhythm: { enabled: false, bpm: 120, kitIndex: 1, patternIndex: 1, variation: 'A', section: 'main', quantizeGrid: '1/16', swingPercent: 50, volume: 50 },
     nativePitch: { enabled: true, semitones: 3 },
     nativeFx: { inputCatalogSlots: slots(), catalogSlots: slots(), perTrackCatalogBanks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, slots: slots() })),
@@ -125,6 +128,10 @@ describe('Native semantic Memory runtime', () => {
     expect(document.semantics.fields['track.1.fxApply']).toEqual({ availability: 'supported', value: true });
     expect(document.semantics.fields['track.2.fxApply']).toEqual({ availability: 'supported', value: false });
     expect(document.extensions.WEBRC.nativeOutputState).toMatchObject({ pitch: { enabled: true, semitones: 3 }, fx: { outputReverbEnabled: true } });
+    expect((document.extensions.WEBRC.nativeMemory as any).bounce).toEqual({ bounceSw: true,
+      bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false] });
+    expect(document.semantics.fields['record.bounceSw']).toEqual({ availability: 'supported', value: true });
+    expect(document.semantics.fields['track.3.bounceTrack']).toEqual({ availability: 'supported', value: true });
   });
   it('prepares an intact envelope, commits once, and leaves ACK reclamation to the host', async () => {
     const { runtime, bridge } = fixture();

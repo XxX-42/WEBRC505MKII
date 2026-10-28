@@ -20,13 +20,19 @@ def envelope(status, invalid=False, mutate=None):
     fx['outputReverbWetMix'] = .4
     pitch = copy.deepcopy(status['nativePitch'])
     pitch.update(enabled=True, semitones=3)
+    bounce = {'bounceSw': True, 'bounceIn': [True, False, True, False, False],
+        'bounceTrack': [False, True, True, False, True]}
+    bounce_fields = {'record.bounceSw': {'availability': 'supported', 'value': True}}
+    for track in range(1, 6):
+        bounce_fields[f'track.{track}.bounceIn'] = {'availability': 'supported', 'value': bounce['bounceIn'][track - 1]}
+        bounce_fields[f'track.{track}.bounceTrack'] = {'availability': 'supported', 'value': bounce['bounceTrack'][track - 1]}
     metadata = {'version': 1, 'memoryNumber': 1, 'name': 'Native test',
-                'semantics': {'tempo': 120, 'meter': [4, 4], 'fields': {}},
+                'semantics': {'tempo': 120, 'meter': [4, 4], 'fields': bounce_fields},
                 'extensions': {'WEBRC': {
                     'nativeMemory': {'banks': banks, 'mixerLevels': [80, 90, 100, 110, 120, 130, 140], 'trackFxApply': [False, True, False, True, False],
                         'rhythm': {'enabled': False, 'bpm': 120, 'kitIndex': 1, 'patternIndex': 1,
                             'variation': 0, 'section': 0, 'quantizeGrid': 0, 'swingPercent': 50, 'volume': 37},
-                        'loopTransports': status['nativeMemory']['loopTransports']},
+                        'loopTransports': status['nativeMemory']['loopTransports'], 'bounce': bounce},
                     'nativeOutputState': {'fx': fx, 'pitch': pitch}}}}
     if mutate:
         mutate(metadata)
@@ -109,6 +115,9 @@ def main():
             require(code == 200 and cancelled['state'] == 'cancelled',
                     f'cancel media type {content_type}: {code} {cancelled}')
         require(request('/v1/status')[1]['projectContentRevision'] == baseline, 'cancel mutated incumbent')
+        mismatched_bounce = lambda meta: meta['semantics']['fields']['track.3.bounceIn'].update(value=False)
+        code, rejected = request_project_archive(path, 'POST', envelope(status, mutate=mismatched_bounce), 'application/octet-stream')
+        require(code == 400, ('inconsistent Bounce semantic field accepted', rejected))
         code, result = request_project_archive(path, 'POST', body, 'application/octet-stream')
         require(code == 202, result)
         generation = result['generation']
@@ -118,7 +127,8 @@ def main():
         while time.monotonic() < deadline:
             _, after = request('/v1/status')
             gates = after['nativeFx']['trackFxApply']
-            if after['nativeTracks'][0]['state'] == 'Stopped' and all(g['requestedRevision'] == g['appliedRevision'] for g in gates):
+            if after['nativeTracks'][0]['state'] == 'Stopped' and all(g['requestedRevision'] == g['appliedRevision'] for g in gates) \
+                    and after['nativeBounce']['requestedRevision'] == after['nativeBounce']['appliedRevision']:
                 break
             time.sleep(.005)
         require([g['applied'] for g in gates] == [False, True, False, True, False], gates)
@@ -128,6 +138,8 @@ def main():
         require(fx['outputReverbEnabled'] is True and abs(fx['outputReverbWetMix'] - .4) < 1e-5, fx)
         require(after['nativePitch']['enabled'] and after['nativePitch']['semitones'] == 3, after['nativePitch'])
         require(after['nativeRhythm']['volume'] == 37, after['nativeRhythm'])
+        require(after['nativeMemory']['bounce'] == {'bounceSw': True, 'bounceIn': [True, False, True, False, False],
+            'bounceTrack': [False, True, True, False, True]}, after['nativeMemory'])
         require(after['nativeRecordPlay']['recAction'] == 'REC->DUB' and after['nativeRecordPlay']['requestedRevision'] == after['nativeRecordPlay']['appliedRevision'], after['nativeRecordPlay'])
         require(after['mixerLevels'] == [80, 90, 100, 110, 120, 130, 140], after['mixerLevels'])
         revision = after['projectContentRevision']

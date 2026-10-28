@@ -22,9 +22,13 @@ function stopped(status: NativeStatus | null): { allowed: boolean; reason: strin
   return { allowed, reason: allowed ? '' : 'Stop all five Native tracks before switching Memory.' };
 }
 function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
-  const native = (status as NativeStatus & { nativeMemory?: { version: number; loopTransports: Rc505Json[] } }).nativeMemory;
+  const native = (status as NativeStatus & { nativeMemory?: { version: number; loopTransports: Rc505Json[]; bounce?: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] } } }).nativeMemory;
   if (native?.version !== 1 || native.loopTransports.length !== 5 || !status.nativeRhythm) {
     throw new Error('Native host does not support atomic semantic Memory; update the host.');
+  }
+  const bounce = status.nativeBounce;
+  if (!bounce || bounce.requestedRevision !== bounce.appliedRevision || bounce.bounceIn.length !== 5 || bounce.bounceTrack.length !== 5) {
+    throw new Error('Wait for Native Bounce callback acknowledgement before Memory capture.');
   }
   if (status.mixerLevels?.length !== 7 || status.mixerLevels.some((value) => !Number.isInteger(value) || value < 0 || value > 200)) {
     throw new Error('Native host does not expose all seven mixer levels.');
@@ -55,6 +59,7 @@ function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
     ...(record?.recActionAvailable ? { recAction: record.recAction } : {}),
     trackFxApply: gates.map((gate) => gate.applied), mixerLevels: [...status.mixerLevels],
     banks, loopTransports: copyJson(native.loopTransports),
+    bounce: native.bounce ? copyJson(native.bounce) : { bounceSw: false, bounceIn: [false, false, false, false, false], bounceTrack: [false, false, false, false, false] },
     rhythm: { enabled: rhythm.enabled, bpm: rhythm.bpm, kitIndex: rhythm.kitIndex, patternIndex: rhythm.patternIndex,
       variation: ['A', 'B', 'C', 'D'].indexOf(rhythm.variation), section: ['main', 'intro', 'ending', 'fill'].indexOf(rhythm.section),
       quantizeGrid: ['1/16', '1/8', '1/4'].indexOf(rhythm.quantizeGrid), swingPercent: rhythm.swingPercent, volume: rhythm.volume },
@@ -120,6 +125,12 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       fields['rhythm.settings'] = { value: settings.rhythm!, availability: 'supported' };
       fields['inputFx.bank'] = { value: (settings.banks as Rc505Json[])[0]!, availability: 'supported' };
       fields['trackFx.banks'] = { value: (settings.banks as Rc505Json[]).slice(1), availability: 'supported' };
+      const bounceSettings = settings.bounce as { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] };
+      fields['record.bounceSw'] = { value: bounceSettings.bounceSw, availability: 'supported' };
+      for (let track = 1; track <= 5; track += 1) {
+        fields[`track.${track}.bounceIn`] = { value: bounceSettings.bounceIn[track - 1]!, availability: 'supported' };
+        fields[`track.${track}.bounceTrack`] = { value: bounceSettings.bounceTrack[track - 1]!, availability: 'supported' };
+      }
       port.publish(after);
       return { version: 1, memoryNumber: null, name: '', archive,
         semantics: { tempo, meter, fields },
@@ -141,9 +152,13 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
         'mixer.mainLevel': (settings.mixerLevels as Rc505Json[])[0]!, 'mixer.masterLevel': (settings.mixerLevels as Rc505Json[])[1]!,
       };
       if (settings.recAction !== undefined) expectedFields['record.recAction'] = settings.recAction;
+      const bounceSettings = settings.bounce as { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] };
+      expectedFields['record.bounceSw'] = bounceSettings.bounceSw;
       for (let track = 1; track <= 5; track += 1) {
         expectedFields[`track.${track}.fxApply`] = (settings.trackFxApply as Rc505Json[])[track - 1]!;
         expectedFields[`track.${track}.level`] = (settings.mixerLevels as Rc505Json[])[track + 1]!;
+        expectedFields[`track.${track}.bounceIn`] = bounceSettings.bounceIn[track - 1]!;
+        expectedFields[`track.${track}.bounceTrack`] = bounceSettings.bounceTrack[track - 1]!;
       }
       for (const [address, field] of Object.entries(document.semantics.fields)) {
         if (field.availability === 'supported' && (!(address in expectedFields) || JSON.stringify(field.value) !== JSON.stringify(expectedFields[address]))) {

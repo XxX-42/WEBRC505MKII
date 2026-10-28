@@ -204,6 +204,20 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             target.brakePercent = source.at("brakePercent").get<float>();
             target.vinylMixPercent = source.at("vinylMixPercent").get<float>();
         }
+        if (settings.contains("bounce")) {
+            const auto& bounce = settings.at("bounce");
+            if (!bounce.is_object() || !bounce.contains("bounceSw") || !bounce.at("bounceSw").is_boolean()
+                || !bounce.contains("bounceIn") || !bounce.at("bounceIn").is_array() || bounce.at("bounceIn").size() != 5U
+                || !bounce.contains("bounceTrack") || !bounce.at("bounceTrack").is_array() || bounce.at("bounceTrack").size() != 5U) {
+                throw std::runtime_error("Memory Bounce settings are invalid.");
+            }
+            candidate->bounce.bounceSw = bounce.at("bounceSw").get<bool>();
+            for (std::size_t track = 0U; track < 5U; ++track) {
+                if (!bounce.at("bounceIn")[track].is_boolean() || !bounce.at("bounceTrack")[track].is_boolean()) throw std::runtime_error("Memory Bounce switches must be booleans.");
+                candidate->bounce.bounceIn[track] = bounce.at("bounceIn")[track].get<bool>();
+                candidate->bounce.bounceTrack[track] = bounce.at("bounceTrack")[track].get<bool>();
+            }
+        }
         const auto& outputState = metadata.at("extensions").at("WEBRC").at("nativeOutputState");
         const auto& fx = outputState.at("fx");
         candidate->lowPass = fx.at("outputLowPassEnabled").get<bool>();
@@ -262,6 +276,7 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
         else throw std::runtime_error("Invalid Memory pitch mode.");
         json expectedFields{{"rhythm.settings", settings.at("rhythm")}, {"inputFx.bank", banks[0U]},
             {"mixer.mainLevel", levels[0U]}, {"mixer.masterLevel", levels[1U]}};
+        expectedFields["record.bounceSw"] = candidate->bounce.bounceSw;
         if (candidate->recordActionIncluded) expectedFields["record.recAction"] = settings.at("recAction");
         json trackBanks = json::array();
         for (std::size_t bank = 1U; bank < 7U; ++bank) trackBanks.push_back(banks[bank]);
@@ -270,6 +285,8 @@ bool unwrapNativeMemory(std::vector<std::uint8_t>& bytes,
             const auto root = "track." + std::to_string(track + 1U);
             expectedFields[root + ".fxApply"] = gates[track];
             expectedFields[root + ".level"] = levels[track + 2U];
+            expectedFields[root + ".bounceIn"] = candidate->bounce.bounceIn[track];
+            expectedFields[root + ".bounceTrack"] = candidate->bounce.bounceTrack[track];
         }
         for (auto field = metadata.at("semantics").at("fields").begin(); field != metadata.at("semantics").at("fields").end(); ++field) {
             if (field.value().at("availability") == "supported" &&
@@ -488,6 +505,12 @@ json statusToJson(const EngineStatus& status) {
             {"beatOffsetBeats", config.beatOffsetBeats}, {"bpm", config.bpm}, {"crossfadeMs", config.crossfadeMs},
             {"vinylSpeedPercent", config.vinylSpeedPercent}, {"motorReturnSeconds", config.motorReturnSeconds},
             {"brakePercent", config.brakePercent}, {"vinylMixPercent", config.vinylMixPercent}});
+    }
+    json bounceIn = json::array();
+    json bounceTrack = json::array();
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        bounceIn.push_back(status.nativeBounce.bounceIn[track]);
+        bounceTrack.push_back(status.nativeBounce.bounceTrack[track]);
     }
     json nativeTracks = json::array();
     for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
@@ -894,7 +917,11 @@ json statusToJson(const EngineStatus& status) {
         {"nativeLooperPreallocatedBytes", status.nativeLooperPreallocatedBytes},
         {"nativeLooperStorageBudgetBytes", status.nativeLooperStorageBudgetBytes},
         {"nativeTracks", nativeTracks},
-        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports}}},
+        {"nativeMemory", {{"version", 1U}, {"loopTransports", memoryTransports},
+            {"bounce", {{"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack}}}}},
+        {"nativeBounce", {{"version", 1U}, {"bounceSw", status.nativeBounce.bounceSw}, {"bounceIn", bounceIn}, {"bounceTrack", bounceTrack},
+            {"requestedRevision", status.nativeBounceRequestedRevision}, {"appliedRevision", status.nativeBounceAppliedRevision},
+            {"sourceTap", "pre-track-insert"}, {"hardwareFxPlacementVerified", false}}},
         {"nativeHistory", {
             {"budgetBytes", status.nativeHistoryBudgetBytes},
             {"retainedBytes", status.nativeHistoryRetainedBytes},
@@ -1742,6 +1769,28 @@ int main() {
             if (action != "REC->PLAY" && action != "REC->DUB") { response.status = 400; writeError(response, "Invalid REC ACTION."); return; }
             std::string error;
             if (!engine.setRecordAction(action == "REC->DUB", error)) { response.status = 409; writeError(response, error); return; }
+            writeJson(response, statusToJson(engine.getStatus()));
+        } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
+    });
+    server.Post("/v1/native-bounce/settings", [&engine](const httplib::Request& request, httplib::Response& response) {
+        try {
+            const auto body = json::parse(request.body);
+            if (!body.is_object() || body.size() != 3U || !body.contains("bounceSw") || !body.contains("bounceIn") || !body.contains("bounceTrack")
+                || !body.at("bounceSw").is_boolean() || !body.at("bounceIn").is_array() || !body.at("bounceTrack").is_array()
+                || body.at("bounceIn").size() != kNativeTrackCount || body.at("bounceTrack").size() != kNativeTrackCount) {
+                response.status = 400; writeError(response, "Native Bounce requires BOUNCE SW and five BOUNCE IN / BOUNCE TRACK booleans."); return;
+            }
+            NativeBounceSettings settings{};
+            settings.bounceSw = body.at("bounceSw").get<bool>();
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                if (!body.at("bounceIn")[track].is_boolean() || !body.at("bounceTrack")[track].is_boolean()) {
+                    response.status = 400; writeError(response, "Native Bounce switches must be booleans."); return;
+                }
+                settings.bounceIn[track] = body.at("bounceIn")[track].get<bool>();
+                settings.bounceTrack[track] = body.at("bounceTrack")[track].get<bool>();
+            }
+            std::string error;
+            if (!engine.setNativeBounceSettings(settings, error)) { response.status = 409; writeError(response, error); return; }
             writeJson(response, statusToJson(engine.getStatus()));
         } catch (const std::exception& error) { response.status = 400; writeError(response, error.what()); }
     });

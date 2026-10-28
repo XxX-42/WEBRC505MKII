@@ -527,6 +527,13 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.roundTripEstimateMs = status.inputLatencyMs + status.outputLatencyMs;
     status.lastError = lastError_;
     status.nativeMemoryLoopTransports = nativeMemoryLoopTransportSettings_;
+    status.nativeBounce.bounceSw = nativeBounceSwitchRequested_.load(std::memory_order_acquire);
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        status.nativeBounce.bounceIn[track] = nativeBounceInRequested_[track].load(std::memory_order_acquire);
+        status.nativeBounce.bounceTrack[track] = nativeBounceTrackRequested_[track].load(std::memory_order_acquire);
+    }
+    status.nativeBounceRequestedRevision = nativeBounceRequestedRevision_.load(std::memory_order_acquire);
+    status.nativeBounceAppliedRevision = nativeBounceAppliedRevision_.load(std::memory_order_acquire);
     return status;
 }
 
@@ -2426,6 +2433,38 @@ bool NativeAudioCore::setNativeLoopTransport(
     return true;
 }
 
+bool NativeAudioCore::setNativeBounceSettings(const NativeBounceSettings& settings, std::string& error) {
+    std::lock_guard<std::mutex> producerLock(commandProducerMutex_);
+    std::lock_guard<std::mutex> lock(controlMutex_);
+    if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
+        error = "Wait for pending Memory/project transaction before editing Bounce."; return false;
+    }
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        const auto state = static_cast<LooperState>(trackStates_[track].load(std::memory_order_acquire));
+        if (recordStartPending_[track].load(std::memory_order_acquire) ||
+            state == LooperState::Recording || state == LooperState::Overdubbing) {
+            error = "Finish recording and overdubbing before changing Native Bounce."; return false;
+        }
+    }
+    const auto revision = nativeBounceRequestedRevision_.load(std::memory_order_relaxed);
+    if (revision >= kMaximumSafeProjectContentRevision) {
+        error = "Native Bounce revision exhausted."; return false;
+    }
+    nativeBounceSwitchRequested_.store(settings.bounceSw, std::memory_order_relaxed);
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        nativeBounceInRequested_[track].store(settings.bounceIn[track], std::memory_order_relaxed);
+        nativeBounceTrackRequested_[track].store(settings.bounceTrack[track], std::memory_order_relaxed);
+    }
+    nativeBounceRequestedRevision_.store(revision + 1U, std::memory_order_release);
+    if (!engineRunning_.load(std::memory_order_acquire)) {
+        nativeBounceRuntime_ = settings;
+        nativeBounceAppliedRevision_.store(revision + 1U, std::memory_order_release);
+    }
+    error.clear();
+    advanceProjectRevision(projectContentRevision_);
+    return true;
+}
+
 bool NativeAudioCore::setOutputEffectEnabled(NativeOutputEffect effect, bool enabled, std::string& error) {
     std::lock_guard<std::mutex> lock(controlMutex_);
     if (projectImportState_.load(std::memory_order_acquire) != NativeProjectImportState::Idle) {
@@ -3204,6 +3243,12 @@ void NativeAudioCore::finalizeProjectImportLocked() {
             }
             nativeRhythmConfig_ = memory.rhythm;
             nativeMemoryLoopTransportSettings_ = memory.loopTransports;
+            nativeBounceSwitchRequested_.store(memory.bounce.bounceSw, std::memory_order_relaxed);
+            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+                nativeBounceInRequested_[track].store(memory.bounce.bounceIn[track], std::memory_order_relaxed);
+                nativeBounceTrackRequested_[track].store(memory.bounce.bounceTrack[track], std::memory_order_relaxed);
+            }
+            (void)nativeBounceRequestedRevision_.fetch_add(1U, std::memory_order_release);
             nativeReverbConfig_ = memory.reverb;
             nativeFractionalDelayConfig_ = memory.delay;
             nativeCompressorConfig_ = memory.compressor;
@@ -4102,6 +4147,25 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     std::fill_n(outputInterleaved, sampleCount, 0.0f);
     if (playbackBufferAvailable) std::fill_n(playbackBus, sampleCount, 0.0f);
     if (playbackBufferAvailable) std::fill_n(nativeTrackDryPlaybackScratch_.data(), sampleCount, 0.0f);
+    const auto requestedBounceRevision = nativeBounceRequestedRevision_.load(std::memory_order_acquire);
+    if (requestedBounceRevision != nativeBounceAppliedRevision_.load(std::memory_order_relaxed)) {
+        nativeBounceRuntime_.bounceSw = nativeBounceSwitchRequested_.load(std::memory_order_relaxed);
+        for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
+            nativeBounceRuntime_.bounceIn[source] = nativeBounceInRequested_[source].load(std::memory_order_relaxed);
+            nativeBounceRuntime_.bounceTrack[source] = nativeBounceTrackRequested_[source].load(std::memory_order_relaxed);
+        }
+        nativeBounceAppliedRevision_.store(requestedBounceRevision, std::memory_order_release);
+    }
+    const bool bouncePrepared = playbackBufferAvailable && nativeBounceRuntime_.bounceSw;
+    if (bouncePrepared) {
+        for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
+            auto& scratch = nativeBounceSourceScratch_[source];
+            std::fill_n(scratch.data(), sampleCount, 0.0f);
+            if (nativeBounceRuntime_.bounceTrack[source] && !historyPinSuppressesPlayback(source)) {
+                (void)looperForTrack(source).previewPlayback(scratch.data(), frames, outputChannels_, kMaxCallbackFrames);
+            }
+        }
+    }
     for (std::size_t trackIndex = 0U; trackIndex < kNativeTrackCount; ++trackIndex) {
         if (historyPinSuppressesPlayback(trackIndex)) {
             std::fill_n(nativeTrackMixScratch_.data(), sampleCount, 0.0f);
@@ -4112,8 +4176,34 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
         }
         auto& track = looperForTrack(trackIndex);
         const bool trackFxApply = nativeTrackFxApplyRuntime_[trackIndex];
-        const float* const recordInput = trackFxApply ? processedInputInterleaved : rawInputInterleaved;
-        const unsigned int recordChannels = trackFxApply ? processedInputChannels : rawInputChannels;
+        const float* const baseRecordInput = trackFxApply ? processedInputInterleaved : rawInputInterleaved;
+        const unsigned int baseRecordChannels = trackFxApply ? processedInputChannels : rawInputChannels;
+        const auto stateBeforeProcess = track.state();
+        std::uint8_t bounceSourceMask = 0U;
+        if (bouncePrepared && nativeBounceRuntime_.bounceIn[trackIndex] &&
+            (stateBeforeProcess == LooperState::Recording || stateBeforeProcess == LooperState::Overdubbing)) {
+            for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
+                if (source != trackIndex && nativeBounceRuntime_.bounceTrack[source]) bounceSourceMask |= static_cast<std::uint8_t>(1U << source);
+            }
+        }
+        const float* recordInput = baseRecordInput;
+        unsigned int recordChannels = baseRecordChannels;
+        if (bounceSourceMask != 0U && baseRecordInput != nullptr && outputChannels_ == 2U) {
+            for (unsigned int frame = 0U; frame < frames; ++frame) {
+                const std::size_t stereo = static_cast<std::size_t>(frame) * 2U;
+                const std::size_t base = static_cast<std::size_t>(frame) * baseRecordChannels;
+                const float left = baseRecordChannels == 1U ? baseRecordInput[base] : baseRecordInput[base];
+                const float right = baseRecordChannels == 1U ? left : baseRecordInput[base + 1U];
+                nativeBounceRecordScratch_[stereo] = left;
+                nativeBounceRecordScratch_[stereo + 1U] = right;
+            }
+            for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
+                if ((bounceSourceMask & (1U << source)) == 0U) continue;
+                for (std::size_t sample = 0U; sample < sampleCount; ++sample) nativeBounceRecordScratch_[sample] += nativeBounceSourceScratch_[source][sample];
+            }
+            recordInput = nativeBounceRecordScratch_.data();
+            recordChannels = 2U;
+        }
         const auto trackStats = track.process(
             recordInput,
             nativeTrackMixScratch_.data(),

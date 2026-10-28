@@ -437,6 +437,22 @@ export class NativeAudioEngine {
     }
   }
 
+  public getNativeBounceSettings(): Readonly<{ bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] }> | null {
+    const value = this.latestStatus?.nativeBounce;
+    return value ? { bounceSw: value.bounceSw, bounceIn: [...value.bounceIn], bounceTrack: [...value.bounceTrack] } : null;
+  }
+
+  public async setNativeBounceSettings(settings: { bounceSw: boolean; bounceIn: boolean[]; bounceTrack: boolean[] }): Promise<NativeStatus> {
+    try {
+      const status = await this.bridge.setNativeBounceSettings(settings);
+      this.applyStatus(status);
+      return status;
+    } catch (error) {
+      this.handleBridgeFailure(error, false);
+      throw error;
+    }
+  }
+
   /** Latest per-track loop-transport runtime status; old bridge builds report no status. */
   public getLoopTransportStatus(trackId: number): NativeLoopTransportStatus | null {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 5) return null;
