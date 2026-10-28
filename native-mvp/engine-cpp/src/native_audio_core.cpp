@@ -3226,6 +3226,15 @@ bool NativeAudioCore::beginProjectArchiveImport(
             error = "Wait for queued FX/rhythm/source settings before preparing Memory."; return false;
         }
         for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+            const auto requested = nativeLoopTransportRequestedRevision_[track];
+            const auto applied = nativeLoopTransportAppliedRevision_[track].load(std::memory_order_acquire);
+            const auto fault = nativeLoopTransportFaultRevision_[track].load(std::memory_order_acquire);
+            if (requested != applied || (requested != 0U && fault == requested)) {
+                error = "Wait for all five Native loop transport settings to be callback-applied before preparing Memory.";
+                return false;
+            }
+        }
+        for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
             const auto state = static_cast<LooperState>(trackStates_[track].load(std::memory_order_acquire));
             if (state != LooperState::Stopped && state != LooperState::Empty) {
                 error = "Stop all five tracks before replacing Memory."; return false;

@@ -131,6 +131,10 @@ struct NativeAudioCoreTestAccess {
     static void setProjectRevisionForTest(NativeAudioCore& core, std::uint64_t revision) {
         core.projectContentRevision_.store(revision, std::memory_order_release);
     }
+    static void setLoopTransportFaultForTest(NativeAudioCore& core, std::size_t trackIndex, std::uint64_t revision) {
+        assert(trackIndex < kNativeTrackCount);
+        core.nativeLoopTransportFaultRevision_[trackIndex].store(revision, std::memory_order_release);
+    }
 
     static void recordLoop(
         NativeAudioCore& core,
@@ -2249,8 +2253,25 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
         memory->dubModesIncluded = true;
         return memory;
     };
-    auto invalid = makeMemory(); invalid->banks[6U][3U].effectId = "missing";
+    LoopTransportConfig pendingTransport;
+    pendingTransport.oneShot = true;
+    std::uint64_t acceptedTransportRevision = 0U;
+    assert(core.setNativeLoopTransport(0U, pendingTransport, error, &acceptedTransportRevision));
     std::uint64_t generation = 0U;
+    const auto pendingBaseline = core.getStatus().projectContentRevision;
+    assert(!core.beginProjectArchiveImport(makeArchive(), 256U, pendingBaseline, generation, error, makeMemory()));
+    assert(generation == 0U && error.find("queued FX/rhythm/source") != std::string::npos);
+    std::array<float, 128U> output{};
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    const auto transportApplied = core.getStatus();
+    assert(transportApplied.nativeLoopTransportRequestedRevision[0U] == acceptedTransportRevision);
+    assert(transportApplied.nativeLoopTransportAppliedRevision[0U] == acceptedTransportRevision);
+    NativeAudioCoreTestAccess::setLoopTransportFaultForTest(core, 0U, acceptedTransportRevision);
+    const auto faultBaseline = core.getStatus().projectContentRevision;
+    assert(!core.beginProjectArchiveImport(makeArchive(), 256U, faultBaseline, generation, error, makeMemory()));
+    assert(generation == 0U && error.find("loop transport settings") != std::string::npos);
+    NativeAudioCoreTestAccess::setLoopTransportFaultForTest(core, 0U, 0U);
+    auto invalid = makeMemory(); invalid->banks[6U][3U].effectId = "missing";
     const auto baseline = core.getStatus().projectContentRevision;
     assert(!core.beginProjectArchiveImport(makeArchive(), 256U, baseline, generation, error, std::move(invalid)));
     assert(generation == 0U && NativeAudioCoreTestAccess::memoryProcessor(core, 1U) == incumbent);
@@ -2260,7 +2281,6 @@ void testNativeWholeMemoryPreparedBanksCommitAndControlAck() {
     (void)NativeAudioCoreTestAccess::setMemoryBudgetEstimate(core, oldEstimate);
     assert(core.beginProjectArchiveImport(makeArchive(), 256U, baseline, generation, error, makeMemory()));
     assert(core.getProjectArchiveImportStatus(generation).state == NativeProjectImportState::Prepared);
-    std::array<float, 128U> output{};
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     assert(NativeAudioCoreTestAccess::memoryProcessor(core, 1U) == incumbent);
     assert(core.commitPreparedMemory(generation, error));

@@ -14,11 +14,13 @@ function fixture() {
     mixerLevels: [80, 90, 100, 110, 120, 130, 140],
     engineRunning: true, projectContentRevision: 7, projectContentRevisionSnapshotStable: true,
     nativeTracks: Array.from({ length: 5 }, (_, index) => ({ trackId: index + 1, state: 'Empty', contentRevision: 0,
+      loopTransportRequestedRevision: 0, loopTransportAppliedRevision: 0, loopTransportFaultRevision: 0,
+      loopTransportAppliedOneShot: false,
       dubMode: { requested: ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'][index],
         applied: ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'][index], requestedRevision: 1, appliedRevision: 1 } })),
     nativeMemory: { version: 1, dubModes: ['REPLACE1', 'OVERDUB', 'REPLACE2', 'OVERDUB', 'REPLACE1'],
       loopTransports: Array.from({ length: 5 }, () => ({ mode: 0, beatOffsetBeats: 0, bpm: 120,
-      crossfadeMs: 5, vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 })),
+      oneShot: false, crossfadeMs: 5, vinylSpeedPercent: 0, motorReturnSeconds: 1, brakePercent: 0, vinylMixPercent: 100 })),
       bounce: { bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false] } },
     nativeBounce: { version: 1, bounceSw: true, bounceIn: [true, false, true, false, false], bounceTrack: [false, true, true, false, false],
       requestedRevision: 3, appliedRevision: 3, sourceTap: 'pre-track-insert', hardwareFxPlacementVerified: false },
@@ -165,6 +167,44 @@ describe('Native semantic Memory runtime', () => {
     h.hostStatus().nativeBounce!.appliedRevision = 2;
     await expect(h.runtime.capture()).rejects.toThrow(/Bounce callback acknowledgement/);
     expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['pending', { loopTransportRequestedRevision: 4, loopTransportAppliedRevision: 3, loopTransportFaultRevision: 0 }],
+    ['faulted', { loopTransportRequestedRevision: 3, loopTransportAppliedRevision: 3, loopTransportFaultRevision: 3 }],
+  ] as const)('refuses Memory capture for a %s Native loop transport state', async (_state, revisions) => {
+    const h = fixture();
+    Object.assign(h.hostStatus().nativeTracks![2]!, revisions);
+    await expect(h.runtime.capture()).rejects.toThrow(/loop transport callback acknowledgement/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
+  it('refuses capture and import when an older host cannot expose loop transport acknowledgements', async () => {
+    const h = fixture();
+    delete (h.hostStatus().nativeTracks![2] as any).loopTransportAppliedRevision;
+    await expect(h.runtime.capture()).rejects.toThrow(/lacks complete loop transport revision\/readback capability/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+
+    const legacy = fixture();
+    const document = await legacy.runtime.capture();
+    delete (legacy.hostStatus().nativeTracks![2] as any).loopTransportAppliedRevision;
+    await expect(legacy.runtime.prepare(document, legacy.runtime.revision())).rejects.toThrow(/lacks complete loop transport revision\/readback capability/);
+    expect(legacy.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
+  it('keeps Memory capture compatible with older hosts that lack 1SHOT but expose transport revisions', async () => {
+    const h = fixture();
+    for (let index = 0; index < 5; index += 1) {
+      delete (h.hostStatus().nativeTracks![index] as any).loopTransportAppliedOneShot;
+      delete (h.hostStatus().nativeMemory!.loopTransports[index] as any).oneShot;
+    }
+    const document = await h.runtime.capture();
+    expect((document.extensions.WEBRC.nativeMemory as any).loopTransports.every((transport: any) => !('oneShot' in transport))).toBe(true);
+  });
+  it('preserves import compatibility for legacy Memory settings without an explicit 1SHOT field', async () => {
+    const h = fixture();
+    const document = await h.runtime.capture();
+    for (const transport of (document.extensions.WEBRC.nativeMemory as any).loopTransports) delete transport.oneShot;
+    const prepared = await h.runtime.prepare(document, h.runtime.revision());
+    expect(h.bridge.beginProjectArchiveImport).toHaveBeenCalledOnce();
+    await prepared.dispose();
   });
   it('prepares an intact envelope, commits once, and leaves ACK reclamation to the host', async () => {
     const { runtime, bridge } = fixture();

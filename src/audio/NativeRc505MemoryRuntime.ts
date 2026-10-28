@@ -21,11 +21,42 @@ function stopped(status: NativeStatus | null): { allowed: boolean; reason: strin
     && status.nativeTracks.every((track) => track.state === 'Empty' || track.state === 'Stopped');
   return { allowed, reason: allowed ? '' : 'Stop all five Native tracks before switching Memory.' };
 }
+function assertLoopTransportReadback(status: NativeStatus): void {
+  const tracks = status.nativeTracks;
+  const transports = status.nativeMemory?.loopTransports;
+  if (!Array.isArray(tracks) || tracks.length !== 5 || !Array.isArray(transports) || transports.length !== 5) {
+    throw new Error('Native host cannot confirm all five loop transport settings; Memory operation was refused.');
+  }
+  for (let index = 0; index < 5; index += 1) {
+    const track = tracks.find((candidate) => candidate.trackId === index + 1);
+    const requested = track?.loopTransportRequestedRevision;
+    const applied = track?.loopTransportAppliedRevision;
+    const fault = track?.loopTransportFaultRevision;
+    const appliedOneShot = track?.loopTransportAppliedOneShot;
+    const savedOneShot = transports[index]?.oneShot;
+    if (!Number.isSafeInteger(requested) || !Number.isSafeInteger(applied) || !Number.isSafeInteger(fault)
+      || (appliedOneShot !== undefined && typeof appliedOneShot !== 'boolean')
+      || (savedOneShot !== undefined && typeof savedOneShot !== 'boolean')
+      || ((appliedOneShot === undefined) !== (savedOneShot === undefined))) {
+      throw new Error('Native host lacks complete loop transport revision/readback capability; Memory operation was refused.');
+    }
+    if (requested !== applied || (requested > 0 && fault === requested)) {
+      throw new Error(`Wait for Track ${index + 1} Native loop transport callback acknowledgement before Memory capture or import.`);
+    }
+    // Older Native hosts had no 1SHOT control at all. Preserve their legacy
+    // Memory compatibility only when both sides omit the field; the applied
+    // revision pair is still required to prove the remaining transport config.
+    if (appliedOneShot !== undefined && appliedOneShot !== savedOneShot) {
+      throw new Error(`Track ${index + 1} Native loop transport readback is inconsistent; Memory operation was refused.`);
+    }
+  }
+}
 function nativeSettings(status: NativeStatus): Record<string, Rc505Json> {
   const native = status.nativeMemory;
   if (native?.version !== 1 || native.loopTransports.length !== 5 || !status.nativeRhythm) {
     throw new Error('Native host does not support atomic semantic Memory; update the host.');
   }
+  assertLoopTransportReadback(status);
   const bounce = status.nativeBounce;
   if (!bounce || bounce.requestedRevision !== bounce.appliedRevision || bounce.bounceIn.length !== 5 || bounce.bounceTrack.length !== 5) {
     throw new Error('Wait for Native Bounce callback acknowledgement before Memory capture.');
@@ -159,6 +190,7 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
       const expectedHostRevision = port.status()?.projectContentRevision;
       const current = await port.bridge.getStatus();
       assertStopped(current);
+      assertLoopTransportReadback(current);
       if (current.projectContentRevision !== expectedHostRevision || current.projectContentRevisionSnapshotStable !== true) {
         throw new Error('Native Memory changed on the host before preparation.');
       }
