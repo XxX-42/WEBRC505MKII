@@ -133,6 +133,12 @@ describe('Native semantic Memory runtime', () => {
     expect(document.semantics.fields['record.bounceSw']).toEqual({ availability: 'supported', value: true });
     expect(document.semantics.fields['track.3.bounceTrack']).toEqual({ availability: 'supported', value: true });
   });
+  it('refuses Memory capture until the full Bounce request has been callback-applied', async () => {
+    const h = fixture();
+    h.hostStatus().nativeBounce!.appliedRevision = 2;
+    await expect(h.runtime.capture()).rejects.toThrow(/Bounce callback acknowledgement/);
+    expect(h.bridge.beginProjectArchiveImport).not.toHaveBeenCalled();
+  });
   it('prepares an intact envelope, commits once, and leaves ACK reclamation to the host', async () => {
     const { runtime, bridge } = fixture();
     const document = await runtime.capture();

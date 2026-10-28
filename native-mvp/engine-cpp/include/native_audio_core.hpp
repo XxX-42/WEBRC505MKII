@@ -814,11 +814,10 @@ private:
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetDryScratch_{};
     std::array<float, kMaxCallbackFrames * 2U> nativePitchTargetProcessedScratch_{};
     NativeBounceSettings nativeBounceRuntime_{};
-    std::atomic<bool> nativeBounceSwitchRequested_{false};
-    std::array<std::atomic<bool>, kNativeTrackCount> nativeBounceInRequested_{};
-    std::array<std::atomic<bool>, kNativeTrackCount> nativeBounceTrackRequested_{};
-    std::atomic<std::uint64_t> nativeBounceRequestedRevision_{0U};
-    std::atomic<std::uint64_t> nativeBounceAppliedRevision_{0U};
+    // Eleven switches plus the 53-bit safe revision fit in one lock-free word,
+    // so callback readers never observe a mixture of two control writes.
+    std::atomic<std::uint64_t> nativeBounceRequestedSnapshot_{0U};
+    std::atomic<std::uint64_t> nativeBounceAppliedSnapshot_{0U};
     unsigned int inputChannels_ = 1;
     unsigned int outputChannels_ = 2;
 

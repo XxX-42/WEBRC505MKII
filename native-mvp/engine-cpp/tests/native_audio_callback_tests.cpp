@@ -2373,16 +2373,21 @@ void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks(
     bounce.bounceTrack[1U] = true;
     bounce.bounceTrack[2U] = true; // Destination self-route must be excluded.
     bounce.bounceTrack[3U] = true; // Empty/inactive source contributes silence.
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, true);
     std::string error;
     assert(core.setNativeBounceSettings(bounce, error));
     auto status = core.getStatus();
+    assert(status.nativeBounceRequestedRevision > status.nativeBounceAppliedRevision);
+    assert(!status.nativeBounce.bounceSw); // Status exposes only the callback-applied configuration.
+    std::array<float, frames * 2U> silence{};
+    assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
+    status = core.getStatus();
     assert(status.nativeBounceRequestedRevision == status.nativeBounceAppliedRevision);
     assert(status.nativeBounce.bounceSw && status.nativeBounce.bounceIn[2U]);
 
     NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 0U);
     NativeAudioCoreTestAccess::commandTrack(core, CommandType::Play, 1U);
     NativeAudioCoreTestAccess::commandTrack(core, CommandType::Record, 2U);
-    std::array<float, frames * 2U> silence{};
     for (unsigned int block = 0U; block < 2U; ++block) {
         assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
         for (const auto sample : output) assert(std::fabs(sample - 0.5f) < 1.0e-6f);
@@ -2398,6 +2403,9 @@ void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks(
     bounce.bounceIn[2U] = false;
     bounce.bounceIn[4U] = true;
     assert(core.setNativeBounceSettings(bounce, error));
+    status = core.getStatus();
+    assert(status.nativeBounceRequestedRevision > status.nativeBounceAppliedRevision);
+    assert(status.nativeBounce.bounceIn[2U] && !status.nativeBounce.bounceIn[4U]);
     NativeAudioCoreTestAccess::commandTrack(core, CommandType::Record, 4U);
     for (unsigned int block = 0U; block < 2U; ++block) assert(NativeAudioCoreTestAccess::callback(core, silence.data(), output.data(), frames) == 0);
     NativeAudioCoreTestAccess::commandTrack(core, CommandType::StopRecordOrPlayback, 4U);
@@ -2419,6 +2427,7 @@ void testNativeBounceSumsBlockStableSourcesExcludesSelfAndIgnoresInactiveTracks(
     assert(NativeAudioCoreTestAccess::copyStereoTrack(core, 4U, captured.data(), loopFrames, copied));
     assert(copied == loopFrames);
     for (const auto sample : captured) assert(std::fabs(sample - 1.0f) < 1.0e-6f);
+    NativeAudioCoreTestAccess::setRunningForQueueTest(core, false);
 }
 
 int main() {

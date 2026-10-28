@@ -18,6 +18,12 @@ namespace {
 constexpr std::uint8_t kLegacyFilterQParameterIndex = 0xFFU;
 constexpr std::uint8_t kOfficialTempoParameterIndex = 0xFEU;
 constexpr std::uint8_t kOfficialMeterParameterIndex = 0xFDU;
+constexpr unsigned int kNativeBounceSwitchBits = 1U + static_cast<unsigned int>(kNativeTrackCount) * 2U;
+constexpr std::uint64_t kNativeBounceSwitchMask = (1ULL << kNativeBounceSwitchBits) - 1ULL;
+static_assert(kNativeBounceSwitchBits == 11U &&
+    (NativeAudioCore::kMaximumSafeProjectContentRevision << kNativeBounceSwitchBits) <=
+        std::numeric_limits<std::uint64_t>::max() - kNativeBounceSwitchMask,
+    "Native Bounce settings and safe revision must fit one atomic snapshot");
 
 static_assert(std::atomic<std::uint64_t>::is_always_lock_free,
     "project-load revisions are updated on the audio callback and must remain lock-free");
@@ -35,6 +41,30 @@ void advanceProjectRevision(std::atomic<std::uint64_t>& revision) noexcept {
             return;
         }
     }
+}
+
+std::uint64_t encodeNativeBounceSnapshot(const NativeBounceSettings& settings, std::uint64_t revision) noexcept {
+    std::uint64_t switches = settings.bounceSw ? 1ULL : 0ULL;
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        if (settings.bounceIn[track]) switches |= 1ULL << (1U + static_cast<unsigned int>(track));
+        if (settings.bounceTrack[track]) switches |= 1ULL << (1U + static_cast<unsigned int>(kNativeTrackCount) + static_cast<unsigned int>(track));
+    }
+    return (revision << kNativeBounceSwitchBits) | switches;
+}
+
+NativeBounceSettings decodeNativeBounceSettings(std::uint64_t snapshot) noexcept {
+    const std::uint64_t switches = snapshot & kNativeBounceSwitchMask;
+    NativeBounceSettings settings{};
+    settings.bounceSw = (switches & 1ULL) != 0U;
+    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
+        settings.bounceIn[track] = (switches & (1ULL << (1U + static_cast<unsigned int>(track)))) != 0U;
+        settings.bounceTrack[track] = (switches & (1ULL << (1U + static_cast<unsigned int>(kNativeTrackCount) + static_cast<unsigned int>(track)))) != 0U;
+    }
+    return settings;
+}
+
+std::uint64_t nativeBounceSnapshotRevision(std::uint64_t snapshot) noexcept {
+    return snapshot >> kNativeBounceSwitchBits;
 }
 
 RtAudio::Api toRtAudioApi(Backend backend) {
@@ -527,13 +557,11 @@ EngineStatus NativeAudioCore::getStatus() const {
     status.roundTripEstimateMs = status.inputLatencyMs + status.outputLatencyMs;
     status.lastError = lastError_;
     status.nativeMemoryLoopTransports = nativeMemoryLoopTransportSettings_;
-    status.nativeBounce.bounceSw = nativeBounceSwitchRequested_.load(std::memory_order_acquire);
-    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
-        status.nativeBounce.bounceIn[track] = nativeBounceInRequested_[track].load(std::memory_order_acquire);
-        status.nativeBounce.bounceTrack[track] = nativeBounceTrackRequested_[track].load(std::memory_order_acquire);
-    }
-    status.nativeBounceRequestedRevision = nativeBounceRequestedRevision_.load(std::memory_order_acquire);
-    status.nativeBounceAppliedRevision = nativeBounceAppliedRevision_.load(std::memory_order_acquire);
+    const auto requestedBounceSnapshot = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
+    const auto appliedBounceSnapshot = nativeBounceAppliedSnapshot_.load(std::memory_order_acquire);
+    status.nativeBounce = decodeNativeBounceSettings(appliedBounceSnapshot);
+    status.nativeBounceRequestedRevision = nativeBounceSnapshotRevision(requestedBounceSnapshot);
+    status.nativeBounceAppliedRevision = nativeBounceSnapshotRevision(appliedBounceSnapshot);
     return status;
 }
 
@@ -2446,19 +2474,16 @@ bool NativeAudioCore::setNativeBounceSettings(const NativeBounceSettings& settin
             error = "Finish recording and overdubbing before changing Native Bounce."; return false;
         }
     }
-    const auto revision = nativeBounceRequestedRevision_.load(std::memory_order_relaxed);
+    const auto currentSnapshot = nativeBounceRequestedSnapshot_.load(std::memory_order_relaxed);
+    const auto revision = nativeBounceSnapshotRevision(currentSnapshot);
     if (revision >= kMaximumSafeProjectContentRevision) {
         error = "Native Bounce revision exhausted."; return false;
     }
-    nativeBounceSwitchRequested_.store(settings.bounceSw, std::memory_order_relaxed);
-    for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
-        nativeBounceInRequested_[track].store(settings.bounceIn[track], std::memory_order_relaxed);
-        nativeBounceTrackRequested_[track].store(settings.bounceTrack[track], std::memory_order_relaxed);
-    }
-    nativeBounceRequestedRevision_.store(revision + 1U, std::memory_order_release);
+    const auto requestedSnapshot = encodeNativeBounceSnapshot(settings, revision + 1U);
+    nativeBounceRequestedSnapshot_.store(requestedSnapshot, std::memory_order_release);
     if (!engineRunning_.load(std::memory_order_acquire)) {
         nativeBounceRuntime_ = settings;
-        nativeBounceAppliedRevision_.store(revision + 1U, std::memory_order_release);
+        nativeBounceAppliedSnapshot_.store(requestedSnapshot, std::memory_order_release);
     }
     error.clear();
     advanceProjectRevision(projectContentRevision_);
@@ -3211,6 +3236,9 @@ bool NativeAudioCore::commitPreparedMemory(std::uint64_t generation, std::string
     if (projectContentRevision_.load(std::memory_order_acquire) != projectImportTransaction_->expectedProjectContentRevision) {
         error = "Memory changed before commit."; return false;
     }
+    if (nativeBounceSnapshotRevision(nativeBounceRequestedSnapshot_.load(std::memory_order_acquire)) >= kMaximumSafeProjectContentRevision) {
+        error = "Native Bounce revision exhausted; Memory was not committed."; return false;
+    }
     projectImportState_.store(NativeProjectImportState::Pending, std::memory_order_release);
     error.clear(); return true;
 }
@@ -3243,12 +3271,8 @@ void NativeAudioCore::finalizeProjectImportLocked() {
             }
             nativeRhythmConfig_ = memory.rhythm;
             nativeMemoryLoopTransportSettings_ = memory.loopTransports;
-            nativeBounceSwitchRequested_.store(memory.bounce.bounceSw, std::memory_order_relaxed);
-            for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
-                nativeBounceInRequested_[track].store(memory.bounce.bounceIn[track], std::memory_order_relaxed);
-                nativeBounceTrackRequested_[track].store(memory.bounce.bounceTrack[track], std::memory_order_relaxed);
-            }
-            (void)nativeBounceRequestedRevision_.fetch_add(1U, std::memory_order_release);
+            const auto bounceRevision = nativeBounceSnapshotRevision(nativeBounceRequestedSnapshot_.load(std::memory_order_relaxed)) + 1U;
+            nativeBounceRequestedSnapshot_.store(encodeNativeBounceSnapshot(memory.bounce, bounceRevision), std::memory_order_release);
             nativeReverbConfig_ = memory.reverb;
             nativeFractionalDelayConfig_ = memory.delay;
             nativeCompressorConfig_ = memory.compressor;
@@ -4147,14 +4171,10 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     std::fill_n(outputInterleaved, sampleCount, 0.0f);
     if (playbackBufferAvailable) std::fill_n(playbackBus, sampleCount, 0.0f);
     if (playbackBufferAvailable) std::fill_n(nativeTrackDryPlaybackScratch_.data(), sampleCount, 0.0f);
-    const auto requestedBounceRevision = nativeBounceRequestedRevision_.load(std::memory_order_acquire);
-    if (requestedBounceRevision != nativeBounceAppliedRevision_.load(std::memory_order_relaxed)) {
-        nativeBounceRuntime_.bounceSw = nativeBounceSwitchRequested_.load(std::memory_order_relaxed);
-        for (std::size_t source = 0U; source < kNativeTrackCount; ++source) {
-            nativeBounceRuntime_.bounceIn[source] = nativeBounceInRequested_[source].load(std::memory_order_relaxed);
-            nativeBounceRuntime_.bounceTrack[source] = nativeBounceTrackRequested_[source].load(std::memory_order_relaxed);
-        }
-        nativeBounceAppliedRevision_.store(requestedBounceRevision, std::memory_order_release);
+    const auto requestedBounceSnapshot = nativeBounceRequestedSnapshot_.load(std::memory_order_acquire);
+    if (requestedBounceSnapshot != nativeBounceAppliedSnapshot_.load(std::memory_order_relaxed)) {
+        nativeBounceRuntime_ = decodeNativeBounceSettings(requestedBounceSnapshot);
+        nativeBounceAppliedSnapshot_.store(requestedBounceSnapshot, std::memory_order_release);
     }
     const bool bouncePrepared = playbackBufferAvailable && nativeBounceRuntime_.bounceSw;
     if (bouncePrepared) {

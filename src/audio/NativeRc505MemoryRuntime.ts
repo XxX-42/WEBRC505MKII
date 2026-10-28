@@ -191,11 +191,13 @@ export function createNativeRc505MemoryRuntime(port: NativeMemoryPort): Rc505Mem
             const status = await port.bridge.getStatus();
             port.publish(status);
             const gates = status.nativeFx?.trackFxApply;
-            if (gates?.length === 5 && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)) {
+            const bounce = status.nativeBounce;
+            const bounceAcknowledged = bounce && bounce.requestedRevision === bounce.appliedRevision;
+            if (bounceAcknowledged && gates?.length === 5 && gates.every((gate) => gate.requestedRevision === gate.appliedRevision && gate.requested === gate.applied && !gate.controlFaulted)) {
               port.install?.(status);
               break;
             }
-            if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but FX gate render acknowledgements timed out.`);
+            if (Date.now() >= deadline) throw new Error(`Memory generation ${generation} committed, but Bounce or FX gate render acknowledgements timed out.`);
             await new Promise((resolve) => setTimeout(resolve, 10));
           }
           const transport = Transport.getInstance();
