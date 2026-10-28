@@ -35,6 +35,14 @@ export interface NativeProjectImportOperationIdentity {
   readonly generation?: number;
 }
 
+export interface NativeProjectImportRecoveryOption {
+  readonly operationId: string;
+  readonly hostIncarnationId?: string;
+  readonly generation?: number;
+  readonly createdAt: number;
+  readonly recovery: ProjectRecoveryMetadata | null;
+}
+
 export class ProjectMemory {
   private readonly engine: AudioEngine;
   private readonly store: ProjectMemoryStore;
@@ -59,6 +67,34 @@ export class ProjectMemory {
 
   public listUnresolvedNativeImportRecoveries(): Promise<readonly ProjectRecoveryMetadata[]> {
     return this.store.listUnresolvedNativeImportRecoveryCandidates();
+  }
+
+  /** Lists every unresolved recovery snapshot and operation intent without choosing one implicitly. */
+  public async listUnresolvedNativeImportRecoveryOptions(): Promise<readonly NativeProjectImportRecoveryOption[]> {
+    const [recoveries, intents] = await Promise.all([
+      this.store.listUnresolvedNativeImportRecoveryCandidates(),
+      this.store.listNativeImportOperationIntents(),
+    ]);
+    const options = new Map<string, NativeProjectImportRecoveryOption>();
+    for (const recovery of recoveries) {
+      options.set(recovery.operationId, {
+        operationId: recovery.operationId,
+        ...(recovery.sourceHostIncarnationId ? { hostIncarnationId: recovery.sourceHostIncarnationId } : {}),
+        ...(recovery.generation === undefined ? {} : { generation: recovery.generation }),
+        createdAt: recovery.savedAt,
+        recovery,
+      });
+    }
+    for (const intent of intents) {
+      if (options.has(intent.operationId)) continue;
+      options.set(intent.operationId, {
+        operationId: intent.operationId,
+        hostIncarnationId: intent.hostIncarnationId,
+        createdAt: intent.createdAt,
+        recovery: null,
+      });
+    }
+    return [...options.values()].sort((left, right) => right.createdAt - left.createdAt || left.operationId.localeCompare(right.operationId));
   }
 
   public async getPendingNativeImportOperation(): Promise<NativeProjectImportOperationIdentity | null> {
@@ -228,6 +264,9 @@ export class ProjectMemory {
     await this.assertNoUnresolvedImport();
     const saved = await this.store.readNativeImportRecovery();
     if (!saved) throw new Error('There is no saved pre-import Native project recovery archive.');
+    if (operationId !== undefined && saved.metadata.operationId !== operationId) {
+      throw new Error('The selected operation does not match the active Native recovery snapshot.');
+    }
     this.assertRecoveryGuard(saved.metadata, operationToken);
     if (saved.archive.byteLength !== saved.metadata.archiveBytes) throw new Error('Native recovery archive length does not match its metadata.');
     const project = await decodeProjectArchive(saved.archive);

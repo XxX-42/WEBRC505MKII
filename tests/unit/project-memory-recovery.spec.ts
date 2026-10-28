@@ -76,12 +76,14 @@ function makeEngine(initial: Uint8Array) {
 
 function makeStore() {
   const stages = new Map<string, { metadata: ProjectRecoveryMetadata; archive: ArrayBuffer }>();
+  let operationIntents: Array<{ operationId: string; hostIncarnationId: string; expectedProjectContentRevision: number; archiveSha256: string; createdAt: number }> = [];
   let activeId: string | null = null;
   const store = {
     readSlot: vi.fn(async () => null),
     listUnresolvedNativeImportRecoveryCandidates: vi.fn(async () => [...stages.values()]
       .map((entry) => entry.metadata).filter((entry) => entry.state === 'pending' || entry.state === 'staged')
       .sort((left, right) => Number(right.state === 'pending') - Number(left.state === 'pending') || right.savedAt - left.savedAt)),
+    listNativeImportOperationIntents: vi.fn(async () => operationIntents.map((intent) => ({ ...intent }))),
     getPendingNativeImportRecovery: vi.fn(async () => {
       const candidates = [...stages.values()].map((entry) => entry.metadata)
         .filter((entry) => entry.state === 'pending' || entry.state === 'staged')
@@ -125,6 +127,7 @@ function makeStore() {
       const entry = [...stages.values()].find((item) => item.metadata.state === 'pending');
       if (entry) entry.metadata = { ...entry.metadata, ownerSessionId };
     },
+    setOperationIntents: (intents: typeof operationIntents) => { operationIntents = intents; },
   };
   return { store: store as unknown as ProjectMemoryStore, api: store };
 }
@@ -336,6 +339,10 @@ describe('Native project import recovery', () => {
     expect(await memory.listUnresolvedNativeImportRecoveries()).toMatchObject([
       { operationId: pendingId, state: 'pending' }, { operationId: stagedId, state: 'staged' },
     ]);
+    expect(await memory.listUnresolvedNativeImportRecoveryOptions()).toMatchObject([
+      { operationId: pendingId, recovery: { operationId: pendingId, state: 'pending' } },
+      { operationId: stagedId, recovery: { operationId: stagedId, state: 'staged' } },
+    ]);
     const oldRecovery = await memory.exportPendingNativeImportRecovery(pendingId);
     expect(oldRecovery.metadata.operationId).toBe(pendingId);
     expect(new Uint8Array(oldRecovery.archive)).toEqual(new Uint8Array(incumbent));
@@ -346,6 +353,31 @@ describe('Native project import recovery', () => {
     expect(engine.getNativeProjectArchiveImportStatusByOperationId).toHaveBeenCalledExactlyOnceWith(pendingId, 'b'.repeat(32));
     await expect(memory.restoreNativeImportRecovery(stagedId)).rejects.toThrow('not proven committed');
     expect(engine.restoreProjectArchive).not.toHaveBeenCalled();
+  });
+
+  it('lists all recovery snapshots and distinct operation intents without duplicating matching IDs', async () => {
+    const incumbent = await archive('Incumbent', 0.25);
+    const { engine } = makeEngine(incumbent);
+    const { store, api } = makeStore();
+    const snapshotId = 'snapshot-operation-012345678901';
+    const intentId = 'intent-operation-0123456789012';
+    await api.stageNativeImportRecovery({ operationId: snapshotId, ownerSessionId: 'session-snapshot-01234567890',
+      name: 'Snapshot import', bpm: 120, archiveVersion: 1, sourceProjectContentRevision: 10,
+      sourceProjectTransportMutationRevision: 4, sourceHostIncarnationId: 'b'.repeat(32), sourceModeGeneration: 2 }, arrayBuffer(incumbent));
+    await api.markNativeImportRecoveryPending(snapshotId, 44);
+    api.setOperationIntents([
+      { operationId: snapshotId, hostIncarnationId: 'b'.repeat(32), expectedProjectContentRevision: 10,
+        archiveSha256: 'a'.repeat(64), createdAt: 2 },
+      { operationId: intentId, hostIncarnationId: 'c'.repeat(32), expectedProjectContentRevision: 12,
+        archiveSha256: 'd'.repeat(64), createdAt: 3 },
+    ]);
+
+    const memory = new ProjectMemory(engine as any, store);
+    const options = await memory.listUnresolvedNativeImportRecoveryOptions();
+    expect(options).toHaveLength(2);
+    expect(options[0]).toMatchObject({ operationId: intentId, hostIncarnationId: 'c'.repeat(32), recovery: null, createdAt: 3 });
+    expect(options[1]).toMatchObject({ operationId: snapshotId, hostIncarnationId: 'b'.repeat(32),
+      recovery: { operationId: snapshotId, state: 'pending' }, createdAt: 1 });
   });
 
   it('keeps no-generation outcomes blocked and does not guess that the host cancelled', async () => {
@@ -481,5 +513,22 @@ describe('Native project import recovery', () => {
     await expect(memory.restoreNativeImportRecovery()).resolves.toMatchObject({ name: 'Incumbent' });
     await expect(api.getUnresolvedNativeImportRecovery()).resolves.toBeNull();
     expect(api.publishNativeImportRecovery).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not restore the active snapshot when a different operation ID was selected', async () => {
+    installWebLock();
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('c3759dbd-bf3d-46eb-aea9-8a37c3d64e6a');
+    const incumbent = await archive('Incumbent', 0.25);
+    const incoming = await archive('Incoming', 0.5);
+    const { engine, restoreProjectArchive } = makeEngine(incumbent);
+    const { store, api } = makeStore();
+    api.readSlot.mockResolvedValue({ metadata: { slot: 1, name: 'Incoming', bpm: 120, savedAt: 1,
+      archiveBytes: incoming.byteLength, archiveVersion: 1 }, archive: arrayBuffer(incoming) });
+    const memory = new ProjectMemory(engine as any, store);
+    await memory.load(1);
+
+    await expect(memory.restoreNativeImportRecovery('a-different-selected-operation-id'))
+      .rejects.toThrow('selected operation does not match the active Native recovery snapshot');
+    expect(restoreProjectArchive).toHaveBeenCalledTimes(1);
   });
 });
