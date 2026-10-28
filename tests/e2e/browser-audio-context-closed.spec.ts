@@ -166,7 +166,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     await closedStatePublished;
     if (context.state !== 'closed') throw new Error(`AudioContext close did not finish: ${context.state}`);
     const recovery = (tracks[0]!.engine as any).getRecoverySnapshot();
-    if (recovery.schemaVersion !== 3 || recovery.source.contextState !== 'closed'
+    if (recovery.schemaVersion !== 4 || recovery.source.contextState !== 'closed'
       || recovery.tracks.length !== 5 || recovery.fx.privateTracks.length !== 5
       || recovery.pcmHistoryBudget.retainedBytes <= 0
       || recovery.recoveryPolicy.playback !== 'start-stopped'
@@ -256,7 +256,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
   expect(result.initError).toContain('permanently closed');
   expect(result.beforePcm).toEqual(result.afterPcm);
   expect(result.recovery).toMatchObject({
-    schemaVersion: 3,
+    schemaVersion: 4,
     source: { contextState: 'closed' },
     trackCount: 5,
     privateBankCount: 5,
@@ -453,7 +453,7 @@ test('closed Browser AudioContext clears READY, preserves PCM/history and leaves
     bpmListenersAfter: candidateResult.runtime.bpmListenersBefore,
   });
   expect(candidateResult.legacySchemaFactoryCalls).toBe(0);
-  expect(candidateResult.legacySchemaError).toContain('version-3 snapshot');
+  expect(candidateResult.legacySchemaError).toContain('version-4 snapshot');
   expect(candidateResult.runtime.tracks.map((track: any) => ({
     trackId: track.trackId,
     pitchMode: track.pitchMode,

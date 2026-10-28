@@ -92,6 +92,37 @@ function record(track: TrackAudio, channels: number[][]) {
     (track as any).resumeAfterRecording = false;
     (track as any).processRecordedBuffers(channels.map((channel) => Float32Array.from(channel)));
 }
+async function recordWithStartAcknowledgement(
+    track: TrackAudio,
+    engine: any,
+    bpm: number,
+    options: { autoRec?: boolean; changeBpmBeforeAck?: number; changeBpmBeforeCommit?: number } = {},
+) {
+    const transport = Transport.getInstance();
+    transport.bpm = bpm;
+    if (options.autoRec) engine.getBrowserAutoRecSettings = () => ({ enabled: true, sensitivity: 50 });
+    (track as any).resumeAfterRecording = false;
+    const capture = installSharedCapture(engine);
+    await track.startRecording();
+    if (options.changeBpmBeforeAck !== undefined) transport.bpm = options.changeBpmBeforeAck;
+    capture.send({ type: 'RECORD_CONFIGURED', sessionId: capture.session.sessionId,
+        inputGeneration: capture.session.inputGeneration, requestedStartFrame: capture.session.startFrame,
+        captureStartFrame: capture.session.startFrame, channelCount: 1,
+        maxRecordingFrames: 8_192, maxRecordingBytes: 384 * 1024 * 1024 });
+    if (options.changeBpmBeforeCommit !== undefined) transport.bpm = options.changeBpmBeforeCommit;
+    const samples = new Float32Array(16_384);
+    samples.set([0.125, 0.25, 0.5, 0.75]);
+    capture.send({ type: 'RECORD_CHUNK', sessionId: capture.session.sessionId,
+        inputGeneration: capture.session.inputGeneration, chunkIndex: 0, sequence: 0, validFrames: 4,
+        channelCount: 1, startFrame: capture.session.startFrame, channels: [samples] });
+    track.triggerStop();
+    capture.send({ type: 'RECORD_COMPLETE', sessionId: capture.session.sessionId,
+        inputGeneration: capture.session.inputGeneration, requestedStartFrame: capture.session.startFrame,
+        stopFrame: capture.session.startFrame + 4, framesCaptured: 4, droppedFrames: 0,
+        overflowEvents: 0, maxRecordingFrames: 8_192, maxRecordingBytes: 384 * 1024 * 1024,
+        channelCount: 1, limitReached: false, chunksSent: 1, status: 'complete' });
+    return capture;
+}
 async function settle() { for (let index = 0; index < 8; index += 1) await Promise.resolve(); }
 async function overdub(track: TrackAudio) {
     track.state = TrackState.PLAYING;
@@ -377,6 +408,84 @@ describe('Browser five-track project replacement', () => {
 });
 
 describe('Browser per-track one-step PCM history', () => {
+    it('commits the requested tempo only after an exact shared-capture start ACK and carries it through overdub undo/redo', async () => {
+        const { tracks: [track], engine, transport } = createHarness();
+        await recordWithStartAcknowledgement(track, engine, 137);
+
+        // First-master setup may infer a new global tempo after the take. The
+        // track provenance remains the tempo captured before the start request.
+        expect(track.originalRecordingBpm).toBe(137);
+        expect(transport.bpm).not.toBe(137);
+
+        const node = await overdub(track);
+        patch(track, node, 0, 0, 0.875);
+        finishOverdub(track, node, 1);
+        expect(track.originalRecordingBpm).toBe(137);
+        expect(track.undo()).toBe(true);
+        expect(track.originalRecordingBpm).toBe(137);
+        expect(track.redo()).toBe(true);
+        expect(track.originalRecordingBpm).toBe(137);
+    });
+
+    it('clears provenance with the loop and restores it with clear undo/redo', async () => {
+        const { tracks: [track], engine } = createHarness();
+        await recordWithStartAcknowledgement(track, engine, 126);
+        expect(track.originalRecordingBpm).toBe(126);
+
+        expect(track.clear()).toBe(true);
+        expect(track.originalRecordingBpm).toBeNull();
+        expect(track.undo()).toBe(true);
+        expect(track.originalRecordingBpm).toBe(126);
+        expect(track.redo()).toBe(true);
+        expect(track.originalRecordingBpm).toBeNull();
+    });
+
+    it('leaves provenance unknown when tempo mutates during capture or AutoRec start is not frame-confirmed', async () => {
+        const changedBeforeAck = createHarness();
+        await recordWithStartAcknowledgement(changedBeforeAck.tracks[0]!, changedBeforeAck.engine, 120, { changeBpmBeforeAck: 121 });
+        expect(changedBeforeAck.tracks[0]!.originalRecordingBpm).toBeNull();
+
+        const changed = createHarness();
+        await recordWithStartAcknowledgement(changed.tracks[0]!, changed.engine, 120, { changeBpmBeforeCommit: 121 });
+        expect(changed.tracks[0]!.originalRecordingBpm).toBeNull();
+
+        const autoRec = createHarness();
+        await recordWithStartAcknowledgement(autoRec.tracks[0]!, autoRec.engine, 120, { autoRec: true });
+        expect(autoRec.tracks[0]!.originalRecordingBpm).toBeNull();
+    });
+
+    it('imports legacy project buffers as unknown while retaining the old provenance for undo', async () => {
+        const { context, tracks } = createHarness(undefined, 5);
+        for (let index = 0; index < tracks.length; index += 1) {
+            record(tracks[index]!, [[index + 0.25, index + 0.5]]);
+        }
+        (tracks[2] as any).originalRecordingBpmValue = 117;
+        const revisions = tracks.map((track) => track.projectRevision);
+        const replacements = tracks.map(() => context.createBuffer(1, 3, context.sampleRate));
+
+        expect(TrackAudio.restoreProjectBuffersAtomically(tracks, replacements, revisions)).toEqual({ ok: true });
+        expect(tracks[2]!.originalRecordingBpm).toBeNull();
+        expect(tracks[2]!.undo()).toBe(true);
+        expect(tracks[2]!.originalRecordingBpm).toBe(117);
+    });
+
+    it('restores current and undo provenance across Browser recovery snapshots without charging scalar metadata to PCM history', () => {
+        const source = createHarness(undefined, 5);
+        record(source.tracks[0]!, [[0.25, 0.5]]);
+        (source.tracks[0] as any).originalRecordingBpmValue = 132;
+        expect(source.tracks[0]!.clear()).toBe(true);
+        const snapshots = source.tracks.map((track) => track.getRecoverySnapshot());
+        expect(snapshots[0]!.originalRecordingBpm).toBeNull();
+        expect(snapshots[0]!.history.originalRecordingBpm).toBe(132);
+        expect(snapshots[0]!.history.retainedBytes).toBe(8);
+
+        const target = createHarness(undefined, 5);
+        expect(TrackAudio.restoreRecoverySnapshotsAtomically(target.tracks, snapshots)).toEqual({ ok: true });
+        expect(target.tracks[0]!.originalRecordingBpm).toBeNull();
+        expect(target.tracks[0]!.undo()).toBe(true);
+        expect(target.tracks[0]!.originalRecordingBpm).toBe(132);
+    });
+
     it('undoes record/clear per track, with repeatable redo and independent channel data', () => {
         const { tracks: [first, second] } = createHarness();
         record(first, [[1, 2, 3, 4], [-11, -12, -13, -14]]);

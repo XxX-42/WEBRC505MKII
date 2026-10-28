@@ -75,12 +75,15 @@ export interface BrowserRecoveryTrack {
   readonly projectPcmRevision: number;
   /** AudioBuffer identities are retained directly; this snapshot does not clone PCM. */
   readonly buffer: AudioBuffer | null;
+  /** Null for imported/legacy loops whose actual recording tempo is unavailable. */
+  readonly originalRecordingBpm: number | null;
   readonly bufferBytes: number;
   readonly isReverse: boolean;
   readonly settings: BrowserRecoveryTrackSettings;
   readonly pitch: BrowserRecoveryPitchSettings;
   readonly history: Readonly<{
     buffer: AudioBuffer | null;
+    originalRecordingBpm: number | null;
     direction: 'undo' | 'redo' | null;
     isReverse: boolean | null;
     master: Readonly<{ bpm: number; measureLength: number; lengthSamples: number }> | null;
@@ -106,8 +109,8 @@ export interface BrowserRecoveryTrack {
 }
 
 export interface BrowserRecoverySnapshot {
-  /** Version 3 adds the Browser main-bus gain to the recoverable mix. */
-  readonly schemaVersion: 3;
+  /** Version 4 adds per-loop original-recording-tempo provenance. */
+  readonly schemaVersion: 4;
   readonly source: Readonly<{
     contextState: AudioContextState;
     sampleRate: number;

@@ -112,6 +112,11 @@ function clampFinite(value: number, minimum: number, maximum: number, fallback: 
     return Number.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : fallback;
 }
 
+function isValidRecordingBpm(value: unknown): value is number | null {
+    return value === null || (typeof value === 'number' && Number.isFinite(value)
+        && value >= MIN_TRACK_TEMPO_BPM && value <= MAX_TRACK_TEMPO_BPM);
+}
+
 function disconnectAudioNodeIfConnected(node: AudioNode, destination: AudioNode): void {
     try {
         node.disconnect(destination);
@@ -269,6 +274,7 @@ type RecordingWorkletMessage =
 
 interface TrackPcmSnapshot {
     buffer: AudioBuffer | null;
+    originalRecordingBpm: number | null;
     isReverse: boolean;
     master: { bpm: number; measureLength: number; lengthSamples: number } | null;
 }
@@ -280,6 +286,11 @@ export interface ProjectTrackPcmSnapshot {
     readonly channels: 1 | 2;
     /** Read-only views into the completed loop; the archive encoder consumes them synchronously. */
     readonly channelData: readonly Float32Array[];
+}
+
+interface RecordingTempoCandidate {
+    readonly bpm: number;
+    readonly transportRevision: number;
 }
 
 export interface ProjectBufferRestoreResult {
@@ -305,6 +316,12 @@ export class TrackAudio {
     private engine: IAudioEngine;
     private transport: Transport;
     private audioBuffer: AudioBuffer | null = null;
+    /** BPM provenance for the committed take; null means the source tempo is unknown. */
+    private originalRecordingBpmValue: number | null = null;
+    /** Set only by an exact AudioWorklet start-frame acknowledgement. */
+    private recordingTempoCandidate: RecordingTempoCandidate | null = null;
+    /** Captured before a start request can cross an asynchronous setup boundary. */
+    private recordingTempoRequestCandidate: RecordingTempoCandidate | null = null;
     private projectPcmRevision = 0;
     private readonly pcmHistoryBudget: PcmHistoryBudget;
     private readonly markBudgetOwner: object = {};
@@ -579,6 +596,20 @@ export class TrackAudio {
     public get historyTotalRetainedBytes(): number { return this.pcmHistoryBudget.retainedBytes; }
     public get historyBudgetBytes(): number { return this.pcmHistoryBudget.limitBytes; }
     public get projectRevision(): number { return this.projectPcmRevision; }
+    public get originalRecordingBpm(): number | null { return this.originalRecordingBpmValue; }
+
+    private captureRecordingTempoCandidate(): RecordingTempoCandidate | null {
+        const bpm = this.transport.bpm;
+        const transportRevision = this.transport.projectMutationRevision;
+        if (!Number.isFinite(bpm) || bpm < MIN_TRACK_TEMPO_BPM || bpm > MAX_TRACK_TEMPO_BPM
+            || !Number.isSafeInteger(transportRevision)) return null;
+        return Object.freeze({ bpm, transportRevision });
+    }
+
+    private isRecordingTempoCandidateCurrent(candidate: RecordingTempoCandidate | null): candidate is RecordingTempoCandidate {
+        return !!candidate && this.transport.bpm === candidate.bpm
+            && this.transport.projectMutationRevision === candidate.transportRevision;
+    }
 
     public getMarkState(): TrackMarkState {
         const exists = this.markedPcm !== null;
@@ -702,6 +733,7 @@ export class TrackAudio {
             : null));
         const pcmHistory = Object.freeze({
             buffer: history?.buffer ?? null,
+            originalRecordingBpm: history?.originalRecordingBpm ?? null,
             direction: this.pcmHistory?.direction ?? null,
             isReverse: history?.isReverse ?? null,
             master: history?.master ? Object.freeze({ ...history.master }) : null,
@@ -714,6 +746,7 @@ export class TrackAudio {
             wasPlaying: this.state === TrackState.PLAYING,
             projectPcmRevision: this.projectPcmRevision,
             buffer: this.audioBuffer,
+            originalRecordingBpm: this.originalRecordingBpmValue,
             bufferBytes: audioBufferPcmBytes(this.audioBuffer),
             isReverse: this.isReverse,
             settings,
@@ -816,6 +849,11 @@ export class TrackAudio {
             track.hasCommittedOverdub = false;
             track.markFailureReason = null;
             track.audioBuffer = replacements[index]!;
+            // The current project archive does not carry per-track tempo provenance.
+            // Imported tracks therefore remain explicitly unknown; the incumbent
+            // PCM and its provenance travel together in the undo snapshot above.
+            track.originalRecordingBpmValue = null;
+            track.recordingTempoCandidate = null;
             track.projectPcmRevision += 1;
             track.isReverse = false;
             track.startOffset = 0;
@@ -880,7 +918,13 @@ export class TrackAudio {
                     || !Number.isFinite(history.buffer.sampleRate) || history.buffer.sampleRate <= 0
                     || (history.direction !== 'undo' && history.direction !== 'redo')
                     || typeof history.isReverse !== 'boolean'))
-                || (!history.buffer && (history.direction !== null || history.isReverse !== null || history.master !== null || history.retainedBytes !== 0))
+                || !isValidRecordingBpm(saved.originalRecordingBpm)
+                || !isValidRecordingBpm(history.originalRecordingBpm)
+                || (!history.buffer && (history.retainedBytes !== 0
+                    || (history.direction === null
+                        ? history.isReverse !== null || history.master !== null || history.originalRecordingBpm !== null
+                        : (history.direction !== 'undo' && history.direction !== 'redo') || history.isReverse !== false
+                            || history.master !== null || history.originalRecordingBpm !== null)))
                 || (saved.buffer === null && saved.state !== TrackState.EMPTY)
                 || (saved.buffer !== null && saved.state !== TrackState.STOPPED)
                 || saved.bufferBytes !== audioBufferPcmBytes(saved.buffer)
@@ -939,9 +983,12 @@ export class TrackAudio {
             track.track.filterResonance = settings.filterResonance;
             track.isReverse = saved.isReverse;
             track.audioBuffer = saved.buffer;
+            track.originalRecordingBpmValue = saved.originalRecordingBpm;
+            track.recordingTempoCandidate = null;
             track.pcmHistory = saved.history.buffer ? {
                 snapshot: {
                     buffer: saved.history.buffer,
+                    originalRecordingBpm: saved.history.originalRecordingBpm,
                     isReverse: saved.history.isReverse!,
                     master: saved.history.master ? { ...saved.history.master } : null,
                 },
@@ -1009,6 +1056,7 @@ export class TrackAudio {
     private capturePcmSnapshot(buffer = this.audioBuffer): TrackPcmSnapshot {
         return {
             buffer,
+            originalRecordingBpm: this.originalRecordingBpmValue,
             isReverse: this.isReverse,
             master: this.transport.masterTrackId === this.track.id ? {
                 bpm: this.transport.bpm,
@@ -1063,6 +1111,7 @@ export class TrackAudio {
         this.stop();
         this.pcmHistory = { snapshot: current, direction: direction === 'undo' ? 'redo' : 'undo' };
         this.audioBuffer = target.buffer;
+        this.originalRecordingBpmValue = target.originalRecordingBpm;
         this.projectPcmRevision += 1;
         this.isReverse = target.isReverse;
         this.startOffset = 0;
@@ -2792,6 +2841,8 @@ export class TrackAudio {
 
     public async startRecording(quantizedStartFrame?: number, quantizedPhaseRevision?: number, quantizedTrackSyncRevision?: number, sharedCaptureRetryCount = 0) {
         if (this.disposed) return;
+        const tempoCandidateAtQuantizedReservation = quantizedStartFrame === undefined
+            ? null : this.captureRecordingTempoCandidate();
         if (this.livePolyTempoFollowPending || this.livePolyTempoFollow) {
             this.recordingDiagnostic = 'Wait for or stop LIVE_POLY tempo follow before recording this track; the source loop and recording phase were left unchanged.';
             if (quantizedStartFrame !== undefined) this.failQuantizedRecordingStart(this.recordingDiagnostic);
@@ -2804,6 +2855,8 @@ export class TrackAudio {
         }
 
         this.recordingStopRequestSent = false;
+        this.recordingTempoCandidate = null;
+        this.recordingTempoRequestCandidate = null;
 
         if (this.state === TrackState.EMPTY) {
             this.clearMarkInternal();
@@ -2945,6 +2998,12 @@ export class TrackAudio {
             this.recordingCaptureChunkIndices.fill(-1);
 
             if (requestedCaptureFrame !== null && this.engine.beginInputCaptureSession) {
+                // Immediate captures are reserved only after setup/readiness
+                // awaits, so snapshot BPM/revision at that last pre-request
+                // point. Quantized captures retain the earlier reservation
+                // snapshot and are rejected if tempo changed while waiting.
+                const tempoRequestCandidate = quantizedStartFrame === undefined
+                    ? this.captureRecordingTempoCandidate() : tempoCandidateAtQuantizedReservation;
                 let captureSession: InputCaptureSession | null = null;
                 const onCaptureMessage = (message: unknown) => {
                     if (captureSession) this.handleRecordingMessage(captureSession.node, message as RecordingWorkletMessage);
@@ -2958,6 +3017,7 @@ export class TrackAudio {
                         : this.engine.beginInputCaptureSession(this.trackIndex, requestedCaptureFrame, onCaptureMessage);
                 if (captureSession) {
                     this.recordingCaptureSession = captureSession;
+                    this.recordingTempoRequestCandidate = tempoRequestCandidate;
                     this.recordingCaptureStartAcknowledged = false;
                     this.recordingCaptureStartRetryCount = sharedCaptureRetryCount;
                     if (quantizedStartFrame !== undefined) {
@@ -3225,6 +3285,17 @@ export class TrackAudio {
 
         if (message.type === 'RECORD_CONFIGURED') {
             if (captureSession) this.recordingCaptureStartAcknowledged = true;
+            // AutoRec's first RECORD_CONFIGURED only confirms that threshold
+            // capture is armed. Its actual threshold frame is not separately
+            // acknowledged to TrackAudio, so do not invent a source tempo.
+            // For ordinary shared capture, accept provenance only when the
+            // worklet confirms the exact frame reserved by this session.
+            const exactStartAcknowledgement = !!captureSession
+                && message.requestedStartFrame === captureSession.startFrame
+                && message.captureStartFrame === captureSession.startFrame;
+            this.recordingTempoCandidate = exactStartAcknowledgement && !this.autoRecArmed
+                && this.isRecordingTempoCandidateCurrent(this.recordingTempoRequestCandidate)
+                ? this.recordingTempoRequestCandidate : null;
             if (captureSession && this.quantizedRecordingStartFrame !== null) {
                 const masterTrackId = this.transport.masterTrackId;
                 const phaseIsCurrent = this.quantizedRecordingPhaseRevision === this.transport.masterPhaseRevision;
@@ -3419,6 +3490,8 @@ export class TrackAudio {
 
     private abortSharedRecording(session: InputCaptureSession, requestAbort: boolean): void {
         if (this.recordingCaptureSession !== session) return;
+        this.recordingTempoCandidate = null;
+        this.recordingTempoRequestCandidate = null;
         this.clearRecordingCaptureStopAckTimeout();
         if (requestAbort) this.engine.abortInputCaptureSession?.(session);
         this.returnRetainedSharedCaptureChunks(session);
@@ -3554,6 +3627,7 @@ export class TrackAudio {
             if (assembledBuffers.length === 1) this.processRecordedBuffer(assembledBuffers[0]!);
             else this.processRecordedBuffers(assembledBuffers);
         } else {
+            this.recordingTempoCandidate = null;
             const captureSession = this.recordingCaptureSession;
             if (captureSession) this.returnRetainedSharedCaptureChunks(captureSession);
             // A zero-frame take never replaces PCM. Keep an existing loop
@@ -3587,6 +3661,7 @@ export class TrackAudio {
         this.clearRecordingChunkStorage();
         this.isFinalizingRecording = false;
         this.recordingStopRequestSent = false;
+        this.recordingTempoRequestCandidate = null;
     }
 
     private clearRecordingChunkStorage() {
@@ -3652,6 +3727,10 @@ export class TrackAudio {
         });
         if (!this.retainPcmEdit(previous)) this.invalidatePcmHistoryForEdit();
         this.audioBuffer = completedBuffer;
+        const tempoCandidate = this.recordingTempoCandidate;
+        this.originalRecordingBpmValue = this.isRecordingTempoCandidateCurrent(tempoCandidate)
+            ? tempoCandidate.bpm : null;
+        this.recordingTempoCandidate = null;
         this.projectPcmRevision += 1;
         if (becomesMaster) {
             this.transport.setMasterTrack(this.track.id, durationSeconds, ctx.sampleRate, lengthSamples);
@@ -4218,6 +4297,9 @@ export class TrackAudio {
         this.hasCommittedOverdub = false;
         this.markFailureReason = null;
         this.audioBuffer = null;
+        this.originalRecordingBpmValue = null;
+        this.recordingTempoCandidate = null;
+        this.recordingTempoRequestCandidate = null;
         this.projectPcmRevision += 1;
         this.state = TrackState.EMPTY;
         this.isReverse = false;
@@ -5293,6 +5375,8 @@ export class TrackAudio {
     private abortRecording() {
         this.clearRecordingCaptureStopAckTimeout();
         this.recordingStartGeneration += 1;
+        this.recordingTempoCandidate = null;
+        this.recordingTempoRequestCandidate = null;
         this.recordingStarting = false;
         this.quantizedRecordingStartFrame = null;
         this.quantizedRecordingPhaseRevision = null;

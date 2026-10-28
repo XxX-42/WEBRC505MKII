@@ -100,8 +100,8 @@ function cloneBuffer(source: AudioBuffer, targetContext: AudioContext, label: st
 }
 
 function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: number; historyBytes: number; markBytes: number } {
-  if (!snapshot || snapshot.schemaVersion !== 3 || snapshot.source.contextState !== 'closed') {
-    throw new Error('A recovery candidate requires a version-3 snapshot from a closed Browser AudioContext.');
+  if (!snapshot || snapshot.schemaVersion !== 4 || snapshot.source.contextState !== 'closed') {
+    throw new Error('A recovery candidate requires a version-4 snapshot from a closed Browser AudioContext.');
   }
   validateBrowserRecoveryRuntimeSettings(snapshot);
   if (!Number.isSafeInteger(snapshot.source.sampleRate) || snapshot.source.sampleRate < 8_000 || snapshot.source.sampleRate > 384_000) {
@@ -126,6 +126,10 @@ function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: nu
     const track = snapshot.tracks[index]!;
     if (track.trackId !== index + 1 || !Number.isSafeInteger(track.projectPcmRevision) || track.projectPcmRevision < 0) {
       throw new Error('The closed Browser project snapshot has an invalid track identity or revision.');
+    }
+    if (!isValidOriginalRecordingBpm(track.originalRecordingBpm)
+      || !isValidOriginalRecordingBpm(track.history.originalRecordingBpm)) {
+      throw new Error(`Track ${track.trackId} original-recording BPM provenance is invalid.`);
     }
     const bufferBytes = track.buffer ? validateBuffer(track.buffer, `Track ${track.trackId} current loop`) : 0;
     if (bufferBytes !== track.bufferBytes) throw new Error(`Track ${track.trackId} PCM byte count does not match its snapshot.`);
@@ -158,6 +162,10 @@ function validateSnapshot(snapshot: BrowserRecoverySnapshot): { currentBytes: nu
     throw new Error(`Recovery candidate requires an estimated ${estimatedPeakPcmBytes} PCM bytes, above the 4 GiB operation limit; the old context remains unchanged.`);
   }
   return { currentBytes, historyBytes, markBytes };
+}
+
+function isValidOriginalRecordingBpm(value: unknown): value is number | null {
+  return value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 40 && value <= 300);
 }
 
 /**

@@ -91,7 +91,7 @@ describe('Browser closed-context recovery snapshot contract', () => {
     const beforeBudget = historyBudget.retainedBytes;
     const snapshot = engine.getRecoverySnapshot();
     expect(Object.isFrozen(snapshot)).toBe(true);
-    expect(snapshot.schemaVersion).toBe(3);
+    expect(snapshot.schemaVersion).toBe(4);
     expect(snapshot.source).toEqual({ contextState: 'closed', sampleRate: context.sampleRate,
       inputDevicePreference: 'remembered-input-only', outputDevicePreference: 'remembered-output-only', lastObservedRenderBlockFrames: 256 });
     expect(snapshot.transport).toMatchObject({ bpm: 107, timeSignature: [5, 8], state: 'PLAYING' });

@@ -1512,7 +1512,7 @@ export class BrowserAudioEngine implements IAudioEngine {
                 ? Object.freeze({ path: this.selectedHrmAutoMidiTarget.path, slot: this.selectedHrmAutoMidiTarget.slot, effectId: 'hrm_auto_m', trackId: null })
                 : null;
         const snapshot: BrowserRecoverySnapshot = Object.freeze({
-            schemaVersion: 3,
+            schemaVersion: 4,
             source: Object.freeze({
                 contextState: this.context.state,
                 sampleRate: this.context.sampleRate,
