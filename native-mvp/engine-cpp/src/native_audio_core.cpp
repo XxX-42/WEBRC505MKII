@@ -260,6 +260,9 @@ EngineStatus NativeAudioCore::getStatus() const {
         status.nativeRecordFinishRequested[i] = recordFinishRequested_[i];
         status.nativeRecordFinishApplied[i] = recordFinishApplied_[i].load(std::memory_order_acquire);
         status.nativeRecordFinishCancelled[i] = recordFinishCancelled_[i];
+        status.nativeRecordStopRequested[i] = recordStopRequested_[i];
+        status.nativeRecordStopApplied[i] = recordStopApplied_[i].load(std::memory_order_acquire);
+        status.nativeRecordStopCommittedRevision[i] = recordStopCommittedRevision_[i].load(std::memory_order_acquire);
     }
     for (std::size_t i = 0U; i < mixerLevels_.size(); ++i) status.mixerLevels[i] = mixerLevels_[i].load(std::memory_order_acquire);
     status.engineRunning = engineRunning_.load(std::memory_order_acquire);
@@ -1381,6 +1384,10 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         return false;
     }
     const bool starting = type == CommandType::Record && state == LooperState::Empty;
+    if (type == CommandType::StopRecordOrPlayback && recordStopRequested_[trackIndex] >= kMaximumSafeProjectContentRevision) {
+        error = "Native STOP revision exhausted."; return false;
+    }
+    const auto stopRevision = type == CommandType::StopRecordOrPlayback ? recordStopRequested_[trackIndex] + 1U : 0U;
     if (starting && recordStartPending_[trackIndex].load(std::memory_order_acquire)) { error = "Record start is already pending."; return false; }
     bool reserved = false;
     const bool oneShotApplied = nativeLoopTransportAppliedOneShot_[trackIndex].load(std::memory_order_acquire);
@@ -1405,7 +1412,7 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
     const bool provenanceValid = provenanceBpm.has_value() && std::isfinite(*provenanceBpm) &&
         *provenanceBpm >= 40.0 && *provenanceBpm <= 300.0 &&
         provenanceRevision <= kMaximumSafeProjectContentRevision;
-    if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex), 0U,
+    if (!commandQueue_.push({type, false, static_cast<std::uint8_t>(trackIndex), stopRevision,
                              provenanceValid ? *provenanceBpm : 0.0, provenanceRevision, provenanceValid})) {
         pendingTrackStateCommands_[trackIndex].fetch_sub(1U, std::memory_order_acq_rel);
         if (starting) recordStartPending_[trackIndex].store(false, std::memory_order_release);
@@ -1417,6 +1424,7 @@ bool NativeAudioCore::queueTrackCommand(CommandType type, std::size_t trackIndex
         error = "Command queue is full.";
         return false;
     }
+    if (type == CommandType::StopRecordOrPlayback) recordStopRequested_[trackIndex] = stopRevision;
     if (type == CommandType::Clear || (type == CommandType::Record && state == LooperState::Empty)) {
         invalidateTrackMarkLocked(trackIndex);
         if (type == CommandType::Record) {
@@ -1519,6 +1527,11 @@ void NativeAudioCore::applyTrackCommandAtCallback(const Command& command) noexce
     const bool committedTake =
         (command.type == CommandType::FinishRecording && before.state == LooperState::Recording && after.state != LooperState::Recording) ||
         (command.type == CommandType::StopRecordOrPlayback && before.state == LooperState::Recording && after.state != LooperState::Recording);
+    if (command.type == CommandType::StopRecordOrPlayback && command.revision != 0U) {
+        recordStopRuntimeGeneration_[index] = command.revision;
+        recordStopCommittedRuntimeRevision_[index] =
+            committedTake && after.state == LooperState::Stopped ? command.revision : 0U;
+    }
     if (committedTake) {
         const auto appliedBpmBits = nativeTempoAppliedBpmBits_.load(std::memory_order_acquire);
         const bool tempoUnchanged = recordingTempoStartValid_[index] && command.provenanceValid &&
@@ -4747,6 +4760,8 @@ ProcessStats NativeAudioCore::processNativeTracksForCallback(
     if (playbackBufferAvailable && frames > 0U) {
         for (std::size_t track = 0U; track < kNativeTrackCount; ++track) {
             recordFinishApplied_[track].store(recordFinishRuntimeGeneration_[track], std::memory_order_release);
+            recordStopApplied_[track].store(recordStopRuntimeGeneration_[track], std::memory_order_release);
+            recordStopCommittedRevision_[track].store(recordStopCommittedRuntimeRevision_[track], std::memory_order_release);
             nativeTrackFxApplyApplied_[track].store(nativeTrackFxApplyRuntime_[track], std::memory_order_release);
             nativeTrackFxApplyAppliedRevision_[track].store(nativeTrackFxApplyRuntimeRevision_[track], std::memory_order_release);
         }

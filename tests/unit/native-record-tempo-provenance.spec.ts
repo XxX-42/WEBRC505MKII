@@ -78,6 +78,22 @@ describe('Native REC tempo provenance tokens', () => {
     expect(requests[0]).toBe('http://127.0.0.1:17755/v1/transport/record');
   });
 
+  it('waits for a modern host STOP callback ACK and exposes whether it committed recording', async () => {
+    const initial = { ok: true, nativeRecordPlay: { stopRequested: [4, 0, 0, 0, 0], stopApplied: [3, 0, 0, 0, 0],
+      stopCommittedRevision: [0, 0, 0, 0, 0] } };
+    const applied = { ok: true, nativeRecordPlay: { stopRequested: [4, 0, 0, 0, 0], stopApplied: [4, 0, 0, 0, 0],
+      stopCommittedRevision: [4, 0, 0, 0, 0] }, nativeTracks: [{ trackId: 1, state: 'Stopped', contentRevision: 8 }] };
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(initial)).mockResolvedValueOnce(jsonResponse(applied));
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new NativeBridgeClient('http://127.0.0.1:17755');
+
+    const status = await client.stopTrack(1, { bpm: 120, revision: 7 }, true);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('tempoBpm=120&tempoRevision=7');
+    expect(status.nativeRecordPlay?.stopCommittedRevision?.[0]).toBe(4);
+  });
+
   it('normalizes old-host metadata without a provenance field to null', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: true,

@@ -2358,6 +2358,30 @@ void testNativeProjectArchiveTempoMetadataLifecycle() {
 
     assert(core.clearTrack(0U, error));
     assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    const auto stopBeforeEmpty = core.getStatus().nativeRecordStopRequested[0U];
+    assert(core.stopTrack(0U, error, 120.0, 21U));
+    const auto emptyStopRevision = core.getStatus().nativeRecordStopRequested[0U];
+    assert(emptyStopRevision == stopBeforeEmpty + 1U);
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    const auto emptyStopStatus = core.getStatus();
+    assert(emptyStopStatus.nativeRecordStopApplied[0U] == emptyStopRevision);
+    assert(emptyStopStatus.nativeRecordStopCommittedRevision[0U] != emptyStopRevision);
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+    assert(core.recordTrack(0U, error, 120.0, 22U));
+    assert(NativeAudioCoreTestAccess::callback(core, take.data(), output.data(), 64U) == 0);
+    authority.bpm = 121.0;
+    assert(core.setNativeRhythmConfig(authority, error));
+    assert(core.stopTrack(0U, error, 121.0, 23U));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    const auto pendingTempoStopStatus = core.getStatus();
+    assert(pendingTempoStopStatus.nativeRecordStopCommittedRevision[0U] ==
+        pendingTempoStopStatus.nativeRecordStopApplied[0U]);
+    assert(!NativeAudioCoreTestAccess::originalTempo(core, 0U));
+    assert(core.clearTrack(0U, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
+    authority.bpm = 120.0;
+    assert(core.setNativeRhythmConfig(authority, error));
+    assert(NativeAudioCoreTestAccess::callback(core, nullptr, output.data(), 64U) == 0);
     // The callback may stage a candidate, but a host rhythm change queued
     // before confirmation must invalidate it at the confirmation boundary.
     assert(core.recordTrack(0U, error, 120.0, 20U));

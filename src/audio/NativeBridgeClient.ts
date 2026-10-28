@@ -200,7 +200,8 @@ export interface NativeStatus {
   mixerLevels?: number[];
   nativeRecordPlay?: { version: 1; recActionAvailable: boolean; quantizeAvailable: false;
     recAction: 'REC->PLAY' | 'REC->DUB'; requestedRevision: number; appliedRevision: number;
-    finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[] };
+    finishRequested: number[]; finishApplied: number[]; finishCancelled?: number[];
+    stopRequested?: number[]; stopApplied?: number[]; stopCommittedRevision?: number[] };
   nativeRecordTempoProvenance?: { version: 1; requestedRevision: number[]; appliedRevision: number[];
     acceptedRevision: number[]; acceptedRequestRevision?: number };
   ok: boolean;
@@ -1119,8 +1120,18 @@ export class NativeBridgeClient {
     return this.request<NativeStatus>('/v1/transport/stop', { method: 'POST' });
   }
 
-  public async stopTrack(trackId: number, tempo?: NativeRecordTempoToken): Promise<NativeStatus> {
-    return this.requestTrackTransport('/v1/transport/stop', trackId, tempo);
+  public async stopTrack(trackId: number, tempo?: NativeRecordTempoToken, callbackAckSupported = tempo !== undefined): Promise<NativeStatus> {
+    let status = await this.requestTrackTransport('/v1/transport/stop', trackId, tempo);
+    if (!callbackAckSupported) return status;
+    const revision = status.nativeRecordPlay?.stopRequested?.[trackId - 1];
+    if (!Number.isSafeInteger(revision) || revision! <= 0) throw new Error('Native STOP callback acknowledgement is unavailable.');
+    const deadline = Date.now() + NATIVE_BRIDGE_REQUEST_TIMEOUT_MS;
+    for (;;) {
+      if (status.nativeRecordPlay?.stopApplied?.[trackId - 1] === revision) return status;
+      if (status.nativeRecordPlay?.stopRequested?.[trackId - 1] !== revision) throw new Error('Native STOP request was superseded before callback acknowledgement.');
+      if (Date.now() >= deadline) throw new Error('Native STOP callback acknowledgement timed out; do not resend automatically.');
+      await new Promise(resolve => setTimeout(resolve, 10)); status = await this.getStatus();
+    }
   }
 
   public async play(): Promise<NativeStatus> {

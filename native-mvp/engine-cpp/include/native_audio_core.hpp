@@ -155,6 +155,9 @@ struct EngineStatus {
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishRequested{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishApplied{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordFinishCancelled{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordStopRequested{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordStopApplied{};
+    std::array<std::uint64_t, kNativeTrackCount> nativeRecordStopCommittedRevision{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmRequested{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmApplied{};
     std::array<std::uint64_t, kNativeTrackCount> nativeRecordTempoConfirmAccepted{};
@@ -888,6 +891,11 @@ private:
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordFinishApplied_{};
     std::array<std::uint64_t, kNativeTrackCount> recordFinishRuntimeGeneration_{};
     std::array<std::uint64_t, kNativeTrackCount> recordFinishCancelled_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordStopRequested_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordStopApplied_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordStopRuntimeGeneration_{};
+    std::array<std::uint64_t, kNativeTrackCount> recordStopCommittedRuntimeRevision_{};
+    std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordStopCommittedRevision_{};
     std::array<std::uint64_t, kNativeTrackCount> recordTempoConfirmRequested_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordTempoConfirmApplied_{};
     std::array<std::atomic<std::uint64_t>, kNativeTrackCount> recordTempoConfirmAccepted_{};

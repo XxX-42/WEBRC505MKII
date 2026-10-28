@@ -1338,6 +1338,60 @@ def main():
                 f"callback-validated REC tempo was not published with its PCM: {tagged_metadata}")
         status, cleared = request("/v1/transport/clear?trackId=3", "POST", {})
         require(status == 200, f"tempo provenance test track could not be cleared: {cleared}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            cleared_status = request("/v1/status")[1]
+            if cleared_status["nativeTracks"][2]["state"] == "Empty": break
+            time.sleep(0.005)
+        require(cleared_status["nativeTracks"][2]["state"] == "Empty",
+                "Track 3 was not clear before the STOP provenance scenario")
+
+        stop_tempo_revision = 42
+        status, recording = request(
+            f"/v1/transport/record?trackId=3&tempoBpm={tempo_bpm}&tempoRevision={stop_tempo_revision}", "POST", {})
+        require(status == 200, f"STOP provenance Native REC could not be queued: {recording}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            live = request("/v1/status")[1]
+            if live["nativeTracks"][2]["state"] == "Recording": break
+            time.sleep(0.005)
+        require(live["nativeTracks"][2]["state"] == "Recording", "STOP provenance REC did not reach callback")
+        status, stopped = request(
+            f"/v1/transport/stop?trackId=3&tempoBpm={tempo_bpm}&tempoRevision={stop_tempo_revision}", "POST", {})
+        require(status == 200, f"tempo-tagged Native STOP could not be queued: {stopped}")
+        stop_revision = stopped.get("nativeRecordPlay", {}).get("stopRequested", [0, 0, 0])[2]
+        require(stop_revision > 0, f"Native STOP did not return a callback revision: {stopped}")
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            stop_status = request("/v1/status")[1]
+            stop_info = stop_status.get("nativeRecordPlay", {})
+            if stop_info.get("stopApplied", [0, 0, 0])[2] == stop_revision: break
+            time.sleep(0.005)
+        require(stop_info.get("stopCommittedRevision", [0, 0, 0])[2] == stop_revision and
+                stop_status["nativeTracks"][2]["state"] == "Stopped",
+                f"Native STOP callback did not commit the recording take: {stop_info}")
+        stopped_track = next(track for track in stop_status["nativeTracks"] if track["trackId"] == 3)
+        status, staged_metadata = request("/v1/export/track-metadata?trackId=3")
+        require(status == 200 and staged_metadata.get("originalTempoBpm") is None,
+                f"unconfirmed STOP tempo candidate leaked through the metadata endpoint: {staged_metadata}")
+        status, confirmation = request("/v1/transport/record-tempo/confirm", "POST", {
+            "trackId": 3, "expectedContentRevision": stopped_track["contentRevision"],
+            "tempoBpm": tempo_bpm, "tempoRevision": stop_tempo_revision})
+        require(status == 200, f"callback confirmation for Native STOP take failed: {confirmation}")
+        confirm_revision = confirmation["nativeRecordTempoProvenance"]["acceptedRequestRevision"]
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            confirmation_status = request("/v1/status")[1]
+            provenance = confirmation_status.get("nativeRecordTempoProvenance", {})
+            if provenance.get("appliedRevision", [0, 0, 0])[2] == confirm_revision: break
+            time.sleep(0.005)
+        require(provenance.get("acceptedRevision", [0, 0, 0])[2] == confirm_revision,
+                f"Native STOP tempo confirmation callback rejected the staged take: {provenance}")
+        status, stopped_metadata = request("/v1/export/track-metadata?trackId=3")
+        require(status == 200 and stopped_metadata.get("originalTempoBpm") == tempo_bpm,
+                f"callback-validated Native STOP tempo was not published with PCM: {stopped_metadata}")
+        status, cleared = request("/v1/transport/clear?trackId=3", "POST", {})
+        require(status == 200, f"Native STOP provenance test track could not be cleared: {cleared}")
 
         status, empty_track_metadata = request("/v1/export/track-metadata?trackId=2")
         require(status == 409 and "finalized, non-empty loop" in empty_track_metadata.get("error", ""),
