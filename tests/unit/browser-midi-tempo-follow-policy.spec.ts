@@ -19,6 +19,22 @@ describe('Browser MIDI LIVE_POLY tempo-follow policy', () => {
     expect(getSingleBrowserMidiTempoFollowCandidate([track])).toEqual({ track, sourceBpm: 120 });
   });
 
+  it('allows a group only when every committed track has its own eligible provenance', () => {
+    const first = eligible();
+    const second = { ...eligible(), originalRecordingBpm: 96 };
+    const group = getBrowserMidiTempoFollowEligibility([first, second]);
+    expect(group.reason).toBeNull();
+    expect(group.candidate).toBeNull();
+    expect(group.candidates).toEqual([{ track: first, sourceBpm: 120 }, { track: second, sourceBpm: 96 }]);
+
+    const unknown = getBrowserMidiTempoFollowEligibility([first, { ...second, originalRecordingBpm: null }]);
+    expect(unknown.candidates).toEqual([]);
+    expect(unknown.reason).toContain('every committed loop');
+    const inactive = getBrowserMidiTempoFollowEligibility([first, { ...second, livePolyPitchActive: false }]);
+    expect(inactive.candidates).toEqual([]);
+    expect(inactive.reason).toContain('every committed loop');
+  });
+
   it('fails closed for empty, multiple, unknown-tempo, stopped, or non-LIVE_POLY loops', () => {
     expect(getSingleBrowserMidiTempoFollowCandidate([])).toBeNull();
     expect(getSingleBrowserMidiTempoFollowCandidate([eligible(), eligible()])).toBeNull();

@@ -309,17 +309,18 @@ test('opt-in follows one known-BPM LIVE_POLY loop and resets safely when F8 beco
     ]);
     const root = (document.querySelector('.app-root') as any)?.__vueParentComponent;
     const engine = root?.setupState?.engine ?? AudioEngine.getInstance();
-    const track = engine.tracks[0] as any;
     const context = (engine as any).browserEngine.context as AudioContext;
-    const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
-    const pcm = buffer.getChannelData(0);
-    for (let i = 0; i < pcm.length; i += 1) pcm[i] = 0.2 * Math.sin(2 * Math.PI * 220 * i / context.sampleRate);
-    track.audioBuffer = buffer;
-    track.originalRecordingBpmValue = 100;
-    track.state = TrackState.STOPPED;
-    await track.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
-    await track.play();
-    if (!track.livePolyPitchActive) throw new Error('LIVE_POLY did not start for the MIDI tempo-follow E2E');
+    for (const [index, track] of [engine.tracks[0], engine.tracks[1]].entries() as any) {
+      const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+      const pcm = buffer.getChannelData(0);
+      for (let i = 0; i < pcm.length; i += 1) pcm[i] = 0.2 * Math.sin(2 * Math.PI * (220 + index * 55) * i / context.sampleRate);
+      track.audioBuffer = buffer;
+      track.originalRecordingBpmValue = index === 0 ? 100 : 110;
+      track.state = TrackState.STOPPED;
+      await track.setLivePolyPitchEnabled(true, { semitones: 0, playbackRate: 1 });
+      await track.play();
+      if (!track.livePolyPitchActive) throw new Error(`LIVE_POLY did not start on track ${index + 1} for the MIDI tempo-follow E2E`);
+    }
   });
 
   const followToggle = page.getByTestId('midi-livepoly-tempo-follow');
@@ -373,6 +374,16 @@ test('opt-in follows one known-BPM LIVE_POLY loop and resets safely when F8 beco
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
     return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
   }), { timeout: 10_000 }).toBeCloseTo(112, 0);
+  const sharedRetarget = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const tracks = AudioEngine.getInstance().tracks.slice(0, 2) as any[];
+    return tracks.map((track) => track.livePolyTempoFollow);
+  });
+  expect(sharedRetarget).toHaveLength(2);
+  expect(sharedRetarget[0].outputTime).toBe(sharedRetarget[1].outputTime);
+  expect(sharedRetarget.map((snapshot: any) => snapshot.acknowledgedBeforeOutputTime)).toEqual([true, true]);
+  expect(sharedRetarget.map((snapshot: any) => snapshot.phaseAligned)).toEqual([false, false]);
+  expect(sharedRetarget.map((snapshot: any) => snapshot.rateRatio)).toEqual([1.12, 112 / 110]);
   await page.evaluate(() => {
     (window as unknown as { __fakeTempoFollowMidi: { setBpm(nextBpm: number): void } }).__fakeTempoFollowMidi.setBpm(120);
   });
@@ -418,6 +429,14 @@ test('opt-in follows one known-BPM LIVE_POLY loop and resets safely when F8 beco
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
     return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
   }), { timeout: 3_000 }).toBe(120);
+  const pcmEvidence = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const track = AudioEngine.getInstance().tracks[0] as any;
+    const pcm = track.audioBuffer.getChannelData(0) as Float32Array;
+    let hash = 2166136261;
+    for (const sample of pcm) hash = Math.imul(hash ^ new Uint32Array(new Float32Array([sample]).buffer)[0]!, 16777619);
+    return { hash: hash >>> 0, revision: track.projectRevision, history: track.historyTotalRetainedBytes, rate: track.livePolyPitchPlaybackRate };
+  });
   await page.evaluate(() => {
     const fake = (window as unknown as { __fakeTempoFollowMidi: { send(data: number[], timeStamp: number): void } }).__fakeTempoFollowMidi;
     fake.send([0xfc], performance.now());
@@ -433,21 +452,49 @@ test('opt-in follows one known-BPM LIVE_POLY loop and resets safely when F8 beco
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
     return (AudioEngine.getInstance().tracks[0] as any).livePolyTempoFollow?.targetBpm ?? null;
   }), { timeout: 3_000 }).toBe(120);
-  const pcmEvidence = await page.evaluate(async () => {
+  await page.evaluate(async () => {
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
-    const track = AudioEngine.getInstance().tracks[0] as any;
-    const pcm = track.audioBuffer.getChannelData(0) as Float32Array;
-    let hash = 2166136261;
-    for (const sample of pcm) hash = Math.imul(hash ^ new Uint32Array(new Float32Array([sample]).buffer)[0]!, 16777619);
-    return { hash: hash >>> 0, revision: track.projectRevision, history: track.historyTotalRetainedBytes, rate: track.livePolyPitchPlaybackRate };
+    const second = AudioEngine.getInstance().tracks[1] as any;
+    const node = second.livePolyPitchNode;
+    const original = node.schedule.bind(node);
+    node.schedule = (change: { rate?: number }) => change.rate !== 1
+      ? Promise.reject(new Error('Injected second-track retarget rejection for fail-closed coverage.'))
+      : original(change);
+    Object.defineProperty(window, '__restoreSecondTempoFollowNode', { configurable: true, value: () => { node.schedule = original; } });
+    (window as unknown as { __fakeTempoFollowMidi: { setBpm(nextBpm: number): void } }).__fakeTempoFollowMidi.setBpm(114);
   });
+  await expect(followToggle).not.toBeChecked({ timeout: 5_000 });
+  await expect(page.getByTestId('midi-livepoly-tempo-follow-status')).toContainText('could not acknowledge a safe retarget');
+  const failedRetarget = await page.evaluate(async () => {
+    const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
+    const tracks = AudioEngine.getInstance().tracks.slice(0, 2) as any[];
+    (window as unknown as { __restoreSecondTempoFollowNode(): void }).__restoreSecondTempoFollowNode();
+    return tracks.map((track) => ({
+      follow: track.livePolyTempoFollow,
+      pending: track.livePolyTempoFollowPending,
+      rate: track.livePolyPitchPlaybackRate,
+      state: track.state,
+      livePolyActive: track.livePolyPitchActive,
+    }));
+  });
+  expect(failedRetarget).toEqual([
+    { follow: null, pending: false, rate: 1, state: 'STOPPED', livePolyActive: false },
+    { follow: null, pending: false, rate: 1, state: 'STOPPED', livePolyActive: false },
+  ]);
   await page.evaluate((timer) => window.clearInterval(timer), pulseTimer);
   await expect(followToggle).not.toBeChecked({ timeout: 5_000 });
   await expect.poll(() => page.evaluate(async () => {
     const { AudioEngine } = await import('/src/audio/AudioEngine.ts');
-    const track = AudioEngine.getInstance().tracks[0] as any;
-    return { follow: track.livePolyTempoFollow, rate: track.livePolyPitchPlaybackRate, state: track.state };
-  }), { timeout: 3_000 }).toMatchObject({ follow: null, rate: 1, state: 'PLAYING' });
+    return AudioEngine.getInstance().tracks.slice(0, 2).map((track: any) => ({
+      follow: track.livePolyTempoFollow,
+      rate: track.livePolyPitchPlaybackRate,
+      state: track.state,
+      livePolyActive: track.livePolyPitchActive,
+    }));
+  }), { timeout: 3_000 }).toEqual([
+    { follow: null, rate: 1, state: 'STOPPED', livePolyActive: false },
+    { follow: null, rate: 1, state: 'STOPPED', livePolyActive: false },
+  ]);
   const pcmAfter = await page.evaluate(async () => {
     const [{ AudioEngine }, { TrackState }] = await Promise.all([
       import('/src/audio/AudioEngine.ts'),

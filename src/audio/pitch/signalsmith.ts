@@ -93,6 +93,8 @@ export interface LivePolyPitchLoopOptions {
 export interface LivePolyPitchRateRampOptions {
   /** Seconds spent smoothly retuning the source/output time ratio. */
   readonly durationSeconds?: number;
+  /** Shared future AudioContext time for coordinated multi-track retargets. */
+  readonly outputTime?: number;
   /** Lets the owning track cancel future ramp points after a route/state change. */
   readonly isCurrent?: () => boolean;
   /** Called after each time-map point is acknowledged by the AudioWorklet. */
@@ -598,7 +600,10 @@ export async function createLivePolyPitchNode(
           throw new RangeError('LIVE_POLY playback-rate ramp duration must be between 0.1 and 2 seconds.');
         }
 
-        const startTime = context.currentTime + latencySeconds;
+        const startTime = ramp.outputTime ?? context.currentTime + latencySeconds;
+        if (!Number.isFinite(startTime) || startTime < context.currentTime + latencySeconds) {
+          throw new RangeError('LIVE_POLY playback-rate ramp outputTime must be a finite future AudioContext time after the worklet latency.');
+        }
         const currentRate = activeRateRamp && startTime < activeRateRamp.endTime
           ? activeRateRamp.from + (activeRateRamp.to - activeRateRamp.from)
             * Math.max(0, Math.min(1, (startTime - activeRateRamp.startTime) / (activeRateRamp.endTime - activeRateRamp.startTime)))

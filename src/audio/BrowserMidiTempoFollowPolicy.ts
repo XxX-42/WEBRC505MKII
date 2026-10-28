@@ -6,37 +6,43 @@ export interface BrowserMidiTempoFollowTrack {
   readonly livePolyPitchActive?: boolean;
   readonly loopTransportActive?: boolean;
   readonly loopTransportUnavailableReason?: string | null;
+  readonly historyBusy?: boolean;
   readonly track?: { readonly oneShot?: 'ON' | 'OFF' };
   readonly state: TrackState;
 }
 
 export interface BrowserMidiTempoFollowEligibility<T extends BrowserMidiTempoFollowTrack> {
+  readonly candidates: readonly { readonly track: T; readonly sourceBpm: number }[];
   readonly candidate: { readonly track: T; readonly sourceBpm: number } | null;
   readonly reason: string | null;
 }
 
-/** Explains fail-closed eligibility for one known-tempo repeating LIVE_POLY loop. */
+/** Every committed loop must have known provenance and qualify before group follow is allowed. */
 export function getBrowserMidiTempoFollowEligibility<T extends BrowserMidiTempoFollowTrack>(
   tracks: readonly T[],
 ): BrowserMidiTempoFollowEligibility<T> {
-  const unavailable = (reason: string): BrowserMidiTempoFollowEligibility<T> => Object.freeze({ candidate: null, reason });
+  const unavailable = (reason: string): BrowserMidiTempoFollowEligibility<T> => Object.freeze({ candidates: Object.freeze([]), candidate: null, reason });
   const committed = tracks.filter((track) => track.hasCommittedPhrase === true);
-  if (committed.length === 0) return unavailable('Tempo follow requires exactly one committed loop.');
-  if (committed.length > 1) return unavailable('Tempo follow is unavailable with multiple committed loops.');
-  const track = committed[0]!;
-  const sourceBpm = track.originalRecordingBpm;
-  if (typeof sourceBpm !== 'number' || !Number.isFinite(sourceBpm) || sourceBpm < 40 || sourceBpm > 300) {
-    return unavailable('Tempo follow requires a known recording BPM between 40 and 300.');
+  if (committed.length === 0) return unavailable('Tempo follow requires at least one committed loop.');
+  const candidates: { track: T; sourceBpm: number }[] = [];
+  for (const track of committed) {
+    const sourceBpm = track.originalRecordingBpm;
+    if (typeof sourceBpm !== 'number' || !Number.isFinite(sourceBpm) || sourceBpm < 40 || sourceBpm > 300) {
+      return unavailable('Tempo follow requires a known recording BPM between 40 and 300 for every committed loop.');
+    }
+    if (track.track?.oneShot === 'ON') return unavailable('Tempo follow requires repeating loops; one-shot tracks are unsupported.');
+    const loopTransportReason = track.loopTransportUnavailableReason;
+    if (track.loopTransportActive === true || /BEAT SHIFT|VINYL FLICK|source-aware loop transport/i.test(loopTransportReason ?? '')) {
+      return unavailable('Tempo follow is unavailable while a source-aware loop transport effect is configured.');
+    }
+    if (loopTransportReason != null) return unavailable(`Tempo follow is unavailable: ${loopTransportReason}.`);
+    if (track.livePolyPitchActive !== true) return unavailable('Enable LIVE_POLY and start every committed loop before enabling tempo follow.');
+    if (track.state !== TrackState.PLAYING) return unavailable('Tempo follow requires every committed loop to be playing.');
+    if (track.historyBusy === true) return unavailable('Tempo follow is unavailable while any committed loop is recording, overdubbing, or changing PCM history.');
+    candidates.push(Object.freeze({ track, sourceBpm }));
   }
-  if (track.track?.oneShot === 'ON') return unavailable('Tempo follow requires a repeating loop; one-shot tracks are unsupported.');
-  const loopTransportReason = track.loopTransportUnavailableReason;
-  if (track.loopTransportActive === true || /BEAT SHIFT|VINYL FLICK|source-aware loop transport/i.test(loopTransportReason ?? '')) {
-    return unavailable('Tempo follow is unavailable while a source-aware loop transport effect is configured.');
-  }
-  if (loopTransportReason != null) return unavailable(`Tempo follow is unavailable: ${loopTransportReason}.`);
-  if (track.livePolyPitchActive !== true) return unavailable('Enable LIVE_POLY and start the loop before enabling tempo follow.');
-  if (track.state !== TrackState.PLAYING) return unavailable('Tempo follow requires the loop to be playing.');
-  return Object.freeze({ candidate: Object.freeze({ track, sourceBpm }), reason: null });
+  const frozen = Object.freeze(candidates);
+  return Object.freeze({ candidates: frozen, candidate: frozen.length === 1 ? frozen[0]! : null, reason: null });
 }
 
 /** Candidate-only compatibility helper for callers that need a simple fail-closed gate. */

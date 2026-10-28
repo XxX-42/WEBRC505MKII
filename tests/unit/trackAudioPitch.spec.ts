@@ -35,7 +35,10 @@ const pitchHarness = vi.hoisted(() => {
     scheduleLoop: vi.fn(async () => undefined),
     scheduleSegment: vi.fn(async () => undefined),
     setPitch: vi.fn(async () => undefined),
-    setPlaybackRate: vi.fn(async (toRate: number) => ({ startTime: 0, endTime: 0.4, fromRate: 1, toRate })),
+    setPlaybackRate: vi.fn(async (toRate: number, options?: { outputTime?: number }) => {
+      const startTime = options?.outputTime ?? 0.14;
+      return { startTime, endTime: startTime + 0.4, fromRate: 1, toRate };
+    }),
     startProcessing: vi.fn(async () => undefined),
     stopProcessing: vi.fn(async () => undefined),
     port,
@@ -195,7 +198,7 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     expect(trackAudio.state).toBe(TrackState.PLAYING);
     await expect(trackAudio.followLivePolyTempo(100, 120)).rejects.toThrow(/already pending/);
 
-    pending.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
+    pending.resolve({ startTime: 0.14, endTime: 0.54, fromRate: 1, toRate: 1.25 });
     await Promise.resolve();
     await Promise.resolve();
     expect(trackAudio['livePolyTempoFollowPending']).toBe(true);
@@ -203,7 +206,7 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     trackAudio.triggerRecord();
     expect(trackAudio.state).toBe(TrackState.PLAYING);
     expect(trackAudio.recordingDiagnostic).toContain('Wait for or stop LIVE_POLY tempo follow');
-    (context as any).currentTime = 0.5;
+    (context as any).currentTime = 0.6;
     await vi.advanceTimersByTimeAsync(11);
     await expect(operation).resolves.toMatchObject({ rateRatio: 1.25, targetBpm: 125 });
     expect(trackAudio['livePolyTempoFollowPending']).toBe(false);
@@ -226,12 +229,12 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(1);
     const clear = trackAudio.clearLivePolyTempoFollow();
     expect(trackAudio['livePolyTempoFollowPending']).toBe(true);
-    pendingFollow.resolve({ startTime: 0, endTime: 0.4, fromRate: 1, toRate: 1.25 });
+    pendingFollow.resolve({ startTime: 0.14, endTime: 0.54, fromRate: 1, toRate: 1.25 });
     await expect(follow).rejects.toThrow(/playback changed during tempo retarget/);
     await Promise.resolve();
     expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(2);
     expect(pitchHarness.node.setPlaybackRate).toHaveBeenLastCalledWith(1, expect.objectContaining({ durationSeconds: 0.4 }));
-    pendingReset.resolve({ startTime: 1, endTime: 1.4, fromRate: 1.25, toRate: 1 });
+    pendingReset.resolve({ startTime: 0.14, endTime: 0.54, fromRate: 1.25, toRate: 1 });
     await Promise.resolve();
     await Promise.resolve();
     expect(trackAudio['livePolyTempoFollowPending']).toBe(true);
@@ -271,7 +274,7 @@ describe('TrackAudio KeepPitch opt-in routing', () => {
     await Promise.resolve();
     await expect(follow).rejects.toThrow(/cancelled|state changed|playback changed during tempo retarget/);
     expect(pitchHarness.node.setPlaybackRate).toHaveBeenCalledTimes(2);
-    pendingReset.resolve({ startTime: 0.2, endTime: 0.6, fromRate: 1.25, toRate: 1 });
+    pendingReset.resolve({ startTime: 0.14, endTime: 0.54, fromRate: 1.25, toRate: 1 });
     await Promise.resolve();
     await Promise.resolve();
     trackAudio.triggerRecord();

@@ -306,6 +306,10 @@ export interface LivePolyTempoFollowSnapshot {
     readonly targetBpm: number;
     readonly rateRatio: number;
     readonly pcmRevision: number;
+    /** Shared AudioContext time at which the acknowledged rate ramp was scheduled. */
+    readonly outputTime: number;
+    /** True only when every rate point was worklet-acknowledged before outputTime. */
+    readonly acknowledgedBeforeOutputTime: true;
     readonly phaseAligned: false;
 }
 
@@ -387,6 +391,7 @@ export class TrackAudio {
         readonly targetBpm: number;
         readonly rateRatio: number;
         readonly pcmRevision: number;
+        readonly outputTime: number;
         readonly sourceBuffer: AudioBuffer;
     } | null = null;
     private livePolyTempoFollowGeneration = 0;
@@ -1613,6 +1618,8 @@ export class TrackAudio {
             targetBpm: follow.targetBpm,
             rateRatio: follow.rateRatio,
             pcmRevision: follow.pcmRevision,
+            outputTime: follow.outputTime,
+            acknowledgedBeforeOutputTime: true,
             phaseAligned: false,
         });
     }
@@ -1622,7 +1629,11 @@ export class TrackAudio {
      * The caller must provide the tempo at which this source loop was recorded;
      * this API does not read or apply MIDI clock and does not establish sample phase.
      */
-    public async followLivePolyTempo(sourceRecordingBpm: number, targetBpm: number): Promise<LivePolyTempoFollowSnapshot> {
+    public async followLivePolyTempo(
+        sourceRecordingBpm: number,
+        targetBpm: number,
+        options: { readonly outputTime?: number } = {},
+    ): Promise<LivePolyTempoFollowSnapshot> {
         if (this.livePolyTempoFollowPending) throw new Error('A LIVE_POLY tempo-follow change is already pending.');
         const validBpm = (value: number): boolean => Number.isFinite(value)
             && value >= MIN_TRACK_TEMPO_BPM && value <= MAX_TRACK_TEMPO_BPM;
@@ -1659,7 +1670,10 @@ export class TrackAudio {
         const sourceRevision = this.projectPcmRevision;
         const playbackRevision = this.playbackRevision;
         const node = this.livePolyPitchNode!;
-        const rampStartTime = this.engine.context.currentTime + node.latencySeconds;
+        const rampStartTime = options.outputTime ?? this.engine.context.currentTime + node.latencySeconds;
+        if (!Number.isFinite(rampStartTime) || rampStartTime < this.engine.context.currentTime + node.latencySeconds) {
+            throw new RangeError('Tempo follow outputTime must be a finite future AudioContext time after LIVE_POLY latency.');
+        }
         const stableOffset = this.getLivePolyPlaybackPositionAtAudioTime(rampStartTime);
         const generation = ++this.livePolyTempoFollowGeneration;
         this.livePolyTempoFollowPending = true;
@@ -1679,12 +1693,19 @@ export class TrackAudio {
         try {
             const operation = node.setPlaybackRate(rateRatio, {
                 durationSeconds: 0.4,
+                outputTime: rampStartTime,
                 isCurrent,
                 onProgress: (progress) => this.commitLivePolyPlaybackRateProgress(progress, generation),
             });
             this.livePolyTempoFollowPendingPromise = operation;
             const ramp = await operation;
             if (!isCurrent()) throw new Error('Track playback changed during tempo retarget; no tempo-follow state was committed.');
+            if (ramp.startTime !== rampStartTime) {
+                throw new Error('LIVE_POLY did not acknowledge the shared future outputTime requested for every track.');
+            }
+            if (this.engine.context.currentTime >= ramp.startTime) {
+                throw new Error('LIVE_POLY tempo retarget acknowledgments arrived at or after the shared outputTime; the group cannot be reported synchronized.');
+            }
             if (ramp.toRate !== rateRatio) throw new Error('Signalsmith acknowledged a different LIVE_POLY playback rate.');
             await this.waitForLivePolyRampEnd(ramp.endTime, generation, isCurrent);
             this.livePolyPitchPlaybackRate = rateRatio;
@@ -1693,6 +1714,7 @@ export class TrackAudio {
                 targetBpm,
                 rateRatio,
                 pcmRevision: sourceRevision,
+                outputTime: rampStartTime,
                 sourceBuffer,
             });
         } catch (error) {
@@ -1713,7 +1735,7 @@ export class TrackAudio {
     }
 
     /** Returns the loop to its recorded playback rate before recording or changing modes. */
-    public async clearLivePolyTempoFollow(): Promise<void> {
+    public async clearLivePolyTempoFollow(options: { readonly outputTime?: number } = {}): Promise<void> {
         if (!this.livePolyTempoFollowPending && !this.livePolyTempoFollow) {
             if (this.livePolyTempoFollowValue) this.resetLivePolyTempoFollowForModeChange();
             this.livePolyTempoFollowValue = null;
@@ -1753,17 +1775,27 @@ export class TrackAudio {
                 throw new Error('An interrupted LIVE_POLY ramp was only partially scheduled; playback is stopped because its exact reader phase is uncertain. Clear tempo follow again after stopping the track.');
             }
             if (node && this.livePolyPitchActiveInternal && this.state === TrackState.PLAYING) {
-                const rampStartTime = this.engine.context.currentTime + node.latencySeconds;
+                const rampStartTime = options.outputTime ?? this.engine.context.currentTime + node.latencySeconds;
+                if (!Number.isFinite(rampStartTime) || rampStartTime < this.engine.context.currentTime + node.latencySeconds) {
+                    throw new RangeError('Tempo-follow reset outputTime must be a finite future AudioContext time after LIVE_POLY latency.');
+                }
                 this.livePolyTempoFollowRampStartTime = rampStartTime;
                 this.livePolyTempoFollowStableOffset = this.getLivePolyPlaybackPositionAtAudioTime(rampStartTime);
                 const operation = node.setPlaybackRate(1, {
                     durationSeconds: 0.4,
+                    outputTime: rampStartTime,
                     isCurrent,
                     onProgress: (progress) => this.commitLivePolyPlaybackRateProgress(progress, generation),
                 });
                 this.livePolyTempoFollowPendingPromise = operation;
                 const ramp = await operation;
                 if (!isCurrent()) throw new Error('Track playback changed during tempo-follow reset.');
+                if (ramp.startTime !== rampStartTime) {
+                    throw new Error('LIVE_POLY did not acknowledge the requested future reset outputTime.');
+                }
+                if (this.engine.context.currentTime >= ramp.startTime) {
+                    throw new Error('LIVE_POLY reset acknowledgments arrived at or after the shared outputTime; playback must stop for a safe reset.');
+                }
                 if (ramp.toRate !== 1) throw new Error('Signalsmith did not restore the LIVE_POLY loop to its recorded rate.');
                 await this.waitForLivePolyRampEnd(ramp.endTime, generation, isCurrent);
             }
