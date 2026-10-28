@@ -13,6 +13,10 @@ export interface MidiClockSnapshot {
   readonly stability: MidiClockStability;
   readonly tickCount: number;
   readonly lastTickAtMs: number | null;
+  /** Latest selected-source MIDI Start (FA), when observed. This is diagnostic only. */
+  readonly lastStartAtMs: number | null;
+  /** Performance-time projection of FA onto the current AudioContext frame clock. */
+  readonly startFrameMapping: MidiAudioFrameMapResult;
   readonly measuredBpm: number | null;
   readonly inputCount: number;
   readonly inputs: readonly MidiClockInputPort[];
@@ -102,6 +106,10 @@ export class MidiClockInputController {
   private nextPortKey = 1;
   private selectedInputKey: string | null = null;
   private readonly phaseEstimator = new MidiClockEstimator();
+  private lastStartAtMs: number | null = null;
+  private startFrameMapping: MidiAudioFrameMapResult = Object.freeze({
+    ok: false, frame: null, reason: 'unanchored', driftPpm: null, anchorCount: 0,
+  });
   private generation = 0;
   private pending?: Promise<MidiInputState>;
 
@@ -126,6 +134,9 @@ export class MidiClockInputController {
     // A suspend/resume pair may happen between diagnostic polling ticks. Any
     // state transition makes the old performance/audio affine model unusable.
     this.frameMapper.reset();
+    this.phaseEstimator.reset();
+    this.lastStartAtMs = null;
+    this.startFrameMapping = this.unmappedFrame();
     this.onChange?.();
   };
 
@@ -196,6 +207,8 @@ export class MidiClockInputController {
     this.selectedInputKey = null;
     this.phaseEstimator.reset();
     this.frameMapper.reset();
+    this.lastStartAtMs = null;
+    this.startFrameMapping = this.unmappedFrame();
     this.watchAudioContext(null);
     this.setConnection('disconnected');
     this.onChange?.();
@@ -207,6 +220,8 @@ export class MidiClockInputController {
       this.selectedInputKey = null;
       this.phaseEstimator.reset();
       this.frameMapper.reset();
+      this.lastStartAtMs = null;
+      this.startFrameMapping = this.unmappedFrame();
       this.onChange?.();
       return true;
     }
@@ -215,6 +230,8 @@ export class MidiClockInputController {
     this.selectedInputKey = key;
     this.phaseEstimator.reset();
     this.frameMapper.reset();
+    this.lastStartAtMs = null;
+    this.startFrameMapping = this.unmappedFrame();
     const selected = [...this.portClocks.values()].find((clock) => clock.key === key);
     if (selected) {
       selected.intervals = [];
@@ -230,6 +247,12 @@ export class MidiClockInputController {
     const source = streams.find((stream) => stream.key === this.selectedInputKey);
     const sourceActive = !!source && source.lastTickAtMs !== null
       && Math.max(0, nowMs - source.lastTickAtMs) <= STALE_AFTER_MS;
+    const lastRelevantEventAtMs = source ? Math.max(source.lastTickAtMs ?? -Infinity, this.lastStartAtMs ?? -Infinity) : -Infinity;
+    if (this.lastStartAtMs !== null && nowMs - lastRelevantEventAtMs > STALE_AFTER_MS) {
+      this.lastStartAtMs = null;
+      this.startFrameMapping = this.unmappedFrame('stale-event');
+      this.phaseEstimator.reset();
+    }
     const signal: MidiClockSignal = !source ? 'waiting'
       : sourceActive ? 'observed' : source.lastTickAtMs !== null ? 'stale' : 'waiting';
     const stability: MidiClockStability = !source || source.intervals.length < HISTORY_SIZE
@@ -255,6 +278,8 @@ export class MidiClockInputController {
       stability: signal === 'observed' ? stability : 'insufficient-data',
       tickCount: source?.tickCount ?? 0,
       lastTickAtMs: source?.lastTickAtMs ?? null,
+      lastStartAtMs: source ? this.lastStartAtMs : null,
+      startFrameMapping: source ? this.startFrameMapping : this.unmappedFrame(),
       measuredBpm: medianInterval > 0 ? 60000 / (medianInterval * 24) : null,
       inputCount: this.inputs.size,
       inputs: Object.freeze([...this.portClocks.values()].map((clock) => Object.freeze({ key: clock.key, name: clock.name }))),
@@ -297,6 +322,9 @@ export class MidiClockInputController {
         if (removedKey && this.selectedInputKey === removedKey) {
           this.selectedInputKey = null;
           this.phaseEstimator.reset();
+          this.frameMapper.reset();
+          this.lastStartAtMs = null;
+          this.startFrameMapping = this.unmappedFrame();
         }
       }
     }
@@ -344,10 +372,27 @@ export class MidiClockInputController {
     // Ignore events already queued when a port was disconnected or permission was revoked.
     if (!this.inputs.has(input)) return;
     const data = event?.data;
-    if (!data || data.length !== 1 || data[0] !== CLOCK_STATUS || !Number.isFinite(event.timeStamp)) return;
+    if (!data || data.length !== 1 || !Number.isFinite(event.timeStamp)) return;
     const clock = this.portClocks.get(input);
     if (!clock) return;
     const time = event.timeStamp;
+    if (data[0] === 0xfa) {
+      if (clock.key !== this.selectedInputKey) return;
+      this.phaseEstimator.reset();
+      this.lastStartAtMs = time;
+      const anchor = this.getAudioAnchor?.() ?? null;
+      if (anchor) {
+        this.watchAudioContext(anchor.contextKey);
+        this.frameMapper.addAnchor(anchor);
+        this.startFrameMapping = this.frameMapper.map(time, this.now());
+      } else {
+        this.frameMapper.reset();
+        this.startFrameMapping = this.unmappedFrame();
+      }
+      this.onChange?.();
+      return;
+    }
+    if (data[0] !== CLOCK_STATUS) return;
     if (clock.lastTickAtMs !== null) {
       const interval = time - clock.lastTickAtMs;
       if (interval > 0 && Number.isFinite(interval)) {
@@ -358,6 +403,10 @@ export class MidiClockInputController {
     clock.lastTickAtMs = time;
     clock.tickCount += 1;
     if (clock.key === this.selectedInputKey) this.phaseEstimator.push(time, clock.key);
+  }
+
+  private unmappedFrame(reason: MidiAudioFrameMapResult['reason'] = 'unanchored'): MidiAudioFrameMapResult {
+    return Object.freeze({ ok: false, frame: null, reason, driftPpm: null, anchorCount: 0 });
   }
 
   private isStable(intervals: readonly number[]): boolean {

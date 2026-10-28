@@ -110,6 +110,13 @@ export class MidiAudioFrameMapper {
     if (previous) {
       const elapsedMs = anchor.performanceTimeMs - previous.performanceTimeMs;
       const audioElapsedMs = (anchor.audioTimeSeconds - previous.audioTimeSeconds) * 1000;
+      // UI refresh callbacks may sample the same clock pair more than once in
+      // one task. Treat an identical repeat as a no-op instead of poisoning
+      // an otherwise valid map with a zero-duration anchor.
+      if (elapsedMs === 0 && audioElapsedMs === 0) {
+        this.failure = null;
+        return this.result(null, true, null);
+      }
       if (!(elapsedMs > 0) || !(audioElapsedMs > 0)) {
         this.failure = 'invalid-anchor';
         return this.result(null, false, this.failure);

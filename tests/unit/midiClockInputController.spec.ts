@@ -121,6 +121,74 @@ describe('MidiClockInputController', () => {
     controller.disconnect();
   });
 
+  it('projects selected MIDI Start to an audio frame for diagnostics and clears it on context interruption', async () => {
+    const input = new FakeInput('Clock');
+    const context = new FakeAudioContextClock();
+    const controller = new MidiClockInputController({
+      requestMIDIAccess: async () => new FakeAccess([input]),
+      now: () => context.performanceTimeMs,
+      getAudioAnchor: () => ({
+        performanceTimeMs: context.performanceTimeMs,
+        audioTimeSeconds: context.audioTimeSeconds,
+        sampleRate: 48_000,
+        contextKey: context,
+        contextState: context.state,
+      }),
+    });
+    await controller.connect();
+    const key = controller.getSnapshot().inputs[0]!.key;
+    controller.selectInput(key);
+    controller.getSnapshot();
+    context.performanceTimeMs = 1_250;
+    context.audioTimeSeconds = 10.25;
+    controller.getSnapshot();
+    input.send([0xfa], 1_240);
+    expect(controller.getSnapshot()).toMatchObject({
+      lastStartAtMs: 1_240,
+      startFrameMapping: { ok: true, frame: 491_520, reason: null, anchorCount: 2 },
+      tickCount: 0,
+      phaseState: 'waiting',
+    });
+
+    context.changeState('suspended');
+    expect(controller.getSnapshot()).toMatchObject({ lastStartAtMs: null, startFrameMapping: { ok: false } });
+    context.changeState('running');
+    controller.disconnect();
+    expect(controller.getSnapshot()).toMatchObject({ lastStartAtMs: null, startFrameMapping: { ok: false, reason: 'unanchored' } });
+  });
+
+  it('ignores MIDI Start from an unselected source and clears its projection on source change', async () => {
+    const first = new FakeInput('First');
+    const second = new FakeInput('Second');
+    const controller = new MidiClockInputController({
+      requestMIDIAccess: async () => new FakeAccess([first, second]),
+      now: () => 100,
+    });
+    await controller.connect();
+    const [firstPort, secondPort] = controller.getSnapshot(100).inputs;
+    controller.selectInput(firstPort!.key);
+    second.send([0xfa], 100);
+    expect(controller.getSnapshot(100).lastStartAtMs).toBeNull();
+    first.send([0xfa], 100);
+    expect(controller.getSnapshot(100).lastStartAtMs).toBe(100);
+    controller.selectInput(secondPort!.key);
+    expect(controller.getSnapshot(100)).toMatchObject({ lastStartAtMs: null, startFrameMapping: { ok: false } });
+  });
+
+  it('expires the external Start projection after one second without a selected-source clock event', async () => {
+    const input = new FakeInput('Clock');
+    const controller = new MidiClockInputController({ requestMIDIAccess: async () => new FakeAccess([input]), now: () => 100 });
+    await controller.connect();
+    controller.selectInput(controller.getSnapshot(100).inputs[0]!.key);
+    input.send([0xfa], 100);
+    expect(controller.getSnapshot(100).lastStartAtMs).toBe(100);
+    expect(controller.getSnapshot(1_101)).toMatchObject({
+      lastStartAtMs: null,
+      startFrameMapping: { ok: false, frame: null, reason: 'stale-event' },
+      phaseState: 'waiting',
+    });
+  });
+
   it('requests access only on connect and observes F8 without interpreting note messages as clock', async () => {
     const input = new FakeInput('Interface A');
     const access = new FakeAccess([input]);
@@ -247,11 +315,13 @@ describe('MidiClockInputController', () => {
     await controller.connect();
     controller.selectInput(controller.getSnapshot(0).inputs[0]!.key);
     input.send([0xf8], 100);
+    input.send([0xfa], 110);
     expect(controller.getSnapshot(100).signal).toBe('observed');
+    expect(controller.getSnapshot(110).lastStartAtMs).toBe(110);
 
     input.state = 'disconnected';
     access.changeState();
-    expect(controller.getSnapshot(100)).toMatchObject({ signal: 'waiting', inputCount: 0, tickCount: 0, lastTickAtMs: null, selectedInputKey: null, selectedInputName: null });
+    expect(controller.getSnapshot(100)).toMatchObject({ signal: 'waiting', inputCount: 0, tickCount: 0, lastTickAtMs: null, lastStartAtMs: null, selectedInputKey: null, selectedInputName: null, startFrameMapping: { ok: false } });
     input.deliverLate([0xf8], 120);
     expect(controller.getSnapshot(120)).toMatchObject({ signal: 'waiting', inputCount: 0, tickCount: 0, selectedInputKey: null });
   });

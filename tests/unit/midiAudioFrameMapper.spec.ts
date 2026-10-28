@@ -18,6 +18,13 @@ describe('MidiAudioFrameMapper', () => {
     expect(mapper.map(4_025, 4_030)).toMatchObject({ ok: true, frame: 625_198, driftPpm: expect.any(Number), anchorCount: 4 });
   });
 
+  it('treats an identical repeated clock sample as an idempotent anchor', () => {
+    const mapper = new MidiAudioFrameMapper();
+    mapper.addAnchor(anchor(1_000, 10));
+    expect(mapper.addAnchor(anchor(1_000, 10))).toMatchObject({ ok: true, reason: null, anchorCount: 1 });
+    expect(mapper.map(1_025, 1_030)).toMatchObject({ ok: true, frame: 481_200, reason: null, anchorCount: 1 });
+  });
+
   it('estimates bounded clock drift from multiple anchors', () => {
     const mapper = new MidiAudioFrameMapper();
     mapper.addAnchor(anchor(1_000, 10));

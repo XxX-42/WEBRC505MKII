@@ -55,8 +55,9 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
   await expect(status).toHaveText('Select one input to monitor');
   const relativePhase = page.getByTestId('midi-clock-relative-phase');
   const frameMapping = page.getByTestId('midi-clock-frame-map');
+  const startFrameMapping = page.getByTestId('midi-clock-start-frame-map');
   await expect(relativePhase).toHaveText('Relative pulse phase: select one input');
-  await expect(page.locator('.midi-clock-phase-note')).toContainText('no START/downbeat marker');
+  await expect(page.locator('.midi-clock-phase-note')).toContainText('FA Start is projected for diagnostics only');
   const source = page.getByTestId('midi-clock-input-select');
   await expect(source.locator('option')).toHaveText(['Select MIDI input', 'Controller Alpha', 'Controller Beta']);
   await source.selectOption({ label: 'Controller Alpha' });
@@ -81,12 +82,15 @@ test('explicitly connects a read-only MIDI clock monitor in the transport bar', 
   await page.evaluate(() => {
     const fake = (window as unknown as { __fakeMidiClock: { send(data: number[], timeStamp: number, sourceIndex?: number): void } }).__fakeMidiClock;
     const start = performance.now();
+    fake.send([0xfa], start);
     for (let tick = 0; tick <= 24; tick += 1) fake.send([0xf8], start + tick * (60_000 / 120 / 24));
   });
   await expect(status).toHaveText('Timing steady · monitor only');
   await expect(relativePhase).toContainText('Relative pulse phase: locked');
   await expect(relativePhase).toContainText('ticks from first pulse');
   await expect(page.getByTestId('midi-clock-phase-stats')).toHaveAttribute('data-locked', 'true');
+  await expect(startFrameMapping).toContainText('MIDI Start (FA):');
+  await expect(startFrameMapping).toContainText(/read-only frame estimate|frame estimate unavailable/);
   const transportAfter = await page.evaluate(async () => {
     const { Transport } = await import('/src/core/Transport.ts');
     const transport = Transport.getInstance();

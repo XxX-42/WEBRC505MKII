@@ -81,7 +81,7 @@
         {{ midiClockPhaseStatus }}
       </div>
       <div class="midi-clock-phase-note">
-        Relative to first F8 pulse only; MIDI Clock has no START/downbeat marker and does not sync Transport.
+        F8 reports tempo clock at 24 pulses per quarter note; FA Start is projected for diagnostics only. Neither drives Transport or recording.
       </div>
       <div
         v-if="clockSnapshot.selectedInputKey"
@@ -97,6 +97,9 @@
       </div>
       <div v-if="clockSnapshot.selectedInputKey" class="midi-clock-frame-map" data-testid="midi-clock-frame-map">
         {{ midiFrameMappingStatus }}
+      </div>
+      <div v-if="clockSnapshot.selectedInputKey" class="midi-clock-frame-map" data-testid="midi-clock-start-frame-map">
+        {{ midiStartFrameMappingStatus }}
       </div>
       <div v-if="clockSnapshot.selectedInputKey" class="midi-clock-phase-note">
         Estimated from performance.now() and AudioContext.currentTime; currentTime may be quantized, so this is not sample-accurate.
@@ -223,6 +226,13 @@ const midiFrameMappingStatus = computed(() => {
   if (!mapping.ok || mapping.frame === null) return `Audio frame mapping unavailable · ${mapping.reason ?? 'unknown'}`;
   const drift = mapping.driftPpm === null ? 'drift pending' : `${mapping.driftPpm.toFixed(0)} ppm drift`;
   return `Read-only audio frame estimate · ${mapping.frame} · ${drift}`;
+});
+const midiStartFrameMappingStatus = computed(() => {
+  const snapshot = clockSnapshot.value;
+  if (snapshot.lastStartAtMs === null) return 'MIDI Start (FA): not observed';
+  const mapping = snapshot.startFrameMapping;
+  if (!mapping.ok || mapping.frame === null) return `MIDI Start (FA): observed · frame estimate unavailable · ${mapping.reason ?? 'unknown'}`;
+  return `MIDI Start (FA): read-only frame estimate · ${mapping.frame}`;
 });
 
 const refreshMidiClock = () => {
